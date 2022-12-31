@@ -1,0 +1,1157 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<wsdl:definitions targetNamespace="utcs" xmlns:wpNS1="utcs.values" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:tns="utcs" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<wsdl:types>
+<xsd:schema targetNamespace="http://www.w3.org/2001/XMLSchema" xmlns="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="qualified">
+<xsd:complexType name="ArrayOfint">
+<xsd:sequence>
+<xsd:element name="arrayItem" maxOccurs="unbounded" type="xsd:int">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:schema>
+
+<xsd:schema targetNamespace="utcs" xmlns="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="qualified">
+<xsd:import namespace="utcs.values">
+</xsd:import>
+
+<xsd:element name="enableSubscription1" nillable="true" type="xsd:ArrayOfint">
+</xsd:element>
+
+<xsd:element name="disableSubscription1" nillable="true" type="xsd:ArrayOfint">
+</xsd:element>
+
+<xsd:complexType name="WSDatalineResource">
+<xsd:sequence>
+<xsd:element name="resourceID" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="datalineNumber" type="xsd:int">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:complexType name="ArrayOfWSDatalineResource">
+<xsd:sequence>
+<xsd:element name="arrayItem" maxOccurs="unbounded" nillable="true" type="tns:WSDatalineResource">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:element name="getDatalineInputIDs1" nillable="true" type="tns:ArrayOfWSDatalineResource">
+</xsd:element>
+
+<xsd:element name="getDatalineOutputIDs1" nillable="true" type="tns:ArrayOfWSDatalineResource">
+</xsd:element>
+
+<xsd:element name="waitForEvents1" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:complexType name="WSResourceValueEvent">
+<xsd:sequence>
+<xsd:element name="m_resourceID" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="m_value" nillable="true" type="wpNS1:WSResourceValue">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:complexType name="ArrayOfWSResourceValueEvent">
+<xsd:sequence>
+<xsd:element name="arrayItem" maxOccurs="unbounded" nillable="true" type="tns:WSResourceValueEvent">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:complexType name="WSEventPackage">
+<xsd:sequence>
+<xsd:element name="resourceValueEvents" nillable="true" type="tns:ArrayOfWSResourceValueEvent">
+</xsd:element>
+
+<xsd:element name="controllerExecutionRunning" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="subscriptionAmount" type="xsd:int">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:element name="waitForEvents2" nillable="true" type="tns:WSEventPackage">
+</xsd:element>
+
+<xsd:element name="getValues1" nillable="true" type="xsd:ArrayOfint">
+</xsd:element>
+
+<xsd:element name="getValues2" nillable="true" type="wpNS1:ArrayOfWSResourceValue">
+</xsd:element>
+
+<xsd:element name="setValues1" nillable="true" type="tns:ArrayOfWSResourceValueEvent">
+</xsd:element>
+
+<xsd:element name="setValues2" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:complexType name="WSDate">
+<xsd:sequence>
+<xsd:element name="hours" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="minutes" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="seconds" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="year" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="day" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="monthWithJanuaryAsOne" type="xsd:int">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:element name="getTime1" nillable="true" type="tns:WSDate">
+</xsd:element>
+
+<xsd:element name="getUptime1" nillable="true" type="xsd:long">
+</xsd:element>
+
+<xsd:complexType name="WSVersionInfo">
+<xsd:sequence>
+<xsd:element name="majorVersion" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="minorVersion" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="buildVersion" type="xsd:int">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:element name="getFWVersion1" nillable="true" type="tns:WSVersionInfo">
+</xsd:element>
+
+<xsd:element name="getAPIVersion1" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="authenticate1" nillable="true" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="authenticate2" nillable="true" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="authenticate3" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:complexType name="WSProjectInfo">
+<xsd:sequence>
+<xsd:element name="visualMinorVersion" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="visualMajorVersion" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="projectMajorRevision" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="projectMinorRevision" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="lastmodified" nillable="true" type="tns:WSDate">
+</xsd:element>
+
+<xsd:element name="projectNumber" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="customerName" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="installerName" type="xsd:string">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:element name="getProjectInfo1" nillable="true" type="tns:WSProjectInfo">
+</xsd:element>
+
+<xsd:element name="isIHCProjectAvailable1" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="getIHCProjectSegment1" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="getIHCProjectSegment2" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="getIHCProjectSegment3" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:complexType name="WSFile">
+<xsd:sequence>
+<xsd:element name="data" type="xsd:base64Binary">
+</xsd:element>
+
+<xsd:element name="filename" type="xsd:string">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:element name="getIHCProjectSegment4" nillable="true" type="tns:WSFile">
+</xsd:element>
+
+<xsd:element name="getIHCProjectSegmentationSize1" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="getIHCProjectNumberOfSegments1" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:complexType name="WSSceneProjectInfo">
+<xsd:sequence>
+<xsd:element name="name" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="size" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="filepath" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="remote" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="version" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="created" nillable="true" type="tns:WSDate">
+</xsd:element>
+
+<xsd:element name="lastmodified" nillable="true" type="tns:WSDate">
+</xsd:element>
+
+<xsd:element name="description" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="crc" type="xsd:long">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:element name="getSceneProjectInfo1" nillable="true" type="tns:WSSceneProjectInfo">
+</xsd:element>
+
+<xsd:element name="getSceneProjectSegmentationSize1" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="getSceneProjectSegment1" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="getSceneProjectSegment2" nillable="true" type="tns:WSFile">
+</xsd:element>
+</xsd:schema>
+
+<xsd:schema targetNamespace="utcs.values" xmlns="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="qualified">
+<xsd:complexType name="WSResourceValue">
+<xsd:sequence>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:complexType name="ArrayOfWSResourceValue">
+<xsd:sequence>
+<xsd:element name="arrayItem" maxOccurs="unbounded" nillable="true" type="wpNS1:WSResourceValue">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:complexType name="WSWeekdayValue">
+<xsd:complexContent>
+<xsd:extension base="wpNS1:WSResourceValue">
+<xsd:sequence>
+<xsd:element name="weekdayNumber" type="xsd:int">
+</xsd:element>
+</xsd:sequence>
+</xsd:extension>
+</xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="WSTimeValue">
+<xsd:complexContent>
+<xsd:extension base="wpNS1:WSResourceValue">
+<xsd:sequence>
+<xsd:element name="hours" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="minutes" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="seconds" type="xsd:int">
+</xsd:element>
+</xsd:sequence>
+</xsd:extension>
+</xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="WSTimerValue">
+<xsd:complexContent>
+<xsd:extension base="wpNS1:WSResourceValue">
+<xsd:sequence>
+<xsd:element name="milliseconds" type="xsd:long">
+</xsd:element>
+</xsd:sequence>
+</xsd:extension>
+</xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="WSSceneShutterSimpleValue">
+<xsd:complexContent>
+<xsd:extension base="wpNS1:WSResourceValue">
+<xsd:sequence>
+<xsd:element name="delayTime" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="shutterPositionIsUp" type="xsd:boolean">
+</xsd:element>
+</xsd:sequence>
+</xsd:extension>
+</xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="WSSceneRelayValue">
+<xsd:complexContent>
+<xsd:extension base="wpNS1:WSResourceValue">
+<xsd:sequence>
+<xsd:element name="delayTime" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="relayValue" type="xsd:boolean">
+</xsd:element>
+</xsd:sequence>
+</xsd:extension>
+</xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="WSSceneDimmerValue">
+<xsd:complexContent>
+<xsd:extension base="wpNS1:WSResourceValue">
+<xsd:sequence>
+<xsd:element name="delayTime" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="rampTime" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="dimmerPercentage" type="xsd:int">
+</xsd:element>
+</xsd:sequence>
+</xsd:extension>
+</xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="WSPhoneNumberValue">
+<xsd:complexContent>
+<xsd:extension base="wpNS1:WSResourceValue">
+<xsd:sequence>
+<xsd:element name="number" type="xsd:string">
+</xsd:element>
+</xsd:sequence>
+</xsd:extension>
+</xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="WSIntegerValue">
+<xsd:complexContent>
+<xsd:extension base="wpNS1:WSResourceValue">
+<xsd:sequence>
+<xsd:element name="integer" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="maximumValue" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="minimumValue" type="xsd:int">
+</xsd:element>
+</xsd:sequence>
+</xsd:extension>
+</xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="WSFloatingPointValue">
+<xsd:complexContent>
+<xsd:extension base="wpNS1:WSResourceValue">
+<xsd:sequence>
+<xsd:element name="floatingPointValue" type="xsd:double">
+</xsd:element>
+
+<xsd:element name="maximumValue" type="xsd:double">
+</xsd:element>
+
+<xsd:element name="minimumValue" type="xsd:double">
+</xsd:element>
+</xsd:sequence>
+</xsd:extension>
+</xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="WSEnumValue">
+<xsd:complexContent>
+<xsd:extension base="wpNS1:WSResourceValue">
+<xsd:sequence>
+<xsd:element name="definitionTypeID" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="enumValueID" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="enumName" type="xsd:string">
+</xsd:element>
+</xsd:sequence>
+</xsd:extension>
+</xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="WSDateValue">
+<xsd:complexContent>
+<xsd:extension base="wpNS1:WSResourceValue">
+<xsd:sequence>
+<xsd:element name="year" type="xsd:short">
+</xsd:element>
+
+<xsd:element name="month" type="xsd:byte">
+</xsd:element>
+
+<xsd:element name="day" type="xsd:byte">
+</xsd:element>
+</xsd:sequence>
+</xsd:extension>
+</xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="WSBooleanValue">
+<xsd:complexContent>
+<xsd:extension base="wpNS1:WSResourceValue">
+<xsd:sequence>
+<xsd:element name="value" type="xsd:boolean">
+</xsd:element>
+</xsd:sequence>
+</xsd:extension>
+</xsd:complexContent>
+</xsd:complexType>
+</xsd:schema>
+</wsdl:types>
+
+<wsdl:message name="enableSubscriptionRequest">
+<wsdl:part name="parameter1" element="tns:enableSubscription1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="enableSubscriptionResponse">
+</wsdl:message>
+
+<wsdl:message name="disableSubscriptionRequest">
+<wsdl:part name="parameter2" element="tns:disableSubscription1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="disableSubscriptionResponse">
+</wsdl:message>
+
+<wsdl:message name="getDatalineInputIDsRequest">
+</wsdl:message>
+
+<wsdl:message name="getDatalineInputIDsResponse">
+<wsdl:part name="return" element="tns:getDatalineInputIDs1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getDatalineOutputIDsRequest">
+</wsdl:message>
+
+<wsdl:message name="getDatalineOutputIDsResponse">
+<wsdl:part name="return" element="tns:getDatalineOutputIDs1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="waitForEventsRequest">
+<wsdl:part name="parameter3" element="tns:waitForEvents1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="waitForEventsResponse">
+<wsdl:part name="return" element="tns:waitForEvents2">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getValuesRequest">
+<wsdl:part name="parameter4" element="tns:getValues1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getValuesResponse">
+<wsdl:part name="return" element="tns:getValues2">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="setValuesRequest">
+<wsdl:part name="parameter5" element="tns:setValues1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="setValuesResponse">
+<wsdl:part name="return" element="tns:setValues2">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getTimeRequest">
+</wsdl:message>
+
+<wsdl:message name="getTimeResponse">
+<wsdl:part name="return" element="tns:getTime1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getUptimeRequest">
+</wsdl:message>
+
+<wsdl:message name="getUptimeResponse">
+<wsdl:part name="return" element="tns:getUptime1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="pingRequest">
+</wsdl:message>
+
+<wsdl:message name="pingResponse">
+</wsdl:message>
+
+<wsdl:message name="getFWVersionRequest">
+</wsdl:message>
+
+<wsdl:message name="getFWVersionResponse">
+<wsdl:part name="return" element="tns:getFWVersion1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getAPIVersionRequest">
+</wsdl:message>
+
+<wsdl:message name="getAPIVersionResponse">
+<wsdl:part name="return" element="tns:getAPIVersion1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="authenticateRequest">
+<wsdl:part name="parameter6" element="tns:authenticate1">
+</wsdl:part>
+
+<wsdl:part name="parameter7" element="tns:authenticate2">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="authenticateResponse">
+<wsdl:part name="return" element="tns:authenticate3">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getProjectInfoRequest">
+</wsdl:message>
+
+<wsdl:message name="getProjectInfoResponse">
+<wsdl:part name="return" element="tns:getProjectInfo1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="doRebootRequest">
+</wsdl:message>
+
+<wsdl:message name="doRebootResponse">
+</wsdl:message>
+
+<wsdl:message name="isIHCProjectAvailableRequest">
+</wsdl:message>
+
+<wsdl:message name="isIHCProjectAvailableResponse">
+<wsdl:part name="return" element="tns:isIHCProjectAvailable1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getIHCProjectSegmentRequest">
+<wsdl:part name="parameter8" element="tns:getIHCProjectSegment1">
+</wsdl:part>
+
+<wsdl:part name="parameter9" element="tns:getIHCProjectSegment2">
+</wsdl:part>
+
+<wsdl:part name="parameter10" element="tns:getIHCProjectSegment3">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getIHCProjectSegmentResponse">
+<wsdl:part name="return" element="tns:getIHCProjectSegment4">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getIHCProjectSegmentationSizeRequest">
+</wsdl:message>
+
+<wsdl:message name="getIHCProjectSegmentationSizeResponse">
+<wsdl:part name="return" element="tns:getIHCProjectSegmentationSize1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getIHCProjectNumberOfSegmentsRequest">
+</wsdl:message>
+
+<wsdl:message name="getIHCProjectNumberOfSegmentsResponse">
+<wsdl:part name="return" element="tns:getIHCProjectNumberOfSegments1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getSceneProjectInfoRequest">
+</wsdl:message>
+
+<wsdl:message name="getSceneProjectInfoResponse">
+<wsdl:part name="return" element="tns:getSceneProjectInfo1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getSceneProjectSegmentationSizeRequest">
+</wsdl:message>
+
+<wsdl:message name="getSceneProjectSegmentationSizeResponse">
+<wsdl:part name="return" element="tns:getSceneProjectSegmentationSize1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getSceneProjectSegmentRequest">
+<wsdl:part name="parameter11" element="tns:getSceneProjectSegment1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getSceneProjectSegmentResponse">
+<wsdl:part name="return" element="tns:getSceneProjectSegment2">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:portType name="OpenAPIService">
+<wsdl:operation name="enableSubscription">
+<wsdl:input name="inputMessageName1" message="tns:enableSubscriptionRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName1" message="tns:enableSubscriptionResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="disableSubscription">
+<wsdl:input name="inputMessageName2" message="tns:disableSubscriptionRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName2" message="tns:disableSubscriptionResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getDatalineInputIDs">
+<wsdl:input name="inputMessageName3" message="tns:getDatalineInputIDsRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName3" message="tns:getDatalineInputIDsResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getDatalineOutputIDs">
+<wsdl:input name="inputMessageName4" message="tns:getDatalineOutputIDsRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName4" message="tns:getDatalineOutputIDsResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="waitForEvents">
+<wsdl:input name="inputMessageName5" message="tns:waitForEventsRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName5" message="tns:waitForEventsResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getValues">
+<wsdl:input name="inputMessageName6" message="tns:getValuesRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName6" message="tns:getValuesResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="setValues">
+<wsdl:input name="inputMessageName7" message="tns:setValuesRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName7" message="tns:setValuesResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getTime">
+<wsdl:input name="inputMessageName8" message="tns:getTimeRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName8" message="tns:getTimeResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getUptime">
+<wsdl:input name="inputMessageName9" message="tns:getUptimeRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName9" message="tns:getUptimeResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="ping">
+<wsdl:input name="inputMessageName10" message="tns:pingRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName10" message="tns:pingResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getFWVersion">
+<wsdl:input name="inputMessageName11" message="tns:getFWVersionRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName11" message="tns:getFWVersionResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getAPIVersion">
+<wsdl:input name="inputMessageName12" message="tns:getAPIVersionRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName12" message="tns:getAPIVersionResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="authenticate">
+<wsdl:input name="inputMessageName13" message="tns:authenticateRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName13" message="tns:authenticateResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getProjectInfo">
+<wsdl:input name="inputMessageName14" message="tns:getProjectInfoRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName14" message="tns:getProjectInfoResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="doReboot">
+<wsdl:input name="inputMessageName15" message="tns:doRebootRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName15" message="tns:doRebootResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="isIHCProjectAvailable">
+<wsdl:input name="inputMessageName16" message="tns:isIHCProjectAvailableRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName16" message="tns:isIHCProjectAvailableResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getIHCProjectSegment">
+<wsdl:input name="inputMessageName17" message="tns:getIHCProjectSegmentRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName17" message="tns:getIHCProjectSegmentResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getIHCProjectSegmentationSize">
+<wsdl:input name="inputMessageName18" message="tns:getIHCProjectSegmentationSizeRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName18" message="tns:getIHCProjectSegmentationSizeResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getIHCProjectNumberOfSegments">
+<wsdl:input name="inputMessageName19" message="tns:getIHCProjectNumberOfSegmentsRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName19" message="tns:getIHCProjectNumberOfSegmentsResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getSceneProjectInfo">
+<wsdl:input name="inputMessageName20" message="tns:getSceneProjectInfoRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName20" message="tns:getSceneProjectInfoResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getSceneProjectSegmentationSize">
+<wsdl:input name="inputMessageName21" message="tns:getSceneProjectSegmentationSizeRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName21" message="tns:getSceneProjectSegmentationSizeResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getSceneProjectSegment">
+<wsdl:input name="inputMessageName22" message="tns:getSceneProjectSegmentRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName22" message="tns:getSceneProjectSegmentResponse">
+</wsdl:output>
+</wsdl:operation>
+</wsdl:portType>
+
+<wsdl:binding name="OpenAPIServiceBinding" type="tns:OpenAPIService">
+<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http">
+</soap:binding>
+
+<wsdl:operation name="enableSubscription">
+<soap:operation soapAction="enableSubscription" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName1">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName1">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="disableSubscription">
+<soap:operation soapAction="disableSubscription" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName2">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName2">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getDatalineInputIDs">
+<soap:operation soapAction="getDatalineInputIDs" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName3">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName3">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getDatalineOutputIDs">
+<soap:operation soapAction="getDatalineOutputIDs" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName4">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName4">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="waitForEvents">
+<soap:operation soapAction="waitForEvents" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName5">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName5">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getValues">
+<soap:operation soapAction="getValues" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName6">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName6">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="setValues">
+<soap:operation soapAction="setValues" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName7">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName7">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getTime">
+<soap:operation soapAction="getTime" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName8">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName8">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getUptime">
+<soap:operation soapAction="getUptime" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName9">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName9">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="ping">
+<soap:operation soapAction="ping" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName10">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName10">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getFWVersion">
+<soap:operation soapAction="getFWVersion" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName11">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName11">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getAPIVersion">
+<soap:operation soapAction="getAPIVersion" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName12">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName12">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="authenticate">
+<soap:operation soapAction="authenticate" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName13">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName13">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getProjectInfo">
+<soap:operation soapAction="getProjectInfo" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName14">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName14">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="doReboot">
+<soap:operation soapAction="doReboot" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName15">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName15">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="isIHCProjectAvailable">
+<soap:operation soapAction="isIHCProjectAvailable" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName16">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName16">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getIHCProjectSegment">
+<soap:operation soapAction="getIHCProjectSegment" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName17">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName17">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getIHCProjectSegmentationSize">
+<soap:operation soapAction="getIHCProjectSegmentationSize" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName18">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName18">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getIHCProjectNumberOfSegments">
+<soap:operation soapAction="getIHCProjectNumberOfSegments" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName19">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName19">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getSceneProjectInfo">
+<soap:operation soapAction="getSceneProjectInfo" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName20">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName20">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getSceneProjectSegmentationSize">
+<soap:operation soapAction="getSceneProjectSegmentationSize" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName21">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName21">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getSceneProjectSegment">
+<soap:operation soapAction="getSceneProjectSegment" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName22">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName22">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+</wsdl:binding>
+
+<wsdl:service name="OpenAPIServiceService">
+<wsdl:port name="OpenAPIServiceBindingPort" binding="tns:OpenAPIServiceBinding">
+<soap:address location="http://localhost/OpenAPIService">
+</soap:address>
+</wsdl:port>
+</wsdl:service>
+</wsdl:definitions>

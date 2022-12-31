@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <Version>0.5.0-beta2</Version>
+    <InformationalVersion>This is a prerelease package</InformationalVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <GlobalAnalyzerConfigFiles Include="analyser.config" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="7.0.0"/>
+    <PackageReference Include="System.ServiceModel.Duplex" Version="4.10.0"/>
+    <PackageReference Include="System.ServiceModel.Http" Version="4.10.0"/>
+    <PackageReference Include="System.ServiceModel.NetTcp" Version="4.10.0"/>
+    <PackageReference Include="System.ServiceModel.Security" Version="4.10.0"/>
+  </ItemGroup>
+</Project>

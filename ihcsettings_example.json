@@ -1,0 +1,47 @@
+{
+    "comment" : "Example of how your ihcsettings.json file can look like. You need this user supplied file to run examples and tests",
+    "ihcConfig": {
+        "comment" : "Refer to your IHC controller config for endpoint and authentication details. Known application names include 'treeview', 'openapi', 'administrator'",
+        "endpoint" : "http://192.100.1.10",
+        "userName" : "johndoe",
+        "password" : "mypassword",
+        "application" : "administrator"
+    },
+    "testConfig": {
+      "comment" : "ID's of resources that can be used by tests and examples. Get the IDs from IHC Visual by pressing CTRL and hover mouse pointer over suitable input/output (or run IOExtractor project and inspect output)",
+        "boolOutput1" : "133107",
+        "boolInput1" : "8886058",
+        "boolInput2" : "7770844"
+    },
+    "projectExtrator": {
+        "comment": "Configuration for optional ihcprojectextractor tool",
+        "identifiers": {
+          "pascalcase": true,
+          "stringReplacements": {
+            "æ": "ae",
+            "ø": "oe",
+            "å": "aa",
+            "v.": "ved",
+            "Premier 360 DT": "",
+            "1873 Bobby-AM": ""
+          },
+          "stringReplacements2": {
+            "Æ": "AE",
+            "Ø": "OE",
+            "Å": "AA"
+          }
+        },
+        "CSharpGenerator": {
+          "namespace": "MyInstallation"
+        },
+        "JSGenerator": {},
+        "JsonGenerator": {}
+    },
+    "Logging": {
+        "LogLevel": {
+          "Default": "Debug",
+          "Microsoft": "Warning",
+          "Microsoft.Hosting.Lifetime": "Information"
+        }
+    }
+}
