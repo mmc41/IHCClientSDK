@@ -54,9 +54,14 @@ namespace Ihc.example
                                         boolInput2,
                                 });
 
-           await foreach (ResourceValue r in resourceChanges) { // forever loop.
+           await foreach (ResourceValue r in resourceChanges) { // forever loop until CTRL-C.
             Console.WriteLine(r);
            }
+
+           // Clean logout. Not actually executed in this example 
+           // but shown for completeness. A real console app should 
+           // install a CTRL-C handler to make sure Disconnect is called.
+           await authService.Disconnect();
         }
     }
 }

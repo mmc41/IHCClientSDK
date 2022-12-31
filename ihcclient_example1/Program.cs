@@ -62,6 +62,9 @@ namespace Ihc.example
           var toggledOutput = await resourceInteractionService.SetResourceValue(reverseValue);
           outputStat = toggledOutput.Value ? "ON" : "OFF";
           Console.WriteLine($"Resource with ID {boolOutput1} is now {outputStat}");        
+
+          // Clean logout.
+          await authService.Disconnect();
          }
     }
 }
