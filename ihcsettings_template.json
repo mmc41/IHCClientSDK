@@ -8,7 +8,7 @@
         "application" : "administrator"
     },
     "testConfig": {
-        "comment" : "ID's of resources that can be used by tests and examples. Get the IDs from IHC Visual by pressing CTRL and hover mouse pointer over suitable input/output (or run IOExtractor project and inspect output)",
+        "comment" : "ID's of resources that can be used by tests and examples. Chose arbitrary 'tryk' you can press for input and connected 'lampleudtag' for output where you can see if it is on. Get the IDs from IHC Visual by pressing CTRL and hover mouse pointer over suitable input/output (or run IOExtractor project and inspect output)",
         "boolOutput1" : "<ID of an output that may be modified by example or test>",
         "boolInput1" : "<ID of an input>",
         "boolInput2" : "<ID of an input>"

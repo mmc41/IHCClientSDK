@@ -8,10 +8,10 @@
         "application" : "administrator"
     },
     "testConfig": {
-      "comment" : "ID's of resources that can be used by tests and examples. Get the IDs from IHC Visual by pressing CTRL and hover mouse pointer over suitable input/output (or run IOExtractor project and inspect output)",
-        "boolOutput1" : "133107",
-        "boolInput1" : "8886058",
-        "boolInput2" : "7770844"
+      "comment" : "ID's of boolean typed resources that can be used by tests and examples. Chose arbitrary 'tryk' you can press for input and connected 'lampleudtag' for output where you can see if it is on. Get the IDs from IHC Visual by pressing CTRL and hover mouse pointer over suitable input/output (or run IOExtractor project and inspect output)",
+      "boolOutput1" : "133107",
+      "boolInput1" : "8886058",
+      "boolInput2" : "7770844"
     },
     "projectExtrator": {
         "comment": "Configuration for optional ihcprojectextractor tool",
