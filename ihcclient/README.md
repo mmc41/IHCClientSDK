@@ -1,6 +1,6 @@
 # About ihcclient
 
-This project contains an unoffical dotnet IHC client API for  [IHC (Intelligent House Concept)](https://www.lk.dk/professionel/produktoversigt/intelligente-systemer/ihc/). The project is NOT affiliated with- or supported by LK / Schneider Electric.
+This project contains an **unofficial** dotnet IHC client API for  [IHC (Intelligent House Concept)](https://www.lk.dk/professionel/produktoversigt/intelligente-systemer/ihc/). The project is NOT affiliated with- or supported by LK / Schneider Electric.
 
 Since dotnet core (and later dot net v5.0) did not officially support
 SOAP webservices, the SDK API is based on a combination of
