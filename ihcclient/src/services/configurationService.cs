@@ -13,6 +13,12 @@ namespace Ihc {
     public interface IConfigurationService
     {
         public Task<SystemInfo> GetSystemInfo();
+
+        public Task ClearUserLog();
+                
+        public Task<UserLogFileText> GetUserLog(string lang = "da");
+
+        public Task DelayedRebootAsync(int delay); // TODO: Identify time unit for delay and rename arg.
     }
 
     /**
@@ -184,10 +190,33 @@ namespace Ihc {
 
         // TODO: Implement remaining high level service.
 
+        private UserLogFileText mapLogFile(Ihc.Soap.Configuration.WSFile e)
+        {
+            return new UserLogFileText()
+            {
+                FileName = e!=null && e.filename != null ? e.filename : "",
+                Content = e!=null && e.data != null ? System.Text.Encoding.UTF8.GetString(e.data) : ""
+            };
+        }
+
         public async Task<SystemInfo> GetSystemInfo()
         {
             var resp = await impl.getSystemInfoAsync(new inputMessageName6() { });
-            return mapSystemInfo(resp.getSystemInfo1);
+            return resp.getSystemInfo1!=null ? mapSystemInfo(resp.getSystemInfo1) : null;
+        }
+
+        public async Task ClearUserLog() {
+            await impl.clearUserLogAsync(new inputMessageName3());
+        }
+
+        public async Task<UserLogFileText> GetUserLog(string lang = "da") {
+            var resp = await impl.getUserLogAsync(new inputMessageName2("", 0, lang));
+            return mapLogFile(resp.getUserLog4);
+        }
+
+        public async Task DelayedRebootAsync(int delay) {
+            // TODO: Find out what time unit delay is in ?
+            await impl.delayedRebootAsync(new inputMessageName1(delay) {});
         }
     }
 }

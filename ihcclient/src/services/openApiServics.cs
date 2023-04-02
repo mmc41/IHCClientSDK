@@ -5,7 +5,10 @@ using Microsoft.Extensions.Logging;
 using Ihc.Soap.Openapi;
 namespace Ihc {
     /**
-    * A highlevel client interface for the IHC OpenAPIService without any of the soap distractions.
+    * A highlevel client interface for the IHC OpenAPIService for v3.0+ controllers without any of the soap distractions.
+    *
+    * Does not appear to be fully functional or complete. Properly best to use AuthenticationService instead.
+    *
     * Nb. Supported by v3.0+ controllers only.
     *
     * TODO: Add remaining operations.
@@ -20,6 +23,7 @@ namespace Ihc {
 
     /**
     * A highlevel implementation of a client to the IHC OpenAPIService without exposing any of the soap distractions.
+
     * Nb. Supported by v3.0+ controllers only.
     *
     * TODO: Add remaining operations.
@@ -194,6 +198,8 @@ namespace Ihc {
         public async Task Authenticate(string userName, string password)
         {
             var resp = await impl.authenticateAsync(new inputMessageName13() { authenticate1 = userName, authenticate2 = password });
+
+            // TODO Add better error handling similar to Authenticate service.
             if (resp.authenticate3.HasValue && !resp.authenticate3.Value)
                 throw new ErrorWithCodeException(Errors.LOGIN_UNKNOWN_ERROR, "Ihc server login failed for " + impl.Url);
 

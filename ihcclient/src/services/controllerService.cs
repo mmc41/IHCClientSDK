@@ -15,6 +15,7 @@ namespace Ihc {
         public Task<string> GetState();
         public Task<bool> IsIHCProjectAvailableAsync();
         public Task<bool> IsSDCardReadyAsync();
+        public Task<SDInfo> getSDCardInfoAsync();
     }
 
     /**
@@ -147,6 +148,15 @@ namespace Ihc {
 
         // TODO: Implement remaining high level service.
 
+        private SDInfo mapSDCardData(WSSdCardData e)
+        {
+            return new SDInfo()
+            {
+                Size = e.size,
+                Free = e.free
+            };
+        }
+
         public async Task<bool> IsIHCProjectAvailableAsync()
         {
             var result = await impl.isIHCProjectAvailableAsync(new inputMessageName14() { });
@@ -157,6 +167,12 @@ namespace Ihc {
         {
             var result = await impl.isSDCardReadyAsync(new inputMessageName9() { });
             return result.isSDCardReady1.HasValue ? result.isSDCardReady1.Value : false;
+        }
+
+        public async Task<SDInfo> getSDCardInfoAsync()
+        {
+          var result = await impl.getSdCardInfoAsync(new inputMessageName5() { });
+          return result.getSdCardInfo1!=null ? mapSDCardData(result.getSdCardInfo1) : null;
         }
 
         public async Task<string> GetState()

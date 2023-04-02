@@ -31,4 +31,9 @@ namespace Ihc {
         
         public bool ApplicationIsWithoutViewer { get; init; }
     }
+
+    public record UserLogFileText {
+        public string FileName { get; init; }
+        public string Content { get; init; }
+    }
 }

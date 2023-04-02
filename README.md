@@ -18,7 +18,7 @@ This project is released as open source. Please supply pull requests with tested
 
 The project is an early preview/beta. It has only been tested against a single v3.0 IHC controller. ~~I don't know if it works with ealier controllers.~~ 
 
-Update: Apparently the SDK does not work (yet) with earlier IHC versions due to incompatible changes in webservice contracts between IHC firmware versions. Happily, it is possible to fix this transparently with some help from pre v3.0 contributors. See [this Issue](https://github.com/mmc41/IHCClientSDK/issues/1) to discuss this subject and to keep track of future support.
+**Update**: Apparently the SDK does not work (yet) with earlier IHC versions due to incompatible changes in webservice contracts between IHC firmware versions. Happily, it is possible to fix this transparently with some help from pre v3.0 contributors. See [this Issue](https://github.com/mmc41/IHCClientSDK/issues/1) to discuss this subject and to keep track of future support.
 
 Definitely missing is an easy to consume nuget package for the client. I expect to publish a package if there is interest. For now you will have to build the client yourself. 
 

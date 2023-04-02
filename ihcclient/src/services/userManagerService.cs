@@ -12,7 +12,7 @@ namespace Ihc {
     */
     public interface IUserManagerService
     {
-        public Task<IhcUser[]> GetUsers();
+        public Task<IhcUser[]> GetUsers(bool includePassword);
     }
 
     /**
@@ -68,13 +68,13 @@ namespace Ihc {
         /**
         * Get list of registered controller users and their information.
         */
-        public async Task<IhcUser[]> GetUsers()
+        public async Task<IhcUser[]> GetUsers(bool includePassword)
         {
             var resp = await impl.getUsersAsync(new inputMessageName2() { });
             return resp.getUsers1.Where((v) => v != null).Select((u) => new IhcUser()
             {
                 Username = u.username,
-                Password = u.password,
+                Password = includePassword ? u.password : string.Empty,
                 Firstname = u.firstname,
                 Lastname = u.lastname,
                 Phone = u.phone,

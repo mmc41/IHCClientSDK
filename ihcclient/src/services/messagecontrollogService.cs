@@ -7,8 +7,6 @@ using Ihc.Soap.Messagecontrollog;
 namespace Ihc {
     /**
     * A highlevel client interface for the IHC MessageControlLogService without any of the soap distractions.
-    *
-    * TODO: Add remaining operations.
     */
     public interface IMessageControlLogService
     {
@@ -18,8 +16,6 @@ namespace Ihc {
 
     /**
     * A highlevel implementation of a client to the IHC MessageControllogService without exposing any of the soap distractions.
-    *
-    * TODO: Add remaining operations.
     */
     public class MessageControlLogService : IMessageControlLogService
     {

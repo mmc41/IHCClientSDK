@@ -7,18 +7,17 @@ using Ihc.Soap.Notificationmanager;
 namespace Ihc {
     /**
     * A highlevel client interface for the IHC NotificationManagerService without any of the soap distractions.
-    *
-    * TODO: Add operations.
     */
     public interface INotificationManagerService
     {
-
+        public Task ClearMessages();
+    
+        public Task<NotificationMessage[]> GetMessages();
     }
 
     /**
     * A highlevel implementation of a client to the IHC NotificationManagerService without exposing any of the soap distractions.
     *
-    * TODO: Add operations (see other services for inspiration).
     */
     public class NotificationManagerService : INotificationManagerService {
         private readonly ILogger logger;
@@ -51,7 +50,34 @@ namespace Ihc {
             this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint);
         }
 
-        // TODO: Implement high level service.
+        private NotificationMessage mapMessage(WSNotificationMessage e)
+        {
+            return new NotificationMessage()
+            {
+                Date = mapDate(e.date),
+                NotificationType = e.notificationType,
+                Recipient = e.recipient,
+                Sender = e.sender,
+                Subject = e.subject,
+                Body = e.body,
+                Delivered = e.delivered
+            };
+        }
 
+        private DateTimeOffset mapDate(WSDate v)
+        {
+            return new DateTimeOffset(v.year, v.monthWithJanuaryAsOne, v.day, v.hours, v.minutes, v.seconds, DateHelper.GetWSTimeOffset());
+        }
+
+        public async Task ClearMessages()
+        {
+            await impl.clearMessagesAsync(new inputMessageName2());
+        }       
+
+        public async Task<NotificationMessage[]> GetMessages()
+        {
+            var resp = await impl.getMessagesAsync(new inputMessageName1());
+            return resp.getMessages1.Where((v) => v != null).Select((v) => mapMessage(v)).ToArray();
+        }
     }
 }

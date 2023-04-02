@@ -21,7 +21,7 @@ namespace Ihc {
         public Task<IhcUser> Authenticate(string userName, string password, string application = "openapi");
 
         /**
-        * Logoff to IHC controller. Pr
+        * Logoff to IHC controller.
         */
         public Task<bool> Disconnect();
 
