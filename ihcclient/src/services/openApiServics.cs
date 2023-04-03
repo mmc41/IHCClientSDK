@@ -11,7 +11,7 @@ namespace Ihc {
     *
     * Nb. Supported by v3.0+ controllers only.
     *
-    * TODO: Add remaining operations.
+    * Status: Incomplete.
     */
     public interface IOpenAPIService : ICookieHandlerService
     {

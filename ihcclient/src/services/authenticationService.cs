@@ -8,6 +8,8 @@ using Ihc.Soap.Authentication;
 namespace Ihc {
     /**
     * A highlevel client interface for the IHC AuthenticationService without any of the soap distractions.
+    *
+    * Status: 100% API coverage.
     */
     public interface IAuthenticationService : ICookieHandlerService, IDisposable, IAsyncDisposable
     {

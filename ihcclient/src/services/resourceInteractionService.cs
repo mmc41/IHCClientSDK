@@ -10,6 +10,8 @@ using System.Collections.Generic;
 namespace Ihc {
     /**
     * A highlevel client interface for the IHC ResourceInteractionService without any of the soap distractions.
+    *
+    * Status: 100% API coverage but not fully tested or documented.
     */
     public interface IResourceInteractionService
     {
@@ -66,6 +68,10 @@ namespace Ihc {
         public Task<bool?> SetResourceValue(ResourceValue v);
         
         public Task<bool?> setResourceValues(ResourceValue[] values);
+
+        public Task<SceneResourceIdAndLocation[]> GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions);
+
+        public Task<SceneResourceIdAndLocation> GetScenePositionsForSceneValueResource(int scenePositionsForSceneValueResource);
         
         /**
          * Can be used for long pooling of resource changes for resources previously enabled wait for using enableRuntimeValueNotifications.
@@ -350,6 +356,14 @@ namespace Ihc {
         {
             return new WSWeekdayValue() { weekdayNumber = v };
         }
+        
+        public SceneResourceIdAndLocation mapSceneResourceIdAndLocation(Ihc.Soap.Resourceinteraction.WSSceneResourceIdAndLocationURLs arg) {
+            return new SceneResourceIdAndLocation() {
+                SceneResourceId = arg.sceneResourceId,
+                ScenePositionSeenFromProduct = arg.scenePositionSeenFromProduct,
+                ScenePositionSeenFromFunctionBlock = arg.scenePositionSeenFromFunctionBlock
+            };
+        }
 
         /**
         * Create an ResourceInteractionService instance for access to the IHC API related to resources.
@@ -464,6 +478,18 @@ namespace Ihc {
         {
             var resp = await impl.getRuntimeValuesAsync(new inputMessageName16() { getRuntimeValues1 = resourceIDs });
             return resp.getRuntimeValues2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
+        }
+
+        public async Task<SceneResourceIdAndLocation[]> GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions)
+        {
+            var resp = await impl.getSceneGroupResourceIdAndPositionsAsync(new inputMessageName1(sceneGroupResourceIdAndPositions) {});
+            return resp.getSceneGroupResourceIdAndPositions2.Where((v) => v != null).Select((v) => mapSceneResourceIdAndLocation(v)).ToArray();
+        }
+
+        public async Task<SceneResourceIdAndLocation> GetScenePositionsForSceneValueResource(int scenePositionsForSceneValueResource)
+        {
+            var resp = await impl.getScenePositionsForSceneValueResourceAsync(new inputMessageName2(scenePositionsForSceneValueResource) {});
+            return mapSceneResourceIdAndLocation(resp.getScenePositionsForSceneValueResource2);
         }
 
         public async Task<ResourceValue[]> WaitForResourceValueChanges(int timeout_seconds = 15)

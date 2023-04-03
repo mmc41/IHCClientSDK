@@ -177,4 +177,13 @@ namespace Ihc {
         public int EnumValueID  { get; init; }
         public string EnumName  { get; init; }
     }
+
+    public record SceneResourceIdAndLocation
+    {
+        public string ScenePositionSeenFromFunctionBlock  { get; init; }
+        
+        public int SceneResourceId  { get; init; }
+        
+        public string ScenePositionSeenFromProduct  { get; init; }
+    }
 }

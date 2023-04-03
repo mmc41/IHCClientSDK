@@ -8,11 +8,11 @@ namespace Ihc {
     /**
     * A highlevel client interface for the IHC ModuleService without any of the soap distractions.
     *
-    * TODO: Add operations.
+    * Status: Incomplete.
     */
     public interface IModuleService
     {
-
+      public Task<SceneProject> GetSceneProject(string name);
     }
 
     /**
@@ -76,7 +76,23 @@ namespace Ihc {
             this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint);
         }
 
-        // TODO: Implement high level services.
+        private SceneProject mapSceneProject(Ihc.Soap.Module.WSFile proj)
+        {
+            return new SceneProject()
+            {
+                Filename = proj?.filename,
+                Data = proj?.data // TODO: Check if binary data can be converet/decompressed to something useful?
+            };
+        }
+
+
+        // TODO: Implement remaining high level services.
+
+        public async Task<SceneProject> GetSceneProject(string name) 
+        {
+          var resp = await impl.getSceneProjectAsync(new inputMessageName5(name) {});
+          return mapSceneProject(resp.getSceneProject2);
+        }
 
     }
 }

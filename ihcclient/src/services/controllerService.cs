@@ -3,19 +3,26 @@ using System;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using Ihc.Soap.Controller;
+using System.IO;
 
 namespace Ihc {
     /**
     * A highlevel client interface for the IHC ControllerService without any of the soap distractions.
     *
-    * TODO: Add remaining operations.
+    * Status: Incomplete.
     */
     public interface IControllerService
     {
         public Task<string> GetState();
         public Task<bool> IsIHCProjectAvailableAsync();
         public Task<bool> IsSDCardReadyAsync();
-        public Task<SDInfo> getSDCardInfoAsync();
+        public Task<SDInfo> GetSDCardInfoAsync();
+        public Task<float> GetS0MeterValue();
+        public Task<string> WaitForControllerStateChange(string waitState, int waitSec);
+
+        public Task<ProjectInfo> GetProjectInfo();
+
+        public Task<ProjectFile> GetProject();
     }
 
     /**
@@ -157,6 +164,50 @@ namespace Ihc {
             };
         }
 
+        private BackupFile mapBackup(Ihc.Soap.Controller.WSFile backupFile)
+        {
+            return new BackupFile()
+            {
+                Filename = backupFile?.filename,
+                Data = backupFile?.data // Hmm. Can't identify the file format. Binary?
+            };
+        }
+
+        private DateTimeOffset mapDate(WSDate v)
+        {
+            return new DateTimeOffset(v.year, v.monthWithJanuaryAsOne, v.day, v.hours, v.minutes, v.seconds, DateHelper.GetWSTimeOffset());
+        }
+
+        private ProjectInfo mapProjectInfo(Ihc.Soap.Controller.WSProjectInfo projectInfo) {
+            return new ProjectInfo() {
+                VisualMajorVersion=projectInfo.visualMajorVersion,
+                VisualMinorVersion=projectInfo.visualMinorVersion,
+                ProjectMajorRevision=projectInfo.projectMajorRevision,
+                ProjectMinorRevision=projectInfo.projectMinorRevision,
+                Lastmodified = mapDate(projectInfo.lastmodified),
+                ProjectNumber = projectInfo.projectNumber,
+                CustomerName = projectInfo.customerName,
+                InstallerName = projectInfo.installerName
+            };
+        }
+
+        private async Task<string> decompress(byte[] fileData) {
+            using (MemoryStream mscompressed = new MemoryStream(fileData))
+            using (Stream inStream = new System.IO.Compression.GZipStream(mscompressed, System.IO.Compression.CompressionMode.Decompress))
+            using (StreamReader reader = new StreamReader(inStream, System.Text.Encoding.GetEncoding("ISO-8859-1")))
+            {
+                return await reader.ReadToEndAsync();
+            }
+        }
+
+        private async Task<ProjectFile> mapProjectFile(Ihc.Soap.Controller.WSFile projectFile) {
+            return new ProjectFile() 
+            {
+                Data = await decompress(projectFile.data),
+                Filename = projectFile.filename
+            };
+        }
+
         public async Task<bool> IsIHCProjectAvailableAsync()
         {
             var result = await impl.isIHCProjectAvailableAsync(new inputMessageName14() { });
@@ -169,7 +220,7 @@ namespace Ihc {
             return result.isSDCardReady1.HasValue ? result.isSDCardReady1.Value : false;
         }
 
-        public async Task<SDInfo> getSDCardInfoAsync()
+        public async Task<SDInfo> GetSDCardInfoAsync()
         {
           var result = await impl.getSdCardInfoAsync(new inputMessageName5() { });
           return result.getSdCardInfo1!=null ? mapSDCardData(result.getSdCardInfo1) : null;
@@ -177,8 +228,35 @@ namespace Ihc {
 
         public async Task<string> GetState()
         {
-            var result = await impl.getStateAsync(new inputMessageName1() { });
+            var result = await impl.getStateAsync(new inputMessageName1() {  });
             return result.getState1.state;
+        } 
+
+        public async Task<float> GetS0MeterValue() {
+            var result = await impl.getS0MeterValueAsync(new inputMessageName11() {});
+            return result.getS0MeterValue1.HasValue ? result.getS0MeterValue1.Value : 0.0f;
         }
+
+        public async Task<BackupFile> GetBackup() {
+            var result = await impl.getBackupAsync(new inputMessageName2() {});
+            return mapBackup(result.getBackup1);
+        }
+
+        public async Task<string> WaitForControllerStateChange(string waitState, int waitSec) {
+            var result = await impl.waitForControllerStateChangeAsync(new inputMessageName19(new Ihc.Soap.Controller.WSControllerState() { state = waitState }, waitSec) {});
+            return result?.waitForControllerStateChange3?.state;
+        }
+
+        
+        public async Task<ProjectInfo> GetProjectInfo() {
+            var result = await impl.getProjectInfoAsync(new inputMessageName8() {});
+            return mapProjectInfo(result.getProjectInfo1);
+        }
+
+        public async Task<ProjectFile> GetProject() {
+            var result = await impl.getIHCProjectAsync(new inputMessageName3() {});
+            return await mapProjectFile(result.getIHCProject1);
+        }
+        
     }
 }

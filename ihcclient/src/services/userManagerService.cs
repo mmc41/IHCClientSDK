@@ -8,7 +8,7 @@ namespace Ihc {
     /**
     * A highlevel client interface for the IHC UserManagerService without any of the soap distractions.
     *
-    * TODO: Add remaining operations.
+    * Status: Incomplete.
     */
     public interface IUserManagerService
     {

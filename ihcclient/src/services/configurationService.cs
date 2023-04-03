@@ -8,7 +8,7 @@ namespace Ihc {
     /**
     * A highlevel client interface for the IHC ConfigurationService without any of the soap distractions.
     *
-    * TODO: Add remaining operations.
+    * Status: Incomplete.
     */
     public interface IConfigurationService
     {
@@ -16,9 +16,9 @@ namespace Ihc {
 
         public Task ClearUserLog();
                 
-        public Task<UserLogFileText> GetUserLog(string lang = "da");
+        public Task<string[]> GetUserLog(string lang = "da");
 
-        public Task DelayedRebootAsync(int delay); // TODO: Identify time unit for delay and rename arg.
+        public Task DelayedReboot(int delay); // TODO: Identify time unit for delay and rename arg.
     }
 
     /**
@@ -190,13 +190,10 @@ namespace Ihc {
 
         // TODO: Implement remaining high level service.
 
-        private UserLogFileText mapLogFile(Ihc.Soap.Configuration.WSFile e)
+        private string[] mapLogFile(Ihc.Soap.Configuration.WSFile e)
         {
-            return new UserLogFileText()
-            {
-                FileName = e!=null && e.filename != null ? e.filename : "",
-                Content = e!=null && e.data != null ? System.Text.Encoding.UTF8.GetString(e.data) : ""
-            };
+            string logs = e!=null && e.data != null ? System.Text.Encoding.UTF8.GetString(e.data) : "";
+            return logs.Split('\n', '\r');
         }
 
         public async Task<SystemInfo> GetSystemInfo()
@@ -209,12 +206,12 @@ namespace Ihc {
             await impl.clearUserLogAsync(new inputMessageName3());
         }
 
-        public async Task<UserLogFileText> GetUserLog(string lang = "da") {
+        public async Task<string[]> GetUserLog(string lang) {
             var resp = await impl.getUserLogAsync(new inputMessageName2("", 0, lang));
             return mapLogFile(resp.getUserLog4);
         }
 
-        public async Task DelayedRebootAsync(int delay) {
+        public async Task DelayedReboot(int delay) {
             // TODO: Find out what time unit delay is in ?
             await impl.delayedRebootAsync(new inputMessageName1(delay) {});
         }

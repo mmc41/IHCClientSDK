@@ -7,7 +7,7 @@ namespace Ihc {
     /**
     * A highlevel client interface for the IHC TimeManagerService without any of the soap distractions.
     *
-    * TODO: Add remaining operations.
+    * Status: Incomplete.
     */
     public interface ITimeManagerService
     {
@@ -67,6 +67,8 @@ namespace Ihc {
             this.authService = authService;
             this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint);
         }
+
+        // TODO: Add remaining API.
 
         public async Task<DateTimeOffset> GetCurrentLocalTime()
         {
