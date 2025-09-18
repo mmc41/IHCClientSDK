@@ -71,7 +71,7 @@ namespace Ihc.Tests
           return Regex.Replace(str, @"\s", "");
         }
 
-
+        #region High level tests
         [Test]
         public void SerializeRequestXml()
         {
@@ -109,7 +109,9 @@ namespace Ihc.Tests
           ComparisonResult compare = compareLogic.Compare(o, getAllDatalineInputsObject);
           Assert.True(compare.AreEqual);
         }
-
+        #endregion
+        
+        #region Low level tests
         [Test]
         public void GetOrCreateSerializer_ShouldReuseSerializer_ForSameType()
         {
@@ -208,6 +210,6 @@ namespace Ihc.Tests
             var method = typeof(Serialization).GetMethod("GetOrCreateSerializer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
             return (System.Xml.Serialization.XmlSerializer)method.Invoke(null, new object[] { type, attrs, extraTypes });
         }
+        #endregion
     }
-
 }

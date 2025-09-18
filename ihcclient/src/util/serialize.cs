@@ -29,30 +29,31 @@ namespace Ihc {
         }
         if (extraTypes != null && extraTypes.Length > 0)
         {
-            key += "_extraTypes_" + string.Join("_", extraTypes.Select(t => t.Name));
+            key += "_extraTypes_" + string.Join("_", extraTypes.Select(t => t.FullName ?? t.Name));
         }
         return key;
     }
 
+    // Make sure XmlSerializers are reused to avoid memory leak. See also github issue #2
     private static XmlSerializer GetOrCreateSerializer(Type type, XmlAttributeOverrides attrs, Type[] extraTypes = null)
     {
-        var key = GetSerializerKey(type, attrs, extraTypes);
+      var key = GetSerializerKey(type, attrs, extraTypes);
 
-        return serializerCache.GetOrAdd(key, k =>
+      return serializerCache.GetOrAdd(key, k =>
+      {
+        if (extraTypes != null && extraTypes.Length > 0)
         {
-            if (extraTypes != null && extraTypes.Length > 0)
-            {
-                return new XmlSerializer(type, attrs, extraTypes, null, null);
-            }
-            else if (attrs != null)
-            {
-                return new XmlSerializer(type, attrs);
-            }
-            else
-            {
-                return new XmlSerializer(type);
-            }
-        });
+          return new XmlSerializer(type, attrs, extraTypes, null, null);
+        }
+        else if (attrs != null)
+        {
+          return new XmlSerializer(type, attrs);
+        }
+        else
+        {
+          return new XmlSerializer(type);
+        }
+      });
     }
     public static string SerializeXml<A>(A x) where A : class {    
       try {    
