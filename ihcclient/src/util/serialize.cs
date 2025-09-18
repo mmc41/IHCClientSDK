@@ -4,6 +4,7 @@ using System.Xml;
 using System.IO;
 using System.Text;
 using System.Linq;
+using System.Collections.Concurrent;
 
 using Ihc;
 
@@ -14,6 +15,45 @@ namespace Ihc {
    * as this is not (currently) supported by dot net core.
    */
   public class Serialization {
+    // Cache for XmlSerializer instances to prevent memory leak
+    // Key is a combination of type and attribute overrides hash
+    private static readonly ConcurrentDictionary<string, XmlSerializer> serializerCache = new ConcurrentDictionary<string, XmlSerializer>();
+
+    private static string GetSerializerKey(Type type, XmlAttributeOverrides attrs, Type[] extraTypes)
+    {
+        // Create a unique key based on the type and configuration
+        var key = type.FullName ?? type.Name;
+        if (attrs != null)
+        {
+            key += "_withAttrs";
+        }
+        if (extraTypes != null && extraTypes.Length > 0)
+        {
+            key += "_extraTypes_" + string.Join("_", extraTypes.Select(t => t.Name));
+        }
+        return key;
+    }
+
+    private static XmlSerializer GetOrCreateSerializer(Type type, XmlAttributeOverrides attrs, Type[] extraTypes = null)
+    {
+        var key = GetSerializerKey(type, attrs, extraTypes);
+
+        return serializerCache.GetOrAdd(key, k =>
+        {
+            if (extraTypes != null && extraTypes.Length > 0)
+            {
+                return new XmlSerializer(type, attrs, extraTypes, null, null);
+            }
+            else if (attrs != null)
+            {
+                return new XmlSerializer(type, attrs);
+            }
+            else
+            {
+                return new XmlSerializer(type);
+            }
+        });
+    }
     public static string SerializeXml<A>(A x) where A : class {    
       try {    
         var attrs = new XmlAttributeOverrides();
@@ -36,8 +76,8 @@ namespace Ihc {
                     .Select(p => p.GetValue(x))
                     .FirstOrDefault(p => true) as XmlSerializerNamespaces;
 
-    
-        var xmlSerializer = new XmlSerializer(typeof(A), attrs);
+
+        var xmlSerializer = GetOrCreateSerializer(typeof(A), attrs);
         var settings = new XmlWriterSettings() { OmitXmlDeclaration = true, Indent = true, Encoding = new UTF8Encoding(false), NamespaceHandling = NamespaceHandling.OmitDuplicates };
 
         using (var stream = new MemoryStream())
@@ -70,7 +110,7 @@ namespace Ihc {
             foreach(var genericType in genericTypes)
                 attrs.Add(genericType, attr);
 
-            var xmlSerializer = new XmlSerializer(typeof(A), attrs, genericTypes, null, null);
+            var xmlSerializer = GetOrCreateSerializer(typeof(A), attrs, genericTypes);
             using (var stream = new MemoryStream(System.Text.Encoding.ASCII.GetBytes(xml)))
             {
                 var result = xmlSerializer.Deserialize(stream);
