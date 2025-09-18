@@ -78,7 +78,7 @@ namespace Ihc {
                     .FirstOrDefault(p => true) as XmlSerializerNamespaces;
 
 
-        var xmlSerializer = GetOrCreateSerializer(typeof(A), attrs);
+        var xmlSerializer = GetOrCreateSerializer(typeof(A), attrs, genericTypes);
         var settings = new XmlWriterSettings() { OmitXmlDeclaration = true, Indent = true, Encoding = new UTF8Encoding(false), NamespaceHandling = NamespaceHandling.OmitDuplicates };
 
         using (var stream = new MemoryStream())
