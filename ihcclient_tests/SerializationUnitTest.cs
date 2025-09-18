@@ -71,7 +71,7 @@ namespace Ihc.Tests
           return Regex.Replace(str, @"\s", "");
         }
 
-
+        #region High level tests
         [Test]
         public void SerializeRequestXml()
         {
@@ -109,6 +109,107 @@ namespace Ihc.Tests
           ComparisonResult compare = compareLogic.Compare(o, getAllDatalineInputsObject);
           Assert.True(compare.AreEqual);
         }
-    }
+        #endregion
+        
+        #region Low level tests
+        [Test]
+        public void GetOrCreateSerializer_ShouldReuseSerializer_ForSameType()
+        {
+            var type = typeof(RequestEnvelope<Ihc.Soap.Authentication.inputMessageName2>);
+            var attrs = new System.Xml.Serialization.XmlAttributeOverrides();
 
+            var serializer1 = GetOrCreateSerializerAccessor(type, attrs, null);
+            var serializer2 = GetOrCreateSerializerAccessor(type, attrs, null);
+
+            Assert.That(serializer2, Is.SameAs(serializer1), "Serializer should be reused for same type and attributes");
+        }
+
+        [Test]
+        public void GetOrCreateSerializer_ShouldReuseSerializer_ForSameTypeWithoutAttributes()
+        {
+            var type = typeof(ResponseEnvelope<Ihc.Soap.Openapi.outputMessageName11>);
+
+            var serializer1 = GetOrCreateSerializerAccessor(type, null, null);
+            var serializer2 = GetOrCreateSerializerAccessor(type, null, null);
+
+            Assert.That(serializer2, Is.SameAs(serializer1), "Serializer should be reused for same type without attributes");
+        }
+
+        [Test]
+        public void GetOrCreateSerializer_ShouldReuseSerializer_ForSameTypeWithExtraTypes()
+        {
+            var type = typeof(ResponseEnvelope<Ihc.Soap.Resourceinteraction.outputMessageName12>);
+            var attrs = new System.Xml.Serialization.XmlAttributeOverrides();
+            var extraTypes = new Type[] { typeof(Ihc.Soap.Resourceinteraction.WSDatalineResource) };
+
+            var serializer1 = GetOrCreateSerializerAccessor(type, attrs, extraTypes);
+            var serializer2 = GetOrCreateSerializerAccessor(type, attrs, extraTypes);
+
+            Assert.That(serializer2, Is.SameAs(serializer1), "Serializer should be reused for same type with extra types");
+        }
+
+        [Test]
+        public void GetOrCreateSerializer_ShouldCreateDifferentSerializers_ForDifferentTypes()
+        {
+            var type1 = typeof(RequestEnvelope<Ihc.Soap.Authentication.inputMessageName2>);
+            var type2 = typeof(ResponseEnvelope<Ihc.Soap.Openapi.outputMessageName11>);
+            var attrs = new System.Xml.Serialization.XmlAttributeOverrides();
+
+            var serializer1 = GetOrCreateSerializerAccessor(type1, attrs, null);
+            var serializer2 = GetOrCreateSerializerAccessor(type2, attrs, null);
+
+            Assert.That(serializer2, Is.Not.SameAs(serializer1), "Different types should have different serializers");
+        }
+
+        [Test]
+        public void GetOrCreateSerializer_ShouldCreateDifferentSerializers_ForSameTypeWithDifferentAttributes()
+        {
+            var type = typeof(RequestEnvelope<Ihc.Soap.Authentication.inputMessageName2>);
+
+            var serializer1 = GetOrCreateSerializerAccessor(type, null, null);
+            var serializer2 = GetOrCreateSerializerAccessor(type, new System.Xml.Serialization.XmlAttributeOverrides(), null);
+
+            Assert.That(serializer2, Is.Not.SameAs(serializer1), "Same type with different attribute configurations should have different serializers");
+        }
+
+        [Test]
+        public void GetOrCreateSerializer_ShouldCreateDifferentSerializers_ForSameTypeWithDifferentExtraTypes()
+        {
+            var type = typeof(ResponseEnvelope<Ihc.Soap.Resourceinteraction.outputMessageName12>);
+            var attrs = new System.Xml.Serialization.XmlAttributeOverrides();
+            var extraTypes1 = new Type[] { typeof(Ihc.Soap.Resourceinteraction.WSDatalineResource) };
+            var extraTypes2 = new Type[] { typeof(Ihc.Soap.Authentication.WSAuthenticationData) };
+
+            var serializer1 = GetOrCreateSerializerAccessor(type, attrs, extraTypes1);
+            var serializer2 = GetOrCreateSerializerAccessor(type, attrs, extraTypes2);
+
+            Assert.That(serializer2, Is.Not.SameAs(serializer1), "Same type with different extra types should have different serializers");
+        }
+
+        [Test]
+        public void GetOrCreateSerializer_ShouldHandleConcurrentAccess()
+        {
+            var type = typeof(RequestEnvelope<Ihc.Soap.Authentication.inputMessageName2>);
+            var attrs = new System.Xml.Serialization.XmlAttributeOverrides();
+            var serializers = new System.Xml.Serialization.XmlSerializer[10];
+
+            Parallel.For(0, 10, i =>
+            {
+                serializers[i] = GetOrCreateSerializerAccessor(type, attrs, null);
+            });
+
+            var firstSerializer = serializers[0];
+            for (int i = 1; i < 10; i++)
+            {
+                Assert.That(serializers[i], Is.SameAs(firstSerializer), $"All concurrent accesses should return the same serializer instance (index {i})");
+            }
+        }
+
+        private System.Xml.Serialization.XmlSerializer GetOrCreateSerializerAccessor(Type type, System.Xml.Serialization.XmlAttributeOverrides attrs, Type[] extraTypes)
+        {
+            var method = typeof(Serialization).GetMethod("GetOrCreateSerializer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            return (System.Xml.Serialization.XmlSerializer)method.Invoke(null, new object[] { type, attrs, extraTypes });
+        }
+        #endregion
+    }
 }
