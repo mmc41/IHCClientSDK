@@ -16,6 +16,8 @@ This project is released as open source. Please supply pull requests with tested
 
 ## Status
 
+[![build](https://github.com/mmc41/IHCClientSDK/actions/workflows/build-validation.yml/badge.svg)](https://github.com/mmc41/IHCClientSDK/actions/workflows/build-validation.yml)
+
 The project is an early preview/beta.
 
 The SDK currently supports v3.0 IHC controller's only. Support with pre-3.0 controllers is possible but require contributors interested in this. See [this Issue](https://github.com/mmc41/IHCClientSDK/issues/1) to discuss this subject and to keep track of future support.
