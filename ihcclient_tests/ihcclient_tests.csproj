@@ -2,6 +2,8 @@
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Nullable>disable</Nullable>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="NUnit" Version="4.4.0" />
