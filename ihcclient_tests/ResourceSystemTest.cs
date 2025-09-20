@@ -12,6 +12,7 @@ namespace Ihc.Tests
     /// <summary>
     /// System tests against live IHC system. Requires use of user name/password and test input/outputs specified in configuration file.
     /// </summary>
+    [TestFixture]
     [NonParallelizable]
     public class ResourceTest
     {   
@@ -28,26 +29,29 @@ namespace Ihc.Tests
         }
 
         [TearDown]
-        public async Task BaseTearDown() { 
+        public async Task BaseTearDown()
+        {
             await authService.Disconnect();
+            authService?.Dispose();
+            authService = null;
         }
 
         [Test]
         public async Task ToggleOutputTest()
         {
           var orgOutput = await resourceInteractionService.GetRuntimeValue(Setup.boolOutput1);
-          Assert.IsTrue(orgOutput.IsValueRuntime);
+          Assert.That(orgOutput.IsValueRuntime, Is.True);
           Assert.That(TypeStrings.DatalineOutput, Is.EqualTo(orgOutput.TypeString));
-          Assert.IsNotNull(orgOutput.Value.BoolValue);
+          Assert.That(orgOutput.Value.BoolValue, Is.Not.Null);
           Assert.That(orgOutput.ResourceID, Is.EqualTo(Setup.boolOutput1));
 
           var toggledOutput = await resourceInteractionService.SetResourceValue(ResourceValue.ToogleBool(orgOutput));
-          Assert.IsTrue(toggledOutput.Value);
+          Assert.That(toggledOutput.Value, Is.True);
 
           var newOutput = await resourceInteractionService.GetRuntimeValue(Setup.boolOutput1);
-          Assert.IsTrue(orgOutput.IsValueRuntime);
+          Assert.That(newOutput.IsValueRuntime, Is.True);
           Assert.That(TypeStrings.DatalineOutput, Is.EqualTo(orgOutput.TypeString));
-          Assert.IsNotNull(newOutput.Value.BoolValue);
+          Assert.That(newOutput.Value.BoolValue, Is.Not.Null);
           Assert.That(newOutput.ResourceID, Is.EqualTo(Setup.boolOutput1));
 
           Assert.That(newOutput.Value.BoolValue, Is.Not.EqualTo(orgOutput.Value.BoolValue));
@@ -67,8 +71,8 @@ namespace Ihc.Tests
 
            int resourceValueChanges = 0; // Track changes
            await foreach (ResourceValue r in resourceChanges) {
-                Assert.IsTrue(r.IsValueRuntime);
-                Assert.IsNotNull(r.Value.BoolValue);
+                Assert.That(r.IsValueRuntime, Is.True);
+                Assert.That(r.Value.BoolValue, Is.Not.Null);
                 Assert.That(r.ResourceID, Is.EqualTo(Setup.boolOutput1));
                 // Note: No check for TypeString as it is empty on my controller (IHC bug).
 
@@ -82,7 +86,7 @@ namespace Ihc.Tests
            }
 
            // Check that we at least got inital value + change.
-           Assert.GreaterOrEqual(resourceValueChanges, 2);
+           Assert.That(resourceValueChanges, Is.GreaterThanOrEqualTo(2));
         }
     }
 }

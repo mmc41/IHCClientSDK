@@ -1,16 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
-    <Version>0.5.0-beta3</Version>
+    <Version>0.5.0-beta4</Version>
     <InformationalVersion>This is a prerelease package</InformationalVersion>
     <Nullable>disable</Nullable>
   </PropertyGroup>
   <ItemGroup>
     <GlobalAnalyzerConfigFiles Include="analyser.config" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0"/>
-    <PackageReference Include="System.ServiceModel.Duplex" Version="4.10.0"/>
-    <PackageReference Include="System.ServiceModel.Http" Version="4.10.0"/>
-    <PackageReference Include="System.ServiceModel.NetTcp" Version="4.10.0"/>
-    <PackageReference Include="System.ServiceModel.Security" Version="4.10.0"/>
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0" />
+    <PackageReference Include="System.ServiceModel.Duplex" Version="6.0.0" />
+    <PackageReference Include="System.ServiceModel.Http" Version="8.1.2" />
+    <PackageReference Include="System.ServiceModel.NetTcp" Version="8.1.2" />
+    <PackageReference Include="System.ServiceModel.Security" Version="6.0.0" />
   </ItemGroup>
 </Project>

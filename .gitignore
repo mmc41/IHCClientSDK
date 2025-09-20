@@ -8,4 +8,7 @@ node_modules
 .fake
 tmp
 
+.vscode
+
+# Important to exclude - user config file - contains secrets.
 ihcsettings.json

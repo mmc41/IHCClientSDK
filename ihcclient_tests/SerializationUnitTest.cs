@@ -13,6 +13,7 @@ using System.Text.RegularExpressions;
 /// </summary>
 namespace Ihc.Tests
 {
+    [TestFixture]
     [NonParallelizable]
     public class SerializeTest
     { 
@@ -87,7 +88,7 @@ namespace Ihc.Tests
           var o = Serialization.DeserializeXml<RequestEnvelope<Ihc.Soap.Authentication.inputMessageName2>>(authenticate1Xml);
           CompareLogic compareLogic = new CompareLogic();
           ComparisonResult compare = compareLogic.Compare(o, authenticate1Object);
-          Assert.True(compare.AreEqual);
+          Assert.That(compare.AreEqual, Is.True);
         }
 
         
@@ -97,7 +98,7 @@ namespace Ihc.Tests
           var o = Serialization.DeserializeXml<ResponseEnvelope<Ihc.Soap.Openapi.outputMessageName11>>(fwXml);
           CompareLogic compareLogic = new CompareLogic();
           ComparisonResult compare = compareLogic.Compare(o, fwObject);
-          Assert.True(compare.AreEqual);
+          Assert.That(compare.AreEqual, Is.True);
         }
 
         
@@ -107,7 +108,7 @@ namespace Ihc.Tests
           var o = Serialization.DeserializeXml<ResponseEnvelope<Ihc.Soap.Resourceinteraction.outputMessageName12>>(getAllDatalineInputsXml);
           CompareLogic compareLogic = new CompareLogic();
           ComparisonResult compare = compareLogic.Compare(o, getAllDatalineInputsObject);
-          Assert.True(compare.AreEqual);
+          Assert.That(compare.AreEqual, Is.True);
         }
         #endregion
         

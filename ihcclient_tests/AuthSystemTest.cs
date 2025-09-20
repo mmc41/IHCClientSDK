@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 /// </summary>
 namespace Ihc.Tests
 {
+    [TestFixture]
     [NonParallelizable]
     public class AuthTest
     { 
