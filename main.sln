@@ -5,13 +5,13 @@ VisualStudioVersion = 15.0.26124.0
 MinimumVisualStudioVersion = 15.0.26124.0
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihcclient", "ihcclient\ihcclient.csproj", "{4E534782-2954-45D1-9014-5CEC5A937ED2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihcclient_tests", "ihcclient_tests\ihcclient_tests.csproj", "{0CE61E7A-A37C-4EE1-91FB-855CF835CA73}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihcclient_safe_integration_tests", "tests\safe_integration_tests\safe_integration_tests.csproj", "{0CE61E7A-A37C-4EE1-91FB-855CF835CA73}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihcclient_example1", "ihcclient_example1\example.csproj", "{150FA22C-3FE9-4FB7-A5AE-8DAF71920A2E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihcclient_example1", "examples\ihcclient_example1\example.csproj", "{150FA22C-3FE9-4FB7-A5AE-8DAF71920A2E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihcclient_example2", "ihcclient_example2\example.csproj", "{7B3B6760-4A90-4032-95FC-8E3F48143DB0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihcclient_example2", "examples\ihcclient_example2\example.csproj", "{7B3B6760-4A90-4032-95FC-8E3F48143DB0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihcprojectextractor", "ihcproject_io_extractor\ihcprojectextractor.csproj", "{0B17A511-7F8B-4C05-8765-7EAE8544039A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihcprojectextractor", "utilities\ihcproject_io_extractor\ihcprojectextractor.csproj", "{0B17A511-7F8B-4C05-8765-7EAE8544039A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

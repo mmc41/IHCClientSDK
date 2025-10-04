@@ -1,7 +1,7 @@
 {
     "comment" : "Example of how your ihcsettings.json file can look like. You need this user supplied file to run examples and tests",
     "ihcConfig": {
-        "comment" : "Refer to your IHC controller config for endpoint and authentication details. Known application names include 'treeview', 'openapi', 'administrator'",
+        "comment" : "Refer to your IHC controller config for endpoint and authentication details. Use 'http://usb' for endpoint for a USB connected controller. Known application names include 'treeview', 'openapi', 'administrator'",
         "endpoint" : "http://<Your IP Address here>",
         "userName" : "<Your IHC username>",
         "password" : "<Your IHC password>",

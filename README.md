@@ -41,8 +41,8 @@ This project is hosted in a mono-repo containing the following sub-projects:
 **Q**: Do I need to configure my IHC before running the examples or using the API from my own code?  
 **A**: Open the standard IHC administrator app from LK, login, click access control and enable localnet or internet access + "Open for thirdparty products". Only enable internet access if you have a firewall and know how to use it securely. 
 
-**Q**: Why does I get a error message like "Could not copy the file "..\ihcsettings.json" because it was not found." when building/running the projects  
-**A**: You must create a "ihcsettings.json" file. Use the template file or example file and fill out your information.
+**Q**: Why does I get a error message 'The configuration file 'ihcsettings.json' was not found and is not optional' when running examples/tests/applications.
+**A**: You must create a "ihcsettings.json" file in root folder. Copy the 'ihcsettings_example.json' file to 'ihcsettings.json' and fill out your information.
 
 **Q**: Is there a NuGet package available ?  
 **A**: Not yet but planned when the project goes out of beta.

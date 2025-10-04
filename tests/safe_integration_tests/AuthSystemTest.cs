@@ -20,7 +20,10 @@ namespace Ihc.Tests
             var authService = new AuthenticationService(Setup.logger, Setup.endpoint);
 
             var result = await authService.Authenticate(Setup.userName, Setup.password, Setup.application);
-            Assert.That(result.Username, Is.EqualTo(Setup.userName));
+            if (Setup.endpoint!="http://usb") // Username can't be tested like this when using a usb connection, where "usb" is returned istead of name.
+            {
+                Assert.That(result.Username, Is.EqualTo(Setup.userName));
+            }
 
             var disResult = await authService.Disconnect();
             Assert.That(disResult, Is.EqualTo(true));
