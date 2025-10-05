@@ -13,16 +13,36 @@ namespace Ihc {
     */
     public interface IControllerService
     {
-        public Task<string> GetState();
-        public Task<bool> IsIHCProjectAvailableAsync();
-        public Task<bool> IsSDCardReadyAsync();
-        public Task<SDInfo> GetSDCardInfoAsync();
-        public Task<float> GetS0MeterValue();
+        public Task<bool> IsIHCProjectAvailable();
+        public Task<bool> IsSDCardReady();
+        public Task<SDInfo> GetSDCardInfo();
+
+        public Task<string> GetControllerState();
         public Task<string> WaitForControllerStateChange(string waitState, int waitSec);
 
         public Task<ProjectInfo> GetProjectInfo();
-
         public Task<ProjectFile> GetProject();
+
+        /// <summary>
+        /// Store a new project on the controller, checking preconditions and handling the project change mode.
+        /// Calls internal methods to enter and exit project change mode.
+        /// Fails with InvalidOperationException if controller is not ready. 
+        /// Nb. Unlike IHC Visual, this method does not
+        /// * handle re-setting runtime values after the project change.
+        /// * robooting controller. Call delayedReboot(100) manully for this
+        /// </summary>
+        /// <param name="project"></param>
+        /// <returns></returns>
+        public Task<bool> StoreProject(ProjectFile project);
+
+        public Task<BackupFile> GetBackup();
+
+        public Task<int> Restore();
+
+        public Task ResetS0Values();
+        public Task<float> GetS0MeterValue();
+        public Task SetS0Consumption(float consumption, bool flag);
+        public Task SetS0FiscalYearStart(sbyte month, sbyte day);
     }
 
     /**
@@ -178,12 +198,14 @@ namespace Ihc {
             return new DateTimeOffset(v.year, v.monthWithJanuaryAsOne, v.day, v.hours, v.minutes, v.seconds, DateHelper.GetWSTimeOffset());
         }
 
-        private ProjectInfo mapProjectInfo(Ihc.Soap.Controller.WSProjectInfo projectInfo) {
-            return new ProjectInfo() {
-                VisualMajorVersion=projectInfo.visualMajorVersion,
-                VisualMinorVersion=projectInfo.visualMinorVersion,
-                ProjectMajorRevision=projectInfo.projectMajorRevision,
-                ProjectMinorRevision=projectInfo.projectMinorRevision,
+        private ProjectInfo mapProjectInfo(Ihc.Soap.Controller.WSProjectInfo projectInfo)
+        {
+            return new ProjectInfo()
+            {
+                VisualMajorVersion = projectInfo.visualMajorVersion,
+                VisualMinorVersion = projectInfo.visualMinorVersion,
+                ProjectMajorRevision = projectInfo.projectMajorRevision,
+                ProjectMinorRevision = projectInfo.projectMinorRevision,
                 Lastmodified = mapDate(projectInfo.lastmodified),
                 ProjectNumber = projectInfo.projectNumber,
                 CustomerName = projectInfo.customerName,
@@ -191,72 +213,208 @@ namespace Ihc {
             };
         }
 
-        private async Task<string> decompress(byte[] fileData) {
+        private async Task<string> decompress(byte[] fileData)
+        {
             using (MemoryStream mscompressed = new MemoryStream(fileData))
             using (Stream inStream = new System.IO.Compression.GZipStream(mscompressed, System.IO.Compression.CompressionMode.Decompress))
-            using (StreamReader reader = new StreamReader(inStream, System.Text.Encoding.GetEncoding("ISO-8859-1")))
+            using (StreamReader reader = new StreamReader(inStream, ProjectFile.Encoding))
             {
                 return await reader.ReadToEndAsync();
             }
         }
 
-        private async Task<ProjectFile> mapProjectFile(Ihc.Soap.Controller.WSFile projectFile) {
-            return new ProjectFile() 
+        private async Task<byte[]> compress(string data)
+        {
+            using (MemoryStream mscompressed = new MemoryStream())
             {
-                Data = await decompress(projectFile.data),
-                Filename = projectFile.filename
+                using (Stream outStream = new System.IO.Compression.GZipStream(mscompressed, System.IO.Compression.CompressionMode.Compress))
+                using (StreamWriter writer = new StreamWriter(outStream, ProjectFile.Encoding))
+                {
+                    await writer.WriteAsync(data);
+                }
+                return mscompressed.ToArray();
+            }
+        }
+
+        private async Task<ProjectFile> mapProjectFile(Ihc.Soap.Controller.WSFile wsFile)
+        {
+            return new ProjectFile()
+            {
+                Data = await decompress(wsFile.data),
+                Filename = wsFile.filename
             };
         }
 
-        public async Task<bool> IsIHCProjectAvailableAsync()
+        private async Task<Ihc.Soap.Controller.WSFile> mapProjectFile(ProjectFile projectFile)
+        {
+            return new Ihc.Soap.Controller.WSFile()
+            {
+                data = await compress(projectFile.Data),
+                filename = projectFile.Filename
+            };
+        }
+
+/*
+        private ControllerState mapControllerState(Ihc.Soap.Controller.WSControllerState state)
+        {
+            switch (state?.state)
+            {
+                case "text.ctrl.state.ready":
+                    return ControllerState.Ready;
+                default:
+                    return ControllerState.Unknown;
+            }
+       }*/
+
+        public async Task<bool> IsIHCProjectAvailable()
         {
             var result = await impl.isIHCProjectAvailableAsync(new inputMessageName14() { });
             return result.isIHCProjectAvailable1.HasValue ? result.isIHCProjectAvailable1.Value : false;
         }
 
-        public async Task<bool> IsSDCardReadyAsync()
+        public async Task<bool> IsSDCardReady()
         {
             var result = await impl.isSDCardReadyAsync(new inputMessageName9() { });
             return result.isSDCardReady1.HasValue ? result.isSDCardReady1.Value : false;
         }
 
-        public async Task<SDInfo> GetSDCardInfoAsync()
+        public async Task<SDInfo> GetSDCardInfo()
         {
-          var result = await impl.getSdCardInfoAsync(new inputMessageName5() { });
-          return result.getSdCardInfo1!=null ? mapSDCardData(result.getSdCardInfo1) : null;
+            var result = await impl.getSdCardInfoAsync(new inputMessageName5() { });
+            return result.getSdCardInfo1 != null ? mapSDCardData(result.getSdCardInfo1) : null;
         }
-
-        public async Task<string> GetState()
+/*
+        public async Task<ControllerState> GetControllerState()
         {
-            var result = await impl.getStateAsync(new inputMessageName1() {  });
-            return result.getState1.state;
-        } 
+            var result = await impl.getStateAsync(new inputMessageName1() { });
+            return mapControllerState(result.getState1);
+        }*/
 
-        public async Task<float> GetS0MeterValue() {
-            var result = await impl.getS0MeterValueAsync(new inputMessageName11() {});
-            return result.getS0MeterValue1.HasValue ? result.getS0MeterValue1.Value : 0.0f;
+        public async Task<string> GetControllerState()
+        {
+            var result = await impl.getStateAsync(new inputMessageName1() { });
+            return result.getState1.state; // TODO: Convert to ControllerState oncce the enum is more complete.
         }
-
-        public async Task<BackupFile> GetBackup() {
-            var result = await impl.getBackupAsync(new inputMessageName2() {});
-            return mapBackup(result.getBackup1);
-        }
-
-        public async Task<string> WaitForControllerStateChange(string waitState, int waitSec) {
-            var result = await impl.waitForControllerStateChangeAsync(new inputMessageName19(new Ihc.Soap.Controller.WSControllerState() { state = waitState }, waitSec) {});
+        
+        public async Task<string> WaitForControllerStateChange(string waitState, int waitSec)
+        {
+            var result = await impl.waitForControllerStateChangeAsync(new inputMessageName19(new Ihc.Soap.Controller.WSControllerState() { state = waitState }, waitSec) { });
             return result?.waitForControllerStateChange3?.state;
         }
 
+        public async Task<float> GetS0MeterValue()
+        {
+            var result = await impl.getS0MeterValueAsync(new inputMessageName11() { });
+            return result.getS0MeterValue1.HasValue ? result.getS0MeterValue1.Value : 0.0f;
+        }
         
-        public async Task<ProjectInfo> GetProjectInfo() {
-            var result = await impl.getProjectInfoAsync(new inputMessageName8() {});
-            return mapProjectInfo(result.getProjectInfo1);
+        public async Task ResetS0Values() {
+            await impl.resetS0ValuesAsync(new inputMessageName10() { });
         }
 
-        public async Task<ProjectFile> GetProject() {
-            var result = await impl.getIHCProjectAsync(new inputMessageName3() {});
-            return await mapProjectFile(result.getIHCProject1);
+        public async Task SetS0Consumption(float consumption, bool flag)
+        {
+            await impl.setS0ConsumptionAsync(new inputMessageName6(consumption, flag) { });
+        }
+
+        public async Task SetS0FiscalYearStart(sbyte month, sbyte day)
+        {
+            await impl.setS0FiscalYearStartAsync(new inputMessageName20(month, day) { });
+        }
+
+        public async Task<int> Restore()
+        {
+            var result = await impl.restoreAsync(new inputMessageName7() { });
+            return result.restore1.HasValue ? result.restore1.Value : 0;
+        }
+
+        public async Task<BackupFile> GetBackup()
+        {
+            var result = await impl.getBackupAsync(new inputMessageName2() { });
+            return mapBackup(result.getBackup1);
+        }
+
+        public async Task<ProjectInfo> GetProjectInfo()
+        {
+            var result = await impl.getProjectInfoAsync(new inputMessageName8() { });
+            return mapProjectInfo(result.getProjectInfo1);
         }
         
+        public async Task<ProjectFile> GetProject()
+        {
+            var result = await impl.getIHCProjectAsync(new inputMessageName3() { });
+            return await mapProjectFile(result.getIHCProject1);
+        }
+
+        protected async Task<bool> EnterProjectChangeMode()
+        {
+            var result = await impl.enterProjectChangeModeAsync(new inputMessageName12() { });
+            return result?.enterProjectChangeMode1 != null && result.enterProjectChangeMode1.Value;
+        }
+
+        protected async Task<bool> ExitProjectChangeMode()
+        {
+            var result = await impl.exitProjectChangeModeAsync(new inputMessageName13() { });
+            return result?.exitProjectChangeMode1 != null && result.exitProjectChangeMode1.Value;
+        }
+
+        public async Task<bool> StoreProject(ProjectFile project)
+        {          
+          
+            // First perform some safty checks similar to what the IHC Visual App does:
+            bool controllerReady = (await GetControllerState()) == ControllerStates.READY;
+            if (!controllerReady)
+                throw new InvalidOperationException("Controller not in ready state");
+
+            bool sdCardReady = await IsSDCardReady();
+            if (!sdCardReady)
+                throw new InvalidOperationException("Controller SD Card not ready");
+
+            bool projectAvailable = await IsIHCProjectAvailable();
+            if (!projectAvailable)
+                throw new InvalidOperationException("Controller has no project available");
+
+            bool inChange = await EnterProjectChangeMode();
+            if (!inChange)
+                throw new InvalidOperationException("Controller could not enter change mode to prepare for project change");
+
+            var state = await WaitForControllerStateChange(ControllerStates.INIT, 10); // TODO: Retry x times.
+            if (state != ControllerStates.INIT)
+                throw new InvalidOperationException("Controller state did not enter init state to prepare for project change");
+
+            // TODO: ResourceInteractionService.getRuntimeValues
+
+            outputMessageName4 result;
+            try
+            {
+                // Call the actual store project operation
+
+                inputMessageName4 request = new inputMessageName4()
+                {
+                    storeIHCProject1 = await mapProjectFile(project)
+                };
+
+                result = await impl.storeIHCProjectAsync(request);
+
+                state = await WaitForControllerStateChange(ControllerStates.INIT, 10); // TODO: Retry x times.
+                if (state != ControllerStates.INIT)
+                    throw new InvalidOperationException("Controller state does not remain in init state after project change");
+
+
+                // TODO: setResourceValues
+            }
+            finally
+            {
+                inChange = await ExitProjectChangeMode();
+                if (!inChange)
+                    throw new InvalidOperationException("Controller could not exit change mode after project change");
+
+                state = await WaitForControllerStateChange(ControllerStates.READY, 10); // TODO: Retry x times.
+                if (state != ControllerStates.READY)
+                    throw new InvalidOperationException("Controller state did not enter init state to prepare for project change");
+            }
+
+            return result.storeIHCProject2 != null && result.storeIHCProject2.Value;
+        }
     }
 }

@@ -2,6 +2,8 @@
 
 Command-line utility to download or upload IHC project files (.vis) from/to an IHC controller.
 
+NB: The utility does not currently save/restore assoicated runtime values, so light switche states etc. will be reset.
+
 ## Usage
 
 ```bash

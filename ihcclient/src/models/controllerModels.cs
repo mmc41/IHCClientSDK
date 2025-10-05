@@ -1,15 +1,30 @@
 using System;
 
-public record SDInfo {       
-        public long Size { get; init; } 
+public record SDInfo {
+        public long Size { get; init; }
 
-        public long Free { get; init; } 
-}        
+        public long Free { get; init; }
+}
 
-public record BackupFile {
+/*
+public enum ControllerState
+{
+        Ready,
+        Initializing,
+        Unknown
+}*/
+
+public static class ControllerStates
+{
+        public const string READY = "text.ctrl.state.ready";
+        public const string INIT = "text.ctrl.state.initialize";
+}
+
+public record BackupFile
+{
         // Hmm. Can't identify the file format.Does not seem to be compressed or encoded text. Raw Binary?
-        public byte[] Data { get; init; } 
-        
+        public byte[] Data { get; init; }
+
         public string Filename { get; init; }
 }
 
@@ -41,5 +56,5 @@ public record ProjectFile
         /// <summary>
         /// Encoding used for the project file. Always ISO-8859-1 (Latin-1) as shown in top of xml project.
         /// </summary>
-        public System.Text.Encoding Encoding { get; } = System.Text.Encoding.GetEncoding("ISO-8859-1");
+        public static System.Text.Encoding Encoding { get; } = System.Text.Encoding.GetEncoding("ISO-8859-1");
 }

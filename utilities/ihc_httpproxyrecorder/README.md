@@ -1,12 +1,14 @@
-# HTTP/HTTPS Proxy Recorder for IHC
+# HTTP/HTTPS Proxy Recorder for IHC.
 
 A simple HTTP/HTTPS proxy server used to capture traffic to a USB connected IHC controller. It is useful to investigate how existing applications
 use the undocumented IHC controller API's. Mostly of use for internal SDK development.
 
+Nb. This recorder works with Windows PC only because it assumes the interface 'http://usb' which in turn requires a Windows USB HTTP driver that Schneider Electric has released only for Windows.
+
 To use:
-1) connect the IHC controller the a USB port that runs this proxy. 
-2) configure the IHC software that you want to capture trafic to/from to http://localhost:5083
-3) run this proxy
+1) Connect the IHC controller to a USB port on the Windows PC that runs this proxy.
+2) Configure the IHC software that you want to capture trafic to/from to http://localhost:5083
+3) Run this proxy
 
 ## Prerequisites
 

@@ -14,26 +14,26 @@ namespace Ihc.download_upload_example
     /// </summary>
     class Program
     {
-        const string CMD_DOWNLOAD = "DOWNLOAD";
-        const string CMD_UPLOAD = "UPLOAD";
+        const string CMD_GET = "GET";
+        const string CMD_STORE = "STORE";
 
         static async Task Main(string[] args)
         {
             if (args.Length != 2)
             {
-                Console.WriteLine("Expected arguments: 'DOWNLOAD <destfile>' OR 'UPLOAD <sourcefile>'");
+                Console.WriteLine($"Expected arguments: '{CMD_GET} <destfile>' OR '{CMD_STORE} <sourcefile>'");
                 return;
             }
 
             string command = args[0].ToUpper();
             string path = args[1];
-            if (command != CMD_DOWNLOAD && command != CMD_UPLOAD)
+            if (command != CMD_GET && command != CMD_STORE)
             {
-                Console.WriteLine("Illegal command. Expected 'DOWNLOAD' or 'UPLOAD'");
+                Console.WriteLine($"Illegal command. Expected {CMD_GET} or {CMD_STORE}");
                 return;
             }
 
-            if (command == CMD_UPLOAD && !File.Exists(path))
+            if (command == CMD_STORE && !File.Exists(path))
             {
                 Console.WriteLine("Could not find source project file  " + path);
                 return;
@@ -65,23 +65,50 @@ namespace Ihc.download_upload_example
             // Create client for IHC services that this utility use:
             var authService = new AuthenticationService(logger, endpoint);
             var controllerService = new ControllerService(authService);
+            var ressourceService = new ResourceInteractionService(authService);
+            var configService = new ConfigurationService(authService);
+
             try
             {
                 // Authenticate against IHC system. 
                 var login = await authService.Authenticate(userName, password, application);
 
-                if (command == CMD_DOWNLOAD)
+                if (command == CMD_GET)
                 {
                     ProjectFile project = await controllerService.GetProject();
-                    File.WriteAllText(path, project.Data, project.Encoding);
+                    File.WriteAllText(path, project.Data, ProjectFile.Encoding);
                     Console.WriteLine($"Downloaded project to {path}, size {project.Data.Length} characters (Org filename was {project.Filename})");
                 }
-                else if (command == CMD_UPLOAD)
+                else if (command == CMD_STORE)
                 {
+                    ProjectFile project = new ProjectFile()
+                    {
+                        Filename = Path.GetFileName(path),
+                        Data = File.ReadAllText(path, ProjectFile.Encoding)
+                    };
+
                     var projectContent = File.ReadAllText(path);
-                    // await controllerService.UploadProject(projectData);
-                    Console.WriteLine($"Uploaded project from {path}, size {projectContent.Length} bytes");
+
+                    // TODO: Read all runtime values and store them 
+
+                    bool success = await controllerService.StoreProject(project);
+                    if (!success)
+                    {
+                        Console.WriteLine("Failed to store project to controller");
+                        return;
+                    }
+
+                    // TODO: Reapply runtime values
+
+                    // Reboot controller to activate new project
+                    await configService.DelayedReboot(100);
+
+                    Console.WriteLine($"Sucessfully uploaded project from {path}, size {projectContent.Length} bytes. Rebooting controller.");
                 }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed operation: {ex.Message}");
             }
             finally
             {
