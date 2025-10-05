@@ -32,8 +32,14 @@ public record ProjectInfo
         public string InstallerName { get; init; }
 }
 
-public record ProjectFile {
-        public string Data { get; init; } 
-        
-        public string Filename { get; init; }    
+public record ProjectFile
+{
+        public string Data { get; init; }
+
+        public string Filename { get; init; }
+
+        /// <summary>
+        /// Encoding used for the project file. Always ISO-8859-1 (Latin-1) as shown in top of xml project.
+        /// </summary>
+        public System.Text.Encoding Encoding { get; } = System.Text.Encoding.GetEncoding("ISO-8859-1");
 }

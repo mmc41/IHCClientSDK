@@ -21,6 +21,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "safe_integration_tests", "tests\safe_integration_tests\safe_integration_tests.csproj", "{C8DA4A66-3B8C-4F01-B944-721901655AA6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProjectDownloadUpload", "utilities\project_download_upload\ProjectDownloadUpload.csproj", "{45ABCB19-C611-42B7-9C9A-155D3953719C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -91,6 +93,18 @@ Global
 		{C8DA4A66-3B8C-4F01-B944-721901655AA6}.Release|x64.Build.0 = Release|Any CPU
 		{C8DA4A66-3B8C-4F01-B944-721901655AA6}.Release|x86.ActiveCfg = Release|Any CPU
 		{C8DA4A66-3B8C-4F01-B944-721901655AA6}.Release|x86.Build.0 = Release|Any CPU
+		{45ABCB19-C611-42B7-9C9A-155D3953719C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{45ABCB19-C611-42B7-9C9A-155D3953719C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{45ABCB19-C611-42B7-9C9A-155D3953719C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{45ABCB19-C611-42B7-9C9A-155D3953719C}.Debug|x64.Build.0 = Debug|Any CPU
+		{45ABCB19-C611-42B7-9C9A-155D3953719C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{45ABCB19-C611-42B7-9C9A-155D3953719C}.Debug|x86.Build.0 = Debug|Any CPU
+		{45ABCB19-C611-42B7-9C9A-155D3953719C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{45ABCB19-C611-42B7-9C9A-155D3953719C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{45ABCB19-C611-42B7-9C9A-155D3953719C}.Release|x64.ActiveCfg = Release|Any CPU
+		{45ABCB19-C611-42B7-9C9A-155D3953719C}.Release|x64.Build.0 = Release|Any CPU
+		{45ABCB19-C611-42B7-9C9A-155D3953719C}.Release|x86.ActiveCfg = Release|Any CPU
+		{45ABCB19-C611-42B7-9C9A-155D3953719C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -101,5 +115,6 @@ Global
 		{2CF0265A-F67F-A5E6-118A-1033D53DDB78} = {DF572EAA-2BC4-7083-A1C9-E138B4BE775E}
 		{A63AA227-B3FB-41AD-A6DA-CF3911BFF72F} = {2CF0265A-F67F-A5E6-118A-1033D53DDB78}
 		{C8DA4A66-3B8C-4F01-B944-721901655AA6} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{45ABCB19-C611-42B7-9C9A-155D3953719C} = {DF572EAA-2BC4-7083-A1C9-E138B4BE775E}
 	EndGlobalSection
 EndGlobal

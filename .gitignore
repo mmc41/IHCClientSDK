@@ -10,5 +10,8 @@ tmp
 
 .vscode
 
+# Exclude IHC project files.
+*.vis
+
 # Important to exclude - user config file - contains secrets.
 ihcsettings.json
