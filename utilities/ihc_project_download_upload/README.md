@@ -8,10 +8,10 @@ NB: The utility does not currently save/restore assoicated runtime values, so li
 
 ```bash
 # Download project from controller
-dotnet run --project ihc_ProjectDownloadUpload.csproj DOWNLOAD <destination-file>
+dotnet run --project ihc_ProjectDownloadUpload.csproj GET <destination-file>
 
 # Upload project to controller
-dotnet run --project ihc_ProjectDownloadUpload.csproj UPLOAD <source-file>
+dotnet run --project ihc_ProjectDownloadUpload.csproj STORE <source-file>
 ```
 
 ## Configuration
