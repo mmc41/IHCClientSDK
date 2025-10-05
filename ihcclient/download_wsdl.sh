@@ -20,5 +20,6 @@ $wget http://$ip/wsdl/resourceinteraction.wsdl
 $wget http://$ip/wsdl/timemanager.wsdl
 $wget http://$ip/wsdl/usermanager.wsdl
 $wget http://$ip/wsdl/openapi.wsdl
+$wget http://$ip/wsdl/airlinkmanagement.wsdl
 
 cd ..
