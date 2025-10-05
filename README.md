@@ -12,7 +12,7 @@ This project is released as open source. Please supply pull requests with tested
 * The project is unofficial, unfinished and may contain serious bugs. Use at your own risk!
 * The project is only partially supported. You are welcome to report bugs and feature requests but don't expect quick solutions unless you supply tested pull-requests as well (or offer to pay the author(s) for support).
 * The project is intended for experienced .NET developers using C# and/or F#.
-* The IHC has only been tested against a single v3.0 controller using both Mac and Windows. More testing from users are needed. Feedback is welcome.
+* The IHC has been tested against v3.0 controllers using both Mac and Windows (but Linux ought to work too). More testing from users are needed. Feedback is welcome.
 
 ## Status
 
@@ -30,12 +30,14 @@ See here [ihcclient](ihcclient/README.md#Status) for more details on IHC API imp
 
 This project is hosted in a mono-repo containing the following sub-projects:
 
-* [ihcclient](ihcclient/README.md) contains the code for the IHC client API. This is the project you will need to reference in your own solutions.
-* [ihcclient_example1](ihcclient_example1/README.md) contains code for simple command line client console program in c#. Use this for inspiration on how to get started.
-* [ihcclient_example2](ihcclient_example2/README.md) contains code for simple command line client console program in c#. Use this for inspiration on how to get started.
-* Tests
+* SDK:
+    * [ihcclient](ihcclient/README.md) This is the main project that contains the code for the IHC client API. This is the project you will need to reference in your own solutions.
+* SDK usage examples:
+    * [ihcclient_example1](examples\ihcclient_example1/README.md) contains code for simple command line client console program in c#. Use this for inspiration on how to get started.
+    * [ihcclient_example2](examples\ihcclient_example2/README.md) contains code for simple command line client console program in c#. Use this for inspiration on how to get started.
+* SDK tests:
     * [Safe integration tests](tests/safe_integration_tests/README.md) contains system and unit tests written in c# that can be safely run aginst a controller in use.
-* Utilities
+* SDK utilities:
     * [Program code extractor ](utilities/ihc_httpproxyrecorder/README.md) contains an optional command line utility for software developers that can generate constant definitions of IO addresses in a concrete IHC installation. Use this approach in your projects if you don't want to lookup and hardcode IO addresses yourself.
     * [IHC Http Proxy recorder](utilities/ihc_httpproxyrecorder/README.md) contains a simple http proxy useful for software (sdk) developers to investigate undocumented IHC controller API's.
     * [IHC Project download/upload](utilities/ihc_project_download_upload/README.md) contains a tool to download/upload project files. Status: Unfinished!
@@ -49,7 +51,7 @@ This project is hosted in a mono-repo containing the following sub-projects:
 **A**: You must create a "ihcsettings.json" file in root folder. Copy the 'ihcsettings_example.json' file to 'ihcsettings.json' and fill out your information.
 
 **Q**: Is there a NuGet package available ?  
-**A**: Not yet but planned when the project goes out of beta.
+**A**: Not yet but might happen later if there is demand. For now just clone to repo and use the sdk project directly.
 
 **Q**: Can I contribute to this project?
 **A**: Yes please. See https://docs.github.com/en/get-started/quickstart/contributing-to-projects and https://github.com/mmc41/IHCClientSDK
