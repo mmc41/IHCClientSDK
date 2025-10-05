@@ -414,6 +414,8 @@ namespace Ihc {
                     throw new InvalidOperationException("Controller state did not enter init state to prepare for project change");
             }
 
+            await Task.Delay(100); // Wait a little to let controller settle.
+
             return result.storeIHCProject2 != null && result.storeIHCProject2.Value;
         }
     }

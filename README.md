@@ -40,7 +40,7 @@ This project is hosted in a mono-repo containing the following sub-projects:
 * SDK utilities:
     * [Program code extractor ](utilities/ihc_project_io_extractor/README.md) contains an optional command line utility for software developers that can generate constant definitions of IO addresses in a concrete IHC installation. Use this approach in your projects if you don't want to lookup and hardcode IO addresses yourself.
     * [IHC Http Proxy recorder](utilities/ihc_httpproxyrecorder/README.md) contains a simple http proxy useful for software (sdk) developers to investigate undocumented IHC controller API's.
-    * [IHC Project download/upload](utilities/ihc_project_download_upload/README.md) contains a tool to download/upload project files. Status: Unfinished!
+    * [IHC Project download/upload](utilities/ihc_project_download_upload/README.md) contains a tool to download/upload project files.
 
 ## FAQ
 
