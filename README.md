@@ -33,8 +33,12 @@ This project is hosted in a mono-repo containing the following sub-projects:
 * [ihcclient](ihcclient/README.md) contains the code for the IHC client API. This is the project you will need to reference in your own solutions.
 * [ihcclient_example1](ihcclient_example1/README.md) contains code for simple command line client console program in c#. Use this for inspiration on how to get started.
 * [ihcclient_example2](ihcclient_example2/README.md) contains code for simple command line client console program in c#. Use this for inspiration on how to get started.
-* [ihcclient_tests](ihcclient_tests/README.md) contains system and unit tests written in c#.
-* [ihcproject_io_extractor](ihcproject_io_extractor/README.md) contains an optional command line utility that can generate constant definitions of IO addresses in a concrete IHC installation. Use this approach in your projects if you don't want to lookup and hardcode IO addresses yourself.
+* Tests
+    * [Safe integration tests](tests/safe_integration_tests/README.md) contains system and unit tests written in c# that can be safely run aginst a controller in use.
+* Utilities
+    * [Program code extractor ](utilities/ihc_httpproxyrecorder/README.md) contains an optional command line utility for software developers that can generate constant definitions of IO addresses in a concrete IHC installation. Use this approach in your projects if you don't want to lookup and hardcode IO addresses yourself.
+    * [IHC Http Proxy recorder](utilities/ihc_httpproxyrecorder/README.md) contains a simple http proxy useful for software (sdk) developers to investigate undocumented IHC controller API's.
+    * [IHC Project download/upload](utilities/ihc_project_download_upload/README.md) contains a tool to download/upload project files. Status: Unfinished!
 
 ## FAQ
 
