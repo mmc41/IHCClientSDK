@@ -3,6 +3,9 @@ using System;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using Ihc.Soap.Openapi;
+using System.Collections.Generic;
+using System.Threading;
+using System.Runtime.CompilerServices;
 namespace Ihc {
     /**
     * A highlevel client interface for the IHC OpenAPIService for v3.0+ controllers without any of the soap distractions.
@@ -24,6 +27,19 @@ namespace Ihc {
         public Task<int[]> GetDatalineOutputIDs();
         public Task DoReboot();
         public Task Ping();
+        public Task<ResourceValue[]> GetValues(int[] resourceIds);
+        public Task<bool> SetValues(ResourceValue[] values);
+        public Task EnableSubscription(int[] resourceIds);
+        public Task DisableSubscription(int[] resourceIds);
+        public Task<EventPackage> WaitForEvents(int? timeout);
+        public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(int[] resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15);
+        public Task<ProjectInfo> GetProjectInfo();
+        public Task<int> GetIHCProjectNumberOfSegments();
+        public Task<int> GetIHCProjectSegmentationSize();
+        public Task<byte[]> GetIHCProjectSegment(int index, int majorVersion, int minorVersion);
+        public Task<SceneProjectInfo> GetSceneProjectInfo();
+        public Task<int> GetSceneProjectSegmentationSize();
+        public Task<byte[]> GetSceneProjectSegment(int index);
         public string Endpoint { get; }
     }
 
@@ -32,7 +48,6 @@ namespace Ihc {
     *
     * Nb. Supported by v3.0+ controllers only.
     *
-    * Core operations are implemented. Advanced project segment operations are available via the underlying SoapImpl if needed.
     */
     public class OpenAPIService : IOpenAPIService
     {
@@ -185,6 +200,103 @@ namespace Ihc {
 
         private readonly SoapImpl impl;
 
+        // Helper methods for converting between OpenAPI SOAP types and high-level models
+
+        private ResourceValue MapResourceValue(Ihc.Soap.Openapi.WSResourceValue v)
+        {
+            var value = new ResourceValue.UnionValue() { };
+
+            if (v is Ihc.Soap.Openapi.WSBooleanValue boolVal)
+            {
+                value.BoolValue = boolVal.value;
+                value.ValueKind = ResourceValue.ValueKind.BOOL;
+            }
+            else if (v is Ihc.Soap.Openapi.WSIntegerValue intVal)
+            {
+                value.IntValue = intVal.integer;
+                value.ValueKind = ResourceValue.ValueKind.INT;
+            }
+            else if (v is Ihc.Soap.Openapi.WSFloatingPointValue floatVal)
+            {
+                value.DoubleValue = floatVal.floatingPointValue;
+                value.ValueKind = ResourceValue.ValueKind.DOUBLE;
+            }
+            else if (v is Ihc.Soap.Openapi.WSEnumValue enumVal)
+            {
+                value.EnumValue = new EnumValue()
+                {
+                    DefinitionTypeID = enumVal.definitionTypeID,
+                    EnumValueID = enumVal.enumValueID,
+                    EnumName = enumVal.enumName
+                };
+                value.ValueKind = ResourceValue.ValueKind.ENUM;
+            }
+            else if (v is Ihc.Soap.Openapi.WSDateValue dateVal)
+            {
+                value.DateValue = new DateTimeOffset(dateVal.year, dateVal.month, dateVal.day, 0, 0, 0, TimeSpan.Zero);
+                value.ValueKind = ResourceValue.ValueKind.DATE;
+            }
+            else if (v is Ihc.Soap.Openapi.WSTimeValue timeVal)
+            {
+                value.TimeValue = new TimeSpan(timeVal.hours, timeVal.minutes, timeVal.seconds);
+                value.ValueKind = ResourceValue.ValueKind.TIME;
+            }
+            else if (v is Ihc.Soap.Openapi.WSTimerValue timerVal)
+            {
+                value.TimerValue = timerVal.milliseconds;
+                value.ValueKind = ResourceValue.ValueKind.TIMER;
+            }
+            else if (v is Ihc.Soap.Openapi.WSWeekdayValue weekdayVal)
+            {
+                value.WeekdayValue = weekdayVal.weekdayNumber;
+                value.ValueKind = ResourceValue.ValueKind.WEEKDAY;
+            }
+
+            return new ResourceValue() { Value = value };
+        }
+
+        private Ihc.Soap.Openapi.WSResourceValue MapToWSResourceValue(ResourceValue v)
+        {
+            switch (v.Value.ValueKind)
+            {
+                case ResourceValue.ValueKind.BOOL:
+                    return new Ihc.Soap.Openapi.WSBooleanValue() { value = (bool)v.Value.BoolValue };
+                case ResourceValue.ValueKind.INT:
+                    return new Ihc.Soap.Openapi.WSIntegerValue() { integer = (int)v.Value.IntValue };
+                case ResourceValue.ValueKind.DOUBLE:
+                    return new Ihc.Soap.Openapi.WSFloatingPointValue() { floatingPointValue = (double)v.Value.DoubleValue };
+                case ResourceValue.ValueKind.ENUM:
+                    return new Ihc.Soap.Openapi.WSEnumValue()
+                    {
+                        definitionTypeID = v.Value.EnumValue.DefinitionTypeID,
+                        enumValueID = v.Value.EnumValue.EnumValueID,
+                        enumName = v.Value.EnumValue.EnumName
+                    };
+                case ResourceValue.ValueKind.DATE:
+                    var date = (DateTimeOffset)v.Value.DateValue;
+                    return new Ihc.Soap.Openapi.WSDateValue()
+                    {
+                        year = (short)date.Year,
+                        month = (sbyte)date.Month,
+                        day = (sbyte)date.Day
+                    };
+                case ResourceValue.ValueKind.TIME:
+                    var time = (TimeSpan)v.Value.TimeValue;
+                    return new Ihc.Soap.Openapi.WSTimeValue()
+                    {
+                        hours = time.Hours,
+                        minutes = time.Minutes,
+                        seconds = time.Seconds
+                    };
+                case ResourceValue.ValueKind.TIMER:
+                    return new Ihc.Soap.Openapi.WSTimerValue() { milliseconds = (long)v.Value.TimerValue };
+                case ResourceValue.ValueKind.WEEKDAY:
+                    return new Ihc.Soap.Openapi.WSWeekdayValue() { weekdayNumber = (int)v.Value.WeekdayValue };
+                default:
+                    throw new ErrorWithCodeException(Errors.FEATURE_NOT_IMPLEMENTED, "Support for value kind " + v.Value.ValueKind + " not (yet) implemented.");
+            }
+        }
+
         /**
         * Create an OpenAPIService instance for access to the IHC API related to the open api.
         *
@@ -268,6 +380,221 @@ namespace Ihc {
         {
             logger.LogWarning("IHC OpenAPI DoReboot called - controller will reboot");
             await impl.doRebootAsync(new inputMessageName15());
+        }
+
+        public async Task<ResourceValue[]> GetValues(int[] resourceIds)
+        {
+            var result = await impl.getValuesAsync(new inputMessageName6() { getValues1 = resourceIds });
+            return result.getValues2?.Select(v => MapResourceValue(v)).ToArray() ?? Array.Empty<ResourceValue>();
+        }
+
+        public async Task<bool> SetValues(ResourceValue[] values)
+        {
+            var wsEvents = values.Select(v => new Ihc.Soap.Openapi.WSResourceValueEvent()
+            {
+                m_resourceID = v.ResourceID,
+                m_value = MapToWSResourceValue(v)
+            }).ToArray();
+
+            var result = await impl.setValuesAsync(new inputMessageName7() { setValues1 = wsEvents });
+            return result.setValues2.HasValue ? result.setValues2.Value : false;
+        }
+
+        public async Task EnableSubscription(int[] resourceIds)
+        {
+            await impl.enableSubscriptionAsync(new inputMessageName1() { enableSubscription1 = resourceIds });
+        }
+
+        public async Task DisableSubscription(int[] resourceIds)
+        {
+            await impl.disableSubscriptionAsync(new inputMessageName2() { disableSubscription1 = resourceIds });
+        }
+
+        public async Task<EventPackage> WaitForEvents(int? timeout)
+        {
+            var result = await impl.waitForEventsAsync(new inputMessageName5() { waitForEvents1 = timeout });
+
+            var eventPackage = result.waitForEvents2;
+            if (eventPackage == null)
+            {
+                return new EventPackage()
+                {
+                    ResourceValueEvents = Array.Empty<ResourceValue>(),
+                    ControllerExecutionRunning = false,
+                    SubscriptionAmount = 0
+                };
+            }
+
+            var events = eventPackage.resourceValueEvents?.Select(e =>
+            {
+                var resourceValue = MapResourceValue(e.m_value);
+                resourceValue.ResourceID = e.m_resourceID;
+                return resourceValue;
+            }).ToArray() ?? Array.Empty<ResourceValue>();
+
+            return new EventPackage()
+            {
+                ResourceValueEvents = events,
+                ControllerExecutionRunning = eventPackage.controllerExecutionRunning,
+                SubscriptionAmount = eventPackage.subscriptionAmount
+            };
+        }
+
+        /**
+         * Returns an async stream of changes in specified resources.
+         * Corresponds to EnableSubscription + WaitForEvents in a loop
+         *
+         * Nb. Internal timeout should be lower that system timeout or the call will fail after a couple of calls.
+         * Limit seems to be maybe around 20s ?
+         */
+        public async IAsyncEnumerable<ResourceValue> GetResourceValueChanges(int[] resourceIds, [EnumeratorCancellation] CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15)
+        {
+            try
+            {
+                await EnableSubscription(resourceIds);
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, "EnableSubscription error");
+                throw;
+            }
+
+            try
+            {
+                int sequentialErrorCount = 0;
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    Thread.Sleep(25); // Give the server a short rest between calls.
+                    EventPackage eventPackage;
+                    try
+                    {
+                        eventPackage = await WaitForEvents(timeout_between_waits_in_seconds);
+                        sequentialErrorCount = 0;
+                    }
+                    catch (Exception e)
+                    {
+                        logger.LogWarning(e, "WaitForEvents failed #" + sequentialErrorCount);
+                        eventPackage = new EventPackage()
+                        {
+                            ResourceValueEvents = Array.Empty<ResourceValue>(),
+                            ControllerExecutionRunning = false,
+                            SubscriptionAmount = 0
+                        };
+                        if (++sequentialErrorCount > 10)
+                        {
+                            logger.LogError(e, "WaitForEvents repeated failure");
+                            throw; // Fail hard if exception repeats.
+                        }
+                        else
+                        {
+                            // Allow server to recover.
+                            Thread.Sleep(sequentialErrorCount * sequentialErrorCount * 100);
+                        }
+                    }
+
+                    foreach (var change in eventPackage.ResourceValueEvents)
+                    {
+                        yield return change;
+                    }
+                }
+            }
+            finally
+            {
+                try
+                {
+                    Thread.Sleep(25); // Give the server a short rest between calls.
+                    await DisableSubscription(resourceIds);
+                }
+                catch (Exception e)
+                {
+                    logger.LogWarning(e, "DisableSubscription error during cleanup");
+                }
+            }
+        }
+
+        public async Task<ProjectInfo> GetProjectInfo()
+        {
+            var result = await impl.getProjectInfoAsync(new inputMessageName14());
+            var info = result.getProjectInfo1;
+
+            if (info == null)
+            {
+                return null;
+            }
+
+            return new ProjectInfo()
+            {
+                VisualMinorVersion = info.visualMinorVersion,
+                VisualMajorVersion = info.visualMajorVersion,
+                ProjectMajorRevision = info.projectMajorRevision,
+                ProjectMinorRevision = info.projectMinorRevision,
+                Lastmodified = info.lastmodified?.ToDateTimeOffset(),
+                ProjectNumber = info.projectNumber,
+                CustomerName = info.customerName,
+                InstallerName = info.installerName
+            };
+        }
+
+        public async Task<int> GetIHCProjectNumberOfSegments()
+        {
+            var result = await impl.getIHCProjectNumberOfSegmentsAsync(new inputMessageName19());
+            return result.getIHCProjectNumberOfSegments1.HasValue ? result.getIHCProjectNumberOfSegments1.Value : 0;
+        }
+
+        public async Task<int> GetIHCProjectSegmentationSize()
+        {
+            var result = await impl.getIHCProjectSegmentationSizeAsync(new inputMessageName18());
+            return result.getIHCProjectSegmentationSize1.HasValue ? result.getIHCProjectSegmentationSize1.Value : 0;
+        }
+
+        public async Task<byte[]> GetIHCProjectSegment(int index, int majorVersion, int minorVersion)
+        {
+            var result = await impl.getIHCProjectSegmentAsync(new inputMessageName17()
+            {
+                getIHCProjectSegment1 = index,
+                getIHCProjectSegment2 = majorVersion,
+                getIHCProjectSegment3 = minorVersion
+            });
+            return result.getIHCProjectSegment4?.data ?? Array.Empty<byte>();
+        }
+
+        public async Task<SceneProjectInfo> GetSceneProjectInfo()
+        {
+            var result = await impl.getSceneProjectInfoAsync(new inputMessageName20());
+            var info = result.getSceneProjectInfo1;
+
+            if (info == null)
+            {
+                return null;
+            }
+
+            return new SceneProjectInfo()
+            {
+                Name = info.name,
+                Size = info.size,
+                Filepath = info.filepath,
+                Remote = info.remote,
+                Version = info.version,
+                Created = info.created?.ToDateTimeOffset().DateTime,
+                LastModified = info.lastmodified?.ToDateTimeOffset().DateTime,
+                Description = info.description,
+                Crc = info.crc
+            };
+        }
+
+        public async Task<int> GetSceneProjectSegmentationSize()
+        {
+            var result = await impl.getSceneProjectSegmentationSizeAsync(new inputMessageName21());
+            return result.getSceneProjectSegmentationSize1.HasValue ? result.getSceneProjectSegmentationSize1.Value : 0;
+        }
+
+        public async Task<byte[]> GetSceneProjectSegment(int index)
+        {
+            var result = await impl.getSceneProjectSegmentAsync(new inputMessageName22()
+            {
+                getSceneProjectSegment1 = index
+            });
+            return result.getSceneProjectSegment2?.data ?? Array.Empty<byte>();
         }
     }
 }

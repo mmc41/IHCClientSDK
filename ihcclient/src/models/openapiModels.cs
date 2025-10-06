@@ -15,4 +15,13 @@ namespace Ihc {
 
         public int BuildVersion { get; init; }
     }
+
+    /**
+     * High level model of event package without soap distractions.
+     */
+    public record EventPackage {
+        public ResourceValue[] ResourceValueEvents { get; init; }
+        public bool ControllerExecutionRunning { get; init; }
+        public int SubscriptionAmount { get; init; }
+    }
 }
