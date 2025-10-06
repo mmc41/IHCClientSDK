@@ -8,47 +8,107 @@ using System.IO;
 namespace Ihc {
     /**
     * A highlevel client interface for the IHC ControllerService without any of the soap distractions.
-    *
-    * Status: Incomplete.
     */
     public interface IControllerService
     {
+        /**
+        * Check if an IHC project is available on the controller.
+        */
         public Task<bool> IsIHCProjectAvailable();
+
+        /**
+        * Check if the SD card is ready and accessible.
+        */
         public Task<bool> IsSDCardReady();
+
+        /**
+        * Get SD card information including size and free space.
+        */
         public Task<SDInfo> GetSDCardInfo();
 
+        /**
+        * Get current controller state (e.g., "ready", "init").
+        */
         public Task<string> GetControllerState();
+
+        /**
+        * Wait for controller to transition to a specific state.
+        * @param waitState Target state to wait for
+        * @param waitSec Timeout in seconds
+        */
         public Task<string> WaitForControllerStateChange(string waitState, int waitSec);
 
+        /**
+        * Get project information including version, customer name, and last modified date.
+        */
         public Task<ProjectInfo> GetProjectInfo();
+
+        /**
+        * Download the complete IHC project file from the controller.
+        */
         public Task<ProjectFile> GetProject();
 
-        /// <summary>
-        /// Store a new project on the controller, checking preconditions and handling the project change mode.
-        /// Calls internal methods to enter and exit project change mode.
-        /// Fails with InvalidOperationException if controller is not ready. 
-        /// Nb. Unlike IHC Visual, this method does not
-        /// * handle re-setting runtime values after the project change.
-        /// * robooting controller. Call delayedReboot(100) manully for this
-        /// </summary>
-        /// <param name="project"></param>
-        /// <returns></returns>
+        /**
+        * Upload and store a new project on the controller.
+        * Automatically handles project change mode entry/exit and state transitions.
+        * Note: Does not reset runtime values or reboot controller - call DelayedReboot manually if needed.
+        * @throws InvalidOperationException if controller is not ready or SD card unavailable
+        */
         public Task<bool> StoreProject(ProjectFile project);
 
+        /**
+        * Get a backup file from the controller.
+        */
         public Task<BackupFile> GetBackup();
 
+        /**
+        * Restore controller from backup.
+        */
         public Task<int> Restore();
 
+        /**
+        * Get a specific segment of the IHC project (for large projects split into parts).
+        */
+        public Task<ProjectFile> GetIHCProjectSegment(int index, int major, int minor);
+
+        /**
+        * Store a specific segment of the IHC project.
+        */
+        public Task<bool> StoreIHCProjectSegment(ProjectFile segment, int index, int major);
+
+        /**
+        * Get the size of project segments in bytes.
+        */
+        public Task<int> GetIHCProjectSegmentationSize();
+
+        /**
+        * Get the total number of segments in the current project.
+        */
+        public Task<int> GetIHCProjectNumberOfSegments();
+
+        /**
+        * Reset S0 energy meter values to zero.
+        */
         public Task ResetS0Values();
+
+        /**
+        * Get current S0 meter value.
+        */
         public Task<float> GetS0MeterValue();
+
+        /**
+        * Set S0 consumption configuration.
+        */
         public Task SetS0Consumption(float consumption, bool flag);
+
+        /**
+        * Set the start date for S0 fiscal year tracking.
+        */
         public Task SetS0FiscalYearStart(sbyte month, sbyte day);
     }
 
     /**
     * A highlevel implementation of a client to the IHC ControllerService without exposing any of the soap distractions.
-    *
-    * TODO: Add remaining operations.
     */
     public class ControllerService : IControllerService
     {
@@ -172,8 +232,6 @@ namespace Ihc {
             this.authService = authService;
             this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint);
         }
-
-        // TODO: Implement remaining high level service.
 
         private SDInfo mapSDCardData(WSSdCardData e)
         {
@@ -346,21 +404,20 @@ namespace Ihc {
             return await mapProjectFile(result.getIHCProject1);
         }
 
-        protected async Task<bool> EnterProjectChangeMode()
+        public async Task<bool> EnterProjectChangeMode()
         {
             var result = await impl.enterProjectChangeModeAsync(new inputMessageName12() { });
             return result?.enterProjectChangeMode1 != null && result.enterProjectChangeMode1.Value;
         }
 
-        protected async Task<bool> ExitProjectChangeMode()
+        public async Task<bool> ExitProjectChangeMode()
         {
             var result = await impl.exitProjectChangeModeAsync(new inputMessageName13() { });
             return result?.exitProjectChangeMode1 != null && result.exitProjectChangeMode1.Value;
         }
 
         public async Task<bool> StoreProject(ProjectFile project)
-        {          
-          
+        {
             // First perform some safty checks similar to what the IHC Visual App does:
             bool controllerReady = (await GetControllerState()) == ControllerStates.READY;
             if (!controllerReady)
@@ -382,8 +439,6 @@ namespace Ihc {
             if (state != ControllerStates.INIT)
                 throw new InvalidOperationException("Controller state did not enter init state to prepare for project change");
 
-            // TODO: ResourceInteractionService.getRuntimeValues
-
             outputMessageName4 result;
             try
             {
@@ -400,8 +455,6 @@ namespace Ihc {
                 if (state != ControllerStates.INIT)
                     throw new InvalidOperationException("Controller state does not remain in init state after project change");
 
-
-                // TODO: setResourceValues
             }
             finally
             {
@@ -417,6 +470,40 @@ namespace Ihc {
             await Task.Delay(100); // Wait a little to let controller settle.
 
             return result.storeIHCProject2 != null && result.storeIHCProject2.Value;
+        }
+
+        public async Task<ProjectFile> GetIHCProjectSegment(int index, int major, int minor)
+        {
+            var result = await impl.getIHCProjectSegmentAsync(new inputMessageName15()
+            {
+                getIHCProjectSegment1 = index,
+                getIHCProjectSegment2 = major,
+                getIHCProjectSegment3 = minor
+            });
+            return await mapProjectFile(result.getIHCProjectSegment4);
+        }
+
+        public async Task<bool> StoreIHCProjectSegment(ProjectFile segment, int index, int major)
+        {
+            var result = await impl.storeIHCProjectSegmentAsync(new inputMessageName16()
+            {
+                storeIHCProjectSegment1 = await mapProjectFile(segment),
+                storeIHCProjectSegment2 = index,
+                storeIHCProjectSegment3 = major
+            });
+            return result.storeIHCProjectSegment4.HasValue ? result.storeIHCProjectSegment4.Value : false;
+        }
+
+        public async Task<int> GetIHCProjectSegmentationSize()
+        {
+            var result = await impl.getIHCProjectSegmentationSizeAsync(new inputMessageName17());
+            return result.getIHCProjectSegmentationSize1.HasValue ? result.getIHCProjectSegmentationSize1.Value : 0;
+        }
+
+        public async Task<int> GetIHCProjectNumberOfSegments()
+        {
+            var result = await impl.getIHCProjectNumberOfSegmentsAsync(new inputMessageName18());
+            return result.getIHCProjectNumberOfSegments1.HasValue ? result.getIHCProjectNumberOfSegments1.Value : 0;
         }
     }
 }

@@ -8,27 +8,25 @@ using Ihc.Soap.Authentication;
 namespace Ihc {
     /**
     * A highlevel client interface for the IHC AuthenticationService without any of the soap distractions.
-    *
-    * Status: 100% API coverage.
     */
     public interface IAuthenticationService : ICookieHandlerService, IDisposable, IAsyncDisposable
     {
-        /*
-        * Login to IHC controller. This method most be called prior to most other calls on other services.
+        /**
+        * Login to IHC controller. This method must be called prior to most other calls on other services.
         *
-        * @userName Your registered IHC controller user name
-        * @password Your registered IHC controller user name
-        * @application Allowed applications seems to be "treeview", "openapi", "administrator" etc.
+        * @param userName Your registered IHC controller user name
+        * @param password Your registered IHC controller password
+        * @param application Allowed applications: "treeview", "openapi", "administrator"
         */
         public Task<IhcUser> Authenticate(string userName, string password, string application = "openapi");
 
         /**
-        * Logoff to IHC controller.
+        * Logout from IHC controller and clear session cookie.
         */
         public Task<bool> Disconnect();
 
         /**
-        * Check if the IHC controller is UP and running incl. serving API calls.
+        * Check if the IHC controller is up and running and serving API calls.
         */
         public Task<bool> Ping();
         

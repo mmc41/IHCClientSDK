@@ -6,40 +6,133 @@ using Ihc.Soap.Openapi;
 using System.Collections.Generic;
 using System.Threading;
 using System.Runtime.CompilerServices;
+
 namespace Ihc {
     /**
-    * A highlevel client interface for the IHC OpenAPIService for v3.0+ controllers without any of the soap distractions.
+    * A highlevel client interface for the IHC OpenAPIService for v3.0+ controllers without any of the soap distractions. It represents a subset of other services.
     *
-    * Does not appear to be fully functional or complete. Probably best to use AuthenticationService instead.
-    *
-    * Nb. Supported by v3.0+ controllers only.
-    *
+    * The IHC service provided here does not appear to be fully functional, complete and perhaps not with same quality as other services. Probably best to use other services instead.
     */
     public interface IOpenAPIService : ICookieHandlerService
     {
+        /**
+        * Authenticate with the OpenAPI service using username and password.
+        */
         public Task Authenticate(string userName, string password);
+
+        /**
+        * Get firmware version information.
+        */
         public Task<FWVersion> GetFWVersion();
+
+        /**
+        * Get OpenAPI version number.
+        */
         public Task<string> GetAPIVersion();
+
+        /**
+        * Get controller uptime.
+        */
         public Task<TimeSpan> GetUptime();
+
+        /**
+        * Get current controller time.
+        */
         public Task<DateTime> GetTime();
+
+        /**
+        * Check if an IHC project is available.
+        */
         public Task<bool> IsIHCProjectAvailable();
+
+        /**
+        * Get resource IDs for all dataline inputs.
+        */
         public Task<int[]> GetDatalineInputIDs();
+
+        /**
+        * Get resource IDs for all dataline outputs.
+        */
         public Task<int[]> GetDatalineOutputIDs();
+
+        /**
+        * Reboot the controller immediately.
+        */
         public Task DoReboot();
+
+        /**
+        * Ping the controller to verify connectivity.
+        */
         public Task Ping();
+
+        /**
+        * Get current values for specified resource IDs.
+        */
         public Task<ResourceValue[]> GetValues(int[] resourceIds);
+
+        /**
+        * Set values for multiple resources.
+        */
         public Task<bool> SetValues(ResourceValue[] values);
+
+        /**
+        * Enable event subscription for specified resource IDs.
+        */
         public Task EnableSubscription(int[] resourceIds);
+
+        /**
+        * Disable event subscription for specified resource IDs.
+        */
         public Task DisableSubscription(int[] resourceIds);
+
+        /**
+        * Wait for resource value change events from subscribed resources.
+        */
         public Task<EventPackage> WaitForEvents(int? timeout);
+
+        /**
+        * Get async stream of resource value changes for subscribed resources.
+        */
         public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(int[] resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15);
+
+        /**
+        * Get project information.
+        */
         public Task<ProjectInfo> GetProjectInfo();
+
+        /**
+        * Get number of project segments.
+        */
         public Task<int> GetIHCProjectNumberOfSegments();
+
+        /**
+        * Get project segmentation size in bytes.
+        */
         public Task<int> GetIHCProjectSegmentationSize();
+
+        /**
+        * Get a specific project segment by index and version.
+        */
         public Task<byte[]> GetIHCProjectSegment(int index, int majorVersion, int minorVersion);
+
+        /**
+        * Get scene project information.
+        */
         public Task<SceneProjectInfo> GetSceneProjectInfo();
+
+        /**
+        * Get scene project segmentation size.
+        */
         public Task<int> GetSceneProjectSegmentationSize();
+
+        /**
+        * Get a specific scene project segment by index.
+        */
         public Task<byte[]> GetSceneProjectSegment(int index);
+
+        /**
+        * The IHC endpoint URL.
+        */
         public string Endpoint { get; }
     }
 

@@ -10,47 +10,121 @@ namespace Ihc {
     */
     public interface IConfigurationService
     {
+        /**
+        * Get system information including uptime, version, serial number, and hardware details.
+        */
         public Task<SystemInfo> GetSystemInfo();
 
+        /**
+        * Clear the user log on the controller.
+        */
         public Task ClearUserLog();
 
+        /**
+        * Get user log entries from the controller.
+        * @param lang Language code (default: "da" for Danish)
+        */
         public Task<string[]> GetUserLog(string lang = "da");
 
-        /// <summary>
-        /// Reboot the IHC controller after a delay.
-        /// </summary>
-        /// <param name="delayUnknownUnit">Delay before reboot (time unit unknown - requires testing to determine)</param>
+        /**
+        * Reboot the IHC controller after a delay.
+        * @param delayUnknownUnit Delay before reboot (time unit unknown - requires testing)
+        */
         public Task DelayedReboot(int delayUnknownUnit);
 
-        // Network operations
+        /**
+        * Get network settings including IP address, netmask, gateway, and ports.
+        */
         public Task<NetworkSettings> GetNetworkSettings();
+
+        /**
+        * Set network settings for the controller.
+        */
         public Task SetNetworkSettings(NetworkSettings settings);
+
+        /**
+        * Get DNS server addresses configured on the controller.
+        */
         public Task<string[]> GetDNSServers();
+
+        /**
+        * Set DNS server addresses (primary and secondary).
+        */
         public Task SetDNSServers(string[] dnsServers);
 
-        // WiFi operations
+        /**
+        * Get wireless LAN settings.
+        */
         public Task<WLanSettings> GetWLanSettings();
+
+        /**
+        * Set wireless LAN settings including SSID, security, and network configuration.
+        */
         public Task SetWLanSettings(WLanSettings settings);
+
+        /**
+        * Get wireless interface information including connection status and signal quality.
+        */
         public Task<WLanInterface> GetWLanInterface();
+
+        /**
+        * Scan for available wireless networks.
+        */
         public Task<WLanCell[]> GetWLanScan();
 
-        // SMTP operations
+        /**
+        * Get SMTP server settings for email notifications.
+        */
         public Task<SMTPSettings> GetSMTPSettings();
+
+        /**
+        * Set SMTP server settings for email notifications.
+        */
         public Task SetSMTPSettings(SMTPSettings settings);
+
+        /**
+        * Test SMTP settings by attempting to connect to the mail server.
+        */
         public Task TestSettingsNow();
+
+        /**
+        * Send a test email message to verify SMTP configuration.
+        */
         public Task<bool> TestSendMessage(string recipient, string subject, string message);
 
-        // Email Control operations
+        /**
+        * Check if email control feature is enabled.
+        */
         public Task<bool> GetEmailControlEnabled();
+
+        /**
+        * Enable or disable the email control feature.
+        */
         public Task SetEmailControlEnabled(bool enabled);
+
+        /**
+        * Get email control settings for remote controller access via email.
+        */
         public Task<EmailControlSettings> GetEmailControlSettings();
+
+        /**
+        * Set email control settings for remote controller access via email.
+        */
         public Task SetEmailControlSettings(EmailControlSettings settings);
 
-        // Web Access Control operations
+        /**
+        * Get web access control settings for different applications and access types.
+        */
         public Task<WebAccessControl> GetWebAccessControl();
+
+        /**
+        * Set web access control settings for different applications and access types.
+        */
         public Task SetWebAccessControl(WebAccessControl accessControl);
 
-        // Language operations
+        /**
+        * Set the server language for the controller interface.
+        */
         public Task SetServerLanguage(string language);
     }
 

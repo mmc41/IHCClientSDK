@@ -11,8 +11,14 @@ namespace Ihc {
     */
     public interface INotificationManagerService
     {
+        /**
+        * Clear all notification messages from the controller.
+        */
         public Task ClearMessages();
-    
+
+        /**
+        * Get all notification messages from the controller.
+        */
         public Task<NotificationMessage[]> GetMessages();
     }
 

@@ -14,79 +14,113 @@ namespace Ihc {
     */
     public interface IResourceInteractionService
     {
+        /**
+        * Disable initial value notifications for specified resource IDs.
+        */
         public Task<bool?> DisableInitialValueNotifactions(int[] resourceIds);
-        
+
+        /**
+        * Disable runtime value notifications for specified resource IDs.
+        */
         public Task<bool?> DisableRuntimeValueNotifactions(int[] resourceIds);
-        
+
+        /**
+        * Enable initial value notifications for specified resource IDs and return current values.
+        */
         public Task<ResourceValue[]> EnableInitialValueNotifications(int[] resourceIds);
-        
-        /*
-        * Enable notification for specified IHC resource ids. Must be called before waitForResourceValueChanges.
+
+        /**
+        * Enable runtime value notifications for specified resource IDs. Must be called before WaitForResourceValueChanges.
         */
         public Task<ResourceValue[]> EnableRuntimeValueNotifications(int[] resourceIds);
-        
-        public Task<DatalineResource[]> GetAllDatalineInputs();
-        
+
         /**
-        * Get all output definitions.
+        * Get all dataline input resource definitions.
+        */
+        public Task<DatalineResource[]> GetAllDatalineInputs();
+
+        /**
+        * Get all dataline output resource definitions.
         */
         public Task<DatalineResource[]> GetAllDatalineOutputs();
-        
-        public Task<EnumDefinition[]> GetEnumeratorDefinitions();
-        
+
         /**
-        * Get all extra (??) input definitions.
+        * Get all enumerator definitions from the IHC project.
+        */
+        public Task<EnumDefinition[]> GetEnumeratorDefinitions();
+
+        /**
+        * Get all extra dataline input resource definitions.
         */
         public Task<DatalineResource[]> GetExtraDatalineInputs();
-        
+
         /**
-        * Get all extra (??) output definitions.
+        * Get all extra dataline output resource definitions.
         */
         public Task<DatalineResource[]> GetExtraDatalineOutputs();
-        
-        public Task<ResourceValue> GetInitialValue(int? initialValue);
-        
-        public Task<ResourceValue[]> GetInitialValues(int[] initialValues);
-        
-        public Task<LoggedData[]> GetLoggedData(int loggedData1);
-        
+
         /**
-        * Return type of resource.
-        * Refer to TypeStrings constants for valid return values.
+        * Get initial value for a single resource ID.
+        */
+        public Task<ResourceValue> GetInitialValue(int? initialValue);
+
+        /**
+        * Get initial values for multiple resource IDs.
+        */
+        public Task<ResourceValue[]> GetInitialValues(int[] initialValues);
+
+        /**
+        * Get logged historical data for a resource ID.
+        */
+        public Task<LoggedData[]> GetLoggedData(int loggedData1);
+
+        /**
+        * Get the type string of a resource. Refer to TypeStrings constants for valid return values.
         */
         public Task<string> GetResourceType(int resourceID);
 
-        /*
-        * Get current state of input/output resource
+        /**
+        * Get current runtime value of an input/output resource.
         */
         public Task<ResourceValue> GetRuntimeValue(int resourceID);
-        
-        
+
+        /**
+        * Get current runtime values for multiple resource IDs.
+        */
         public Task<ResourceValue[]> GetRuntimeValues(int[] resourceIDs);
-        
+
+        /**
+        * Set value for a single resource.
+        */
         public Task<bool?> SetResourceValue(ResourceValue v);
-        
+
+        /**
+        * Set values for multiple resources.
+        */
         public Task<bool?> setResourceValues(ResourceValue[] values);
 
+        /**
+        * Get scene resource IDs and positions for a scene group.
+        */
         public Task<SceneResourceIdAndLocation[]> GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions);
 
-        public Task<SceneResourceIdAndLocation> GetScenePositionsForSceneValueResource(int scenePositionsForSceneValueResource);
-        
         /**
-         * Can be used for long pooling of resource changes for resources previously enabled wait for using enableRuntimeValueNotifications.
-         * Will return immidiately with first all initial values, after that it repects timeout value in seconds.
-         * Nb. Timeout should be lower that system timeout or the call will fail after a couple of calls. Limit seems to be around 20s
-         * TIP: Consider using GetResourceValueChanges instead of this method.
-         */
+        * Get scene positions for a scene value resource.
+        */
+        public Task<SceneResourceIdAndLocation> GetScenePositionsForSceneValueResource(int scenePositionsForSceneValueResource);
+
+        /**
+        * Long-poll for resource value changes. Resources must be enabled first using EnableRuntimeValueNotifications.
+        * Returns immediately with initial values on first call, then respects timeout. Timeout should be < 20 seconds.
+        * TIP: Consider using GetResourceValueChanges instead.
+        */
         public Task<ResourceValue[]> WaitForResourceValueChanges(int timeout_seconds = 15);
 
         /**
-         * Returns an async stream of changes in specified resources.
-         * Corresponds to enableRuntimeValueNotifications + WaitForResourceValueChanges in a loop
-         *
-         * Nb. Internal timeout should be lower that system timeout or the call will fail after a couple of calls. 
-         * Limit seems to be maybe around 20s ?
-         */
+        * Returns an async stream of value changes for specified resources.
+        * Automatically handles EnableRuntimeValueNotifications + WaitForResourceValueChanges loop.
+        * Timeout should be lower than system timeout (< 20 seconds recommended).
+        */
         public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(int[] resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15);
     }
 

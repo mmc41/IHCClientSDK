@@ -7,12 +7,17 @@ using Ihc.Soap.Messagecontrollog;
 namespace Ihc {
     /**
     * A highlevel client interface for the IHC MessageControlLogService without any of the soap distractions.
-    *
-    * Status: 100% API coverage but not fully tested or documented.
     */
     public interface IMessageControlLogService
     {
+        /**
+        * Clear all entries from the message control log.
+        */
         public Task EmptyLog();
+
+        /**
+        * Get all message control log event entries.
+        */
         public Task<LogEventEntry[]> GetEvents();
     }
 

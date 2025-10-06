@@ -12,9 +12,25 @@ namespace Ihc {
     */
     public interface IUserManagerService
     {
+        /**
+        * Get list of all users registered on the controller.
+        * @param includePassword Include password in returned user objects
+        */
         public Task<IhcUser[]> GetUsers(bool includePassword);
+
+        /**
+        * Add a new user to the controller.
+        */
         public Task AddUser(IhcUser user);
+
+        /**
+        * Remove a user from the controller by username.
+        */
         public Task RemoveUser(string username);
+
+        /**
+        * Update an existing user's information on the controller.
+        */
         public Task UpdateUser(IhcUser user);
     }
 

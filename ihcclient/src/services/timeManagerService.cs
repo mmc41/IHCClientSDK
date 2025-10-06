@@ -9,10 +9,29 @@ namespace Ihc {
     */
     public interface ITimeManagerService
     {
+        /**
+        * Get the current local time from the controller.
+        */
         public Task<DateTimeOffset> GetCurrentLocalTime();
+
+        /**
+        * Get controller uptime since last restart.
+        */
         public Task<TimeSpan> GetUptime();
+
+        /**
+        * Get time manager settings including time sync, DST, and timezone configuration.
+        */
         public Task<TimeManagerSettings> GetSettings();
+
+        /**
+        * Set time manager settings for time synchronization and timezone.
+        */
         public Task<bool> SetSettings(TimeManagerSettings settings);
+
+        /**
+        * Synchronize time with configured NTP server and get connection result.
+        */
         public Task<TimeServerConnectionResult> GetTimeFromServer();
     }
 
