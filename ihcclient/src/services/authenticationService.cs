@@ -75,14 +75,25 @@ namespace Ihc {
 
             public Task<outputMessageName2> authenticateAsync(inputMessageName2 request)
             {
-                return soapPost<outputMessageName2, inputMessageName2>("authenticate", request, resp =>
+                string cookie = null;
+
+                var result = soapPost<outputMessageName2, inputMessageName2>("authenticate", request, resp =>
                 {
                     // Use side-effect to capture cookie sice our post call only captures xml response.
-                    var cookie = resp.Headers.GetValues("Set-Cookie").FirstOrDefault();
-                    if (cookie != null)
+                    cookie = resp.Headers.GetValues("Set-Cookie").FirstOrDefault();
+                });
+
+                return result.ContinueWith((r) =>
+                {
+                    var response = r.Result;
+
+                    // Add cookie only on success.
+                    if (response.authenticate2?.loginWasSuccessful == true)
                     {
                         cookieHandler.SetCookie(cookie);
                     }
+
+                    return response;
                 });
             }
 
