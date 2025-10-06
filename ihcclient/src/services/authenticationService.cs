@@ -91,6 +91,9 @@ namespace Ihc {
                     if (response.authenticate2?.loginWasSuccessful == true)
                     {
                         cookieHandler.SetCookie(cookie);
+                    } else
+                    {
+                        cookieHandler.SetCookie(null);
                     }
 
                     return response;

@@ -88,6 +88,10 @@ namespace Ihc {
                     {
                         cookieHandler.SetCookie(cookie);
                     }
+                    else
+                    {
+                        cookieHandler.SetCookie(null);
+                    }
                     return result;
                 });
             }
