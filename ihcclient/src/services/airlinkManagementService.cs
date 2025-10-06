@@ -136,7 +136,7 @@ namespace Ihc
             this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint);
         }
 
-        private RFDevice MapRFDevice(WSRFDevice device)
+        private RFDevice mapRFDevice(WSRFDevice device)
         {
             if (device == null)
                 return null;
@@ -191,13 +191,13 @@ namespace Ihc
         public async Task<RFDevice> WaitForDeviceDetected(int timeoutSeconds)
         {
             var result = await impl.waitForDeviceDetectedAsync(new inputMessageName5(timeoutSeconds));
-            return MapRFDevice(result.waitForDeviceDetected2);
+            return mapRFDevice(result.waitForDeviceDetected2);
         }
 
         public async Task<RFDevice> WaitForDeviceTestResult(int timeoutSeconds)
         {
             var result = await impl.waitForDeviceTestResultAsync(new inputMessageName6(timeoutSeconds));
-            return MapRFDevice(result.waitForDeviceTestResult2);
+            return mapRFDevice(result.waitForDeviceTestResult2);
         }
 
         public async Task<RFDevice[]> GetDetectedDeviceList()
@@ -206,7 +206,7 @@ namespace Ihc
             if (result.getDetectedDeviceList1 == null)
                 return Array.Empty<RFDevice>();
 
-            return result.getDetectedDeviceList1.Select(MapRFDevice).ToArray();
+            return result.getDetectedDeviceList1.Select(mapRFDevice).ToArray();
         }
 
         public async Task<int> GetBatteryLevel(int resourceId)

@@ -479,7 +479,7 @@ namespace Ihc {
         {
             var input = new inputMessageName18() { setResourceValue1 = mapResourceValueEnvelope(v) };
             var resp = await impl.setResourceValueAsync(input);
-            return resp.setResourceValue2.HasValue;
+            return resp.setResourceValue2;
         }
 
         public async Task<bool?> setResourceValues(ResourceValue[] values)
