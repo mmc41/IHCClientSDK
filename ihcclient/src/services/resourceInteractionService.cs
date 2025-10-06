@@ -92,12 +92,12 @@ namespace Ihc {
         /**
         * Set value for a single resource.
         */
-        public Task<bool?> SetResourceValue(ResourceValue v);
+        public Task<bool> SetResourceValue(ResourceValue v);
 
         /**
         * Set values for multiple resources.
         */
-        public Task<bool?> setResourceValues(ResourceValue[] values);
+        public Task<bool> SetResourceValues(ResourceValue[] values);
 
         /**
         * Get scene resource IDs and positions for a scene group.
@@ -475,18 +475,18 @@ namespace Ihc {
             return resp.getInitialValues2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
         }
 
-        public async Task<bool?> SetResourceValue(ResourceValue v)
+        public async Task<bool> SetResourceValue(ResourceValue v)
         {
             var input = new inputMessageName18() { setResourceValue1 = mapResourceValueEnvelope(v) };
             var resp = await impl.setResourceValueAsync(input);
-            return resp.setResourceValue2;
+            return resp.setResourceValue2 ?? false;
         }
 
-        public async Task<bool?> setResourceValues(ResourceValue[] values)
+        public async Task<bool> SetResourceValues(ResourceValue[] values)
         {
-            var input = new inputMessageName3() { setResourceValues1 = values.Select((v) => mapResourceValueEnvelope(v)).ToArray() };
+            var input = new inputMessageName3() { setResourceValues1 = values.Select(v => mapResourceValueEnvelope(v)).ToArray() };
             var resp = await impl.setResourceValuesAsync(input);
-            return resp.setResourceValues2;
+            return resp.setResourceValues2 ?? false;
         }
 
         public async Task<LoggedData[]> GetLoggedData(int loggedData1)

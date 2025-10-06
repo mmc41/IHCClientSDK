@@ -46,7 +46,7 @@ namespace Ihc.Tests
           Assert.That(orgOutput.ResourceID, Is.EqualTo(Setup.boolOutput1));
 
           var toggledOutput = await resourceInteractionService.SetResourceValue(ResourceValue.ToogleBool(orgOutput));
-          Assert.That(toggledOutput.Value, Is.True);
+          Assert.That(toggledOutput, Is.True);
 
           var newOutput = await resourceInteractionService.GetRuntimeValue(Setup.boolOutput1);
           Assert.That(newOutput.IsValueRuntime, Is.True);
