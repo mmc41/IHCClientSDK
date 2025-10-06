@@ -49,9 +49,13 @@ namespace Ihc {
         public Task<ProjectFile> GetProject();
 
         /**
-        * Upload and store a new project on the controller.
-        * Automatically handles project change mode entry/exit and state transitions.
+        * Upload and store a new project on the controller safely.
+        *
+        * Automatically checks controller readiness and handles project change mode entry/exit and state transitions 
+        * by calling EnterProjectChangeMode/ExitProjectChangeMode and waiting for state changes.
+        *
         * Note: Does not reset runtime values or reboot controller - call DelayedReboot manually if needed.
+        *
         * @throws InvalidOperationException if controller is not ready or SD card unavailable
         */
         public Task<bool> StoreProject(ProjectFile project);
@@ -68,6 +72,7 @@ namespace Ihc {
 
         /**
         * Get a specific segment of the IHC project (for large projects split into parts).
+
         */
         public Task<ProjectFile> GetIHCProjectSegment(int index, int major, int minor);
 
@@ -105,6 +110,16 @@ namespace Ihc {
         * Set the start date for S0 fiscal year tracking.
         */
         public Task SetS0FiscalYearStart(sbyte month, sbyte day);
+
+        /**
+        * Make the controller enter project change mode to allow project updates.
+        */
+        public Task<bool> EnterProjectChangeMode();
+
+        /**
+        * Make the controller exit project change mode after project updates.
+        */
+        public Task<bool> ExitProjectChangeMode();
     }
 
     /**

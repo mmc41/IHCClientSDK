@@ -299,6 +299,16 @@ namespace Ihc {
 
         // Helper methods for converting between OpenAPI SOAP types and high-level models
 
+        private FWVersion MapFWVersion(Ihc.Soap.Openapi.WSVersionInfo version)
+        {
+            return version != null ? new FWVersion()
+            {
+                MajorVersion = version.majorVersion,
+                MinorVersion = version.minorVersion,
+                BuildVersion = version.buildVersion
+            } : null;
+        }
+
         private ResourceValue MapResourceValue(Ihc.Soap.Openapi.WSResourceValue v)
         {
             var value = new ResourceValue.UnionValue() { };
@@ -394,6 +404,73 @@ namespace Ihc {
             }
         }
 
+        private Ihc.Soap.Openapi.WSResourceValueEvent MapToWSResourceValueEvent(ResourceValue v)
+        {
+            return new Ihc.Soap.Openapi.WSResourceValueEvent()
+            {
+                m_resourceID = v.ResourceID,
+                m_value = MapToWSResourceValue(v)
+            };
+        }
+
+        private EventPackage MapEventPackage(Ihc.Soap.Openapi.WSEventPackage eventPackage)
+        {
+            if (eventPackage == null)
+            {
+                return new EventPackage()
+                {
+                    ResourceValueEvents = Array.Empty<ResourceValue>(),
+                    ControllerExecutionRunning = false,
+                    SubscriptionAmount = 0
+                };
+            }
+
+            var events = eventPackage.resourceValueEvents?.Select(e =>
+            {
+                var resourceValue = MapResourceValue(e.m_value);
+                resourceValue.ResourceID = e.m_resourceID;
+                return resourceValue;
+            }).ToArray() ?? Array.Empty<ResourceValue>();
+
+            return new EventPackage()
+            {
+                ResourceValueEvents = events,
+                ControllerExecutionRunning = eventPackage.controllerExecutionRunning,
+                SubscriptionAmount = eventPackage.subscriptionAmount
+            };
+        }
+
+        private ProjectInfo MapProjectInfo(Ihc.Soap.Openapi.WSProjectInfo info)
+        {
+            return info != null ? new ProjectInfo()
+            {
+                VisualMinorVersion = info.visualMinorVersion,
+                VisualMajorVersion = info.visualMajorVersion,
+                ProjectMajorRevision = info.projectMajorRevision,
+                ProjectMinorRevision = info.projectMinorRevision,
+                Lastmodified = info.lastmodified?.ToDateTimeOffset(),
+                ProjectNumber = info.projectNumber,
+                CustomerName = info.customerName,
+                InstallerName = info.installerName
+            } : null;
+        }
+
+        private SceneProjectInfo MapSceneProjectInfo(Ihc.Soap.Openapi.WSSceneProjectInfo info)
+        {
+            return info != null ? new SceneProjectInfo()
+            {
+                Name = info.name,
+                Size = info.size,
+                Filepath = info.filepath,
+                Remote = info.remote,
+                Version = info.version,
+                Created = info.created?.ToDateTimeOffset().DateTime,
+                LastModified = info.lastmodified?.ToDateTimeOffset().DateTime,
+                Description = info.description,
+                Crc = info.crc
+            } : null;
+        }
+
         /**
         * Create an OpenAPIService instance for access to the IHC API related to the open api.
         *
@@ -434,7 +511,7 @@ namespace Ihc {
         public async Task<FWVersion> GetFWVersion()
         {
             var result = await impl.getFWVersionAsync(new inputMessageName11());
-            return new FWVersion() { MajorVersion = result.getFWVersion1.majorVersion, MinorVersion = result.getFWVersion1.minorVersion, BuildVersion = result.getFWVersion1.buildVersion };
+            return MapFWVersion(result.getFWVersion1);
         }
 
         public async Task<string> GetAPIVersion()
@@ -487,12 +564,7 @@ namespace Ihc {
 
         public async Task<bool> SetValues(ResourceValue[] values)
         {
-            var wsEvents = values.Select(v => new Ihc.Soap.Openapi.WSResourceValueEvent()
-            {
-                m_resourceID = v.ResourceID,
-                m_value = MapToWSResourceValue(v)
-            }).ToArray();
-
+            var wsEvents = values.Select(v => MapToWSResourceValueEvent(v)).ToArray();
             var result = await impl.setValuesAsync(new inputMessageName7() { setValues1 = wsEvents });
             return result.setValues2.HasValue ? result.setValues2.Value : false;
         }
@@ -510,31 +582,7 @@ namespace Ihc {
         public async Task<EventPackage> WaitForEvents(int? timeout)
         {
             var result = await impl.waitForEventsAsync(new inputMessageName5() { waitForEvents1 = timeout });
-
-            var eventPackage = result.waitForEvents2;
-            if (eventPackage == null)
-            {
-                return new EventPackage()
-                {
-                    ResourceValueEvents = Array.Empty<ResourceValue>(),
-                    ControllerExecutionRunning = false,
-                    SubscriptionAmount = 0
-                };
-            }
-
-            var events = eventPackage.resourceValueEvents?.Select(e =>
-            {
-                var resourceValue = MapResourceValue(e.m_value);
-                resourceValue.ResourceID = e.m_resourceID;
-                return resourceValue;
-            }).ToArray() ?? Array.Empty<ResourceValue>();
-
-            return new EventPackage()
-            {
-                ResourceValueEvents = events,
-                ControllerExecutionRunning = eventPackage.controllerExecutionRunning,
-                SubscriptionAmount = eventPackage.subscriptionAmount
-            };
+            return MapEventPackage(result.waitForEvents2);
         }
 
         /**
@@ -559,24 +607,7 @@ namespace Ihc {
         public async Task<ProjectInfo> GetProjectInfo()
         {
             var result = await impl.getProjectInfoAsync(new inputMessageName14());
-            var info = result.getProjectInfo1;
-
-            if (info == null)
-            {
-                return null;
-            }
-
-            return new ProjectInfo()
-            {
-                VisualMinorVersion = info.visualMinorVersion,
-                VisualMajorVersion = info.visualMajorVersion,
-                ProjectMajorRevision = info.projectMajorRevision,
-                ProjectMinorRevision = info.projectMinorRevision,
-                Lastmodified = info.lastmodified?.ToDateTimeOffset(),
-                ProjectNumber = info.projectNumber,
-                CustomerName = info.customerName,
-                InstallerName = info.installerName
-            };
+            return MapProjectInfo(result.getProjectInfo1);
         }
 
         public async Task<int> GetIHCProjectNumberOfSegments()
@@ -605,25 +636,7 @@ namespace Ihc {
         public async Task<SceneProjectInfo> GetSceneProjectInfo()
         {
             var result = await impl.getSceneProjectInfoAsync(new inputMessageName20());
-            var info = result.getSceneProjectInfo1;
-
-            if (info == null)
-            {
-                return null;
-            }
-
-            return new SceneProjectInfo()
-            {
-                Name = info.name,
-                Size = info.size,
-                Filepath = info.filepath,
-                Remote = info.remote,
-                Version = info.version,
-                Created = info.created?.ToDateTimeOffset().DateTime,
-                LastModified = info.lastmodified?.ToDateTimeOffset().DateTime,
-                Description = info.description,
-                Crc = info.crc
-            };
+            return MapSceneProjectInfo(result.getSceneProjectInfo1);
         }
 
         public async Task<int> GetSceneProjectSegmentationSize()
