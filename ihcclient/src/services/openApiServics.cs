@@ -7,26 +7,32 @@ namespace Ihc {
     /**
     * A highlevel client interface for the IHC OpenAPIService for v3.0+ controllers without any of the soap distractions.
     *
-    * Does not appear to be fully functional or complete. Properly best to use AuthenticationService instead.
+    * Does not appear to be fully functional or complete. Probably best to use AuthenticationService instead.
     *
     * Nb. Supported by v3.0+ controllers only.
     *
-    * Status: Incomplete.
     */
     public interface IOpenAPIService : ICookieHandlerService
     {
         public Task Authenticate(string userName, string password);
-        public Task<FWVersion> GetFWVersionAsync();
+        public Task<FWVersion> GetFWVersion();
+        public Task<string> GetAPIVersion();
+        public Task<TimeSpan> GetUptime();
+        public Task<DateTime> GetTime();
+        public Task<bool> IsIHCProjectAvailable();
+        public Task<int[]> GetDatalineInputIDs();
+        public Task<int[]> GetDatalineOutputIDs();
+        public Task DoReboot();
         public Task Ping();
         public string Endpoint { get; }
     }
 
     /**
     * A highlevel implementation of a client to the IHC OpenAPIService without exposing any of the soap distractions.
-
+    *
     * Nb. Supported by v3.0+ controllers only.
     *
-    * TODO: Add remaining operations.
+    * Core operations are implemented. Advanced project segment operations are available via the underlying SoapImpl if needed.
     */
     public class OpenAPIService : IOpenAPIService
     {
@@ -193,17 +199,21 @@ namespace Ihc {
             this.impl = new SoapImpl(logger, cookieHandler, endpoint);
         }
 
-        // TODO: Implement rest of high level service.
-
         public async Task Authenticate(string userName, string password)
         {
+            logger.LogInformation("IHC OpenAPI Authenticate called");
             var resp = await impl.authenticateAsync(new inputMessageName13() { authenticate1 = userName, authenticate2 = password });
 
-            // TODO Add better error handling similar to Authenticate service.
-            if (resp.authenticate3.HasValue && !resp.authenticate3.Value)
+            if (resp.authenticate3.HasValue && resp.authenticate3.Value)
+            {
+                logger.LogInformation("IHC OpenAPI authentication successful");
+                return;
+            }
+            else
+            {
+                logger.LogError("IHC OpenAPI authentication failed for endpoint {Url}", impl.Url);
                 throw new ErrorWithCodeException(Errors.LOGIN_UNKNOWN_ERROR, "Ihc server login failed for " + impl.Url);
-
-            return;
+            }
         }
 
         public async Task Ping()
@@ -212,10 +222,52 @@ namespace Ihc {
             return;
         }
 
-        public async Task<FWVersion> GetFWVersionAsync()
+        public async Task<FWVersion> GetFWVersion()
         {
             var result = await impl.getFWVersionAsync(new inputMessageName11());
-            return new FWVersion() { MajorVersion = result.getFWVersion1.majorVersion, MinorVersion = result.getFWVersion1.minorVersion, BuildVersion = result.getFWVersion1.minorVersion };
+            return new FWVersion() { MajorVersion = result.getFWVersion1.majorVersion, MinorVersion = result.getFWVersion1.minorVersion, BuildVersion = result.getFWVersion1.buildVersion };
+        }
+
+        public async Task<string> GetAPIVersion()
+        {
+            var result = await impl.getAPIVersionAsync(new inputMessageName12());
+            return result.getAPIVersion1.HasValue ? result.getAPIVersion1.Value.ToString() : "0";
+        }
+
+        public async Task<TimeSpan> GetUptime()
+        {
+            var result = await impl.getUptimeAsync(new inputMessageName9());
+            return TimeSpan.FromMilliseconds(result.getUptime1.HasValue ? result.getUptime1.Value : 0);
+        }
+
+        public async Task<DateTime> GetTime()
+        {
+            var result = await impl.getTimeAsync(new inputMessageName8());
+            return result.getTime1.ToDateTimeOffset().DateTime;
+        }
+
+        public async Task<bool> IsIHCProjectAvailable()
+        {
+            var result = await impl.isIHCProjectAvailableAsync(new inputMessageName16());
+            return result.isIHCProjectAvailable1.HasValue ? result.isIHCProjectAvailable1.Value : false;
+        }
+
+        public async Task<int[]> GetDatalineInputIDs()
+        {
+            var result = await impl.getDatalineInputIDsAsync(new inputMessageName3());
+            return result.getDatalineInputIDs1?.Select(r => r.resourceID).ToArray() ?? Array.Empty<int>();
+        }
+
+        public async Task<int[]> GetDatalineOutputIDs()
+        {
+            var result = await impl.getDatalineOutputIDsAsync(new inputMessageName4());
+            return result.getDatalineOutputIDs1?.Select(r => r.resourceID).ToArray() ?? Array.Empty<int>();
+        }
+
+        public async Task DoReboot()
+        {
+            logger.LogWarning("IHC OpenAPI DoReboot called - controller will reboot");
+            await impl.doRebootAsync(new inputMessageName15());
         }
     }
 }
