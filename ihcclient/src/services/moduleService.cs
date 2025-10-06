@@ -7,18 +7,56 @@ using Ihc.Soap.Module;
 namespace Ihc {
     /**
     * A highlevel client interface for the IHC ModuleService without any of the soap distractions.
-    *
-    * Status: Incomplete.
     */
     public interface IModuleService
     {
-      public Task<SceneProject> GetSceneProject(string name);
+        /// <summary>
+        /// Get information about the scene project on the controller.
+        /// </summary>
+        public Task<SceneProjectInfo> GetSceneProjectInfo();
+
+        /// <summary>
+        /// Get a scene project by name.
+        /// </summary>
+        /// <param name="name">The name of the scene project to retrieve</param>
+        public Task<SceneProject> GetSceneProject(string name);
+
+        /// <summary>
+        /// Store a scene project on the controller.
+        /// </summary>
+        /// <param name="project">The scene project to store</param>
+        public Task StoreSceneProject(SceneProject project);
+
+        /// <summary>
+        /// Get a specific segment of a scene project (for large projects that need to be downloaded in parts).
+        /// </summary>
+        /// <param name="name">The name of the scene project</param>
+        /// <param name="segmentNumber">The segment number to retrieve</param>
+        public Task<SceneProject> GetSceneProjectSegment(string name, int segmentNumber);
+
+        /// <summary>
+        /// Store a segment of a scene project (for large projects that need to be uploaded in parts).
+        /// </summary>
+        /// <param name="projectSegment">The project segment to store</param>
+        /// <param name="isFirstSegment">True if this is the first segment</param>
+        /// <param name="isLastSegment">True if this is the last segment</param>
+        /// <returns>True if the operation was successful</returns>
+        public Task<bool> StoreSceneProjectSegment(SceneProject projectSegment, bool isFirstSegment, bool isLastSegment);
+
+        /// <summary>
+        /// Clear all scene projects from the controller.
+        /// </summary>
+        public Task ClearAll();
+
+        /// <summary>
+        /// Get the segmentation size used for splitting large scene projects into segments.
+        /// </summary>
+        /// <returns>The segment size in bytes</returns>
+        public Task<int> GetSceneProjectSegmentationSize();
     }
 
     /**
     * A highlevel implementation of a client to the IHC ModuleService without exposing any of the soap distractions.
-    *
-    * TODO: Add operations (see other services for inspiration)
     */
     public class ModuleService : IModuleService {
         private readonly ILogger logger;
@@ -85,13 +123,69 @@ namespace Ihc {
             };
         }
 
-
-        // TODO: Implement remaining high level services.
-
-        public async Task<SceneProject> GetSceneProject(string name) 
+        private SceneProjectInfo mapSceneProjectInfo(Ihc.Soap.Module.WSSceneProjectInfo info)
         {
-          var resp = await impl.getSceneProjectAsync(new inputMessageName5(name) {});
-          return mapSceneProject(resp.getSceneProject2);
+            return info != null ? new SceneProjectInfo()
+            {
+                Name = info.name,
+                Size = info.size,
+                Filepath = info.filepath,
+                Remote = info.remote,
+                Version = info.version,
+                Created = info.created?.ToDateTimeOffset().DateTime,
+                LastModified = info.lastmodified?.ToDateTimeOffset().DateTime,
+                Description = info.description,
+                Crc = info.crc
+            } : null;
+        }
+
+        private Ihc.Soap.Module.WSFile unmapSceneProject(SceneProject proj)
+        {
+            return new Ihc.Soap.Module.WSFile()
+            {
+                filename = proj.Filename,
+                data = proj.Data
+            };
+        }
+
+        public async Task<SceneProjectInfo> GetSceneProjectInfo()
+        {
+            var resp = await impl.getSceneProjectInfoAsync(new inputMessageName1() {});
+            return mapSceneProjectInfo(resp.getSceneProjectInfo1);
+        }
+
+        public async Task<SceneProject> GetSceneProject(string name)
+        {
+            var resp = await impl.getSceneProjectAsync(new inputMessageName5(name) {});
+            return mapSceneProject(resp.getSceneProject2);
+        }
+
+        public async Task StoreSceneProject(SceneProject project)
+        {
+            await impl.storeSceneProjectAsync(new inputMessageName2(unmapSceneProject(project)));
+        }
+
+        public async Task<SceneProject> GetSceneProjectSegment(string name, int segmentNumber)
+        {
+            var resp = await impl.getSceneProjectSegmentAsync(new inputMessageName3(name, segmentNumber));
+            return mapSceneProject(resp.getSceneProjectSegment3);
+        }
+
+        public async Task<bool> StoreSceneProjectSegment(SceneProject projectSegment, bool isFirstSegment, bool isLastSegment)
+        {
+            var resp = await impl.storeSceneProjectSegmentAsync(new inputMessageName4(unmapSceneProject(projectSegment), isFirstSegment, isLastSegment));
+            return resp.storeSceneProjectSegment4 ?? false;
+        }
+
+        public async Task ClearAll()
+        {
+            await impl.clearAllAsync(new inputMessageName6() {});
+        }
+
+        public async Task<int> GetSceneProjectSegmentationSize()
+        {
+            var resp = await impl.getSceneProjectSegmentationSizeAsync(new inputMessageName7() {});
+            return resp.getSceneProjectSegmentationSize1 ?? 0;
         }
 
     }
