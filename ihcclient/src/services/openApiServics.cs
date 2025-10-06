@@ -447,69 +447,16 @@ namespace Ihc {
          * Nb. Internal timeout should be lower that system timeout or the call will fail after a couple of calls.
          * Limit seems to be maybe around 20s ?
          */
-        public async IAsyncEnumerable<ResourceValue> GetResourceValueChanges(int[] resourceIds, [EnumeratorCancellation] CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15)
+        public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(int[] resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15)
         {
-            try
-            {
-                await EnableSubscription(resourceIds);
-            }
-            catch (Exception e)
-            {
-                logger.LogError(e, "EnableSubscription error");
-                throw;
-            }
-
-            try
-            {
-                int sequentialErrorCount = 0;
-                while (!cancellationToken.IsCancellationRequested)
-                {
-                    Thread.Sleep(25); // Give the server a short rest between calls.
-                    EventPackage eventPackage;
-                    try
-                    {
-                        eventPackage = await WaitForEvents(timeout_between_waits_in_seconds);
-                        sequentialErrorCount = 0;
-                    }
-                    catch (Exception e)
-                    {
-                        logger.LogWarning(e, "WaitForEvents failed #" + sequentialErrorCount);
-                        eventPackage = new EventPackage()
-                        {
-                            ResourceValueEvents = Array.Empty<ResourceValue>(),
-                            ControllerExecutionRunning = false,
-                            SubscriptionAmount = 0
-                        };
-                        if (++sequentialErrorCount > 10)
-                        {
-                            logger.LogError(e, "WaitForEvents repeated failure");
-                            throw; // Fail hard if exception repeats.
-                        }
-                        else
-                        {
-                            // Allow server to recover.
-                            Thread.Sleep(sequentialErrorCount * sequentialErrorCount * 100);
-                        }
-                    }
-
-                    foreach (var change in eventPackage.ResourceValueEvents)
-                    {
-                        yield return change;
-                    }
-                }
-            }
-            finally
-            {
-                try
-                {
-                    Thread.Sleep(25); // Give the server a short rest between calls.
-                    await DisableSubscription(resourceIds);
-                }
-                catch (Exception e)
-                {
-                    logger.LogWarning(e, "DisableSubscription error during cleanup");
-                }
-            }
+            return ServiceHelpers.GetResourceValueChanges(
+                resourceIds,
+                EnableSubscription,
+                async (timeout) => (await WaitForEvents(timeout)).ResourceValueEvents,
+                DisableSubscription,
+                logger,
+                cancellationToken,
+                timeout_between_waits_in_seconds);
         }
 
         public async Task<ProjectInfo> GetProjectInfo()

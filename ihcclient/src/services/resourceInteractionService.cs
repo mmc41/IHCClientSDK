@@ -498,63 +498,16 @@ namespace Ihc {
             return resp.waitForResourceValueChanges2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
         }
 
-        public async System.Collections.Generic.IAsyncEnumerable<ResourceValue> GetResourceValueChanges(int[] resourceIds, [EnumeratorCancellation] CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15)
+        public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(int[] resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15)
         {
-            try
-            {
-                await EnableRuntimeValueNotifications(resourceIds);
-            }
-            catch (Exception e)
-            {
-                this.logger.LogError(e, "enableRuntimeValueNotifications error");
-                throw;
-            }
-
-            try
-            {
-                int sequentialErrorCount = 0;
-                while (!cancellationToken.IsCancellationRequested)
-                {
-                    Thread.Sleep(25); // Give the server a short rest between calls.
-                    ResourceValue[] changes;
-                    try
-                    {
-                        changes = await WaitForResourceValueChanges(timeout_between_waits_in_seconds);
-                        sequentialErrorCount = 0;
-                    }
-                    catch (Exception e)
-                    {
-                        this.logger.LogWarning(e, "waitForResourceValueChanges failed #" + sequentialErrorCount);
-                        changes = new ResourceValue[] { };
-                        if (++sequentialErrorCount > 10)
-                        {
-                            this.logger.LogError(e, "waitForResourceValueChanges repeated failure");
-                            throw; // Fail hard if exception repeats.
-                        } else {
-                             // Allow server to recover.
-                             Thread.Sleep(sequentialErrorCount*sequentialErrorCount*100);
-                        }
-                    }
-
-                    foreach (var change in changes)
-                    {
-                        yield return change;
-                    }
-                }
-            }
-            finally
-            {
-                try
-                {
-                    Thread.Sleep(25); // Give the server a short rest between calls.
-                    await DisableRuntimeValueNotifactions(resourceIds);
-                }
-                catch (Exception e)
-                {
-                    this.logger.LogError(e, "disableRuntimeValueNotifactions error");
-                    throw;
-                }
-            }
+            return ServiceHelpers.GetResourceValueChanges(
+                resourceIds,
+                EnableRuntimeValueNotifications,
+                WaitForResourceValueChanges,
+                DisableRuntimeValueNotifactions,
+                this.logger,
+                cancellationToken,
+                timeout_between_waits_in_seconds);
         }
     }
 }
