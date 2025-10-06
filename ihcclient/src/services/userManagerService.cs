@@ -13,12 +13,13 @@ namespace Ihc {
     public interface IUserManagerService
     {
         public Task<IhcUser[]> GetUsers(bool includePassword);
+        public Task AddUser(IhcUser user);
+        public Task RemoveUser(string username);
+        public Task UpdateUser(IhcUser user);
     }
 
     /**
     * A highlevel implementation of a client to the IHC UserManagerService without exposing any of the soap distractions.
-    *
-    * TODO: Add remaining operations.
     */
     public class UserManagerService : IUserManagerService
     {
@@ -52,6 +53,56 @@ namespace Ihc {
 
         private readonly SoapImpl impl;
 
+        private IhcUser mapUser(Ihc.Soap.Usermanager.WSUser u, bool includePassword)
+        {
+            return new IhcUser()
+            {
+                Username = u.username,
+                Password = includePassword ? u.password : string.Empty,
+                Email = u.email,
+                Firstname = u.firstname,
+                Lastname = u.lastname,
+                Phone = u.phone,
+                Group = u.group?.type,
+                Project = u.project,
+                CreatedDate = u.createdDate?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
+                LoginDate = u.loginDate?.ToDateTimeOffset() ?? DateTimeOffset.MinValue
+            };
+        }
+
+        private Ihc.Soap.Usermanager.WSUser mapUser(IhcUser u)
+        {
+            return new Ihc.Soap.Usermanager.WSUser()
+            {
+                username = u.Username,
+                password = u.Password,
+                email = u.Email,
+                firstname = u.Firstname,
+                lastname = u.Lastname,
+                phone = u.Phone,
+                group = new Ihc.Soap.Usermanager.WSUserGroup() { type = u.Group },
+                project = u.Project,
+                createdDate = new Ihc.Soap.Usermanager.WSDate()
+                {
+                    year = u.CreatedDate.Year,
+                    monthWithJanuaryAsOne = u.CreatedDate.Month,
+                    day = u.CreatedDate.Day,
+                    hours = u.CreatedDate.Hour,
+                    minutes = u.CreatedDate.Minute,
+                    seconds = u.CreatedDate.Second
+                },
+                loginDate = new Ihc.Soap.Usermanager.WSDate()
+                {
+                    year = u.LoginDate.Year,
+                    monthWithJanuaryAsOne = u.LoginDate.Month,
+                    day = u.LoginDate.Day,
+                    hours = u.LoginDate.Hour,
+                    minutes = u.LoginDate.Minute,
+                    seconds = u.LoginDate.Second
+                }
+            };
+        }
+
         /**
         * Create an UserManagerService instance for access to the IHC API related to users.
         * <param name="authService">AuthenticationService instance</param>
@@ -63,26 +114,37 @@ namespace Ihc {
             this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint);
         }
 
-        // TODO: Implement remaining high level services.
-
         /**
         * Get list of registered controller users and their information.
         */
         public async Task<IhcUser[]> GetUsers(bool includePassword)
         {
             var resp = await impl.getUsersAsync(new inputMessageName2() { });
-            return resp.getUsers1.Where((v) => v != null).Select((u) => new IhcUser()
-            {
-                Username = u.username,
-                Password = includePassword ? u.password : string.Empty,
-                Firstname = u.firstname,
-                Lastname = u.lastname,
-                Phone = u.phone,
-                Group = u.group.type,
-                Project = u.project,
-                CreatedDate = u.createdDate.ToDateTimeOffset(),
-                LoginDate = u.loginDate.ToDateTimeOffset()
-            }).ToArray();
+            return resp.getUsers1.Where((v) => v != null).Select((u) => mapUser(u, includePassword)).ToArray();
+        }
+
+        /**
+        * Add a new user to the IHC controller.
+        */
+        public async Task AddUser(IhcUser user)
+        {
+            await impl.addUserAsync(new inputMessageName1() { addUser1 = mapUser(user) });
+        }
+
+        /**
+        * Remove a user from the IHC controller.
+        */
+        public async Task RemoveUser(string username)
+        {
+            await impl.removeUserAsync(new inputMessageName3() { removeUser1 = username });
+        }
+
+        /**
+        * Update an existing user on the IHC controller.
+        */
+        public async Task UpdateUser(IhcUser user)
+        {
+            await impl.updateUserAsync(new inputMessageName4() { updateUser1 = mapUser(user) });
         }
     }
 }
