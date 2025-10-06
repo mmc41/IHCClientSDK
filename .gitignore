@@ -5,6 +5,7 @@ obj
 *.log
 node_modules
 
+.claude
 .fake
 tmp
 
