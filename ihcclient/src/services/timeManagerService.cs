@@ -121,7 +121,7 @@ namespace Ihc {
                 return null;
             }
 
-            var dto = dateTimeOffset.Value;
+            var dto = dateTimeOffset.Value.ToOffset(DateHelper.GetWSTimeOffset());
             return new WSDate
             {
                 year = dto.Year,

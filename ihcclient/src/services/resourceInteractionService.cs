@@ -4,7 +4,6 @@ using System;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using Ihc.Soap.Resourceinteraction;
-using System.Runtime.CompilerServices;
 using System.Collections.Generic;
 
 namespace Ihc {
