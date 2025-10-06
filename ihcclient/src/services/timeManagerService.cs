@@ -6,19 +6,18 @@ using Microsoft.Extensions.Logging;
 namespace Ihc {
     /**
     * A highlevel client interface for the IHC TimeManagerService without any of the soap distractions.
-    *
-    * Status: Incomplete.
     */
     public interface ITimeManagerService
     {
         public Task<DateTimeOffset> GetCurrentLocalTime();
         public Task<TimeSpan> GetUptime();
+        public Task<TimeManagerSettings> GetSettings();
+        public Task<bool> SetSettings(TimeManagerSettings settings);
+        public Task<TimeServerConnectionResult> GetTimeFromServer();
     }
 
     /**
     * A highlevel implementation of a client to the IHC TimeManagerService without exposing any of the soap distractions.
-    *
-    * TODO: Add remaining operations.
     */
     public class TimeManagerService : ITimeManagerService
     {
@@ -67,8 +66,72 @@ namespace Ihc {
             this.authService = authService;
             this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint);
         }
+        
+        // Map methods for translating between SOAP models and high-level models
 
-        // TODO: Add remaining API.
+        private TimeManagerSettings mapSettings(WSTimeManagerSettings ws)
+        {
+            return new TimeManagerSettings
+            {
+                SynchroniseTimeAgainstServer = ws.synchroniseTimeAgainstServer,
+                UseDST = ws.useDST,
+                GmtOffsetInHours = ws.gmtOffsetInHours,
+                ServerName = ws.serverName,
+                SyncIntervalInHours = ws.syncIntervalInHours,
+                TimeAndDateInUTC = ws.timeAndDateInUTC?.ToDateTimeOffset(),
+                OnlineCalendarUpdateOnline = ws.online_calendar_update_online,
+                OnlineCalendarCountry = ws.online_calendar_country,
+                OnlineCalendarValidUntil = ws.online_calendar_valid_until
+            };
+        }
+
+        private WSTimeManagerSettings mapSettings(TimeManagerSettings settings)
+        {
+            return new WSTimeManagerSettings
+            {
+                synchroniseTimeAgainstServer = settings.SynchroniseTimeAgainstServer,
+                useDST = settings.UseDST,
+                gmtOffsetInHours = settings.GmtOffsetInHours,
+                serverName = settings.ServerName,
+                syncIntervalInHours = settings.SyncIntervalInHours,
+                timeAndDateInUTC = mapWSDate(settings.TimeAndDateInUTC),
+                online_calendar_update_online = settings.OnlineCalendarUpdateOnline,
+                online_calendar_country = settings.OnlineCalendarCountry,
+                online_calendar_valid_until = settings.OnlineCalendarValidUntil
+            };
+        }
+
+        private TimeServerConnectionResult mapTimeServerConnectionResult(WSTimeServerConnectionResult ws)
+        {
+            return new TimeServerConnectionResult
+            {
+                ConnectionWasSuccessful = ws.connectionWasSuccessful,
+                DateFromServer = ws.dateFromServer > 0
+                    ? DateTimeOffset.FromUnixTimeMilliseconds(ws.dateFromServer)
+                    : null,
+                ConnectionFailedDueToUnknownHost = ws.connectionFailedDueToUnknownHost,
+                ConnectionFailedDueToOtherErrors = ws.connectionFailedDueToOtherErrors
+            };
+        }
+
+        private WSDate mapWSDate(DateTimeOffset? dateTimeOffset)
+        {
+            if (!dateTimeOffset.HasValue)
+            {
+                return null;
+            }
+
+            var dto = dateTimeOffset.Value;
+            return new WSDate
+            {
+                year = dto.Year,
+                monthWithJanuaryAsOne = dto.Month,
+                day = dto.Day,
+                hours = dto.Hour,
+                minutes = dto.Minute,
+                seconds = dto.Second
+            };
+        }
 
         public async Task<DateTimeOffset> GetCurrentLocalTime()
         {
@@ -86,6 +149,26 @@ namespace Ihc {
             var resp = await impl.getUptimeAsync(new inputMessageName5());
             var result = resp.getUptime1;
             return result.HasValue ? TimeSpan.FromMilliseconds(result.Value) : TimeSpan.Zero;
+        }
+
+        public async Task<TimeManagerSettings> GetSettings()
+        {
+            var resp = await impl.getSettingsAsync(new inputMessageName3());
+            return mapSettings(resp.getSettings1);
+        }
+
+        public async Task<bool> SetSettings(TimeManagerSettings settings)
+        {
+            var wsSettings = mapSettings(settings);
+            var resp = await impl.setSettingsAsync(new inputMessageName4 { setSettings1 = wsSettings });
+            var result = resp.setSettings2;
+            return result.HasValue && result.Value == 1;
+        }
+
+        public async Task<TimeServerConnectionResult> GetTimeFromServer()
+        {
+            var resp = await impl.getTimeFromServerAsync(new inputMessageName1());
+            return mapTimeServerConnectionResult(resp.getTimeFromServer2);
         }
     }
 }
