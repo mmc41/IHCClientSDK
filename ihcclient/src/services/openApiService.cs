@@ -476,15 +476,14 @@ namespace Ihc {
             } : null;
         }
 
-        /**
-        * Create an OpenAPIService instance for access to the IHC API related to the open api.
-        *
-        * <param name="logger">A logger instance. Alternatively, use NullLogger<YourClass>.Instance</param>
-        * <param name="endpoint">IHC controller endpoint of form http://\<YOUR CONTROLLER IP ADDRESS\></param>
-        * <param name="logSensitiveData">If true, log passwords and session cookies. If false (default), redact sensitive values in logs.
-        *                                WARNING: Enabling this will expose credentials in logs. Only enable for debugging in secure environments.</param>
-        * <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
-        */
+        /// <summary>
+        /// Create an OpenAPIService instance for access to the IHC API related to the open api.
+        /// </summary>
+        /// <param name="logger">A logger instance. Alternatively, use NullLogger&lt;YourClass&gt;.Instance</param>
+        /// <param name="endpoint">IHC controller endpoint of form http://&lt;YOUR CONTROLLER IP ADDRESS&gt;</param>
+        /// <param name="logSensitiveData">If true, log passwords and session cookies. If false (default), redact sensitive values in logs.
+        ///                                WARNING: Enabling this will expose credentials in logs. Only enable for debugging in secure environments.</param>
+        /// <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
         public OpenAPIService(ILogger logger, string endpoint, bool logSensitiveData = false, bool asyncContinueOnCapturedContext = false)
             : base(logger, asyncContinueOnCapturedContext)
         {

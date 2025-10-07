@@ -5,6 +5,8 @@
     <InformationalVersion>This is a prerelease package</InformationalVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Nullable>disable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>CS1591,CS1587</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="safe_integration_tests" />

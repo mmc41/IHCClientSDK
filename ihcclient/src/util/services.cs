@@ -12,19 +12,19 @@ namespace Ihc
      */
     internal static class ServiceHelpers
     {
-        /**
-         * Generic implementation of GetResourceValueChanges pattern used across IHC services.
-         * Handles subscription management, long polling, error recovery, and cleanup.
-         *
-         * @param resourceIds Array of resource IDs to monitor
-         * @param enableSubscription Async function to enable subscription/notifications for resources
-         * @param waitForChanges Async function that waits for changes and returns them as ResourceValue array
-         * @param disableSubscription Async function to disable subscription/notifications for resources
-         * @param logger Logger instance for diagnostics
-         * @param cancellationToken Cancellation token to stop the async stream
-         * @param timeout_between_waits_in_seconds Timeout in seconds for each wait call (default 15s, should be < 20s)
-         * @returns Async enumerable stream of ResourceValue changes
-         */
+        /// <summary>
+        /// Generic implementation of GetResourceValueChanges pattern used across IHC services.
+        /// Handles subscription management, long polling, error recovery, and cleanup.
+        /// </summary>
+        /// <param name="resourceIds">Array of resource IDs to monitor</param>
+        /// <param name="enableSubscription">Async function to enable subscription/notifications for resources</param>
+        /// <param name="waitForChanges">Async function that waits for changes and returns them as ResourceValue array</param>
+        /// <param name="disableSubscription">Async function to disable subscription/notifications for resources</param>
+        /// <param name="logger">Logger instance for diagnostics</param>
+        /// <param name="asyncContinueOnCapturedContext">If true, continue on captured context for async operations</param>
+        /// <param name="cancellationToken">Cancellation token to stop the async stream</param>
+        /// <param name="timeout_between_waits_in_seconds">Timeout in seconds for each wait call (default 15s, should be less than 20s)</param>
+        /// <returns>Async enumerable stream of ResourceValue changes</returns>
         public static async IAsyncEnumerable<ResourceValue> GetResourceValueChanges(
             int[] resourceIds,
             Func<int[], Task> enableSubscription,

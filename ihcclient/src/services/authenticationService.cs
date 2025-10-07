@@ -115,16 +115,15 @@ namespace Ihc {
         private readonly SoapImpl impl;
         private bool isConnected;
 
-        /**
-        * Create an AuthenticationService instance for access to the IHC API related to authentication.
-        *
-        * <param name="logger">A logger instance. Alternatively, use NullLogger<YourClass>.Instance</param>
-        * <param name="endpoint">IHC controller endpoint of form http://\<YOUR CONTROLLER IP ADDRESS\></param>
-        * <param name="logSensitiveData">If true, log passwords and session cookies. If false (default), redact sensitive values in logs.
-        *                                WARNING: Enabling this will expose credentials in logs. Only enable for debugging in secure environments.</param>
-        *
-        * NOTE: The AuthenticationService instance should be passed as an argument to other services (except OpenAPI).
-        */
+        /// <summary>
+        /// Create an AuthenticationService instance for access to the IHC API related to authentication.
+        /// NOTE: The AuthenticationService instance should be passed as an argument to other services (except OpenAPI).
+        /// </summary>
+        /// <param name="logger">A logger instance. Alternatively, use NullLogger&lt;YourClass&gt;.Instance</param>
+        /// <param name="endpoint">IHC controller endpoint of form http://&lt;YOUR CONTROLLER IP ADDRESS&gt;</param>
+        /// <param name="logSensitiveData">If true, log passwords and session cookies. If false (default), redact sensitive values in logs.
+        ///                                WARNING: Enabling this will expose credentials in logs. Only enable for debugging in secure environments.</param>
+        /// <param name="asyncContinueOnCapturedContext">If true, continue on captured context for async operations.</param>
         public AuthenticationService(ILogger logger, string endpoint, bool logSensitiveData = false, bool asyncContinueOnCapturedContext = false)
             : base(logger, asyncContinueOnCapturedContext)
         {

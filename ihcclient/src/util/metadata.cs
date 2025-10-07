@@ -15,9 +15,9 @@ namespace Ihc {
     /// </summary>
     /// <param name="Name">The name of the method</param>
     /// <param name="ReturnType">The return type unwrapped from Task or IAsyncEnumerable wrappers (refer to OperationKind)</param>
-    /// <param name="ParameterTypes">Method parameter</param>
+    /// <param name="ParameterTypes">Method parameter types</param>
     /// <param name="OperationKind">The type of operation</param>
-    /// <param name="OperationKind">The underlying MethodInfo describing the operation in details</param> 
+    /// <param name="OperationDetails">The underlying MethodInfo describing the operation in details</param> 
     public record SeviceOperationMetadata(string Name, Type ReturnType, Type[] ParameterTypes, ServiceOperationKind OperationKind, MethodInfo OperationDetails)
     {
         public string Name { get; init; } = Name;

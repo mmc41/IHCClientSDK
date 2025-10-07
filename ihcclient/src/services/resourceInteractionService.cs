@@ -109,24 +109,28 @@ namespace Ihc {
         */
         public Task<SceneResourceIdAndLocation> GetScenePositionsForSceneValueResource(int scenePositionsForSceneValueResource);
 
-        /**
-        * Long-poll for resource value changes. Resources must be enabled first using EnableRuntimeValueNotifications.
-        * Returns immediately with initial values on first call, then respects timeout. Timeout should be < 20 seconds.
-        * TIP: Consider using GetResourceValueChanges instead.
-        */
+        /// <summary>
+        /// Long-poll for resource value changes. Resources must be enabled first using EnableRuntimeValueNotifications.
+        /// Returns immediately with initial values on first call, then respects timeout. Timeout should be less than 20 seconds.
+        /// TIP: Consider using GetResourceValueChanges instead.
+        /// </summary>
+        /// <param name="timeout_seconds">Timeout in seconds (default: 15)</param>
         public Task<ResourceValue[]> WaitForResourceValueChanges(int timeout_seconds = 15);
 
-        /**
-        * Returns an async stream of value changes for specified resources.
-        * Automatically handles EnableRuntimeValueNotifications + WaitForResourceValueChanges loop.
-        * Timeout should be lower than system timeout (< 20 seconds recommended).
-        */
+        /// <summary>
+        /// Returns an async stream of value changes for specified resources.
+        /// Automatically handles EnableRuntimeValueNotifications + WaitForResourceValueChanges loop.
+        /// Timeout should be lower than system timeout (less than 20 seconds recommended).
+        /// </summary>
+        /// <param name="resourceIds">Array of resource IDs to monitor</param>
+        /// <param name="cancellationToken">Cancellation token to stop monitoring</param>
+        /// <param name="timeout_between_waits_in_seconds">Timeout between waits in seconds (default: 15)</param>
         public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(int[] resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15);
     }
 
-    /**
-    * A highlevel implementation of a client to the IHC ResourceInteractionService without exposing any of the soap distractions.
-    */
+    /// <summary>
+    /// A highlevel implementation of a client to the IHC ResourceInteractionService without exposing any of the soap distractions.
+    /// </summary>
     public class ResourceInteractionService : ServiceBase, IResourceInteractionService
     {
         private readonly IAuthenticationService authService;
