@@ -7,6 +7,9 @@
     <Nullable>disable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="safe_integration_tests" />
+  </ItemGroup>
+  <ItemGroup>
     <GlobalAnalyzerConfigFiles Include="analyser.config" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0" />
     <PackageReference Include="System.ServiceModel.Duplex" Version="6.0.0" />

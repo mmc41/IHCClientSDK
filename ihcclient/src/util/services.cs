@@ -10,7 +10,7 @@ namespace Ihc
     /**
      * Utility helpers for service implementations.
      */
-    public static class ServiceHelpers
+    internal static class ServiceHelpers
     {
         /**
          * Generic implementation of GetResourceValueChanges pattern used across IHC services.

@@ -14,7 +14,7 @@ namespace Ihc {
    * so we can communicate with the IHC server without any formal soap libraries involved
    * as this is not (currently) supported by dot net core.
    */
-  public class Serialization {
+  internal class Serialization {
     // Cache for XmlSerializer instances to prevent memory leak
     // Key is a combination of type and attribute overrides hash
     private static readonly ConcurrentDictionary<string, XmlSerializer> serializerCache = new ConcurrentDictionary<string, XmlSerializer>();
