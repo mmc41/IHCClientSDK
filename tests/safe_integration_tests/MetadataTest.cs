@@ -63,6 +63,29 @@ namespace Ihc.Tests
             // Verify return type (should be ResourceValue unwrapped from IAsyncEnumerable<ResourceValue>)
             Assert.That(getChangesOperation.ReturnType, Is.EqualTo(typeof(ResourceValue)), "Return type should be ResourceValue (unwrapped from IAsyncEnumerable<ResourceValue>)");
         }
+
+        [Test]
+        public void CheckOperationDescriptionsAreLoaded()
+        {
+            // Create an AuthenticationService instance
+            var service = new AuthenticationService(Setup.logger, Setup.endpoint);
+
+            // Get metadata for all operations
+            var operations = service.GetOperations();
+
+            // Find the Authenticate operation
+            const string operationName = nameof(IAuthenticationService.Authenticate);
+            var authenticateOperation = operations.FirstOrDefault(op => op.Name == operationName);
+            Assert.That(authenticateOperation, Is.Not.Null, operationName + " operation should be found in metadata");
+
+            // Verify that description is populated
+            Assert.That(authenticateOperation.Description, Is.Not.Null, "Description should not be null");
+            Assert.That(authenticateOperation.Description, Is.Not.Empty, "Description should not be empty");
+
+            // Verify description contains expected content
+            Assert.That(authenticateOperation.Description.ToLower(), Does.Contain("login"),
+                "Description should contain 'login' - actual: " + authenticateOperation.Description);
+        }
     }
 
 }
