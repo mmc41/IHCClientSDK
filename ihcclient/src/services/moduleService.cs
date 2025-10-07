@@ -177,7 +177,7 @@ namespace Ihc {
         public async Task<bool> StoreSceneProjectSegment(SceneProject projectSegment, bool isFirstSegment, bool isLastSegment)
         {
             var resp = await impl.storeSceneProjectSegmentAsync(new inputMessageName4(unmapSceneProject(projectSegment), isFirstSegment, isLastSegment)).ConfigureAwait(asyncContinueOnCapturedContext);
-            return resp.storeSceneProjectSegment4 ?? false;
+            return resp.storeSceneProjectSegment4.HasValue ? resp.storeSceneProjectSegment4.Value : false;
         }
 
         public async Task ClearAll()
@@ -188,7 +188,7 @@ namespace Ihc {
         public async Task<int> GetSceneProjectSegmentationSize()
         {
             var resp = await impl.getSceneProjectSegmentationSizeAsync(new inputMessageName7() {}).ConfigureAwait(asyncContinueOnCapturedContext);
-            return resp.getSceneProjectSegmentationSize1 ?? 0;
+            return resp.getSceneProjectSegmentationSize1.HasValue ? resp.getSceneProjectSegmentationSize1.Value : 0;
         }
 
     }

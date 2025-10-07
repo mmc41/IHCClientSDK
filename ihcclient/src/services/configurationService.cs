@@ -620,14 +620,14 @@ namespace Ihc {
                 recipient = recipient
             };
             var resp = await impl.testSendMessage1Async(new inputMessageName11(notificationMessage, subject, message, null)).ConfigureAwait(asyncContinueOnCapturedContext);
-            return resp.testSendMessage12?.attemptSucceeded ?? false;
+            return resp.testSendMessage12 != null && resp.testSendMessage12.attemptSucceeded;
         }
 
         // Email Control operations
 
         public async Task<bool> GetEmailControlEnabled() {
             var resp = await impl.getEmailControlEnabledAsync(new inputMessageName21()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return resp.getEmailControlEnabled1 ?? false;
+            return resp.getEmailControlEnabled1.HasValue ? resp.getEmailControlEnabled1.Value : false;
         }
 
         public async Task SetEmailControlEnabled(bool enabled) {

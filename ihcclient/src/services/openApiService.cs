@@ -437,7 +437,7 @@ namespace Ihc {
                     resourceValue.ResourceID = e.m_resourceID;
                 }
                 return resourceValue;
-            }).Where(rv => rv != null).ToArray() ?? Array.Empty<ResourceValue>();
+            }).Where(rv => rv != null).ToArray();
 
             return new EventPackage()
             {
@@ -540,7 +540,7 @@ namespace Ihc {
         public async Task<DateTime> GetTime()
         {
             var result = await impl.getTimeAsync(new inputMessageName8()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.getTime1?.ToDateTimeOffset().DateTime ?? DateTime.MinValue;
+            return result.getTime1 != null ? result.getTime1.ToDateTimeOffset().DateTime : DateTime.MinValue;
         }
 
         public async Task<bool> IsIHCProjectAvailable()
@@ -552,13 +552,13 @@ namespace Ihc {
         public async Task<int[]> GetDatalineInputIDs()
         {
             var result = await impl.getDatalineInputIDsAsync(new inputMessageName3()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.getDatalineInputIDs1?.Select(r => r.resourceID).ToArray() ?? Array.Empty<int>();
+            return result.getDatalineInputIDs1 != null ? result.getDatalineInputIDs1.Select(r => r.resourceID).ToArray() : Array.Empty<int>();
         }
 
         public async Task<int[]> GetDatalineOutputIDs()
         {
             var result = await impl.getDatalineOutputIDsAsync(new inputMessageName4()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.getDatalineOutputIDs1?.Select(r => r.resourceID).ToArray() ?? Array.Empty<int>();
+            return result.getDatalineOutputIDs1 != null ? result.getDatalineOutputIDs1.Select(r => r.resourceID).ToArray() : Array.Empty<int>();
         }
 
         public async Task DoReboot()
@@ -570,7 +570,7 @@ namespace Ihc {
         public async Task<ResourceValue[]> GetValues(int[] resourceIds)
         {
             var result = await impl.getValuesAsync(new inputMessageName6() { getValues1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.getValues2?.Select(v => mapResourceValue(v)).ToArray() ?? Array.Empty<ResourceValue>();
+            return result.getValues2 != null ? result.getValues2.Select(v => mapResourceValue(v)).ToArray() : Array.Empty<ResourceValue>();
         }
 
         public async Task<bool> SetValues(ResourceValue[] values)
@@ -642,7 +642,7 @@ namespace Ihc {
                 getIHCProjectSegment2 = majorVersion,
                 getIHCProjectSegment3 = minorVersion
             }).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.getIHCProjectSegment4?.data ?? Array.Empty<byte>();
+            return result.getIHCProjectSegment4?.data != null ? result.getIHCProjectSegment4.data : Array.Empty<byte>();
         }
 
         public async Task<SceneProjectInfo> GetSceneProjectInfo()
@@ -663,7 +663,7 @@ namespace Ihc {
             {
                 getSceneProjectSegment1 = index
             }).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.getSceneProjectSegment2?.data ?? Array.Empty<byte>();
+            return result.getSceneProjectSegment2?.data != null ? result.getSceneProjectSegment2.data : Array.Empty<byte>();
         }
     }
 }

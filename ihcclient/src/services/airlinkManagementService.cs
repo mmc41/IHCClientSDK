@@ -188,7 +188,7 @@ namespace Ihc
         public async Task<int[]> GetDevicesRunningOutOfBattery()
         {
             var result = await impl.getDevicesRunningOutOfBatteryAsync(new inputMessageName4()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.getDevicesRunningOutOfBattery1 ?? Array.Empty<int>();
+            return result.getDevicesRunningOutOfBattery1 != null ? result.getDevicesRunningOutOfBattery1 : Array.Empty<int>();
         }
 
         public async Task<RFDevice> WaitForDeviceDetected(int timeoutSeconds)

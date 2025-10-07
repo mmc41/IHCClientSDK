@@ -10,7 +10,7 @@ namespace Ihc
     /**
      * Callback interface for doing sideeffects as part of a soap http post. 
      */
-    public delegate void OnOkCallBack(HttpResponseMessage msg);  
+    public delegate void OnOkCallBack(HttpResponseMessage msg);
 
     /**
     * Common baseclass for service implementations of IHC soap interfaces.
@@ -43,7 +43,8 @@ namespace Ihc
 
             httpResp.EnsureSuccessStatusCode();
 
-            if (onOkSideEffect!=null) {
+            if (onOkSideEffect != null)
+            {
                 onOkSideEffect(httpResp);
             }
 

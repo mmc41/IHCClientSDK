@@ -421,13 +421,13 @@ namespace Ihc {
         public async Task<bool> DisableInitialValueNotifactions(int[] resourceIds)
         {
             var result = await this.impl.disableInitialValueNotifactionsAsync(new inputMessageName7() { disableInitialValueNotifactions1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.disableInitialValueNotifactions2 ?? false;
+            return result.disableInitialValueNotifactions2.HasValue ? result.disableInitialValueNotifactions2.Value : false;
         }
 
         public async Task<bool> DisableRuntimeValueNotifactions(int[] resourceIds)
         {
             var result = await this.impl.disableRuntimeValueNotifactionsAsync(new inputMessageName5() { disableRuntimeValueNotifactions1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.disableRuntimeValueNotifactions2 ?? false;
+            return result.disableRuntimeValueNotifactions2.HasValue ? result.disableRuntimeValueNotifactions2.Value : false;
         }
 
         public async Task<ResourceValue[]> EnableInitialValueNotifications(int[] resourceIds)
@@ -493,14 +493,14 @@ namespace Ihc {
         {
             var input = new inputMessageName18() { setResourceValue1 = mapResourceValueEnvelope(v) };
             var resp = await impl.setResourceValueAsync(input).ConfigureAwait(asyncContinueOnCapturedContext);
-            return resp.setResourceValue2 ?? false;
+            return resp.setResourceValue2.HasValue ? resp.setResourceValue2.Value : false;
         }
 
         public async Task<bool> SetResourceValues(ResourceValue[] values)
         {
             var input = new inputMessageName3() { setResourceValues1 = values.Select(v => mapResourceValueEnvelope(v)).ToArray() };
             var resp = await impl.setResourceValuesAsync(input).ConfigureAwait(asyncContinueOnCapturedContext);
-            return resp.setResourceValues2 ?? false;
+            return resp.setResourceValues2.HasValue ? resp.setResourceValues2.Value : false;
         }
 
         public async Task<LoggedData[]> GetLoggedData(int loggedData1)
