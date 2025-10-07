@@ -306,6 +306,9 @@ namespace Ihc {
 
         private WSResourceValueEnvelope mapResourceValueEnvelope(ResourceValue v)
         {
+            if (v == null)
+                return null;
+
             WSResourceValue val;
 
             switch (v.Value.ValueKind)
@@ -332,30 +335,45 @@ namespace Ihc {
 
         private DatalineResource mapDatalineResource(WSDatalineResource r)
         {
+            if (r == null)
+                return null;
+
             return new DatalineResource() { ResourceID = r.resourceID, DatalineNumber = r.datalineNumber };
         }
 
         private EnumDefinition mapMapEnumeratorDefinitions(WSEnumDefinition e)
         {
+            if (e == null)
+                return null;
+
             return new EnumDefinition()
             {
                 EnumeratorDefinitionID = e.enumeratorDefinitionID,
-                Values = e.enumeratorValues.Select((v) => mapEnumValue(v)).ToArray()
+                Values = e.enumeratorValues?.Select((v) => mapEnumValue(v)).ToArray() ?? Array.Empty<EnumValue>()
             };
         }
 
         private EnumValue mapEnumValue(WSEnumValue v)
         {
+            if (v == null)
+                return null;
+
             return new EnumValue() { DefinitionTypeID = v.definitionTypeID, EnumValueID = v.enumValueID, EnumName = v.enumName };
         }
 
         private WSEnumValue mapEnumValue(EnumValue v)
         {
+            if (v == null)
+                return null;
+
             return new WSEnumValue() { definitionTypeID = v.DefinitionTypeID, enumValueID = v.EnumValueID, enumName = v.EnumName };
         }
 
         private DateTimeOffset mapDate(WSDateValue v)
         {
+            if (v == null)
+                return DateTimeOffset.MinValue;
+
             return new DateTimeOffset(v.year, v.month, v.day, 0, 0, 0, DateHelper.GetWSTimeOffset());
         }
 
@@ -371,11 +389,17 @@ namespace Ihc {
 
         private TimeSpan mapTime(WSTimeValue v)
         {
+            if (v == null)
+                return TimeSpan.Zero;
+
             return new TimeSpan(v.hours, v.minutes, v.seconds);
         }
 
         private long mapTimer(WSTimerValue v)
         {
+            if (v == null)
+                return 0;
+
             return v.milliseconds;
         }
 
@@ -386,6 +410,9 @@ namespace Ihc {
 
         private int mapWeekday(WSWeekdayValue v)
         {
+            if (v == null)
+                return 0;
+
             return v.weekdayNumber;
         }
 

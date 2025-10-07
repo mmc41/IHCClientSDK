@@ -325,6 +325,9 @@ namespace Ihc {
 
         private Ihc.Soap.Configuration.WSNetworkSettings unmapNetworkSettings(NetworkSettings settings)
         {
+            if (settings == null)
+                return null;
+
             return new Ihc.Soap.Configuration.WSNetworkSettings()
             {
                 ipAddress = settings.IpAddress,
@@ -373,6 +376,9 @@ namespace Ihc {
 
         private Ihc.Soap.Configuration.WSWLanSettings unmapWLanSettings(WLanSettings settings)
         {
+            if (settings == null)
+                return null;
+
             return new Ihc.Soap.Configuration.WSWLanSettings()
             {
                 enabled = settings.Enabled,
@@ -424,6 +430,9 @@ namespace Ihc {
 
         private Ihc.Soap.Configuration.WSSMTPSettings unmapSMTPSettings(SMTPSettings settings)
         {
+            if (settings == null)
+                return null;
+
             return new Ihc.Soap.Configuration.WSSMTPSettings()
             {
                 hostname = settings.Hostname,
@@ -453,6 +462,9 @@ namespace Ihc {
 
         private Ihc.Soap.Configuration.WSEmailControlSettings unmapEmailControlSettings(EmailControlSettings settings)
         {
+            if (settings == null)
+                return null;
+
             return new Ihc.Soap.Configuration.WSEmailControlSettings()
             {
                 serverIPAddress = settings.ServerIpAddress,
@@ -504,6 +516,9 @@ namespace Ihc {
 
         private Ihc.Soap.Configuration.WSAccessControl unmapWebAccessControl(WebAccessControl ac)
         {
+            if (ac == null)
+                return null;
+
             return new Ihc.Soap.Configuration.WSAccessControl()
             {
                 m_usbLoginRequired_usb = ac.UsbLoginRequired,

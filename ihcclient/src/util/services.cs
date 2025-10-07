@@ -83,13 +83,13 @@ namespace Ihc
             {
                 try
                 {
-                    await Task.Delay(25).ConfigureAwait(asyncContinueOnCapturedContext); // Give the client a short rest between calls.
+                    await Task.Delay(25, cancellationToken).ConfigureAwait(asyncContinueOnCapturedContext); // Give the client a short rest between calls.
                     await disableSubscription(resourceIds).ConfigureAwait(asyncContinueOnCapturedContext);
                 }
                 catch (Exception e)
                 {
                     logger.LogError(e, "disable subscription error");
-                    throw;
+                    // Do not re-throw in finally block to avoid masking exceptions from try block
                 }
             }
         }
