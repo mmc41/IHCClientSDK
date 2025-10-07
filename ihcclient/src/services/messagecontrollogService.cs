@@ -28,10 +28,11 @@ namespace Ihc {
     {
         private readonly ILogger logger;
         private readonly IAuthenticationService authService;
+        private readonly bool asyncContinueOnCapturedContext;
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Messagecontrollog.MessageControlLogService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint) : base(logger, cookieHandler, endpoint, "MessageControlLogService") { }
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "MessageControlLogService", asyncContinueOnCapturedContext) { }
 
             public Task<outputMessageName1> emptyLogAsync(inputMessageName1 request)
             {
@@ -49,12 +50,14 @@ namespace Ihc {
         /**
         * Create an Messagecontrollog instance for access to the IHC API related to messages.
         * <param name="authService">AuthenticationService instance</param>
+        * <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
         */
-        public MessageControlLogService(IAuthenticationService authService)
+        public MessageControlLogService(IAuthenticationService authService, bool asyncContinueOnCapturedContext = false)
         {
             this.logger = authService.Logger;
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint);
+            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
+            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, asyncContinueOnCapturedContext);
         }
 
         private LogEventEntry mapEvent(WSMessageControlLogEntry e)
@@ -85,12 +88,12 @@ namespace Ihc {
 
         public async Task EmptyLog()
         {
-            await impl.emptyLogAsync(new inputMessageName1());
+            await impl.emptyLogAsync(new inputMessageName1()).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<LogEventEntry[]> GetEvents()
         {
-            var resp = await impl.getEventsAsync(new inputMessageName2());
+            var resp = await impl.getEventsAsync(new inputMessageName2()).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.getEvents1.Where((v) => v != null).Select((v) => mapEvent(v)).ToArray();
         }
     }

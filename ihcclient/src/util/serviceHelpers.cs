@@ -21,12 +21,15 @@ namespace Ihc
         protected readonly ILogger logger;
         protected readonly ICookieHandler cookieHandler;
         public readonly string Url;
+        protected readonly bool asyncContinueOnCapturedContext;
 
-        protected ServiceBaseImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, string serviceName) {
+        protected ServiceBaseImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, string serviceName, bool asyncContinueOnCapturedContext)
+        {
             this.logger = logger;
             this.Url = endpoint + "/ws/" + serviceName;
             this.cookieHandler = cookieHandler;
-            this.ihcClient = new Client(logger, cookieHandler, Url);
+            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
+            this.ihcClient = new Client(logger, cookieHandler, Url, asyncContinueOnCapturedContext);
         }
 
         /**
@@ -36,7 +39,7 @@ namespace Ihc
         {
             var req = Serialization.SerializeXml<RequestEnvelope<REQ>>(new RequestEnvelope<REQ>(request));
 
-            var httpResp = await ihcClient.Post(soapAction, req);
+            var httpResp = await ihcClient.Post(soapAction, req).ConfigureAwait(asyncContinueOnCapturedContext);
 
             httpResp.EnsureSuccessStatusCode();
 
@@ -44,7 +47,7 @@ namespace Ihc
                 onOkSideEffect(httpResp);
             }
 
-            string respStr = await httpResp.Content.ReadAsStringAsync();
+            string respStr = await httpResp.Content.ReadAsStringAsync().ConfigureAwait(asyncContinueOnCapturedContext);
 
             var respObj = Serialization.DeserializeXml<ResponseEnvelope<RESP>>(respStr);
 

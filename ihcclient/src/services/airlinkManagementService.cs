@@ -67,10 +67,11 @@ namespace Ihc
     {
         private readonly ILogger logger;
         private readonly IAuthenticationService authService;
+        private readonly bool asyncContinueOnCapturedContext;
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.AirlinkManagement.AirlinkManagementService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint) : base(logger, cookieHandler, endpoint, "AirlinkManagementService") { }
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "AirlinkManagementService", asyncContinueOnCapturedContext) { }
 
             public Task<outputMessageName1> enterRFConfigurationAsync(inputMessageName1 request)
             {
@@ -128,12 +129,14 @@ namespace Ihc
         /**
         * Create an AirlinkManagementService instance for access to the IHC API related to Airlink RF device management.
         * <param name="authService">AuthenticationService instance</param>
+        * <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
         */
-        public AirlinkManagementService(IAuthenticationService authService)
+        public AirlinkManagementService(IAuthenticationService authService, bool asyncContinueOnCapturedContext = false)
         {
             this.logger = authService.Logger;
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint);
+            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
+            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, asyncContinueOnCapturedContext);
         }
 
         private RFDevice mapRFDevice(WSRFDevice device)
@@ -154,55 +157,55 @@ namespace Ihc
 
         public async Task<bool> EnterRFConfiguration()
         {
-            var result = await impl.enterRFConfigurationAsync(new inputMessageName1());
+            var result = await impl.enterRFConfigurationAsync(new inputMessageName1()).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.enterRFConfiguration1.HasValue && result.enterRFConfiguration1.Value;
         }
 
         public async Task<bool> ExitRFConfiguration()
         {
-            var result = await impl.exitRFConfigurationAsync(new inputMessageName2());
+            var result = await impl.exitRFConfigurationAsync(new inputMessageName2()).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.exitRFConfiguration1.HasValue && result.exitRFConfiguration1.Value;
         }
 
         public async Task<bool> EnterRFTest()
         {
-            var result = await impl.enterRFTestAsync(new inputMessageName8());
+            var result = await impl.enterRFTestAsync(new inputMessageName8()).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.enterRFTest1.HasValue && result.enterRFTest1.Value;
         }
 
         public async Task<bool> ExitRFTest()
         {
-            var result = await impl.exitRFTestAsync(new inputMessageName9());
+            var result = await impl.exitRFTestAsync(new inputMessageName9()).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.exitRFTest1.HasValue && result.exitRFTest1.Value;
         }
 
         public async Task<bool> TestRFActuatorWithSerialNumber(long serialNumber)
         {
-            var result = await impl.testRFActuatorWithSerialNumberAsync(new inputMessageName3(serialNumber));
+            var result = await impl.testRFActuatorWithSerialNumberAsync(new inputMessageName3(serialNumber)).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.testRFActuatorWithSerialNumber2.HasValue && result.testRFActuatorWithSerialNumber2.Value;
         }
 
         public async Task<int[]> GetDevicesRunningOutOfBattery()
         {
-            var result = await impl.getDevicesRunningOutOfBatteryAsync(new inputMessageName4());
+            var result = await impl.getDevicesRunningOutOfBatteryAsync(new inputMessageName4()).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.getDevicesRunningOutOfBattery1 ?? Array.Empty<int>();
         }
 
         public async Task<RFDevice> WaitForDeviceDetected(int timeoutSeconds)
         {
-            var result = await impl.waitForDeviceDetectedAsync(new inputMessageName5(timeoutSeconds));
+            var result = await impl.waitForDeviceDetectedAsync(new inputMessageName5(timeoutSeconds)).ConfigureAwait(asyncContinueOnCapturedContext);
             return mapRFDevice(result.waitForDeviceDetected2);
         }
 
         public async Task<RFDevice> WaitForDeviceTestResult(int timeoutSeconds)
         {
-            var result = await impl.waitForDeviceTestResultAsync(new inputMessageName6(timeoutSeconds));
+            var result = await impl.waitForDeviceTestResultAsync(new inputMessageName6(timeoutSeconds)).ConfigureAwait(asyncContinueOnCapturedContext);
             return mapRFDevice(result.waitForDeviceTestResult2);
         }
 
         public async Task<RFDevice[]> GetDetectedDeviceList()
         {
-            var result = await impl.getDetectedDeviceListAsync(new inputMessageName7());
+            var result = await impl.getDetectedDeviceListAsync(new inputMessageName7()).ConfigureAwait(asyncContinueOnCapturedContext);
             if (result.getDetectedDeviceList1 == null)
                 return Array.Empty<RFDevice>();
 
@@ -211,7 +214,7 @@ namespace Ihc
 
         public async Task<int> GetBatteryLevel(int resourceId)
         {
-            var result = await impl.getBatteryLevelAsync(new inputMessageName10(resourceId));
+            var result = await impl.getBatteryLevelAsync(new inputMessageName10(resourceId)).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.getBatteryLevel2.HasValue ? result.getBatteryLevel2.Value : 0;
         }
     }

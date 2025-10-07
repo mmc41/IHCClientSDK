@@ -131,6 +131,7 @@ namespace Ihc {
     {
         private readonly ILogger logger;
         private readonly IAuthenticationService authService;
+        private readonly bool asyncContinueOnCapturedContext;
 
         /**
          * This internal class implements the raw IHC soap service interface and provides the basis
@@ -138,7 +139,7 @@ namespace Ihc {
          */
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Resourceinteraction.ResourceInteractionService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint) : base(logger, cookieHandler, endpoint, "ResourceInteractionService") { }
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "ResourceInteractionService", asyncContinueOnCapturedContext) { }
 
             public Task<outputMessageName7> disableInitialValueNotifactionsAsync(inputMessageName7 request)
             {
@@ -407,71 +408,73 @@ namespace Ihc {
         /**
         * Create an ResourceInteractionService instance for access to the IHC API related to resources.
         * <param name="authService">AuthenticationService instance</param>
+        * <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
         */
-        public ResourceInteractionService(IAuthenticationService authService)
+        public ResourceInteractionService(IAuthenticationService authService, bool asyncContinueOnCapturedContext = false)
         {
             this.logger = authService.Logger;
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint);
+            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
+            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, asyncContinueOnCapturedContext);
         }
 
         public async Task<bool> DisableInitialValueNotifactions(int[] resourceIds)
         {
-            var result = await this.impl.disableInitialValueNotifactionsAsync(new inputMessageName7() { disableInitialValueNotifactions1 = resourceIds });
+            var result = await this.impl.disableInitialValueNotifactionsAsync(new inputMessageName7() { disableInitialValueNotifactions1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.disableInitialValueNotifactions2 ?? false;
         }
 
         public async Task<bool> DisableRuntimeValueNotifactions(int[] resourceIds)
         {
-            var result = await this.impl.disableRuntimeValueNotifactionsAsync(new inputMessageName5() { disableRuntimeValueNotifactions1 = resourceIds });
+            var result = await this.impl.disableRuntimeValueNotifactionsAsync(new inputMessageName5() { disableRuntimeValueNotifactions1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.disableRuntimeValueNotifactions2 ?? false;
         }
 
         public async Task<ResourceValue[]> EnableInitialValueNotifications(int[] resourceIds)
         {
-            var resp = await impl.enableInitialValueNotificationsAsync(new inputMessageName6() { enableInitialValueNotifications1 = resourceIds });
+            var resp = await impl.enableInitialValueNotificationsAsync(new inputMessageName6() { enableInitialValueNotifications1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.enableInitialValueNotifications2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
         }
 
         public async Task<ResourceValue[]> EnableRuntimeValueNotifications(int[] resourceIds)
         {
-            var resp = await impl.enableRuntimeValueNotificationsAsync(new inputMessageName4() { enableRuntimeValueNotifications1 = resourceIds });
+            var resp = await impl.enableRuntimeValueNotificationsAsync(new inputMessageName4() { enableRuntimeValueNotifications1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.enableRuntimeValueNotifications2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
         }
 
         public async Task<DatalineResource[]> GetAllDatalineInputs()
         {
-            var resp = await impl.getAllDatalineInputsAsync(new inputMessageName12());
+            var resp = await impl.getAllDatalineInputsAsync(new inputMessageName12()).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.getAllDatalineInputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToArray();
         }
 
         public async Task<DatalineResource[]> GetExtraDatalineInputs()
         {
-            var resp = await impl.getExtraDatalineInputsAsync(new inputMessageName10());
+            var resp = await impl.getExtraDatalineInputsAsync(new inputMessageName10()).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.getExtraDatalineInputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToArray();
         }
 
         public async Task<DatalineResource[]> GetAllDatalineOutputs()
         {
-            var resp = await impl.getAllDatalineOutputsAsync(new inputMessageName13());
+            var resp = await impl.getAllDatalineOutputsAsync(new inputMessageName13()).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.getAllDatalineOutputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToArray();
         }
 
         public async Task<EnumDefinition[]> GetEnumeratorDefinitions()
         {
-            var resp = await impl.getEnumeratorDefinitionsAsync(new inputMessageName9() { });
+            var resp = await impl.getEnumeratorDefinitionsAsync(new inputMessageName9() { }).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.getEnumeratorDefinitions1.Where((v) => v != null).Select((e) => mapMapEnumeratorDefinitions(e)).ToArray();
         }
 
         public async Task<DatalineResource[]> GetExtraDatalineOutputs()
         {
-            var resp = await impl.getExtraDatalineOutputsAsync(new inputMessageName11());
+            var resp = await impl.getExtraDatalineOutputsAsync(new inputMessageName11()).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.getExtraDatalineOutputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToArray();
         }
 
         public async Task<ResourceValue> GetInitialValue(int? initialValue)
         {
-            var resp = await impl.getInitialValueAsync(new inputMessageName15() { getInitialValue1 = initialValue });
+            var resp = await impl.getInitialValueAsync(new inputMessageName15() { getInitialValue1 = initialValue }).ConfigureAwait(asyncContinueOnCapturedContext);
             var result = mapResourceValueEnvelope(resp.getInitialValue2);
             if (result == null)
             {
@@ -482,39 +485,39 @@ namespace Ihc {
 
         public async Task<ResourceValue[]> GetInitialValues(int[] initialValues)
         {
-            var resp = await impl.getInitialValuesAsync(new inputMessageName17() { getInitialValues1 = initialValues });
+            var resp = await impl.getInitialValuesAsync(new inputMessageName17() { getInitialValues1 = initialValues }).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.getInitialValues2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
         }
 
         public async Task<bool> SetResourceValue(ResourceValue v)
         {
             var input = new inputMessageName18() { setResourceValue1 = mapResourceValueEnvelope(v) };
-            var resp = await impl.setResourceValueAsync(input);
+            var resp = await impl.setResourceValueAsync(input).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.setResourceValue2 ?? false;
         }
 
         public async Task<bool> SetResourceValues(ResourceValue[] values)
         {
             var input = new inputMessageName3() { setResourceValues1 = values.Select(v => mapResourceValueEnvelope(v)).ToArray() };
-            var resp = await impl.setResourceValuesAsync(input);
+            var resp = await impl.setResourceValuesAsync(input).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.setResourceValues2 ?? false;
         }
 
         public async Task<LoggedData[]> GetLoggedData(int loggedData1)
         {
-            var resp = await impl.getLoggedDataAsync(new inputMessageName20() { getLoggedData1 = loggedData1 });
+            var resp = await impl.getLoggedDataAsync(new inputMessageName20() { getLoggedData1 = loggedData1 }).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.getLoggedData2.Where((v) => v != null).Select((l) => new LoggedData() { Value = l.value, Id = l.id, Timestamp = DateTimeOffset.FromUnixTimeSeconds(l.timestamp) }).ToArray();
         }
 
         public async Task<string> GetResourceType(int resourceID)
         {
-            var resp = await impl.getResourceTypeAsync(new inputMessageName19() { getResourceType1 = resourceID });
+            var resp = await impl.getResourceTypeAsync(new inputMessageName19() { getResourceType1 = resourceID }).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.getResourceType2;
         }
 
         public async Task<ResourceValue> GetRuntimeValue(int resourceID)
         {
-            var resp = await impl.getRuntimeValueAsync(new inputMessageName14() { getRuntimeValue1 = resourceID });
+            var resp = await impl.getRuntimeValueAsync(new inputMessageName14() { getRuntimeValue1 = resourceID }).ConfigureAwait(asyncContinueOnCapturedContext);
             var result = mapResourceValueEnvelope(resp.getRuntimeValue2);
             if (result == null)
             {
@@ -525,25 +528,25 @@ namespace Ihc {
 
         public async Task<ResourceValue[]> GetRuntimeValues(int[] resourceIDs)
         {
-            var resp = await impl.getRuntimeValuesAsync(new inputMessageName16() { getRuntimeValues1 = resourceIDs });
+            var resp = await impl.getRuntimeValuesAsync(new inputMessageName16() { getRuntimeValues1 = resourceIDs }).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.getRuntimeValues2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
         }
 
         public async Task<SceneResourceIdAndLocation[]> GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions)
         {
-            var resp = await impl.getSceneGroupResourceIdAndPositionsAsync(new inputMessageName1(sceneGroupResourceIdAndPositions) {});
+            var resp = await impl.getSceneGroupResourceIdAndPositionsAsync(new inputMessageName1(sceneGroupResourceIdAndPositions) {}).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.getSceneGroupResourceIdAndPositions2.Where((v) => v != null).Select((v) => mapSceneResourceIdAndLocation(v)).ToArray();
         }
 
         public async Task<SceneResourceIdAndLocation> GetScenePositionsForSceneValueResource(int scenePositionsForSceneValueResource)
         {
-            var resp = await impl.getScenePositionsForSceneValueResourceAsync(new inputMessageName2(scenePositionsForSceneValueResource) {});
+            var resp = await impl.getScenePositionsForSceneValueResourceAsync(new inputMessageName2(scenePositionsForSceneValueResource) {}).ConfigureAwait(asyncContinueOnCapturedContext);
             return mapSceneResourceIdAndLocation(resp.getScenePositionsForSceneValueResource2);
         }
 
         public async Task<ResourceValue[]> WaitForResourceValueChanges(int timeout_seconds = 15)
         {
-            var resp = await impl.waitForResourceValueChangesAsync(new inputMessageName8() { waitForResourceValueChanges1 = timeout_seconds });
+            var resp = await impl.waitForResourceValueChangesAsync(new inputMessageName8() { waitForResourceValueChanges1 = timeout_seconds }).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.waitForResourceValueChanges2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
         }
 
@@ -555,6 +558,7 @@ namespace Ihc {
                 WaitForResourceValueChanges,
                 DisableRuntimeValueNotifactions,
                 this.logger,
+                asyncContinueOnCapturedContext,
                 cancellationToken,
                 timeout_between_waits_in_seconds);
         }

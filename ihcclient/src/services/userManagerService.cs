@@ -41,10 +41,11 @@ namespace Ihc {
     {
         private readonly ILogger logger;
         private readonly IAuthenticationService authService;
+        private readonly bool asyncContinueOnCapturedContext;
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Usermanager.UserManagerService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint) : base(logger, cookieHandler, endpoint, "UserManagerService") { }
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "UserManagerService", asyncContinueOnCapturedContext) { }
 
             public Task<outputMessageName1> addUserAsync(inputMessageName1 request)
             {
@@ -122,12 +123,14 @@ namespace Ihc {
         /**
         * Create an UserManagerService instance for access to the IHC API related to users.
         * <param name="authService">AuthenticationService instance</param>
+        * <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
         */
-        public UserManagerService(IAuthenticationService authService)
+        public UserManagerService(IAuthenticationService authService, bool asyncContinueOnCapturedContext = false)
         {
             this.logger = authService.Logger;
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint);
+            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
+            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, asyncContinueOnCapturedContext);
         }
 
         /**
@@ -135,7 +138,7 @@ namespace Ihc {
         */
         public async Task<IhcUser[]> GetUsers(bool includePassword)
         {
-            var resp = await impl.getUsersAsync(new inputMessageName2() { });
+            var resp = await impl.getUsersAsync(new inputMessageName2() { }).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.getUsers1.Where((v) => v != null).Select((u) => mapUser(u, includePassword)).ToArray();
         }
 
@@ -144,7 +147,7 @@ namespace Ihc {
         */
         public async Task AddUser(IhcUser user)
         {
-            await impl.addUserAsync(new inputMessageName1() { addUser1 = mapUser(user) });
+            await impl.addUserAsync(new inputMessageName1() { addUser1 = mapUser(user) }).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         /**
@@ -152,7 +155,7 @@ namespace Ihc {
         */
         public async Task RemoveUser(string username)
         {
-            await impl.removeUserAsync(new inputMessageName3() { removeUser1 = username });
+            await impl.removeUserAsync(new inputMessageName3() { removeUser1 = username }).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         /**
@@ -160,7 +163,7 @@ namespace Ihc {
         */
         public async Task UpdateUser(IhcUser user)
         {
-            await impl.updateUserAsync(new inputMessageName4() { updateUser1 = mapUser(user) });
+            await impl.updateUserAsync(new inputMessageName4() { updateUser1 = mapUser(user) }).ConfigureAwait(asyncContinueOnCapturedContext);
         }
     }
 }

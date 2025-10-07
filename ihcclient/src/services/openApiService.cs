@@ -147,6 +147,7 @@ namespace Ihc {
         private readonly ILogger logger;
         private readonly string endpoint;
         private readonly ICookieHandler cookieHandler;
+        private readonly bool asyncContinueOnCapturedContext;
 
         public ICookieHandler GetCookieHandler()
         {
@@ -161,7 +162,7 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Openapi.OpenAPIService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint) : base(logger, cookieHandler, endpoint, "OpenAPIService") { }
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "OpenAPIService", asyncContinueOnCapturedContext) { }
 
             public Task<outputMessageName13> authenticateAsync(inputMessageName13 request)
             {
@@ -484,19 +485,21 @@ namespace Ihc {
         * <param name="endpoint">IHC controller endpoint of form http://\<YOUR CONTROLLER IP ADDRESS\></param>
         * <param name="logSensitiveData">If true, log passwords and session cookies. If false (default), redact sensitive values in logs.
         *                                WARNING: Enabling this will expose credentials in logs. Only enable for debugging in secure environments.</param>
+        * <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
         */
-        public OpenAPIService(ILogger logger, string endpoint, bool logSensitiveData = false)
+        public OpenAPIService(ILogger logger, string endpoint, bool logSensitiveData = false, bool asyncContinueOnCapturedContext = false)
         {
             this.logger = logger;
             this.endpoint = endpoint;
             this.cookieHandler = new CookieHandler(logger, logSensitiveData);
-            this.impl = new SoapImpl(logger, cookieHandler, endpoint);
+            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
+            this.impl = new SoapImpl(logger, cookieHandler, endpoint, asyncContinueOnCapturedContext);
         }
 
         public async Task Authenticate(string userName, string password)
         {
             logger.LogInformation("IHC OpenAPI Authenticate called");
-            var resp = await impl.authenticateAsync(new inputMessageName13() { authenticate1 = userName, authenticate2 = password });
+            var resp = await impl.authenticateAsync(new inputMessageName13() { authenticate1 = userName, authenticate2 = password }).ConfigureAwait(asyncContinueOnCapturedContext);
 
             if (resp.authenticate3.HasValue && resp.authenticate3.Value)
             {
@@ -512,84 +515,84 @@ namespace Ihc {
 
         public async Task Ping()
         {
-            await impl.pingAsync(new inputMessageName10());
+            await impl.pingAsync(new inputMessageName10()).ConfigureAwait(asyncContinueOnCapturedContext);
             return;
         }
 
         public async Task<FWVersion> GetFWVersion()
         {
-            var result = await impl.getFWVersionAsync(new inputMessageName11());
+            var result = await impl.getFWVersionAsync(new inputMessageName11()).ConfigureAwait(asyncContinueOnCapturedContext);
             return mapFWVersion(result.getFWVersion1);
         }
 
         public async Task<string> GetAPIVersion()
         {
-            var result = await impl.getAPIVersionAsync(new inputMessageName12());
+            var result = await impl.getAPIVersionAsync(new inputMessageName12()).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.getAPIVersion1.HasValue ? result.getAPIVersion1.Value.ToString() : "0";
         }
 
         public async Task<TimeSpan> GetUptime()
         {
-            var result = await impl.getUptimeAsync(new inputMessageName9());
+            var result = await impl.getUptimeAsync(new inputMessageName9()).ConfigureAwait(asyncContinueOnCapturedContext);
             return TimeSpan.FromMilliseconds(result.getUptime1.HasValue ? result.getUptime1.Value : 0);
         }
 
         public async Task<DateTime> GetTime()
         {
-            var result = await impl.getTimeAsync(new inputMessageName8());
+            var result = await impl.getTimeAsync(new inputMessageName8()).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.getTime1?.ToDateTimeOffset().DateTime ?? DateTime.MinValue;
         }
 
         public async Task<bool> IsIHCProjectAvailable()
         {
-            var result = await impl.isIHCProjectAvailableAsync(new inputMessageName16());
+            var result = await impl.isIHCProjectAvailableAsync(new inputMessageName16()).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.isIHCProjectAvailable1.HasValue ? result.isIHCProjectAvailable1.Value : false;
         }
 
         public async Task<int[]> GetDatalineInputIDs()
         {
-            var result = await impl.getDatalineInputIDsAsync(new inputMessageName3());
+            var result = await impl.getDatalineInputIDsAsync(new inputMessageName3()).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.getDatalineInputIDs1?.Select(r => r.resourceID).ToArray() ?? Array.Empty<int>();
         }
 
         public async Task<int[]> GetDatalineOutputIDs()
         {
-            var result = await impl.getDatalineOutputIDsAsync(new inputMessageName4());
+            var result = await impl.getDatalineOutputIDsAsync(new inputMessageName4()).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.getDatalineOutputIDs1?.Select(r => r.resourceID).ToArray() ?? Array.Empty<int>();
         }
 
         public async Task DoReboot()
         {
             logger.LogWarning("IHC OpenAPI DoReboot called - controller will reboot");
-            await impl.doRebootAsync(new inputMessageName15());
+            await impl.doRebootAsync(new inputMessageName15()).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<ResourceValue[]> GetValues(int[] resourceIds)
         {
-            var result = await impl.getValuesAsync(new inputMessageName6() { getValues1 = resourceIds });
+            var result = await impl.getValuesAsync(new inputMessageName6() { getValues1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.getValues2?.Select(v => mapResourceValue(v)).ToArray() ?? Array.Empty<ResourceValue>();
         }
 
         public async Task<bool> SetValues(ResourceValue[] values)
         {
             var wsEvents = values.Select(v => mapToWSResourceValueEvent(v)).ToArray();
-            var result = await impl.setValuesAsync(new inputMessageName7() { setValues1 = wsEvents });
+            var result = await impl.setValuesAsync(new inputMessageName7() { setValues1 = wsEvents }).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.setValues2.HasValue ? result.setValues2.Value : false;
         }
 
         public async Task EnableSubscription(int[] resourceIds)
         {
-            await impl.enableSubscriptionAsync(new inputMessageName1() { enableSubscription1 = resourceIds });
+            await impl.enableSubscriptionAsync(new inputMessageName1() { enableSubscription1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task DisableSubscription(int[] resourceIds)
         {
-            await impl.disableSubscriptionAsync(new inputMessageName2() { disableSubscription1 = resourceIds });
+            await impl.disableSubscriptionAsync(new inputMessageName2() { disableSubscription1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<EventPackage> WaitForEvents(int? timeout)
         {
-            var result = await impl.waitForEventsAsync(new inputMessageName5() { waitForEvents1 = timeout });
+            var result = await impl.waitForEventsAsync(new inputMessageName5() { waitForEvents1 = timeout }).ConfigureAwait(asyncContinueOnCapturedContext);
             return mapEventPackage(result.waitForEvents2);
         }
 
@@ -605,28 +608,29 @@ namespace Ihc {
             return ServiceHelpers.GetResourceValueChanges(
                 resourceIds,
                 EnableSubscription,
-                async (timeout) => (await WaitForEvents(timeout)).ResourceValueEvents,
+                async (timeout) => (await WaitForEvents(timeout).ConfigureAwait(asyncContinueOnCapturedContext)).ResourceValueEvents,
                 DisableSubscription,
                 logger,
+                asyncContinueOnCapturedContext,
                 cancellationToken,
                 timeout_between_waits_in_seconds);
         }
 
         public async Task<ProjectInfo> GetProjectInfo()
         {
-            var result = await impl.getProjectInfoAsync(new inputMessageName14());
+            var result = await impl.getProjectInfoAsync(new inputMessageName14()).ConfigureAwait(asyncContinueOnCapturedContext);
             return mapProjectInfo(result.getProjectInfo1);
         }
 
         public async Task<int> GetIHCProjectNumberOfSegments()
         {
-            var result = await impl.getIHCProjectNumberOfSegmentsAsync(new inputMessageName19());
+            var result = await impl.getIHCProjectNumberOfSegmentsAsync(new inputMessageName19()).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.getIHCProjectNumberOfSegments1.HasValue ? result.getIHCProjectNumberOfSegments1.Value : 0;
         }
 
         public async Task<int> GetIHCProjectSegmentationSize()
         {
-            var result = await impl.getIHCProjectSegmentationSizeAsync(new inputMessageName18());
+            var result = await impl.getIHCProjectSegmentationSizeAsync(new inputMessageName18()).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.getIHCProjectSegmentationSize1.HasValue ? result.getIHCProjectSegmentationSize1.Value : 0;
         }
 
@@ -637,19 +641,19 @@ namespace Ihc {
                 getIHCProjectSegment1 = index,
                 getIHCProjectSegment2 = majorVersion,
                 getIHCProjectSegment3 = minorVersion
-            });
+            }).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.getIHCProjectSegment4?.data ?? Array.Empty<byte>();
         }
 
         public async Task<SceneProjectInfo> GetSceneProjectInfo()
         {
-            var result = await impl.getSceneProjectInfoAsync(new inputMessageName20());
+            var result = await impl.getSceneProjectInfoAsync(new inputMessageName20()).ConfigureAwait(asyncContinueOnCapturedContext);
             return mapSceneProjectInfo(result.getSceneProjectInfo1);
         }
 
         public async Task<int> GetSceneProjectSegmentationSize()
         {
-            var result = await impl.getSceneProjectSegmentationSizeAsync(new inputMessageName21());
+            var result = await impl.getSceneProjectSegmentationSizeAsync(new inputMessageName21()).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.getSceneProjectSegmentationSize1.HasValue ? result.getSceneProjectSegmentationSize1.Value : 0;
         }
 
@@ -658,7 +662,7 @@ namespace Ihc {
             var result = await impl.getSceneProjectSegmentAsync(new inputMessageName22()
             {
                 getSceneProjectSegment1 = index
-            });
+            }).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.getSceneProjectSegment2?.data ?? Array.Empty<byte>();
         }
     }

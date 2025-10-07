@@ -30,15 +30,15 @@ namespace Ihc {
                 logger.LogTrace("Request: " + request.ToString());
                 if (request.Content != null)
                 {
-                    logger.LogTrace(await request.Content.ReadAsStringAsync());
+                    logger.LogTrace(await request.Content.ReadAsStringAsync().ConfigureAwait(false));
                 }
 
-                HttpResponseMessage response = await base.SendAsync(request, cancellationToken);
+                HttpResponseMessage response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
                 logger.LogTrace("Response: " + response.ToString());
                 if (response.Content != null)
                 {
-                    logger.LogTrace(await response.Content.ReadAsStringAsync());
+                    logger.LogTrace(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
                 }
 
                 return response;
@@ -76,11 +76,13 @@ namespace Ihc {
         private readonly string url;
         private readonly ILogger logger;
         private readonly ICookieHandler cookieHandler;
+        private bool asyncContinueOnCapturedContext;
 
-        public Client(ILogger logger, ICookieHandler cookieHandler, string url) {
+        public Client(ILogger logger, ICookieHandler cookieHandler, string url, bool asyncContinueOnCapturedContext) {
             this.url = url;
             this.logger = logger;
             this.cookieHandler = cookieHandler;
+            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
         }
 
        /**

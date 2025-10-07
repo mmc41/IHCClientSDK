@@ -129,10 +129,11 @@ namespace Ihc {
     {
         private readonly ILogger logger;
         private readonly IAuthenticationService authService;
+        private readonly bool asyncContinueOnCapturedContext;
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Controller.ControllerService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint) : base(logger, cookieHandler, endpoint, "ControllerService") { }
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "ControllerService", asyncContinueOnCapturedContext) { }
 
             public Task<outputMessageName12> enterProjectChangeModeAsync(inputMessageName12 request)
             {
@@ -240,12 +241,14 @@ namespace Ihc {
         /**
         * Create an ControllerService instance for access to the IHC API related to the controller itself.
         * <param name="authService">AuthenticationService instance</param>
+        * <param name="asyncContinueOnCapturedContext">Configure await behavior for async operations. Default is false (no context capture).</param>
         */
-        public ControllerService(IAuthenticationService authService)
+        public ControllerService(IAuthenticationService authService, bool asyncContinueOnCapturedContext = false)
         {
             this.logger = authService.Logger;
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint);
+            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
+            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, asyncContinueOnCapturedContext);
         }
 
         private SDInfo mapSDCardData(WSSdCardData e)
@@ -301,7 +304,7 @@ namespace Ihc {
             using (Stream inStream = new System.IO.Compression.GZipStream(mscompressed, System.IO.Compression.CompressionMode.Decompress))
             using (StreamReader reader = new StreamReader(inStream, ProjectFile.Encoding))
             {
-                return await reader.ReadToEndAsync();
+                return await reader.ReadToEndAsync().ConfigureAwait(asyncContinueOnCapturedContext);
             }
         }
 
@@ -314,11 +317,11 @@ namespace Ihc {
                 {
                     using (StreamWriter writer = new StreamWriter(outStream, ProjectFile.Encoding, bufferSize: 10*1024, leaveOpen: true))
                     {
-                        await writer.WriteAsync(data);
-                        await writer.FlushAsync();
+                        await writer.WriteAsync(data).ConfigureAwait(asyncContinueOnCapturedContext);
+                        await writer.FlushAsync().ConfigureAwait(asyncContinueOnCapturedContext);
                     }
                     // Explicitly flush the GZipStream to ensure all compressed data is written
-                    await outStream.FlushAsync();
+                    await outStream.FlushAsync().ConfigureAwait(asyncContinueOnCapturedContext);
                 }
                 // GZipStream is now fully disposed and all data is written to mscompressed
                 return mscompressed.ToArray();
@@ -332,7 +335,7 @@ namespace Ihc {
 
             return new ProjectFile()
             {
-                Data = await decompress(wsFile.data),
+                Data = await decompress(wsFile.data).ConfigureAwait(asyncContinueOnCapturedContext),
                 Filename = wsFile.filename
             };
         }
@@ -341,7 +344,7 @@ namespace Ihc {
         {
             return new Ihc.Soap.Controller.WSFile()
             {
-                data = await compress(projectFile.Data),
+                data = await compress(projectFile.Data).ConfigureAwait(asyncContinueOnCapturedContext),
                 filename = projectFile.Filename
             };
         }
@@ -360,116 +363,116 @@ namespace Ihc {
 
         public async Task<bool> IsIHCProjectAvailable()
         {
-            var result = await impl.isIHCProjectAvailableAsync(new inputMessageName14() { });
+            var result = await impl.isIHCProjectAvailableAsync(new inputMessageName14() { }).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.isIHCProjectAvailable1.HasValue ? result.isIHCProjectAvailable1.Value : false;
         }
 
         public async Task<bool> IsSDCardReady()
         {
-            var result = await impl.isSDCardReadyAsync(new inputMessageName9() { });
+            var result = await impl.isSDCardReadyAsync(new inputMessageName9() { }).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.isSDCardReady1.HasValue ? result.isSDCardReady1.Value : false;
         }
 
         public async Task<SDInfo> GetSDCardInfo()
         {
-            var result = await impl.getSdCardInfoAsync(new inputMessageName5() { });
+            var result = await impl.getSdCardInfoAsync(new inputMessageName5() { }).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.getSdCardInfo1 != null ? mapSDCardData(result.getSdCardInfo1) : null;
         }
 /*
         public async Task<ControllerState> GetControllerState()
         {
-            var result = await impl.getStateAsync(new inputMessageName1() { });
+            var result = await impl.getStateAsync(new inputMessageName1() { }).ConfigureAwait(asyncContinueOnCapturedContext);
             return mapControllerState(result.getState1);
         }*/
 
         public async Task<string> GetControllerState()
         {
-            var result = await impl.getStateAsync(new inputMessageName1() { });
+            var result = await impl.getStateAsync(new inputMessageName1() { }).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.getState1?.state; // TODO: Convert to ControllerState oncce the enum is more complete.
         }
         
         public async Task<string> WaitForControllerStateChange(string waitState, int waitSec)
         {
-            var result = await impl.waitForControllerStateChangeAsync(new inputMessageName19(new Ihc.Soap.Controller.WSControllerState() { state = waitState }, waitSec) { });
+            var result = await impl.waitForControllerStateChangeAsync(new inputMessageName19(new Ihc.Soap.Controller.WSControllerState() { state = waitState }, waitSec) { }).ConfigureAwait(asyncContinueOnCapturedContext);
             return result?.waitForControllerStateChange3?.state;
         }
 
         public async Task<float> GetS0MeterValue()
         {
-            var result = await impl.getS0MeterValueAsync(new inputMessageName11() { });
+            var result = await impl.getS0MeterValueAsync(new inputMessageName11() { }).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.getS0MeterValue1.HasValue ? result.getS0MeterValue1.Value : 0.0f;
         }
         
         public async Task ResetS0Values() {
-            await impl.resetS0ValuesAsync(new inputMessageName10() { });
+            await impl.resetS0ValuesAsync(new inputMessageName10() { }).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task SetS0Consumption(float consumption, bool flag)
         {
-            await impl.setS0ConsumptionAsync(new inputMessageName6(consumption, flag) { });
+            await impl.setS0ConsumptionAsync(new inputMessageName6(consumption, flag) { }).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task SetS0FiscalYearStart(sbyte month, sbyte day)
         {
-            await impl.setS0FiscalYearStartAsync(new inputMessageName20(month, day) { });
+            await impl.setS0FiscalYearStartAsync(new inputMessageName20(month, day) { }).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<int> Restore()
         {
-            var result = await impl.restoreAsync(new inputMessageName7() { });
+            var result = await impl.restoreAsync(new inputMessageName7() { }).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.restore1.HasValue ? result.restore1.Value : 0;
         }
 
         public async Task<BackupFile> GetBackup()
         {
-            var result = await impl.getBackupAsync(new inputMessageName2() { });
+            var result = await impl.getBackupAsync(new inputMessageName2() { }).ConfigureAwait(asyncContinueOnCapturedContext);
             return mapBackup(result.getBackup1);
         }
 
         public async Task<ProjectInfo> GetProjectInfo()
         {
-            var result = await impl.getProjectInfoAsync(new inputMessageName8() { });
+            var result = await impl.getProjectInfoAsync(new inputMessageName8() { }).ConfigureAwait(asyncContinueOnCapturedContext);
             return mapProjectInfo(result.getProjectInfo1);
         }
         
         public async Task<ProjectFile> GetProject()
         {
-            var result = await impl.getIHCProjectAsync(new inputMessageName3() { });
-            return await mapProjectFile(result.getIHCProject1);
+            var result = await impl.getIHCProjectAsync(new inputMessageName3() { }).ConfigureAwait(asyncContinueOnCapturedContext);
+            return await mapProjectFile(result.getIHCProject1).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<bool> EnterProjectChangeMode()
         {
-            var result = await impl.enterProjectChangeModeAsync(new inputMessageName12() { });
+            var result = await impl.enterProjectChangeModeAsync(new inputMessageName12() { }).ConfigureAwait(asyncContinueOnCapturedContext);
             return result?.enterProjectChangeMode1 != null && result.enterProjectChangeMode1.Value;
         }
 
         public async Task<bool> ExitProjectChangeMode()
         {
-            var result = await impl.exitProjectChangeModeAsync(new inputMessageName13() { });
+            var result = await impl.exitProjectChangeModeAsync(new inputMessageName13() { }).ConfigureAwait(asyncContinueOnCapturedContext);
             return result?.exitProjectChangeMode1 != null && result.exitProjectChangeMode1.Value;
         }
 
         public async Task<bool> StoreProject(ProjectFile project)
         {
             // First perform some safty checks similar to what the IHC Visual App does:
-            bool controllerReady = (await GetControllerState()) == ControllerStates.READY;
+            bool controllerReady = (await GetControllerState().ConfigureAwait(asyncContinueOnCapturedContext)) == ControllerStates.READY;
             if (!controllerReady)
                 throw new InvalidOperationException("Controller not in ready state");
 
-            bool sdCardReady = await IsSDCardReady();
+            bool sdCardReady = await IsSDCardReady().ConfigureAwait(asyncContinueOnCapturedContext);
             if (!sdCardReady)
                 throw new InvalidOperationException("Controller SD Card not ready");
 
-            bool projectAvailable = await IsIHCProjectAvailable();
+            bool projectAvailable = await IsIHCProjectAvailable().ConfigureAwait(asyncContinueOnCapturedContext);
             if (!projectAvailable)
                 throw new InvalidOperationException("Controller has no project available");
 
-            bool inChange = await EnterProjectChangeMode();
+            bool inChange = await EnterProjectChangeMode().ConfigureAwait(asyncContinueOnCapturedContext);
             if (!inChange)
                 throw new InvalidOperationException("Controller could not enter change mode to prepare for project change");
 
-            var state = await WaitForControllerStateChange(ControllerStates.INIT, 10); // TODO: Retry x times.
+            var state = await WaitForControllerStateChange(ControllerStates.INIT, 10).ConfigureAwait(asyncContinueOnCapturedContext); // TODO: Retry x times.
             if (state != ControllerStates.INIT)
                 throw new InvalidOperationException("Controller state did not enter init state to prepare for project change");
 
@@ -480,28 +483,28 @@ namespace Ihc {
 
                 inputMessageName4 request = new inputMessageName4()
                 {
-                    storeIHCProject1 = await mapProjectFile(project)
+                    storeIHCProject1 = await mapProjectFile(project).ConfigureAwait(asyncContinueOnCapturedContext)
                 };
 
-                result = await impl.storeIHCProjectAsync(request);
+                result = await impl.storeIHCProjectAsync(request).ConfigureAwait(asyncContinueOnCapturedContext);
 
-                state = await WaitForControllerStateChange(ControllerStates.INIT, 10); // TODO: Retry x times.
+                state = await WaitForControllerStateChange(ControllerStates.INIT, 10).ConfigureAwait(asyncContinueOnCapturedContext); // TODO: Retry x times.
                 if (state != ControllerStates.INIT)
                     throw new InvalidOperationException("Controller state does not remain in init state after project change");
 
             }
             finally
             {
-                inChange = await ExitProjectChangeMode();
+                inChange = await ExitProjectChangeMode().ConfigureAwait(asyncContinueOnCapturedContext);
                 if (!inChange)
                     throw new InvalidOperationException("Controller could not exit change mode after project change");
 
-                state = await WaitForControllerStateChange(ControllerStates.READY, 10); // TODO: Retry x times.
+                state = await WaitForControllerStateChange(ControllerStates.READY, 10).ConfigureAwait(asyncContinueOnCapturedContext); // TODO: Retry x times.
                 if (state != ControllerStates.READY)
                     throw new InvalidOperationException("Controller state did not enter init state to prepare for project change");
             }
 
-            await Task.Delay(100); // Wait a little to let controller settle.
+            await Task.Delay(100).ConfigureAwait(asyncContinueOnCapturedContext); // Wait a little to let controller settle.
 
             return result.storeIHCProject2 != null && result.storeIHCProject2.Value;
         }
@@ -513,30 +516,30 @@ namespace Ihc {
                 getIHCProjectSegment1 = index,
                 getIHCProjectSegment2 = major,
                 getIHCProjectSegment3 = minor
-            });
-            return await mapProjectFile(result.getIHCProjectSegment4);
+            }).ConfigureAwait(asyncContinueOnCapturedContext);
+            return await mapProjectFile(result.getIHCProjectSegment4).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<bool> StoreIHCProjectSegment(ProjectFile segment, int index, int major)
         {
             var result = await impl.storeIHCProjectSegmentAsync(new inputMessageName16()
             {
-                storeIHCProjectSegment1 = await mapProjectFile(segment),
+                storeIHCProjectSegment1 = await mapProjectFile(segment).ConfigureAwait(asyncContinueOnCapturedContext),
                 storeIHCProjectSegment2 = index,
                 storeIHCProjectSegment3 = major
-            });
+            }).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.storeIHCProjectSegment4.HasValue ? result.storeIHCProjectSegment4.Value : false;
         }
 
         public async Task<int> GetIHCProjectSegmentationSize()
         {
-            var result = await impl.getIHCProjectSegmentationSizeAsync(new inputMessageName17());
+            var result = await impl.getIHCProjectSegmentationSizeAsync(new inputMessageName17()).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.getIHCProjectSegmentationSize1.HasValue ? result.getIHCProjectSegmentationSize1.Value : 0;
         }
 
         public async Task<int> GetIHCProjectNumberOfSegments()
         {
-            var result = await impl.getIHCProjectNumberOfSegmentsAsync(new inputMessageName18());
+            var result = await impl.getIHCProjectNumberOfSegmentsAsync(new inputMessageName18()).ConfigureAwait(asyncContinueOnCapturedContext);
             return result.getIHCProjectNumberOfSegments1.HasValue ? result.getIHCProjectNumberOfSegments1.Value : 0;
         }
     }

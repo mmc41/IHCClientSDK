@@ -31,12 +31,13 @@ namespace Ihc
             Func<int, Task<ResourceValue[]>> waitForChanges,
             Func<int[], Task> disableSubscription,
             ILogger logger,
+            bool asyncContinueOnCapturedContext,
             [EnumeratorCancellation] CancellationToken cancellationToken = default,
             int timeout_between_waits_in_seconds = 15)
         {
             try
             {
-                await enableSubscription(resourceIds);
+                await enableSubscription(resourceIds).ConfigureAwait(asyncContinueOnCapturedContext);
             }
             catch (Exception e)
             {
@@ -49,11 +50,11 @@ namespace Ihc
                 int sequentialErrorCount = 0;
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    await Task.Delay(25, cancellationToken); // Give the client a short rest between calls.
+                    await Task.Delay(25, cancellationToken).ConfigureAwait(asyncContinueOnCapturedContext); // Give the client a short rest between calls.
                     ResourceValue[] changes;
                     try
                     {
-                        changes = await waitForChanges(timeout_between_waits_in_seconds);
+                        changes = await waitForChanges(timeout_between_waits_in_seconds).ConfigureAwait(asyncContinueOnCapturedContext);
                         sequentialErrorCount = 0;
                     }
                     catch (Exception e)
@@ -68,7 +69,7 @@ namespace Ihc
                         else
                         {
                             // Allow server to recover.
-                            await Task.Delay(sequentialErrorCount * sequentialErrorCount * 100, cancellationToken);
+                            await Task.Delay(sequentialErrorCount * sequentialErrorCount * 100, cancellationToken).ConfigureAwait(asyncContinueOnCapturedContext);
                         }
                     }
 
@@ -82,8 +83,8 @@ namespace Ihc
             {
                 try
                 {
-                    await Task.Delay(25); // Give the client a short rest between calls.
-                    await disableSubscription(resourceIds);
+                    await Task.Delay(25).ConfigureAwait(asyncContinueOnCapturedContext); // Give the client a short rest between calls.
+                    await disableSubscription(resourceIds).ConfigureAwait(asyncContinueOnCapturedContext);
                 }
                 catch (Exception e)
                 {

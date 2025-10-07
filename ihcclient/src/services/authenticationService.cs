@@ -49,6 +49,7 @@ namespace Ihc {
         private readonly ILogger logger;
         private readonly ICookieHandler cookieHandler;
         private readonly string endpoint;
+        private readonly bool asyncContinueOnCapturedContext;
 
         public ICookieHandler GetCookieHandler()
         {
@@ -69,7 +70,7 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Authentication.AuthenticationService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint) : base(logger, cookieHandler, endpoint, "AuthenticationService") { }
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "AuthenticationService", asyncContinueOnCapturedContext) { }
 
             public Task<outputMessageName2> authenticateAsync(inputMessageName2 request)
             {
@@ -126,17 +127,19 @@ namespace Ihc {
         *
         * NOTE: The AuthenticationService instance should be passed as an argument to other services (except OpenAPI).
         */
-        public AuthenticationService(ILogger logger, string endpoint, bool logSensitiveData = false)
+        public AuthenticationService(ILogger logger, string endpoint, bool logSensitiveData = false, bool asyncContinueOnCapturedContext = false)
         {
             this.logger = logger;
             this.endpoint = endpoint;
             this.cookieHandler = new CookieHandler(logger, logSensitiveData);
-            this.impl = new SoapImpl(logger, cookieHandler, endpoint);
+            this.impl = new SoapImpl(logger, cookieHandler, endpoint, asyncContinueOnCapturedContext);
+            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
+            this.isConnected = false;
         }
 
         public async Task<bool> Ping()
         {
-            var resp = await impl.pingAsync(new inputMessageName3());
+            var resp = await impl.pingAsync(new inputMessageName3()).ConfigureAwait(asyncContinueOnCapturedContext);
             var result = resp.ping1;
             return result.HasValue ? result.Value : false;
         }
@@ -145,7 +148,9 @@ namespace Ihc {
         {
             logger.LogInformation("IHC Authenticate called");
             isConnected = false;
-            var resp = await impl.authenticateAsync(new inputMessageName2() { authenticate1 = new WSAuthenticationData { username = userName, password = password, application = application } });
+            var resp = await impl.authenticateAsync(new inputMessageName2() { authenticate1 = new WSAuthenticationData { username = userName, password = password, application = application } })
+                                 .ConfigureAwait(asyncContinueOnCapturedContext);
+
             var result = resp.authenticate2;
             if (result.loginWasSuccessful)
             {
@@ -197,7 +202,7 @@ namespace Ihc {
             bool? result;
 
             try {
-                var resp = await impl.disconnectAsync(new inputMessageName1());
+                var resp = await impl.disconnectAsync(new inputMessageName1()).ConfigureAwait(asyncContinueOnCapturedContext);
                 result = resp.disconnect1;
             } finally {
                 isConnected = false;
@@ -224,7 +229,7 @@ namespace Ihc {
 
         public async ValueTask DisposeAsync()
         {
-            await this.Disconnect();
+            await this.Disconnect().ConfigureAwait(asyncContinueOnCapturedContext);
             GC.SuppressFinalize(this);
         }
     }

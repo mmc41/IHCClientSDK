@@ -29,10 +29,11 @@ namespace Ihc {
     public class NotificationManagerService : INotificationManagerService {
         private readonly ILogger logger;
         private readonly IAuthenticationService authService;
+        private readonly bool asyncContinueOnCapturedContext;
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Notificationmanager.NotificationManagerService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint) : base(logger, cookieHandler, endpoint, "NotificationManagerService") {}
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "NotificationManagerService", asyncContinueOnCapturedContext) {}
 
             public Task<outputMessageName2> clearMessagesAsync(inputMessageName2 request)
             {
@@ -50,11 +51,13 @@ namespace Ihc {
         /**
         * Create an NotificationManagerService instance for access to the IHC API related to notifications.
         * <param name="authService">AuthenticationService instance</param>
+        * <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
         */
-        public NotificationManagerService(IAuthenticationService authService) {
+        public NotificationManagerService(IAuthenticationService authService, bool asyncContinueOnCapturedContext = false) {
             this.logger = authService.Logger;
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint);
+            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
+            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, asyncContinueOnCapturedContext);
         }
 
         private NotificationMessage mapMessage(WSNotificationMessage e)
@@ -84,12 +87,12 @@ namespace Ihc {
 
         public async Task ClearMessages()
         {
-            await impl.clearMessagesAsync(new inputMessageName2());
-        }       
+            await impl.clearMessagesAsync(new inputMessageName2()).ConfigureAwait(asyncContinueOnCapturedContext);
+        }
 
         public async Task<NotificationMessage[]> GetMessages()
         {
-            var resp = await impl.getMessagesAsync(new inputMessageName1());
+            var resp = await impl.getMessagesAsync(new inputMessageName1()).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.getMessages1.Where((v) => v != null).Select((v) => mapMessage(v)).ToArray();
         }
     }

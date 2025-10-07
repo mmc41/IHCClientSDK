@@ -135,10 +135,11 @@ namespace Ihc {
     {
         private readonly ILogger logger;
         private readonly IAuthenticationService authService;
+        private readonly bool asyncContinueOnCapturedContext;
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Configuration.ConfigurationService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint) : base(logger, cookieHandler, endpoint, "ConfigurationService") { }
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "ConfigurationService", asyncContinueOnCapturedContext) { }
 
             public Task<outputMessageName3> clearUserLogAsync(inputMessageName3 request)
             {
@@ -266,12 +267,14 @@ namespace Ihc {
         /**
         * Create an ConfigurationService instance for access to the IHC API related to configuration.
         * <param name="authService">AuthenticationService instance</param>
+        * <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
         */
-        public ConfigurationService(IAuthenticationService authService)
+        public ConfigurationService(IAuthenticationService authService, bool asyncContinueOnCapturedContext = false)
         {
             this.logger = authService.Logger;
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint);
+            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
+            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, asyncContinueOnCapturedContext);
         }
 
         private SystemInfo mapSystemInfo(Ihc.Soap.Configuration.WSSystemInfo info)
@@ -537,78 +540,78 @@ namespace Ihc {
 
         public async Task<SystemInfo> GetSystemInfo()
         {
-            var resp = await impl.getSystemInfoAsync(new inputMessageName6() { });
+            var resp = await impl.getSystemInfoAsync(new inputMessageName6() { }).ConfigureAwait(asyncContinueOnCapturedContext);
             return mapSystemInfo(resp.getSystemInfo1);
         }
 
         public async Task ClearUserLog() {
-            await impl.clearUserLogAsync(new inputMessageName3());
+            await impl.clearUserLogAsync(new inputMessageName3()).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<string[]> GetUserLog(string lang) {
-            var resp = await impl.getUserLogAsync(new inputMessageName2("", 0, lang));
+            var resp = await impl.getUserLogAsync(new inputMessageName2("", 0, lang)).ConfigureAwait(asyncContinueOnCapturedContext);
             return mapLogFile(resp.getUserLog4);
         }
 
         public async Task DelayedReboot(int delayUnknownUnit) {
-            await impl.delayedRebootAsync(new inputMessageName1(delayUnknownUnit) {});
+            await impl.delayedRebootAsync(new inputMessageName1(delayUnknownUnit) {}).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         // Network operations
 
         public async Task<NetworkSettings> GetNetworkSettings() {
-            var resp = await impl.getNetworkSettingsAsync(new inputMessageName16());
+            var resp = await impl.getNetworkSettingsAsync(new inputMessageName16()).ConfigureAwait(asyncContinueOnCapturedContext);
             return mapNetworkSettings(resp.getNetworkSettings1);
         }
 
         public async Task SetNetworkSettings(NetworkSettings settings) {
-            await impl.setNetworkSettingsAsync(new inputMessageName17(unmapNetworkSettings(settings)));
+            await impl.setNetworkSettingsAsync(new inputMessageName17(unmapNetworkSettings(settings))).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<DNSServers> GetDNSServers() {
-            var resp = await impl.getDNSServersAsync(new inputMessageName7());
+            var resp = await impl.getDNSServersAsync(new inputMessageName7()).ConfigureAwait(asyncContinueOnCapturedContext);
             return mapDNSServers(resp.getDNSServers1);
         }
 
         public async Task SetDNSServers(DNSServers dnsServers) {
             var (dns1, dns2) = unmapDNSServers(dnsServers);
-            await impl.setDNSServersAsync(new inputMessageName8(dns1, dns2));
+            await impl.setDNSServersAsync(new inputMessageName8(dns1, dns2)).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         // WiFi operations
 
         public async Task<WLanSettings> GetWLanSettings() {
-            var resp = await impl.getWLanSettingsAsync(new inputMessageName14());
+            var resp = await impl.getWLanSettingsAsync(new inputMessageName14()).ConfigureAwait(asyncContinueOnCapturedContext);
             return mapWLanSettings(resp.getWLanSettings1);
         }
 
         public async Task SetWLanSettings(WLanSettings settings) {
-            await impl.setWLanSettingsAsync(new inputMessageName15(unmapWLanSettings(settings)));
+            await impl.setWLanSettingsAsync(new inputMessageName15(unmapWLanSettings(settings))).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<WLanInterface> GetWLanInterface() {
-            var resp = await impl.getWLanInterfaceAsync(new inputMessageName12());
+            var resp = await impl.getWLanInterfaceAsync(new inputMessageName12()).ConfigureAwait(asyncContinueOnCapturedContext);
             return mapWLanInterface(resp.getWLanInterface1);
         }
 
         public async Task<WLanCell[]> GetWLanScan() {
-            var resp = await impl.getWLanScanAsync(new inputMessageName13());
+            var resp = await impl.getWLanScanAsync(new inputMessageName13()).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.getWLanScan1?.Select(cell => mapWLanCell(cell)).ToArray();
         }
 
         // SMTP operations
 
         public async Task<SMTPSettings> GetSMTPSettings() {
-            var resp = await impl.getSMTPSettingsAsync(new inputMessageName5());
+            var resp = await impl.getSMTPSettingsAsync(new inputMessageName5()).ConfigureAwait(asyncContinueOnCapturedContext);
             return mapSMTPSettings(resp.getSMTPSettings1);
         }
 
         public async Task SetSMTPSettings(SMTPSettings settings) {
-            await impl.setSMTPSettingsAsync(new inputMessageName4(unmapSMTPSettings(settings)));
+            await impl.setSMTPSettingsAsync(new inputMessageName4(unmapSMTPSettings(settings))).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task TestSettingsNow() {
-            await impl.testSettingsNowAsync(new inputMessageName9(null));
+            await impl.testSettingsNowAsync(new inputMessageName9(null)).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<bool> TestSendMessage(string recipient, string subject, string message) {
@@ -616,45 +619,45 @@ namespace Ihc {
             var notificationMessage = new Ihc.Soap.Configuration.WSNotificationMessage() {
                 recipient = recipient
             };
-            var resp = await impl.testSendMessage1Async(new inputMessageName11(notificationMessage, subject, message, null));
+            var resp = await impl.testSendMessage1Async(new inputMessageName11(notificationMessage, subject, message, null)).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.testSendMessage12?.attemptSucceeded ?? false;
         }
 
         // Email Control operations
 
         public async Task<bool> GetEmailControlEnabled() {
-            var resp = await impl.getEmailControlEnabledAsync(new inputMessageName21());
+            var resp = await impl.getEmailControlEnabledAsync(new inputMessageName21()).ConfigureAwait(asyncContinueOnCapturedContext);
             return resp.getEmailControlEnabled1 ?? false;
         }
 
         public async Task SetEmailControlEnabled(bool enabled) {
-            await impl.setEmailControlEnabledAsync(new inputMessageName20(enabled));
+            await impl.setEmailControlEnabledAsync(new inputMessageName20(enabled)).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<EmailControlSettings> GetEmailControlSettings() {
-            var resp = await impl.getEmailControlSettingsAsync(new inputMessageName22());
+            var resp = await impl.getEmailControlSettingsAsync(new inputMessageName22()).ConfigureAwait(asyncContinueOnCapturedContext);
             return mapEmailControlSettings(resp.getEmailControlSettings1);
         }
 
         public async Task SetEmailControlSettings(EmailControlSettings settings) {
-            await impl.setEmailControlSettingsAsync(new inputMessageName23(unmapEmailControlSettings(settings)));
+            await impl.setEmailControlSettingsAsync(new inputMessageName23(unmapEmailControlSettings(settings))).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         // Web Access Control operations
 
         public async Task<WebAccessControl> GetWebAccessControl() {
-            var resp = await impl.getWebAccessControlAsync(new inputMessageName18());
+            var resp = await impl.getWebAccessControlAsync(new inputMessageName18()).ConfigureAwait(asyncContinueOnCapturedContext);
             return mapWebAccessControl(resp.getWebAccessControl1);
         }
 
         public async Task SetWebAccessControl(WebAccessControl accessControl) {
-            await impl.setWebAccessControlAsync(new inputMessageName19(unmapWebAccessControl(accessControl)));
+            await impl.setWebAccessControlAsync(new inputMessageName19(unmapWebAccessControl(accessControl))).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         // Language operations
 
         public async Task SetServerLanguage(string language) {
-            await impl.setServerLanguageAsync(new inputMessageName24(language));
+            await impl.setServerLanguageAsync(new inputMessageName24(language)).ConfigureAwait(asyncContinueOnCapturedContext);
         }
     }
 }
