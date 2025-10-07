@@ -309,11 +309,18 @@ namespace Ihc {
         {
             using (MemoryStream mscompressed = new MemoryStream())
             {
+                // Explicit scope ensures GZipStream is fully flushed and disposed before ToArray()
                 using (Stream outStream = new System.IO.Compression.GZipStream(mscompressed, System.IO.Compression.CompressionMode.Compress))
-                using (StreamWriter writer = new StreamWriter(outStream, ProjectFile.Encoding))
                 {
-                    await writer.WriteAsync(data);
+                    using (StreamWriter writer = new StreamWriter(outStream, ProjectFile.Encoding, bufferSize: 10*1024, leaveOpen: true))
+                    {
+                        await writer.WriteAsync(data);
+                        await writer.FlushAsync();
+                    }
+                    // Explicitly flush the GZipStream to ensure all compressed data is written
+                    await outStream.FlushAsync();
                 }
+                // GZipStream is now fully disposed and all data is written to mscompressed
                 return mscompressed.ToArray();
             }
         }

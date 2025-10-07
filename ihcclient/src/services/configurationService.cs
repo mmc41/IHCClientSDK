@@ -45,12 +45,12 @@ namespace Ihc {
         /**
         * Get DNS server addresses configured on the controller.
         */
-        public Task<string[]> GetDNSServers();
+        public Task<DNSServers> GetDNSServers();
 
         /**
         * Set DNS server addresses (primary and secondary).
         */
-        public Task SetDNSServers(string[] dnsServers);
+        public Task SetDNSServers(DNSServers dnsServers);
 
         /**
         * Get wireless LAN settings.
@@ -276,6 +276,12 @@ namespace Ihc {
 
         private SystemInfo mapSystemInfo(Ihc.Soap.Configuration.WSSystemInfo info)
         {
+            // Return empty SystemInfo if input is null
+            if (info == null)
+            {
+                return new SystemInfo();
+            }
+
             return new SystemInfo()
             {
                 Uptime = info.uptime,
@@ -324,6 +330,27 @@ namespace Ihc {
                 httpPort = settings.HttpPort,
                 httpsPort = settings.HttpsPort
             };
+        }
+
+        private DNSServers mapDNSServers(Ihc.Soap.Configuration.WSInetAddress[] dnsAddresses)
+        {
+            // Assume max length is 2 (primary and secondary DNS)
+            return new DNSServers()
+            {
+                PrimaryDNS = dnsAddresses != null && dnsAddresses.Length > 0 ? NetworkHelper.ConvertIntToIPAddress(dnsAddresses[0].ipAddress) : null,
+                SecondaryDNS = dnsAddresses != null && dnsAddresses.Length > 1 ? NetworkHelper.ConvertIntToIPAddress(dnsAddresses[1].ipAddress) : null
+            };
+        }
+
+        private (Ihc.Soap.Configuration.WSInetAddress, Ihc.Soap.Configuration.WSInetAddress) unmapDNSServers(DNSServers dnsServers)
+        {
+            var dns1 = !string.IsNullOrEmpty(dnsServers?.PrimaryDNS)
+                ? new Ihc.Soap.Configuration.WSInetAddress() { ipAddress = NetworkHelper.ConvertIPAddressToInt(dnsServers.PrimaryDNS) }
+                : null;
+            var dns2 = !string.IsNullOrEmpty(dnsServers?.SecondaryDNS)
+                ? new Ihc.Soap.Configuration.WSInetAddress() { ipAddress = NetworkHelper.ConvertIPAddressToInt(dnsServers.SecondaryDNS) }
+                : null;
+            return (dns1, dns2);
         }
 
         private WLanSettings mapWLanSettings(Ihc.Soap.Configuration.WSWLanSettings settings)
@@ -511,7 +538,7 @@ namespace Ihc {
         public async Task<SystemInfo> GetSystemInfo()
         {
             var resp = await impl.getSystemInfoAsync(new inputMessageName6() { });
-            return resp.getSystemInfo1!=null ? mapSystemInfo(resp.getSystemInfo1) : null;
+            return mapSystemInfo(resp.getSystemInfo1);
         }
 
         public async Task ClearUserLog() {
@@ -538,17 +565,13 @@ namespace Ihc {
             await impl.setNetworkSettingsAsync(new inputMessageName17(unmapNetworkSettings(settings)));
         }
 
-        public async Task<string[]> GetDNSServers() {
+        public async Task<DNSServers> GetDNSServers() {
             var resp = await impl.getDNSServersAsync(new inputMessageName7());
-            // WSInetAddress has ipAddress as int - need to convert to string
-            // For now, return null if not available, or implement IP int to string conversion if needed
-            return resp.getDNSServers1?.Select(addr => addr.ipAddress.ToString()).ToArray();
+            return mapDNSServers(resp.getDNSServers1);
         }
 
-        public async Task SetDNSServers(string[] dnsServers) {
-            // Note: DNS servers API takes only 2 servers (primary and secondary)
-            var dns1 = dnsServers != null && dnsServers.Length > 0 ? new Ihc.Soap.Configuration.WSInetAddress() { ipAddress = int.Parse(dnsServers[0]) } : null;
-            var dns2 = dnsServers != null && dnsServers.Length > 1 ? new Ihc.Soap.Configuration.WSInetAddress() { ipAddress = int.Parse(dnsServers[1]) } : null;
+        public async Task SetDNSServers(DNSServers dnsServers) {
+            var (dns1, dns2) = unmapDNSServers(dnsServers);
             await impl.setDNSServersAsync(new inputMessageName8(dns1, dns2));
         }
 
