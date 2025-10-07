@@ -46,10 +46,8 @@ namespace Ihc {
     */
     public class AuthenticationService : ServiceBase, IAuthenticationService
     {
-        private readonly ILogger logger;
         private readonly ICookieHandler cookieHandler;
         private readonly string endpoint;
-        private readonly bool asyncContinueOnCapturedContext;
 
         public ICookieHandler GetCookieHandler()
         {
@@ -128,12 +126,11 @@ namespace Ihc {
         * NOTE: The AuthenticationService instance should be passed as an argument to other services (except OpenAPI).
         */
         public AuthenticationService(ILogger logger, string endpoint, bool logSensitiveData = false, bool asyncContinueOnCapturedContext = false)
+            : base(logger, asyncContinueOnCapturedContext)
         {
-            this.logger = logger;
             this.endpoint = endpoint;
             this.cookieHandler = new CookieHandler(logger, logSensitiveData);
             this.impl = new SoapImpl(logger, cookieHandler, endpoint, asyncContinueOnCapturedContext);
-            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
             this.isConnected = false;
         }
 

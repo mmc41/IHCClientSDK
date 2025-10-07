@@ -65,9 +65,7 @@ namespace Ihc
 
     public class AirlinkManagementService : ServiceBase, IAirlinkManagementService
     {
-        private readonly ILogger logger;
         private readonly IAuthenticationService authService;
-        private readonly bool asyncContinueOnCapturedContext;
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.AirlinkManagement.AirlinkManagementService
         {
@@ -132,10 +130,9 @@ namespace Ihc
         * <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
         */
         public AirlinkManagementService(IAuthenticationService authService, bool asyncContinueOnCapturedContext = false)
+            : base(authService.Logger, asyncContinueOnCapturedContext)
         {
-            this.logger = authService.Logger;
             this.authService = authService;
-            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
             this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, asyncContinueOnCapturedContext);
         }
 

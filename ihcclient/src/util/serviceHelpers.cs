@@ -10,12 +10,24 @@ namespace Ihc
 {
     public interface IIHCService
     {
+       /// <summary>
+       /// Get metadata about the operations supported by this service.
+       /// For use by test and documentation tools. Not for normal application code.
+       /// </summary>
+       /// <returns></returns>
        public IReadOnlyList<SeviceOperationMetadata> GetOperations();
     }
 
     public abstract class ServiceBase : IIHCService
     {
-        protected ServiceBase() { }
+        protected readonly ILogger logger;
+        protected readonly bool asyncContinueOnCapturedContext;
+
+        protected ServiceBase(ILogger logger, bool asyncContinueOnCapturedContext)
+        {
+            this.logger = logger;
+            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
+        }
 
         public IReadOnlyList<SeviceOperationMetadata> GetOperations()
         {

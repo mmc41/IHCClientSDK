@@ -59,9 +59,7 @@ namespace Ihc {
     * A highlevel implementation of a client to the IHC ModuleService without exposing any of the soap distractions.
     */
     public class ModuleService : ServiceBase, IModuleService {
-        private readonly ILogger logger;
         private readonly IAuthenticationService authService;
-        private readonly bool asyncContinueOnCapturedContext;
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Module.ModuleService
         {
@@ -110,10 +108,10 @@ namespace Ihc {
         * <param name="authService">AuthenticationService instance</param>
         * <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
         */
-        public ModuleService(IAuthenticationService authService, bool asyncContinueOnCapturedContext = false) {
-            this.logger = authService.Logger;
+        public ModuleService(IAuthenticationService authService, bool asyncContinueOnCapturedContext = false)
+            : base(authService.Logger, asyncContinueOnCapturedContext)
+        {
             this.authService = authService;
-            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
             this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, asyncContinueOnCapturedContext);
         }
 

@@ -129,9 +129,7 @@ namespace Ihc {
     */
     public class ResourceInteractionService : ServiceBase, IResourceInteractionService
     {
-        private readonly ILogger logger;
         private readonly IAuthenticationService authService;
-        private readonly bool asyncContinueOnCapturedContext;
 
         /**
          * This internal class implements the raw IHC soap service interface and provides the basis
@@ -438,10 +436,9 @@ namespace Ihc {
         * <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
         */
         public ResourceInteractionService(IAuthenticationService authService, bool asyncContinueOnCapturedContext = false)
+            : base(authService.Logger, asyncContinueOnCapturedContext)
         {
-            this.logger = authService.Logger;
             this.authService = authService;
-            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
             this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, asyncContinueOnCapturedContext);
         }
 

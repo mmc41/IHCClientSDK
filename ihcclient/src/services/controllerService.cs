@@ -127,9 +127,7 @@ namespace Ihc {
     */
     public class ControllerService : ServiceBase, IControllerService
     {
-        private readonly ILogger logger;
         private readonly IAuthenticationService authService;
-        private readonly bool asyncContinueOnCapturedContext;
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Controller.ControllerService
         {
@@ -244,10 +242,9 @@ namespace Ihc {
         * <param name="asyncContinueOnCapturedContext">Configure await behavior for async operations. Default is false (no context capture).</param>
         */
         public ControllerService(IAuthenticationService authService, bool asyncContinueOnCapturedContext = false)
+            : base(authService.Logger, asyncContinueOnCapturedContext)
         {
-            this.logger = authService.Logger;
             this.authService = authService;
-            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
             this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, asyncContinueOnCapturedContext);
         }
 

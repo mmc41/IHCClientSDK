@@ -144,10 +144,8 @@ namespace Ihc {
     */
     public class OpenAPIService : ServiceBase, IOpenAPIService
     {
-        private readonly ILogger logger;
         private readonly string endpoint;
         private readonly ICookieHandler cookieHandler;
-        private readonly bool asyncContinueOnCapturedContext;
 
         public ICookieHandler GetCookieHandler()
         {
@@ -488,11 +486,10 @@ namespace Ihc {
         * <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
         */
         public OpenAPIService(ILogger logger, string endpoint, bool logSensitiveData = false, bool asyncContinueOnCapturedContext = false)
+            : base(logger, asyncContinueOnCapturedContext)
         {
-            this.logger = logger;
             this.endpoint = endpoint;
             this.cookieHandler = new CookieHandler(logger, logSensitiveData);
-            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
             this.impl = new SoapImpl(logger, cookieHandler, endpoint, asyncContinueOnCapturedContext);
         }
 
