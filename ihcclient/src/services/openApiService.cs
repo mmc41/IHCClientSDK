@@ -311,6 +311,9 @@ namespace Ihc {
 
         private ResourceValue mapResourceValue(Ihc.Soap.Openapi.WSResourceValue v)
         {
+            if (v == null)
+                return null;
+
             var value = new ResourceValue.UnionValue() { };
 
             if (v is Ihc.Soap.Openapi.WSBooleanValue boolVal)
@@ -428,9 +431,12 @@ namespace Ihc {
             var events = eventPackage.resourceValueEvents?.Select(e =>
             {
                 var resourceValue = mapResourceValue(e.m_value);
-                resourceValue.ResourceID = e.m_resourceID;
+                if (resourceValue != null)
+                {
+                    resourceValue.ResourceID = e.m_resourceID;
+                }
                 return resourceValue;
-            }).ToArray() ?? Array.Empty<ResourceValue>();
+            }).Where(rv => rv != null).ToArray() ?? Array.Empty<ResourceValue>();
 
             return new EventPackage()
             {
@@ -529,7 +535,7 @@ namespace Ihc {
         public async Task<DateTime> GetTime()
         {
             var result = await impl.getTimeAsync(new inputMessageName8());
-            return result.getTime1.ToDateTimeOffset().DateTime;
+            return result.getTime1?.ToDateTimeOffset().DateTime ?? DateTime.MinValue;
         }
 
         public async Task<bool> IsIHCProjectAvailable()

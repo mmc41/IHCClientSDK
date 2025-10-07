@@ -147,6 +147,12 @@ namespace Ihc {
             var result = resp.authenticate2;
             if (result.loginWasSuccessful)
             {
+                // Add null checks for loggedInUser and nested properties
+                if (result.loggedInUser == null)
+                {
+                    throw new ErrorWithCodeException(Errors.LOGIN_UNKNOWN_ERROR, "Ihc server login succeeded but returned null user data for " + impl.Url);
+                }
+
                 isConnected = true;
 
                 return new IhcUser()
@@ -156,7 +162,7 @@ namespace Ihc {
                     Firstname = result.loggedInUser.firstname,
                     Lastname = result.loggedInUser.lastname,
                     Phone = result.loggedInUser.phone,
-                    Group = result.loggedInUser.group.type,
+                    Group = result.loggedInUser.group?.type,
                     Project = result.loggedInUser.project,
                     CreatedDate = result.loggedInUser.createdDate.ToDateTimeOffset(),
                     LoginDate = result.loggedInUser.loginDate.ToDateTimeOffset(),

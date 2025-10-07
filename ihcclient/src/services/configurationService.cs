@@ -295,7 +295,10 @@ namespace Ihc {
 
         private string[] mapLogFile(Ihc.Soap.Configuration.WSFile e)
         {
-            string logs = e!=null && e.data != null ? System.Text.Encoding.UTF8.GetString(e.data) : "";
+            if (e == null)
+                return Array.Empty<string>();
+
+            string logs = e.data != null ? System.Text.Encoding.UTF8.GetString(e.data) : "";
             return logs.Split('\n', '\r');
         }
 

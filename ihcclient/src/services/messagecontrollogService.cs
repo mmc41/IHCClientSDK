@@ -59,13 +59,16 @@ namespace Ihc {
 
         private LogEventEntry mapEvent(WSMessageControlLogEntry e)
         {
+            if (e == null)
+                return null;
+
             return new LogEventEntry()
             {
                 Date = mapDate(e.date),
                 ControlType = e.controlType,
                 LogEntryType = e.logEntryType,
-                SenderAddress = e.senderAddress.address,
-                SenderAddressDescription = e.senderAddress.description,
+                SenderAddress = e.senderAddress?.address,
+                SenderAddressDescription = e.senderAddress?.description,
                 TriggerString = e.triggerString,
                 AuthenticationTypeAsString = e.authenticationTypeAsString,
                 ActionTypeAsString = e.actionTypeAsString
@@ -74,6 +77,9 @@ namespace Ihc {
 
         private DateTimeOffset mapDate(WSDate v)
         {
+            if (v == null)
+                return DateTimeOffset.MinValue;
+
             return new DateTimeOffset(v.year, v.monthWithJanuaryAsOne, v.day, v.hours, v.minutes, v.seconds, DateHelper.GetWSTimeOffset());
         }
 

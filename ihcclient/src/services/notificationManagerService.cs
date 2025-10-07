@@ -59,6 +59,9 @@ namespace Ihc {
 
         private NotificationMessage mapMessage(WSNotificationMessage e)
         {
+            if (e == null)
+                return null;
+
             return new NotificationMessage()
             {
                 Date = mapDate(e.date),
@@ -73,6 +76,9 @@ namespace Ihc {
 
         private DateTimeOffset mapDate(WSDate v)
         {
+            if (v == null)
+                return DateTimeOffset.MinValue;
+
             return new DateTimeOffset(v.year, v.monthWithJanuaryAsOne, v.day, v.hours, v.minutes, v.seconds, DateHelper.GetWSTimeOffset());
         }
 

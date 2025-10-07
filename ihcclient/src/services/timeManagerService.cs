@@ -90,6 +90,9 @@ namespace Ihc {
 
         private TimeManagerSettings mapSettings(WSTimeManagerSettings ws)
         {
+            if (ws == null)
+                return null;
+
             return new TimeManagerSettings
             {
                 SynchroniseTimeAgainstServer = ws.synchroniseTimeAgainstServer,
@@ -122,6 +125,9 @@ namespace Ihc {
 
         private TimeServerConnectionResult mapTimeServerConnectionResult(WSTimeServerConnectionResult ws)
         {
+            if (ws == null)
+                return null;
+
             return new TimeServerConnectionResult
             {
                 ConnectionWasSuccessful = ws.connectionWasSuccessful,

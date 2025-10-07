@@ -250,6 +250,9 @@ namespace Ihc {
 
         private SDInfo mapSDCardData(WSSdCardData e)
         {
+            if (e == null)
+                return null;
+
             return new SDInfo()
             {
                 Size = e.size,
@@ -268,11 +271,17 @@ namespace Ihc {
 
         private DateTimeOffset mapDate(WSDate v)
         {
+            if (v == null)
+                return DateTimeOffset.MinValue;
+
             return new DateTimeOffset(v.year, v.monthWithJanuaryAsOne, v.day, v.hours, v.minutes, v.seconds, DateHelper.GetWSTimeOffset());
         }
 
         private ProjectInfo mapProjectInfo(Ihc.Soap.Controller.WSProjectInfo projectInfo)
         {
+            if (projectInfo == null)
+                return null;
+
             return new ProjectInfo()
             {
                 VisualMajorVersion = projectInfo.visualMajorVersion,
@@ -311,6 +320,9 @@ namespace Ihc {
 
         private async Task<ProjectFile> mapProjectFile(Ihc.Soap.Controller.WSFile wsFile)
         {
+            if (wsFile == null)
+                return null;
+
             return new ProjectFile()
             {
                 Data = await decompress(wsFile.data),
@@ -366,7 +378,7 @@ namespace Ihc {
         public async Task<string> GetControllerState()
         {
             var result = await impl.getStateAsync(new inputMessageName1() { });
-            return result.getState1.state; // TODO: Convert to ControllerState oncce the enum is more complete.
+            return result.getState1?.state; // TODO: Convert to ControllerState oncce the enum is more complete.
         }
         
         public async Task<string> WaitForControllerStateChange(string waitState, int waitSec)

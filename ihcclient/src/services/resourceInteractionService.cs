@@ -245,6 +245,9 @@ namespace Ihc {
 
         private ResourceValue mapResourceValueEnvelope(WSResourceValueEnvelope v)
         {
+            if (v == null)
+                return null;
+
             var value = new ResourceValue.UnionValue() { };
 
             if (v.value is WSBooleanValue)
@@ -391,6 +394,9 @@ namespace Ihc {
         }
         
         public SceneResourceIdAndLocation mapSceneResourceIdAndLocation(Ihc.Soap.Resourceinteraction.WSSceneResourceIdAndLocationURLs arg) {
+            if (arg == null)
+                return null;
+
             return new SceneResourceIdAndLocation() {
                 SceneResourceId = arg.sceneResourceId,
                 ScenePositionSeenFromProduct = arg.scenePositionSeenFromProduct,
@@ -466,7 +472,12 @@ namespace Ihc {
         public async Task<ResourceValue> GetInitialValue(int? initialValue)
         {
             var resp = await impl.getInitialValueAsync(new inputMessageName15() { getInitialValue1 = initialValue });
-            return mapResourceValueEnvelope(resp.getInitialValue2);
+            var result = mapResourceValueEnvelope(resp.getInitialValue2);
+            if (result == null)
+            {
+                throw new ErrorWithCodeException(Errors.FEATURE_NOT_IMPLEMENTED, "IHC controller returned null resource value for resource ID " + initialValue);
+            }
+            return result;
         }
 
         public async Task<ResourceValue[]> GetInitialValues(int[] initialValues)
@@ -504,7 +515,12 @@ namespace Ihc {
         public async Task<ResourceValue> GetRuntimeValue(int resourceID)
         {
             var resp = await impl.getRuntimeValueAsync(new inputMessageName14() { getRuntimeValue1 = resourceID });
-            return mapResourceValueEnvelope(resp.getRuntimeValue2);
+            var result = mapResourceValueEnvelope(resp.getRuntimeValue2);
+            if (result == null)
+            {
+                throw new ErrorWithCodeException(Errors.FEATURE_NOT_IMPLEMENTED, "IHC controller returned null runtime value for resource ID " + resourceID);
+            }
+            return result;
         }
 
         public async Task<ResourceValue[]> GetRuntimeValues(int[] resourceIDs)
