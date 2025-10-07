@@ -26,8 +26,9 @@ namespace Ihc.Tests
             var operations = service.GetOperations();
 
             // Find the WaitForResourceValueChanges operation and verify it exist
-            var waitForChangesOperation = operations.FirstOrDefault(op => op.Name == "WaitForResourceValueChanges");
-            Assert.That(waitForChangesOperation, Is.Not.Null, "WaitForResourceValueChanges operation should be found in metadata");
+            const string operationName = nameof(ResourceInteractionService.WaitForResourceValueChanges);
+            var waitForChangesOperation = operations.FirstOrDefault(op => op.Name == operationName);
+            Assert.That(waitForChangesOperation, Is.Not.Null, operationName+" operation should be found in metadata");
 
             // Verify return type (should be ResourceValue[] unwrapped from Task<ResourceValue[]>)
             Assert.That(waitForChangesOperation.ReturnType, Is.EqualTo(typeof(ResourceValue[])),
@@ -52,8 +53,9 @@ namespace Ihc.Tests
             var operations = service.GetOperations();
 
             // Find the GetResourceValueChanges operation and verify it exists
-            var getChangesOperation = operations.FirstOrDefault(op => op.Name == "GetResourceValueChanges");
-            Assert.That(getChangesOperation, Is.Not.Null, "GetResourceValueChanges operation should be found in metadata");
+            const string operationName =  nameof(ResourceInteractionService.GetResourceValueChanges);
+            var getChangesOperation = operations.FirstOrDefault(op => op.Name == operationName);
+            Assert.That(getChangesOperation, Is.Not.Null, operationName+" operation should be found in metadata");
 
             // Verify operation type (should be AsyncEnumerable since it returns IAsyncEnumerable<ResourceValue>)
             Assert.That(getChangesOperation.Kind, Is.EqualTo(ServiceOperationKind.AsyncEnumerable), "Operation type should be AsyncEnumerable");
