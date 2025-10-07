@@ -17,12 +17,12 @@ namespace Ihc {
         /**
         * Disable initial value notifications for specified resource IDs.
         */
-        public Task<bool?> DisableInitialValueNotifactions(int[] resourceIds);
+        public Task<bool> DisableInitialValueNotifactions(int[] resourceIds);
 
         /**
         * Disable runtime value notifications for specified resource IDs.
         */
-        public Task<bool?> DisableRuntimeValueNotifactions(int[] resourceIds);
+        public Task<bool> DisableRuntimeValueNotifactions(int[] resourceIds);
 
         /**
         * Enable initial value notifications for specified resource IDs and return current values.
@@ -415,16 +415,16 @@ namespace Ihc {
             this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint);
         }
 
-        public async Task<System.Nullable<bool>> DisableInitialValueNotifactions(int[] resourceIds)
+        public async Task<bool> DisableInitialValueNotifactions(int[] resourceIds)
         {
             var result = await this.impl.disableInitialValueNotifactionsAsync(new inputMessageName7() { disableInitialValueNotifactions1 = resourceIds });
-            return result.disableInitialValueNotifactions2;
+            return result.disableInitialValueNotifactions2 ?? false;
         }
 
-        public async Task<System.Nullable<bool>> DisableRuntimeValueNotifactions(int[] resourceIds)
+        public async Task<bool> DisableRuntimeValueNotifactions(int[] resourceIds)
         {
             var result = await this.impl.disableRuntimeValueNotifactionsAsync(new inputMessageName5() { disableRuntimeValueNotifactions1 = resourceIds });
-            return result.disableRuntimeValueNotifactions2;
+            return result.disableRuntimeValueNotifactions2 ?? false;
         }
 
         public async Task<ResourceValue[]> EnableInitialValueNotifications(int[] resourceIds)
