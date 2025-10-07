@@ -3,7 +3,8 @@
     "allow": [
       "Bash(dotnet build:*)",
       "Bash(dotnet restore:*)",
-      "Bash(dotnet test:*)"
+      "Bash(dotnet test:*)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []

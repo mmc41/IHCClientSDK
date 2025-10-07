@@ -49,7 +49,7 @@ namespace Ihc
                 int sequentialErrorCount = 0;
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    Thread.Sleep(25); // Give the server a short rest between calls.
+                    await Task.Delay(25, cancellationToken); // Give the client a short rest between calls.
                     ResourceValue[] changes;
                     try
                     {
@@ -68,7 +68,7 @@ namespace Ihc
                         else
                         {
                             // Allow server to recover.
-                            Thread.Sleep(sequentialErrorCount * sequentialErrorCount * 100);
+                            await Task.Delay(sequentialErrorCount * sequentialErrorCount * 100, cancellationToken);
                         }
                     }
 
@@ -82,7 +82,7 @@ namespace Ihc
             {
                 try
                 {
-                    Thread.Sleep(25); // Give the server a short rest between calls.
+                    await Task.Delay(25); // Give the client a short rest between calls.
                     await disableSubscription(resourceIds);
                 }
                 catch (Exception e)

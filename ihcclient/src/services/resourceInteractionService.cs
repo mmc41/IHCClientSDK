@@ -296,7 +296,7 @@ namespace Ihc {
 
             if (v.value is WSWeekdayValue)
             {
-                value.TimerValue = mapWeekday(v.value as WSWeekdayValue);
+                value.WeekdayValue = mapWeekday(v.value as WSWeekdayValue);
                 value.ValueKind = ResourceValue.ValueKind.WEEKDAY;
             }
 

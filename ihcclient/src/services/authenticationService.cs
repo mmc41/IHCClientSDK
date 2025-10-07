@@ -183,7 +183,7 @@ namespace Ihc {
             }
             else if (result.loginFailedDueToInsufficientUserRights)
             {
-                throw new ErrorWithCodeException(Errors.LOGIN_FAILED_DUE_TO_INSUFFICIENT_USER_RIGHTS_ERROR, "Ihc server login reports invalid account for " + impl.Url);
+                throw new ErrorWithCodeException(Errors.LOGIN_FAILED_DUE_TO_INSUFFICIENT_USER_RIGHTS_ERROR, "Ihc server login reports insufficient user rights for " + impl.Url);
             }
             else
             {

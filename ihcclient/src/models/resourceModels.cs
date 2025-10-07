@@ -81,7 +81,7 @@ namespace Ihc {
                     buf.AppendFormat(", TimerValue={0}", TimerValue.Value);
                 }
                 if (WeekdayValue.HasValue) {
-                    buf.AppendFormat(", TimerValue={0}", WeekdayValue.Value);
+                    buf.AppendFormat(", WeekdayValue={0}", WeekdayValue.Value);
                 } 
                 buf.Append("}");
 
@@ -120,7 +120,7 @@ namespace Ihc {
               TypeString = TypeStrings.DatalineInput,
               ResourceID = resourceId,
               IsValueRuntime = true,
-              Value = new ResourceValue.UnionValue() { BoolValue = value }
+              Value = new ResourceValue.UnionValue() { BoolValue = value, ValueKind = ResourceValue.ValueKind.BOOL }
             };
         }
 
@@ -132,7 +132,7 @@ namespace Ihc {
               TypeString = TypeStrings.DatalineOutput,
               ResourceID = resourceId,
               IsValueRuntime = true,
-              Value = new ResourceValue.UnionValue() { BoolValue = value }
+              Value = new ResourceValue.UnionValue() { BoolValue = value, ValueKind = ResourceValue.ValueKind.BOOL }
             };
         }
 
