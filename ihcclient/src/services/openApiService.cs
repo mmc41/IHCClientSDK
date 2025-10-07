@@ -482,12 +482,14 @@ namespace Ihc {
         *
         * <param name="logger">A logger instance. Alternatively, use NullLogger<YourClass>.Instance</param>
         * <param name="endpoint">IHC controller endpoint of form http://\<YOUR CONTROLLER IP ADDRESS\></param>
+        * <param name="logSensitiveData">If true, log passwords and session cookies. If false (default), redact sensitive values in logs.
+        *                                WARNING: Enabling this will expose credentials in logs. Only enable for debugging in secure environments.</param>
         */
-        public OpenAPIService(ILogger logger, string endpoint)
+        public OpenAPIService(ILogger logger, string endpoint, bool logSensitiveData = false)
         {
             this.logger = logger;
             this.endpoint = endpoint;
-            this.cookieHandler = new CookieHandler(logger);
+            this.cookieHandler = new CookieHandler(logger, logSensitiveData);
             this.impl = new SoapImpl(logger, cookieHandler, endpoint);
         }
 

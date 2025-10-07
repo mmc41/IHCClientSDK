@@ -19,6 +19,7 @@ namespace Ihc.Tests
         public static string userName;
         public static string password;
         public static string application;
+        public static bool logSensitiveData;
         public static int boolOutput1;
         public static int boolInput1;
         public static int boolInput2;
@@ -43,6 +44,7 @@ namespace Ihc.Tests
           userName = ihcConfig["userName"];
           password = ihcConfig["password"];
           application = ihcConfig["application"];
+          logSensitiveData = bool.Parse(ihcConfig["logSensitiveData"]);
 
           var testConfig = config.GetSection("testConfig");
           boolOutput1 = int.Parse(testConfig["boolOutput1"]);

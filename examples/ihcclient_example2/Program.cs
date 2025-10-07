@@ -35,6 +35,7 @@ namespace Ihc.example
           var userName = ihcConfig["userName"];
           var password = ihcConfig["password"];
           var application = ihcConfig["application"];
+          bool logSensitiveData = bool.Parse(ihcConfig["logSensitiveData"]);
 
           var testConfig = config.GetSection("testConfig");
           var boolOutput1 = int.Parse(testConfig["boolOutput1"]);
@@ -42,7 +43,7 @@ namespace Ihc.example
           var boolInput2 = int.Parse(testConfig["boolInput2"]);
 
           // Create client for IHC services that this example use (see also ConfigurationService, MessageControlLogService, ModuleService, NotificationManagerService, OpenAPIService, TimeManagerService, UserManagerService).
-          var authService = new AuthenticationService(logger, endpoint);
+          var authService = new AuthenticationService(logger, endpoint, logSensitiveData);
           var resourceInteractionService = new ResourceInteractionService(authService);
 
           // Authenticate against IHC system. 

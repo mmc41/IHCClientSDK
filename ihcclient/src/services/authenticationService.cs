@@ -121,14 +121,16 @@ namespace Ihc {
         *
         * <param name="logger">A logger instance. Alternatively, use NullLogger<YourClass>.Instance</param>
         * <param name="endpoint">IHC controller endpoint of form http://\<YOUR CONTROLLER IP ADDRESS\></param>
-        * 
+        * <param name="logSensitiveData">If true, log passwords and session cookies. If false (default), redact sensitive values in logs.
+        *                                WARNING: Enabling this will expose credentials in logs. Only enable for debugging in secure environments.</param>
+        *
         * NOTE: The AuthenticationService instance should be passed as an argument to other services (except OpenAPI).
         */
-        public AuthenticationService(ILogger logger, string endpoint)
+        public AuthenticationService(ILogger logger, string endpoint, bool logSensitiveData = false)
         {
             this.logger = logger;
             this.endpoint = endpoint;
-            this.cookieHandler = new CookieHandler(logger);
+            this.cookieHandler = new CookieHandler(logger, logSensitiveData);
             this.impl = new SoapImpl(logger, cookieHandler, endpoint);
         }
 
@@ -155,7 +157,7 @@ namespace Ihc {
 
                 isConnected = true;
 
-                return new IhcUser()
+                var user = new IhcUser()
                 {
                     Username = result.loggedInUser.username,
                     Password = result.loggedInUser.password,
@@ -168,6 +170,8 @@ namespace Ihc {
                     LoginDate = result.loggedInUser.loginDate.ToDateTimeOffset(),
 
                 };
+                logger.LogInformation($"Successfully authenticated user: {user.Username}");
+                return user;
             }
             else if (result.loginFailedDueToAccountInvalid)
             {
@@ -204,11 +208,17 @@ namespace Ihc {
 
         public void Dispose()
         {
-            try {
-                if (isConnected) {
-                  Task.Run( () => this.Disconnect());
+            try
+            {
+                if (isConnected)
+                {
+                    Task.Run(() => this.Disconnect());
                 }
-            } catch (Exception) {} // Ignore
+            }
+            catch (Exception e)
+            {
+                this.logger.LogError(e, "Exception during disconnect in Dispose");
+            } // Ignore
             GC.SuppressFinalize(this);
         }
 

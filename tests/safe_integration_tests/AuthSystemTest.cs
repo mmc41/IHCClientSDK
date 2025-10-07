@@ -17,7 +17,7 @@ namespace Ihc.Tests
         [Test]
         public async Task AuthenticateAndDisconnectTest()
         {
-            var authService = new AuthenticationService(Setup.logger, Setup.endpoint);
+            var authService = new AuthenticationService(Setup.logger, Setup.endpoint, Setup.logSensitiveData);
 
             var result = await authService.Authenticate(Setup.userName, Setup.password, Setup.application);
             if (Setup.endpoint!="http://usb") // Username can't be tested like this when using a usb connection, where "usb" is returned istead of name.

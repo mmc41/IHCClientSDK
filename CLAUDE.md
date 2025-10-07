@@ -98,8 +98,24 @@ Required for development:
 - IHC controller endpoint and credentials
 - Test resource IDs for boolean inputs/outputs
 - Logging configuration
+- Security settings (see below)
 
 Note: The SDK library itself does NOT require this file - only the test/example/utility projects need it for configuration.
+
+**SDK API Usage:**
+When creating service instances programmatically, pass `logSensitiveData` parameter:
+
+```csharp
+// Secure default - credentials not logged
+var authService = new AuthenticationService(logger, endpoint);
+
+// Debug mode - credentials visible in logs (USE WITH CAUTION)
+var authService = new AuthenticationService(logger, endpoint, logSensitiveData: true);
+```
+
+This parameter is available on:
+- `AuthenticationService` constructor
+- `OpenAPIService` constructor
 
 ### IHC Controller Setup
 Before running any code that connects to an IHC controller:
