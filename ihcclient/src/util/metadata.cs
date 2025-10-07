@@ -173,7 +173,7 @@ namespace Ihc {
         {
             var xmlDoc = LoadXmlDocumentation();
             if (xmlDoc == null)
-                return null;
+                return string.Empty;
 
             // Try to find documentation from the declaring type first
             var description = TryGetDescriptionForType(xmlDoc, method, method.DeclaringType);
@@ -200,7 +200,7 @@ namespace Ihc {
                 }
             }
 
-            return null;
+            return string.Empty;
         }
 
         private static string TryGetDescriptionForType(XDocument xmlDoc, MethodInfo method, Type type)
