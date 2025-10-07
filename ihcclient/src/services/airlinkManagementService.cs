@@ -10,7 +10,7 @@ namespace Ihc
     /// High-level interface for IHC Wireless (Airlink Management) operations.
     /// Used for managing wireless devices in the IHC system.
     /// </summary>
-    public interface IAirlinkManagementService
+    public interface IAirlinkManagementService : IIHCService
     {
         /// <summary>
         /// Enter RF configuration mode to allow device pairing and configuration.
@@ -63,7 +63,7 @@ namespace Ihc
         Task<int> GetBatteryLevel(int resourceId);
     }
 
-    public class AirlinkManagementService : IAirlinkManagementService
+    public class AirlinkManagementService : ServiceBase, IAirlinkManagementService
     {
         private readonly ILogger logger;
         private readonly IAuthenticationService authService;

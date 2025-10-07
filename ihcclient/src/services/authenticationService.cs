@@ -9,7 +9,7 @@ namespace Ihc {
     /**
     * A highlevel client interface for the IHC AuthenticationService without any of the soap distractions.
     */
-    public interface IAuthenticationService : ICookieHandlerService, IDisposable, IAsyncDisposable
+    public interface IAuthenticationService : ICookieHandlerService, IDisposable, IAsyncDisposable, IIHCService
     {
         /**
         * Login to IHC controller. This method must be called prior to most other calls on other services.
@@ -44,7 +44,7 @@ namespace Ihc {
     /**
     * A highlevel implementation of a client to the IHC AuthenticationService without exposing the soap distractions.
     */
-    public class AuthenticationService : IAuthenticationService
+    public class AuthenticationService : ServiceBase, IAuthenticationService
     {
         private readonly ILogger logger;
         private readonly ICookieHandler cookieHandler;

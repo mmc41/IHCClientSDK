@@ -4,12 +4,28 @@ using System.Threading.Tasks;
 using System.Net.Http;
 using Ihc.Envelope;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
 
 namespace Ihc 
 {
+    public interface IIHCService
+    {
+       public IReadOnlyList<SeviceOperationMetadata> GetOperations();
+    }
+
+    public abstract class ServiceBase : IIHCService
+    {
+        protected ServiceBase() { }
+
+        public IReadOnlyList<SeviceOperationMetadata> GetOperations()
+        {
+            return ServiceMetadata.GetOperations(this);
+        }
+    }
+
     /**
-     * Callback interface for doing sideeffects as part of a soap http post. 
-     */
+    * Callback interface for doing sideeffects as part of a soap http post. 
+    */
     public delegate void OnOkCallBack(HttpResponseMessage msg);
 
     /**

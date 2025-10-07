@@ -12,7 +12,7 @@ namespace Ihc {
     *
     * Status: 100% API coverage but not fully tested or documented.
     */
-    public interface IResourceInteractionService
+    public interface IResourceInteractionService : IIHCService
     {
         /**
         * Disable initial value notifications for specified resource IDs.
@@ -127,7 +127,7 @@ namespace Ihc {
     /**
     * A highlevel implementation of a client to the IHC ResourceInteractionService without exposing any of the soap distractions.
     */
-    public class ResourceInteractionService : IResourceInteractionService
+    public class ResourceInteractionService : ServiceBase, IResourceInteractionService
     {
         private readonly ILogger logger;
         private readonly IAuthenticationService authService;

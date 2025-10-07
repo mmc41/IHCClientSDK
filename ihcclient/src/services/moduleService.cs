@@ -8,7 +8,7 @@ namespace Ihc {
     /**
     * A highlevel client interface for the IHC ModuleService without any of the soap distractions.
     */
-    public interface IModuleService
+    public interface IModuleService : IIHCService
     {
         /// <summary>
         /// Get information about the scene project on the controller.
@@ -58,7 +58,7 @@ namespace Ihc {
     /**
     * A highlevel implementation of a client to the IHC ModuleService without exposing any of the soap distractions.
     */
-    public class ModuleService : IModuleService {
+    public class ModuleService : ServiceBase, IModuleService {
         private readonly ILogger logger;
         private readonly IAuthenticationService authService;
         private readonly bool asyncContinueOnCapturedContext;

@@ -13,7 +13,7 @@ namespace Ihc {
     *
     * The IHC service provided here does not appear to be fully functional, complete and perhaps not with same quality as other services. Probably best to use other services instead.
     */
-    public interface IOpenAPIService : ICookieHandlerService
+    public interface IOpenAPIService : ICookieHandlerService, IIHCService
     {
         /**
         * Authenticate with the OpenAPI service using username and password.
@@ -142,7 +142,7 @@ namespace Ihc {
     * Nb. Supported by v3.0+ controllers only.
     *
     */
-    public class OpenAPIService : IOpenAPIService
+    public class OpenAPIService : ServiceBase, IOpenAPIService
     {
         private readonly ILogger logger;
         private readonly string endpoint;

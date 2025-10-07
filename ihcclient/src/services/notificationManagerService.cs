@@ -9,7 +9,7 @@ namespace Ihc {
     * A highlevel client interface for the IHC NotificationManagerService without any of the soap distractions.
     *
     */
-    public interface INotificationManagerService
+    public interface INotificationManagerService : IIHCService
     {
         /**
         * Clear all notification messages from the controller.
@@ -26,7 +26,7 @@ namespace Ihc {
     * A highlevel implementation of a client to the IHC NotificationManagerService without exposing any of the soap distractions.
     *
     */
-    public class NotificationManagerService : INotificationManagerService {
+    public class NotificationManagerService : ServiceBase, INotificationManagerService {
         private readonly ILogger logger;
         private readonly IAuthenticationService authService;
         private readonly bool asyncContinueOnCapturedContext;

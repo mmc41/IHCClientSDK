@@ -10,7 +10,7 @@ namespace Ihc {
     *
     * Status: Incomplete.
     */
-    public interface IUserManagerService
+    public interface IUserManagerService : IIHCService
     {
         /**
         * Get list of all users registered on the controller.
@@ -37,7 +37,7 @@ namespace Ihc {
     /**
     * A highlevel implementation of a client to the IHC UserManagerService without exposing any of the soap distractions.
     */
-    public class UserManagerService : IUserManagerService
+    public class UserManagerService : ServiceBase, IUserManagerService
     {
         private readonly ILogger logger;
         private readonly IAuthenticationService authService;

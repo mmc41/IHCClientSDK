@@ -8,7 +8,7 @@ namespace Ihc {
     /**
     * A highlevel client interface for the IHC MessageControlLogService without any of the soap distractions.
     */
-    public interface IMessageControlLogService
+    public interface IMessageControlLogService : IIHCService
     {
         /**
         * Clear all entries from the message control log.
@@ -24,7 +24,7 @@ namespace Ihc {
     /**
     * A highlevel implementation of a client to the IHC MessageControllogService without exposing any of the soap distractions.
     */
-    public class MessageControlLogService : IMessageControlLogService
+    public class MessageControlLogService : ServiceBase, IMessageControlLogService
     {
         private readonly ILogger logger;
         private readonly IAuthenticationService authService;

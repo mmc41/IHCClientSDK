@@ -7,7 +7,7 @@ namespace Ihc {
     /**
     * A highlevel client interface for the IHC TimeManagerService without any of the soap distractions.
     */
-    public interface ITimeManagerService
+    public interface ITimeManagerService : IIHCService
     {
         /**
         * Get the current local time from the controller.
@@ -38,7 +38,7 @@ namespace Ihc {
     /**
     * A highlevel implementation of a client to the IHC TimeManagerService without exposing any of the soap distractions.
     */
-    public class TimeManagerService : ITimeManagerService
+    public class TimeManagerService : ServiceBase, ITimeManagerService
     {
         private readonly ILogger logger;
         private readonly IAuthenticationService authService;

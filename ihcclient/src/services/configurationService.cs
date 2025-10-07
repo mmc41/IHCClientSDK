@@ -8,7 +8,7 @@ namespace Ihc {
     /**
     * A highlevel client interface for the IHC ConfigurationService without any of the soap distractions.
     */
-    public interface IConfigurationService
+    public interface IConfigurationService : IIHCService
     {
         /**
         * Get system information including uptime, version, serial number, and hardware details.
@@ -131,7 +131,7 @@ namespace Ihc {
     /**
     * A highlevel implementation of a client to the IHC ConfigurationService without exposing any of the soap distractions.
     */
-    public class ConfigurationService : IConfigurationService
+    public class ConfigurationService : ServiceBase, IConfigurationService
     {
         private readonly ILogger logger;
         private readonly IAuthenticationService authService;

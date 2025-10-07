@@ -9,7 +9,7 @@ namespace Ihc {
     /**
     * A highlevel client interface for the IHC ControllerService without any of the soap distractions.
     */
-    public interface IControllerService
+    public interface IControllerService : IIHCService
     {
         /**
         * Check if an IHC project is available on the controller.
@@ -125,7 +125,7 @@ namespace Ihc {
     /**
     * A highlevel implementation of a client to the IHC ControllerService without exposing any of the soap distractions.
     */
-    public class ControllerService : IControllerService
+    public class ControllerService : ServiceBase, IControllerService
     {
         private readonly ILogger logger;
         private readonly IAuthenticationService authService;
