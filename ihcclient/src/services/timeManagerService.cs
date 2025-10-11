@@ -5,40 +5,41 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
 namespace Ihc {
-    /**
-    * A highlevel client interface for the IHC TimeManagerService without any of the soap distractions.
-    */
+    /// <summary>
+    /// A highlevel client interface for the IHC TimeManagerService without any of the soap distractions.
+    /// </summary>
     public interface ITimeManagerService : IIHCService
     {
-        /**
-        * Get the current local time from the controller.
-        */
+        /// <summary>
+        /// Get the current local time from the controller.
+        /// </summary>
         public Task<DateTimeOffset> GetCurrentLocalTime();
 
-        /**
-        * Get controller uptime since last restart.
-        */
+        /// <summary>
+        /// Get controller uptime since last restart.
+        /// </summary>
         public Task<TimeSpan> GetUptime();
 
-        /**
-        * Get time manager settings including time sync, DST, and timezone configuration.
-        */
+        /// <summary>
+        /// Get time manager settings including time sync, DST, and timezone configuration.
+        /// </summary>
         public Task<TimeManagerSettings> GetSettings();
 
-        /**
-        * Set time manager settings for time synchronization and timezone.
-        */
+        /// <summary>
+        /// Set time manager settings for time synchronization and timezone.
+        /// </summary>
+        /// <param name="settings">Time manager settings to configure</param>
         public Task<bool> SetSettings(TimeManagerSettings settings);
 
-        /**
-        * Synchronize time with configured NTP server and get connection result.
-        */
+        /// <summary>
+        /// Synchronize time with configured NTP server and get connection result.
+        /// </summary>
         public Task<TimeServerConnectionResult> GetTimeFromServer();
     }
 
-    /**
-    * A highlevel implementation of a client to the IHC TimeManagerService without exposing any of the soap distractions.
-    */
+    /// <summary>
+    /// A highlevel implementation of a client to the IHC TimeManagerService without exposing any of the soap distractions.
+    /// </summary>
     public class TimeManagerService : ServiceBase, ITimeManagerService
     {
         private readonly IAuthenticationService authService;
@@ -75,10 +76,10 @@ namespace Ihc {
 
         private readonly SoapImpl impl;
 
-        /**
-        * Create a TimeManagerService instance for access to the IHC API related to time management.
-        * <param name="authService">AuthenticationService instance</param>
-        */
+        /// <summary>
+        /// Create a TimeManagerService instance for access to the IHC API related to time management.
+        /// </summary>
+        /// <param name="authService">AuthenticationService instance</param>
         public TimeManagerService(IAuthenticationService authService)
             : base(authService.Logger, authService.IhcSettings)
         {

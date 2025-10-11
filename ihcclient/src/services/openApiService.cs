@@ -9,145 +9,156 @@ using System.Runtime.CompilerServices;
 using System.Diagnostics;
 
 namespace Ihc {
-    /**
-    * A highlevel client interface for the IHC OpenAPIService for v3.0+ controllers without any of the soap distractions. It represents a subset of other services.
-    *
-    * The IHC service provided here does not appear to be fully functional, complete and perhaps not with same quality as other services. Probably best to use other services instead.
-    */
+    /// <summary>
+    /// A highlevel client interface for the IHC OpenAPIService for v3.0+ controllers without any of the soap distractions. It represents a subset of other services.
+    /// The IHC service provided here does not appear to be fully functional, complete and perhaps not with same quality as other services. Probably best to use other services instead.
+    /// </summary>
     public interface IOpenAPIService : ICookieHandlerService, IIHCService
     {
-        /**
-        * Login to IHC controller with user/password in predefined configuration settings. This method must be called prior to most other calls on other services.
-        */
+        /// <summary>
+        /// Login to IHC controller with user/password in predefined configuration settings. This method must be called prior to most other calls on other services.
+        /// </summary>
         public Task Authenticate();
-        
-        /**
-        * Authenticate with the OpenAPI service overriding predefined configuration settings for username and password.
-        */
+
+        /// <summary>
+        /// Authenticate with the OpenAPI service overriding predefined configuration settings for username and password.
+        /// </summary>
+        /// <param name="userName">Username for authentication</param>
+        /// <param name="password">Password for authentication</param>
         public Task Authenticate(string userName, string password);
 
-        /**
-        * Get firmware version information.
-        */
+        /// <summary>
+        /// Get firmware version information.
+        /// </summary>
         public Task<FWVersion> GetFWVersion();
 
-        /**
-        * Get OpenAPI version number.
-        */
+        /// <summary>
+        /// Get OpenAPI version number.
+        /// </summary>
         public Task<string> GetAPIVersion();
 
-        /**
-        * Get controller uptime.
-        */
+        /// <summary>
+        /// Get controller uptime.
+        /// </summary>
         public Task<TimeSpan> GetUptime();
 
-        /**
-        * Get current controller time.
-        */
+        /// <summary>
+        /// Get current controller time.
+        /// </summary>
         public Task<DateTime> GetTime();
 
-        /**
-        * Check if an IHC project is available.
-        */
+        /// <summary>
+        /// Check if an IHC project is available.
+        /// </summary>
         public Task<bool> IsIHCProjectAvailable();
 
-        /**
-        * Get resource IDs for all dataline inputs.
-        */
+        /// <summary>
+        /// Get resource IDs for all dataline inputs.
+        /// </summary>
         public Task<int[]> GetDatalineInputIDs();
 
-        /**
-        * Get resource IDs for all dataline outputs.
-        */
+        /// <summary>
+        /// Get resource IDs for all dataline outputs.
+        /// </summary>
         public Task<int[]> GetDatalineOutputIDs();
 
-        /**
-        * Reboot the controller immediately.
-        */
+        /// <summary>
+        /// Reboot the controller immediately.
+        /// </summary>
         public Task DoReboot();
 
-        /**
-        * Ping the controller to verify connectivity.
-        */
+        /// <summary>
+        /// Ping the controller to verify connectivity.
+        /// </summary>
         public Task Ping();
 
-        /**
-        * Get current values for specified resource IDs.
-        */
+        /// <summary>
+        /// Get current values for specified resource IDs.
+        /// </summary>
+        /// <param name="resourceIds">Array of resource IDs to get values for</param>
         public Task<ResourceValue[]> GetValues(int[] resourceIds);
 
-        /**
-        * Set values for multiple resources.
-        */
+        /// <summary>
+        /// Set values for multiple resources.
+        /// </summary>
+        /// <param name="values">Array of resource values to set</param>
         public Task<bool> SetValues(ResourceValue[] values);
 
-        /**
-        * Enable event subscription for specified resource IDs.
-        */
+        /// <summary>
+        /// Enable event subscription for specified resource IDs.
+        /// </summary>
+        /// <param name="resourceIds">Array of resource IDs to subscribe to</param>
         public Task EnableSubscription(int[] resourceIds);
 
-        /**
-        * Disable event subscription for specified resource IDs.
-        */
+        /// <summary>
+        /// Disable event subscription for specified resource IDs.
+        /// </summary>
+        /// <param name="resourceIds">Array of resource IDs to unsubscribe from</param>
         public Task DisableSubscription(int[] resourceIds);
 
-        /**
-        * Wait for resource value change events from subscribed resources.
-        */
+        /// <summary>
+        /// Wait for resource value change events from subscribed resources.
+        /// </summary>
+        /// <param name="timeout">Timeout in seconds</param>
         public Task<EventPackage> WaitForEvents(int? timeout);
 
-        /**
-        * Get async stream of resource value changes for subscribed resources.
-        */
+        /// <summary>
+        /// Get async stream of resource value changes for subscribed resources.
+        /// </summary>
+        /// <param name="resourceIds">Array of resource IDs to monitor</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <param name="timeout_between_waits_in_seconds">Timeout between waits in seconds</param>
         public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(int[] resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15);
 
-        /**
-        * Get project information.
-        */
+        /// <summary>
+        /// Get project information.
+        /// </summary>
         public Task<ProjectInfo> GetProjectInfo();
 
-        /**
-        * Get number of project segments.
-        */
+        /// <summary>
+        /// Get number of project segments.
+        /// </summary>
         public Task<int> GetIHCProjectNumberOfSegments();
 
-        /**
-        * Get project segmentation size in bytes.
-        */
+        /// <summary>
+        /// Get project segmentation size in bytes.
+        /// </summary>
         public Task<int> GetIHCProjectSegmentationSize();
 
-        /**
-        * Get a specific project segment by index and version.
-        */
+        /// <summary>
+        /// Get a specific project segment by index and version.
+        /// </summary>
+        /// <param name="index">Segment index</param>
+        /// <param name="majorVersion">Major version number</param>
+        /// <param name="minorVersion">Minor version number</param>
         public Task<byte[]> GetIHCProjectSegment(int index, int majorVersion, int minorVersion);
 
-        /**
-        * Get scene project information.
-        */
+        /// <summary>
+        /// Get scene project information.
+        /// </summary>
         public Task<SceneProjectInfo> GetSceneProjectInfo();
 
-        /**
-        * Get scene project segmentation size.
-        */
+        /// <summary>
+        /// Get scene project segmentation size.
+        /// </summary>
         public Task<int> GetSceneProjectSegmentationSize();
 
-        /**
-        * Get a specific scene project segment by index.
-        */
+        /// <summary>
+        /// Get a specific scene project segment by index.
+        /// </summary>
+        /// <param name="index">Segment index</param>
         public Task<byte[]> GetSceneProjectSegment(int index);
 
-        /**
-        * The IHC endpoint URL.
-        */
+        /// <summary>
+        /// The IHC endpoint URL.
+        /// </summary>
         public string Endpoint { get; }
     }
 
-    /**
-    * A highlevel implementation of a client to the IHC OpenAPIService without exposing any of the soap distractions.
-    *
-    * Nb. Supported by v3.0+ controllers only.
-    *
-    */
+    /// <summary>
+    /// A highlevel implementation of a client to the IHC OpenAPIService without exposing any of the soap distractions.
+    /// Nb. Supported by v3.0+ controllers only.
+    /// </summary>
     public class OpenAPIService : ServiceBase, IOpenAPIService
     {
         private readonly string endpoint;
@@ -674,13 +685,15 @@ namespace Ihc {
             return retv;
         }
 
-        /**
-         * Returns an async stream of changes in specified resources.
-         * Corresponds to EnableSubscription + WaitForEvents in a loop
-         *
-         * Nb. Internal timeout should be lower that system timeout or the call will fail after a couple of calls.
-         * Limit seems to be maybe around 20s ?
-         */
+        /// <summary>
+        /// Returns an async stream of changes in specified resources.
+        /// Corresponds to EnableSubscription + WaitForEvents in a loop.
+        /// Nb. Internal timeout should be lower that system timeout or the call will fail after a couple of calls.
+        /// Limit seems to be maybe around 20s.
+        /// </summary>
+        /// <param name="resourceIds">Array of resource IDs to monitor</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <param name="timeout_between_waits_in_seconds">Timeout between waits in seconds</param>
         public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(int[] resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15)
         {
             return ServiceHelpers.GetResourceValueChanges(

@@ -125,10 +125,10 @@ namespace Ihc
 
         private readonly SoapImpl impl;
 
-        /**
-        * Create an AirlinkManagementService instance for access to the IHC API related to Airlink RF device management.
-        * <param name="authService">AuthenticationService instance</param>
-        */
+        /// <summary>
+        /// Create an AirlinkManagementService instance for access to the IHC API related to Airlink RF device management.
+        /// </summary>
+        /// <param name="authService">AuthenticationService instance</param>
         public AirlinkManagementService(IAuthenticationService authService)
             : base(authService.Logger, authService.IhcSettings)
         {

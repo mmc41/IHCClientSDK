@@ -6,25 +6,25 @@ using Ihc.Soap.Messagecontrollog;
 using System.Diagnostics;
 
 namespace Ihc {
-    /**
-    * A highlevel client interface for the IHC MessageControlLogService without any of the soap distractions.
-    */
+    /// <summary>
+    /// A highlevel client interface for the IHC MessageControlLogService without any of the soap distractions.
+    /// </summary>
     public interface IMessageControlLogService : IIHCService
     {
-        /**
-        * Clear all entries from the message control log.
-        */
+        /// <summary>
+        /// Clear all entries from the message control log.
+        /// </summary>
         public Task EmptyLog();
 
-        /**
-        * Get all message control log event entries.
-        */
+        /// <summary>
+        /// Get all message control log event entries.
+        /// </summary>
         public Task<LogEventEntry[]> GetEvents();
     }
 
-    /**
-    * A highlevel implementation of a client to the IHC MessageControllogService without exposing any of the soap distractions.
-    */
+    /// <summary>
+    /// A highlevel implementation of a client to the IHC MessageControllogService without exposing any of the soap distractions.
+    /// </summary>
     public class MessageControlLogService : ServiceBase, IMessageControlLogService
     {
         private readonly IAuthenticationService authService;
@@ -46,10 +46,10 @@ namespace Ihc {
 
         private readonly SoapImpl impl;
 
-        /**
-        * Create an Messagecontrollog instance for access to the IHC API related to messages.
-        * <param name="authService">AuthenticationService instance</param>
-        */
+        /// <summary>
+        /// Create an Messagecontrollog instance for access to the IHC API related to messages.
+        /// </summary>
+        /// <param name="authService">AuthenticationService instance</param>
         public MessageControlLogService(IAuthenticationService authService)
             : base(authService.Logger, authService.IhcSettings)
         {

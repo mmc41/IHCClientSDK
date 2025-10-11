@@ -7,39 +7,38 @@ using System.Diagnostics;
 
 
 namespace Ihc {
-    /**
-    * A highlevel client interface for the IHC AuthenticationService without any of the soap distractions.
-    */
+    /// <summary>
+    /// A highlevel client interface for the IHC AuthenticationService without any of the soap distractions.
+    /// </summary>
     public interface IAuthenticationService : ICookieHandlerService, IDisposable, IAsyncDisposable, IIHCService
     {
-        /**
-        * Login to IHC controller with user/password and application in predefined configuration settings. This method must be called prior to most other calls on other services.
-        */
+        /// <summary>
+        /// Login to IHC controller with user/password and application in predefined configuration settings. This method must be called prior to most other calls on other services.
+        /// </summary>
         public Task<IhcUser> Authenticate();
-                
-        /**
-        * Login to IHC controller overriding user/password and application in predefined configuration settings. This method must be called prior to most other calls on other services.
-        *
-        * @param userName Your registered IHC controller user name
-        * @param password Your registered IHC controller password
-        * @param application Allowed applications: "treeview", "openapi", "administrator"
-        */
+
+        /// <summary>
+        /// Login to IHC controller overriding user/password and application in predefined configuration settings. This method must be called prior to most other calls on other services.
+        /// </summary>
+        /// <param name="userName">Your registered IHC controller user name</param>
+        /// <param name="password">Your registered IHC controller password</param>
+        /// <param name="application">Allowed applications: "treeview", "openapi", "administrator"</param>
         public Task<IhcUser> Authenticate(string userName, string password, string application = "openapi");
 
-        /**
-        * Logout from IHC controller and clear session cookie.
-        */
+        /// <summary>
+        /// Logout from IHC controller and clear session cookie.
+        /// </summary>
         public Task<bool> Disconnect();
 
-        /**
-        * Check if the IHC controller is up and running and serving API calls.
-        */
-        public Task<bool> Ping(); 
+        /// <summary>
+        /// Check if the IHC controller is up and running and serving API calls.
+        /// </summary>
+        public Task<bool> Ping();
     }
 
-    /**
-    * A highlevel implementation of a client to the IHC AuthenticationService without exposing the soap distractions.
-    */
+    /// <summary>
+    /// A highlevel implementation of a client to the IHC AuthenticationService without exposing the soap distractions.
+    /// </summary>
     public class AuthenticationService : ServiceBase, IAuthenticationService
     {
         private readonly ICookieHandler cookieHandler;
@@ -102,6 +101,8 @@ namespace Ihc {
         /// Create an AuthenticationService instance for access to the IHC API related to authentication.
         /// NOTE: The AuthenticationService instance should be passed as an argument to other services (except OpenAPI).
         /// </summary>
+        /// <param name="logger">Logger instance for logging operations</param>
+        /// <param name="settings">IHC settings configuration</param>
         public AuthenticationService(ILogger logger, IhcSettings settings)
             : base(logger, settings)
         {

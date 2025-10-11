@@ -6,27 +6,25 @@ using Ihc.Soap.Notificationmanager;
 using System.Diagnostics;
 
 namespace Ihc {
-    /**
-    * A highlevel client interface for the IHC NotificationManagerService without any of the soap distractions.
-    *
-    */
+    /// <summary>
+    /// A highlevel client interface for the IHC NotificationManagerService without any of the soap distractions.
+    /// </summary>
     public interface INotificationManagerService : IIHCService
     {
-        /**
-        * Clear all notification messages from the controller.
-        */
+        /// <summary>
+        /// Clear all notification messages from the controller.
+        /// </summary>
         public Task ClearMessages();
 
-        /**
-        * Get all notification messages from the controller.
-        */
+        /// <summary>
+        /// Get all notification messages from the controller.
+        /// </summary>
         public Task<NotificationMessage[]> GetMessages();
     }
 
-    /**
-    * A highlevel implementation of a client to the IHC NotificationManagerService without exposing any of the soap distractions.
-    *
-    */
+    /// <summary>
+    /// A highlevel implementation of a client to the IHC NotificationManagerService without exposing any of the soap distractions.
+    /// </summary>
     public class NotificationManagerService : ServiceBase, INotificationManagerService {
         private readonly IAuthenticationService authService;
 
@@ -47,10 +45,10 @@ namespace Ihc {
 
         private readonly SoapImpl impl;
 
-        /**
-        * Create a NotificationManagerService instance for access to the IHC API related to notifications.
-        * <param name="authService">AuthenticationService instance</param>
-        */
+        /// <summary>
+        /// Create a NotificationManagerService instance for access to the IHC API related to notifications.
+        /// </summary>
+        /// <param name="authService">AuthenticationService instance</param>
         public NotificationManagerService(IAuthenticationService authService)
             : base(authService.Logger, authService.IhcSettings)
         {

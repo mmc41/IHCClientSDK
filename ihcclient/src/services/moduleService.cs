@@ -6,9 +6,9 @@ using Ihc.Soap.Module;
 using System.Diagnostics;
 
 namespace Ihc {
-    /**
-    * A highlevel client interface for the IHC ModuleService without any of the soap distractions.
-    */
+    /// <summary>
+    /// A highlevel client interface for the IHC ModuleService without any of the soap distractions.
+    /// </summary>
     public interface IModuleService : IIHCService
     {
         /// <summary>
@@ -56,9 +56,9 @@ namespace Ihc {
         public Task<int> GetSceneProjectSegmentationSize();
     }
 
-    /**
-    * A highlevel implementation of a client to the IHC ModuleService without exposing any of the soap distractions.
-    */
+    /// <summary>
+    /// A highlevel implementation of a client to the IHC ModuleService without exposing any of the soap distractions.
+    /// </summary>
     public class ModuleService : ServiceBase, IModuleService {
         private readonly IAuthenticationService authService;
 
@@ -104,10 +104,10 @@ namespace Ihc {
 
         private readonly SoapImpl impl;
 
-        /**
-        * Create an ModuleService instance for access to the IHC API related to projects.
-        * <param name="authService">AuthenticationService instance</param>
-        */
+        /// <summary>
+        /// Create an ModuleService instance for access to the IHC API related to projects.
+        /// </summary>
+        /// <param name="authService">AuthenticationService instance</param>
         public ModuleService(IAuthenticationService authService)
             : base(authService.Logger, authService.IhcSettings)
         {

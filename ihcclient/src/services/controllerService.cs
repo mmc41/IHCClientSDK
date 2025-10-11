@@ -7,125 +7,132 @@ using System.IO;
 using System.Diagnostics;
 
 namespace Ihc {
-    /**
-    * A highlevel client interface for the IHC ControllerService without any of the soap distractions.
-    */
+    /// <summary>
+    /// A highlevel client interface for the IHC ControllerService without any of the soap distractions.
+    /// </summary>
     public interface IControllerService : IIHCService
     {
-        /**
-        * Check if an IHC project is available on the controller.
-        */
+        /// <summary>
+        /// Check if an IHC project is available on the controller.
+        /// </summary>
         public Task<bool> IsIHCProjectAvailable();
 
-        /**
-        * Check if the SD card is ready and accessible.
-        */
+        /// <summary>
+        /// Check if the SD card is ready and accessible.
+        /// </summary>
         public Task<bool> IsSDCardReady();
 
-        /**
-        * Get SD card information including size and free space.
-        */
+        /// <summary>
+        /// Get SD card information including size and free space.
+        /// </summary>
         public Task<SDInfo> GetSDCardInfo();
 
-        /**
-        * Get current controller state (e.g., "ready", "init").
-        */
+        /// <summary>
+        /// Get current controller state (e.g., "ready", "init").
+        /// </summary>
         public Task<string> GetControllerState();
 
-        /**
-        * Wait for controller to transition to a specific state.
-        * @param waitState Target state to wait for
-        * @param waitSec Timeout in seconds
-        */
+        /// <summary>
+        /// Wait for controller to transition to a specific state.
+        /// </summary>
+        /// <param name="waitState">Target state to wait for</param>
+        /// <param name="waitSec">Timeout in seconds</param>
         public Task<string> WaitForControllerStateChange(string waitState, int waitSec);
 
-        /**
-        * Get project information including version, customer name, and last modified date.
-        */
+        /// <summary>
+        /// Get project information including version, customer name, and last modified date.
+        /// </summary>
         public Task<ProjectInfo> GetProjectInfo();
 
-        /**
-        * Download the complete IHC project file from the controller.
-        */
+        /// <summary>
+        /// Download the complete IHC project file from the controller.
+        /// </summary>
         public Task<ProjectFile> GetProject();
 
-        /**
-        * Upload and store a new project on the controller safely.
-        *
-        * Automatically checks controller readiness and handles project change mode entry/exit and state transitions 
-        * by calling EnterProjectChangeMode/ExitProjectChangeMode and waiting for state changes.
-        *
-        * Note: Does not reset runtime values or reboot controller - call DelayedReboot manually if needed.
-        *
-        * @throws InvalidOperationException if controller is not ready or SD card unavailable
-        */
+        /// <summary>
+        /// Upload and store a new project on the controller safely.
+        /// Automatically checks controller readiness and handles project change mode entry/exit and state transitions
+        /// by calling EnterProjectChangeMode/ExitProjectChangeMode and waiting for state changes.
+        /// Note: Does not reset runtime values or reboot controller - call DelayedReboot manually if needed.
+        /// </summary>
+        /// <param name="project">Project file to store on the controller</param>
+        /// <exception cref="InvalidOperationException">Thrown if controller is not ready or SD card unavailable</exception>
         public Task<bool> StoreProject(ProjectFile project);
 
-        /**
-        * Get a backup file from the controller.
-        */
+        /// <summary>
+        /// Get a backup file from the controller.
+        /// </summary>
         public Task<BackupFile> GetBackup();
 
-        /**
-        * Restore controller from backup.
-        */
+        /// <summary>
+        /// Restore controller from backup.
+        /// </summary>
         public Task<int> Restore();
 
-        /**
-        * Get a specific segment of the IHC project (for large projects split into parts).
-
-        */
+        /// <summary>
+        /// Get a specific segment of the IHC project (for large projects split into parts).
+        /// </summary>
+        /// <param name="index">Segment index</param>
+        /// <param name="major">Major version number</param>
+        /// <param name="minor">Minor version number</param>
         public Task<ProjectFile> GetIHCProjectSegment(int index, int major, int minor);
 
-        /**
-        * Store a specific segment of the IHC project.
-        */
+        /// <summary>
+        /// Store a specific segment of the IHC project.
+        /// </summary>
+        /// <param name="segment">Project segment to store</param>
+        /// <param name="index">Segment index</param>
+        /// <param name="major">Major version number</param>
         public Task<bool> StoreIHCProjectSegment(ProjectFile segment, int index, int major);
 
-        /**
-        * Get the size of project segments in bytes.
-        */
+        /// <summary>
+        /// Get the size of project segments in bytes.
+        /// </summary>
         public Task<int> GetIHCProjectSegmentationSize();
 
-        /**
-        * Get the total number of segments in the current project.
-        */
+        /// <summary>
+        /// Get the total number of segments in the current project.
+        /// </summary>
         public Task<int> GetIHCProjectNumberOfSegments();
 
-        /**
-        * Reset S0 energy meter values to zero.
-        */
+        /// <summary>
+        /// Reset S0 energy meter values to zero.
+        /// </summary>
         public Task ResetS0Values();
 
-        /**
-        * Get current S0 meter value.
-        */
+        /// <summary>
+        /// Get current S0 meter value.
+        /// </summary>
         public Task<float> GetS0MeterValue();
 
-        /**
-        * Set S0 consumption configuration.
-        */
+        /// <summary>
+        /// Set S0 consumption configuration.
+        /// </summary>
+        /// <param name="consumption">Consumption value to set</param>
+        /// <param name="flag">Configuration flag</param>
         public Task SetS0Consumption(float consumption, bool flag);
 
-        /**
-        * Set the start date for S0 fiscal year tracking.
-        */
+        /// <summary>
+        /// Set the start date for S0 fiscal year tracking.
+        /// </summary>
+        /// <param name="month">Month (1-12)</param>
+        /// <param name="day">Day of month</param>
         public Task SetS0FiscalYearStart(sbyte month, sbyte day);
 
-        /**
-        * Make the controller enter project change mode to allow project updates.
-        */
+        /// <summary>
+        /// Make the controller enter project change mode to allow project updates.
+        /// </summary>
         public Task<bool> EnterProjectChangeMode();
 
-        /**
-        * Make the controller exit project change mode after project updates.
-        */
+        /// <summary>
+        /// Make the controller exit project change mode after project updates.
+        /// </summary>
         public Task<bool> ExitProjectChangeMode();
     }
 
-    /**
-    * A highlevel implementation of a client to the IHC ControllerService without exposing any of the soap distractions.
-    */
+    /// <summary>
+    /// A highlevel implementation of a client to the IHC ControllerService without exposing any of the soap distractions.
+    /// </summary>
     public class ControllerService : ServiceBase, IControllerService
     {
         private readonly IAuthenticationService authService;
@@ -237,10 +244,10 @@ namespace Ihc {
 
         private readonly SoapImpl impl;
 
-        /**
-        * Create an ControllerService instance for access to the IHC API related to the controller itself.
-        * <param name="authService">AuthenticationService instance</param>
-        */
+        /// <summary>
+        /// Create an ControllerService instance for access to the IHC API related to the controller itself.
+        /// </summary>
+        /// <param name="authService">AuthenticationService instance</param>
         public ControllerService(IAuthenticationService authService)
             : base(authService.Logger, authService.IhcSettings)
         {
@@ -346,7 +353,7 @@ namespace Ihc {
             };
         }
 
-/*
+        /*
         private ControllerState mapControllerState(Ihc.Soap.Controller.WSControllerState state)
         {
             switch (state?.state)
@@ -356,7 +363,7 @@ namespace Ihc {
                 default:
                     return ControllerState.Unknown;
             }
-       }*/
+        }*/
 
         public async Task<bool> IsIHCProjectAvailable()
         {

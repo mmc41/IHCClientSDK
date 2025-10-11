@@ -42,7 +42,7 @@ namespace Ihc.example
           var resourceInteractionService = new ResourceInteractionService(authService);
 
           // Authenticate against IHC system. 
-          var login = await authService.Authenticate();
+          var login = await authService.Authenticate(); // Use username/password from settings
 
           // Poll on IO changes to all our input addresses:
           var resourceChanges = resourceInteractionService.GetResourceValueChanges(new int[] {

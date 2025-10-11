@@ -6,132 +6,143 @@ using Ihc.Soap.Configuration;
 using System.Diagnostics;
 
 namespace Ihc {
-    /**
-    * A highlevel client interface for the IHC ConfigurationService without any of the soap distractions.
-    */
+    /// <summary>
+    /// A highlevel client interface for the IHC ConfigurationService without any of the soap distractions.
+    /// </summary>
     public interface IConfigurationService : IIHCService
     {
-        /**
-        * Get system information including uptime, version, serial number, and hardware details.
-        */
+        /// <summary>
+        /// Get system information including uptime, version, serial number, and hardware details.
+        /// </summary>
         public Task<SystemInfo> GetSystemInfo();
 
-        /**
-        * Clear the user log on the controller.
-        */
+        /// <summary>
+        /// Clear the user log on the controller.
+        /// </summary>
         public Task ClearUserLog();
 
-        /**
-        * Get user log entries from the controller.
-        * @param lang Language code (default: "da" for Danish)
-        */
+        /// <summary>
+        /// Get user log entries from the controller.
+        /// </summary>
+        /// <param name="lang">Language code (default: "da" for Danish)</param>
         public Task<string[]> GetUserLog(string lang = "da");
 
-        /**
-        * Reboot the IHC controller after a delay.
-        * @param delayUnknownUnit Delay before reboot (time unit unknown - requires testing)
-        */
+        /// <summary>
+        /// Reboot the IHC controller after a delay.
+        /// </summary>
+        /// <param name="delayUnknownUnit">Delay before reboot (time unit unknown - requires testing)</param>
         public Task DelayedReboot(int delayUnknownUnit);
 
-        /**
-        * Get network settings including IP address, netmask, gateway, and ports.
-        */
+        /// <summary>
+        /// Get network settings including IP address, netmask, gateway, and ports.
+        /// </summary>
         public Task<NetworkSettings> GetNetworkSettings();
 
-        /**
-        * Set network settings for the controller.
-        */
+        /// <summary>
+        /// Set network settings for the controller.
+        /// </summary>
+        /// <param name="settings">Network settings to configure</param>
         public Task SetNetworkSettings(NetworkSettings settings);
 
-        /**
-        * Get DNS server addresses configured on the controller.
-        */
+        /// <summary>
+        /// Get DNS server addresses configured on the controller.
+        /// </summary>
         public Task<DNSServers> GetDNSServers();
 
-        /**
-        * Set DNS server addresses (primary and secondary).
-        */
+        /// <summary>
+        /// Set DNS server addresses (primary and secondary).
+        /// </summary>
+        /// <param name="dnsServers">DNS server configuration</param>
         public Task SetDNSServers(DNSServers dnsServers);
 
-        /**
-        * Get wireless LAN settings.
-        */
+        /// <summary>
+        /// Get wireless LAN settings.
+        /// </summary>
         public Task<WLanSettings> GetWLanSettings();
 
-        /**
-        * Set wireless LAN settings including SSID, security, and network configuration.
-        */
+        /// <summary>
+        /// Set wireless LAN settings including SSID, security, and network configuration.
+        /// </summary>
+        /// <param name="settings">Wireless LAN settings to configure</param>
         public Task SetWLanSettings(WLanSettings settings);
 
-        /**
-        * Get wireless interface information including connection status and signal quality.
-        */
+        /// <summary>
+        /// Get wireless interface information including connection status and signal quality.
+        /// </summary>
         public Task<WLanInterface> GetWLanInterface();
 
-        /**
-        * Scan for available wireless networks.
-        */
+        /// <summary>
+        /// Scan for available wireless networks.
+        /// </summary>
         public Task<WLanCell[]> GetWLanScan();
 
-        /**
-        * Get SMTP server settings for email notifications.
-        */
+        /// <summary>
+        /// Get SMTP server settings for email notifications.
+        /// </summary>
         public Task<SMTPSettings> GetSMTPSettings();
 
-        /**
-        * Set SMTP server settings for email notifications.
-        */
+        /// <summary>
+        /// Set SMTP server settings for email notifications.
+        /// </summary>
+        /// <param name="settings">SMTP settings to configure</param>
         public Task SetSMTPSettings(SMTPSettings settings);
 
-        /**
-        * Test SMTP settings by attempting to connect to the mail server.
-        */
+        /// <summary>
+        /// Test SMTP settings by attempting to connect to the mail server.
+        /// </summary>
         public Task TestSettingsNow();
 
-        /**
-        * Send a test email message to verify SMTP configuration.
-        */
+        /// <summary>
+        /// Send a test email message to verify SMTP configuration.
+        /// </summary>
+        /// <param name="recipient">Email recipient address</param>
+        /// <param name="subject">Email subject</param>
+        /// <param name="message">Email message body</param>
         public Task<bool> TestSendMessage(string recipient, string subject, string message);
 
-        /**
-        * Check if email control feature is enabled.
-        */
+        /// <summary>
+        /// Check if email control feature is enabled.
+        /// </summary>
         public Task<bool> GetEmailControlEnabled();
 
-        /**
-        * Enable or disable the email control feature.
-        */
+        /// <summary>
+        /// Enable or disable the email control feature.
+        /// </summary>
+        /// <param name="enabled">True to enable, false to disable</param>
         public Task SetEmailControlEnabled(bool enabled);
 
-        /**
-        * Get email control settings for remote controller access via email.
-        */
+        /// <summary>
+        /// Get email control settings for remote controller access via email.
+        /// </summary>
         public Task<EmailControlSettings> GetEmailControlSettings();
 
-        /**
-        * Set email control settings for remote controller access via email.
-        */
+        /// <summary>
+        /// Set email control settings for remote controller access via email.
+        /// </summary>
+        /// <param name="settings">Email control settings to configure</param>
         public Task SetEmailControlSettings(EmailControlSettings settings);
 
-        /**
-        * Get web access control settings for different applications and access types.
-        */
+        /// <summary>
+        /// Get web access control settings for different applications and access types.
+        /// </summary>
         public Task<WebAccessControl> GetWebAccessControl();
 
-        /**
-        * Set web access control settings for different applications and access types.
-        */
+        /// <summary>
+        /// Set web access control settings for different applications and access types.
+        /// </summary>
+        /// <param name="accessControl">Web access control settings to configure</param>
         public Task SetWebAccessControl(WebAccessControl accessControl);
 
-        /**
-        * Set the server language for the controller interface.
-        */
+        /// <summary>
+        /// Set the server language for the controller interface.
+        /// </summary>
+        /// <param name="language">Language code to set</param>
         public Task SetServerLanguage(string language);
     }
 
-    /**
-    * A highlevel implementation of a client to the IHC ConfigurationService without exposing any of the soap distractions.
-    */
+    /// <summary>
+    /// A highlevel implementation of a client to the IHC ConfigurationService without exposing any of the soap distractions.
+    /// </summary>
     public class ConfigurationService : ServiceBase, IConfigurationService
     {
         private readonly IAuthenticationService authService;
@@ -263,10 +274,10 @@ namespace Ihc {
 
         private readonly SoapImpl impl;
 
-        /**
-        * Create an ConfigurationService instance for access to the IHC API related to configuration.
-        * <param name="authService">AuthenticationService instance</param>
-        */
+        /// <summary>
+        /// Create an ConfigurationService instance for access to the IHC API related to configuration.
+        /// </summary>
+        /// <param name="authService">AuthenticationService instance</param>
         public ConfigurationService(IAuthenticationService authService)
             : base(authService.Logger, authService.IhcSettings)
         {

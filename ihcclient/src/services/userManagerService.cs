@@ -6,38 +6,40 @@ using Ihc.Soap.Usermanager;
 using System.Diagnostics;
 
 namespace Ihc {
-    /**
-    * A highlevel client interface for the IHC UserManagerService without any of the soap distractions.
-    *
-    * Status: Incomplete.
-    */
+    /// <summary>
+    /// A highlevel client interface for the IHC UserManagerService without any of the soap distractions.
+    /// Status: Incomplete.
+    /// </summary>
     public interface IUserManagerService : IIHCService
     {
-        /**
-        * Get list of all users registered on the controller.
-        * @param includePassword Include password in returned user objects
-        */
+        /// <summary>
+        /// Get list of all users registered on the controller.
+        /// </summary>
+        /// <param name="includePassword">Include password in returned user objects</param>
         public Task<IhcUser[]> GetUsers(bool includePassword);
 
-        /**
-        * Add a new user to the controller.
-        */
+        /// <summary>
+        /// Add a new user to the controller.
+        /// </summary>
+        /// <param name="user">User information to add</param>
         public Task AddUser(IhcUser user);
 
-        /**
-        * Remove a user from the controller by username.
-        */
+        /// <summary>
+        /// Remove a user from the controller by username.
+        /// </summary>
+        /// <param name="username">Username of the user to remove</param>
         public Task RemoveUser(string username);
 
-        /**
-        * Update an existing user's information on the controller.
-        */
+        /// <summary>
+        /// Update an existing user's information on the controller.
+        /// </summary>
+        /// <param name="user">Updated user information</param>
         public Task UpdateUser(IhcUser user);
     }
 
-    /**
-    * A highlevel implementation of a client to the IHC UserManagerService without exposing any of the soap distractions.
-    */
+    /// <summary>
+    /// A highlevel implementation of a client to the IHC UserManagerService without exposing any of the soap distractions.
+    /// </summary>
     public class UserManagerService : ServiceBase, IUserManagerService
     {
         private readonly IAuthenticationService authService;
@@ -119,10 +121,10 @@ namespace Ihc {
             };
         }
 
-        /**
-        * Create a UserManagerService instance for access to the IHC API related to user management.
-        * <param name="authService">AuthenticationService instance</param>
-        */
+        /// <summary>
+        /// Create a UserManagerService instance for access to the IHC API related to user management.
+        /// </summary>
+        /// <param name="authService">AuthenticationService instance</param>
         public UserManagerService(IAuthenticationService authService)
             : base(authService.Logger, authService.IhcSettings)
         {
@@ -130,9 +132,10 @@ namespace Ihc {
             this.impl = new SoapImpl(logger, authService.GetCookieHandler(), settings);
         }
 
-        /**
-        * Get list of registered controller users and their information.
-        */
+        /// <summary>
+        /// Get list of registered controller users and their information.
+        /// </summary>
+        /// <param name="includePassword">Include password in returned user objects</param>
         public async Task<IhcUser[]> GetUsers(bool includePassword)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
@@ -145,9 +148,10 @@ namespace Ihc {
             return retv;
         }
 
-        /**
-        * Add a new user to the IHC controller.
-        */
+        /// <summary>
+        /// Add a new user to the IHC controller.
+        /// </summary>
+        /// <param name="user">User information to add</param>
         public async Task AddUser(IhcUser user)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
@@ -156,9 +160,10 @@ namespace Ihc {
             await impl.addUserAsync(new inputMessageName1() { addUser1 = mapUser(user) }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
-        /**
-        * Remove a user from the IHC controller.
-        */
+        /// <summary>
+        /// Remove a user from the IHC controller.
+        /// </summary>
+        /// <param name="username">Username of the user to remove</param>
         public async Task RemoveUser(string username)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
@@ -167,9 +172,10 @@ namespace Ihc {
             await impl.removeUserAsync(new inputMessageName3() { removeUser1 = username }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
-        /**
-        * Update an existing user on the IHC controller.
-        */
+        /// <summary>
+        /// Update an existing user on the IHC controller.
+        /// </summary>
+        /// <param name="user">Updated user information</param>
         public async Task UpdateUser(IhcUser user)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);

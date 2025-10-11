@@ -8,106 +8,119 @@ using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace Ihc {
-    /**
-    * A highlevel client interface for the IHC ResourceInteractionService without any of the soap distractions.
-    *
-    * Status: 100% API coverage but not fully tested or documented.
-    */
+    /// <summary>
+    /// A highlevel client interface for the IHC ResourceInteractionService without any of the soap distractions.
+    /// Status: 100% API coverage but not fully tested or documented.
+    /// </summary>
     public interface IResourceInteractionService : IIHCService
     {
-        /**
-        * Disable initial value notifications for specified resource IDs.
-        */
+        /// <summary>
+        /// Disable initial value notifications for specified resource IDs.
+        /// </summary>
+        /// <param name="resourceIds">Array of resource IDs to disable</param>
         public Task<bool> DisableInitialValueNotifactions(int[] resourceIds);
 
-        /**
-        * Disable runtime value notifications for specified resource IDs.
-        */
+        /// <summary>
+        /// Disable runtime value notifications for specified resource IDs.
+        /// </summary>
+        /// <param name="resourceIds">Array of resource IDs to disable</param>
         public Task<bool> DisableRuntimeValueNotifactions(int[] resourceIds);
 
-        /**
-        * Enable initial value notifications for specified resource IDs and return current values.
-        */
+        /// <summary>
+        /// Enable initial value notifications for specified resource IDs and return current values.
+        /// </summary>
+        /// <param name="resourceIds">Array of resource IDs to enable</param>
         public Task<ResourceValue[]> EnableInitialValueNotifications(int[] resourceIds);
 
-        /**
-        * Enable runtime value notifications for specified resource IDs. Must be called before WaitForResourceValueChanges.
-        */
+        /// <summary>
+        /// Enable runtime value notifications for specified resource IDs. Must be called before WaitForResourceValueChanges.
+        /// </summary>
+        /// <param name="resourceIds">Array of resource IDs to enable</param>
         public Task<ResourceValue[]> EnableRuntimeValueNotifications(int[] resourceIds);
 
-        /**
-        * Get all dataline input resource definitions.
-        */
+        /// <summary>
+        /// Get all dataline input resource definitions.
+        /// </summary>
         public Task<DatalineResource[]> GetAllDatalineInputs();
 
-        /**
-        * Get all dataline output resource definitions.
-        */
+        /// <summary>
+        /// Get all dataline output resource definitions.
+        /// </summary>
         public Task<DatalineResource[]> GetAllDatalineOutputs();
 
-        /**
-        * Get all enumerator definitions from the IHC project.
-        */
+        /// <summary>
+        /// Get all enumerator definitions from the IHC project.
+        /// </summary>
         public Task<EnumDefinition[]> GetEnumeratorDefinitions();
 
-        /**
-        * Get all extra dataline input resource definitions.
-        */
+        /// <summary>
+        /// Get all extra dataline input resource definitions.
+        /// </summary>
         public Task<DatalineResource[]> GetExtraDatalineInputs();
 
-        /**
-        * Get all extra dataline output resource definitions.
-        */
+        /// <summary>
+        /// Get all extra dataline output resource definitions.
+        /// </summary>
         public Task<DatalineResource[]> GetExtraDatalineOutputs();
 
-        /**
-        * Get initial value for a single resource ID.
-        */
+        /// <summary>
+        /// Get initial value for a single resource ID.
+        /// </summary>
+        /// <param name="initialValue">Resource ID to get initial value for</param>
         public Task<ResourceValue> GetInitialValue(int? initialValue);
 
-        /**
-        * Get initial values for multiple resource IDs.
-        */
+        /// <summary>
+        /// Get initial values for multiple resource IDs.
+        /// </summary>
+        /// <param name="initialValues">Array of resource IDs to get initial values for</param>
         public Task<ResourceValue[]> GetInitialValues(int[] initialValues);
 
-        /**
-        * Get logged historical data for a resource ID.
-        */
+        /// <summary>
+        /// Get logged historical data for a resource ID.
+        /// </summary>
+        /// <param name="loggedData1">Resource ID to get logged data for</param>
         public Task<LoggedData[]> GetLoggedData(int loggedData1);
 
-        /**
-        * Get the type string of a resource. Refer to TypeStrings constants for valid return values.
-        */
+        /// <summary>
+        /// Get the type string of a resource. Refer to TypeStrings constants for valid return values.
+        /// </summary>
+        /// <param name="resourceID">Resource ID to get type for</param>
         public Task<string> GetResourceType(int resourceID);
 
-        /**
-        * Get current runtime value of an input/output resource.
-        */
+        /// <summary>
+        /// Get current runtime value of an input/output resource.
+        /// </summary>
+        /// <param name="resourceID">Resource ID to get runtime value for</param>
         public Task<ResourceValue> GetRuntimeValue(int resourceID);
 
-        /**
-        * Get current runtime values for multiple resource IDs.
-        */
+        /// <summary>
+        /// Get current runtime values for multiple resource IDs.
+        /// </summary>
+        /// <param name="resourceIDs">Array of resource IDs to get runtime values for</param>
         public Task<ResourceValue[]> GetRuntimeValues(int[] resourceIDs);
 
-        /**
-        * Set value for a single resource.
-        */
+        /// <summary>
+        /// Set value for a single resource.
+        /// </summary>
+        /// <param name="v">Resource value to set</param>
         public Task<bool> SetResourceValue(ResourceValue v);
 
-        /**
-        * Set values for multiple resources.
-        */
+        /// <summary>
+        /// Set values for multiple resources.
+        /// </summary>
+        /// <param name="values">Array of resource values to set</param>
         public Task<bool> SetResourceValues(ResourceValue[] values);
 
-        /**
-        * Get scene resource IDs and positions for a scene group.
-        */
+        /// <summary>
+        /// Get scene resource IDs and positions for a scene group.
+        /// </summary>
+        /// <param name="sceneGroupResourceIdAndPositions">Scene group resource ID</param>
         public Task<SceneResourceIdAndLocation[]> GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions);
 
-        /**
-        * Get scene positions for a scene value resource.
-        */
+        /// <summary>
+        /// Get scene positions for a scene value resource.
+        /// </summary>
+        /// <param name="scenePositionsForSceneValueResource">Scene value resource ID</param>
         public Task<SceneResourceIdAndLocation> GetScenePositionsForSceneValueResource(int scenePositionsForSceneValueResource);
 
         /// <summary>
@@ -136,10 +149,10 @@ namespace Ihc {
     {
         private readonly IAuthenticationService authService;
 
-        /**
-         * This internal class implements the raw IHC soap service interface and provides the basis
-         * for the higher level public service methods below it.
-         */
+        /// <summary>
+        /// This internal class implements the raw IHC soap service interface and provides the basis
+        /// for the higher level public service methods below it.
+        /// </summary>
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Resourceinteraction.ResourceInteractionService
         {
             public SoapImpl(ILogger logger, ICookieHandler cookieHandler, IhcSettings settings) : base(logger, cookieHandler, settings, "ResourceInteractionService") { }
@@ -435,10 +448,10 @@ namespace Ihc {
             };
         }
 
-        /**
-        * Create an ResourceInteractionService instance for access to the IHC API related to resources.
-        * <param name="authService">AuthenticationService instance</param>
-        */
+        /// <summary>
+        /// Create an ResourceInteractionService instance for access to the IHC API related to resources.
+        /// </summary>
+        /// <param name="authService">AuthenticationService instance</param>
         public ResourceInteractionService(IAuthenticationService authService)
             : base(authService.Logger, authService.IhcSettings)
         {

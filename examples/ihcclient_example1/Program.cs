@@ -44,7 +44,7 @@ namespace Ihc.example
             try
             {
                 // Authenticate against IHC system. 
-                var login = await authService.Authenticate();
+                var login = await authService.Authenticate(); // Use username/password from settings
 
                 // Get value of a bool input
                 var inputValue = await resourceInteractionService.GetRuntimeValue(boolInput1);
