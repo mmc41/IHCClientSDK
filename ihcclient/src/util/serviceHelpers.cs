@@ -22,11 +22,13 @@ namespace Ihc
     {
         protected readonly ILogger logger;
         protected readonly bool asyncContinueOnCapturedContext;
+        protected bool logSensitiveData;
 
-        protected ServiceBase(ILogger logger, bool asyncContinueOnCapturedContext)
+        protected ServiceBase(ILogger logger, bool logSensitiveData, bool asyncContinueOnCapturedContext)
         {
             this.logger = logger;
             this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
+            this.logSensitiveData = logSensitiveData;
         }
 
         public IReadOnlyList<SeviceOperationMetadata> GetOperations()
@@ -49,13 +51,16 @@ namespace Ihc
         protected readonly ILogger logger;
         protected readonly ICookieHandler cookieHandler;
         public readonly string Url;
+        protected readonly bool logSensitiveData;
         protected readonly bool asyncContinueOnCapturedContext;
 
-        protected ServiceBaseImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, string serviceName, bool asyncContinueOnCapturedContext)
+
+        protected ServiceBaseImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, string serviceName, bool logSensitiveData, bool asyncContinueOnCapturedContext)
         {
             this.logger = logger;
             this.Url = endpoint + "/ws/" + serviceName;
             this.cookieHandler = cookieHandler;
+            this.logSensitiveData = logSensitiveData;
             this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
             this.ihcClient = new Client(logger, cookieHandler, Url, asyncContinueOnCapturedContext);
         }

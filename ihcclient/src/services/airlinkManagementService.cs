@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using Ihc.Soap.AirlinkManagement;
+using System.Diagnostics;
 
 namespace Ihc
 {
@@ -69,7 +70,7 @@ namespace Ihc
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.AirlinkManagement.AirlinkManagementService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "AirlinkManagementService", asyncContinueOnCapturedContext) { }
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool logSensitiveData, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "AirlinkManagementService", logSensitiveData, asyncContinueOnCapturedContext) { }
 
             public Task<outputMessageName1> enterRFConfigurationAsync(inputMessageName1 request)
             {
@@ -127,13 +128,14 @@ namespace Ihc
         /**
         * Create an AirlinkManagementService instance for access to the IHC API related to Airlink RF device management.
         * <param name="authService">AuthenticationService instance</param>
+        * <param name="logSensitiveData">If true, log sensitive data. If false (default), redact sensitive values in logs.</param>
         * <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
         */
-        public AirlinkManagementService(IAuthenticationService authService, bool asyncContinueOnCapturedContext = false)
-            : base(authService.Logger, asyncContinueOnCapturedContext)
+        public AirlinkManagementService(IAuthenticationService authService, bool logSensitiveData = false, bool asyncContinueOnCapturedContext = false)
+            : base(authService.Logger, logSensitiveData, asyncContinueOnCapturedContext)
         {
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, asyncContinueOnCapturedContext);
+            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, logSensitiveData, asyncContinueOnCapturedContext);
         }
 
         private RFDevice mapRFDevice(WSRFDevice device)
@@ -154,65 +156,116 @@ namespace Ihc
 
         public async Task<bool> EnterRFConfiguration()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var result = await impl.enterRFConfigurationAsync(new inputMessageName1()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.enterRFConfiguration1.HasValue && result.enterRFConfiguration1.Value;
+            var retv = result.enterRFConfiguration1.HasValue && result.enterRFConfiguration1.Value;
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<bool> ExitRFConfiguration()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var result = await impl.exitRFConfigurationAsync(new inputMessageName2()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.exitRFConfiguration1.HasValue && result.exitRFConfiguration1.Value;
+            var retv = result.exitRFConfiguration1.HasValue && result.exitRFConfiguration1.Value;
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<bool> EnterRFTest()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var result = await impl.enterRFTestAsync(new inputMessageName8()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.enterRFTest1.HasValue && result.enterRFTest1.Value;
+            var retv = result.enterRFTest1.HasValue && result.enterRFTest1.Value;
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<bool> ExitRFTest()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var result = await impl.exitRFTestAsync(new inputMessageName9()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.exitRFTest1.HasValue && result.exitRFTest1.Value;
+            var retv = result.exitRFTest1.HasValue && result.exitRFTest1.Value;
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<bool> TestRFActuatorWithSerialNumber(long serialNumber)
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(("serialNumber", serialNumber));
+
             var result = await impl.testRFActuatorWithSerialNumberAsync(new inputMessageName3(serialNumber)).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.testRFActuatorWithSerialNumber2.HasValue && result.testRFActuatorWithSerialNumber2.Value;
+            var retv = result.testRFActuatorWithSerialNumber2.HasValue && result.testRFActuatorWithSerialNumber2.Value;
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<int[]> GetDevicesRunningOutOfBattery()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var result = await impl.getDevicesRunningOutOfBatteryAsync(new inputMessageName4()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.getDevicesRunningOutOfBattery1 != null ? result.getDevicesRunningOutOfBattery1 : Array.Empty<int>();
+            var retv = result.getDevicesRunningOutOfBattery1 != null ? result.getDevicesRunningOutOfBattery1 : Array.Empty<int>();
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<RFDevice> WaitForDeviceDetected(int timeoutSeconds)
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(("timeoutSeconds", timeoutSeconds));
+
             var result = await impl.waitForDeviceDetectedAsync(new inputMessageName5(timeoutSeconds)).ConfigureAwait(asyncContinueOnCapturedContext);
-            return mapRFDevice(result.waitForDeviceDetected2);
+            var retv = mapRFDevice(result.waitForDeviceDetected2);
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<RFDevice> WaitForDeviceTestResult(int timeoutSeconds)
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(("timeoutSeconds", timeoutSeconds));
+
             var result = await impl.waitForDeviceTestResultAsync(new inputMessageName6(timeoutSeconds)).ConfigureAwait(asyncContinueOnCapturedContext);
-            return mapRFDevice(result.waitForDeviceTestResult2);
+            var retv = mapRFDevice(result.waitForDeviceTestResult2);
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<RFDevice[]> GetDetectedDeviceList()
         {
-            var result = await impl.getDetectedDeviceListAsync(new inputMessageName7()).ConfigureAwait(asyncContinueOnCapturedContext);
-            if (result.getDetectedDeviceList1 == null)
-                return Array.Empty<RFDevice>();
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            return result.getDetectedDeviceList1.Select(mapRFDevice).ToArray();
+            var result = await impl.getDetectedDeviceListAsync(new inputMessageName7()).ConfigureAwait(asyncContinueOnCapturedContext);
+            var retv = result.getDetectedDeviceList1 == null ? Array.Empty<RFDevice>() : result.getDetectedDeviceList1.Select(mapRFDevice).ToArray();
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<int> GetBatteryLevel(int resourceId)
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(("resourceId", resourceId));
+
             var result = await impl.getBatteryLevelAsync(new inputMessageName10(resourceId)).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.getBatteryLevel2.HasValue ? result.getBatteryLevel2.Value : 0;
+            var retv = result.getBatteryLevel2.HasValue ? result.getBatteryLevel2.Value : 0;
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
     }
 }

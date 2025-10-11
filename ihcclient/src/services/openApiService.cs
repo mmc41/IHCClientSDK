@@ -6,6 +6,7 @@ using Ihc.Soap.Openapi;
 using System.Collections.Generic;
 using System.Threading;
 using System.Runtime.CompilerServices;
+using System.Diagnostics;
 
 namespace Ihc {
     /**
@@ -160,7 +161,7 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Openapi.OpenAPIService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "OpenAPIService", asyncContinueOnCapturedContext) { }
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool logSensitiveData, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "OpenAPIService", logSensitiveData, asyncContinueOnCapturedContext) { }
 
             public Task<outputMessageName13> authenticateAsync(inputMessageName13 request)
             {
@@ -485,15 +486,20 @@ namespace Ihc {
         ///                                WARNING: Enabling this will expose credentials in logs. Only enable for debugging in secure environments.</param>
         /// <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
         public OpenAPIService(ILogger logger, string endpoint, bool logSensitiveData = false, bool asyncContinueOnCapturedContext = false)
-            : base(logger, asyncContinueOnCapturedContext)
+            : base(logger, logSensitiveData, asyncContinueOnCapturedContext)
         {
             this.endpoint = endpoint;
             this.cookieHandler = new CookieHandler(logger, logSensitiveData);
-            this.impl = new SoapImpl(logger, cookieHandler, endpoint, asyncContinueOnCapturedContext);
+            this.impl = new SoapImpl(logger, cookieHandler, endpoint, logSensitiveData, asyncContinueOnCapturedContext);
         }
 
         public async Task Authenticate(string userName, string password)
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(
+                ("userName", userName));
+            // Note: password is intentionally not logged for security
+
             logger.LogInformation("IHC OpenAPI Authenticate called");
             var resp = await impl.authenticateAsync(new inputMessageName13() { authenticate1 = userName, authenticate2 = password }).ConfigureAwait(asyncContinueOnCapturedContext);
 
@@ -511,85 +517,153 @@ namespace Ihc {
 
         public async Task Ping()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             await impl.pingAsync(new inputMessageName10()).ConfigureAwait(asyncContinueOnCapturedContext);
             return;
         }
 
         public async Task<FWVersion> GetFWVersion()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var result = await impl.getFWVersionAsync(new inputMessageName11()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return mapFWVersion(result.getFWVersion1);
+            var retv = mapFWVersion(result.getFWVersion1);
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<string> GetAPIVersion()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var result = await impl.getAPIVersionAsync(new inputMessageName12()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.getAPIVersion1.HasValue ? result.getAPIVersion1.Value.ToString() : "0";
+            var retv = result.getAPIVersion1.HasValue ? result.getAPIVersion1.Value.ToString() : "0";
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<TimeSpan> GetUptime()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var result = await impl.getUptimeAsync(new inputMessageName9()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return TimeSpan.FromMilliseconds(result.getUptime1.HasValue ? result.getUptime1.Value : 0);
+            var retv = TimeSpan.FromMilliseconds(result.getUptime1.HasValue ? result.getUptime1.Value : 0);
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<DateTime> GetTime()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var result = await impl.getTimeAsync(new inputMessageName8()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.getTime1 != null ? result.getTime1.ToDateTimeOffset().DateTime : DateTime.MinValue;
+            var retv = result.getTime1 != null ? result.getTime1.ToDateTimeOffset().DateTime : DateTime.MinValue;
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<bool> IsIHCProjectAvailable()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var result = await impl.isIHCProjectAvailableAsync(new inputMessageName16()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.isIHCProjectAvailable1.HasValue ? result.isIHCProjectAvailable1.Value : false;
+            var retv = result.isIHCProjectAvailable1.HasValue ? result.isIHCProjectAvailable1.Value : false;
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<int[]> GetDatalineInputIDs()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var result = await impl.getDatalineInputIDsAsync(new inputMessageName3()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.getDatalineInputIDs1 != null ? result.getDatalineInputIDs1.Select(r => r.resourceID).ToArray() : Array.Empty<int>();
+            var retv = result.getDatalineInputIDs1 != null ? result.getDatalineInputIDs1.Select(r => r.resourceID).ToArray() : Array.Empty<int>();
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<int[]> GetDatalineOutputIDs()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var result = await impl.getDatalineOutputIDsAsync(new inputMessageName4()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.getDatalineOutputIDs1 != null ? result.getDatalineOutputIDs1.Select(r => r.resourceID).ToArray() : Array.Empty<int>();
+            var retv = result.getDatalineOutputIDs1 != null ? result.getDatalineOutputIDs1.Select(r => r.resourceID).ToArray() : Array.Empty<int>();
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task DoReboot()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             logger.LogWarning("IHC OpenAPI DoReboot called - controller will reboot");
             await impl.doRebootAsync(new inputMessageName15()).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<ResourceValue[]> GetValues(int[] resourceIds)
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(
+                ("resourceIds", resourceIds));
+
             var result = await impl.getValuesAsync(new inputMessageName6() { getValues1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.getValues2 != null ? result.getValues2.Select(v => mapResourceValue(v)).ToArray() : Array.Empty<ResourceValue>();
+            var retv = result.getValues2 != null ? result.getValues2.Select(v => mapResourceValue(v)).ToArray() : Array.Empty<ResourceValue>();
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<bool> SetValues(ResourceValue[] values)
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(
+                ("values", values));
+
             var wsEvents = values.Select(v => mapToWSResourceValueEvent(v)).ToArray();
             var result = await impl.setValuesAsync(new inputMessageName7() { setValues1 = wsEvents }).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.setValues2.HasValue ? result.setValues2.Value : false;
+            var retv = result.setValues2.HasValue ? result.setValues2.Value : false;
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task EnableSubscription(int[] resourceIds)
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(
+                ("resourceIds", resourceIds));
+
             await impl.enableSubscriptionAsync(new inputMessageName1() { enableSubscription1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task DisableSubscription(int[] resourceIds)
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(
+                ("resourceIds", resourceIds));
+
             await impl.disableSubscriptionAsync(new inputMessageName2() { disableSubscription1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<EventPackage> WaitForEvents(int? timeout)
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(
+                ("timeout", timeout));
+
             var result = await impl.waitForEventsAsync(new inputMessageName5() { waitForEvents1 = timeout }).ConfigureAwait(asyncContinueOnCapturedContext);
-            return mapEventPackage(result.waitForEvents2);
+            var retv = mapEventPackage(result.waitForEvents2);
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         /**
@@ -614,52 +688,93 @@ namespace Ihc {
 
         public async Task<ProjectInfo> GetProjectInfo()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var result = await impl.getProjectInfoAsync(new inputMessageName14()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return mapProjectInfo(result.getProjectInfo1);
+            var retv = mapProjectInfo(result.getProjectInfo1);
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<int> GetIHCProjectNumberOfSegments()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var result = await impl.getIHCProjectNumberOfSegmentsAsync(new inputMessageName19()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.getIHCProjectNumberOfSegments1.HasValue ? result.getIHCProjectNumberOfSegments1.Value : 0;
+            var retv = result.getIHCProjectNumberOfSegments1.HasValue ? result.getIHCProjectNumberOfSegments1.Value : 0;
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<int> GetIHCProjectSegmentationSize()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var result = await impl.getIHCProjectSegmentationSizeAsync(new inputMessageName18()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.getIHCProjectSegmentationSize1.HasValue ? result.getIHCProjectSegmentationSize1.Value : 0;
+            var retv = result.getIHCProjectSegmentationSize1.HasValue ? result.getIHCProjectSegmentationSize1.Value : 0;
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<byte[]> GetIHCProjectSegment(int index, int majorVersion, int minorVersion)
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(
+                ("index", index),
+                ("majorVersion", majorVersion),
+                ("minorVersion", minorVersion));
+
             var result = await impl.getIHCProjectSegmentAsync(new inputMessageName17()
             {
                 getIHCProjectSegment1 = index,
                 getIHCProjectSegment2 = majorVersion,
                 getIHCProjectSegment3 = minorVersion
             }).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.getIHCProjectSegment4?.data != null ? result.getIHCProjectSegment4.data : Array.Empty<byte>();
+            var retv = result.getIHCProjectSegment4?.data != null ? result.getIHCProjectSegment4.data : Array.Empty<byte>();
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<SceneProjectInfo> GetSceneProjectInfo()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var result = await impl.getSceneProjectInfoAsync(new inputMessageName20()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return mapSceneProjectInfo(result.getSceneProjectInfo1);
+            var retv = mapSceneProjectInfo(result.getSceneProjectInfo1);
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<int> GetSceneProjectSegmentationSize()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var result = await impl.getSceneProjectSegmentationSizeAsync(new inputMessageName21()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.getSceneProjectSegmentationSize1.HasValue ? result.getSceneProjectSegmentationSize1.Value : 0;
+            var retv = result.getSceneProjectSegmentationSize1.HasValue ? result.getSceneProjectSegmentationSize1.Value : 0;
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<byte[]> GetSceneProjectSegment(int index)
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(
+                ("index", index));
+
             var result = await impl.getSceneProjectSegmentAsync(new inputMessageName22()
             {
                 getSceneProjectSegment1 = index
             }).ConfigureAwait(asyncContinueOnCapturedContext);
-            return result.getSceneProjectSegment2?.data != null ? result.getSceneProjectSegment2.data : Array.Empty<byte>();
+            var retv = result.getSceneProjectSegment2?.data != null ? result.getSceneProjectSegment2.data : Array.Empty<byte>();
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
     }
 }

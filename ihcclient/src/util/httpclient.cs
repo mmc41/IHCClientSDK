@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -25,21 +26,37 @@ namespace Ihc {
                 this.logger = logger;
             }
 
+            private string redactPassword(string input)
+            {
+                if (input == null)
+                {
+                    return null;
+                }
+
+                // TODO: Replace like 'xxx' in inner xml constructs like this  <ns1:password>xxx</ns1:password>
+
+                return input;
+            }
+
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
-                logger.LogTrace("Request: " + request.ToString());
-                if (request.Content != null)
-                {
-                    logger.LogTrace(await request.Content.ReadAsStringAsync().ConfigureAwait(false));
-                }
+                using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
+                string requestLogString = request.Content != null ? await request.Content.ReadAsStringAsync().ConfigureAwait(false) : null;
+                requestLogString = redactPassword(requestLogString);
+
+                logger.LogTrace("Request: " + requestLogString);
+                activity?.SetParameters(
+                    (nameof(request), requestLogString),
+                    (nameof(cancellationToken), cancellationToken)
+                );
+                
                 HttpResponseMessage response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
-                logger.LogTrace("Response: " + response.ToString());
-                if (response.Content != null)
-                {
-                    logger.LogTrace(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
-                }
+                string responseLogString = response.Content != null ? await response.Content.ReadAsStringAsync().ConfigureAwait(false) : null;
+
+                logger.LogTrace("Response: " + responseLogString);
+                activity?.SetReturnValue(responseLogString);
 
                 return response;
             }

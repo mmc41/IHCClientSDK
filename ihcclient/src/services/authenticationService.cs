@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using Ihc.Soap.Authentication;
+using System.Diagnostics;
 
 
 namespace Ihc {
@@ -48,6 +49,7 @@ namespace Ihc {
     {
         private readonly ICookieHandler cookieHandler;
         private readonly string endpoint;
+        private readonly bool logSensitiveData;
 
         public ICookieHandler GetCookieHandler()
         {
@@ -68,7 +70,7 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Authentication.AuthenticationService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "AuthenticationService", asyncContinueOnCapturedContext) { }
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool logSensitiveData, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "AuthenticationService", logSensitiveData, asyncContinueOnCapturedContext) { }
 
             public Task<outputMessageName2> authenticateAsync(inputMessageName2 request)
             {
@@ -125,23 +127,36 @@ namespace Ihc {
         ///                                WARNING: Enabling this will expose credentials in logs. Only enable for debugging in secure environments.</param>
         /// <param name="asyncContinueOnCapturedContext">If true, continue on captured context for async operations.</param>
         public AuthenticationService(ILogger logger, string endpoint, bool logSensitiveData = false, bool asyncContinueOnCapturedContext = false)
-            : base(logger, asyncContinueOnCapturedContext)
+            : base(logger, logSensitiveData, asyncContinueOnCapturedContext)
         {
             this.endpoint = endpoint;
+            this.logSensitiveData = logSensitiveData;
             this.cookieHandler = new CookieHandler(logger, logSensitiveData);
-            this.impl = new SoapImpl(logger, cookieHandler, endpoint, asyncContinueOnCapturedContext);
+            this.impl = new SoapImpl(logger, cookieHandler, endpoint, logSensitiveData, asyncContinueOnCapturedContext);
             this.isConnected = false;
         }
 
         public async Task<bool> Ping()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var resp = await impl.pingAsync(new inputMessageName3()).ConfigureAwait(asyncContinueOnCapturedContext);
             var result = resp.ping1;
-            return result.HasValue ? result.Value : false;
+            var retv = result.HasValue ? result.Value : false;
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<IhcUser> Authenticate(string userName, string password, string application = "openapi")
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(
+                ("userName", userName),
+                ("password", logSensitiveData ? password : "***REDACTED***"),
+                ("application", application)
+            );
+
             logger.LogInformation("IHC Authenticate called");
             isConnected = false;
             var resp = await impl.authenticateAsync(new inputMessageName2() { authenticate1 = new WSAuthenticationData { username = userName, password = password, application = application } })
@@ -172,6 +187,8 @@ namespace Ihc {
 
                 };
                 logger.LogInformation($"Successfully authenticated user: {user.Username}");
+
+                activity?.SetReturnValue(user);
                 return user;
             }
             else if (result.loginFailedDueToAccountInvalid)
@@ -194,17 +211,24 @@ namespace Ihc {
 
         public async Task<bool> Disconnect()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             logger.LogInformation("IHC Disconnect called");
             bool? result;
 
-            try {
+            try
+            {
                 var resp = await impl.disconnectAsync(new inputMessageName1()).ConfigureAwait(asyncContinueOnCapturedContext);
                 result = resp.disconnect1;
-            } finally {
+            }
+            finally
+            {
                 isConnected = false;
             }
-            
-            return result.HasValue ? result.Value : false;
+
+            var retv = result.HasValue ? result.Value : false;
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public void Dispose()

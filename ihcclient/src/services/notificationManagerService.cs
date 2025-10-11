@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using Ihc.Soap.Notificationmanager;
+using System.Diagnostics;
 
 namespace Ihc {
     /**
@@ -31,7 +32,7 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Notificationmanager.NotificationManagerService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "NotificationManagerService", asyncContinueOnCapturedContext) {}
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool logSensitiveData, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "NotificationManagerService", logSensitiveData, asyncContinueOnCapturedContext) {}
 
             public Task<outputMessageName2> clearMessagesAsync(inputMessageName2 request)
             {
@@ -49,13 +50,14 @@ namespace Ihc {
         /**
         * Create an NotificationManagerService instance for access to the IHC API related to notifications.
         * <param name="authService">AuthenticationService instance</param>
+        * <param name="logSensitiveData">If true, log sensitive data. If false (default), redact sensitive values in logs.</param>
         * <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
         */
-        public NotificationManagerService(IAuthenticationService authService, bool asyncContinueOnCapturedContext = false)
-            : base(authService.Logger, asyncContinueOnCapturedContext)
+        public NotificationManagerService(IAuthenticationService authService, bool logSensitiveData = false, bool asyncContinueOnCapturedContext = false)
+            : base(authService.Logger, logSensitiveData, asyncContinueOnCapturedContext)
         {
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, asyncContinueOnCapturedContext);
+            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, logSensitiveData, asyncContinueOnCapturedContext);
         }
 
         private NotificationMessage mapMessage(WSNotificationMessage e)
@@ -85,13 +87,20 @@ namespace Ihc {
 
         public async Task ClearMessages()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             await impl.clearMessagesAsync(new inputMessageName2()).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<NotificationMessage[]> GetMessages()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var resp = await impl.getMessagesAsync(new inputMessageName1()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return resp.getMessages1.Where((v) => v != null).Select((v) => mapMessage(v)).ToArray();
+            var retv = resp.getMessages1.Where((v) => v != null).Select((v) => mapMessage(v)).ToArray();
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
     }
 }

@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using Ihc.Soap.Configuration;
+using System.Diagnostics;
 
 namespace Ihc {
     /**
@@ -137,7 +138,7 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Configuration.ConfigurationService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "ConfigurationService", asyncContinueOnCapturedContext) { }
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool logSensitiveData, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "ConfigurationService", logSensitiveData, asyncContinueOnCapturedContext) { }
 
             public Task<outputMessageName3> clearUserLogAsync(inputMessageName3 request)
             {
@@ -265,13 +266,14 @@ namespace Ihc {
         /**
         * Create an ConfigurationService instance for access to the IHC API related to configuration.
         * <param name="authService">AuthenticationService instance</param>
+        * <param name="logSensitiveData">If true, log sensitive data. If false (default), redact sensitive values in logs.</param>
         * <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
         */
-        public ConfigurationService(IAuthenticationService authService, bool asyncContinueOnCapturedContext = false)
-            : base(authService.Logger, asyncContinueOnCapturedContext)
+        public ConfigurationService(IAuthenticationService authService, bool logSensitiveData = false, bool asyncContinueOnCapturedContext = false)
+            : base(authService.Logger, logSensitiveData, asyncContinueOnCapturedContext)
         {
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, asyncContinueOnCapturedContext);
+            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, logSensitiveData, asyncContinueOnCapturedContext);
         }
 
         private SystemInfo mapSystemInfo(Ihc.Soap.Configuration.WSSystemInfo info)
@@ -552,40 +554,72 @@ namespace Ihc {
 
         public async Task<SystemInfo> GetSystemInfo()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var resp = await impl.getSystemInfoAsync(new inputMessageName6() { }).ConfigureAwait(asyncContinueOnCapturedContext);
-            return mapSystemInfo(resp.getSystemInfo1);
+            var retv = mapSystemInfo(resp.getSystemInfo1);
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task ClearUserLog() {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             await impl.clearUserLogAsync(new inputMessageName3()).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<string[]> GetUserLog(string lang) {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(("lang", lang));
+
             var resp = await impl.getUserLogAsync(new inputMessageName2("", 0, lang)).ConfigureAwait(asyncContinueOnCapturedContext);
-            return mapLogFile(resp.getUserLog4);
+            var retv = mapLogFile(resp.getUserLog4);
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task DelayedReboot(int delayUnknownUnit) {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(("delayUnknownUnit", delayUnknownUnit));
+
             await impl.delayedRebootAsync(new inputMessageName1(delayUnknownUnit) {}).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         // Network operations
 
         public async Task<NetworkSettings> GetNetworkSettings() {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var resp = await impl.getNetworkSettingsAsync(new inputMessageName16()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return mapNetworkSettings(resp.getNetworkSettings1);
+            var retv = mapNetworkSettings(resp.getNetworkSettings1);
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task SetNetworkSettings(NetworkSettings settings) {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(("settings", settings));
+
             await impl.setNetworkSettingsAsync(new inputMessageName17(unmapNetworkSettings(settings))).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<DNSServers> GetDNSServers() {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var resp = await impl.getDNSServersAsync(new inputMessageName7()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return mapDNSServers(resp.getDNSServers1);
+            var retv = mapDNSServers(resp.getDNSServers1);
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task SetDNSServers(DNSServers dnsServers) {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(("dnsServers", dnsServers));
+
             var (dns1, dns2) = unmapDNSServers(dnsServers);
             await impl.setDNSServersAsync(new inputMessageName8(dns1, dns2)).ConfigureAwait(asyncContinueOnCapturedContext);
         }
@@ -593,82 +627,143 @@ namespace Ihc {
         // WiFi operations
 
         public async Task<WLanSettings> GetWLanSettings() {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var resp = await impl.getWLanSettingsAsync(new inputMessageName14()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return mapWLanSettings(resp.getWLanSettings1);
+            var retv = mapWLanSettings(resp.getWLanSettings1);
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task SetWLanSettings(WLanSettings settings) {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(("settings", settings));
+
             await impl.setWLanSettingsAsync(new inputMessageName15(unmapWLanSettings(settings))).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<WLanInterface> GetWLanInterface() {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var resp = await impl.getWLanInterfaceAsync(new inputMessageName12()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return mapWLanInterface(resp.getWLanInterface1);
+            var retv = mapWLanInterface(resp.getWLanInterface1);
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<WLanCell[]> GetWLanScan() {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var resp = await impl.getWLanScanAsync(new inputMessageName13()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return resp.getWLanScan1?.Select(cell => mapWLanCell(cell)).ToArray();
+            var retv = resp.getWLanScan1?.Select(cell => mapWLanCell(cell)).ToArray();
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         // SMTP operations
 
         public async Task<SMTPSettings> GetSMTPSettings() {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var resp = await impl.getSMTPSettingsAsync(new inputMessageName5()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return mapSMTPSettings(resp.getSMTPSettings1);
+            var retv = mapSMTPSettings(resp.getSMTPSettings1);
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task SetSMTPSettings(SMTPSettings settings) {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(("settings", settings));
+
             await impl.setSMTPSettingsAsync(new inputMessageName4(unmapSMTPSettings(settings))).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task TestSettingsNow() {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             await impl.testSettingsNowAsync(new inputMessageName9(null)).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<bool> TestSendMessage(string recipient, string subject, string message) {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(("recipient", recipient), ("subject", subject), ("message", message));
+
             // Using testSendMessage1Async which takes recipient, subject, and message as strings
             var notificationMessage = new Ihc.Soap.Configuration.WSNotificationMessage() {
                 recipient = recipient
             };
             var resp = await impl.testSendMessage1Async(new inputMessageName11(notificationMessage, subject, message, null)).ConfigureAwait(asyncContinueOnCapturedContext);
-            return resp.testSendMessage12 != null && resp.testSendMessage12.attemptSucceeded;
+            var retv = resp.testSendMessage12 != null && resp.testSendMessage12.attemptSucceeded;
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         // Email Control operations
 
         public async Task<bool> GetEmailControlEnabled() {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var resp = await impl.getEmailControlEnabledAsync(new inputMessageName21()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return resp.getEmailControlEnabled1.HasValue ? resp.getEmailControlEnabled1.Value : false;
+            var retv = resp.getEmailControlEnabled1.HasValue ? resp.getEmailControlEnabled1.Value : false;
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task SetEmailControlEnabled(bool enabled) {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(("enabled", enabled));
+
             await impl.setEmailControlEnabledAsync(new inputMessageName20(enabled)).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<EmailControlSettings> GetEmailControlSettings() {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var resp = await impl.getEmailControlSettingsAsync(new inputMessageName22()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return mapEmailControlSettings(resp.getEmailControlSettings1);
+            var retv = mapEmailControlSettings(resp.getEmailControlSettings1);
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task SetEmailControlSettings(EmailControlSettings settings) {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(("settings", settings));
+
             await impl.setEmailControlSettingsAsync(new inputMessageName23(unmapEmailControlSettings(settings))).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         // Web Access Control operations
 
         public async Task<WebAccessControl> GetWebAccessControl() {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var resp = await impl.getWebAccessControlAsync(new inputMessageName18()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return mapWebAccessControl(resp.getWebAccessControl1);
+            var retv = mapWebAccessControl(resp.getWebAccessControl1);
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task SetWebAccessControl(WebAccessControl accessControl) {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(("accessControl", accessControl));
+
             await impl.setWebAccessControlAsync(new inputMessageName19(unmapWebAccessControl(accessControl))).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         // Language operations
 
         public async Task SetServerLanguage(string language) {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(("language", language));
+
             await impl.setServerLanguageAsync(new inputMessageName24(language)).ConfigureAwait(asyncContinueOnCapturedContext);
         }
     }

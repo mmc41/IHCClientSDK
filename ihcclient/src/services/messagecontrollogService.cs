@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using Ihc.Soap.Messagecontrollog;
+using System.Diagnostics;
 
 namespace Ihc {
     /**
@@ -30,7 +31,7 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Messagecontrollog.MessageControlLogService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "MessageControlLogService", asyncContinueOnCapturedContext) { }
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool logSensitiveData, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "MessageControlLogService", logSensitiveData, asyncContinueOnCapturedContext) { }
 
             public Task<outputMessageName1> emptyLogAsync(inputMessageName1 request)
             {
@@ -48,13 +49,14 @@ namespace Ihc {
         /**
         * Create an Messagecontrollog instance for access to the IHC API related to messages.
         * <param name="authService">AuthenticationService instance</param>
+        * <param name="logSensitiveData">If true, log sensitive data. If false (default), redact sensitive values in logs.</param>
         * <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
         */
-        public MessageControlLogService(IAuthenticationService authService, bool asyncContinueOnCapturedContext = false)
-            : base(authService.Logger, asyncContinueOnCapturedContext)
+        public MessageControlLogService(IAuthenticationService authService, bool logSensitiveData = false, bool asyncContinueOnCapturedContext = false)
+            : base(authService.Logger, logSensitiveData, asyncContinueOnCapturedContext)
         {
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, asyncContinueOnCapturedContext);
+            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, logSensitiveData, asyncContinueOnCapturedContext);
         }
 
         private LogEventEntry mapEvent(WSMessageControlLogEntry e)
@@ -85,13 +87,20 @@ namespace Ihc {
 
         public async Task EmptyLog()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             await impl.emptyLogAsync(new inputMessageName1()).ConfigureAwait(asyncContinueOnCapturedContext);
         }
 
         public async Task<LogEventEntry[]> GetEvents()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var resp = await impl.getEventsAsync(new inputMessageName2()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return resp.getEvents1.Where((v) => v != null).Select((v) => mapEvent(v)).ToArray();
+            var retv = resp.getEvents1.Where((v) => v != null).Select((v) => mapEvent(v)).ToArray();
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
     }
 }

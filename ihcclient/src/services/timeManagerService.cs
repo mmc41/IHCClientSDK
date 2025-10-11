@@ -2,6 +2,7 @@ using System.Threading.Tasks;
 using System;
 using Ihc.Soap.Timemanager;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace Ihc {
     /**
@@ -44,7 +45,7 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Timemanager.TimeManagerService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "TimeManagerService", asyncContinueOnCapturedContext) { }
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool logSensitiveData, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "TimeManagerService", logSensitiveData, asyncContinueOnCapturedContext) { }
 
             public Task<outputMessageName2> getCurrentLocalTimeAsync(inputMessageName2 request)
             {
@@ -77,13 +78,14 @@ namespace Ihc {
         /**
         * Create an TimeManagerService instance for access to the IHC API related to time/settings.
         * <param name="authService">AuthenticationService instance</param>
+        * <param name="logSensitiveData">If true, log sensitive data. If false (default), redact sensitive values in logs.</param>
         * <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
         */
-        public TimeManagerService(IAuthenticationService authService, bool asyncContinueOnCapturedContext = false)
-            : base(authService.Logger, asyncContinueOnCapturedContext)
+        public TimeManagerService(IAuthenticationService authService, bool logSensitiveData = false, bool asyncContinueOnCapturedContext = false)
+            : base(authService.Logger, logSensitiveData, asyncContinueOnCapturedContext)
         {
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, asyncContinueOnCapturedContext);
+            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, logSensitiveData, asyncContinueOnCapturedContext);
         }
         
         // Map methods for translating between SOAP models and high-level models
@@ -160,40 +162,62 @@ namespace Ihc {
 
         public async Task<DateTimeOffset> GetCurrentLocalTime()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var resp = await impl.getCurrentLocalTimeAsync(new inputMessageName2()).ConfigureAwait(asyncContinueOnCapturedContext);
             var result = resp.getCurrentLocalTime1;
-            if (result != null)
-            {
-                return result.ToDateTimeOffset();
-            }
-            else return DateTimeOffset.MinValue;
+            var retv = result != null ? result.ToDateTimeOffset() : DateTimeOffset.MinValue;
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<TimeSpan> GetUptime()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var resp = await impl.getUptimeAsync(new inputMessageName5()).ConfigureAwait(asyncContinueOnCapturedContext);
             var result = resp.getUptime1;
-            return result.HasValue ? TimeSpan.FromMilliseconds(result.Value) : TimeSpan.Zero;
+            var retv = result.HasValue ? TimeSpan.FromMilliseconds(result.Value) : TimeSpan.Zero;
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<TimeManagerSettings> GetSettings()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var resp = await impl.getSettingsAsync(new inputMessageName3()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return mapSettings(resp.getSettings1);
+            var retv = mapSettings(resp.getSettings1);
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<bool> SetSettings(TimeManagerSettings settings)
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(("settings", settings));
+
             var wsSettings = mapSettings(settings);
             var resp = await impl.setSettingsAsync(new inputMessageName4 { setSettings1 = wsSettings }).ConfigureAwait(asyncContinueOnCapturedContext);
             var result = resp.setSettings2;
-            return result.HasValue && result.Value == 1;
+            var retv = result.HasValue && result.Value == 1;
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
 
         public async Task<TimeServerConnectionResult> GetTimeFromServer()
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
             var resp = await impl.getTimeFromServerAsync(new inputMessageName1()).ConfigureAwait(asyncContinueOnCapturedContext);
-            return mapTimeServerConnectionResult(resp.getTimeFromServer2);
+            var retv = mapTimeServerConnectionResult(resp.getTimeFromServer2);
+
+            activity?.SetReturnValue(retv);
+            return retv;
         }
     }
 }
