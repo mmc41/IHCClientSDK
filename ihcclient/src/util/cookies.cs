@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace Ihc {
@@ -57,6 +58,11 @@ namespace Ihc {
 
         public void SetCookie(string _cookie)
         {
+            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetParameters(
+                (nameof(_cookie), logSensitiveData ? _cookie: "***REDACTED***")
+            );
+
             lock (_lock)
             {
                 if (_cookie == null)
@@ -65,14 +71,7 @@ namespace Ihc {
                 }
                 else
                 {
-                    if (logSensitiveData)
-                    {
-                        logger.LogInformation("SETTING COOKIE TO: '" + _cookie + "'");
-                    }
-                    else
-                    {
-                        logger.LogInformation("Setting session cookie (value redacted for security)");
-                    }
+                    logger.LogInformation("SETTING COOKIE TO: '" + (logSensitiveData ? _cookie: "***REDACTED***") + "'");
                 }
 
                 cookie = _cookie;
