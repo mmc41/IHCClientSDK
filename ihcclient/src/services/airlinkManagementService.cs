@@ -128,10 +128,9 @@ namespace Ihc
         /**
         * Create an AirlinkManagementService instance for access to the IHC API related to Airlink RF device management.
         * <param name="authService">AuthenticationService instance</param>
-        * <param name="settings">IHC settings configuration</param>
         */
-        public AirlinkManagementService(IAuthenticationService authService, IhcSettings settings)
-            : base(authService.Logger, settings)
+        public AirlinkManagementService(IAuthenticationService authService)
+            : base(authService.Logger, authService.IhcSettings)
         {
             this.authService = authService;
             this.impl = new SoapImpl(logger, authService.GetCookieHandler(), settings);

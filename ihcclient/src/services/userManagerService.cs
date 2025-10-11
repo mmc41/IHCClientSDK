@@ -122,10 +122,9 @@ namespace Ihc {
         /**
         * Create a UserManagerService instance for access to the IHC API related to user management.
         * <param name="authService">AuthenticationService instance</param>
-        * <param name="settings">IHC settings configuration</param>
         */
-        public UserManagerService(IAuthenticationService authService, IhcSettings settings)
-            : base(authService.Logger, settings)
+        public UserManagerService(IAuthenticationService authService)
+            : base(authService.Logger, authService.IhcSettings)
         {
             this.authService = authService;
             this.impl = new SoapImpl(logger, authService.GetCookieHandler(), settings);

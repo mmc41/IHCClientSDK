@@ -50,10 +50,9 @@ namespace Ihc {
         /**
         * Create a NotificationManagerService instance for access to the IHC API related to notifications.
         * <param name="authService">AuthenticationService instance</param>
-        * <param name="settings">IHC settings configuration</param>
         */
-        public NotificationManagerService(IAuthenticationService authService, IhcSettings settings)
-            : base(authService.Logger, settings)
+        public NotificationManagerService(IAuthenticationService authService)
+            : base(authService.Logger, authService.IhcSettings)
         {
             this.authService = authService;
             this.impl = new SoapImpl(logger, authService.GetCookieHandler(), settings);

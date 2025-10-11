@@ -39,7 +39,7 @@ namespace Ihc.example
 
           // Create client for IHC services that this example use (see also ConfigurationService, MessageControlLogService, ModuleService, NotificationManagerService, OpenAPIService, TimeManagerService, UserManagerService).
           var authService = new AuthenticationService(logger, settings);
-          var resourceInteractionService = new ResourceInteractionService(authService, settings);
+          var resourceInteractionService = new ResourceInteractionService(authService);
 
           // Authenticate against IHC system. 
           var login = await authService.Authenticate();

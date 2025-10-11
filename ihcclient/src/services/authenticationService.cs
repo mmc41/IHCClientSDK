@@ -34,17 +34,7 @@ namespace Ihc {
         /**
         * Check if the IHC controller is up and running and serving API calls.
         */
-        public Task<bool> Ping();
-        
-        /**
-        * The IHC endpoint used (supplied to constructor in default implementation).
-        */
-        public string Endpoint { get; }
-
-        /**
-        * The logger used (supplied to constructor in default implementation).
-        */
-        public ILogger Logger { get; }
+        public Task<bool> Ping(); 
     }
 
     /**
@@ -57,18 +47,6 @@ namespace Ihc {
         public ICookieHandler GetCookieHandler()
         {
             return cookieHandler;
-        }
-
-        public string Endpoint { 
-          get {
-            return settings.Endpoint;
-          } 
-        }
-
-        public ILogger Logger { 
-          get {
-            return logger;
-          } 
         }
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Authentication.AuthenticationService

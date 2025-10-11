@@ -23,7 +23,7 @@ namespace Ihc.Tests
         public async Task SetupMethod()
         {
             authService = new AuthenticationService(Setup.logger, Setup.settings);
-            resourceInteractionService = new ResourceInteractionService(authService, Setup.settings);
+            resourceInteractionService = new ResourceInteractionService(authService);
          
             await authService.Authenticate();
         }

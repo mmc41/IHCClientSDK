@@ -10,30 +10,67 @@ namespace Ihc
 {
     public interface IIHCService
     {
-       /// <summary>
-       /// Get metadata about the operations supported by this service.
-       /// For use by test and documentation tools. Not for normal application code.
-       /// </summary>
-       /// <returns></returns>
-       public IReadOnlyList<SeviceOperationMetadata> GetOperations();
+        /// <summary>
+        /// Get metadata about the operations supported by this service.
+        /// For use by test and documentation tools. Not for normal application code.
+        /// </summary>
+        /// <returns></returns>
+        public IReadOnlyList<SeviceOperationMetadata> GetOperations();
+
+        /**
+        * The IhcSettings used
+        */
+        public IhcSettings IhcSettings { get; }
+
+        /**
+        * The logger used (supplied to constructor in default implementation).
+        */
+        public ILogger Logger { get; }
     }
 
     public abstract class ServiceBase : IIHCService
     {
         protected readonly ILogger logger;
 
-        protected IhcSettings settings;
+        protected readonly IhcSettings settings;
 
         protected ServiceBase(ILogger logger, IhcSettings settings)
         {
             this.logger = logger;
             this.settings = settings;
+
+            if (this.settings == null)
+            {
+                throw new ArgumentException("IhcSettings must be supplied");
+            }
+
+            if (this.settings.Endpoint == null || this.settings.Application == null)
+            {
+                throw new ArgumentException("IhcSettings fields Endpoint, Application must be supplied");
+            }
+
+            if (logger == null)
+            {
+                throw new ArgumentException("ILogger must be supplied");
+            }
         }
 
+        /// <summary>
+        /// Get metadata about the operations supported by this service.
+        /// For use by test and documentation tools. Not for normal application code.
+        /// </summary>
+        /// <returns>List of metadata for service operations</returns>
         public IReadOnlyList<SeviceOperationMetadata> GetOperations()
         {
             return ServiceMetadata.GetOperations(this);
         }
+        
+        public IhcSettings IhcSettings
+        {
+            get { return settings; }
+        }
+
+        public ILogger Logger { get { return logger; } }
     }
 
     /**

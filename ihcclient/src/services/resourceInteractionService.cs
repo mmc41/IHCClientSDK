@@ -438,10 +438,9 @@ namespace Ihc {
         /**
         * Create an ResourceInteractionService instance for access to the IHC API related to resources.
         * <param name="authService">AuthenticationService instance</param>
-        * <param name="settings">IHC settings configuration</param>
         */
-        public ResourceInteractionService(IAuthenticationService authService, IhcSettings settings)
-            : base(authService.Logger, settings)
+        public ResourceInteractionService(IAuthenticationService authService)
+            : base(authService.Logger, authService.IhcSettings)
         {
             this.authService = authService;
             this.impl = new SoapImpl(logger, authService.GetCookieHandler(), settings);
