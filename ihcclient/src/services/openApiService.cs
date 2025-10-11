@@ -497,7 +497,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters(
-                ("userName", userName));
+                (nameof(userName), userName));
             // Note: password is intentionally not logged for security
 
             logger.LogInformation("IHC OpenAPI Authenticate called");
@@ -612,7 +612,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters(
-                ("resourceIds", resourceIds));
+                (nameof(resourceIds), resourceIds));
 
             var result = await impl.getValuesAsync(new inputMessageName6() { getValues1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = result.getValues2 != null ? result.getValues2.Select(v => mapResourceValue(v)).ToArray() : Array.Empty<ResourceValue>();
@@ -625,7 +625,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters(
-                ("values", values));
+                (nameof(values), values));
 
             var wsEvents = values.Select(v => mapToWSResourceValueEvent(v)).ToArray();
             var result = await impl.setValuesAsync(new inputMessageName7() { setValues1 = wsEvents }).ConfigureAwait(asyncContinueOnCapturedContext);
@@ -639,7 +639,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters(
-                ("resourceIds", resourceIds));
+                (nameof(resourceIds), resourceIds));
 
             await impl.enableSubscriptionAsync(new inputMessageName1() { enableSubscription1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
         }
@@ -648,7 +648,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters(
-                ("resourceIds", resourceIds));
+                (nameof(resourceIds), resourceIds));
 
             await impl.disableSubscriptionAsync(new inputMessageName2() { disableSubscription1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
         }
@@ -657,7 +657,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters(
-                ("timeout", timeout));
+                (nameof(timeout), timeout));
 
             var result = await impl.waitForEventsAsync(new inputMessageName5() { waitForEvents1 = timeout }).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = mapEventPackage(result.waitForEvents2);
@@ -723,9 +723,9 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters(
-                ("index", index),
-                ("majorVersion", majorVersion),
-                ("minorVersion", minorVersion));
+                (nameof(index), index),
+                (nameof(majorVersion), majorVersion),
+                (nameof(minorVersion), minorVersion));
 
             var result = await impl.getIHCProjectSegmentAsync(new inputMessageName17()
             {
@@ -765,7 +765,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters(
-                ("index", index));
+                (nameof(index), index));
 
             var result = await impl.getSceneProjectSegmentAsync(new inputMessageName22()
             {

@@ -62,7 +62,7 @@ namespace Ihc
             this.cookieHandler = cookieHandler;
             this.logSensitiveData = logSensitiveData;
             this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
-            this.ihcClient = new Client(logger, cookieHandler, Url, asyncContinueOnCapturedContext);
+            this.ihcClient = new Client(logger, cookieHandler, Url, logSensitiveData, asyncContinueOnCapturedContext);
         }
 
         /**

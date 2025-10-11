@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -19,13 +20,18 @@ namespace Ihc {
         private class LoggingHandler : DelegatingHandler
         {
             private ILogger logger;
+            private bool logSensitiveData;
 
-            public LoggingHandler(ILogger logger, HttpMessageHandler innerHandler)
+            public LoggingHandler(ILogger logger, bool logSensitiveData, HttpMessageHandler innerHandler)
                 : base(innerHandler)
             {
                 this.logger = logger;
+                this.logSensitiveData = logSensitiveData;
             }
 
+            /// <summary>
+            /// Redacts password values from XML content in SOAP request/response logging.
+            /// </summary>
             private string redactPassword(string input)
             {
                 if (input == null)
@@ -33,9 +39,16 @@ namespace Ihc {
                     return null;
                 }
 
-                // TODO: Replace like 'xxx' in inner xml constructs like this  <ns1:password>xxx</ns1:password>
+                // Redact password content in XML elements like <ns1:password>xxx</ns1:password>
+                // where ns1 can be any namespace prefix (or no prefix at all)
+                // Pattern explanation:
+                // - (<\w*:?password>) - captures opening tag with optional namespace prefix (e.g., <password>, <ns1:password>, <utcs:password>)
+                // - [^<]+ - matches the password content (one or more characters except '<')
+                // - (</\w*:?password>) - captures closing tag with optional namespace prefix
+                string pattern = @"(<\w*:?password>)[^<]+(</\w*:?password>)";
+                string replacement = "$1***REDACTED***$2";
 
-                return input;
+                return Regex.Replace(input, pattern, replacement, RegexOptions.IgnoreCase);
             }
 
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -43,7 +56,8 @@ namespace Ihc {
                 using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
                 string requestLogString = request.Content != null ? await request.Content.ReadAsStringAsync().ConfigureAwait(false) : null;
-                requestLogString = redactPassword(requestLogString);
+                if (!logSensitiveData)
+                    requestLogString = redactPassword(requestLogString);
 
                 logger.LogTrace("Request: " + requestLogString);
                 activity?.SetParameters(
@@ -71,7 +85,7 @@ namespace Ihc {
          * Only the first caller of this function will actually set the log.
          * The log argument is ignored for subsequent callers.
          */
-        static private HttpClient GetOrCreateHttpClient(ILogger logger) {
+        static private HttpClient GetOrCreateHttpClient(ILogger logger, bool logSensitiveData) {
             lock(_lock) {
                 if (_httpClientSingleton == null) {
                     HttpClientHandler handler = new HttpClientHandler();
@@ -82,7 +96,7 @@ namespace Ihc {
                     // Do not do any kind of certificate check.
                     handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
 
-                    LoggingHandler loggingHandler = new LoggingHandler(logger, handler);
+                    LoggingHandler loggingHandler = new LoggingHandler(logger, logSensitiveData, handler);
                     _httpClientSingleton = new HttpClient(loggingHandler);
                 }
 
@@ -93,12 +107,14 @@ namespace Ihc {
         private readonly string url;
         private readonly ILogger logger;
         private readonly ICookieHandler cookieHandler;
+        private readonly bool logSensitiveData;
         private bool asyncContinueOnCapturedContext;
 
-        public Client(ILogger logger, ICookieHandler cookieHandler, string url, bool asyncContinueOnCapturedContext) {
+        public Client(ILogger logger, ICookieHandler cookieHandler, string url, bool logSensitiveData, bool asyncContinueOnCapturedContext) {
             this.url = url;
             this.logger = logger;
             this.cookieHandler = cookieHandler;
+            this.logSensitiveData = logSensitiveData;
             this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
         }
 
@@ -114,7 +130,7 @@ namespace Ihc {
             if (cookie != null) {
                 content.Headers.Add("Cookie", cookie);
             }
-            return GetOrCreateHttpClient(this.logger).PostAsync(this.url, content);
+            return GetOrCreateHttpClient(this.logger, this.logSensitiveData).PostAsync(this.url, content);
         }
     };
 }

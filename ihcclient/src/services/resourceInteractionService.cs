@@ -451,7 +451,7 @@ namespace Ihc {
         public async Task<bool> DisableInitialValueNotifactions(int[] resourceIds)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("resourceIds", resourceIds));
+            activity?.SetParameters((nameof(resourceIds), resourceIds));
 
             var result = await this.impl.disableInitialValueNotifactionsAsync(new inputMessageName7() { disableInitialValueNotifactions1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = result.disableInitialValueNotifactions2.HasValue ? result.disableInitialValueNotifactions2.Value : false;
@@ -463,7 +463,7 @@ namespace Ihc {
         public async Task<bool> DisableRuntimeValueNotifactions(int[] resourceIds)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("resourceIds", resourceIds));
+            activity?.SetParameters((nameof(resourceIds), resourceIds));
 
             var result = await this.impl.disableRuntimeValueNotifactionsAsync(new inputMessageName5() { disableRuntimeValueNotifactions1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = result.disableRuntimeValueNotifactions2.HasValue ? result.disableRuntimeValueNotifactions2.Value : false;
@@ -475,7 +475,7 @@ namespace Ihc {
         public async Task<ResourceValue[]> EnableInitialValueNotifications(int[] resourceIds)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("resourceIds", resourceIds));
+            activity?.SetParameters((nameof(resourceIds), resourceIds));
 
             var resp = await impl.enableInitialValueNotificationsAsync(new inputMessageName6() { enableInitialValueNotifications1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = resp.enableInitialValueNotifications2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
@@ -487,7 +487,7 @@ namespace Ihc {
         public async Task<ResourceValue[]> EnableRuntimeValueNotifications(int[] resourceIds)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("resourceIds", resourceIds));
+            activity?.SetParameters((nameof(resourceIds), resourceIds));
 
             var resp = await impl.enableRuntimeValueNotificationsAsync(new inputMessageName4() { enableRuntimeValueNotifications1 = resourceIds }).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = resp.enableRuntimeValueNotifications2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
@@ -554,7 +554,7 @@ namespace Ihc {
         public async Task<ResourceValue> GetInitialValue(int? initialValue)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("initialValue", initialValue));
+            activity?.SetParameters((nameof(initialValue), initialValue));
 
             var resp = await impl.getInitialValueAsync(new inputMessageName15() { getInitialValue1 = initialValue }).ConfigureAwait(asyncContinueOnCapturedContext);
             var result = mapResourceValueEnvelope(resp.getInitialValue2);
@@ -570,7 +570,7 @@ namespace Ihc {
         public async Task<ResourceValue[]> GetInitialValues(int[] initialValues)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("initialValues", initialValues));
+            activity?.SetParameters((nameof(initialValues), initialValues));
 
             var resp = await impl.getInitialValuesAsync(new inputMessageName17() { getInitialValues1 = initialValues }).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = resp.getInitialValues2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
@@ -582,7 +582,7 @@ namespace Ihc {
         public async Task<bool> SetResourceValue(ResourceValue v)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("v", v));
+            activity?.SetParameters((nameof(v), v));
 
             var input = new inputMessageName18() { setResourceValue1 = mapResourceValueEnvelope(v) };
             var resp = await impl.setResourceValueAsync(input).ConfigureAwait(asyncContinueOnCapturedContext);
@@ -595,7 +595,7 @@ namespace Ihc {
         public async Task<bool> SetResourceValues(ResourceValue[] values)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("values", values));
+            activity?.SetParameters((nameof(values), values));
 
             var input = new inputMessageName3() { setResourceValues1 = values.Select(v => mapResourceValueEnvelope(v)).ToArray() };
             var resp = await impl.setResourceValuesAsync(input).ConfigureAwait(asyncContinueOnCapturedContext);
@@ -608,7 +608,7 @@ namespace Ihc {
         public async Task<LoggedData[]> GetLoggedData(int loggedData1)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("loggedData1", loggedData1));
+            activity?.SetParameters((nameof(loggedData1), loggedData1));
 
             var resp = await impl.getLoggedDataAsync(new inputMessageName20() { getLoggedData1 = loggedData1 }).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = resp.getLoggedData2.Where((v) => v != null).Select((l) => new LoggedData() { Value = l.value, Id = l.id, Timestamp = DateTimeOffset.FromUnixTimeSeconds(l.timestamp) }).ToArray();
@@ -620,7 +620,7 @@ namespace Ihc {
         public async Task<string> GetResourceType(int resourceID)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("resourceID", resourceID));
+            activity?.SetParameters((nameof(resourceID), resourceID));
 
             var resp = await impl.getResourceTypeAsync(new inputMessageName19() { getResourceType1 = resourceID }).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = resp.getResourceType2;
@@ -632,7 +632,7 @@ namespace Ihc {
         public async Task<ResourceValue> GetRuntimeValue(int resourceID)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("resourceID", resourceID));
+            activity?.SetParameters((nameof(resourceID), resourceID));
 
             var resp = await impl.getRuntimeValueAsync(new inputMessageName14() { getRuntimeValue1 = resourceID }).ConfigureAwait(asyncContinueOnCapturedContext);
             var result = mapResourceValueEnvelope(resp.getRuntimeValue2);
@@ -648,7 +648,7 @@ namespace Ihc {
         public async Task<ResourceValue[]> GetRuntimeValues(int[] resourceIDs)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("resourceIDs", resourceIDs));
+            activity?.SetParameters((nameof(resourceIDs), resourceIDs));
 
             var resp = await impl.getRuntimeValuesAsync(new inputMessageName16() { getRuntimeValues1 = resourceIDs }).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = resp.getRuntimeValues2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
@@ -660,7 +660,7 @@ namespace Ihc {
         public async Task<SceneResourceIdAndLocation[]> GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("sceneGroupResourceIdAndPositions", sceneGroupResourceIdAndPositions));
+            activity?.SetParameters((nameof(sceneGroupResourceIdAndPositions), sceneGroupResourceIdAndPositions));
 
             var resp = await impl.getSceneGroupResourceIdAndPositionsAsync(new inputMessageName1(sceneGroupResourceIdAndPositions) {}).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = resp.getSceneGroupResourceIdAndPositions2.Where((v) => v != null).Select((v) => mapSceneResourceIdAndLocation(v)).ToArray();
@@ -672,7 +672,7 @@ namespace Ihc {
         public async Task<SceneResourceIdAndLocation> GetScenePositionsForSceneValueResource(int scenePositionsForSceneValueResource)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("scenePositionsForSceneValueResource", scenePositionsForSceneValueResource));
+            activity?.SetParameters((nameof(scenePositionsForSceneValueResource), scenePositionsForSceneValueResource));
 
             var resp = await impl.getScenePositionsForSceneValueResourceAsync(new inputMessageName2(scenePositionsForSceneValueResource) {}).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = mapSceneResourceIdAndLocation(resp.getScenePositionsForSceneValueResource2);
@@ -684,7 +684,7 @@ namespace Ihc {
         public async Task<ResourceValue[]> WaitForResourceValueChanges(int timeout_seconds = 15)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("timeout_seconds", timeout_seconds));
+            activity?.SetParameters((nameof(timeout_seconds), timeout_seconds));
 
             var resp = await impl.waitForResourceValueChangesAsync(new inputMessageName8() { waitForResourceValueChanges1 = timeout_seconds }).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = resp.waitForResourceValueChanges2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();

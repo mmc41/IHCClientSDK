@@ -138,7 +138,7 @@ namespace Ihc {
         public async Task<IhcUser[]> GetUsers(bool includePassword)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("includePassword", includePassword));
+            activity?.SetParameters((nameof(includePassword), includePassword));
 
             var resp = await impl.getUsersAsync(new inputMessageName2() { }).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = resp.getUsers1.Where((v) => v != null).Select((u) => mapUser(u, includePassword)).ToArray();
@@ -153,7 +153,7 @@ namespace Ihc {
         public async Task AddUser(IhcUser user)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("user", user));
+            activity?.SetParameters((nameof(user), user));
 
             await impl.addUserAsync(new inputMessageName1() { addUser1 = mapUser(user) }).ConfigureAwait(asyncContinueOnCapturedContext);
         }
@@ -164,7 +164,7 @@ namespace Ihc {
         public async Task RemoveUser(string username)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("username", username));
+            activity?.SetParameters((nameof(username), username));
 
             await impl.removeUserAsync(new inputMessageName3() { removeUser1 = username }).ConfigureAwait(asyncContinueOnCapturedContext);
         }
@@ -175,7 +175,7 @@ namespace Ihc {
         public async Task UpdateUser(IhcUser user)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("user", user));
+            activity?.SetParameters((nameof(user), user));
 
             await impl.updateUserAsync(new inputMessageName4() { updateUser1 = mapUser(user) }).ConfigureAwait(asyncContinueOnCapturedContext);
         }

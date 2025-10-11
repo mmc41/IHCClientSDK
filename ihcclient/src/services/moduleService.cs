@@ -165,7 +165,7 @@ namespace Ihc {
         public async Task<SceneProject> GetSceneProject(string name)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("name", name));
+            activity?.SetParameters((nameof(name), name));
 
             var resp = await impl.getSceneProjectAsync(new inputMessageName5(name) {}).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = mapSceneProject(resp.getSceneProject2);
@@ -177,7 +177,7 @@ namespace Ihc {
         public async Task StoreSceneProject(SceneProject project)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("project", project));
+            activity?.SetParameters((nameof(project), project));
 
             await impl.storeSceneProjectAsync(new inputMessageName2(unmapSceneProject(project))).ConfigureAwait(asyncContinueOnCapturedContext);
         }
@@ -185,7 +185,7 @@ namespace Ihc {
         public async Task<SceneProject> GetSceneProjectSegment(string name, int segmentNumber)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("name", name), ("segmentNumber", segmentNumber));
+            activity?.SetParameters((nameof(name), name), (nameof(segmentNumber), segmentNumber));
 
             var resp = await impl.getSceneProjectSegmentAsync(new inputMessageName3(name, segmentNumber)).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = mapSceneProject(resp.getSceneProjectSegment3);
@@ -197,7 +197,7 @@ namespace Ihc {
         public async Task<bool> StoreSceneProjectSegment(SceneProject projectSegment, bool isFirstSegment, bool isLastSegment)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("projectSegment", projectSegment), ("isFirstSegment", isFirstSegment), ("isLastSegment", isLastSegment));
+            activity?.SetParameters((nameof(projectSegment), projectSegment), (nameof(isFirstSegment), isFirstSegment), (nameof(isLastSegment), isLastSegment));
 
             var resp = await impl.storeSceneProjectSegmentAsync(new inputMessageName4(unmapSceneProject(projectSegment), isFirstSegment, isLastSegment)).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = resp.storeSceneProjectSegment4.HasValue ? resp.storeSceneProjectSegment4.Value : false;

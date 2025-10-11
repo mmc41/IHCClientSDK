@@ -152,9 +152,9 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters(
-                ("userName", userName),
-                ("password", logSensitiveData ? password : "***REDACTED***"),
-                ("application", application)
+                (nameof(userName), userName),
+                (nameof(password), logSensitiveData ? password : "***REDACTED***"),
+                (nameof(application), application)
             );
 
             logger.LogInformation("IHC Authenticate called");

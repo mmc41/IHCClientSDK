@@ -571,7 +571,7 @@ namespace Ihc {
 
         public async Task<string[]> GetUserLog(string lang) {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("lang", lang));
+            activity?.SetParameters((nameof(lang), lang));
 
             var resp = await impl.getUserLogAsync(new inputMessageName2("", 0, lang)).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = mapLogFile(resp.getUserLog4);
@@ -582,7 +582,7 @@ namespace Ihc {
 
         public async Task DelayedReboot(int delayUnknownUnit) {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("delayUnknownUnit", delayUnknownUnit));
+            activity?.SetParameters((nameof(delayUnknownUnit), delayUnknownUnit));
 
             await impl.delayedRebootAsync(new inputMessageName1(delayUnknownUnit) {}).ConfigureAwait(asyncContinueOnCapturedContext);
         }
@@ -601,7 +601,7 @@ namespace Ihc {
 
         public async Task SetNetworkSettings(NetworkSettings settings) {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("settings", settings));
+            activity?.SetParameters((nameof(settings), settings));
 
             await impl.setNetworkSettingsAsync(new inputMessageName17(unmapNetworkSettings(settings))).ConfigureAwait(asyncContinueOnCapturedContext);
         }
@@ -618,7 +618,7 @@ namespace Ihc {
 
         public async Task SetDNSServers(DNSServers dnsServers) {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("dnsServers", dnsServers));
+            activity?.SetParameters((nameof(dnsServers), dnsServers));
 
             var (dns1, dns2) = unmapDNSServers(dnsServers);
             await impl.setDNSServersAsync(new inputMessageName8(dns1, dns2)).ConfigureAwait(asyncContinueOnCapturedContext);
@@ -638,7 +638,7 @@ namespace Ihc {
 
         public async Task SetWLanSettings(WLanSettings settings) {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("settings", settings));
+            activity?.SetParameters((nameof(settings), settings));
 
             await impl.setWLanSettingsAsync(new inputMessageName15(unmapWLanSettings(settings))).ConfigureAwait(asyncContinueOnCapturedContext);
         }
@@ -677,7 +677,7 @@ namespace Ihc {
 
         public async Task SetSMTPSettings(SMTPSettings settings) {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("settings", settings));
+            activity?.SetParameters((nameof(settings), settings));
 
             await impl.setSMTPSettingsAsync(new inputMessageName4(unmapSMTPSettings(settings))).ConfigureAwait(asyncContinueOnCapturedContext);
         }
@@ -690,7 +690,7 @@ namespace Ihc {
 
         public async Task<bool> TestSendMessage(string recipient, string subject, string message) {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("recipient", recipient), ("subject", subject), ("message", message));
+            activity?.SetParameters((nameof(recipient), recipient), (nameof(subject), subject), (nameof(message), message));
 
             // Using testSendMessage1Async which takes recipient, subject, and message as strings
             var notificationMessage = new Ihc.Soap.Configuration.WSNotificationMessage() {
@@ -717,7 +717,7 @@ namespace Ihc {
 
         public async Task SetEmailControlEnabled(bool enabled) {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("enabled", enabled));
+            activity?.SetParameters((nameof(enabled), enabled));
 
             await impl.setEmailControlEnabledAsync(new inputMessageName20(enabled)).ConfigureAwait(asyncContinueOnCapturedContext);
         }
@@ -734,7 +734,7 @@ namespace Ihc {
 
         public async Task SetEmailControlSettings(EmailControlSettings settings) {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("settings", settings));
+            activity?.SetParameters((nameof(settings), settings));
 
             await impl.setEmailControlSettingsAsync(new inputMessageName23(unmapEmailControlSettings(settings))).ConfigureAwait(asyncContinueOnCapturedContext);
         }
@@ -753,7 +753,7 @@ namespace Ihc {
 
         public async Task SetWebAccessControl(WebAccessControl accessControl) {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("accessControl", accessControl));
+            activity?.SetParameters((nameof(accessControl), accessControl));
 
             await impl.setWebAccessControlAsync(new inputMessageName19(unmapWebAccessControl(accessControl))).ConfigureAwait(asyncContinueOnCapturedContext);
         }
@@ -762,7 +762,7 @@ namespace Ihc {
 
         public async Task SetServerLanguage(string language) {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("language", language));
+            activity?.SetParameters((nameof(language), language));
 
             await impl.setServerLanguageAsync(new inputMessageName24(language)).ConfigureAwait(asyncContinueOnCapturedContext);
         }

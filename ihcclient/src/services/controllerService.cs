@@ -414,8 +414,8 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters(
-                ("waitState", waitState),
-                ("waitSec", waitSec)
+                (nameof(waitState), waitState),
+                (nameof(waitSec), waitSec)
             );
 
             var result = await impl.waitForControllerStateChangeAsync(new inputMessageName19(new Ihc.Soap.Controller.WSControllerState() { state = waitState }, waitSec) { }).ConfigureAwait(asyncContinueOnCapturedContext);
@@ -446,8 +446,8 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters(
-                ("consumption", consumption),
-                ("flag", flag)
+                (nameof(consumption), consumption),
+                (nameof(flag), flag)
             );
 
             await impl.setS0ConsumptionAsync(new inputMessageName6(consumption, flag) { }).ConfigureAwait(asyncContinueOnCapturedContext);
@@ -457,8 +457,8 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters(
-                ("month", month),
-                ("day", day)
+                (nameof(month), month),
+                (nameof(day), day)
             );
 
             await impl.setS0FiscalYearStartAsync(new inputMessageName20(month, day) { }).ConfigureAwait(asyncContinueOnCapturedContext);
@@ -534,7 +534,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters(
-                ("project", project)
+                (nameof(project), project)
             );
 
             // First perform some safty checks similar to what the IHC Visual App does:
@@ -598,9 +598,9 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters(
-                ("index", index),
-                ("major", major),
-                ("minor", minor)
+                (nameof(index), index),
+                (nameof(major), major),
+                (nameof(minor), minor)
             );
 
             var result = await impl.getIHCProjectSegmentAsync(new inputMessageName15()
@@ -619,9 +619,9 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters(
-                ("segment", segment),
-                ("index", index),
-                ("major", major)
+                (nameof(segment), segment),
+                (nameof(index), index),
+                (nameof(major), major)
             );
 
             var result = await impl.storeIHCProjectSegmentAsync(new inputMessageName16()

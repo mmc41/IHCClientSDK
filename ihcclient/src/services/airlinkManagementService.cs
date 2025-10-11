@@ -201,7 +201,7 @@ namespace Ihc
         public async Task<bool> TestRFActuatorWithSerialNumber(long serialNumber)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("serialNumber", serialNumber));
+            activity?.SetParameters((nameof(serialNumber), serialNumber));
 
             var result = await impl.testRFActuatorWithSerialNumberAsync(new inputMessageName3(serialNumber)).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = result.testRFActuatorWithSerialNumber2.HasValue && result.testRFActuatorWithSerialNumber2.Value;
@@ -224,7 +224,7 @@ namespace Ihc
         public async Task<RFDevice> WaitForDeviceDetected(int timeoutSeconds)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("timeoutSeconds", timeoutSeconds));
+            activity?.SetParameters((nameof(timeoutSeconds), timeoutSeconds));
 
             var result = await impl.waitForDeviceDetectedAsync(new inputMessageName5(timeoutSeconds)).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = mapRFDevice(result.waitForDeviceDetected2);
@@ -236,7 +236,7 @@ namespace Ihc
         public async Task<RFDevice> WaitForDeviceTestResult(int timeoutSeconds)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("timeoutSeconds", timeoutSeconds));
+            activity?.SetParameters((nameof(timeoutSeconds), timeoutSeconds));
 
             var result = await impl.waitForDeviceTestResultAsync(new inputMessageName6(timeoutSeconds)).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = mapRFDevice(result.waitForDeviceTestResult2);
@@ -259,7 +259,7 @@ namespace Ihc
         public async Task<int> GetBatteryLevel(int resourceId)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("resourceId", resourceId));
+            activity?.SetParameters((nameof(resourceId), resourceId));
 
             var result = await impl.getBatteryLevelAsync(new inputMessageName10(resourceId)).ConfigureAwait(asyncContinueOnCapturedContext);
             var retv = result.getBatteryLevel2.HasValue ? result.getBatteryLevel2.Value : 0;

@@ -198,7 +198,7 @@ namespace Ihc {
         public async Task<bool> SetSettings(TimeManagerSettings settings)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(("settings", settings));
+            activity?.SetParameters((nameof(settings), settings));
 
             var wsSettings = mapSettings(settings);
             var resp = await impl.setSettingsAsync(new inputMessageName4 { setSettings1 = wsSettings }).ConfigureAwait(asyncContinueOnCapturedContext);
