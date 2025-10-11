@@ -21,6 +21,8 @@ namespace Ihc.example
                       .AddJsonFile("ihcsettings.json")
                       .Build();
 
+            IhcSettings settings = config.GetSection("ihcclient").Get<IhcSettings>();
+
             // Create a logger for our application. Alternatively use NullLogger<Setup>.Instance.
             using var loggerFactory = LoggerFactory.Create(builder =>
             {
@@ -30,26 +32,19 @@ namespace Ihc.example
 
             var logger = loggerFactory.CreateLogger<Program>();
 
-            // Read configuration settings
-            var ihcConfig = config.GetSection("ihcConfig");
-            var endpoint = ihcConfig["endpoint"];
-            var userName = ihcConfig["userName"];
-            var password = ihcConfig["password"];
-            var application = ihcConfig["application"];
-            bool logSensitiveData = bool.Parse(ihcConfig["logSensitiveData"]);
-
+            // Read additional configuration settings
             var testConfig = config.GetSection("testConfig");
             var boolOutput1 = int.Parse(testConfig["boolOutput1"]);
             var boolInput1 = int.Parse(testConfig["boolInput1"]);
             var boolInput2 = int.Parse(testConfig["boolInput2"]);
 
             // Create client for IHC services that this example use (see also ConfigurationService, MessageControlLogService, ModuleService, NotificationManagerService, OpenAPIService, TimeManagerService, UserManagerService).
-            var authService = new AuthenticationService(logger, endpoint, logSensitiveData);
-            var resourceInteractionService = new ResourceInteractionService(authService);
+            var authService = new AuthenticationService(logger, settings);
+            var resourceInteractionService = new ResourceInteractionService(authService, settings);
             try
             {
                 // Authenticate against IHC system. 
-                var login = await authService.Authenticate(userName, password, application);
+                var login = await authService.Authenticate();
 
                 // Get value of a bool input
                 var inputValue = await resourceInteractionService.GetRuntimeValue(boolInput1);

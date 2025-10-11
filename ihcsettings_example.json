@@ -1,12 +1,13 @@
 {
     "comment" : "Example of how your ihcsettings.json file can look like. You need this user supplied file to run examples and tests",
-    "ihcConfig": {
+    "ihcclient": {
         "comment" : "Refer to your IHC controller config for endpoint and authentication details. Use 'http://usb' for endpoint for a USB connected controller. Known application names include 'treeview', 'openapi', 'administrator'",
         "endpoint" : "http://192.100.1.10",
         "userName" : "johndoe",
         "password" : "mypassword",
         "application" : "administrator",
-        "logSensitiveData": false
+        "logSensitiveData": false,
+        "asyncContinueOnCapturedContext": false
     },
     "testConfig": {
       "comment" : "ID's of boolean typed resources that can be used by tests and examples. Chose arbitrary 'tryk' you can press for input and connected 'lampleudtag' for output where you can see if it is on. Get the IDs from IHC Visual by pressing CTRL and hover mouse pointer over suitable input/output (or run IOExtractor project and inspect output)",

@@ -19,14 +19,14 @@ namespace Ihc {
     internal class Client {
         private class LoggingHandler : DelegatingHandler
         {
-            private ILogger logger;
-            private bool logSensitiveData;
+            private readonly ILogger logger;
+            private readonly IhcSettings settings;
 
-            public LoggingHandler(ILogger logger, bool logSensitiveData, HttpMessageHandler innerHandler)
+            public LoggingHandler(ILogger logger, IhcSettings settings, HttpMessageHandler innerHandler)
                 : base(innerHandler)
             {
                 this.logger = logger;
-                this.logSensitiveData = logSensitiveData;
+                this.settings = settings;
             }
 
             /// <summary>
@@ -56,7 +56,7 @@ namespace Ihc {
                 using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
                 string requestLogString = request.Content != null ? await request.Content.ReadAsStringAsync().ConfigureAwait(false) : null;
-                if (!logSensitiveData)
+                if (!settings.LogSensitiveData)
                     requestLogString = redactPassword(requestLogString);
 
                 logger.LogTrace("Request: " + requestLogString);
@@ -85,7 +85,7 @@ namespace Ihc {
          * Only the first caller of this function will actually set the log.
          * The log argument is ignored for subsequent callers.
          */
-        static private HttpClient GetOrCreateHttpClient(ILogger logger, bool logSensitiveData) {
+        static private HttpClient GetOrCreateHttpClient(ILogger logger, IhcSettings settings) {
             lock(_lock) {
                 if (_httpClientSingleton == null) {
                     HttpClientHandler handler = new HttpClientHandler();
@@ -96,7 +96,7 @@ namespace Ihc {
                     // Do not do any kind of certificate check.
                     handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
 
-                    LoggingHandler loggingHandler = new LoggingHandler(logger, logSensitiveData, handler);
+                    LoggingHandler loggingHandler = new LoggingHandler(logger, settings, handler);
                     _httpClientSingleton = new HttpClient(loggingHandler);
                 }
 
@@ -107,15 +107,13 @@ namespace Ihc {
         private readonly string url;
         private readonly ILogger logger;
         private readonly ICookieHandler cookieHandler;
-        private readonly bool logSensitiveData;
-        private bool asyncContinueOnCapturedContext;
+        private IhcSettings settings;
 
-        public Client(ILogger logger, ICookieHandler cookieHandler, string url, bool logSensitiveData, bool asyncContinueOnCapturedContext) {
+        public Client(ILogger logger, ICookieHandler cookieHandler, string url, IhcSettings settings) {
             this.url = url;
             this.logger = logger;
             this.cookieHandler = cookieHandler;
-            this.logSensitiveData = logSensitiveData;
-            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
+            this.settings = settings;
         }
 
        /**
@@ -130,7 +128,7 @@ namespace Ihc {
             if (cookie != null) {
                 content.Headers.Add("Cookie", cookie);
             }
-            return GetOrCreateHttpClient(this.logger, this.logSensitiveData).PostAsync(this.url, content);
+            return GetOrCreateHttpClient(this.logger, this.settings).PostAsync(this.url, content);
         }
     };
 }

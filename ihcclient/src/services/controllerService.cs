@@ -132,7 +132,7 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Controller.ControllerService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool logSensitiveData, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "ControllerService", logSensitiveData, asyncContinueOnCapturedContext) { }
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, IhcSettings settings) : base(logger, cookieHandler, settings, "ControllerService") { }
 
             public Task<outputMessageName12> enterProjectChangeModeAsync(inputMessageName12 request)
             {
@@ -240,14 +240,13 @@ namespace Ihc {
         /**
         * Create an ControllerService instance for access to the IHC API related to the controller itself.
         * <param name="authService">AuthenticationService instance</param>
-        * <param name="logSensitiveData">If true, log sensitive data. If false (default), redact sensitive values in logs.</param>
-        * <param name="asyncContinueOnCapturedContext">Configure await behavior for async operations. Default is false (no context capture).</param>
+        * <param name="settings">IHC settings configuration</param>
         */
-        public ControllerService(IAuthenticationService authService, bool logSensitiveData = false, bool asyncContinueOnCapturedContext = false)
-            : base(authService.Logger, logSensitiveData, asyncContinueOnCapturedContext)
+        public ControllerService(IAuthenticationService authService, IhcSettings settings)
+            : base(authService.Logger, settings)
         {
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, logSensitiveData, asyncContinueOnCapturedContext);
+            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), settings);
         }
 
         private SDInfo mapSDCardData(WSSdCardData e)
@@ -303,7 +302,7 @@ namespace Ihc {
             using (Stream inStream = new System.IO.Compression.GZipStream(mscompressed, System.IO.Compression.CompressionMode.Decompress))
             using (StreamReader reader = new StreamReader(inStream, ProjectFile.Encoding))
             {
-                return await reader.ReadToEndAsync().ConfigureAwait(asyncContinueOnCapturedContext);
+                return await reader.ReadToEndAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             }
         }
 
@@ -316,11 +315,11 @@ namespace Ihc {
                 {
                     using (StreamWriter writer = new StreamWriter(outStream, ProjectFile.Encoding, bufferSize: 10*1024, leaveOpen: true))
                     {
-                        await writer.WriteAsync(data).ConfigureAwait(asyncContinueOnCapturedContext);
-                        await writer.FlushAsync().ConfigureAwait(asyncContinueOnCapturedContext);
+                        await writer.WriteAsync(data).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                        await writer.FlushAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     }
                     // Explicitly flush the GZipStream to ensure all compressed data is written
-                    await outStream.FlushAsync().ConfigureAwait(asyncContinueOnCapturedContext);
+                    await outStream.FlushAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 }
                 // GZipStream is now fully disposed and all data is written to mscompressed
                 return mscompressed.ToArray();
@@ -334,7 +333,7 @@ namespace Ihc {
 
             return new ProjectFile()
             {
-                Data = await decompress(wsFile.data).ConfigureAwait(asyncContinueOnCapturedContext),
+                Data = await decompress(wsFile.data).ConfigureAwait(settings.AsyncContinueOnCapturedContext),
                 Filename = wsFile.filename
             };
         }
@@ -343,7 +342,7 @@ namespace Ihc {
         {
             return new Ihc.Soap.Controller.WSFile()
             {
-                data = await compress(projectFile.Data).ConfigureAwait(asyncContinueOnCapturedContext),
+                data = await compress(projectFile.Data).ConfigureAwait(settings.AsyncContinueOnCapturedContext),
                 filename = projectFile.Filename
             };
         }
@@ -364,7 +363,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var result = await impl.isIHCProjectAvailableAsync(new inputMessageName14() { }).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.isIHCProjectAvailableAsync(new inputMessageName14() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.isIHCProjectAvailable1.HasValue ? result.isIHCProjectAvailable1.Value : false;
 
             activity?.SetReturnValue(retv);
@@ -375,7 +374,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var result = await impl.isSDCardReadyAsync(new inputMessageName9() { }).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.isSDCardReadyAsync(new inputMessageName9() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.isSDCardReady1.HasValue ? result.isSDCardReady1.Value : false;
 
             activity?.SetReturnValue(retv);
@@ -386,7 +385,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var result = await impl.getSdCardInfoAsync(new inputMessageName5() { }).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.getSdCardInfoAsync(new inputMessageName5() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.getSdCardInfo1 != null ? mapSDCardData(result.getSdCardInfo1) : null;
 
             activity?.SetReturnValue(retv);
@@ -395,7 +394,7 @@ namespace Ihc {
 /*
         public async Task<ControllerState> GetControllerState()
         {
-            var result = await impl.getStateAsync(new inputMessageName1() { }).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.getStateAsync(new inputMessageName1() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             return mapControllerState(result.getState1);
         }*/
 
@@ -403,7 +402,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var result = await impl.getStateAsync(new inputMessageName1() { }).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.getStateAsync(new inputMessageName1() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.getState1?.state; // TODO: Convert to ControllerState oncce the enum is more complete.
 
             activity?.SetReturnValue(retv);
@@ -418,7 +417,7 @@ namespace Ihc {
                 (nameof(waitSec), waitSec)
             );
 
-            var result = await impl.waitForControllerStateChangeAsync(new inputMessageName19(new Ihc.Soap.Controller.WSControllerState() { state = waitState }, waitSec) { }).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.waitForControllerStateChangeAsync(new inputMessageName19(new Ihc.Soap.Controller.WSControllerState() { state = waitState }, waitSec) { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result?.waitForControllerStateChange3?.state;
 
             activity?.SetReturnValue(retv);
@@ -429,7 +428,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var result = await impl.getS0MeterValueAsync(new inputMessageName11() { }).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.getS0MeterValueAsync(new inputMessageName11() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.getS0MeterValue1.HasValue ? result.getS0MeterValue1.Value : 0.0f;
 
             activity?.SetReturnValue(retv);
@@ -439,7 +438,7 @@ namespace Ihc {
         public async Task ResetS0Values() {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            await impl.resetS0ValuesAsync(new inputMessageName10() { }).ConfigureAwait(asyncContinueOnCapturedContext);
+            await impl.resetS0ValuesAsync(new inputMessageName10() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         public async Task SetS0Consumption(float consumption, bool flag)
@@ -450,7 +449,7 @@ namespace Ihc {
                 (nameof(flag), flag)
             );
 
-            await impl.setS0ConsumptionAsync(new inputMessageName6(consumption, flag) { }).ConfigureAwait(asyncContinueOnCapturedContext);
+            await impl.setS0ConsumptionAsync(new inputMessageName6(consumption, flag) { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         public async Task SetS0FiscalYearStart(sbyte month, sbyte day)
@@ -461,14 +460,14 @@ namespace Ihc {
                 (nameof(day), day)
             );
 
-            await impl.setS0FiscalYearStartAsync(new inputMessageName20(month, day) { }).ConfigureAwait(asyncContinueOnCapturedContext);
+            await impl.setS0FiscalYearStartAsync(new inputMessageName20(month, day) { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         public async Task<int> Restore()
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var result = await impl.restoreAsync(new inputMessageName7() { }).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.restoreAsync(new inputMessageName7() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.restore1.HasValue ? result.restore1.Value : 0;
 
             activity?.SetReturnValue(retv);
@@ -479,7 +478,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var result = await impl.getBackupAsync(new inputMessageName2() { }).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.getBackupAsync(new inputMessageName2() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = mapBackup(result.getBackup1);
 
             activity?.SetReturnValue(retv);
@@ -490,7 +489,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var result = await impl.getProjectInfoAsync(new inputMessageName8() { }).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.getProjectInfoAsync(new inputMessageName8() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = mapProjectInfo(result.getProjectInfo1);
 
             activity?.SetReturnValue(retv);
@@ -501,8 +500,8 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var result = await impl.getIHCProjectAsync(new inputMessageName3() { }).ConfigureAwait(asyncContinueOnCapturedContext);
-            var retv = await mapProjectFile(result.getIHCProject1).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.getIHCProjectAsync(new inputMessageName3() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            var retv = await mapProjectFile(result.getIHCProject1).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
             activity?.SetReturnValue(retv);
             return retv;
@@ -512,7 +511,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var result = await impl.enterProjectChangeModeAsync(new inputMessageName12() { }).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.enterProjectChangeModeAsync(new inputMessageName12() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result?.enterProjectChangeMode1 != null && result.enterProjectChangeMode1.Value;
 
             activity?.SetReturnValue(retv);
@@ -523,7 +522,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var result = await impl.exitProjectChangeModeAsync(new inputMessageName13() { }).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.exitProjectChangeModeAsync(new inputMessageName13() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result?.exitProjectChangeMode1 != null && result.exitProjectChangeMode1.Value;
 
             activity?.SetReturnValue(retv);
@@ -538,23 +537,23 @@ namespace Ihc {
             );
 
             // First perform some safty checks similar to what the IHC Visual App does:
-            bool controllerReady = (await GetControllerState().ConfigureAwait(asyncContinueOnCapturedContext)) == ControllerStates.READY;
+            bool controllerReady = (await GetControllerState().ConfigureAwait(settings.AsyncContinueOnCapturedContext)) == ControllerStates.READY;
             if (!controllerReady)
                 throw new InvalidOperationException("Controller not in ready state");
 
-            bool sdCardReady = await IsSDCardReady().ConfigureAwait(asyncContinueOnCapturedContext);
+            bool sdCardReady = await IsSDCardReady().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             if (!sdCardReady)
                 throw new InvalidOperationException("Controller SD Card not ready");
 
-            bool projectAvailable = await IsIHCProjectAvailable().ConfigureAwait(asyncContinueOnCapturedContext);
+            bool projectAvailable = await IsIHCProjectAvailable().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             if (!projectAvailable)
                 throw new InvalidOperationException("Controller has no project available");
 
-            bool inChange = await EnterProjectChangeMode().ConfigureAwait(asyncContinueOnCapturedContext);
+            bool inChange = await EnterProjectChangeMode().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             if (!inChange)
                 throw new InvalidOperationException("Controller could not enter change mode to prepare for project change");
 
-            var state = await WaitForControllerStateChange(ControllerStates.INIT, 10).ConfigureAwait(asyncContinueOnCapturedContext); // TODO: Retry x times.
+            var state = await WaitForControllerStateChange(ControllerStates.INIT, 10).ConfigureAwait(settings.AsyncContinueOnCapturedContext); // TODO: Retry x times.
             if (state != ControllerStates.INIT)
                 throw new InvalidOperationException("Controller state did not enter init state to prepare for project change");
 
@@ -565,28 +564,28 @@ namespace Ihc {
 
                 inputMessageName4 request = new inputMessageName4()
                 {
-                    storeIHCProject1 = await mapProjectFile(project).ConfigureAwait(asyncContinueOnCapturedContext)
+                    storeIHCProject1 = await mapProjectFile(project).ConfigureAwait(settings.AsyncContinueOnCapturedContext)
                 };
 
-                result = await impl.storeIHCProjectAsync(request).ConfigureAwait(asyncContinueOnCapturedContext);
+                result = await impl.storeIHCProjectAsync(request).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
-                state = await WaitForControllerStateChange(ControllerStates.INIT, 10).ConfigureAwait(asyncContinueOnCapturedContext); // TODO: Retry x times.
+                state = await WaitForControllerStateChange(ControllerStates.INIT, 10).ConfigureAwait(settings.AsyncContinueOnCapturedContext); // TODO: Retry x times.
                 if (state != ControllerStates.INIT)
                     throw new InvalidOperationException("Controller state does not remain in init state after project change");
 
             }
             finally
             {
-                inChange = await ExitProjectChangeMode().ConfigureAwait(asyncContinueOnCapturedContext);
+                inChange = await ExitProjectChangeMode().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 if (!inChange)
                     throw new InvalidOperationException("Controller could not exit change mode after project change");
 
-                state = await WaitForControllerStateChange(ControllerStates.READY, 10).ConfigureAwait(asyncContinueOnCapturedContext); // TODO: Retry x times.
+                state = await WaitForControllerStateChange(ControllerStates.READY, 10).ConfigureAwait(settings.AsyncContinueOnCapturedContext); // TODO: Retry x times.
                 if (state != ControllerStates.READY)
                     throw new InvalidOperationException("Controller state did not enter init state to prepare for project change");
             }
 
-            await Task.Delay(100).ConfigureAwait(asyncContinueOnCapturedContext); // Wait a little to let controller settle.
+            await Task.Delay(100).ConfigureAwait(settings.AsyncContinueOnCapturedContext); // Wait a little to let controller settle.
 
             var retv = result.storeIHCProject2 != null && result.storeIHCProject2.Value;
 
@@ -608,8 +607,8 @@ namespace Ihc {
                 getIHCProjectSegment1 = index,
                 getIHCProjectSegment2 = major,
                 getIHCProjectSegment3 = minor
-            }).ConfigureAwait(asyncContinueOnCapturedContext);
-            var retv = await mapProjectFile(result.getIHCProjectSegment4).ConfigureAwait(asyncContinueOnCapturedContext);
+            }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            var retv = await mapProjectFile(result.getIHCProjectSegment4).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
             activity?.SetReturnValue(retv);
             return retv;
@@ -626,10 +625,10 @@ namespace Ihc {
 
             var result = await impl.storeIHCProjectSegmentAsync(new inputMessageName16()
             {
-                storeIHCProjectSegment1 = await mapProjectFile(segment).ConfigureAwait(asyncContinueOnCapturedContext),
+                storeIHCProjectSegment1 = await mapProjectFile(segment).ConfigureAwait(settings.AsyncContinueOnCapturedContext),
                 storeIHCProjectSegment2 = index,
                 storeIHCProjectSegment3 = major
-            }).ConfigureAwait(asyncContinueOnCapturedContext);
+            }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.storeIHCProjectSegment4.HasValue ? result.storeIHCProjectSegment4.Value : false;
 
             activity?.SetReturnValue(retv);
@@ -640,7 +639,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var result = await impl.getIHCProjectSegmentationSizeAsync(new inputMessageName17()).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.getIHCProjectSegmentationSizeAsync(new inputMessageName17()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.getIHCProjectSegmentationSize1.HasValue ? result.getIHCProjectSegmentationSize1.Value : 0;
 
             activity?.SetReturnValue(retv);
@@ -651,7 +650,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var result = await impl.getIHCProjectNumberOfSegmentsAsync(new inputMessageName18()).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.getIHCProjectNumberOfSegmentsAsync(new inputMessageName18()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.getIHCProjectNumberOfSegments1.HasValue ? result.getIHCProjectNumberOfSegments1.Value : 0;
 
             activity?.SetReturnValue(retv);

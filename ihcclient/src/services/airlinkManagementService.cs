@@ -70,7 +70,7 @@ namespace Ihc
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.AirlinkManagement.AirlinkManagementService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool logSensitiveData, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "AirlinkManagementService", logSensitiveData, asyncContinueOnCapturedContext) { }
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, IhcSettings settings) : base(logger, cookieHandler, settings, "AirlinkManagementService") { }
 
             public Task<outputMessageName1> enterRFConfigurationAsync(inputMessageName1 request)
             {
@@ -128,14 +128,13 @@ namespace Ihc
         /**
         * Create an AirlinkManagementService instance for access to the IHC API related to Airlink RF device management.
         * <param name="authService">AuthenticationService instance</param>
-        * <param name="logSensitiveData">If true, log sensitive data. If false (default), redact sensitive values in logs.</param>
-        * <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
+        * <param name="settings">IHC settings configuration</param>
         */
-        public AirlinkManagementService(IAuthenticationService authService, bool logSensitiveData = false, bool asyncContinueOnCapturedContext = false)
-            : base(authService.Logger, logSensitiveData, asyncContinueOnCapturedContext)
+        public AirlinkManagementService(IAuthenticationService authService, IhcSettings settings)
+            : base(authService.Logger, settings)
         {
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, logSensitiveData, asyncContinueOnCapturedContext);
+            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), settings);
         }
 
         private RFDevice mapRFDevice(WSRFDevice device)
@@ -158,7 +157,7 @@ namespace Ihc
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var result = await impl.enterRFConfigurationAsync(new inputMessageName1()).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.enterRFConfigurationAsync(new inputMessageName1()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.enterRFConfiguration1.HasValue && result.enterRFConfiguration1.Value;
 
             activity?.SetReturnValue(retv);
@@ -169,7 +168,7 @@ namespace Ihc
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var result = await impl.exitRFConfigurationAsync(new inputMessageName2()).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.exitRFConfigurationAsync(new inputMessageName2()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.exitRFConfiguration1.HasValue && result.exitRFConfiguration1.Value;
 
             activity?.SetReturnValue(retv);
@@ -180,7 +179,7 @@ namespace Ihc
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var result = await impl.enterRFTestAsync(new inputMessageName8()).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.enterRFTestAsync(new inputMessageName8()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.enterRFTest1.HasValue && result.enterRFTest1.Value;
 
             activity?.SetReturnValue(retv);
@@ -191,7 +190,7 @@ namespace Ihc
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var result = await impl.exitRFTestAsync(new inputMessageName9()).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.exitRFTestAsync(new inputMessageName9()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.exitRFTest1.HasValue && result.exitRFTest1.Value;
 
             activity?.SetReturnValue(retv);
@@ -203,7 +202,7 @@ namespace Ihc
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters((nameof(serialNumber), serialNumber));
 
-            var result = await impl.testRFActuatorWithSerialNumberAsync(new inputMessageName3(serialNumber)).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.testRFActuatorWithSerialNumberAsync(new inputMessageName3(serialNumber)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.testRFActuatorWithSerialNumber2.HasValue && result.testRFActuatorWithSerialNumber2.Value;
 
             activity?.SetReturnValue(retv);
@@ -214,7 +213,7 @@ namespace Ihc
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var result = await impl.getDevicesRunningOutOfBatteryAsync(new inputMessageName4()).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.getDevicesRunningOutOfBatteryAsync(new inputMessageName4()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.getDevicesRunningOutOfBattery1 != null ? result.getDevicesRunningOutOfBattery1 : Array.Empty<int>();
 
             activity?.SetReturnValue(retv);
@@ -226,7 +225,7 @@ namespace Ihc
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters((nameof(timeoutSeconds), timeoutSeconds));
 
-            var result = await impl.waitForDeviceDetectedAsync(new inputMessageName5(timeoutSeconds)).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.waitForDeviceDetectedAsync(new inputMessageName5(timeoutSeconds)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = mapRFDevice(result.waitForDeviceDetected2);
 
             activity?.SetReturnValue(retv);
@@ -238,7 +237,7 @@ namespace Ihc
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters((nameof(timeoutSeconds), timeoutSeconds));
 
-            var result = await impl.waitForDeviceTestResultAsync(new inputMessageName6(timeoutSeconds)).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.waitForDeviceTestResultAsync(new inputMessageName6(timeoutSeconds)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = mapRFDevice(result.waitForDeviceTestResult2);
 
             activity?.SetReturnValue(retv);
@@ -249,7 +248,7 @@ namespace Ihc
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var result = await impl.getDetectedDeviceListAsync(new inputMessageName7()).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.getDetectedDeviceListAsync(new inputMessageName7()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.getDetectedDeviceList1 == null ? Array.Empty<RFDevice>() : result.getDetectedDeviceList1.Select(mapRFDevice).ToArray();
 
             activity?.SetReturnValue(retv);
@@ -261,7 +260,7 @@ namespace Ihc
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters((nameof(resourceId), resourceId));
 
-            var result = await impl.getBatteryLevelAsync(new inputMessageName10(resourceId)).ConfigureAwait(asyncContinueOnCapturedContext);
+            var result = await impl.getBatteryLevelAsync(new inputMessageName10(resourceId)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.getBatteryLevel2.HasValue ? result.getBatteryLevel2.Value : 0;
 
             activity?.SetReturnValue(retv);

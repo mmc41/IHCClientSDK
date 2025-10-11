@@ -64,7 +64,7 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Module.ModuleService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool logSensitiveData, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "ModuleService", logSensitiveData, asyncContinueOnCapturedContext) {}
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, IhcSettings settings) : base(logger, cookieHandler, settings, "ModuleService") {}
 
             public Task<outputMessageName6> clearAllAsync(inputMessageName6 request)
             {
@@ -107,14 +107,13 @@ namespace Ihc {
         /**
         * Create an ModuleService instance for access to the IHC API related to projects.
         * <param name="authService">AuthenticationService instance</param>
-        * <param name="logSensitiveData">If true, log sensitive data. If false (default), redact sensitive values in logs.</param>
-        * <param name="asyncContinueOnCapturedContext">If true, continue on captured context after await. If false (default), use ConfigureAwait(false) for better library performance.</param>
+        * <param name="settings">IHC settings configuration</param>
         */
-        public ModuleService(IAuthenticationService authService, bool logSensitiveData = false, bool asyncContinueOnCapturedContext = false)
-            : base(authService.Logger, logSensitiveData, asyncContinueOnCapturedContext)
+        public ModuleService(IAuthenticationService authService, IhcSettings settings)
+            : base(authService.Logger, settings)
         {
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), authService.Endpoint, logSensitiveData, asyncContinueOnCapturedContext);
+            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), settings);
         }
 
         private SceneProject mapSceneProject(Ihc.Soap.Module.WSFile proj)
@@ -155,7 +154,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var resp = await impl.getSceneProjectInfoAsync(new inputMessageName1() {}).ConfigureAwait(asyncContinueOnCapturedContext);
+            var resp = await impl.getSceneProjectInfoAsync(new inputMessageName1() {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = mapSceneProjectInfo(resp.getSceneProjectInfo1);
 
             activity?.SetReturnValue(retv);
@@ -167,7 +166,7 @@ namespace Ihc {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters((nameof(name), name));
 
-            var resp = await impl.getSceneProjectAsync(new inputMessageName5(name) {}).ConfigureAwait(asyncContinueOnCapturedContext);
+            var resp = await impl.getSceneProjectAsync(new inputMessageName5(name) {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = mapSceneProject(resp.getSceneProject2);
 
             activity?.SetReturnValue(retv);
@@ -179,7 +178,7 @@ namespace Ihc {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters((nameof(project), project));
 
-            await impl.storeSceneProjectAsync(new inputMessageName2(unmapSceneProject(project))).ConfigureAwait(asyncContinueOnCapturedContext);
+            await impl.storeSceneProjectAsync(new inputMessageName2(unmapSceneProject(project))).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         public async Task<SceneProject> GetSceneProjectSegment(string name, int segmentNumber)
@@ -187,7 +186,7 @@ namespace Ihc {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters((nameof(name), name), (nameof(segmentNumber), segmentNumber));
 
-            var resp = await impl.getSceneProjectSegmentAsync(new inputMessageName3(name, segmentNumber)).ConfigureAwait(asyncContinueOnCapturedContext);
+            var resp = await impl.getSceneProjectSegmentAsync(new inputMessageName3(name, segmentNumber)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = mapSceneProject(resp.getSceneProjectSegment3);
 
             activity?.SetReturnValue(retv);
@@ -199,7 +198,7 @@ namespace Ihc {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters((nameof(projectSegment), projectSegment), (nameof(isFirstSegment), isFirstSegment), (nameof(isLastSegment), isLastSegment));
 
-            var resp = await impl.storeSceneProjectSegmentAsync(new inputMessageName4(unmapSceneProject(projectSegment), isFirstSegment, isLastSegment)).ConfigureAwait(asyncContinueOnCapturedContext);
+            var resp = await impl.storeSceneProjectSegmentAsync(new inputMessageName4(unmapSceneProject(projectSegment), isFirstSegment, isLastSegment)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = resp.storeSceneProjectSegment4.HasValue ? resp.storeSceneProjectSegment4.Value : false;
 
             activity?.SetReturnValue(retv);
@@ -210,14 +209,14 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            await impl.clearAllAsync(new inputMessageName6() {}).ConfigureAwait(asyncContinueOnCapturedContext);
+            await impl.clearAllAsync(new inputMessageName6() {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         public async Task<int> GetSceneProjectSegmentationSize()
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var resp = await impl.getSceneProjectSegmentationSizeAsync(new inputMessageName7() {}).ConfigureAwait(asyncContinueOnCapturedContext);
+            var resp = await impl.getSceneProjectSegmentationSizeAsync(new inputMessageName7() {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = resp.getSceneProjectSegmentationSize1.HasValue ? resp.getSceneProjectSegmentationSize1.Value : 0;
 
             activity?.SetReturnValue(retv);

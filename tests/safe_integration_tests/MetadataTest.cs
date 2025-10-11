@@ -20,7 +20,7 @@ namespace Ihc.Tests
         public void CheckSampleNormalAsyncOperation()
         {
             // Create a ResourceInteractionService instance
-            var service = new ResourceInteractionService(new AuthenticationService(Setup.logger, Setup.endpoint));
+            var service = new ResourceInteractionService(new AuthenticationService(Setup.logger, Setup.settings), Setup.settings);
 
             // Get metadata for all operations
             var operations = service.GetOperations();
@@ -47,7 +47,7 @@ namespace Ihc.Tests
         public void CheckAsyncEnumerableOperation()
         {
             // Create a ResourceInteractionService instance
-            var service = new ResourceInteractionService(new AuthenticationService(Setup.logger, Setup.endpoint));
+            var service = new ResourceInteractionService(new AuthenticationService(Setup.logger, Setup.settings), Setup.settings);
 
             // Get metadata for all operations
             var operations = service.GetOperations();
@@ -68,7 +68,7 @@ namespace Ihc.Tests
         public void CheckOperationDescriptionsAreLoaded()
         {
             // Create an AuthenticationService instance
-            var service = new AuthenticationService(Setup.logger, Setup.endpoint);
+            var service = new AuthenticationService(Setup.logger, Setup.settings);
 
             // Get metadata for all operations
             var operations = service.GetOperations();

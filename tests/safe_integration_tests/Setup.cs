@@ -15,11 +15,7 @@ namespace Ihc.Tests
     public class Setup
     {
         public static ILogger logger;
-        public static string endpoint;
-        public static string userName;
-        public static string password;
-        public static string application;
-        public static bool logSensitiveData;
+        public static IhcSettings settings;
         public static int boolOutput1;
         public static int boolInput1;
         public static int boolInput2;
@@ -28,9 +24,11 @@ namespace Ihc.Tests
         public void RunBeforeAnyTests()
         {
           IConfigurationRoot config = new ConfigurationBuilder()
-                    .SetBasePath(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location))
-                    .AddJsonFile("ihcsettings.json")
-                    .Build();
+                .SetBasePath(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location))
+                .AddJsonFile("ihcsettings.json")
+                .Build();
+                    
+          settings = config.GetSection("ihcclient").Get<IhcSettings>();                    
 
           using var loggerFactory = LoggerFactory.Create(builder => {
                 builder.AddConfiguration(config.GetSection("Logging"));
@@ -39,12 +37,6 @@ namespace Ihc.Tests
 
           logger = loggerFactory.CreateLogger<Setup>(); // or use NullLogger<Setup>.Instance;
 
-          var ihcConfig = config.GetSection("ihcConfig");
-          endpoint = ihcConfig["endpoint"];
-          userName = ihcConfig["userName"];
-          password = ihcConfig["password"];
-          application = ihcConfig["application"];
-          logSensitiveData = bool.Parse(ihcConfig["logSensitiveData"]);
 
           var testConfig = config.GetSection("testConfig");
           boolOutput1 = int.Parse(testConfig["boolOutput1"]);

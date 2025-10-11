@@ -17,12 +17,12 @@ namespace Ihc.Tests
         [Test]
         public async Task AuthenticateAndDisconnectTest()
         {
-            var authService = new AuthenticationService(Setup.logger, Setup.endpoint, Setup.logSensitiveData);
+            var authService = new AuthenticationService(Setup.logger, Setup.settings);
 
-            var result = await authService.Authenticate(Setup.userName, Setup.password, Setup.application);
-            if (Setup.endpoint!="http://usb") // Username can't be tested like this when using a usb connection, where "usb" is returned istead of name.
+            var result = await authService.Authenticate(Setup.settings.UserName, Setup.settings.Password,  Setup.settings.Application);
+            if (Setup.settings.Endpoint!="http://usb") // Username can't be tested like this when using a usb connection, where "usb" is returned istead of name.
             {
-                Assert.That(result.Username, Is.EqualTo(Setup.userName));
+                Assert.That(result.Username, Is.EqualTo(Setup.settings.UserName));
             }
 
             var disResult = await authService.Disconnect();
@@ -32,7 +32,7 @@ namespace Ihc.Tests
         [Test]
         public async Task PingTest()
         {
-            var authService = new AuthenticationService(Setup.logger, Setup.endpoint);
+            var authService = new AuthenticationService(Setup.logger, Setup.settings);
 
             var pingResult = await authService.Ping();
             Assert.That(pingResult, Is.EqualTo(true));

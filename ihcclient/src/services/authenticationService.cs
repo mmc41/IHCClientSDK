@@ -13,7 +13,12 @@ namespace Ihc {
     public interface IAuthenticationService : ICookieHandlerService, IDisposable, IAsyncDisposable, IIHCService
     {
         /**
-        * Login to IHC controller. This method must be called prior to most other calls on other services.
+        * Login to IHC controller with user/password and application in predefined configuration settings. This method must be called prior to most other calls on other services.
+        */
+        public Task<IhcUser> Authenticate();
+                
+        /**
+        * Login to IHC controller overriding user/password and application in predefined configuration settings. This method must be called prior to most other calls on other services.
         *
         * @param userName Your registered IHC controller user name
         * @param password Your registered IHC controller password
@@ -48,8 +53,6 @@ namespace Ihc {
     public class AuthenticationService : ServiceBase, IAuthenticationService
     {
         private readonly ICookieHandler cookieHandler;
-        private readonly string endpoint;
-        private readonly bool logSensitiveData;
 
         public ICookieHandler GetCookieHandler()
         {
@@ -58,7 +61,7 @@ namespace Ihc {
 
         public string Endpoint { 
           get {
-            return endpoint;
+            return settings.Endpoint;
           } 
         }
 
@@ -70,7 +73,7 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Authentication.AuthenticationService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, bool logSensitiveData, bool asyncContinueOnCapturedContext) : base(logger, cookieHandler, endpoint, "AuthenticationService", logSensitiveData, asyncContinueOnCapturedContext) { }
+            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, IhcSettings settings) : base(logger, cookieHandler, settings, "AuthenticationService") { }
 
             public Task<outputMessageName2> authenticateAsync(inputMessageName2 request)
             {
@@ -121,18 +124,11 @@ namespace Ihc {
         /// Create an AuthenticationService instance for access to the IHC API related to authentication.
         /// NOTE: The AuthenticationService instance should be passed as an argument to other services (except OpenAPI).
         /// </summary>
-        /// <param name="logger">A logger instance. Alternatively, use NullLogger&lt;YourClass&gt;.Instance</param>
-        /// <param name="endpoint">IHC controller endpoint of form http://&lt;YOUR CONTROLLER IP ADDRESS&gt;</param>
-        /// <param name="logSensitiveData">If true, log passwords and session cookies. If false (default), redact sensitive values in logs.
-        ///                                WARNING: Enabling this will expose credentials in logs. Only enable for debugging in secure environments.</param>
-        /// <param name="asyncContinueOnCapturedContext">If true, continue on captured context for async operations.</param>
-        public AuthenticationService(ILogger logger, string endpoint, bool logSensitiveData = false, bool asyncContinueOnCapturedContext = false)
-            : base(logger, logSensitiveData, asyncContinueOnCapturedContext)
+        public AuthenticationService(ILogger logger, IhcSettings settings)
+            : base(logger, settings)
         {
-            this.endpoint = endpoint;
-            this.logSensitiveData = logSensitiveData;
-            this.cookieHandler = new CookieHandler(logger, logSensitiveData);
-            this.impl = new SoapImpl(logger, cookieHandler, endpoint, logSensitiveData, asyncContinueOnCapturedContext);
+            this.cookieHandler = new CookieHandler(logger, settings.LogSensitiveData);
+            this.impl = new SoapImpl(logger, cookieHandler, settings);
             this.isConnected = false;
         }
 
@@ -140,7 +136,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
-            var resp = await impl.pingAsync(new inputMessageName3()).ConfigureAwait(asyncContinueOnCapturedContext);
+            var resp = await impl.pingAsync(new inputMessageName3()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var result = resp.ping1;
             var retv = result.HasValue ? result.Value : false;
 
@@ -148,19 +144,24 @@ namespace Ihc {
             return retv;
         }
 
+        public async Task<IhcUser> Authenticate()
+        {
+            return await Authenticate(settings.UserName, settings.Password, settings.Application);
+        }
+
         public async Task<IhcUser> Authenticate(string userName, string password, string application = "openapi")
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters(
                 (nameof(userName), userName),
-                (nameof(password), logSensitiveData ? password : "***REDACTED***"),
+                (nameof(password), settings.AsyncContinueOnCapturedContext ? password : "***REDACTED***"),
                 (nameof(application), application)
             );
 
             logger.LogInformation("IHC Authenticate called");
             isConnected = false;
             var resp = await impl.authenticateAsync(new inputMessageName2() { authenticate1 = new WSAuthenticationData { username = userName, password = password, application = application } })
-                                 .ConfigureAwait(asyncContinueOnCapturedContext);
+                                 .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
             var result = resp.authenticate2;
             if (result.loginWasSuccessful)
@@ -217,7 +218,7 @@ namespace Ihc {
 
             try
             {
-                var resp = await impl.disconnectAsync(new inputMessageName1()).ConfigureAwait(asyncContinueOnCapturedContext);
+                var resp = await impl.disconnectAsync(new inputMessageName1()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 result = resp.disconnect1;
             }
             finally
@@ -249,7 +250,7 @@ namespace Ihc {
 
         public async ValueTask DisposeAsync()
         {
-            await this.Disconnect().ConfigureAwait(asyncContinueOnCapturedContext);
+            await this.Disconnect().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             GC.SuppressFinalize(this);
         }
     }

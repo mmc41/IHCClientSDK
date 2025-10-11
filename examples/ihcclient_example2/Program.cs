@@ -17,9 +17,11 @@ namespace Ihc.example
         {
           // Access configuration file that stores IHC and SDK setup informnation including username, password etc.
           IConfigurationRoot config = new ConfigurationBuilder()
-                    .SetBasePath(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location))
-                    .AddJsonFile("ihcsettings.json")
-                    .Build();
+                      .SetBasePath(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location))
+                      .AddJsonFile("ihcsettings.json")
+                      .Build();
+                    
+          IhcSettings settings = config.GetSection("ihcclient").Get<IhcSettings>();                    
 
           // Create a logger for our application. Alternatively use NullLogger<Setup>.Instance.
           using var loggerFactory = LoggerFactory.Create(builder => {
@@ -30,24 +32,17 @@ namespace Ihc.example
           var logger = loggerFactory.CreateLogger<Program>();
 
           // Read configuration settings
-          var ihcConfig = config.GetSection("ihcConfig");
-          var endpoint = ihcConfig["endpoint"];
-          var userName = ihcConfig["userName"];
-          var password = ihcConfig["password"];
-          var application = ihcConfig["application"];
-          bool logSensitiveData = bool.Parse(ihcConfig["logSensitiveData"]);
-
           var testConfig = config.GetSection("testConfig");
           var boolOutput1 = int.Parse(testConfig["boolOutput1"]);
           var boolInput1 = int.Parse(testConfig["boolInput1"]);
           var boolInput2 = int.Parse(testConfig["boolInput2"]);
 
           // Create client for IHC services that this example use (see also ConfigurationService, MessageControlLogService, ModuleService, NotificationManagerService, OpenAPIService, TimeManagerService, UserManagerService).
-          var authService = new AuthenticationService(logger, endpoint, logSensitiveData);
-          var resourceInteractionService = new ResourceInteractionService(authService);
+          var authService = new AuthenticationService(logger, settings);
+          var resourceInteractionService = new ResourceInteractionService(authService, settings);
 
           // Authenticate against IHC system. 
-          var login = await authService.Authenticate(userName, password, application);
+          var login = await authService.Authenticate();
 
           // Poll on IO changes to all our input addresses:
           var resourceChanges = resourceInteractionService.GetResourceValueChanges(new int[] {

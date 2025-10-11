@@ -21,14 +21,13 @@ namespace Ihc
     public abstract class ServiceBase : IIHCService
     {
         protected readonly ILogger logger;
-        protected readonly bool asyncContinueOnCapturedContext;
-        protected bool logSensitiveData;
 
-        protected ServiceBase(ILogger logger, bool logSensitiveData, bool asyncContinueOnCapturedContext)
+        protected IhcSettings settings;
+
+        protected ServiceBase(ILogger logger, IhcSettings settings)
         {
             this.logger = logger;
-            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
-            this.logSensitiveData = logSensitiveData;
+            this.settings = settings;
         }
 
         public IReadOnlyList<SeviceOperationMetadata> GetOperations()
@@ -51,18 +50,16 @@ namespace Ihc
         protected readonly ILogger logger;
         protected readonly ICookieHandler cookieHandler;
         public readonly string Url;
-        protected readonly bool logSensitiveData;
-        protected readonly bool asyncContinueOnCapturedContext;
+        protected IhcSettings settings;
 
 
-        protected ServiceBaseImpl(ILogger logger, ICookieHandler cookieHandler, string endpoint, string serviceName, bool logSensitiveData, bool asyncContinueOnCapturedContext)
+        protected ServiceBaseImpl(ILogger logger, ICookieHandler cookieHandler, IhcSettings settings, string serviceName)
         {
             this.logger = logger;
-            this.Url = endpoint + "/ws/" + serviceName;
+            this.settings = settings;
+            this.Url = settings.Endpoint + "/ws/" + serviceName;
             this.cookieHandler = cookieHandler;
-            this.logSensitiveData = logSensitiveData;
-            this.asyncContinueOnCapturedContext = asyncContinueOnCapturedContext;
-            this.ihcClient = new Client(logger, cookieHandler, Url, logSensitiveData, asyncContinueOnCapturedContext);
+            this.ihcClient = new Client(logger, cookieHandler, Url, settings);
         }
 
         /**
@@ -72,7 +69,7 @@ namespace Ihc
         {
             var req = Serialization.SerializeXml<RequestEnvelope<REQ>>(new RequestEnvelope<REQ>(request));
 
-            var httpResp = await ihcClient.Post(soapAction, req).ConfigureAwait(asyncContinueOnCapturedContext);
+            var httpResp = await ihcClient.Post(soapAction, req).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
             httpResp.EnsureSuccessStatusCode();
 
@@ -81,7 +78,7 @@ namespace Ihc
                 onOkSideEffect(httpResp);
             }
 
-            string respStr = await httpResp.Content.ReadAsStringAsync().ConfigureAwait(asyncContinueOnCapturedContext);
+            string respStr = await httpResp.Content.ReadAsStringAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
             var respObj = Serialization.DeserializeXml<ResponseEnvelope<RESP>>(respStr);
 

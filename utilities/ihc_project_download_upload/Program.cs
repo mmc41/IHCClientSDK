@@ -56,22 +56,23 @@ namespace Ihc.download_upload_example
             var logger = loggerFactory.CreateLogger<Program>();
 
             // Read configuration settings
-            var ihcConfig = config.GetSection("ihcConfig");
-            var endpoint = ihcConfig["endpoint"];
-            var userName = ihcConfig["userName"];
-            var password = ihcConfig["password"];
-            var application = ihcConfig["application"];
+            var settings = config.GetSection("ihcclient").Get<IhcSettings>();
+            if (settings == null)
+            {
+                Console.WriteLine("Could not read IHC client settings from configuration");
+                return;
+            }
 
             // Create client for IHC services that this utility use:
-            var authService = new AuthenticationService(logger, endpoint);
-            var controllerService = new ControllerService(authService);
-            var ressourceService = new ResourceInteractionService(authService);
-            var configService = new ConfigurationService(authService);
+            var authService = new AuthenticationService(logger, settings);
+            var controllerService = new ControllerService(authService, settings);
+            var ressourceService = new ResourceInteractionService(authService, settings);
+            var configService = new ConfigurationService(authService, settings);
 
             try
             {
                 // Authenticate against IHC system. 
-                var login = await authService.Authenticate(userName, password, application);
+                var login = await authService.Authenticate();
 
                 if (command == CMD_GET)
                 {
