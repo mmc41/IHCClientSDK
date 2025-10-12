@@ -1,0 +1,29 @@
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Markup.Xaml;
+using Microsoft.Extensions.Logging;
+
+namespace ihc_lab;
+
+public partial class App : Application
+{   
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+
+        IhcDomain ihcDomain = IhcDomain.GetOrCreateIhcDomain();
+        
+        ILogger logger = ihcDomain.loggerFactory.CreateLogger<App>();
+        logger.LogInformation("App Initialized");
+    }
+
+    public override void OnFrameworkInitializationCompleted()
+    {
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            desktop.MainWindow = new MainWindow();
+        }
+
+        base.OnFrameworkInitializationCompleted();
+    }
+}

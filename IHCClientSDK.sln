@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihc_projectextractor", "uti
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihc_ProjectDownloadUpload", "utilities\ihc_project_download_upload\ihc_ProjectDownloadUpload.csproj", "{8BDB1DCA-E0B7-4A28-B3F0-CC14C474CF04}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihc_lab", "utilities\ihc_lab\ihc_lab.csproj", "{A992372E-C635-43EB-B923-9103D2DBFEA5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -117,6 +119,18 @@ Global
 		{8BDB1DCA-E0B7-4A28-B3F0-CC14C474CF04}.Release|x64.Build.0 = Release|Any CPU
 		{8BDB1DCA-E0B7-4A28-B3F0-CC14C474CF04}.Release|x86.ActiveCfg = Release|Any CPU
 		{8BDB1DCA-E0B7-4A28-B3F0-CC14C474CF04}.Release|x86.Build.0 = Release|Any CPU
+		{A992372E-C635-43EB-B923-9103D2DBFEA5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A992372E-C635-43EB-B923-9103D2DBFEA5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A992372E-C635-43EB-B923-9103D2DBFEA5}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A992372E-C635-43EB-B923-9103D2DBFEA5}.Debug|x64.Build.0 = Debug|Any CPU
+		{A992372E-C635-43EB-B923-9103D2DBFEA5}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A992372E-C635-43EB-B923-9103D2DBFEA5}.Debug|x86.Build.0 = Debug|Any CPU
+		{A992372E-C635-43EB-B923-9103D2DBFEA5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A992372E-C635-43EB-B923-9103D2DBFEA5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A992372E-C635-43EB-B923-9103D2DBFEA5}.Release|x64.ActiveCfg = Release|Any CPU
+		{A992372E-C635-43EB-B923-9103D2DBFEA5}.Release|x64.Build.0 = Release|Any CPU
+		{A992372E-C635-43EB-B923-9103D2DBFEA5}.Release|x86.ActiveCfg = Release|Any CPU
+		{A992372E-C635-43EB-B923-9103D2DBFEA5}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -127,5 +141,6 @@ Global
 		{870924EC-B9C5-4D76-991F-BE3E1D76A877} = {DF572EAA-2BC4-7083-A1C9-E138B4BE775E}
 		{766CAF62-9359-4D47-A0BE-60B7EFB7DA7C} = {DF572EAA-2BC4-7083-A1C9-E138B4BE775E}
 		{8BDB1DCA-E0B7-4A28-B3F0-CC14C474CF04} = {DF572EAA-2BC4-7083-A1C9-E138B4BE775E}
+		{A992372E-C635-43EB-B923-9103D2DBFEA5} = {DF572EAA-2BC4-7083-A1C9-E138B4BE775E}
 	EndGlobalSection
 EndGlobal

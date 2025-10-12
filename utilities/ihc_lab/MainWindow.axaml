@@ -1,0 +1,38 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ihc_lab="clr-namespace:ihc_lab"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="ihc_lab.MainWindow"
+        x:DataType="ihc_lab:MainWindow"
+        Title="IHC Lab">
+    <DockPanel>
+        <Menu DockPanel.Dock="Top" Background="#F0F0F0">
+            <MenuItem Header="_File">
+                <MenuItem Header="_Open..."/>
+                <Separator/>
+                <MenuItem Header="_Exit" Click="ExitMenuItemClick"/>
+            </MenuItem>
+         </Menu>
+         <Separator DockPanel.Dock="Top" Height="1" Background="#C0C0C0"/>
+         <Grid DockPanel.Dock="Top" Margin="10,10,10,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0" Text="Service:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <ComboBox Grid.Column="1" Name="ServicesComboBox" VerticalAlignment="Center" SelectionChanged="OnServicesComboBoxSelectionChanged"/>
+
+            <TextBlock Grid.Column="3" Text="Operation:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <ComboBox Grid.Column="4" Name="OperationsComboBox" VerticalAlignment="Center"/>
+        </Grid>
+         <TextBlock>Welcome to Avalonia!</TextBlock>
+         <ihc_lab:DynInput/>
+    </DockPanel>
+</Window>

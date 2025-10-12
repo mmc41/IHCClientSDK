@@ -2,7 +2,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihcclient", "ihcclient.csproj", "{C77F0880-F65D-759B-DE94-6C0DA88F29D1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihc_lab", "ihc_lab.csproj", "{B22CD518-BF68-9F21-34D2-5683B329708D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -10,15 +10,15 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{C77F0880-F65D-759B-DE94-6C0DA88F29D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C77F0880-F65D-759B-DE94-6C0DA88F29D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C77F0880-F65D-759B-DE94-6C0DA88F29D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C77F0880-F65D-759B-DE94-6C0DA88F29D1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B22CD518-BF68-9F21-34D2-5683B329708D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B22CD518-BF68-9F21-34D2-5683B329708D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B22CD518-BF68-9F21-34D2-5683B329708D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B22CD518-BF68-9F21-34D2-5683B329708D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {6742AFA9-54EA-4FC6-ADAC-6602C873A36B}
+		SolutionGuid = {AC262B1D-4BA0-4A93-8440-A7A16C39B6EC}
 	EndGlobalSection
 EndGlobal

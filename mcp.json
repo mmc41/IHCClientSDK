@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upshift-protocol/context7-mcp"
+      ]
+    }
+  },
+  "enableAllProjectMcpServers": true
+}
