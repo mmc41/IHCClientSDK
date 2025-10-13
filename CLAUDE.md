@@ -92,6 +92,8 @@ The `ihcclient` project follows a layered architecture:
 - Custom serialization layer to handle IHC-specific data formats
 - Cookie-based session management for maintaining controller connections
 - Each service uses internal SoapImpl wrapper around generated SOAP code
+- Prioritise the following patterns in specified order of priority: D.R.Y, KISS, YAGNI, Single return statements, SOLID.
+- Use nameof() instead of hardcoded parameter names
 
 ## Configuration Requirements
 

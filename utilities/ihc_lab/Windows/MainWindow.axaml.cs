@@ -1,4 +1,6 @@
+using System;
 using System.Linq;
+using System.Reflection.Metadata;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -38,8 +40,20 @@ public partial class MainWindow : Window
 
     public void RunButtonClickHandler(object sender, RoutedEventArgs e)
     {
-        System.Console.WriteLine("Run button clicked!");
+        // Get ServiceOperationMetadata from OperationsComboBox
+        if (OperationsComboBox.SelectedItem is not ServiceOperationMetadata operationMetadata)
+        {
+            output.Text = "No operation selected.";
+            return;
+        }
 
+        // Get parameter values from DynField controls
+        var parameterValues = GetParameterValues();
+
+        String txt = operationMetadata.Name + " : " + String.Join(",", parameterValues.Select(p => p.ToString()));
+
+        // Update text of TextBlock with name output
+        output.Text = txt;
     }
 
     private void OnServicesComboBoxSelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -80,11 +94,60 @@ public partial class MainWindow : Window
         if (OperationsComboBox.SelectedItem is ServiceOperationMetadata operationMetadata)
         {
             OperationDescription.Text = operationMetadata.Description;
+            SetUpParamterControls(operationMetadata);
         }
         else
         {
             OperationDescription.Text = string.Empty;
         }
+
+    }
+
+    private void SetUpParamterControls(ServiceOperationMetadata operationMetadata)
+    {
+        // Clear any existing child controls under panel with Name ParametersPanel
+        ParametersPanel.Children.Clear();
+
+        foreach (Type parameter in operationMetadata.ParameterTypes)
+        {
+            string parameterTypeName = parameter.Name;
+
+            // Add legend (TextBlock label) for this parameter
+            var legend = new TextBlock
+            {
+                Text = parameterTypeName,
+                Margin = new Thickness(0, 10, 0, 2),
+                FontWeight = Avalonia.Media.FontWeight.SemiBold
+            };
+            ParametersPanel.Children.Add(legend);
+
+            // Map .NET type names to DynField control types
+            string dynFieldType = TypeHelper.MapTypeToControlType(parameter);
+
+            // Create a DynField control for this parameter
+            var dynField = new DynField
+            {
+                TypeForControl = dynFieldType,
+                Margin = new Thickness(0, 0, 0, 5)
+            };
+
+            // Add the control to the ParametersPanel
+            ParametersPanel.Children.Add(dynField);
+        }
+    }
+
+    private object[] GetParameterValues()
+    {
+        // Retrieve parameter values as array from DynField children of ParametersPanel
+        var dynFields = ParametersPanel.Children.OfType<DynField>().ToArray();
+        var values = new object[dynFields.Length];
+
+        for (int i = 0; i < dynFields.Length; i++)
+        {
+            values[i] = dynFields[i].Value ?? string.Empty;
+        }
+
+        return values;
     }
 
     private void OnWindowClosing(object? sender, WindowClosingEventArgs e)
