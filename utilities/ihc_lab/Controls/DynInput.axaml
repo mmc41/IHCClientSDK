@@ -4,7 +4,11 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="ihc_lab.DynInput">
-  IHC DYN INPUT USER CONTROL HERE!
-
-
+    <Grid Name="inputsGrid">
+      <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+      <TextBlock Grid.Column="0" Grid.Row="0" Name="ParamDef"></TextBlock>
+  </Grid>
 </UserControl>
