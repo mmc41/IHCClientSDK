@@ -35,8 +35,8 @@ namespace Ihc.Tests
                 "Return type should be ResourceValue[]");
 
             // Verify parameter types (should have one int parameter for timeout_seconds)
-            Assert.That(waitForChangesOperation.ParameterTypes.Length, Is.EqualTo(1), "Should have exactly one parameter");
-            Assert.That(waitForChangesOperation.ParameterTypes[0], Is.EqualTo(typeof(int)),  "First parameter should be int (timeout_seconds)");
+            Assert.That(waitForChangesOperation.Parameters.Length, Is.EqualTo(1), "Should have exactly one parameter");
+            Assert.That(waitForChangesOperation.Parameters[0].Type, Is.EqualTo(typeof(int)),  "First parameter should be int (timeout_seconds)");
 
             // Verify operation type (should be AsyncFunction since it returns Task<ResourceValue[]>)
             Assert.That(waitForChangesOperation.Kind, Is.EqualTo(ServiceOperationKind.AsyncFunction),

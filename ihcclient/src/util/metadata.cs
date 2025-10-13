@@ -13,20 +13,30 @@ namespace Ihc {
     public enum ServiceOperationKind { AsyncFunction, AsyncEnumerable };
 
     /// <summary>
+    /// High level metadata about a service operation parameter for a high level IHC service operation. For use by test and documentation tools.
+    /// </summary>
+    public record ParameterMetaData(string name, Type type, string description)
+    {
+        public string Name { get; init; } = name;
+        public Type Type { get; init; } = type;
+        public string Description { get; init; } = description;
+    }
+
+    /// <summary>
     /// High level metadata about a service operation (method) on a high level IHC service. For use by test and documentation tools.
     /// </summary>
     /// <param name="service">IHC service</param>
     /// <param name="Name">The name of the method</param>
     /// <param name="ReturnType">The return type unwrapped from Task or IAsyncEnumerable wrappers (refer to OperationKind)</param>
-    /// <param name="ParameterTypes">Method parameter types</param>
+    /// <param name="Parameters">Method parameter metadata</param>
     /// <param name="OperationKind">The type of operation</param>
     /// <param name="OperationDetails">The underlying MethodInfo describing the operation in details</param>
     /// <param name="Description">The XML documentation summary for this method</param>
-    public class ServiceOperationMetadata(IIHCService service, string Name, Type ReturnType, Type[] ParameterTypes, ServiceOperationKind OperationKind, MethodInfo OperationDetails, string Description)
+    public class ServiceOperationMetadata(IIHCService service, string Name, Type ReturnType, ParameterMetaData[] Parameters, ServiceOperationKind OperationKind, MethodInfo OperationDetails, string Description)
     {
         public string Name { get; init; } = Name;
         public Type ReturnType { get; init; } = ReturnType;
-        public Type[] ParameterTypes { get; init; } = ParameterTypes;
+        public ParameterMetaData[] Parameters { get; init; } = Parameters;
         public ServiceOperationKind Kind { get; init; } = OperationKind;
         public MethodInfo MethodInfo { get; init; } = OperationDetails;
         public string Description { get; init; } = Description;
@@ -34,7 +44,7 @@ namespace Ihc {
 
         public override string ToString()
         {
-            var parameters = string.Join(", ", ParameterTypes.Select(t => t.Name));
+            var parameters = string.Join(", ", Parameters.Select(p => p.Type.Name));
             return $"{ReturnType.Name} {Name}({parameters}) [{Kind}]";
         }
 
@@ -50,11 +60,11 @@ namespace Ihc {
         public object Invoke(object[] arguments)
         {
             // Validate arguments length matches expected parameters
-            if (arguments == null && ParameterTypes.Length > 0)
-                throw new ArgumentException($"Method {Name} expects {ParameterTypes.Length} arguments but null was provided");
+            if (arguments == null && Parameters.Length > 0)
+                throw new ArgumentException($"Method {Name} expects {Parameters.Length} arguments but null was provided");
 
-            if (arguments != null && arguments.Length != ParameterTypes.Length)
-                throw new ArgumentException($"Method {Name} expects {ParameterTypes.Length} arguments but {arguments.Length} were provided");
+            if (arguments != null && arguments.Length != Parameters.Length)
+                throw new ArgumentException($"Method {Name} expects {Parameters.Length} arguments but {arguments.Length} were provided");
 
             // Use reflection to invoke the method on the service instance
             // This returns Task, Task<T>, or IAsyncEnumerable<T> depending on the operation
@@ -143,10 +153,15 @@ namespace Ihc {
         {
             var operationType = DetermineOperationKind(method.ReturnType);
             var returnType = UnwrapAsyncReturnType(method.ReturnType);
-            var parameterTypes = method.GetParameters().Select(p => p.ParameterType).ToArray();
+            var parameters = method.GetParameters()
+                .Select(p => new ParameterMetaData(
+                    name: p.Name ?? string.Empty,
+                    type: p.ParameterType,
+                    description: GetParameterDescription(method, p.Name ?? string.Empty)))
+                .ToArray();
             var description = GetMethodDescription(method);
 
-            return new ServiceOperationMetadata(service, method.Name, returnType, parameterTypes, operationType, method, description);
+            return new ServiceOperationMetadata(service, method.Name, returnType, parameters, operationType, method, description);
         }
 
         private static ServiceOperationKind DetermineOperationKind(Type returnType)
@@ -269,6 +284,40 @@ namespace Ihc {
             return string.Empty;
         }
 
+        private static string GetParameterDescription(MethodInfo method, string parameterName)
+        {
+            var xmlDoc = LoadXmlDocumentation();
+            if (xmlDoc == null)
+                return string.Empty;
+
+            // Try to find documentation from the declaring type first
+            var description = TryGetParameterDescriptionForType(xmlDoc, method, method.DeclaringType, parameterName);
+            if (description != null)
+                return description;
+
+            // If not found, try all implemented interfaces
+            if (method.DeclaringType != null)
+            {
+                var interfaces = method.DeclaringType.GetInterfaces();
+                foreach (var iface in interfaces)
+                {
+                    // Get the interface map to find the corresponding interface method
+                    var interfaceMap = method.DeclaringType.GetInterfaceMap(iface);
+                    var index = Array.IndexOf(interfaceMap.TargetMethods, method);
+
+                    if (index >= 0)
+                    {
+                        var interfaceMethod = interfaceMap.InterfaceMethods[index];
+                        description = TryGetParameterDescriptionForType(xmlDoc, interfaceMethod, iface, parameterName);
+                        if (description != null)
+                            return description;
+                    }
+                }
+            }
+
+            return string.Empty;
+        }
+
         private static string TryGetDescriptionForType(XDocument xmlDoc, MethodInfo method, Type type)
         {
             if (type == null)
@@ -311,6 +360,51 @@ namespace Ihc {
 
             // Fall back to the member element's direct text content
             return memberElement.Value.Trim();
+        }
+
+        private static string TryGetParameterDescriptionForType(XDocument xmlDoc, MethodInfo method, Type type, string parameterName)
+        {
+            if (type == null)
+                return null;
+
+            var sb = new StringBuilder();
+            sb.Append("M:");
+            sb.Append(type.FullName);
+            sb.Append('.');
+            sb.Append(method.Name);
+
+            var parameters = method.GetParameters();
+            if (parameters.Length > 0)
+            {
+                sb.Append('(');
+                for (int i = 0; i < parameters.Length; i++)
+                {
+                    if (i > 0)
+                        sb.Append(',');
+
+                    var paramType = parameters[i].ParameterType;
+                    sb.Append(GetXmlTypeName(paramType));
+                }
+                sb.Append(')');
+            }
+
+            var memberName = sb.ToString();
+
+            // Find the member element in the XML
+            var memberElement = xmlDoc.Descendants("member")
+                .FirstOrDefault(m => m.Attribute("name")?.Value == memberName);
+
+            if (memberElement == null)
+                return null;
+
+            // Find the param element with matching name attribute
+            var paramElement = memberElement.Elements("param")
+                .FirstOrDefault(p => p.Attribute("name")?.Value == parameterName);
+
+            if (paramElement == null)
+                return null;
+
+            return paramElement.Value.Trim();
         }
 
         private static string GetXmlTypeName(Type type)

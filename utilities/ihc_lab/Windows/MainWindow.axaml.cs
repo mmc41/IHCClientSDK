@@ -108,27 +108,25 @@ public partial class MainWindow : Window
         // Clear any existing child controls under panel with Name ParametersPanel
         ParametersPanel.Children.Clear();
 
-        foreach (Type parameter in operationMetadata.ParameterTypes)
+        foreach (ParameterMetaData parameter in operationMetadata.Parameters)
         {
-            string parameterTypeName = parameter.Name;
-
             // Add legend (TextBlock label) for this parameter
             var legend = new TextBlock
             {
-                Text = parameterTypeName,
-                Margin = new Thickness(0, 10, 0, 2),
+                Text = parameter.Name,
+                Margin = new Thickness(0, 10, 5, 2),
                 FontWeight = Avalonia.Media.FontWeight.SemiBold
             };
             ParametersPanel.Children.Add(legend);
 
             // Map .NET type names to DynField control types
-            string dynFieldType = TypeHelper.MapTypeToControlType(parameter);
+            string dynFieldType = TypeHelper.MapTypeToControlType(parameter.Type);
 
             // Create a DynField control for this parameter
             var dynField = new DynField
             {
                 TypeForControl = dynFieldType,
-                Margin = new Thickness(0, 0, 0, 5)
+                Margin = new Thickness(0, 0, 20, 15)
             };
 
             // Add the control to the ParametersPanel
