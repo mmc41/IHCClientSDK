@@ -103,25 +103,20 @@ public partial class MainWindow : Window
 
     }
 
-    private void AddFieldControls(FieldMetaData field, string prefix)
+    private void AddFieldControls(Panel parent, FieldMetaData field, string prefix)
     {
         // Add legend (TextBlock label) for this parameter
         var legend = new TextBlock
         {
-            Text = field.Name,
+            Text = field.Name + ":",
             Margin = new Thickness(0, 10, 5, 2),
             FontWeight = Avalonia.Media.FontWeight.SemiBold
         };
-        ParametersPanel.Children.Add(legend);
 
-        if (field.SubTypes.Length>0) // Complex types like records or arrays.
+        if (field.SubTypes.Length==0)
         {
-            foreach (var subField in field.SubTypes)
-            {
-                AddFieldControls(subField, field.Name+".");
-            }
-        } else
-        {
+            parent.Children.Add(legend);
+                    
             // Map .NET type names to DynField control types
             string dynFieldType = TypeHelper.MapTypeToControlType(field.Type);
 
@@ -134,7 +129,22 @@ public partial class MainWindow : Window
             };
 
             // Add the control to the ParametersPanel
-            ParametersPanel.Children.Add(dynField);
+            parent.Children.Add(dynField);
+        } else { // Complex types like records or arrays.
+            // Wrap these controls in a dynamically created StackPanel with horizontal orientation
+            var stackPanel = new StackPanel
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                Margin = new Thickness(0, 0, 0, 15)
+            };
+            
+            parent.Children.Add(stackPanel);
+
+            stackPanel.Children.Add(legend);
+            foreach (var subField in field.SubTypes)
+            {
+                AddFieldControls(stackPanel, subField, field.Name + ".");
+            }
         } 
     }
 
@@ -145,7 +155,7 @@ public partial class MainWindow : Window
 
         foreach (FieldMetaData parameter in operationMetadata.Parameters)
         {
-            AddFieldControls(parameter, "");
+            AddFieldControls(ParametersPanel, parameter, "");
         }
     }
 
