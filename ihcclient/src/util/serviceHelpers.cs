@@ -10,13 +10,6 @@ namespace Ihc
 {
     public interface IIHCService
     {
-        /// <summary>
-        /// Get metadata about the operations supported by this service.
-        /// For use by test and documentation tools. Not for normal application code.
-        /// </summary>
-        /// <returns></returns>
-        public IReadOnlyList<SeviceOperationMetadata> GetOperations();
-
         /**
         * The IhcSettings used
         */
@@ -54,17 +47,7 @@ namespace Ihc
                 throw new ArgumentException("ILogger must be supplied");
             }
         }
-
-        /// <summary>
-        /// Get metadata about the operations supported by this service.
-        /// For use by test and documentation tools. Not for normal application code.
-        /// </summary>
-        /// <returns>List of metadata for service operations</returns>
-        public IReadOnlyList<SeviceOperationMetadata> GetOperations()
-        {
-            return ServiceMetadata.GetOperations(this);
-        }
-        
+       
         public IhcSettings IhcSettings
         {
             get { return settings; }

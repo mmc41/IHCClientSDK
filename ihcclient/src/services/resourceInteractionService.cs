@@ -437,7 +437,7 @@ namespace Ihc {
             return new WSWeekdayValue() { weekdayNumber = v };
         }
         
-        public SceneResourceIdAndLocation mapSceneResourceIdAndLocation(Ihc.Soap.Resourceinteraction.WSSceneResourceIdAndLocationURLs arg) {
+        private SceneResourceIdAndLocation mapSceneResourceIdAndLocation(Ihc.Soap.Resourceinteraction.WSSceneResourceIdAndLocationURLs arg) {
             if (arg == null)
                 return null;
 

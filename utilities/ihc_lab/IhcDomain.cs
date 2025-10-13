@@ -12,10 +12,13 @@ public class ServiceItem
     public IIHCService Service { get; }
     public string DisplayName { get; }
 
+    public int InitialOperationSelectedIndex { get; set; }
+
     public ServiceItem(IIHCService service)
     {
         Service = service;
         DisplayName = service.GetType().Name;
+        InitialOperationSelectedIndex = 1;
     }
 }
 

@@ -23,7 +23,7 @@ namespace Ihc.Tests
             var service = new ResourceInteractionService(new AuthenticationService(Setup.logger, Setup.settings));
 
             // Get metadata for all operations
-            var operations = service.GetOperations();
+            var operations = ServiceMetadata.GetOperations(service);
 
             // Find the WaitForResourceValueChanges operation and verify it exist
             const string operationName = nameof(ResourceInteractionService.WaitForResourceValueChanges);
@@ -50,7 +50,7 @@ namespace Ihc.Tests
             var service = new ResourceInteractionService(new AuthenticationService(Setup.logger, Setup.settings));
 
             // Get metadata for all operations
-            var operations = service.GetOperations();
+            var operations = ServiceMetadata.GetOperations(service);
 
             // Find the GetResourceValueChanges operation and verify it exists
             const string operationName =  nameof(ResourceInteractionService.GetResourceValueChanges);
@@ -71,7 +71,7 @@ namespace Ihc.Tests
             var service = new AuthenticationService(Setup.logger, Setup.settings);
 
             // Get metadata for all operations
-            var operations = service.GetOperations();
+            var operations = ServiceMetadata.GetOperations(service);
 
             // Find the Authenticate operation
             const string operationName = nameof(IAuthenticationService.Authenticate);
@@ -86,6 +86,19 @@ namespace Ihc.Tests
             Assert.That(authenticateOperation.Description.ToLower(), Does.Contain("login"),
                 "Description should contain 'login' - actual: " + authenticateOperation.Description);
         }
+
+        [Test]
+        public void CheckInterenalOperationsRemoved()
+        {
+            // Create a ResourceInteractionService instance
+            var service = new ResourceInteractionService(new AuthenticationService(Setup.logger, Setup.settings));
+
+            // Get metadata for all operations
+            var operations = ServiceMetadata.GetOperations(service);
+            var defaultObjectOperations = operations.FirstOrDefault(op => op.Name == nameof(Equals) || op.Name == nameof(GetHashCode) || op.Name == nameof(ToString) || op.Name == "Disponse"|| op.Name == "DisposeAsync" || op.Name == "GetCookieHandler");
+            Assert.That(defaultObjectOperations, Is.Null, "Equals/GetHashCode/ToString operations should NOT be found in metadata");
+        }
+
     }
 
 }

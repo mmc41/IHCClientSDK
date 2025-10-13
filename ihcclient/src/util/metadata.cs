@@ -40,12 +40,17 @@ namespace Ihc {
     /// <summary>
     /// Produce high level metadata about service operations (methods) on a high level IHC service. For use by test and documentation tools.
     /// </summary>
-    internal static class ServiceMetadata
+    public static class ServiceMetadata
     {
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, IReadOnlyList<SeviceOperationMetadata>> _cache = new();
         private static XDocument _xmlDoc;
         private static readonly object _xmlLock = new();
 
+        /// <summary>
+        /// Get metadata about the operations supported by this service.
+        /// For use by test and documentation tools. Not for normal application code.
+        /// </summary>
+        /// <returns>List of metadata for service operations</returns>
         public static IReadOnlyList<SeviceOperationMetadata> GetOperations(IIHCService service)
         {
             var serviceType = service.GetType();
@@ -58,12 +63,16 @@ namespace Ihc {
 
                 foreach (var method in methods)
                 {
-                    // Skip Dispose and DisposeAsync methods
-                    if (method.Name == "Dispose" || method.Name == "DisposeAsync")
-                        continue;
-
                     // Skip property getters/setters
                     if (method.IsSpecialName)
+                        continue;
+
+                    // Skip methods inherited from System.Object
+                    if (method.DeclaringType == typeof(object))
+                        continue;
+
+                    // Skip methods from ICookieHandlerService, IDisposable, and IAsyncDisposable
+                    if (IsMethodFromExcludedInterface(method))
                         continue;
 
                     operations.Add(CreateOperationInfo(method));
@@ -71,6 +80,36 @@ namespace Ihc {
 
                 return operations.AsReadOnly();
             });
+        }
+
+        private static bool IsMethodFromExcludedInterface(MethodInfo method)
+        {
+            if (method.DeclaringType == null)
+                return false;
+
+            var excludedInterfaces = new[] { typeof(IDisposable), typeof(IAsyncDisposable), typeof(ICookieHandlerService) };
+
+            // Check if method is declared directly on excluded interfaces
+            if (excludedInterfaces.Contains(method.DeclaringType))
+                return true;
+
+            // Check if the declaring type implements any excluded interfaces and this method implements one of their methods
+            var declaringType = method.DeclaringType;
+
+            foreach (var excludedInterface in excludedInterfaces)
+            {
+                if (excludedInterface.IsAssignableFrom(declaringType))
+                {
+                    // Get the interface map to see if this method implements an interface method
+                    var interfaceMap = declaringType.GetInterfaceMap(excludedInterface);
+                    if (interfaceMap.TargetMethods.Contains(method))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private static SeviceOperationMetadata CreateOperationInfo(System.Reflection.MethodInfo method)
