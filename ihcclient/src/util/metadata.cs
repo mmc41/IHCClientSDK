@@ -13,13 +13,17 @@ namespace Ihc {
     public enum ServiceOperationKind { AsyncFunction, AsyncEnumerable };
 
     /// <summary>
-    /// High level metadata about a service operation parameter for a high level IHC service operation. For use by test and documentation tools.
+    /// High level metadata about a field/parameter used in a high level IHC service operation type. For use by test and documentation tools.
     /// </summary>
-    public record ParameterMetaData(string name, Type type, string description)
+    // TODO: Add parameter types.
+    public record FieldMetaData(string name, Type type, FieldMetaData[] subtypes, string description)
     {
         public string Name { get; init; } = name;
         public Type Type { get; init; } = type;
         public string Description { get; init; } = description;
+        public FieldMetaData[] SubTypes { get; init; } = subtypes;
+        public bool IsSimple { get { return type.IsPrimitive || type == typeof(String); } }
+        public bool IsArray { get { return type.IsArray; } }
     }
 
     /// <summary>
@@ -32,11 +36,11 @@ namespace Ihc {
     /// <param name="OperationKind">The type of operation</param>
     /// <param name="OperationDetails">The underlying MethodInfo describing the operation in details</param>
     /// <param name="Description">The XML documentation summary for this method</param>
-    public class ServiceOperationMetadata(IIHCService service, string Name, Type ReturnType, ParameterMetaData[] Parameters, ServiceOperationKind OperationKind, MethodInfo OperationDetails, string Description)
+    public class ServiceOperationMetadata(IIHCService service, string Name, Type ReturnType, FieldMetaData[] Parameters, ServiceOperationKind OperationKind, MethodInfo OperationDetails, string Description)
     {
         public string Name { get; init; } = Name;
         public Type ReturnType { get; init; } = ReturnType;
-        public ParameterMetaData[] Parameters { get; init; } = Parameters;
+        public FieldMetaData[] Parameters { get; init; } = Parameters;
         public ServiceOperationKind Kind { get; init; } = OperationKind;
         public MethodInfo MethodInfo { get; init; } = OperationDetails;
         public string Description { get; init; } = Description;
@@ -154,14 +158,47 @@ namespace Ihc {
             var operationType = DetermineOperationKind(method.ReturnType);
             var returnType = UnwrapAsyncReturnType(method.ReturnType);
             var parameters = method.GetParameters()
-                .Select(p => new ParameterMetaData(
+                .Select(p => new FieldMetaData(
                     name: p.Name ?? string.Empty,
                     type: p.ParameterType,
+                    subtypes: CreateSubTypes(p.ParameterType),
                     description: GetParameterDescription(method, p.Name ?? string.Empty)))
                 .ToArray();
             var description = GetMethodDescription(method);
 
             return new ServiceOperationMetadata(service, method.Name, returnType, parameters, operationType, method, description);
+        }
+
+        private static FieldMetaData[] CreateSubTypes(Type parameterType)
+        {
+            // For arrays, return element type with blank name
+            if (parameterType.IsArray)
+            {
+                var elementType = parameterType.GetElementType();
+                if (elementType != null)
+                {
+                    return new[] { new FieldMetaData(name: string.Empty, type: elementType, subtypes: [], description: "") }; // TODO: Read description from XML
+                }
+                return Array.Empty<FieldMetaData>();
+            }
+
+            // For primitives and strings, return empty array (no subtypes)
+            if (parameterType.IsPrimitive || parameterType == typeof(string))
+            {
+                return Array.Empty<FieldMetaData>();
+            }
+
+            // For classes/records, return properties
+            if (parameterType.IsClass || parameterType.IsValueType)
+            {
+                var properties = parameterType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                return properties
+                    .Select(p => new FieldMetaData(name: p.Name, type: p.PropertyType, subtypes: [], description: "")) // TODO: Read description from XML
+                    .ToArray();
+            }
+
+            // Default: return empty array
+            return Array.Empty<FieldMetaData>();
         }
 
         private static ServiceOperationKind DetermineOperationKind(Type returnType)

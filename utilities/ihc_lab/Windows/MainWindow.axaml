@@ -49,14 +49,8 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Grid.Row="0" Name="OperationDescription"></TextBlock>
-                        <DockPanel Grid.Column="0" Grid.Row="1" Name="ParametersPanel">
-                        </DockPanel>
-                    <!-- <ihc_lab:DynInput Grid.Column="0" Grid.Row="2"/> -->
-                        <!--
-                        <ihc_lab:DynField Grid.Column="0" Grid.Row="3" TypeForControl="String"/>
-                        <ihc_lab:DynField Grid.Column="0" Grid.Row="4" TypeForControl="Integer"/>
-                        <ihc_lab:DynField Grid.Column="0" Grid.Row="5" TypeForControl="bool"/>
-                        -->
+                        <StackPanel Grid.Column="0" Grid.Row="1" Name="ParametersPanel" Orientation="Vertical">
+                        </StackPanel>
                     </Grid>
                 </Border>
                 </DockPanel>

@@ -103,34 +103,49 @@ public partial class MainWindow : Window
 
     }
 
-    private void SetUpParamterControls(ServiceOperationMetadata operationMetadata)
+    private void AddFieldControls(FieldMetaData field, string prefix)
     {
-        // Clear any existing child controls under panel with Name ParametersPanel
-        ParametersPanel.Children.Clear();
-
-        foreach (ParameterMetaData parameter in operationMetadata.Parameters)
+        // Add legend (TextBlock label) for this parameter
+        var legend = new TextBlock
         {
-            // Add legend (TextBlock label) for this parameter
-            var legend = new TextBlock
-            {
-                Text = parameter.Name,
-                Margin = new Thickness(0, 10, 5, 2),
-                FontWeight = Avalonia.Media.FontWeight.SemiBold
-            };
-            ParametersPanel.Children.Add(legend);
+            Text = field.Name,
+            Margin = new Thickness(0, 10, 5, 2),
+            FontWeight = Avalonia.Media.FontWeight.SemiBold
+        };
+        ParametersPanel.Children.Add(legend);
 
+        if (field.SubTypes.Length>0) // Complex types like records or arrays.
+        {
+            foreach (var subField in field.SubTypes)
+            {
+                AddFieldControls(subField, field.Name+".");
+            }
+        } else
+        {
             // Map .NET type names to DynField control types
-            string dynFieldType = TypeHelper.MapTypeToControlType(parameter.Type);
+            string dynFieldType = TypeHelper.MapTypeToControlType(field.Type);
 
             // Create a DynField control for this parameter
             var dynField = new DynField
             {
                 TypeForControl = dynFieldType,
-                Margin = new Thickness(0, 0, 20, 15)
+                Margin = new Thickness(0, 0, 20, 15),
+                Name = prefix+field.Name
             };
 
             // Add the control to the ParametersPanel
             ParametersPanel.Children.Add(dynField);
+        } 
+    }
+
+    private void SetUpParamterControls(ServiceOperationMetadata operationMetadata)
+    {
+        // Clear any existing child controls under panel with Name ParametersPanel
+        ParametersPanel.Children.Clear();
+
+        foreach (FieldMetaData parameter in operationMetadata.Parameters)
+        {
+            AddFieldControls(parameter, "");
         }
     }
 
