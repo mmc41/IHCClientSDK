@@ -14,6 +14,11 @@ namespace Ihc {
         public int MinorVersion { get; init; }
 
         public int BuildVersion { get; init; }
+
+        public override string ToString()
+        {
+          return $"FWVersion(MajorVersion={MajorVersion}, MinorVersion={MinorVersion}, BuildVersion={BuildVersion})";
+        }
     }
 
     /**
@@ -23,5 +28,10 @@ namespace Ihc {
         public ResourceValue[] ResourceValueEvents { get; init; }
         public bool ControllerExecutionRunning { get; init; }
         public int SubscriptionAmount { get; init; }
+
+        public override string ToString()
+        {
+          return $"EventPackage(ResourceValueEvents=ResourceValue[{ResourceValueEvents?.Length ?? 0}], ControllerExecutionRunning={ControllerExecutionRunning}, SubscriptionAmount={SubscriptionAmount})";
+        }
     }
 }

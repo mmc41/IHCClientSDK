@@ -19,6 +19,11 @@ namespace Ihc {
     public record DatalineResource {
         public int DatalineNumber { get; set; }
         public int ResourceID { get; set; }
+
+        public override string ToString()
+        {
+          return $"DatalineResource(DatalineNumber={DatalineNumber}, ResourceID={ResourceID})";
+        }
     }
 
      /**
@@ -150,6 +155,11 @@ namespace Ihc {
               Value = new ResourceValue.UnionValue() { BoolValue = !src.Value.BoolValue }
             };
         }
+
+        public override string ToString()
+        {
+          return $"ResourceValue(TypeString={TypeString}, Value={Value}, ResourceID={ResourceID}, IsValueRuntime={IsValueRuntime}, ValueTime={ValueTime})";
+        }
     }
 
      /**
@@ -159,6 +169,11 @@ namespace Ihc {
         public string Value  { get; set; }
         public int Id  { get; init; }
         public DateTimeOffset Timestamp  { get; init; }
+
+        public override string ToString()
+        {
+          return $"LoggedData(Value={Value}, Id={Id}, Timestamp={Timestamp})";
+        }
     }
 
      /**
@@ -167,6 +182,11 @@ namespace Ihc {
     public record EnumDefinition {
          public int EnumeratorDefinitionID  { get; init; }
          public EnumValue[] Values { get; init; }
+
+         public override string ToString()
+         {
+           return $"EnumDefinition(EnumeratorDefinitionID={EnumeratorDefinitionID}, Values=EnumValue[{Values?.Length ?? 0}])";
+         }
     }
 
     /**
@@ -176,14 +196,24 @@ namespace Ihc {
         public int DefinitionTypeID  { get; init; }
         public int EnumValueID  { get; init; }
         public string EnumName  { get; init; }
+
+        public override string ToString()
+        {
+          return $"EnumValue(DefinitionTypeID={DefinitionTypeID}, EnumValueID={EnumValueID}, EnumName={EnumName})";
+        }
     }
 
     public record SceneResourceIdAndLocation
     {
         public string ScenePositionSeenFromFunctionBlock  { get; init; }
-        
+
         public int SceneResourceId  { get; init; }
-        
+
         public string ScenePositionSeenFromProduct  { get; init; }
+
+        public override string ToString()
+        {
+          return $"SceneResourceIdAndLocation(ScenePositionSeenFromFunctionBlock={ScenePositionSeenFromFunctionBlock}, SceneResourceId={SceneResourceId}, ScenePositionSeenFromProduct={ScenePositionSeenFromProduct})";
+        }
     }
 }

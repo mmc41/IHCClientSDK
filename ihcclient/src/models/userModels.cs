@@ -19,5 +19,10 @@ namespace Ihc {
         public string Project  { get; init; }
         public DateTimeOffset CreatedDate { get; init; }
         public DateTimeOffset LoginDate { get; init; }
+
+        public override string ToString()
+        {
+          return $"IhcUser(Username={Username}, Password={Password}, Email={Email}, Firstname={Firstname}, Lastname={Lastname}, Phone={Phone}, Group={Group}, Project={Project}, CreatedDate={CreatedDate}, LoginDate={LoginDate})";
+        }
     }
 }

@@ -24,6 +24,12 @@ namespace Ihc {
         public FieldMetaData[] SubTypes { get; init; } = subtypes;
         public bool IsSimple { get { return type.IsPrimitive || type == typeof(String); } }
         public bool IsArray { get { return type.IsArray; } }
+
+        public override string ToString()
+        {
+            var subTypes = string.Join(", ", SubTypes.Select(p => p.Type.Name));
+            return $"FieldMetaData(Name={Name}, Type={Type.Name}, SubTypes={subTypes})";
+        }
     }
 
     /// <summary>
