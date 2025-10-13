@@ -36,7 +36,20 @@
 
             <Button Name="RunButton" Grid.Column="6" Click="RunButtonClickHandler">RUN</Button>
         </Grid>
-         <TextBlock>Welcome to Avalonia!</TextBlock>
-         <ihc_lab:DynInput/>
+        <Border DockPanel.Dock="Top" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
+            <Grid Name="detail">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Grid.Row="0" Name="OperationDescription"></TextBlock>
+                <ihc_lab:DynInput Grid.Column="0" Grid.Row="2"/>
+            </Grid>
+        </Border>
     </DockPanel>
 </Window>

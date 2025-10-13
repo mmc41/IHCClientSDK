@@ -17,6 +17,9 @@ public partial class MainWindow : Window
 
         ihcDomain = IhcDomain.GetOrCreateIhcDomain();
 
+        // Handle window closing event (when user clicks X button)
+        Closing += OnWindowClosing;
+
         // Initialize ServicesComboBox with all IHC services
         // Create a wrapper to provide display names for services
         var serviceItems = ihcDomain.AllIhcServices
@@ -72,11 +75,26 @@ public partial class MainWindow : Window
         {
             serviceItem.InitialOperationSelectedIndex = OperationsComboBox.SelectedIndex;
         }
+
+        // Update the operation description text
+        if (OperationsComboBox.SelectedItem is SeviceOperationMetadata operationMetadata)
+        {
+            OperationDescription.Text = operationMetadata.Description;
+        }
+        else
+        {
+            OperationDescription.Text = string.Empty;
+        }
+    }
+
+    private void OnWindowClosing(object? sender, WindowClosingEventArgs e)
+    {
+        // Clean up IHC domain when window is closing
+        IhcDomain.DisposeIhcDomain();
     }
 
     public void ExitMenuItemClick(object sender, RoutedEventArgs e)
     {
-        IhcDomain.DisposeIhcDomain();
-        Close();
+        Close(); // Calls in turn OnWindowClosing which will dispose our IhcDomain.
     }
 }
