@@ -48,7 +48,7 @@ public partial class MainWindow : Window
         }
 
         // Get parameter values from DynField controls
-        var parameterValues = GetParameterValues();
+        var parameterValues = GetParameterValues(operationMetadata.Parameters);
 
         String txt = operationMetadata.Name + " : " + String.Join(",", parameterValues.Select(p => p.ToString()));
 
@@ -125,7 +125,8 @@ public partial class MainWindow : Window
             {
                 TypeForControl = dynFieldType,
                 Margin = new Thickness(0, 0, 20, 15),
-                Name = prefix+field.Name
+                Name = prefix + field.Name,
+                Tag = field
             };
 
             // Add the control to the ParametersPanel
@@ -159,18 +160,105 @@ public partial class MainWindow : Window
         }
     }
 
-    private object[] GetParameterValues()
+    private object[] GetParameterValues(FieldMetaData[] parameters)
     {
-        // Retrieve parameter values as array from DynField children of ParametersPanel
-        var dynFields = ParametersPanel.Children.OfType<DynField>().ToArray();
-        var values = new object[dynFields.Length];
+        var values = new object[parameters.Length];
 
-        for (int i = 0; i < dynFields.Length; i++)
+        for (int i = 0; i < parameters.Length; i++)
         {
-            values[i] = dynFields[i].Value ?? string.Empty;
+            var parameter = parameters[i];
+            values[i] = GetFieldValue(ParametersPanel, parameter, string.Empty) ?? throw new InvalidOperationException($"Failed to get value for parameter {parameter.Name}");
         }
 
         return values;
+    }
+
+    private object? GetFieldValue(Panel parent, FieldMetaData field, string prefix)
+    {
+        string fullName = prefix + field.Name;
+
+        // For simple types (primitives and string), find the DynField control and get its value
+        if (field.IsSimple)
+        {
+            var dynField = FindDynFieldByName(parent, fullName);
+            if (dynField != null)
+            {
+                return dynField.Value ?? GetDefaultValue(field.Type);
+            }
+            return GetDefaultValue(field.Type);
+        }
+
+        // For arrays, handle specially
+        if (field.IsArray)
+        {
+            // For now, return empty array of the element type
+            // TODO: Implement array handling with dynamic UI elements
+            var elementType = field.Type.GetElementType();
+            if (elementType != null)
+            {
+                return Array.CreateInstance(elementType, 0);
+            }
+            return Array.Empty<object>();
+        }
+
+        // For complex types (records/classes with subtypes)
+        if (field.SubTypes.Length > 0)
+        {
+            // Create an instance of the type
+            var instance = Activator.CreateInstance(field.Type);
+            if (instance == null)
+            {
+                return GetDefaultValue(field.Type);
+            }
+
+            // Set each property from the subtypes
+            foreach (var subField in field.SubTypes)
+            {
+                var subValue = GetFieldValue(parent, subField, fullName + ".");
+                var property = field.Type.GetProperty(subField.Name);
+                if (property != null && property.CanWrite)
+                {
+                    property.SetValue(instance, subValue);
+                }
+            }
+
+            return instance;
+        }
+
+        // Default: return default value for the type
+        return GetDefaultValue(field.Type);
+    }
+
+    private DynField? FindDynFieldByName(Panel parent, string name)
+    {
+        // Recursively search for DynField with the given name
+        foreach (var child in parent.Children)
+        {
+            if (child is DynField dynField && dynField.Name == name)
+            {
+                return dynField;
+            }
+
+            if (child is Panel childPanel)
+            {
+                var found = FindDynFieldByName(childPanel, name);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private object? GetDefaultValue(Type type)
+    {
+        if (type == typeof(string))
+            return string.Empty;
+        if (type.IsValueType)
+            return Activator.CreateInstance(type) ?? throw new InvalidOperationException($"Failed to create instance of {type.Name}");
+        return null;
     }
 
     private void OnWindowClosing(object? sender, WindowClosingEventArgs e)
