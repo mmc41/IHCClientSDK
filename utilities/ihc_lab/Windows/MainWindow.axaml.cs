@@ -77,7 +77,7 @@ public partial class MainWindow : Window
         }
 
         // Update the operation description text
-        if (OperationsComboBox.SelectedItem is SeviceOperationMetadata operationMetadata)
+        if (OperationsComboBox.SelectedItem is ServiceOperationMetadata operationMetadata)
         {
             OperationDescription.Text = operationMetadata.Description;
         }

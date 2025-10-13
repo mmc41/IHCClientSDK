@@ -15,13 +15,14 @@ namespace Ihc {
     /// <summary>
     /// High level metadata about a service operation (method) on a high level IHC service. For use by test and documentation tools.
     /// </summary>
+    /// <param name="service">IHC service</param>
     /// <param name="Name">The name of the method</param>
     /// <param name="ReturnType">The return type unwrapped from Task or IAsyncEnumerable wrappers (refer to OperationKind)</param>
     /// <param name="ParameterTypes">Method parameter types</param>
     /// <param name="OperationKind">The type of operation</param>
     /// <param name="OperationDetails">The underlying MethodInfo describing the operation in details</param>
     /// <param name="Description">The XML documentation summary for this method</param>
-    public record SeviceOperationMetadata(string Name, Type ReturnType, Type[] ParameterTypes, ServiceOperationKind OperationKind, MethodInfo OperationDetails, string Description)
+    public class ServiceOperationMetadata(IIHCService service, string Name, Type ReturnType, Type[] ParameterTypes, ServiceOperationKind OperationKind, MethodInfo OperationDetails, string Description)
     {
         public string Name { get; init; } = Name;
         public Type ReturnType { get; init; } = ReturnType;
@@ -29,11 +30,37 @@ namespace Ihc {
         public ServiceOperationKind Kind { get; init; } = OperationKind;
         public MethodInfo MethodInfo { get; init; } = OperationDetails;
         public string Description { get; init; } = Description;
+        public IIHCService service { get; init; } = service;
 
         public override string ToString()
         {
             var parameters = string.Join(", ", ParameterTypes.Select(t => t.Name));
             return $"{ReturnType.Name} {Name}({parameters}) [{Kind}]";
+        }
+
+        /// <summary>
+        /// Invoke the operation on the specified service instance with the provided arguments.
+        /// Returns a Task, Task&lt;T&gt;, or IAsyncEnumerable&lt;T&gt; depending on the operation kind.
+        /// The caller is responsible for awaiting/enumerating the returned value.
+        /// </summary>
+        /// <param name="arguments">The arguments to pass to the method</param>
+        /// <returns>Task, Task&lt;T&gt;, or IAsyncEnumerable&lt;T&gt; representing the async operation</returns>
+        /// <exception cref="ArgumentNullException">Thrown when serviceInstance is null</exception>
+        /// <exception cref="ArgumentException">Thrown when arguments don't match expected parameter types</exception>
+        public object Invoke(object[] arguments)
+        {
+            // Validate arguments length matches expected parameters
+            if (arguments == null && ParameterTypes.Length > 0)
+                throw new ArgumentException($"Method {Name} expects {ParameterTypes.Length} arguments but null was provided");
+
+            if (arguments != null && arguments.Length != ParameterTypes.Length)
+                throw new ArgumentException($"Method {Name} expects {ParameterTypes.Length} arguments but {arguments.Length} were provided");
+
+            // Use reflection to invoke the method on the service instance
+            // This returns Task, Task<T>, or IAsyncEnumerable<T> depending on the operation
+            var result = MethodInfo.Invoke(service, arguments ?? Array.Empty<object>());
+
+            return result;
         }
     }
 
@@ -42,7 +69,7 @@ namespace Ihc {
     /// </summary>
     public static class ServiceMetadata
     {
-        private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, IReadOnlyList<SeviceOperationMetadata>> _cache = new();
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, IReadOnlyList<ServiceOperationMetadata>> _cache = new();
         private static XDocument _xmlDoc;
         private static readonly object _xmlLock = new();
 
@@ -51,7 +78,7 @@ namespace Ihc {
         /// For use by test and documentation tools. Not for normal application code.
         /// </summary>
         /// <returns>List of metadata for service operations</returns>
-        public static IReadOnlyList<SeviceOperationMetadata> GetOperations(IIHCService service)
+        public static IReadOnlyList<ServiceOperationMetadata> GetOperations(IIHCService service)
         {
             var serviceType = service.GetType();
 
@@ -59,7 +86,7 @@ namespace Ihc {
             {
                 var methods = type.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
 
-                var operations = new List<SeviceOperationMetadata>();
+                var operations = new List<ServiceOperationMetadata>();
 
                 foreach (var method in methods)
                 {
@@ -75,7 +102,7 @@ namespace Ihc {
                     if (IsMethodFromExcludedInterface(method))
                         continue;
 
-                    operations.Add(CreateOperationInfo(method));
+                    operations.Add(CreateOperationInfo(service, method));
                 }
 
                 return operations.AsReadOnly();
@@ -112,14 +139,14 @@ namespace Ihc {
             return false;
         }
 
-        private static SeviceOperationMetadata CreateOperationInfo(System.Reflection.MethodInfo method)
+        private static ServiceOperationMetadata CreateOperationInfo(IIHCService service, System.Reflection.MethodInfo method)
         {
             var operationType = DetermineOperationKind(method.ReturnType);
             var returnType = UnwrapAsyncReturnType(method.ReturnType);
             var parameterTypes = method.GetParameters().Select(p => p.ParameterType).ToArray();
             var description = GetMethodDescription(method);
 
-            return new SeviceOperationMetadata(method.Name, returnType, parameterTypes, operationType, method, description);
+            return new ServiceOperationMetadata(service, method.Name, returnType, parameterTypes, operationType, method, description);
         }
 
         private static ServiceOperationKind DetermineOperationKind(Type returnType)

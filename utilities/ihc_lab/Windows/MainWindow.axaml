@@ -42,13 +42,21 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>                    
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>                    
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Grid.Row="0" Name="OperationDescription"></TextBlock>
-                <ihc_lab:DynInput Grid.Column="0" Grid.Row="2"/>
+               <!-- <ihc_lab:DynInput Grid.Column="0" Grid.Row="2"/> -->
+
+                <ihc_lab:DynField Grid.Column="0" Grid.Row="3" TypeForControl="String"/>
+                <ihc_lab:DynField Grid.Column="0" Grid.Row="4" TypeForControl="Integer"/>
+                <ihc_lab:DynField Grid.Column="0" Grid.Row="5" TypeForControl="bool"/>
             </Grid>
         </Border>
     </DockPanel>
