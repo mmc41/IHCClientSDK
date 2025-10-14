@@ -85,14 +85,14 @@ namespace Ihc {
 
         public async Task EmptyLog()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             await impl.emptyLogAsync(new inputMessageName1()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         public async Task<LogEventEntry[]> GetEvents()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var resp = await impl.getEventsAsync(new inputMessageName2()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = resp.getEvents1.Where((v) => v != null).Select((v) => mapEvent(v)).ToArray();

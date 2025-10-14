@@ -161,7 +161,7 @@ namespace Ihc {
 
         public async Task<DateTimeOffset> GetCurrentLocalTime()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var resp = await impl.getCurrentLocalTimeAsync(new inputMessageName2()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var result = resp.getCurrentLocalTime1;
@@ -173,7 +173,7 @@ namespace Ihc {
 
         public async Task<TimeSpan> GetUptime()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var resp = await impl.getUptimeAsync(new inputMessageName5()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var result = resp.getUptime1;
@@ -185,7 +185,7 @@ namespace Ihc {
 
         public async Task<TimeManagerSettings> GetSettings()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var resp = await impl.getSettingsAsync(new inputMessageName3()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = mapSettings(resp.getSettings1);
@@ -196,7 +196,7 @@ namespace Ihc {
 
         public async Task<bool> SetSettings(TimeManagerSettings settings)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
             activity?.SetParameters((nameof(settings), settings));
 
             var wsSettings = mapSettings(settings);
@@ -210,7 +210,7 @@ namespace Ihc {
 
         public async Task<TimeServerConnectionResult> GetTimeFromServer()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var resp = await impl.getTimeFromServerAsync(new inputMessageName1()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = mapTimeServerConnectionResult(resp.getTimeFromServer2);

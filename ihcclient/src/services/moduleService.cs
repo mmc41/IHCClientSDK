@@ -151,7 +151,7 @@ namespace Ihc {
 
         public async Task<SceneProjectInfo> GetSceneProjectInfo()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var resp = await impl.getSceneProjectInfoAsync(new inputMessageName1() {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = mapSceneProjectInfo(resp.getSceneProjectInfo1);
@@ -162,7 +162,7 @@ namespace Ihc {
 
         public async Task<SceneProject> GetSceneProject(string name)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
             activity?.SetParameters((nameof(name), name));
 
             var resp = await impl.getSceneProjectAsync(new inputMessageName5(name) {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
@@ -174,7 +174,7 @@ namespace Ihc {
 
         public async Task StoreSceneProject(SceneProject project)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
             activity?.SetParameters((nameof(project), project));
 
             await impl.storeSceneProjectAsync(new inputMessageName2(unmapSceneProject(project))).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
@@ -182,7 +182,7 @@ namespace Ihc {
 
         public async Task<SceneProject> GetSceneProjectSegment(string name, int segmentNumber)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
             activity?.SetParameters((nameof(name), name), (nameof(segmentNumber), segmentNumber));
 
             var resp = await impl.getSceneProjectSegmentAsync(new inputMessageName3(name, segmentNumber)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
@@ -194,7 +194,7 @@ namespace Ihc {
 
         public async Task<bool> StoreSceneProjectSegment(SceneProject projectSegment, bool isFirstSegment, bool isLastSegment)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
             activity?.SetParameters((nameof(projectSegment), projectSegment), (nameof(isFirstSegment), isFirstSegment), (nameof(isLastSegment), isLastSegment));
 
             var resp = await impl.storeSceneProjectSegmentAsync(new inputMessageName4(unmapSceneProject(projectSegment), isFirstSegment, isLastSegment)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
@@ -206,14 +206,14 @@ namespace Ihc {
 
         public async Task ClearAll()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             await impl.clearAllAsync(new inputMessageName6() {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         public async Task<int> GetSceneProjectSegmentationSize()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var resp = await impl.getSceneProjectSegmentationSizeAsync(new inputMessageName7() {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = resp.getSceneProjectSegmentationSize1.HasValue ? resp.getSceneProjectSegmentationSize1.Value : 0;

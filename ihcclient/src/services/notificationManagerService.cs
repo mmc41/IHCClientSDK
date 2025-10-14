@@ -83,14 +83,14 @@ namespace Ihc {
 
         public async Task ClearMessages()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             await impl.clearMessagesAsync(new inputMessageName2()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         public async Task<NotificationMessage[]> GetMessages()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var resp = await impl.getMessagesAsync(new inputMessageName1()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = resp.getMessages1.Where((v) => v != null).Select((v) => mapMessage(v)).ToArray();

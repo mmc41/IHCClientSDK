@@ -5,6 +5,7 @@ using System.Net.Http;
 using Ihc.Envelope;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Ihc 
 {
@@ -54,6 +55,13 @@ namespace Ihc
         }
 
         public ILogger Logger { get { return logger; } }
+
+        protected Activity StartActivity()
+        {
+            Activity activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            activity?.SetTag("service.name", this.GetType().Name); // Set name of IHC webservice highlevel wrapper as telemetry service name.
+            return activity;
+        }
     }
 
     /**

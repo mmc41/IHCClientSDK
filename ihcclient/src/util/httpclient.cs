@@ -54,23 +54,27 @@ namespace Ihc {
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+                // activity?.SetTag("service.name", "httpclient");
+                activity?.SetTag("http.request.method", request.Method); // Use opentel standard attribute name for method tag.
+                activity?.SetTag("http.url", request.RequestUri); // Use opentel standard attribute name for url tag.
 
                 string requestLogString = request.Content != null ? await request.Content.ReadAsStringAsync().ConfigureAwait(false) : null;
                 if (!settings.LogSensitiveData)
                     requestLogString = redactPassword(requestLogString);
 
                 logger.LogTrace("Request: " + requestLogString);
-                activity?.SetParameters(
-                    (nameof(request), requestLogString),
-                    (nameof(cancellationToken), cancellationToken)
-                );
+
+                activity?.SetTag("http.request", requestLogString);
                 
                 HttpResponseMessage response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
                 string responseLogString = response.Content != null ? await response.Content.ReadAsStringAsync().ConfigureAwait(false) : null;
 
                 logger.LogTrace("Response: " + responseLogString);
-                activity?.SetReturnValue(responseLogString);
+
+                activity?.SetTag("http.response.status_code", response.StatusCode); // Use opentel standard attribute name for status code tag.
+
+                activity?.SetTag("http.response", requestLogString);
 
                 return response;
             }
@@ -122,7 +126,7 @@ namespace Ihc {
         public Task<HttpResponseMessage> Post(string action, string body) {
             var content = new StringContent(body, Encoding.UTF8, "text/xml");
             content.Headers.Add("SOAPAction", action);
-            content.Headers.Add("UserAgent", "HomeAutomation");
+            content.Headers.Add("UserAgent", "ihcclient");
             // Manually apply our global cookie if set:
             string cookie = cookieHandler.GetCookie();
             if (cookie != null) {

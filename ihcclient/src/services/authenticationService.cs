@@ -113,7 +113,7 @@ namespace Ihc {
 
         public async Task<bool> Ping()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var resp = await impl.pingAsync(new inputMessageName3()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var result = resp.ping1;
@@ -130,7 +130,7 @@ namespace Ihc {
 
         public async Task<IhcUser> Authenticate(string userName, string password, string application = "openapi")
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
             activity?.SetParameters(
                 (nameof(userName), userName),
                 (nameof(password), settings.AsyncContinueOnCapturedContext ? password : UserConstants.REDACTED_PASSWORD),
@@ -191,7 +191,7 @@ namespace Ihc {
 
         public async Task<bool> Disconnect()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
             logger.LogInformation("IHC Disconnect called");
             bool? result;
 

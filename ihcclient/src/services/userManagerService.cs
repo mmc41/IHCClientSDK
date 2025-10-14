@@ -138,7 +138,7 @@ namespace Ihc {
         /// <param name="includePassword">Include password in returned user objects (default)</param>
         public async Task<IhcUser[]> GetUsers(bool includePassword = true)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
             activity?.SetParameters((nameof(includePassword), includePassword));
 
             var resp = await impl.getUsersAsync(new inputMessageName2() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
@@ -157,7 +157,7 @@ namespace Ihc {
         /// <param name="user">User information to add</param>
         public async Task AddUser(IhcUser user)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
             activity?.SetParameters((nameof(user), IhcSettings.LogSensitiveData ? user : user.RedactPasword()));
 
             await impl.addUserAsync(new inputMessageName1() { addUser1 = mapUser(user) }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
@@ -169,7 +169,7 @@ namespace Ihc {
         /// <param name="username">Username of the user to remove</param>
         public async Task RemoveUser(string username)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
             activity?.SetParameters((nameof(username), username));
 
             await impl.removeUserAsync(new inputMessageName3() { removeUser1 = username }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
@@ -184,7 +184,7 @@ namespace Ihc {
             if (user?.Password == UserConstants.REDACTED_PASSWORD)
                 throw new ArgumentException($"Password of user can not be set to reserved value ${UserConstants.REDACTED_PASSWORD}. This is likely an error!");
 
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
             activity?.SetParameters((nameof(user), user));
 
             await impl.updateUserAsync(new inputMessageName4() { updateUser1 = mapUser(user) }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);

@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using System.Diagnostics;
 
 namespace Ihc {
     /// <summary>
@@ -100,10 +101,17 @@ namespace Ihc {
         /// <returns>List of metadata for service operations</returns>
         public static IReadOnlyList<ServiceOperationMetadata> GetOperations(IIHCService service)
         {
+            using Activity activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            
             var serviceType = service.GetType();
+            activity?.SetTag("service.name", typeof(ServiceMetadata).Name);
+            activity?.SetParameters((nameof(service), service.GetType().Name));
+            activity?.SetTag("input.cachedResult", true); // Assume cached by default
 
-            return _cache.GetOrAdd(serviceType, type =>
+            var retv = _cache.GetOrAdd(serviceType, type =>
             {
+                activity?.SetTag("cachedResult", false); // Override if not cached.
+
                 var methods = type.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
 
                 var operations = new List<ServiceOperationMetadata>();
@@ -127,6 +135,10 @@ namespace Ihc {
 
                 return operations.AsReadOnly();
             });
+
+            activity?.SetReturnValue(retv);
+
+            return retv;
         }
 
         private static bool IsMethodFromExcludedInterface(MethodInfo method)

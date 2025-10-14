@@ -367,7 +367,7 @@ namespace Ihc {
 
         public async Task<bool> IsIHCProjectAvailable()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var result = await impl.isIHCProjectAvailableAsync(new inputMessageName14() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.isIHCProjectAvailable1.HasValue ? result.isIHCProjectAvailable1.Value : false;
@@ -378,7 +378,7 @@ namespace Ihc {
 
         public async Task<bool> IsSDCardReady()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var result = await impl.isSDCardReadyAsync(new inputMessageName9() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.isSDCardReady1.HasValue ? result.isSDCardReady1.Value : false;
@@ -389,7 +389,7 @@ namespace Ihc {
 
         public async Task<SDInfo> GetSDCardInfo()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var result = await impl.getSdCardInfoAsync(new inputMessageName5() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.getSdCardInfo1 != null ? mapSDCardData(result.getSdCardInfo1) : null;
@@ -406,7 +406,7 @@ namespace Ihc {
 
         public async Task<string> GetControllerState()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var result = await impl.getStateAsync(new inputMessageName1() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.getState1?.state; // TODO: Convert to ControllerState oncce the enum is more complete.
@@ -417,7 +417,7 @@ namespace Ihc {
         
         public async Task<string> WaitForControllerStateChange(string waitState, int waitSec)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
             activity?.SetParameters(
                 (nameof(waitState), waitState),
                 (nameof(waitSec), waitSec)
@@ -432,7 +432,7 @@ namespace Ihc {
 
         public async Task<float> GetS0MeterValue()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var result = await impl.getS0MeterValueAsync(new inputMessageName11() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.getS0MeterValue1.HasValue ? result.getS0MeterValue1.Value : 0.0f;
@@ -442,14 +442,14 @@ namespace Ihc {
         }
         
         public async Task ResetS0Values() {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             await impl.resetS0ValuesAsync(new inputMessageName10() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         public async Task SetS0Consumption(float consumption, bool flag)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
             activity?.SetParameters(
                 (nameof(consumption), consumption),
                 (nameof(flag), flag)
@@ -460,7 +460,7 @@ namespace Ihc {
 
         public async Task SetS0FiscalYearStart(sbyte month, sbyte day)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
             activity?.SetParameters(
                 (nameof(month), month),
                 (nameof(day), day)
@@ -471,7 +471,7 @@ namespace Ihc {
 
         public async Task<int> Restore()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var result = await impl.restoreAsync(new inputMessageName7() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.restore1.HasValue ? result.restore1.Value : 0;
@@ -482,7 +482,7 @@ namespace Ihc {
 
         public async Task<BackupFile> GetBackup()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var result = await impl.getBackupAsync(new inputMessageName2() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = mapBackup(result.getBackup1);
@@ -493,7 +493,7 @@ namespace Ihc {
 
         public async Task<ProjectInfo> GetProjectInfo()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var result = await impl.getProjectInfoAsync(new inputMessageName8() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = mapProjectInfo(result.getProjectInfo1);
@@ -504,7 +504,7 @@ namespace Ihc {
         
         public async Task<ProjectFile> GetProject()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var result = await impl.getIHCProjectAsync(new inputMessageName3() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = await mapProjectFile(result.getIHCProject1).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
@@ -515,7 +515,7 @@ namespace Ihc {
 
         public async Task<bool> EnterProjectChangeMode()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var result = await impl.enterProjectChangeModeAsync(new inputMessageName12() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result?.enterProjectChangeMode1 != null && result.enterProjectChangeMode1.Value;
@@ -526,7 +526,7 @@ namespace Ihc {
 
         public async Task<bool> ExitProjectChangeMode()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var result = await impl.exitProjectChangeModeAsync(new inputMessageName13() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result?.exitProjectChangeMode1 != null && result.exitProjectChangeMode1.Value;
@@ -537,7 +537,7 @@ namespace Ihc {
 
         public async Task<bool> StoreProject(ProjectFile project)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
             activity?.SetParameters(
                 (nameof(project), project)
             );
@@ -601,7 +601,7 @@ namespace Ihc {
 
         public async Task<ProjectFile> GetIHCProjectSegment(int index, int major, int minor)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
             activity?.SetParameters(
                 (nameof(index), index),
                 (nameof(major), major),
@@ -622,7 +622,7 @@ namespace Ihc {
 
         public async Task<bool> StoreIHCProjectSegment(ProjectFile segment, int index, int major)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
             activity?.SetParameters(
                 (nameof(segment), segment),
                 (nameof(index), index),
@@ -643,7 +643,7 @@ namespace Ihc {
 
         public async Task<int> GetIHCProjectSegmentationSize()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var result = await impl.getIHCProjectSegmentationSizeAsync(new inputMessageName17()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.getIHCProjectSegmentationSize1.HasValue ? result.getIHCProjectSegmentationSize1.Value : 0;
@@ -654,7 +654,7 @@ namespace Ihc {
 
         public async Task<int> GetIHCProjectNumberOfSegments()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = StartActivity();
 
             var result = await impl.getIHCProjectNumberOfSegmentsAsync(new inputMessageName18()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var retv = result.getIHCProjectNumberOfSegments1.HasValue ? result.getIHCProjectNumberOfSegments1.Value : 0;
