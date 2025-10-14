@@ -1,5 +1,7 @@
 ﻿using Avalonia;
 using System;
+using OpenTelemetry;
+using OpenTelemetry.Logs;
 
 namespace ihc_lab;
 
@@ -17,5 +19,6 @@ class Program
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
+            // 
             .LogToTrace();
 }

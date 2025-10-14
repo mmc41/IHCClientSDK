@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection.Metadata;
 using Avalonia;
@@ -14,10 +15,11 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        ihcDomain = IhcDomain.GetOrCreateIhcDomain();
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+
         InitializeComponent();
         DataContext = this;
-
-        ihcDomain = IhcDomain.GetOrCreateIhcDomain();
 
         // Handle window closing event (when user clicks X button)
         Closing += OnWindowClosing;
@@ -40,12 +42,20 @@ public partial class MainWindow : Window
 
     public void RunButtonClickHandler(object sender, RoutedEventArgs e)
     {
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+        activity?.SetParameters(
+            (nameof(sender), sender),
+            (nameof(e),e)
+        );
+
         // Get ServiceOperationMetadata from OperationsComboBox
         if (OperationsComboBox.SelectedItem is not ServiceOperationMetadata operationMetadata)
         {
             output.Text = "No operation selected.";
             return;
         }
+
+        activity?.SetTag("ihcoperation", operationMetadata.Name);
 
         // Get parameter values from DynField controls
         var parameterValues = GetParameterValues(operationMetadata.Parameters);

@@ -9,17 +9,19 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\ihcclient\ihcclient.csproj"/>
+    <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
+    <PackageReference Include="OpenTelemetry" Version="1.13.1" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.13.1" />
     <PackageReference Include="Avalonia" Version="11.3.6" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.6" />
     <PackageReference Include="Avalonia.Themes.Simple" Version="11.3.6" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.6" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.0"/>
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.0"/>
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0"/>
-    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0"/>
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.0"/>
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0"/>
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
     <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
     <PackageReference Include="Avalonia.Diagnostics" Version="11.3.6">
       <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
@@ -28,6 +30,6 @@
   </ItemGroup>
   <Target Name="CopyConfigFiles" AfterTargets="AfterBuild">
     <!-- NB: Settings file is required for running/testing but allow build without the file to support compilation in a DevOps pipeline -->
-    <Copy SourceFiles="..\..\ihcsettings.json" DestinationFolder="$(OutDir)" Condition="Exists('..\..\ihcsettings.json')"/>
+    <Copy SourceFiles="..\..\ihcsettings.json" DestinationFolder="$(OutDir)" Condition="Exists('..\..\ihcsettings.json')" />
   </Target>
 </Project>
