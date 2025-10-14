@@ -110,20 +110,18 @@ public partial class MainWindow : Window
         {
             Text = field.Name + ":",
             Margin = new Thickness(0, 10, 5, 2),
-            FontWeight = Avalonia.Media.FontWeight.SemiBold
+            FontWeight = Avalonia.Media.FontWeight.SemiBold,
         };
+        ToolTip.SetTip(legend, $"Type: {field.Type.Name}: {field.Description}");
 
         if (field.SubTypes.Length==0)
         {
             parent.Children.Add(legend);
-                    
-            // Map .NET type names to DynField control types
-            string dynFieldType = TypeHelper.MapTypeToControlType(field.Type);
 
             // Create a DynField control for this parameter
             var dynField = new DynField
             {
-                TypeForControl = dynFieldType,
+                TypeForControl = field.Type.Name,
                 Margin = new Thickness(0, 0, 20, 15),
                 Name = prefix + field.Name,
                 Tag = field

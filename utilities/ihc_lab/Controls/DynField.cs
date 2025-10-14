@@ -35,7 +35,7 @@ public partial class DynField : UserControl
 
     /// <summary>
     /// Set/Get the type that this control hosts.
-    /// Can be one of following: String, bool, int, Datetime, DateTimeOffset, TimeSpan
+    /// Can be one of following: String, bool, int/byte/sbyte/short/long, double, DateTimeOffset, TimeSpan
     /// </summary>
     public String TypeForControl
     {
@@ -66,10 +66,14 @@ public partial class DynField : UserControl
             }
             else if (control is NumericUpDown numericUpDown)
             {
-                int intV = (int)(numericUpDown.Value ?? 0);
+                decimal val = (numericUpDown.Value ?? 0);
                 if (typeLower == "timespan")
-                    return TimeSpan.FromMilliseconds(intV);
-                else return intV;
+                    return TimeSpan.FromMilliseconds((long)val);
+                else if (typeLower == "double")
+                    return (double)val;
+                else if (typeLower == "long")
+                    return (long)val;
+                else return (int)val;
             }
             else if (control is DatePicker datePicker)
             {
@@ -93,13 +97,23 @@ public partial class DynField : UserControl
                 textBox.Text = value?.ToString() ?? "";
             else if (control is NumericUpDown numericUpDown)
             {
+                if (value == null)
+                {
+                    numericUpDown.Value = 0;
+                }
+                if (value is long longValue)
+                    numericUpDown.Value = longValue;
+                else
                 if (value is int intValue)
                     numericUpDown.Value = intValue;
                 else if (value is TimeSpan timespan)
                 {
                     numericUpDown.Value = timespan.Milliseconds;
-                } else if (int.TryParse(value?.ToString(), out int parsedValue))
+                }
+                else if (int.TryParse(value?.ToString(), out int parsedValue))
+                {
                     numericUpDown.Value = parsedValue;
+                } else throw new Exception("Unexpected type: " + value?.GetType().Name);
             }
             else if (control is DatePicker datePicker)
             {
@@ -150,7 +164,6 @@ public partial class DynField : UserControl
 
         // Create control based on type
         string typeLower = typeForControl.ToLower();
-
         if (typeLower == "string")
         {
             var textBox = new TextBox
@@ -159,9 +172,10 @@ public partial class DynField : UserControl
                 Text = "",
                 MinWidth = 100
             };
+            ToolTip.SetTip(textBox, $"Enter {typeLower} value");
             parentPanel.Children.Add(textBox);
         }
-        else if (typeLower == "integer" || typeLower == "timespan")
+        else if (typeLower == "integer" || typeLower == "long" || typeLower == "ulong" || typeLower == "byte" || typeLower == "sbyte" || typeLower == "short" || typeLower == "ushort" || typeLower == "double" || typeLower == "timespan")
         {
             var numericUpDown = new NumericUpDown
             {
@@ -172,6 +186,7 @@ public partial class DynField : UserControl
                 MinWidth = 50,
                 Value = 0
             };
+            ToolTip.SetTip(numericUpDown, $"Enter {typeLower} value");
             parentPanel.Children.Add(numericUpDown);
         }
         else if (typeLower == "bool")
@@ -183,6 +198,8 @@ public partial class DynField : UserControl
                 Spacing = 10,
                 Name = "ValueCtrl"
             };
+            
+            ToolTip.SetTip(stackPanel, $"Select {typeLower} value");
 
             var radioButtonTrue = new RadioButton
             {
@@ -203,7 +220,7 @@ public partial class DynField : UserControl
 
             parentPanel.Children.Add(stackPanel);
         }
-        else if (typeLower == "datetimeoffset" || typeLower == "datetime")
+        else if (typeLower == "datetimeoffset")
         {
             var datePicker = new DatePicker
             {
@@ -211,7 +228,10 @@ public partial class DynField : UserControl
                 MinWidth = 150,
                 SelectedDate = DateTimeOffset.Now
             };
+
+            ToolTip.SetTip(datePicker, $"Select {typeLower} value");
             parentPanel.Children.Add(datePicker);
         }
+        else throw new Exception("Unsupported type " + typeLower);
     }
 }

@@ -31,12 +31,12 @@
                     </Grid.ColumnDefinitions>
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="Service:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <ComboBox Grid.Row="0" Grid.Column="1" Name="ServicesComboBox" VerticalAlignment="Center" SelectionChanged="OnServicesComboBoxSelectionChanged"/>
+                    <ComboBox Grid.Row="0" Grid.Column="1" Name="ServicesComboBox" VerticalAlignment="Center" SelectionChanged="OnServicesComboBoxSelectionChanged" ToolTip.Tip="Select IHC webservice"/>
 
                     <TextBlock Grid.Row="0" Grid.Column="3" Text="Operation:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <ComboBox Grid.Row="0" Grid.Column="4" Name="OperationsComboBox" VerticalAlignment="Center" SelectionChanged="OnOperationsComboBoxSelectionChanged"/>
+                    <ComboBox Grid.Row="0" Grid.Column="4" Name="OperationsComboBox" VerticalAlignment="Center" SelectionChanged="OnOperationsComboBoxSelectionChanged" ToolTip.Tip="Select IHC operation"/>
 
-                    <Button Grid.Row="0" Grid.Column="6" Name="RunButton" Click="RunButtonClickHandler">RUN</Button>
+                    <Button Grid.Row="0" Grid.Column="6" Name="RunButton" Click="RunButtonClickHandler" ToolTip.Tip="Execute IHC operation">RUN</Button>
                 </Grid>
                 <Border DockPanel.Dock="Top" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
                     <Grid Name="detail">
