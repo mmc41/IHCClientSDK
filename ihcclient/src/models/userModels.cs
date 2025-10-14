@@ -6,6 +6,9 @@ using System.Text;
 
 namespace Ihc {
     public static class UserConstants {
+      /// <summary>
+      /// Safe value of password when it is scrubbed from view.
+      /// </summary>
       public const string REDACTED_PASSWORD = "**REDACTED**";
     };
 
@@ -24,7 +27,10 @@ namespace Ihc {
       public DateTimeOffset CreatedDate { get; init; }
       public DateTimeOffset LoginDate { get; init; }
 
-      // 
+      /// <summary>
+      /// Creates a safe copy of this user definition without a password.
+      /// </summary>
+      /// <returns>Safe user</returns>
       public IhcUser RedactPasword()
       {
         return this with { Password = UserConstants.REDACTED_PASSWORD };

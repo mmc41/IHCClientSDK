@@ -76,7 +76,7 @@ namespace Ihc {
             return new IhcUser()
             {
                 Username = u.username,
-                Password = includePassword ? u.password : string.Empty,
+                Password = includePassword ? u.password : UserConstants.REDACTED_PASSWORD,
                 Email = u.email,
                 Firstname = u.firstname,
                 Lastname = u.lastname,
