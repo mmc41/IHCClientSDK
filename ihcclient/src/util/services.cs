@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,6 +27,7 @@ namespace Ihc
         /// <param name="timeout_between_waits_in_seconds">Timeout in seconds for each wait call (default 15s, should be less than 20s)</param>
         /// <returns>Async enumerable stream of ResourceValue changes</returns>
         public static async IAsyncEnumerable<ResourceValue> GetResourceValueChanges(
+            Activity activity,
             int[] resourceIds,
             Func<int[], Task> enableSubscription,
             Func<int, Task<ResourceValue[]>> waitForChanges,
@@ -41,6 +43,7 @@ namespace Ihc
             }
             catch (Exception e)
             {
+                activity.SetError(e);
                 logger.LogError(e, "enable subscription error");
                 throw;
             }
@@ -59,6 +62,7 @@ namespace Ihc
                     }
                     catch (Exception e)
                     {
+                        activity.SetError(e);
                         logger.LogWarning(e, "wait for changes failed #" + sequentialErrorCount);
                         changes = new ResourceValue[] { };
                         if (++sequentialErrorCount > 10)
@@ -88,6 +92,7 @@ namespace Ihc
                 }
                 catch (Exception e)
                 {
+                    activity.SetError(e);
                     logger.LogError(e, "disable subscription error");
                     // Do not re-throw in finally block to avoid masking exceptions from try block
                 }

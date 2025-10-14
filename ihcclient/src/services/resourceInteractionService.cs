@@ -461,269 +461,475 @@ namespace Ihc {
 
         public async Task<bool> DisableInitialValueNotifactions(int[] resourceIds)
         {
-            using var activity = StartActivity();
-            activity?.SetParameters((nameof(resourceIds), resourceIds));
+            using (var activity = StartActivity(nameof(DisableInitialValueNotifactions)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(resourceIds), resourceIds));
 
-            var result = await this.impl.disableInitialValueNotifactionsAsync(new inputMessageName7() { disableInitialValueNotifactions1 = resourceIds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = result.disableInitialValueNotifactions2.HasValue ? result.disableInitialValueNotifactions2.Value : false;
+                    var result = await this.impl.disableInitialValueNotifactionsAsync(new inputMessageName7() { disableInitialValueNotifactions1 = resourceIds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = result.disableInitialValueNotifactions2.HasValue ? result.disableInitialValueNotifactions2.Value : false;
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<bool> DisableRuntimeValueNotifactions(int[] resourceIds)
         {
-            using var activity = StartActivity();
-            activity?.SetParameters((nameof(resourceIds), resourceIds));
+            using (var activity = StartActivity(nameof(DisableRuntimeValueNotifactions)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(resourceIds), resourceIds));
 
-            var result = await this.impl.disableRuntimeValueNotifactionsAsync(new inputMessageName5() { disableRuntimeValueNotifactions1 = resourceIds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = result.disableRuntimeValueNotifactions2.HasValue ? result.disableRuntimeValueNotifactions2.Value : false;
+                    var result = await this.impl.disableRuntimeValueNotifactionsAsync(new inputMessageName5() { disableRuntimeValueNotifactions1 = resourceIds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = result.disableRuntimeValueNotifactions2.HasValue ? result.disableRuntimeValueNotifactions2.Value : false;
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<ResourceValue[]> EnableInitialValueNotifications(int[] resourceIds)
         {
-            using var activity = StartActivity();
-            activity?.SetParameters((nameof(resourceIds), resourceIds));
+            using (var activity = StartActivity(nameof(EnableInitialValueNotifications)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(resourceIds), resourceIds));
 
-            var resp = await impl.enableInitialValueNotificationsAsync(new inputMessageName6() { enableInitialValueNotifications1 = resourceIds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.enableInitialValueNotifications2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
+                    var resp = await impl.enableInitialValueNotificationsAsync(new inputMessageName6() { enableInitialValueNotifications1 = resourceIds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.enableInitialValueNotifications2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<ResourceValue[]> EnableRuntimeValueNotifications(int[] resourceIds)
         {
-            using var activity = StartActivity();
-            activity?.SetParameters((nameof(resourceIds), resourceIds));
+            using (var activity = StartActivity(nameof(EnableRuntimeValueNotifications)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(resourceIds), resourceIds));
 
-            var resp = await impl.enableRuntimeValueNotificationsAsync(new inputMessageName4() { enableRuntimeValueNotifications1 = resourceIds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.enableRuntimeValueNotifications2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
+                    var resp = await impl.enableRuntimeValueNotificationsAsync(new inputMessageName4() { enableRuntimeValueNotifications1 = resourceIds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.enableRuntimeValueNotifications2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<DatalineResource[]> GetAllDatalineInputs()
         {
-            using var activity = StartActivity();
+            using (var activity = StartActivity(nameof(GetAllDatalineInputs)))
+            {
+                try
+                {
+                    var resp = await impl.getAllDatalineInputsAsync(new inputMessageName12()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.getAllDatalineInputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToArray();
 
-            var resp = await impl.getAllDatalineInputsAsync(new inputMessageName12()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.getAllDatalineInputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToArray();
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<DatalineResource[]> GetExtraDatalineInputs()
         {
-            using var activity = StartActivity();
+            using (var activity = StartActivity(nameof(GetExtraDatalineInputs)))
+            {
+                try
+                {
+                    var resp = await impl.getExtraDatalineInputsAsync(new inputMessageName10()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.getExtraDatalineInputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToArray();
 
-            var resp = await impl.getExtraDatalineInputsAsync(new inputMessageName10()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.getExtraDatalineInputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToArray();
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<DatalineResource[]> GetAllDatalineOutputs()
         {
-            using var activity = StartActivity();
+            using (var activity = StartActivity(nameof(GetAllDatalineOutputs)))
+            {
+                try
+                {
+                    var resp = await impl.getAllDatalineOutputsAsync(new inputMessageName13()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.getAllDatalineOutputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToArray();
 
-            var resp = await impl.getAllDatalineOutputsAsync(new inputMessageName13()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.getAllDatalineOutputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToArray();
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<EnumDefinition[]> GetEnumeratorDefinitions()
         {
-            using var activity = StartActivity();
+            using (var activity = StartActivity(nameof(GetEnumeratorDefinitions)))
+            {
+                try
+                {
+                    var resp = await impl.getEnumeratorDefinitionsAsync(new inputMessageName9() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.getEnumeratorDefinitions1.Where((v) => v != null).Select((e) => mapMapEnumeratorDefinitions(e)).ToArray();
 
-            var resp = await impl.getEnumeratorDefinitionsAsync(new inputMessageName9() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.getEnumeratorDefinitions1.Where((v) => v != null).Select((e) => mapMapEnumeratorDefinitions(e)).ToArray();
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<DatalineResource[]> GetExtraDatalineOutputs()
         {
-            using var activity = StartActivity();
+            using (var activity = StartActivity(nameof(GetExtraDatalineOutputs)))
+            {
+                try
+                {
+                    var resp = await impl.getExtraDatalineOutputsAsync(new inputMessageName11()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.getExtraDatalineOutputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToArray();
 
-            var resp = await impl.getExtraDatalineOutputsAsync(new inputMessageName11()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.getExtraDatalineOutputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToArray();
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<ResourceValue> GetInitialValue(int initialValue)
         {
-            using var activity = StartActivity();
-            activity?.SetParameters((nameof(initialValue), initialValue));
-
-            var resp = await impl.getInitialValueAsync(new inputMessageName15() { getInitialValue1 = initialValue }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var result = mapResourceValueEnvelope(resp.getInitialValue2);
-            if (result == null)
+            using (var activity = StartActivity(nameof(GetInitialValue)))
             {
-                throw new ErrorWithCodeException(Errors.FEATURE_NOT_IMPLEMENTED, "IHC controller returned null resource value for resource ID " + initialValue);
-            }
+                try
+                {
+                    activity?.SetParameters((nameof(initialValue), initialValue));
 
-            activity?.SetReturnValue(result);
-            return result;
+                    var resp = await impl.getInitialValueAsync(new inputMessageName15() { getInitialValue1 = initialValue }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var result = mapResourceValueEnvelope(resp.getInitialValue2);
+                    if (result == null)
+                    {
+                        throw new ErrorWithCodeException(Errors.FEATURE_NOT_IMPLEMENTED, "IHC controller returned null resource value for resource ID " + initialValue);
+                    }
+
+                    activity?.SetReturnValue(result);
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<ResourceValue[]> GetInitialValues(int[] initialValues)
         {
-            using var activity = StartActivity();
-            activity?.SetParameters((nameof(initialValues), initialValues));
+            using (var activity = StartActivity(nameof(GetInitialValues)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(initialValues), initialValues));
 
-            var resp = await impl.getInitialValuesAsync(new inputMessageName17() { getInitialValues1 = initialValues }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.getInitialValues2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
+                    var resp = await impl.getInitialValuesAsync(new inputMessageName17() { getInitialValues1 = initialValues }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.getInitialValues2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<bool> SetResourceValue(ResourceValue v)
         {
-            using var activity = StartActivity();
-            activity?.SetParameters((nameof(v), v));
+            using (var activity = StartActivity(nameof(SetResourceValue)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(v), v));
 
-            var input = new inputMessageName18() { setResourceValue1 = mapResourceValueEnvelope(v) };
-            var resp = await impl.setResourceValueAsync(input).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.setResourceValue2.HasValue ? resp.setResourceValue2.Value : false;
+                    var input = new inputMessageName18() { setResourceValue1 = mapResourceValueEnvelope(v) };
+                    var resp = await impl.setResourceValueAsync(input).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.setResourceValue2.HasValue ? resp.setResourceValue2.Value : false;
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<bool> SetResourceValues(ResourceValue[] values)
         {
-            using var activity = StartActivity();
-            activity?.SetParameters((nameof(values), values));
+            using (var activity = StartActivity(nameof(SetResourceValues)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(values), values));
 
-            var input = new inputMessageName3() { setResourceValues1 = values.Select(v => mapResourceValueEnvelope(v)).ToArray() };
-            var resp = await impl.setResourceValuesAsync(input).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.setResourceValues2.HasValue ? resp.setResourceValues2.Value : false;
+                    var input = new inputMessageName3() { setResourceValues1 = values.Select(v => mapResourceValueEnvelope(v)).ToArray() };
+                    var resp = await impl.setResourceValuesAsync(input).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.setResourceValues2.HasValue ? resp.setResourceValues2.Value : false;
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<LoggedData[]> GetLoggedData(int loggedData1)
         {
-            using var activity = StartActivity();
-            activity?.SetParameters((nameof(loggedData1), loggedData1));
+            using (var activity = StartActivity(nameof(GetLoggedData)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(loggedData1), loggedData1));
 
-            var resp = await impl.getLoggedDataAsync(new inputMessageName20() { getLoggedData1 = loggedData1 }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.getLoggedData2.Where((v) => v != null).Select((l) => new LoggedData() { Value = l.value, Id = l.id, Timestamp = DateTimeOffset.FromUnixTimeSeconds(l.timestamp) }).ToArray();
+                    var resp = await impl.getLoggedDataAsync(new inputMessageName20() { getLoggedData1 = loggedData1 }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.getLoggedData2.Where((v) => v != null).Select((l) => new LoggedData() { Value = l.value, Id = l.id, Timestamp = DateTimeOffset.FromUnixTimeSeconds(l.timestamp) }).ToArray();
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<string> GetResourceType(int resourceID)
         {
-            using var activity = StartActivity();
-            activity?.SetParameters((nameof(resourceID), resourceID));
+            using (var activity = StartActivity(nameof(GetResourceType)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(resourceID), resourceID));
 
-            var resp = await impl.getResourceTypeAsync(new inputMessageName19() { getResourceType1 = resourceID }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.getResourceType2;
+                    var resp = await impl.getResourceTypeAsync(new inputMessageName19() { getResourceType1 = resourceID }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.getResourceType2;
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<ResourceValue> GetRuntimeValue(int resourceID)
         {
-            using var activity = StartActivity();
-            activity?.SetParameters((nameof(resourceID), resourceID));
-
-            var resp = await impl.getRuntimeValueAsync(new inputMessageName14() { getRuntimeValue1 = resourceID }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var result = mapResourceValueEnvelope(resp.getRuntimeValue2);
-            if (result == null)
+            using (var activity = StartActivity(nameof(GetRuntimeValue)))
             {
-                throw new ErrorWithCodeException(Errors.FEATURE_NOT_IMPLEMENTED, "IHC controller returned null runtime value for resource ID " + resourceID);
-            }
+                try
+                {
+                    activity?.SetParameters((nameof(resourceID), resourceID));
 
-            activity?.SetReturnValue(result);
-            return result;
+                    var resp = await impl.getRuntimeValueAsync(new inputMessageName14() { getRuntimeValue1 = resourceID }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var result = mapResourceValueEnvelope(resp.getRuntimeValue2);
+                    if (result == null)
+                    {
+                        throw new ErrorWithCodeException(Errors.FEATURE_NOT_IMPLEMENTED, "IHC controller returned null runtime value for resource ID " + resourceID);
+                    }
+
+                    activity?.SetReturnValue(result);
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<ResourceValue[]> GetRuntimeValues(int[] resourceIDs)
         {
-            using var activity = StartActivity();
-            activity?.SetParameters((nameof(resourceIDs), resourceIDs));
+            using (var activity = StartActivity(nameof(GetRuntimeValues)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(resourceIDs), resourceIDs));
 
-            var resp = await impl.getRuntimeValuesAsync(new inputMessageName16() { getRuntimeValues1 = resourceIDs }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.getRuntimeValues2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
+                    var resp = await impl.getRuntimeValuesAsync(new inputMessageName16() { getRuntimeValues1 = resourceIDs }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.getRuntimeValues2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<SceneResourceIdAndLocation[]> GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions)
         {
-            using var activity = StartActivity();
-            activity?.SetParameters((nameof(sceneGroupResourceIdAndPositions), sceneGroupResourceIdAndPositions));
+            using (var activity = StartActivity(nameof(GetSceneGroupResourceIdAndPositions)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(sceneGroupResourceIdAndPositions), sceneGroupResourceIdAndPositions));
 
-            var resp = await impl.getSceneGroupResourceIdAndPositionsAsync(new inputMessageName1(sceneGroupResourceIdAndPositions) {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.getSceneGroupResourceIdAndPositions2.Where((v) => v != null).Select((v) => mapSceneResourceIdAndLocation(v)).ToArray();
+                    var resp = await impl.getSceneGroupResourceIdAndPositionsAsync(new inputMessageName1(sceneGroupResourceIdAndPositions) {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.getSceneGroupResourceIdAndPositions2.Where((v) => v != null).Select((v) => mapSceneResourceIdAndLocation(v)).ToArray();
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<SceneResourceIdAndLocation> GetScenePositionsForSceneValueResource(int scenePositionsForSceneValueResource)
         {
-            using var activity = StartActivity();
-            activity?.SetParameters((nameof(scenePositionsForSceneValueResource), scenePositionsForSceneValueResource));
+            using (var activity = StartActivity(nameof(GetScenePositionsForSceneValueResource)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(scenePositionsForSceneValueResource), scenePositionsForSceneValueResource));
 
-            var resp = await impl.getScenePositionsForSceneValueResourceAsync(new inputMessageName2(scenePositionsForSceneValueResource) {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = mapSceneResourceIdAndLocation(resp.getScenePositionsForSceneValueResource2);
+                    var resp = await impl.getScenePositionsForSceneValueResourceAsync(new inputMessageName2(scenePositionsForSceneValueResource) {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = mapSceneResourceIdAndLocation(resp.getScenePositionsForSceneValueResource2);
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<ResourceValue[]> WaitForResourceValueChanges(int timeout_seconds = 15)
         {
-            using var activity = StartActivity();
-            activity?.SetParameters((nameof(timeout_seconds), timeout_seconds));
+            using (var activity = StartActivity(nameof(WaitForResourceValueChanges)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(timeout_seconds), timeout_seconds));
 
-            var resp = await impl.waitForResourceValueChangesAsync(new inputMessageName8() { waitForResourceValueChanges1 = timeout_seconds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.waitForResourceValueChanges2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
+                    var resp = await impl.waitForResourceValueChangesAsync(new inputMessageName8() { waitForResourceValueChanges1 = timeout_seconds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.waitForResourceValueChanges2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(int[] resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15)
         {
-            using var activity = StartActivity();
-            activity?.SetParameters(
-                (nameof(resourceIds), resourceIds),
-                (nameof(cancellationToken), cancellationToken),
-                (nameof(timeout_between_waits_in_seconds), timeout_between_waits_in_seconds));
+            using (var activity = StartActivity(nameof(GetResourceValueChanges)))
+            {
+                try
+                {
+                    activity?.SetParameters(
+                        (nameof(resourceIds), resourceIds),
+                        (nameof(cancellationToken), cancellationToken),
+                        (nameof(timeout_between_waits_in_seconds), timeout_between_waits_in_seconds));
 
-            var retv = ServiceHelpers.GetResourceValueChanges(
-                resourceIds,
-                EnableRuntimeValueNotifications,
-                WaitForResourceValueChanges,
-                DisableRuntimeValueNotifactions,
-                this.logger,
-                settings.AsyncContinueOnCapturedContext,
-                cancellationToken,
-                timeout_between_waits_in_seconds);
-                
-            activity?.SetReturnValue(retv);
-            return retv;
+                    var retv = ServiceHelpers.GetResourceValueChanges(
+                        activity,
+                        resourceIds,
+                        EnableRuntimeValueNotifications,
+                        WaitForResourceValueChanges,
+                        DisableRuntimeValueNotifactions,
+                        this.logger,
+                        settings.AsyncContinueOnCapturedContext,
+                        cancellationToken,
+                        timeout_between_waits_in_seconds);
+
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
     }
 }

@@ -85,20 +85,38 @@ namespace Ihc {
 
         public async Task EmptyLog()
         {
-            using var activity = StartActivity();
-
-            await impl.emptyLogAsync(new inputMessageName1()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            using (var activity = StartActivity(nameof(EmptyLog)))
+            {
+                try
+                {
+                    await impl.emptyLogAsync(new inputMessageName1()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<LogEventEntry[]> GetEvents()
         {
-            using var activity = StartActivity();
+            using (var activity = StartActivity(nameof(GetEvents)))
+            {
+                try
+                {
+                    var resp = await impl.getEventsAsync(new inputMessageName2()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.getEvents1.Where((v) => v != null).Select((v) => mapEvent(v)).ToArray();
 
-            var resp = await impl.getEventsAsync(new inputMessageName2()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.getEvents1.Where((v) => v != null).Select((v) => mapEvent(v)).ToArray();
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
     }
 }
