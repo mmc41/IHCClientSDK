@@ -302,7 +302,7 @@ namespace Ihc {
                 Brand = info.brand,
                 Version = info.version,
                 HWRevision = info.hwRevision,
-                SWDate = DateTime.SpecifyKind(info.swDate, DateHelper.GetWSDateTimeKind()),
+                SWDate = new DateTimeOffset(DateTime.SpecifyKind(info.swDate, DateHelper.GetWSDateTimeKind())),
                 DatalineVersion = info.datalineVersion,
                 RFModuleSoftwareVersion = info.rfModuleSoftwareVersion,
                 RFModuleSerialNumber = info.rfModuleSerialNumber,

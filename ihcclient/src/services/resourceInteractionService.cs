@@ -67,7 +67,7 @@ namespace Ihc {
         /// Get initial value for a single resource ID.
         /// </summary>
         /// <param name="initialValue">Resource ID to get initial value for</param>
-        public Task<ResourceValue> GetInitialValue(int? initialValue);
+        public Task<ResourceValue> GetInitialValue(int initialValue);
 
         /// <summary>
         /// Get initial values for multiple resource IDs.
@@ -562,7 +562,7 @@ namespace Ihc {
             return retv;
         }
 
-        public async Task<ResourceValue> GetInitialValue(int? initialValue)
+        public async Task<ResourceValue> GetInitialValue(int initialValue)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters((nameof(initialValue), initialValue));

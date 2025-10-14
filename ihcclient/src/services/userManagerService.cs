@@ -83,8 +83,8 @@ namespace Ihc {
                 Phone = u.phone,
                 Group = u.group?.type,
                 Project = u.project,
-                CreatedDate = u.createdDate != null ? u.createdDate.ToDateTimeOffset() : DateTimeOffset.MinValue,
-                LoginDate = u.loginDate != null ? u.loginDate.ToDateTimeOffset() : DateTimeOffset.MinValue
+                CreatedDate = u.createdDate?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
+                LoginDate = u.loginDate?.ToDateTimeOffset() ?? DateTimeOffset.MinValue
             };
         }
 

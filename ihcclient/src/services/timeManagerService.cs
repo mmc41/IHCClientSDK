@@ -101,7 +101,7 @@ namespace Ihc {
                 GmtOffsetInHours = ws.gmtOffsetInHours,
                 ServerName = ws.serverName,
                 SyncIntervalInHours = ws.syncIntervalInHours,
-                TimeAndDateInUTC = ws.timeAndDateInUTC?.ToDateTimeOffset(),
+                TimeAndDateInUTC = ws.timeAndDateInUTC?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
                 OnlineCalendarUpdateOnline = ws.online_calendar_update_online,
                 OnlineCalendarCountry = ws.online_calendar_country,
                 OnlineCalendarValidUntil = ws.online_calendar_valid_until
@@ -134,7 +134,7 @@ namespace Ihc {
                 ConnectionWasSuccessful = ws.connectionWasSuccessful,
                 DateFromServer = ws.dateFromServer > 0
                     ? DateTimeOffset.FromUnixTimeMilliseconds(ws.dateFromServer)
-                    : null,
+                    : DateTimeOffset.MinValue,
                 ConnectionFailedDueToUnknownHost = ws.connectionFailedDueToUnknownHost,
                 ConnectionFailedDueToOtherErrors = ws.connectionFailedDueToOtherErrors
             };

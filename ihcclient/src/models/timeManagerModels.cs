@@ -12,7 +12,7 @@ public record TimeManagerSettings
 
     public int SyncIntervalInHours { get; init; }
 
-    public DateTimeOffset? TimeAndDateInUTC { get; init; }
+    public DateTimeOffset TimeAndDateInUTC { get; init; }
 
     public bool OnlineCalendarUpdateOnline { get; init; }
 
@@ -30,7 +30,7 @@ public record TimeServerConnectionResult
 {
     public bool ConnectionWasSuccessful { get; init; }
 
-    public DateTimeOffset? DateFromServer { get; init; }
+    public DateTimeOffset DateFromServer { get; init; }
 
     public bool ConnectionFailedDueToUnknownHost { get; init; }
 

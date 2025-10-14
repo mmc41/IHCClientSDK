@@ -24,8 +24,8 @@ namespace Ihc {
             public string Filepath { get; init; }
             public bool Remote { get; init; }
             public string Version { get; init; }
-            public DateTime? Created { get; init; }
-            public DateTime? LastModified { get; init; }
+            public DateTimeOffset Created { get; init; }
+            public DateTimeOffset LastModified { get; init; }
             public string Description { get; init; }
             public long Crc { get; init; }
 

@@ -133,8 +133,8 @@ namespace Ihc {
                 Filepath = info.filepath,
                 Remote = info.remote,
                 Version = info.version,
-                Created = info.created?.ToDateTimeOffset().DateTime,
-                LastModified = info.lastmodified?.ToDateTimeOffset().DateTime,
+                Created = info.created?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
+                LastModified = info.lastmodified?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
                 Description = info.description,
                 Crc = info.crc
             } : null;

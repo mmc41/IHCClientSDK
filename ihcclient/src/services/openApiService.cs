@@ -45,7 +45,7 @@ namespace Ihc {
         /// <summary>
         /// Get current controller time.
         /// </summary>
-        public Task<DateTime> GetTime();
+        public Task<DateTimeOffset> GetTime();
 
         /// <summary>
         /// Check if an IHC project is available.
@@ -100,7 +100,7 @@ namespace Ihc {
         /// Wait for resource value change events from subscribed resources.
         /// </summary>
         /// <param name="timeout">Timeout in seconds</param>
-        public Task<EventPackage> WaitForEvents(int? timeout);
+        public Task<EventPackage> WaitForEvents(int timeout);
 
         /// <summary>
         /// Get async stream of resource value changes for subscribed resources.
@@ -470,7 +470,7 @@ namespace Ihc {
                 VisualMajorVersion = info.visualMajorVersion,
                 ProjectMajorRevision = info.projectMajorRevision,
                 ProjectMinorRevision = info.projectMinorRevision,
-                Lastmodified = info.lastmodified?.ToDateTimeOffset(),
+                Lastmodified = info.lastmodified?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
                 ProjectNumber = info.projectNumber,
                 CustomerName = info.customerName,
                 InstallerName = info.installerName
@@ -486,8 +486,8 @@ namespace Ihc {
                 Filepath = info.filepath,
                 Remote = info.remote,
                 Version = info.version,
-                Created = info.created?.ToDateTimeOffset().DateTime,
-                LastModified = info.lastmodified?.ToDateTimeOffset().DateTime,
+                Created = info.created?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
+                LastModified = info.lastmodified?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
                 Description = info.description,
                 Crc = info.crc
             } : null;
@@ -575,12 +575,12 @@ namespace Ihc {
             return retv;
         }
 
-        public async Task<DateTime> GetTime()
+        public async Task<DateTimeOffset> GetTime()
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
 
             var result = await impl.getTimeAsync(new inputMessageName8()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = result.getTime1 != null ? result.getTime1.ToDateTimeOffset().DateTime : DateTime.MinValue;
+            var retv = result.getTime1?.ToDateTimeOffset() ?? DateTimeOffset.MinValue;
 
             activity?.SetReturnValue(retv);
             return retv;
@@ -672,7 +672,7 @@ namespace Ihc {
             await impl.disableSubscriptionAsync(new inputMessageName2() { disableSubscription1 = resourceIds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
-        public async Task<EventPackage> WaitForEvents(int? timeout)
+        public async Task<EventPackage> WaitForEvents(int timeout)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters(

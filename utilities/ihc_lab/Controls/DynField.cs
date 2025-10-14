@@ -8,6 +8,8 @@ using Avalonia.Markup.Xaml;
 
 namespace ihc_lab;
 
+ 
+
 public partial class DynField : UserControl
 {
     private WrapPanel? parentPanel;
@@ -30,6 +32,11 @@ public partial class DynField : UserControl
     }
 
     private String typeForControl = "string";
+
+    /// <summary>
+    /// Set/Get the type that this control hosts.
+    /// Can be one of following: String, bool, int, Datetime, DateTimeOffset, TimeSpan
+    /// </summary>
     public String TypeForControl
     {
         get { return typeForControl; }
@@ -54,46 +61,72 @@ public partial class DynField : UserControl
             string typeLower = typeForControl.ToLower();
 
             if (control is TextBox textBox)
+            {
                 return textBox.Text;
+            }
             else if (control is NumericUpDown numericUpDown)
-                return (int)(numericUpDown.Value ?? 0);
+            {
+                int intV = (int)(numericUpDown.Value ?? 0);
+                if (typeLower == "timespan")
+                    return TimeSpan.FromMilliseconds(intV);
+                else return intV;
+            }
+            else if (control is DatePicker datePicker)
+            {
+                return datePicker.SelectedDate.HasValue ? datePicker.SelectedDate.Value : DateTimeOffset.MinValue;
+            }
             else if (control is StackPanel stackPanel)
             {
                 var radioButtonTrue = stackPanel.Children.OfType<RadioButton>().FirstOrDefault(rb => rb.Content?.ToString() == "True");
                 return radioButtonTrue?.IsChecked ?? false;
             }
-
-            return null;
+            else throw new Exception("Unexpected control: " + control.GetType().Name);
         }
         set
-        { 
+        {
             var control = GetControl();
             if (control == null)
                 return;
 
             string typeLower = typeForControl.ToLower();
             if (control is TextBox textBox)
-               textBox.Text = value?.ToString() ?? "";
+                textBox.Text = value?.ToString() ?? "";
             else if (control is NumericUpDown numericUpDown)
             {
                 if (value is int intValue)
                     numericUpDown.Value = intValue;
-                else if (int.TryParse(value?.ToString(), out int parsedValue))
+                else if (value is TimeSpan timespan)
+                {
+                    numericUpDown.Value = timespan.Milliseconds;
+                } else if (int.TryParse(value?.ToString(), out int parsedValue))
                     numericUpDown.Value = parsedValue;
-            } else if (control is StackPanel stackPanel) {
-                    bool boolValue = false;
-                    if (value is bool b)
-                        boolValue = b;
-                    else if (bool.TryParse(value?.ToString(), out bool parsedBool))
-                        boolValue = parsedBool;
+            }
+            else if (control is DatePicker datePicker)
+            {
+                if (value is DateTimeOffset dateTimeOffset)
+                    datePicker.SelectedDate = dateTimeOffset;
+                else if (value is DateTime dateTime)
+                    datePicker.SelectedDate = new DateTimeOffset(dateTime, TimeSpan.Zero);
+                else if (DateTimeOffset.TryParse(value?.ToString(), out DateTimeOffset parsedDateTimeOffset))
+                    datePicker.SelectedDate = parsedDateTimeOffset;
+                else if (DateTime.TryParse(value?.ToString(), out DateTime parsedDateTime))
+                    datePicker.SelectedDate = new DateTimeOffset(parsedDateTime, TimeSpan.Zero);
+            }
+            else if (control is StackPanel stackPanel)
+            {
+                bool boolValue = false;
+                if (value is bool b)
+                    boolValue = b;
+                else if (bool.TryParse(value?.ToString(), out bool parsedBool))
+                    boolValue = parsedBool;
 
-                    var radioButtonTrue = stackPanel.Children.OfType<RadioButton>().FirstOrDefault(rb => rb.Content?.ToString() == "True");
-                    var radioButtonFalse = stackPanel.Children.OfType<RadioButton>().FirstOrDefault(rb => rb.Content?.ToString() == "False");
+                var radioButtonTrue = stackPanel.Children.OfType<RadioButton>().FirstOrDefault(rb => rb.Content?.ToString() == "True");
+                var radioButtonFalse = stackPanel.Children.OfType<RadioButton>().FirstOrDefault(rb => rb.Content?.ToString() == "False");
 
-                    if (radioButtonTrue != null)
-                        radioButtonTrue.IsChecked = boolValue;
-                    if (radioButtonFalse != null)
-                        radioButtonFalse.IsChecked = !boolValue;
+                if (radioButtonTrue != null)
+                    radioButtonTrue.IsChecked = boolValue;
+                if (radioButtonFalse != null)
+                    radioButtonFalse.IsChecked = !boolValue;
             }
         }
     }
@@ -128,7 +161,7 @@ public partial class DynField : UserControl
             };
             parentPanel.Children.Add(textBox);
         }
-        else if (typeLower == "integer")
+        else if (typeLower == "integer" || typeLower == "timespan")
         {
             var numericUpDown = new NumericUpDown
             {
@@ -169,6 +202,16 @@ public partial class DynField : UserControl
             stackPanel.Children.Add(radioButtonFalse);
 
             parentPanel.Children.Add(stackPanel);
+        }
+        else if (typeLower == "datetimeoffset" || typeLower == "datetime")
+        {
+            var datePicker = new DatePicker
+            {
+                Name = "ValueCtrl",
+                MinWidth = 150,
+                SelectedDate = DateTimeOffset.Now
+            };
+            parentPanel.Children.Add(datePicker);
         }
     }
 }

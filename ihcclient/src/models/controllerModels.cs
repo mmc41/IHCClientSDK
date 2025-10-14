@@ -48,7 +48,7 @@ public record ProjectInfo
 
         public int ProjectMinorRevision { get; init; }
 
-        public DateTimeOffset? Lastmodified { get; init; }
+        public DateTimeOffset Lastmodified { get; init; }
 
         public string ProjectNumber { get; init; }
 
