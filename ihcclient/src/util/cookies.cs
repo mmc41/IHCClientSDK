@@ -22,6 +22,8 @@ namespace Ihc {
 
     internal sealed class CookieHandler : ICookieHandler
     {
+        public const string REDACTED_COOKIE = "**REDACTED**";
+
         private readonly object _lock = new object();
         private readonly ILogger logger;
         private readonly bool logSensitiveData;
@@ -60,7 +62,7 @@ namespace Ihc {
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters(
-                (nameof(_cookie), logSensitiveData ? _cookie: "***REDACTED***")
+                (nameof(_cookie), logSensitiveData ? _cookie: UserConstants.REDACTED_PASSWORD)
             );
 
             lock (_lock)
@@ -71,7 +73,7 @@ namespace Ihc {
                 }
                 else
                 {
-                    logger.LogInformation("SETTING COOKIE TO: '" + (logSensitiveData ? _cookie: "***REDACTED***") + "'");
+                    logger.LogInformation("SETTING COOKIE TO: '" + (logSensitiveData ? _cookie: REDACTED_COOKIE) + "'");
                 }
 
                 cookie = _cookie;

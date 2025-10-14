@@ -135,16 +135,19 @@ namespace Ihc {
         /// <summary>
         /// Get list of registered controller users and their information.
         /// </summary>
-        /// <param name="includePassword">Include password in returned user objects</param>
-        public async Task<IhcUser[]> GetUsers(bool includePassword)
+        /// <param name="includePassword">Include password in returned user objects (default)</param>
+        public async Task<IhcUser[]> GetUsers(bool includePassword = true)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters((nameof(includePassword), includePassword));
 
             var resp = await impl.getUsersAsync(new inputMessageName2() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+
+            // Note that we for safty reasons can return users without password in return object
             var retv = resp.getUsers1.Where((v) => v != null).Select((u) => mapUser(u, includePassword)).ToArray();
 
-            activity?.SetReturnValue(retv);
+            // Register activity - note that regardless of if password is included, any password will be also not be logged/observed unless LogSensitiveData allows it.
+            activity?.SetReturnValue(IhcSettings.LogSensitiveData ? retv.Select(r => r.RedactPasword()).ToArray() : retv);
             return retv;
         }
 
@@ -155,7 +158,7 @@ namespace Ihc {
         public async Task AddUser(IhcUser user)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters((nameof(user), user));
+            activity?.SetParameters((nameof(user), IhcSettings.LogSensitiveData ? user : user.RedactPasword()));
 
             await impl.addUserAsync(new inputMessageName1() { addUser1 = mapUser(user) }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
@@ -178,6 +181,9 @@ namespace Ihc {
         /// <param name="user">Updated user information</param>
         public async Task UpdateUser(IhcUser user)
         {
+            if (user?.Password == UserConstants.REDACTED_PASSWORD)
+                throw new ArgumentException($"Password of user can not be set to reserved value ${UserConstants.REDACTED_PASSWORD}. This is likely an error!");
+
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters((nameof(user), user));
 

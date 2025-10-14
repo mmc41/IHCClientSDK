@@ -46,7 +46,7 @@ namespace Ihc {
                 // - [^<]+ - matches the password content (one or more characters except '<')
                 // - (</\w*:?password>) - captures closing tag with optional namespace prefix
                 string pattern = @"(<\w*:?password>)[^<]+(</\w*:?password>)";
-                string replacement = "$1***REDACTED***$2";
+                string replacement = "$1"+UserConstants.REDACTED_PASSWORD+"$2";
 
                 return Regex.Replace(input, pattern, replacement, RegexOptions.IgnoreCase);
             }

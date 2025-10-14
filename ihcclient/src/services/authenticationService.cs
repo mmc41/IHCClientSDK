@@ -133,7 +133,7 @@ namespace Ihc {
             using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetParameters(
                 (nameof(userName), userName),
-                (nameof(password), settings.AsyncContinueOnCapturedContext ? password : "***REDACTED***"),
+                (nameof(password), settings.AsyncContinueOnCapturedContext ? password : UserConstants.REDACTED_PASSWORD),
                 (nameof(application), application)
             );
 
