@@ -56,10 +56,11 @@ namespace Ihc
 
         public ILogger Logger { get { return logger; } }
 
-        protected Activity StartActivity()
+        protected Activity StartActivity(string operationName = null)
         {
             Activity activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
             activity?.SetTag("service.name", this.GetType().Name); // Set name of IHC webservice highlevel wrapper as telemetry service name.
+            activity?.SetTag("service.operation", operationName); // Set name of IHC webservice highlevel wrapper operation.          
             return activity;
         }
     }

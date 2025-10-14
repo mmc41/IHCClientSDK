@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 
 namespace Ihc {
@@ -50,6 +51,13 @@ namespace Ihc {
                     activity.SetTag($"{Telemetry.argsTagPrefix}{name}", value);
                 }
             }
+            return activity;
+        }
+
+        public static Activity SetError(this Activity activity, Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.AddException(ex);
             return activity;
         }
     }

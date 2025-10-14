@@ -113,14 +113,22 @@ namespace Ihc {
 
         public async Task<bool> Ping()
         {
-            using var activity = StartActivity();
+            using (var activity = StartActivity(nameof(Ping)))
+            {
+                try
+                {
+                    var resp = await impl.pingAsync(new inputMessageName3()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var result = resp.ping1;
+                    var retv = result.HasValue ? result.Value : false;
 
-            var resp = await impl.pingAsync(new inputMessageName3()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var result = resp.ping1;
-            var retv = result.HasValue ? result.Value : false;
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                     return retv;
+                } catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<IhcUser> Authenticate()
@@ -130,85 +138,102 @@ namespace Ihc {
 
         public async Task<IhcUser> Authenticate(string userName, string password, string application = "openapi")
         {
-            using var activity = StartActivity();
-            activity?.SetParameters(
-                (nameof(userName), userName),
-                (nameof(password), settings.AsyncContinueOnCapturedContext ? password : UserConstants.REDACTED_PASSWORD),
-                (nameof(application), application)
-            );
-
-            logger.LogInformation("IHC Authenticate called");
-            isConnected = false;
-            var resp = await impl.authenticateAsync(new inputMessageName2() { authenticate1 = new WSAuthenticationData { username = userName, password = password, application = application } })
-                                 .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-
-            var result = resp.authenticate2;
-            if (result.loginWasSuccessful)
-            {
-                // Add null checks for loggedInUser and nested properties
-                if (result.loggedInUser == null)
+            using (var activity = StartActivity(nameof(Authenticate))) {
+                try
                 {
-                    throw new ErrorWithCodeException(Errors.LOGIN_UNKNOWN_ERROR, "Ihc server login succeeded but returned null user data for " + impl.Url);
+                    activity?.SetParameters(
+                        (nameof(userName), userName),
+                        (nameof(password), settings.AsyncContinueOnCapturedContext ? password : UserConstants.REDACTED_PASSWORD),
+                        (nameof(application), application)
+                    );
+
+                    logger.LogInformation("IHC Authenticate called");
+                    isConnected = false;
+                    var resp = await impl.authenticateAsync(new inputMessageName2() { authenticate1 = new WSAuthenticationData { username = userName, password = password, application = application } })
+                                        .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+
+                    var result = resp.authenticate2;
+                    if (result.loginWasSuccessful)
+                    {
+                        // Add null checks for loggedInUser and nested properties
+                        if (result.loggedInUser == null)
+                        {
+                            throw new ErrorWithCodeException(Errors.LOGIN_UNKNOWN_ERROR, "Ihc server login succeeded but returned null user data for " + impl.Url);
+                        }
+
+                        isConnected = true;
+
+                        var user = new IhcUser()
+                        {
+                            Username = result.loggedInUser.username,
+                            Password = result.loggedInUser.password,
+                            Firstname = result.loggedInUser.firstname,
+                            Lastname = result.loggedInUser.lastname,
+                            Phone = result.loggedInUser.phone,
+                            Group = result.loggedInUser.group?.type,
+                            Project = result.loggedInUser.project,
+                            CreatedDate = result.loggedInUser.createdDate.ToDateTimeOffset(),
+                            LoginDate = result.loggedInUser.loginDate.ToDateTimeOffset(),
+
+                        };
+                        logger.LogInformation($"Successfully authenticated user: {user.Username}");
+
+                        activity?.SetReturnValue(user);
+                        return user;
+                    }
+                    else if (result.loginFailedDueToAccountInvalid)
+                    {
+                        throw new ErrorWithCodeException(Errors.LOGIN_FAILED_DUE_TO_ACCOUNT_INVALID_ERROR, "Ihc server login reports invalid account for " + impl.Url);
+                    }
+                    else if (result.loginFailedDueToConnectionRestrictions)
+                    {
+                        throw new ErrorWithCodeException(Errors.LOGIN_FAILED_DUE_TO_CONNECTION_RESTRUCTIONS_ERROR, "Ihc server login reports connection restriction error for " + impl.Url);
+                    }
+                    else if (result.loginFailedDueToInsufficientUserRights)
+                    {
+                        throw new ErrorWithCodeException(Errors.LOGIN_FAILED_DUE_TO_INSUFFICIENT_USER_RIGHTS_ERROR, "Ihc server login reports insufficient user rights for " + impl.Url);
+                    }
+                    else
+                    {
+                        throw new ErrorWithCodeException(Errors.LOGIN_UNKNOWN_ERROR, "Ihc server failed login for " + impl.Url);
+                    }
+                } catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
                 }
-
-                isConnected = true;
-
-                var user = new IhcUser()
-                {
-                    Username = result.loggedInUser.username,
-                    Password = result.loggedInUser.password,
-                    Firstname = result.loggedInUser.firstname,
-                    Lastname = result.loggedInUser.lastname,
-                    Phone = result.loggedInUser.phone,
-                    Group = result.loggedInUser.group?.type,
-                    Project = result.loggedInUser.project,
-                    CreatedDate = result.loggedInUser.createdDate.ToDateTimeOffset(),
-                    LoginDate = result.loggedInUser.loginDate.ToDateTimeOffset(),
-
-                };
-                logger.LogInformation($"Successfully authenticated user: {user.Username}");
-
-                activity?.SetReturnValue(user);
-                return user;
-            }
-            else if (result.loginFailedDueToAccountInvalid)
-            {
-                throw new ErrorWithCodeException(Errors.LOGIN_FAILED_DUE_TO_ACCOUNT_INVALID_ERROR, "Ihc server login reports invalid account for " + impl.Url);
-            }
-            else if (result.loginFailedDueToConnectionRestrictions)
-            {
-                throw new ErrorWithCodeException(Errors.LOGIN_FAILED_DUE_TO_CONNECTION_RESTRUCTIONS_ERROR, "Ihc server login reports connection restriction error for " + impl.Url);
-            }
-            else if (result.loginFailedDueToInsufficientUserRights)
-            {
-                throw new ErrorWithCodeException(Errors.LOGIN_FAILED_DUE_TO_INSUFFICIENT_USER_RIGHTS_ERROR, "Ihc server login reports insufficient user rights for " + impl.Url);
-            }
-            else
-            {
-                throw new ErrorWithCodeException(Errors.LOGIN_UNKNOWN_ERROR, "Ihc server failed login for " + impl.Url);
-            }
+            };
         }
 
         public async Task<bool> Disconnect()
         {
-            using var activity = StartActivity();
-            logger.LogInformation("IHC Disconnect called");
-            bool? result;
-
-            try
+            using (var activity = StartActivity(nameof(Disconnect)))
             {
-                var resp = await impl.disconnectAsync(new inputMessageName1()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                result = resp.disconnect1;
-            }
-            finally
-            {
-                isConnected = false;
-            }
+                try
+                {
+                    logger.LogInformation("IHC Disconnect called");
+                    bool? result;
 
-            var retv = result.HasValue ? result.Value : false;
+                    try
+                    {
+                        var resp = await impl.disconnectAsync(new inputMessageName1()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                        result = resp.disconnect1;
+                    }
+                    finally
+                    {
+                        isConnected = false;
+                    }
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    var retv = result.HasValue ? result.Value : false;
+
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                } catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public void Dispose()
