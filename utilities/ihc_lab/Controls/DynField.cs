@@ -175,7 +175,7 @@ public partial class DynField : UserControl
             ToolTip.SetTip(textBox, $"Enter {typeLower} value");
             parentPanel.Children.Add(textBox);
         }
-        else if (typeLower == "integer" || typeLower == "long" || typeLower == "ulong" || typeLower == "byte" || typeLower == "sbyte" || typeLower == "short" || typeLower == "ushort" || typeLower == "double" || typeLower == "timespan")
+        else if (typeLower == "integer" || typeLower == "int32" || typeLower == "int64" || typeLower == "int16" || typeLower == "long" || typeLower == "ulong" || typeLower == "byte" || typeLower == "sbyte" || typeLower == "short" || typeLower == "ushort" || typeLower == "double" || typeLower == "timespan")
         {
             var numericUpDown = new NumericUpDown
             {
@@ -189,7 +189,7 @@ public partial class DynField : UserControl
             ToolTip.SetTip(numericUpDown, $"Enter {typeLower} value");
             parentPanel.Children.Add(numericUpDown);
         }
-        else if (typeLower == "bool")
+        else if (typeLower == "bool" || typeLower == "boolean")
         {
             // Create a horizontal StackPanel to hold the radio buttons
             var stackPanel = new StackPanel
