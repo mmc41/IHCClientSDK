@@ -106,7 +106,7 @@ namespace Ihc {
             var serviceType = service.GetType();
             activity?.SetTag("service.name", typeof(ServiceMetadata).Name);
             activity?.SetParameters((nameof(service), service.GetType().Name));
-            activity?.SetTag("input.cachedResult", true); // Assume cached by default
+            activity?.SetTag("cachedResult", true); // Assume cached by default
 
             var retv = _cache.GetOrAdd(serviceType, type =>
             {

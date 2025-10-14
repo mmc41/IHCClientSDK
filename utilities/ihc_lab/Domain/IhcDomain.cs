@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
+using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
 // Helper class to wrap services with display names
@@ -60,7 +61,7 @@ public class IhcDomain
     public IhcSettings IhcSettings { get; init; }
     public ILoggerFactory loggerFactory { get; internal set; }
 
-    public TracerProvider? TelmettryTracerProvider { get; internal set; }
+    public TracerProvider? TelmetryTracerProvider { get; internal set; }
 
     public AuthenticationService AuthenticationService { get; init; }
     public ControllerService ControllerService { get; init; }
@@ -112,7 +113,7 @@ public class IhcDomain
             throw new InvalidDataException("Could not read Telemtry client settings from configuration");
         }
 
-         var loggerFactory = SetupTelemtryAndLoggingFactory(telemetryConfig, loggingConfig);
+        loggerFactory = SetupTelemtryAndLoggingFactory(telemetryConfig, loggingConfig);
 
         // Developer tools attachment removed - requires additional Avalonia DevTools package
         // this.AttachDeveloperTools(o =>
@@ -160,6 +161,8 @@ public class IhcDomain
             {
                 loggingOpts.IncludeFormattedMessage = true;
                 loggingOpts.IncludeScopes = true;
+                loggingOpts.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: IhcLab.Telemetry.AppServiceName));
+
                 loggingOpts.AddOtlpExporter(opts =>
                 {
                     opts.Endpoint = new Uri(logsEndpoint);
@@ -172,8 +175,9 @@ public class IhcDomain
         });
 
         // Setup tracing for our application 
-        TelmettryTracerProvider = Sdk.CreateTracerProviderBuilder()
+        TelmetryTracerProvider = Sdk.CreateTracerProviderBuilder()
             .SetErrorStatusOnException(true)
+            .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: IhcLab.Telemetry.AppServiceName))
             .AddSource(Ihc.Telemetry.ActivitySourceName, IhcLab.Telemetry.ActivitySourceName)
             .AddOtlpExporter(opts =>
             {
@@ -194,6 +198,6 @@ public class IhcDomain
     private void Dispose()
     {
         AuthenticationService.Dispose();
-        TelmettryTracerProvider?.Shutdown();
+        TelmetryTracerProvider?.Shutdown();
     }
 }
