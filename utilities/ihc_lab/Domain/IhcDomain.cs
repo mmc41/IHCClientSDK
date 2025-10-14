@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Reflection;
 using Ihc;
+using ihc_lab;
 using IhcLab;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -61,8 +62,6 @@ public class IhcDomain
     public IhcSettings IhcSettings { get; init; }
     public ILoggerFactory loggerFactory { get; internal set; }
 
-    public TracerProvider? TelmetryTracerProvider { get; internal set; }
-
     public AuthenticationService AuthenticationService { get; init; }
     public ControllerService ControllerService { get; init; }
     public ResourceInteractionService ResourceInteractionService { get; init; }
@@ -98,38 +97,24 @@ public class IhcDomain
 
     private IhcDomain()
     {
-        // Access configuration file that stores IHC and SDK setup informnation including username, password etc.
-        string basePath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? AppContext.BaseDirectory;
-        IConfigurationRoot config = new ConfigurationBuilder()
-                    .SetBasePath(basePath)
-                    .AddJsonFile("ihcsettings.json")
-                    .Build();
+        var loggerFactory = Program.loggerFactory;
+        if (loggerFactory == null)
+          throw new Exception("logger factory not set");
 
+        var config = Program.config;
+        if (config == null)
+          throw new Exception("configuration not set");
 
-        IConfigurationSection? loggingConfig = config.GetSection("Logging");
-        TelemetryConfiguration? telemetryConfig = config.GetSection("telemetry").Get<TelemetryConfiguration>();
-        if (telemetryConfig == null || loggingConfig == null)
-        {
-            throw new InvalidDataException("Could not read Telemtry client settings from configuration");
-        }
-
-        loggerFactory = SetupTelemtryAndLoggingFactory(telemetryConfig, loggingConfig);
-
-        // Developer tools attachment removed - requires additional Avalonia DevTools package
-        // this.AttachDeveloperTools(o =>
-        // {
-        //     o.AddMicrosoftLoggerObservable(loggerFactory);
-        // });
-
-        var logger = loggerFactory.CreateLogger<IhcDomain>();
-
-        var settings = config.GetSection("ihcclient").Get<IhcSettings>();
+        var settings = config.ihcSettings;
         if (settings == null)
         {
             throw new InvalidDataException("Could not read IHC client settings from configuration");
         }
 
         this.IhcSettings = settings;
+        this.loggerFactory = loggerFactory;
+
+        var logger = loggerFactory.CreateLogger<IhcDomain>();
 
         this.AuthenticationService = new AuthenticationService(logger, settings);
         this.ControllerService = new ControllerService(AuthenticationService);
@@ -144,60 +129,9 @@ public class IhcDomain
         this.AirlinkManagementService = new AirlinkManagementService(AuthenticationService);
     }
 
-    private ILoggerFactory SetupTelemtryAndLoggingFactory(TelemetryConfiguration config, IConfigurationSection loggingConfig)
-    {
-        string logsEndpoint = $"{config.Host}/api/{config.Organization}/v1/logs";
-        string tracingEndpoint = $"{config.Host}/api/{config.Organization}/v1/traces";
-        string metricsEndpoint = $"{config.Host}/api/{config.Organization}/v1/metrics";
-        string headers = $"Authorization={config.Authentication}," +
-                         $"stream-name={config.Stream}," +
-                         $"organization={config.Organization}";
-
-
-        // Create a logger for our application which delegates to Telemetry:
-        loggerFactory = LoggerFactory.Create(builder =>
-        {
-            builder.AddOpenTelemetry(loggingOpts =>
-            {
-                loggingOpts.IncludeFormattedMessage = true;
-                loggingOpts.IncludeScopes = true;
-                loggingOpts.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: IhcLab.Telemetry.AppServiceName));
-
-                loggingOpts.AddOtlpExporter(opts =>
-                {
-                    opts.Endpoint = new Uri(logsEndpoint);
-                    opts.Headers = headers;
-                    opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
-                });
-            });
-    
-            builder.AddConfiguration(loggingConfig);
-        });
-
-        // Setup tracing for our application 
-        TelmetryTracerProvider = Sdk.CreateTracerProviderBuilder()
-            .SetErrorStatusOnException(true)
-            .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: IhcLab.Telemetry.AppServiceName))
-            .AddSource(Ihc.Telemetry.ActivitySourceName, IhcLab.Telemetry.ActivitySourceName)
-            .AddOtlpExporter(opts =>
-            {
-                opts.Endpoint = new Uri(tracingEndpoint);
-                opts.Headers = headers;
-                opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
-            }).Build();
-
-        return loggerFactory;
-    }
-    
-    public void Verify()
-    {
-
-    }
-
-
     private void Dispose()
     {
         AuthenticationService.Dispose();
-        TelmetryTracerProvider?.Shutdown();
+        // TelmetryTracerProvider?.Shutdown();
     }
 }

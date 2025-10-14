@@ -9,6 +9,22 @@
         "logSensitiveData": false,
         "asyncContinueOnCapturedContext": false
     },
+    "Logging": {
+        "comment" : "Defines how much is logged by ILoggers",
+        "LogLevel": {
+          "Default": "Debug",
+          "Microsoft": "Warning",
+          "Microsoft.Hosting.Lifetime": "Information",
+          "Avalonia": "Trace"
+        }
+    },
+    "telemetry": {
+      "comment" : "OpenTelemetry - set when diagnosing issues. Will also forward logs. Set host to blank if there is no telemetry.",
+      "Host": "",
+      "Organization": "default",
+      "Stream": "ihc",
+      "Authentication": ""
+    },
     "testConfig": {
         "comment" : "ID's of resources that can be used by tests and examples. Chose arbitrary 'tryk' you can press for input and connected 'lampleudtag' for output where you can see if it is on. Get the IDs from IHC Visual by pressing CTRL and hover mouse pointer over suitable input/output (or run IOExtractor project and inspect output)",
         "boolOutput1" : "<ID of an output that may be modified by example or test>",
@@ -36,12 +52,5 @@
         },
         "JSGenerator": {},
         "JsonGenerator": {}
-    },
-    "Logging": {
-        "LogLevel": {
-          "Default": "Debug",
-          "Microsoft": "Warning",
-          "Microsoft.Hosting.Lifetime": "Information"
-        }
     }
 }

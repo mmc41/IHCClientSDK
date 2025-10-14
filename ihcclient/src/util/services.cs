@@ -17,6 +17,7 @@ namespace Ihc
         /// Generic implementation of GetResourceValueChanges pattern used across IHC services.
         /// Handles subscription management, long polling, error recovery, and cleanup.
         /// </summary>
+        /// <param name="activity">Existing activity to add tags and errors to</param>
         /// <param name="resourceIds">Array of resource IDs to monitor</param>
         /// <param name="enableSubscription">Async function to enable subscription/notifications for resources</param>
         /// <param name="waitForChanges">Async function that waits for changes and returns them as ResourceValue array</param>

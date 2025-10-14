@@ -9,6 +9,22 @@
         "logSensitiveData": false,
         "asyncContinueOnCapturedContext": false
     },
+    "Logging": {
+        "comment" : "Defines how much is logged by ILoggers",
+        "LogLevel": {
+          "Default": "Debug",
+          "Microsoft": "Warning",
+          "Microsoft.Hosting.Lifetime": "Information",
+          "Avalonia": "Trace"
+        }
+    },
+    "telemetry": {
+      "comment" : "OpenTelemetry example setting using openobserve default. Set host to blank to disable. Set token to correct value from opentel provider.",
+      "Host": "http://localhost:5080",
+      "Organization": "default",
+      "Stream": "ihc",
+      "Authentication": "Basic <Token>="
+    },
     "testConfig": {
       "comment" : "ID's of boolean typed resources that can be used by tests and examples. Chose arbitrary 'tryk' you can press for input and connected 'lampleudtag' for output where you can see if it is on. Get the IDs from IHC Visual by pressing CTRL and hover mouse pointer over suitable input/output (or run IOExtractor project and inspect output)",
       "boolOutput1" : "133107",
@@ -38,12 +54,5 @@
         },
         "JSGenerator": {},
         "JsonGenerator": {}
-    },
-    "Logging": {
-        "LogLevel": {
-          "Default": "Debug",
-          "Microsoft": "Warning",
-          "Microsoft.Hosting.Lifetime": "Information"
-        }
     }
 }
