@@ -15,60 +15,55 @@
                 <MenuItem Header="_Exit" Click="ExitMenuItemClick"/>
             </MenuItem>
          </Menu>
-         <Grid ColumnDefinitions="3*, 4, 1*">
-            <ScrollViewer Name="ScrollOne" Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                <StackPanel Name="Left">
-                    <Grid Margin="10,10,10,5">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="300"/>
-                            <ColumnDefinition Width="20"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="300"/>
-                            <ColumnDefinition Width="20"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
+        <StackPanel Name="Left">
+            <Grid Margin="10,10,10,5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="20"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="20"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Service:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <ComboBox Grid.Row="0" Grid.Column="1" Name="ServicesComboBox" VerticalAlignment="Center" SelectionChanged="OnServicesComboBoxSelectionChanged" ToolTip.Tip="Select IHC webservice"/>
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Service:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <ComboBox Grid.Row="0" Grid.Column="1" Name="ServicesComboBox" VerticalAlignment="Center" SelectionChanged="OnServicesComboBoxSelectionChanged" ToolTip.Tip="Select IHC webservice"/>
 
-                        <TextBlock Grid.Row="0" Grid.Column="3" Text="Operation:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <ComboBox Grid.Row="0" Grid.Column="4" Name="OperationsComboBox" VerticalAlignment="Center" SelectionChanged="OnOperationsComboBoxSelectionChanged" ToolTip.Tip="Select IHC operation"/>
+                <TextBlock Grid.Row="0" Grid.Column="3" Text="Operation:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <ComboBox Grid.Row="0" Grid.Column="4" Name="OperationsComboBox" VerticalAlignment="Center" SelectionChanged="OnOperationsComboBoxSelectionChanged" ToolTip.Tip="Select IHC operation"/>
 
-                        <Button Name="RunButton" Grid.Row="0" Grid.Column="6" Click="RunButtonClickHandler" ToolTip.Tip="Execute IHC operation">RUN</Button>
-                    </Grid>
-                    <Border Name="Details" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
-                        <Grid Name="detail">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>                 
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Grid.Row="0" Name="OperationDescription"></TextBlock>
-                            <StackPanel Grid.Column="0" Grid.Row="1" Name="ParametersPanel" Orientation="Vertical">
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-                    <Border Name="Status" Height="50" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
-                        <StackPanel>
-                            <TextBlock Name="ErrorHeading" FontSize="18" IsVisible="false">Errors:</TextBlock>
-                            <TextBlock Name="ErrorContent" FontSize="12" xml:space="preserve"></TextBlock>
-                            <TextBlock Name="WarningContent" FontSize="12" xml:space="preserve"></TextBlock>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </ScrollViewer>
-            <GridSplitter Grid.Column="1" Background="Black" ResizeDirection="Columns"/>
-            <ScrollViewer Name="ScrollTwo" Grid.Column="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                <StackPanel Margin="20" Name="Right">
+                <Button Name="RunButton" Grid.Row="0" Grid.Column="6" Click="RunButtonClickHandler" ToolTip.Tip="Execute IHC operation">RUN</Button>
+            </Grid>
+            <Border Name="Details" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
+                <Grid Name="detail">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>                 
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Grid.Row="0" Name="OperationDescription"></TextBlock>
+                    <StackPanel Grid.Column="0" Grid.Row="1" Name="ParametersPanel" Orientation="Vertical">
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <Border Name="Result" Height="50" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
+                <StackPanel>
                     <TextBlock FontSize="18">Output</TextBlock>
-                    <TextBlock xml:space="preserve" Name="output"></TextBlock>
+                    <TextBlock xml:space="preserve" FontSize="12" Name="output"></TextBlock>
                 </StackPanel>
-            </ScrollViewer>
-        </Grid>
+            </Border>
+            <Border Name="Status" Height="50" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
+                <StackPanel>
+                    <TextBlock Name="ErrorHeading" FontSize="18" IsVisible="false">Errors:</TextBlock>
+                    <TextBlock Name="ErrorContent" FontSize="12" xml:space="preserve"></TextBlock>
+                    <TextBlock Name="WarningContent" FontSize="12" xml:space="preserve"></TextBlock>
+                </StackPanel>
+            </Border>
+        </StackPanel>
     </DockPanel>
 </Window>
