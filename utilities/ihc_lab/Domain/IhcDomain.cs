@@ -2,8 +2,6 @@ using System;
 using System.IO;
 using System.Reflection;
 using Ihc;
-using ihc_lab;
-using IhcLab;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -11,6 +9,8 @@ using OpenTelemetry;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+
+namespace IhcLab;
 
 // Helper class to wrap services with display names
 public class ServiceItem

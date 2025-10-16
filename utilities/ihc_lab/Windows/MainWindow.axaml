@@ -2,10 +2,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:ihc_lab="clr-namespace:ihc_lab"
+        xmlns:IhcLab="clr-namespace:IhcLab"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        x:Class="ihc_lab.MainWindow"
-        x:DataType="ihc_lab:MainWindow"
+        x:Class="IhcLab.MainWindow"
+        x:DataType="IhcLab:MainWindow"
         Title="IHC Lab">
     <DockPanel>
         <Menu DockPanel.Dock="Top" Background="#F0F0F0">
@@ -55,7 +55,7 @@
                     </Border>
                     <Border Name="Status" Height="50" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
                         <StackPanel>
-                            <TextBlock FontSize="18" FontWeight="Bold">Errors:</TextBlock>
+                            <TextBlock Name="ErrorHeading" FontSize="18" IsVisible="false">Errors:</TextBlock>
                             <TextBlock Name="ErrorContent" FontSize="12" xml:space="preserve"></TextBlock>
                             <TextBlock Name="WarningContent" FontSize="12" xml:space="preserve"></TextBlock>
                         </StackPanel>

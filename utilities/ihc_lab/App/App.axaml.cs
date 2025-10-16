@@ -3,7 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.Logging;
 
-namespace ihc_lab;
+namespace IhcLab;
 
 public partial class App : Application
 {   

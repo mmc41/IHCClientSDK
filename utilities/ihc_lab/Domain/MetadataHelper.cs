@@ -1,6 +1,6 @@
 using Ihc;
 
-namespace ihc_lab;
+namespace IhcLab;
 
 /// <summary>
 /// Helper class for working with service operation metadata.

@@ -6,7 +6,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
 
-namespace ihc_lab;
+namespace IhcLab;
 
  
 

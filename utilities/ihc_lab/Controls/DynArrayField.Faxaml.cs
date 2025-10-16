@@ -2,7 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 
-namespace ihc_lab;
+namespace IhcLab;
 
 public partial class DynArrayField : UserControl
 {

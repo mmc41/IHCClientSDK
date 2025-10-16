@@ -3,7 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Ihc;
 
-namespace ihc_lab;
+namespace IhcLab;
 
 /// <summary>
 /// Support class for handling operation parameters and field controls.
@@ -71,13 +71,18 @@ public static class OperationSupport
     /// <param name="operationMetadata">The operation metadata containing parameter information.</param>
     public static void SetUpParameterControls(Panel parametersPanel, ServiceOperationMetadata operationMetadata)
     {
-        // Clear any existing child controls under panel with Name ParametersPanel
-        parametersPanel.Children.Clear();
+        ClearControls(parametersPanel);
 
         foreach (FieldMetaData parameter in operationMetadata.Parameters)
         {
             AddFieldControls(parametersPanel, parameter, "");
         }
+    }
+
+    public static void ClearControls(Panel parametersPanel)
+    {
+        // Clear any existing child controls under panel with Name ParametersPanel
+        parametersPanel.Children.Clear();
     }
 
     /// <summary>

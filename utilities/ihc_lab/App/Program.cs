@@ -8,7 +8,7 @@ using IhcLab;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 
-namespace ihc_lab;
+namespace IhcLab;
 
 class Program
 {

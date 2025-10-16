@@ -8,7 +8,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Ihc;
 
-namespace ihc_lab;
+namespace IhcLab;
 
 public partial class MainWindow : Window
 {
@@ -134,12 +134,16 @@ public partial class MainWindow : Window
             if (OperationsComboBox.SelectedItem is ServiceOperationMetadata operationMetadata)
             {
                 OperationDescription.Text = operationMetadata.Description;
-                OperationSupport.SetUpParameterControls(ParametersPanel, operationMetadata);
 
                 bool operationSupported = MetadataHelper.IsOperationSupported(operationMetadata);
                 RunButton.IsEnabled = operationSupported;
-                if (!operationSupported)
+
+                if (operationSupported)
                 {
+                   OperationSupport.SetUpParameterControls(ParametersPanel, operationMetadata);
+                } else
+                {
+                   OperationSupport.ClearControls(ParametersPanel);
                    SetError("Support for executing this particular operation has not yet been implemented");
                 }
             }
@@ -170,6 +174,7 @@ public partial class MainWindow : Window
     public void ClearError()
     {
         ErrorContent.Text = "";
+        ErrorHeading.IsVisible = false;
     }
 
     public void SetError(string text, Exception? ex = null)
@@ -179,5 +184,6 @@ public partial class MainWindow : Window
             txt = txt + ": " + ex.Source + " : " + ex.Message;
 
         ErrorContent.Text = txt;
+        ErrorHeading.IsVisible = true;
     }
 }

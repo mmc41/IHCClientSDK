@@ -9,9 +9,9 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
-using static ihc_lab.Program;
+using static IhcLab.Program;
 
-namespace ihc_lab;
+namespace IhcLab;
 
 public static class CustomSetup
 {
