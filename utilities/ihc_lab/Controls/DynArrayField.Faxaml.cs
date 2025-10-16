@@ -4,9 +4,9 @@ using Avalonia.Markup.Xaml;
 
 namespace ihc_lab;
 
-public partial class DynInputParam : UserControl
+public partial class DynArrayField : UserControl
 {
-    public DynInputParam()
+    public DynArrayField()
     {
         InitializeComponent();
     }
