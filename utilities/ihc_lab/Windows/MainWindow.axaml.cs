@@ -171,6 +171,12 @@ public partial class MainWindow : Window
         Close(); // Calls in turn OnWindowClosing which will dispose our IhcDomain.
     }
 
+    public async void AboutMenuItemClick(object sender, RoutedEventArgs e)
+    {
+        var aboutWindow = new AboutWindow();
+        await aboutWindow.ShowDialog(this);
+    }
+
     public void ClearError()
     {
         ErrorContent.Text = "";

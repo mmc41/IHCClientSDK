@@ -6,6 +6,10 @@
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <CopyDebugSymbolFilesFromPackages>true</CopyDebugSymbolFilesFromPackages>
+    <Version>1.0.0</Version>
+    <Copyright>Apache License 2.0</Copyright>
+    <Authors>mmc41</Authors>
   </PropertyGroup>
 
   <ItemGroup>

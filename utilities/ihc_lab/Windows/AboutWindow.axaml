@@ -1,0 +1,63 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="250"
+        x:Class="IhcLab.AboutWindow"
+        Title="About IHC Lab"
+        Width="400" Height="250"
+        WindowStartupLocation="CenterOwner"
+        CanResize="false">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Project Name -->
+        <TextBlock Grid.Row="0"
+                   Text="IHC Lab"
+                   FontSize="24"
+                   FontWeight="Bold"
+                   HorizontalAlignment="Center"/>
+
+        <!-- GitHub Link -->
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Center">
+            <TextBlock Text="GitHub: " VerticalAlignment="Center"/>
+            <TextBlock Name="RepoLink"
+                       Foreground="Blue"
+                       TextDecorations="Underline"
+                       Cursor="Hand"
+                       PointerPressed="OnRepoLinkClick"
+                       VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Author -->
+        <TextBlock Name="RepoAuthors" Grid.Row="4"
+                   FontSize="14"
+                   HorizontalAlignment="Center"/>
+
+        <!-- Description -->
+        <TextBlock Name="AppDescription" Grid.Row="6"
+                   FontSize="12"
+                   HorizontalAlignment="Center"
+                   TextWrapping="Wrap"
+                   Foreground="#666666"/>
+
+        <!-- Close Button -->
+        <Button Grid.Row="8"
+                Content="Close"
+                Width="80"
+                HorizontalAlignment="Center"
+                Click="OnCloseClick"/>
+    </Grid>
+</Window>
