@@ -6,6 +6,7 @@ using ihc_lab;
 using IhcLab;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
@@ -29,36 +30,6 @@ public class ServiceItem
 
 public class IhcDomain
 {
-
-    static private readonly object _lock = new object();
-    static private IhcDomain? _ihcDomainSingleton = null;
-
-    static public IhcDomain GetOrCreateIhcDomain()
-    {
-        lock (_lock)
-        {
-            if (_ihcDomainSingleton == null)
-            {
-                _ihcDomainSingleton = new IhcDomain();
-            }
-
-            return _ihcDomainSingleton;
-        }
-    }
-
-    static public void DisposeIhcDomain()
-    {
-        lock (_lock)
-        {
-            if (_ihcDomainSingleton != null)
-            {
-                _ihcDomainSingleton.Dispose();
-                _ihcDomainSingleton = null;
-            }
-        }
-    }
-
-
     public IhcSettings IhcSettings { get; init; }
     public ILoggerFactory loggerFactory { get; internal set; }
 
@@ -95,26 +66,18 @@ public class IhcDomain
         }
     }
 
-    private IhcDomain()
+    public IhcDomain()
     {
         var loggerFactory = Program.loggerFactory;
-        if (loggerFactory == null)
-          throw new Exception("logger factory not set");
 
         var config = Program.config;
-        if (config == null)
-          throw new Exception("configuration not set");
 
-        var settings = config.ihcSettings;
-        if (settings == null)
-        {
-            throw new InvalidDataException("Could not read IHC client settings from configuration");
-        }
+        var settings = config?.ihcSettings ?? new IhcSettings();
 
         this.IhcSettings = settings;
-        this.loggerFactory = loggerFactory;
+        this.loggerFactory = loggerFactory ?? new NullLoggerFactory();
 
-        var logger = loggerFactory.CreateLogger<IhcDomain>();
+        var logger = this.loggerFactory.CreateLogger<IhcDomain>();
 
         this.AuthenticationService = new AuthenticationService(logger, settings);
         this.ControllerService = new ControllerService(AuthenticationService);
@@ -127,9 +90,9 @@ public class IhcDomain
         this.TimeManagerService = new TimeManagerService(AuthenticationService);
         this.UserManagerService = new UserManagerService(AuthenticationService);
         this.AirlinkManagementService = new AirlinkManagementService(AuthenticationService);
-    }
+}
 
-    private void Dispose()
+    public void Dispose()
     {
         AuthenticationService.Dispose();
         // TelmetryTracerProvider?.Shutdown();

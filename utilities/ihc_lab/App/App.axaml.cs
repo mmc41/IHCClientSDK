@@ -10,11 +10,6 @@ public partial class App : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
-
-        IhcDomain ihcDomain = IhcDomain.GetOrCreateIhcDomain();
-        
-        ILogger logger = ihcDomain.loggerFactory.CreateLogger<App>();
-        logger.LogInformation("App Initialized");
     }
 
     public override void OnFrameworkInitializationCompleted()

@@ -106,8 +106,7 @@ namespace Ihc {
         public bool IsValueRuntime  { get; set; }
 
         /**
-         * Approximately the time this value was created/changed (in most cases
-         * just approximted by the the time this object was created).
+         * Approximately the time this value was created/changed (in most cases just approximated by the the time this object was created).
          *
          * Nb. Not used by IHC - For internal diagnostics only.
          */

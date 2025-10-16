@@ -69,10 +69,14 @@ public partial class DynField : UserControl
                 decimal val = (numericUpDown.Value ?? 0);
                 if (typeLower == "timespan")
                     return TimeSpan.FromMilliseconds((long)val);
-                else if (typeLower == "double")
+                else if (typeLower == "double" || typeLower == "single" || typeLower == "decimal")
                     return (double)val;
                 else if (typeLower == "long")
                     return (long)val;
+                else if (typeLower == "sbyte")
+                    return (sbyte)val;
+                else if (typeLower == "byte")
+                    return (byte)val;
                 else return (int)val;
             }
             else if (control is DatePicker datePicker)
@@ -101,11 +105,20 @@ public partial class DynField : UserControl
                 {
                     numericUpDown.Value = 0;
                 }
-                if (value is long longValue)
+                else if (value is long longValue)
                     numericUpDown.Value = longValue;
-                else
-                if (value is int intValue)
+                else if (value is int intValue)
                     numericUpDown.Value = intValue;
+                else if (value is byte byteValue)
+                    numericUpDown.Value = byteValue;
+                else if (value is sbyte sbyteValue)
+                    numericUpDown.Value = sbyteValue;
+                else if (value is decimal decimalValue)
+                    numericUpDown.Value = decimalValue;
+                else if (value is double doubleValue)
+                    numericUpDown.Value = (decimal)doubleValue;
+                else if (value is float floatValue)
+                    numericUpDown.Value = (decimal)floatValue;
                 else if (value is TimeSpan timespan)
                 {
                     numericUpDown.Value = timespan.Milliseconds;
@@ -113,7 +126,8 @@ public partial class DynField : UserControl
                 else if (int.TryParse(value?.ToString(), out int parsedValue))
                 {
                     numericUpDown.Value = parsedValue;
-                } else throw new Exception("Unexpected type: " + value?.GetType().Name);
+                }
+                else throw new Exception("Unexpected type: " + value?.GetType().Name);
             }
             else if (control is DatePicker datePicker)
             {
@@ -175,7 +189,9 @@ public partial class DynField : UserControl
             ToolTip.SetTip(textBox, $"Enter {typeLower} value");
             parentPanel.Children.Add(textBox);
         }
-        else if (typeLower == "integer" || typeLower == "int32" || typeLower == "int64" || typeLower == "int16" || typeLower == "long" || typeLower == "ulong" || typeLower == "byte" || typeLower == "sbyte" || typeLower == "short" || typeLower == "ushort" || typeLower == "double" || typeLower == "timespan")
+        else if (typeLower == "integer" || typeLower == "int32" || typeLower == "int64" || typeLower == "int16" || typeLower == "long" || typeLower == "ulong" || typeLower == "byte" || typeLower == "sbyte" || typeLower == "short" || typeLower == "ushort" 
+                || typeLower == "double" || typeLower == "single" || typeLower == "decimal" 
+                || typeLower == "timespan")
         {
             var numericUpDown = new NumericUpDown
             {
@@ -231,6 +247,38 @@ public partial class DynField : UserControl
 
             ToolTip.SetTip(datePicker, $"Select {typeLower} value");
             parentPanel.Children.Add(datePicker);
+        } else if (typeLower == "resourcevalue")
+        {
+             // Create a horizontal StackPanel to hold the radio buttons
+            var stackPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 10,
+                Name = "ValueCtrl"
+            };
+            
+            ToolTip.SetTip(stackPanel, $"Select {typeLower} value");
+
+            var resourceIdUpDown = new NumericUpDown
+            {
+                Name = "ValueCtrl.ResourceID",
+                FormatString = "N0",
+                ParsingNumberStyle = System.Globalization.NumberStyles.Integer,
+                Increment = 1,
+                MinWidth = 50,
+                Value = 0
+            };
+
+            var valueKindDropDown = new ComboBox
+            {
+                Name = "ValueCtrl.ValueKind",
+                ItemsSource = System.Enum.GetNames(typeof(Ihc.ResourceValue.ValueKind))
+            };
+
+            stackPanel.Children.Add(resourceIdUpDown);
+            stackPanel.Children.Add(valueKindDropDown);
+
+            parentPanel.Children.Add(stackPanel);
         }
         else throw new Exception("Unsupported type " + typeLower);
     }
