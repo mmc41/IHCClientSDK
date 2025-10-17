@@ -67,7 +67,7 @@ public partial class MainWindow : Window
         }
     }
 
-    public void RunButtonClickHandler(object sender, RoutedEventArgs e)
+    public async void RunButtonClickHandler(object sender, RoutedEventArgs e)
     {
         using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(RunButtonClickHandler), ActivityKind.Internal);
 
@@ -81,6 +81,12 @@ public partial class MainWindow : Window
                 (nameof(e), e)
             );
 
+            if (ServicesComboBox.SelectedItem is not ServiceItem serviceItem)
+            {
+                throw new Exception("No service selected.");
+            }
+
+
             // Get ServiceOperationMetadata from OperationsComboBox
             if (OperationsComboBox.SelectedItem is not ServiceOperationMetadata operationMetadata)
             {
@@ -92,7 +98,7 @@ public partial class MainWindow : Window
             // Get parameter values from DynField controls
             var parameterValues = OperationSupport.GetParameterValues(ParametersPanel, operationMetadata.Parameters);
 
-            String txt = operationMetadata.Name + " : " + String.Join(",", parameterValues.Select(p => p.ToString()));
+            string txt = await OperationSupport.DynCall(serviceItem.Service, operationMetadata, parameterValues);
 
             // Update result text view
             SetOutput(txt);

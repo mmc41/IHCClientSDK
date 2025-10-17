@@ -20,8 +20,33 @@ namespace Ihc {
         /**
         * Get time kind used for converting WS dates to DateTimeOffset.
         */
-        internal static DateTimeKind GetWSDateTimeKind() {
+        internal static DateTimeKind GetWSDateTimeKind()
+        {
             return DateTimeKind.Utc;
+        }
+
+        /**
+        * Safely try to create a DateTimeOffset from individual components.
+        * Return MinValue if invalud date.
+        */
+        internal static DateTimeOffset CreateDateTimeOffset(int year, int month, int day, int hours, int minutes, int seconds, TimeSpan offset) {
+            try {
+                // First validate that the date components are in valid ranges
+                if (year < 1 || year > 9999) return DateTimeOffset.MinValue;
+                if (month < 1 || month > 12) return DateTimeOffset.MinValue;
+                if (day < 1 || day > 31) return DateTimeOffset.MinValue;
+
+                // Clear time if out of bounds.
+                if (hours < 0 || hours > 23) hours = 0;
+                if (minutes < 0 || minutes > 59) minutes = 0;
+                if (seconds < 0 || seconds > 59) seconds = 0;
+
+                // Try to create the DateTimeOffset
+                return new DateTimeOffset(year, month, day, hours, minutes, seconds, offset);
+            }
+            catch {
+                return DateTimeOffset.MinValue;
+            }
         }
     }
 

@@ -6,6 +6,7 @@ using Ihc.Envelope;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text.Encodings.Web;
 
 namespace Ihc 
 {
@@ -91,27 +92,48 @@ namespace Ihc
             this.ihcClient = new Client(logger, cookieHandler, Url, settings);
         }
 
+        private string escapeXMl(string xmlString)
+        {
+            return System.Security.SecurityElement.Escape(xmlString);
+        }
+
         /**
          * Soap HTTP post action.
          */
         protected async Task<RESP> soapPost<RESP, REQ>(string soapAction, REQ request, OnOkCallBack onOkSideEffect = null)
         {
-            var req = Serialization.SerializeXml<RequestEnvelope<REQ>>(new RequestEnvelope<REQ>(request));
+            using var activity = Telemetry.ActivitySource.StartActivity(nameof(soapPost)+"."+soapAction, ActivityKind.Internal);
 
-            var httpResp = await ihcClient.Post(soapAction, req).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-
-            httpResp.EnsureSuccessStatusCode();
-
-            if (onOkSideEffect != null)
+            try
             {
-                onOkSideEffect(httpResp);
+                var req = Serialization.SerializeXml<RequestEnvelope<REQ>>(new RequestEnvelope<REQ>(request));
+
+                activity.SetParameters(
+                    (nameof(soapAction), soapAction),
+                    (nameof(request), escapeXMl(settings.LogSensitiveData ? req : SecurityHelper.RedactPassword(req))), // Use escaped string representation of request for activity logging.
+                    (nameof(onOkSideEffect), onOkSideEffect != null)
+                );
+
+                var httpResp = await ihcClient.Post(soapAction, req).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+
+                httpResp.EnsureSuccessStatusCode();
+
+                if (onOkSideEffect != null)
+                {
+                    onOkSideEffect(httpResp);
+                }
+
+                string respStr = await httpResp.Content.ReadAsStringAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+
+                activity?.SetReturnValue(escapeXMl(SecurityHelper.RedactPassword(respStr))); // Use escaped string representation of response for activity logging.
+
+                var respObj = Serialization.DeserializeXml<ResponseEnvelope<RESP>>(respStr);
+                return respObj.Body;
+            } catch (Exception ex)
+            {
+                activity.SetError(ex);
+                throw;
             }
-
-            string respStr = await httpResp.Content.ReadAsStringAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-
-            var respObj = Serialization.DeserializeXml<ResponseEnvelope<RESP>>(respStr);
-
-            return respObj.Body;
         }
     }
 }

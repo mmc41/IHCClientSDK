@@ -143,7 +143,7 @@ namespace Ihc {
                 {
                     activity?.SetParameters(
                         (nameof(userName), userName),
-                        (nameof(password), settings.AsyncContinueOnCapturedContext ? password : UserConstants.REDACTED_PASSWORD),
+                        (nameof(password), settings.LogSensitiveData ? password : UserConstants.REDACTED_PASSWORD),
                         (nameof(application), application)
                     );
 
@@ -178,7 +178,7 @@ namespace Ihc {
                         };
                         logger.LogInformation($"Successfully authenticated user: {user.Username}");
 
-                        activity?.SetReturnValue(user);
+                        activity?.SetReturnValue(user.ToString(settings.LogSensitiveData));
                         return user;
                     }
                     else if (result.loginFailedDueToAccountInvalid)

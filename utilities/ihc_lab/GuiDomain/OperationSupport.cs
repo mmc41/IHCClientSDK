@@ -1,4 +1,8 @@
 using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Ihc;
@@ -10,9 +14,80 @@ namespace IhcLab;
 /// </summary>
 public static class OperationSupport
 {
-    public static string DynCall(ServiceOperationMetadata operationMetadata, object data)
+    public static async Task<string> DynCall(IIHCService service, ServiceOperationMetadata operationMetadata, object[] parameterValues)
     {
-        return ""; // TODO
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(DynCall), ActivityKind.Internal);
+        activity?.SetTag(Ihc.Telemetry.argsTagPrefix, String.Join(",", parameterValues.Select(p => p.ToString())));
+
+        if (operationMetadata.Kind != ServiceOperationKind.AsyncFunction)
+            throw new NotSupportedException("Only normal async operations currently supported");
+
+        object taskObject = operationMetadata.Invoke(parameterValues);
+
+        if (taskObject == null)
+            throw new InvalidOperationException("Method invocation returned null");
+
+        // Get the declared return type from the method (not the runtime type which can be AsyncStateMachineBox)
+        Type taskType = operationMetadata.MethodInfo.ReturnType;
+
+        // Check if it's a Task (void) or Task<T>
+        if (taskType == typeof(Task))
+        {
+            // It's a Task (void async method)
+            await (Task)taskObject;
+            return "OK";
+        }
+        else if (taskType.IsGenericType && taskType.GetGenericTypeDefinition() == typeof(Task<>))
+        {
+            // It's a Task<T> - we need to await it and get the result
+            // Use dynamic to await the task
+            dynamic dynamicTask = taskObject;
+            await dynamicTask;
+
+            // Get the Result property
+            var resultProperty = taskType.GetProperty("Result");
+            if (resultProperty == null)
+                throw new InvalidOperationException("Task<T> does not have a Result property");
+
+            object? result = resultProperty.GetValue(taskObject);
+
+            // Format the result as a string
+            return FormatResult(result, operationMetadata.ReturnType);
+        }
+        else
+        {
+            throw new NotSupportedException($"Unsupported return type: {taskType.Name}");
+        }
+    }
+
+    /// <summary>
+    /// Formats a result object into a readable string representation.
+    /// </summary>
+    /// <param name="result">The result to format</param>
+    /// <param name="returnType">The return type metadata</param>
+    /// <returns>String representation of the result</returns>
+    private static string FormatResult(object? result, Type returnType)
+    {
+        if (result == null)
+            return "(null)";
+
+        // Handle arrays
+        if (result is System.Collections.IEnumerable enumerable && result is not string)
+        {
+            var items = enumerable.Cast<object>().ToArray();
+            if (items.Length == 0)
+                return "[]";
+
+            // Format array elements
+            var formattedItems = items.Select(item =>
+                item == null ? "null" :
+                item is string ? $"\"{item}\"" :
+                item.ToString() ?? "null"
+            );
+            return $"[{string.Join(", ", formattedItems)}]";
+        }
+
+        return result.ToString() ?? "(empty)";
     }
 
     /// <summary>

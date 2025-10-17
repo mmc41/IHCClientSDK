@@ -98,7 +98,7 @@ public partial class DynField : UserControl
 
             string typeLower = typeForControl.ToLower();
             if (control is TextBox textBox)
-                textBox.Text = value?.ToString() ?? "";
+                textBox.Text = value?.ToString()?.Trim() ?? "";
             else if (control is NumericUpDown numericUpDown)
             {
                 if (value == null)
