@@ -56,9 +56,9 @@ namespace Ihc
 
         public ILogger Logger { get { return logger; } }
 
-        protected Activity StartActivity(string operationName = null)
+        protected Activity StartActivity(string operationName)
         {
-            Activity activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            Activity activity = Telemetry.ActivitySource.StartActivity(this.GetType().Name+"."+operationName, ActivityKind.Internal);
             activity?.SetTag("service.name", this.GetType().Name); // Set name of IHC webservice highlevel wrapper as telemetry service name.
             activity?.SetTag("service.operation", operationName); // Set name of IHC webservice highlevel wrapper operation.          
             return activity;

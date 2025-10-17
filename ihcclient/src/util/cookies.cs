@@ -60,7 +60,7 @@ namespace Ihc {
 
         public void SetCookie(string _cookie)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using var activity = Telemetry.ActivitySource.StartActivity(nameof(SetCookie), ActivityKind.Internal);
             activity?.SetParameters(
                 (nameof(_cookie), logSensitiveData ? _cookie: UserConstants.REDACTED_PASSWORD)
             );

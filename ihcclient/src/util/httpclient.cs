@@ -53,8 +53,7 @@ namespace Ihc {
 
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
-                using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-                // activity?.SetTag("service.name", "httpclient");
+                using var activity = Telemetry.ActivitySource.StartActivity(nameof(SendAsync), ActivityKind.Internal);
                 activity?.SetTag("http.request.method", request.Method); // Use opentel standard attribute name for method tag.
                 activity?.SetTag("http.url", request.RequestUri); // Use opentel standard attribute name for url tag.
 

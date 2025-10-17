@@ -101,10 +101,9 @@ namespace Ihc {
         /// <returns>List of metadata for service operations</returns>
         public static IReadOnlyList<ServiceOperationMetadata> GetOperations(IIHCService service)
         {
-            using Activity activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using Activity activity = Telemetry.ActivitySource.StartActivity(nameof(GetOperations), ActivityKind.Internal);
             
             var serviceType = service.GetType();
-            activity?.SetTag("service.name", typeof(ServiceMetadata).Name);
             activity?.SetParameters((nameof(service), service.GetType().Name));
             activity?.SetTag("cachedResult", true); // Assume cached by default
 
