@@ -10,6 +10,11 @@ namespace IhcLab;
 /// </summary>
 public static class OperationSupport
 {
+    public static string DynCall(ServiceOperationMetadata operationMetadata, object data)
+    {
+        return ""; // TODO
+    }
+
     /// <summary>
     /// Adds field controls to the specified panel based on field metadata.
     /// Handles both simple and complex types (records/arrays).

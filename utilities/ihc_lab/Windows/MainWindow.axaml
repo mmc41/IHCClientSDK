@@ -14,7 +14,13 @@
                 <Separator/>
                 <MenuItem Header="_Exit" Click="ExitMenuItemClick"/>
             </MenuItem>
+            <MenuItem Header="_Edit">
+                <MenuItem Name="CopyOutputMenuItem" Header="Copy Result to Clipboard" Click="CopyOutputMenuItemClick"/>
+                <MenuItem Name="CopyErrorMenuItem" Header="Copy Error to Clipboard" Click="CopyErrorMenuItemClick"/>
+            </MenuItem>
             <MenuItem Header="_Help">
+                <MenuItem Name="OpenTelemetryMenuItem" Header="Open telemetry diagnostics" Click="OpenTelemetryMenuItemClick"/>
+                <Separator/>
                 <MenuItem Header="_About..." Click="AboutMenuItemClick"/>
             </MenuItem>
          </Menu>
@@ -56,15 +62,15 @@
             </Border>
             <Border Name="Result" Height="50" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
                 <StackPanel>
-                    <TextBlock FontSize="18">Output</TextBlock>
-                    <TextBlock xml:space="preserve" FontSize="12" Name="output"></TextBlock>
+                    <TextBlock Name="OutputHeading" FontSize="18">Output</TextBlock>
+                    <TextBlock xml:space="preserve" FontSize="12" Name="Output"></TextBlock>
                 </StackPanel>
             </Border>
             <Border Name="Status" Height="50" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
                 <StackPanel>
                     <TextBlock Name="ErrorHeading" FontSize="18" IsVisible="false">Errors:</TextBlock>
-                    <TextBlock Name="ErrorContent" FontSize="12" xml:space="preserve"></TextBlock>
-                    <TextBlock Name="WarningContent" FontSize="12" xml:space="preserve"></TextBlock>
+                    <TextBlock Name="WarningHeading" FontSize="18" IsVisible="false">Errors:</TextBlock>                    
+                    <TextBlock Name="ErrorWarningContent" FontSize="12" xml:space="preserve"></TextBlock>
                 </StackPanel>
             </Border>
         </StackPanel>
