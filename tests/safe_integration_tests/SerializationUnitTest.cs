@@ -253,6 +253,14 @@ namespace Ihc.Tests
         #endregion
     
         #region Bug tests
+        /// <summary>
+        /// This bug is due to the controller provided WSDL being inconsistent with the XML returned by the controller.
+        /// The WSDL defines the internal WSDate as a sequence in an order which is different from what the controller provides (the response xml in the test).
+        /// Thus the generate soap class for WSDate has order set [System.Xml.Serialization.XmlElementAttribute(Order=xxx)] which will cause deserialization to set 
+        /// fields out of order to 0. 
+        /// 
+        /// Fix: The WSDL or the generated soap classes must be fixed by replacing <xsd:sequence> with <xsd:all> and regenerating or by removing "Order=xxx" from XmlElementAttribute.
+        /// </summary>
         [Test]
         public void DeserializeUserXmlGotWrongDate()
         {
@@ -264,13 +272,13 @@ namespace Ihc.Tests
           Assert.That(o.Body.getUsers1[0].username, Is.EqualTo("testusername"));
           Assert.That(o.Body.getUsers1[0].password, Is.EqualTo("testpassword"));
           
-          // Bug check: Year and month.
+          // Bug check: Year and month are correctly deserialized
           Assert.That(o.Body.getUsers1[0].createdDate.monthWithJanuaryAsOne, Is.EqualTo(10));
           Assert.That(o.Body.getUsers1[0].createdDate.day, Is.EqualTo(1));
           Assert.That(o.Body.getUsers1[0].createdDate.year, Is.EqualTo(2019));
           Assert.That(o.Body.getUsers1[0].loginDate.monthWithJanuaryAsOne, Is.EqualTo(10));
-          Assert.That(o.Body.getUsers1[0].loginDate.day, Is.EqualTo(1));
-          Assert.That(o.Body.getUsers1[0].loginDate.year, Is.EqualTo(2019));
+          Assert.That(o.Body.getUsers1[0].loginDate.day, Is.EqualTo(17));
+          Assert.That(o.Body.getUsers1[0].loginDate.year, Is.EqualTo(2025));
         }
 
         #endregion
