@@ -115,7 +115,7 @@ public static class OperationSupport
             // Create a DynField control for this parameter
             var dynField = new DynField
             {
-                TypeForControl = field.Type.Name,
+                TypeForControl = field.Type,
                 Margin = new Thickness(0, 0, 20, 15),
                 Name = prefix + field.Name,
                 Tag = field

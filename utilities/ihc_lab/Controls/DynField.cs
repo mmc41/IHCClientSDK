@@ -31,13 +31,13 @@ public partial class DynField : UserControl
         CreateDynamicControl();
     }
 
-    private String typeForControl = "string";
+    private Type typeForControl = typeof(string);
 
     /// <summary>
     /// Set/Get the type that this control hosts.
     /// Can be one of following: String, bool, int/byte/sbyte/short/long, double, DateTimeOffset, TimeSpan
     /// </summary>
-    public String TypeForControl
+    public Type TypeForControl
     {
         get { return typeForControl; }
         set
@@ -58,14 +58,14 @@ public partial class DynField : UserControl
             if (control == null)
                 return null;
 
-            string typeLower = typeForControl.ToLower();
+            string typeLower = typeForControl.Name.ToLower();
 
             if (control is TextBox textBox)
             {
                 return textBox.Text;
             } else if (control is ComboBox comboBox)
             {
-                return comboBox.SelectedItem;
+                return (comboBox.SelectedItem as EnumItem)?.Value;
             }
             else if (control is NumericUpDown numericUpDown)
             {
@@ -99,15 +99,22 @@ public partial class DynField : UserControl
             if (control == null)
                 return;
 
-            string typeLower = typeForControl.ToLower();
+            string typeLower = typeForControl.Name.ToLower();
             if (control is TextBox textBox)
                 textBox.Text = value?.ToString()?.Trim() ?? "";
             else if (control is ComboBox comboBox)
             {
                 if (value != null && Tag is Ihc.FieldMetaData fieldMetaData && fieldMetaData.Type.IsEnum)
                 {
-                    // Try to select the enum value in the ComboBox
-                    comboBox.SelectedItem = value;
+                    // Find the EnumItem that matches the value
+                    var itemToSelect = comboBox.ItemsSource
+                        ?.Cast<EnumItem>()
+                        .FirstOrDefault(item => Equals(item.Value, value));
+
+                    if (itemToSelect != null)
+                    {
+                        comboBox.SelectedItem = itemToSelect;
+                    }
                 }
             }
             else if (control is NumericUpDown numericUpDown)
@@ -188,18 +195,9 @@ public partial class DynField : UserControl
         parentPanel.Children.Clear();
 
         // Create control based on type
-        string typeLower = typeForControl.ToLower();
-        if (typeLower == "string")
-        {
-            var textBox = new TextBox
-            {
-                Name = "ValueCtrl",
-                Text = "",
-                MinWidth = 100
-            };
-            ToolTip.SetTip(textBox, $"Enter {typeLower} value");
-            parentPanel.Children.Add(textBox);
-        } else if (typeLower == "enum")
+        string typeNameLower = typeForControl.Name.ToLower();
+
+        if (typeForControl.IsEnum)
         {
             var comboBox = new ComboBox
             {
@@ -210,19 +208,36 @@ public partial class DynField : UserControl
             // Get enum values from Tag if available
             if (Tag is Ihc.FieldMetaData fieldMetaData && fieldMetaData.Type.IsEnum)
             {
-                comboBox.ItemsSource = Enum.GetValues(fieldMetaData.Type);
-                if (comboBox.ItemsSource is Array enumValues && enumValues.Length > 0)
+                var enumItems = Enum.GetValues(fieldMetaData.Type)
+                    .Cast<object>()
+                    .Select(e => new EnumItem(e))
+                    .ToArray();
+
+                comboBox.ItemsSource = enumItems;
+                comboBox.DisplayMemberBinding = new Avalonia.Data.Binding(nameof(EnumItem.DisplayName));
+
+                if (enumItems.Length > 0)
                 {
                     comboBox.SelectedIndex = 0;
                 }
-            } else throw new Exception("No metdat found for enum type " + typeLower);
+            } else throw new Exception("No metadata found for enum type " + typeNameLower);
 
-            ToolTip.SetTip(comboBox, $"Select {typeLower} value");
+            ToolTip.SetTip(comboBox, $"Select {typeNameLower} value");
             parentPanel.Children.Add(comboBox);
 
-        } else if (typeLower == "integer" || typeLower == "int32" || typeLower == "int64" || typeLower == "int16" || typeLower == "long" || typeLower == "ulong" || typeLower == "byte" || typeLower == "sbyte" || typeLower == "short" || typeLower == "ushort"
-                || typeLower == "double" || typeLower == "single" || typeLower == "decimal"
-                || typeLower == "timespan")
+        } else if (typeNameLower == "string")
+        {
+            var textBox = new TextBox
+            {
+                Name = "ValueCtrl",
+                Text = "",
+                MinWidth = 100
+            };
+            ToolTip.SetTip(textBox, $"Enter {typeNameLower} value");
+            parentPanel.Children.Add(textBox);
+        } else if (typeNameLower == "integer" || typeNameLower == "int32" || typeNameLower == "int64" || typeNameLower == "int16" || typeNameLower == "long" || typeNameLower == "ulong" || typeNameLower == "byte" || typeNameLower == "sbyte" || typeNameLower == "short" || typeNameLower == "ushort"
+                || typeNameLower == "double" || typeNameLower == "single" || typeNameLower == "decimal"
+                || typeNameLower == "timespan")
         {
             var numericUpDown = new NumericUpDown
             {
@@ -233,10 +248,10 @@ public partial class DynField : UserControl
                 MinWidth = 50,
                 Value = 0
             };
-            ToolTip.SetTip(numericUpDown, $"Enter {typeLower} value");
+            ToolTip.SetTip(numericUpDown, $"Enter {typeNameLower} value");
             parentPanel.Children.Add(numericUpDown);
         }
-        else if (typeLower == "bool" || typeLower == "boolean")
+        else if (typeNameLower == "bool" || typeNameLower == "boolean")
         {
             // Create a horizontal StackPanel to hold the radio buttons
             var stackPanel = new StackPanel
@@ -246,7 +261,7 @@ public partial class DynField : UserControl
                 Name = "ValueCtrl"
             };
 
-            ToolTip.SetTip(stackPanel, $"Select {typeLower} value");
+            ToolTip.SetTip(stackPanel, $"Select {typeNameLower} value");
 
             var radioButtonTrue = new RadioButton
             {
@@ -267,7 +282,7 @@ public partial class DynField : UserControl
 
             parentPanel.Children.Add(stackPanel);
         }
-        else if (typeLower == "datetimeoffset")
+        else if (typeNameLower == "datetimeoffset")
         {
             var datePicker = new DatePicker
             {
@@ -276,10 +291,10 @@ public partial class DynField : UserControl
                 SelectedDate = DateTimeOffset.Now
             };
 
-            ToolTip.SetTip(datePicker, $"Select {typeLower} value");
+            ToolTip.SetTip(datePicker, $"Select {typeNameLower} value");
             parentPanel.Children.Add(datePicker);
         }
-        else if (typeLower == "resourcevalue")
+        else if (typeNameLower == "resourcevalue")
         {
             // Create a horizontal StackPanel to hold the radio buttons
             var stackPanel = new StackPanel
@@ -289,7 +304,7 @@ public partial class DynField : UserControl
                 Name = "ValueCtrl"
             };
 
-            ToolTip.SetTip(stackPanel, $"Select {typeLower} value");
+            ToolTip.SetTip(stackPanel, $"Select {typeNameLower} value");
 
             var resourceIdUpDown = new NumericUpDown
             {
@@ -312,6 +327,21 @@ public partial class DynField : UserControl
 
             parentPanel.Children.Add(stackPanel);
         }
-        else throw new Exception("Unsupported type " + typeLower);
+        else throw new Exception("Unsupported type " + typeNameLower);
+    }
+
+    /// <summary>
+    /// Helper class to wrap enum values with display names for ComboBox binding.
+    /// </summary>
+    private class EnumItem
+    {
+        public object Value { get; }
+        public string DisplayName { get; }
+
+        public EnumItem(object enumValue)
+        {
+            Value = enumValue;
+            DisplayName = enumValue.ToString() ?? string.Empty;
+        }
     }
 }

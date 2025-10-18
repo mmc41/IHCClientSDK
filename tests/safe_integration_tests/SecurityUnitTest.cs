@@ -22,7 +22,7 @@ namespace Ihc.Tests
                 Firstname = "John",
                 Lastname = "Doe",
                 Phone = "123-456-7890",
-                Group = UserGroup.Administrators,
+                Group = IhcUserGroup.Administrators,
                 Project = "testproject",
                 CreatedDate = DateTimeOffset.Parse("2024-01-01T00:00:00Z"),
                 LoginDate = DateTimeOffset.Parse("2024-01-02T00:00:00Z")
@@ -52,7 +52,7 @@ namespace Ihc.Tests
                 Firstname = "John",
                 Lastname = "Doe",
                 Phone = "123-456-7890",
-                Group = UserGroup.Administrators,
+                Group = IhcUserGroup.Administrators,
                 Project = "testproject",
                 CreatedDate = DateTimeOffset.Parse("2024-01-01T00:00:00Z"),
                 LoginDate = DateTimeOffset.Parse("2024-01-02T00:00:00Z")
@@ -80,7 +80,7 @@ namespace Ihc.Tests
                 Firstname = "John",
                 Lastname = "Doe",
                 Phone = "123-456-7890",
-                Group = UserGroup.Users,
+                Group = IhcUserGroup.Users,
                 Project = "testproject",
                 CreatedDate = DateTimeOffset.Parse("2024-01-01T00:00:00Z"),
                 LoginDate = DateTimeOffset.Parse("2024-01-02T00:00:00Z")

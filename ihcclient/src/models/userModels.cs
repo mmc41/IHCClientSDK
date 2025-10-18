@@ -16,16 +16,16 @@ namespace Ihc {
   /// <summary>
   /// High level enumeration for UserGroup values without soap distractions.
   /// </summary>
-  public enum UserGroup
+  public enum IhcUserGroup
   {
-    Administrators,
-
-    Users,
-
     /// <summary>
     /// Only used with not specified - not supported by IHC.
     /// </summary>
-    None 
+    None,
+    
+    Administrators,
+
+    Users
   };
 
     /// <summary>
@@ -39,7 +39,7 @@ namespace Ihc {
       public string Firstname { get; init; }
       public string Lastname { get; init; }
       public string Phone { get; init; }
-      public UserGroup Group { get; init; }
+      public IhcUserGroup Group { get; init; }
       public string Project { get; init; }
       public DateTimeOffset CreatedDate { get; init; }
       public DateTimeOffset LoginDate { get; init; }
@@ -59,7 +59,7 @@ namespace Ihc {
       /// <returns></returns>
       public override string ToString()
       {
-        return this.ToString(false); // No password output by default. 
+        return this.ToString(true); // Unsecure - may output password
       }
 
       /// <summary>

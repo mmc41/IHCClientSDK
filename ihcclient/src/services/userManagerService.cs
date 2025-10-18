@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Ihc.Soap.Usermanager;
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
+using System.Threading;
 
 namespace Ihc {
     /// <summary>
@@ -72,34 +73,34 @@ namespace Ihc {
 
         private readonly SoapImpl impl;
 
-        private UserGroup mapUserGroup(WSUserGroup group)
+        private IhcUserGroup mapUserGroup(WSUserGroup group)
         {
             if (group == null)
-                return UserGroup.None;
+                return IhcUserGroup.None;
 
             return mapUserGroup(group.type);
         }
 
-        internal static UserGroup mapUserGroup(string wsGroupType)
+        internal static IhcUserGroup mapUserGroup(string wsGroupType)
         {
             if (string.IsNullOrEmpty(wsGroupType))
-                return UserGroup.None;
+                return IhcUserGroup.None;
 
             switch (wsGroupType)
             {
-                case "text.usermanager.group_administrators": return UserGroup.Administrators;
-                case "gtext.users": return UserGroup.Users;
+                case "text.usermanager.group_administrators": return IhcUserGroup.Administrators;
+                case "gtext.users": return IhcUserGroup.Users;
                 default: throw new Exception("Unkown user group " + wsGroupType);
             }
         }
 
-        private WSUserGroup mapUserGroup(UserGroup group)
+        private WSUserGroup mapUserGroup(IhcUserGroup group)
         {
             string strType;
             switch (group)
             {
-                case UserGroup.Administrators: strType = "text.usermanager.group_administrators"; break;
-                case UserGroup.Users: strType = "gtext.users"; break;
+                case IhcUserGroup.Administrators: strType = "text.usermanager.group_administrators"; break;
+                case IhcUserGroup.Users: strType = "gtext.users"; break;
                 default: strType = null; break;
             }
 
@@ -207,6 +208,12 @@ namespace Ihc {
                 try
                 {
                     activity?.SetParameters((nameof(user), IhcSettings.LogSensitiveData ? user : user.RedactPasword()));
+
+                    if (user == null)
+                        throw new ArgumentException(message: "Parameter must be provided", paramName: nameof(user));
+
+                    if (string.IsNullOrEmpty(user.Username) || string.IsNullOrEmpty(user.Password) || user.Group==IhcUserGroup.None)
+                        throw new ArgumentException(message: "User object must have name, password and group set");
 
                     if (user?.Password == UserConstants.REDACTED_PASSWORD)
                         throw new ArgumentException($"Password of user should not be set to reserved value ${UserConstants.REDACTED_PASSWORD}. This is likely an error!");

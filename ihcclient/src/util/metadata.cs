@@ -38,7 +38,7 @@ namespace Ihc {
         public Type Type { get; init; } = type;
         public string Description { get; init; } = description;
         public FieldMetaData[] SubTypes { get; init; } = subtypes;
-        public bool IsSimple { get { return type.IsPrimitive || type == typeof(String) || type == typeof(Enum); } }
+        public bool IsSimple { get { return type.IsPrimitive || type == typeof(String) || type.IsEnum; } }
         public bool IsArray { get { return type.IsArray; } }
 
         public override string ToString()
