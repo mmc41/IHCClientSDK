@@ -55,8 +55,10 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" Grid.Row="0" Name="OperationDescription" TextWrapping="Wrap"></TextBlock>
-                    <StackPanel Grid.Column="0" Grid.Row="1" Name="ParametersPanel" Orientation="Vertical">
-                    </StackPanel>
+                    <ScrollViewer Grid.Column="0" Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <StackPanel Name="ParametersPanel" Orientation="Vertical">
+                        </StackPanel>
+                    </ScrollViewer>
                 </Grid>
             </Border>
             <Border Name="Result" MinHeight="50" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
