@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Ihc;
@@ -81,6 +82,8 @@ public partial class MainWindow : Window
         ClearErrorAndWarning();
         ClearOutput();
 
+        this.Cursor = new Cursor(StandardCursorType.Wait);
+
         try
         {
             activity?.SetParameters(
@@ -113,6 +116,9 @@ public partial class MainWindow : Window
         {
            activity?.SetError(ex);
            SetError(nameof(RunButtonClickHandler) + " error", ex);
+        } finally
+        {
+            this.Cursor = Cursor.Default;
         }
     }
 
