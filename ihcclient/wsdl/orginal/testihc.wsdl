@@ -1,0 +1,830 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<wsdl:definitions targetNamespace="utcs" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:tns="utcs" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<wsdl:types>
+<xsd:schema targetNamespace="utcs" xmlns="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="qualified">
+<xsd:element name="getAirlinkVersion1" nillable="true" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="getIOBoardVersion1" nillable="true" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="getWiserBoardVersion1" nillable="true" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="getWiserBoardMACAddress1" nillable="true" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="getWiserBoardHWVersion1" nillable="true" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="getWiserBoardSerialNumber1" nillable="true" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="getTimeAndDate1" nillable="true" type="xsd:long">
+</xsd:element>
+
+<xsd:element name="setTimeAndDate1" nillable="true" type="xsd:long">
+</xsd:element>
+
+<xsd:element name="burnIO1" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="testSdCard1" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="testIOBoard1" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="readUsbHost1" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="sendRS485Data1" nillable="true" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="sendRS485Data2" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="readRS485Data1" nillable="true" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="readRS485Data2" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:complexType name="WSUserGroup">
+<xsd:sequence>
+<xsd:element name="type" type="xsd:string">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:complexType name="WSDate">
+<xsd:sequence>
+<xsd:element name="monthWithJanuaryAsOne" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="day" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="hours" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="minutes" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="seconds" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="year" type="xsd:int">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:complexType name="WSUser">
+<xsd:sequence>
+<xsd:element name="createdDate" nillable="true" type="tns:WSDate">
+</xsd:element>
+
+<xsd:element name="loginDate" nillable="true" type="tns:WSDate">
+</xsd:element>
+
+<xsd:element name="username" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="password" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="email" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="firstname" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="lastname" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="phone" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="group" nillable="true" type="tns:WSUserGroup">
+</xsd:element>
+
+<xsd:element name="project" type="xsd:string">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:schema>
+</wsdl:types>
+
+<wsdl:message name="getAirlinkVersionRequest">
+</wsdl:message>
+
+<wsdl:message name="getAirlinkVersionResponse">
+<wsdl:part name="return" element="tns:getAirlinkVersion1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getIOBoardVersionRequest">
+</wsdl:message>
+
+<wsdl:message name="getIOBoardVersionResponse">
+<wsdl:part name="return" element="tns:getIOBoardVersion1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getWiserBoardVersionRequest">
+</wsdl:message>
+
+<wsdl:message name="getWiserBoardVersionResponse">
+<wsdl:part name="return" element="tns:getWiserBoardVersion1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getWiserBoardMACAddressRequest">
+</wsdl:message>
+
+<wsdl:message name="getWiserBoardMACAddressResponse">
+<wsdl:part name="return" element="tns:getWiserBoardMACAddress1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getWiserBoardHWVersionRequest">
+</wsdl:message>
+
+<wsdl:message name="getWiserBoardHWVersionResponse">
+<wsdl:part name="return" element="tns:getWiserBoardHWVersion1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getWiserBoardSerialNumberRequest">
+</wsdl:message>
+
+<wsdl:message name="getWiserBoardSerialNumberResponse">
+<wsdl:part name="return" element="tns:getWiserBoardSerialNumber1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="sendAirlinkPacketRequest">
+</wsdl:message>
+
+<wsdl:message name="sendAirlinkPacketResponse">
+</wsdl:message>
+
+<wsdl:message name="productionTestPassedRequest">
+</wsdl:message>
+
+<wsdl:message name="productionTestPassedResponse">
+</wsdl:message>
+
+<wsdl:message name="getTimeAndDateRequest">
+</wsdl:message>
+
+<wsdl:message name="getTimeAndDateResponse">
+<wsdl:part name="return" element="tns:getTimeAndDate1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="setTimeAndDateRequest">
+<wsdl:part name="parameter1" element="tns:setTimeAndDate1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="setTimeAndDateResponse">
+</wsdl:message>
+
+<wsdl:message name="burnIORequest">
+</wsdl:message>
+
+<wsdl:message name="burnIOResponse">
+<wsdl:part name="return" element="tns:burnIO1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="testSdCardRequest">
+</wsdl:message>
+
+<wsdl:message name="testSdCardResponse">
+<wsdl:part name="return" element="tns:testSdCard1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="turnOnRedLedRequest">
+</wsdl:message>
+
+<wsdl:message name="turnOnRedLedResponse">
+</wsdl:message>
+
+<wsdl:message name="turnOffRedLedRequest">
+</wsdl:message>
+
+<wsdl:message name="turnOffRedLedResponse">
+</wsdl:message>
+
+<wsdl:message name="turnOnGreenLedRequest">
+</wsdl:message>
+
+<wsdl:message name="turnOnGreenLedResponse">
+</wsdl:message>
+
+<wsdl:message name="turnOffGreenLedRequest">
+</wsdl:message>
+
+<wsdl:message name="turnOffGreenLedResponse">
+</wsdl:message>
+
+<wsdl:message name="turnOnBlueLedRequest">
+</wsdl:message>
+
+<wsdl:message name="turnOnBlueLedResponse">
+</wsdl:message>
+
+<wsdl:message name="turnOffBlueLedRequest">
+</wsdl:message>
+
+<wsdl:message name="turnOffBlueLedResponse">
+</wsdl:message>
+
+<wsdl:message name="turnOnLedsRequest">
+</wsdl:message>
+
+<wsdl:message name="turnOnLedsResponse">
+</wsdl:message>
+
+<wsdl:message name="testIOBoardRequest">
+</wsdl:message>
+
+<wsdl:message name="testIOBoardResponse">
+<wsdl:part name="return" element="tns:testIOBoard1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="readUsbHostRequest">
+</wsdl:message>
+
+<wsdl:message name="readUsbHostResponse">
+<wsdl:part name="return" element="tns:readUsbHost1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="sendRS485DataRequest">
+<wsdl:part name="parameter2" element="tns:sendRS485Data1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="sendRS485DataResponse">
+<wsdl:part name="return" element="tns:sendRS485Data2">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="readRS485DataRequest">
+<wsdl:part name="parameter3" element="tns:readRS485Data1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="readRS485DataResponse">
+<wsdl:part name="return" element="tns:readRS485Data2">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:portType name="TestIhcService">
+<wsdl:operation name="getAirlinkVersion">
+<wsdl:input name="inputMessageName1" message="tns:getAirlinkVersionRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName1" message="tns:getAirlinkVersionResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getIOBoardVersion">
+<wsdl:input name="inputMessageName2" message="tns:getIOBoardVersionRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName2" message="tns:getIOBoardVersionResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getWiserBoardVersion">
+<wsdl:input name="inputMessageName3" message="tns:getWiserBoardVersionRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName3" message="tns:getWiserBoardVersionResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getWiserBoardMACAddress">
+<wsdl:input name="inputMessageName4" message="tns:getWiserBoardMACAddressRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName4" message="tns:getWiserBoardMACAddressResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getWiserBoardHWVersion">
+<wsdl:input name="inputMessageName5" message="tns:getWiserBoardHWVersionRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName5" message="tns:getWiserBoardHWVersionResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getWiserBoardSerialNumber">
+<wsdl:input name="inputMessageName6" message="tns:getWiserBoardSerialNumberRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName6" message="tns:getWiserBoardSerialNumberResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="sendAirlinkPacket">
+<wsdl:input name="inputMessageName7" message="tns:sendAirlinkPacketRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName7" message="tns:sendAirlinkPacketResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="productionTestPassed">
+<wsdl:input name="inputMessageName8" message="tns:productionTestPassedRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName8" message="tns:productionTestPassedResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getTimeAndDate">
+<wsdl:input name="inputMessageName9" message="tns:getTimeAndDateRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName9" message="tns:getTimeAndDateResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="setTimeAndDate">
+<wsdl:input name="inputMessageName10" message="tns:setTimeAndDateRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName10" message="tns:setTimeAndDateResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="burnIO">
+<wsdl:input name="inputMessageName11" message="tns:burnIORequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName11" message="tns:burnIOResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="testSdCard">
+<wsdl:input name="inputMessageName12" message="tns:testSdCardRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName12" message="tns:testSdCardResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="turnOnRedLed">
+<wsdl:input name="inputMessageName13" message="tns:turnOnRedLedRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName13" message="tns:turnOnRedLedResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="turnOffRedLed">
+<wsdl:input name="inputMessageName14" message="tns:turnOffRedLedRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName14" message="tns:turnOffRedLedResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="turnOnGreenLed">
+<wsdl:input name="inputMessageName15" message="tns:turnOnGreenLedRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName15" message="tns:turnOnGreenLedResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="turnOffGreenLed">
+<wsdl:input name="inputMessageName16" message="tns:turnOffGreenLedRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName16" message="tns:turnOffGreenLedResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="turnOnBlueLed">
+<wsdl:input name="inputMessageName17" message="tns:turnOnBlueLedRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName17" message="tns:turnOnBlueLedResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="turnOffBlueLed">
+<wsdl:input name="inputMessageName18" message="tns:turnOffBlueLedRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName18" message="tns:turnOffBlueLedResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="turnOnLeds">
+<wsdl:input name="inputMessageName19" message="tns:turnOnLedsRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName19" message="tns:turnOnLedsResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="testIOBoard">
+<wsdl:input name="inputMessageName20" message="tns:testIOBoardRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName20" message="tns:testIOBoardResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="readUsbHost">
+<wsdl:input name="inputMessageName21" message="tns:readUsbHostRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName21" message="tns:readUsbHostResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="sendRS485Data">
+<wsdl:input name="inputMessageName22" message="tns:sendRS485DataRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName22" message="tns:sendRS485DataResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="readRS485Data">
+<wsdl:input name="inputMessageName23" message="tns:readRS485DataRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName23" message="tns:readRS485DataResponse">
+</wsdl:output>
+</wsdl:operation>
+</wsdl:portType>
+
+<wsdl:binding name="TestIhcServiceBinding" type="tns:TestIhcService">
+<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http">
+</soap:binding>
+
+<wsdl:operation name="getAirlinkVersion">
+<soap:operation soapAction="getAirlinkVersion" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName1">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName1">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getIOBoardVersion">
+<soap:operation soapAction="getIOBoardVersion" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName2">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName2">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getWiserBoardVersion">
+<soap:operation soapAction="getWiserBoardVersion" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName3">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName3">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getWiserBoardMACAddress">
+<soap:operation soapAction="getWiserBoardMACAddress" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName4">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName4">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getWiserBoardHWVersion">
+<soap:operation soapAction="getWiserBoardHWVersion" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName5">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName5">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getWiserBoardSerialNumber">
+<soap:operation soapAction="getWiserBoardSerialNumber" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName6">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName6">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="sendAirlinkPacket">
+<soap:operation soapAction="sendAirlinkPacket" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName7">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName7">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="productionTestPassed">
+<soap:operation soapAction="productionTestPassed" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName8">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName8">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getTimeAndDate">
+<soap:operation soapAction="getTimeAndDate" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName9">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName9">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="setTimeAndDate">
+<soap:operation soapAction="setTimeAndDate" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName10">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName10">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="burnIO">
+<soap:operation soapAction="burnIO" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName11">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName11">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="testSdCard">
+<soap:operation soapAction="testSdCard" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName12">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName12">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="turnOnRedLed">
+<soap:operation soapAction="turnOnRedLed" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName13">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName13">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="turnOffRedLed">
+<soap:operation soapAction="turnOffRedLed" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName14">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName14">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="turnOnGreenLed">
+<soap:operation soapAction="turnOnGreenLed" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName15">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName15">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="turnOffGreenLed">
+<soap:operation soapAction="turnOffGreenLed" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName16">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName16">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="turnOnBlueLed">
+<soap:operation soapAction="turnOnBlueLed" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName17">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName17">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="turnOffBlueLed">
+<soap:operation soapAction="turnOffBlueLed" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName18">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName18">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="turnOnLeds">
+<soap:operation soapAction="turnOnLeds" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName19">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName19">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="testIOBoard">
+<soap:operation soapAction="testIOBoard" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName20">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName20">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="readUsbHost">
+<soap:operation soapAction="readUsbHost" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName21">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName21">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="sendRS485Data">
+<soap:operation soapAction="sendRS485Data" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName22">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName22">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="readRS485Data">
+<soap:operation soapAction="readRS485Data" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName23">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName23">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+</wsdl:binding>
+
+<wsdl:service name="TestIhcServiceService">
+<wsdl:port name="TestIhcServiceBindingPort" binding="tns:TestIhcServiceBinding">
+<soap:address location="http://localhost/TestIhcService">
+</soap:address>
+</wsdl:port>
+</wsdl:service>
+</wsdl:definitions>

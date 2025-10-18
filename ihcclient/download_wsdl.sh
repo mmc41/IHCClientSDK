@@ -21,5 +21,7 @@ $wget http://$ip/wsdl/timemanager.wsdl
 $wget http://$ip/wsdl/usermanager.wsdl
 $wget http://$ip/wsdl/openapi.wsdl
 $wget http://$ip/wsdl/airlinkmanagement.wsdl
+$wget http://$ip/wsdl/smsmodem.wsdl
+$wget http://$ip/wsdl/testihc.wsdl
 
 cd ..

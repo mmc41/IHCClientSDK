@@ -1,0 +1,317 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<wsdl:definitions targetNamespace="utcs" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:tns="utcs" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<wsdl:types>
+<xsd:schema targetNamespace="utcs" xmlns="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="qualified">
+<xsd:complexType name="WSSMSModemSettings">
+<xsd:sequence>
+<xsd:element name="m_powerupMessage" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="m_powerdownMessage" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="m_powerdownNumber" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="m_relaySMS" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="m_forceStandAloneMode" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="m_sendLowBatteryNotification" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="m_sendLowBatteryNotificationLanguage" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="m_sendLEDDimmerErrorNotification" type="xsd:boolean">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:element name="setSMSModemSettings1" nillable="true" type="tns:WSSMSModemSettings">
+</xsd:element>
+
+<xsd:element name="getSMSModemSettings1" nillable="true" type="tns:WSSMSModemSettings">
+</xsd:element>
+
+<xsd:complexType name="WSSMSModemStatus">
+<xsd:sequence>
+<xsd:element name="antennaCoverage" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="mobileOperator" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="modemStatus" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="mobileNumber" type="xsd:string">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:element name="getSMSModemStatus1" nillable="true" type="tns:WSSMSModemStatus">
+</xsd:element>
+
+<xsd:complexType name="WSSMSModemInfo">
+<xsd:sequence>
+<xsd:element name="firmwareVersion" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="gSMChipVersion" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="hardwareRevision" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="productionDate" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="detected" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="serialNumber" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="iMEINumber" type="xsd:string">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:element name="getSMSModemInfo1" nillable="true" type="tns:WSSMSModemInfo">
+</xsd:element>
+
+<xsd:complexType name="WSUserGroup">
+<xsd:sequence>
+<xsd:element name="type" type="xsd:string">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:complexType name="WSDate">
+<xsd:sequence>
+<xsd:element name="day" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="hours" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="minutes" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="seconds" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="year" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="monthWithJanuaryAsOne" type="xsd:int">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:complexType name="WSUser">
+<xsd:sequence>
+<xsd:element name="createdDate" nillable="true" type="tns:WSDate">
+</xsd:element>
+
+<xsd:element name="loginDate" nillable="true" type="tns:WSDate">
+</xsd:element>
+
+<xsd:element name="username" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="password" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="email" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="firstname" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="lastname" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="phone" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="group" nillable="true" type="tns:WSUserGroup">
+</xsd:element>
+
+<xsd:element name="project" type="xsd:string">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:schema>
+</wsdl:types>
+
+<wsdl:message name="setSMSModemSettingsRequest">
+<wsdl:part name="parameter1" element="tns:setSMSModemSettings1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="setSMSModemSettingsResponse">
+</wsdl:message>
+
+<wsdl:message name="getSMSModemSettingsRequest">
+</wsdl:message>
+
+<wsdl:message name="getSMSModemSettingsResponse">
+<wsdl:part name="return" element="tns:getSMSModemSettings1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getSMSModemStatusRequest">
+</wsdl:message>
+
+<wsdl:message name="getSMSModemStatusResponse">
+<wsdl:part name="return" element="tns:getSMSModemStatus1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getSMSModemInfoRequest">
+</wsdl:message>
+
+<wsdl:message name="getSMSModemInfoResponse">
+<wsdl:part name="return" element="tns:getSMSModemInfo1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="resetSMSModemRequest">
+</wsdl:message>
+
+<wsdl:message name="resetSMSModemResponse">
+</wsdl:message>
+
+<wsdl:portType name="SMSModemService">
+<wsdl:operation name="setSMSModemSettings">
+<wsdl:input name="inputMessageName1" message="tns:setSMSModemSettingsRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName1" message="tns:setSMSModemSettingsResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getSMSModemSettings">
+<wsdl:input name="inputMessageName2" message="tns:getSMSModemSettingsRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName2" message="tns:getSMSModemSettingsResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getSMSModemStatus">
+<wsdl:input name="inputMessageName3" message="tns:getSMSModemStatusRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName3" message="tns:getSMSModemStatusResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getSMSModemInfo">
+<wsdl:input name="inputMessageName4" message="tns:getSMSModemInfoRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName4" message="tns:getSMSModemInfoResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="resetSMSModem">
+<wsdl:input name="inputMessageName5" message="tns:resetSMSModemRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName5" message="tns:resetSMSModemResponse">
+</wsdl:output>
+</wsdl:operation>
+</wsdl:portType>
+
+<wsdl:binding name="SMSModemServiceBinding" type="tns:SMSModemService">
+<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http">
+</soap:binding>
+
+<wsdl:operation name="setSMSModemSettings">
+<soap:operation soapAction="setSMSModemSettings" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName1">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName1">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getSMSModemSettings">
+<soap:operation soapAction="getSMSModemSettings" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName2">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName2">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getSMSModemStatus">
+<soap:operation soapAction="getSMSModemStatus" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName3">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName3">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getSMSModemInfo">
+<soap:operation soapAction="getSMSModemInfo" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName4">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName4">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="resetSMSModem">
+<soap:operation soapAction="resetSMSModem" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName5">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName5">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+</wsdl:binding>
+
+<wsdl:service name="SMSModemServiceService">
+<wsdl:port name="SMSModemServiceBindingPort" binding="tns:SMSModemServiceBinding">
+<soap:address location="http://localhost/SMSModemService">
+</soap:address>
+</wsdl:port>
+</wsdl:service>
+</wsdl:definitions>
