@@ -1,0 +1,863 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<wsdl:definitions targetNamespace="utcs" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:tns="utcs" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<wsdl:types>
+<xsd:schema targetNamespace="utcs" xmlns="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="qualified">
+<xsd:complexType name="WSControllerState">
+<xsd:sequence>
+<xsd:element name="state" type="xsd:string">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:element name="getState1" nillable="true" type="tns:WSControllerState">
+</xsd:element>
+
+<xsd:complexType name="WSFile">
+<xsd:sequence>
+<xsd:element name="data" type="xsd:base64Binary">
+</xsd:element>
+
+<xsd:element name="filename" type="xsd:string">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:element name="getBackup1" nillable="true" type="tns:WSFile">
+</xsd:element>
+
+<xsd:element name="getIHCProject1" nillable="true" type="tns:WSFile">
+</xsd:element>
+
+<xsd:element name="storeIHCProject1" nillable="true" type="tns:WSFile">
+</xsd:element>
+
+<xsd:element name="storeIHCProject2" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:complexType name="WSSdCardData">
+<xsd:sequence>
+<xsd:element name="size" type="xsd:long">
+</xsd:element>
+
+<xsd:element name="free" type="xsd:long">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:element name="getSdCardInfo1" nillable="true" type="tns:WSSdCardData">
+</xsd:element>
+
+<xsd:element name="setS0Consumption1" nillable="true" type="xsd:float">
+</xsd:element>
+
+<xsd:element name="setS0Consumption2" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="restore1" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:complexType name="WSDate">
+<xsd:all>
+<xsd:element name="hours" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="day" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="minutes" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="seconds" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="year" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="monthWithJanuaryAsOne" type="xsd:int">
+</xsd:element>
+</xsd:all>
+</xsd:complexType>
+
+<xsd:complexType name="WSProjectInfo">
+<xsd:sequence>
+<xsd:element name="visualMinorVersion" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="visualMajorVersion" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="projectMajorRevision" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="projectMinorRevision" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="lastmodified" nillable="true" type="tns:WSDate">
+</xsd:element>
+
+<xsd:element name="projectNumber" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="customerName" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="installerName" type="xsd:string">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:element name="getProjectInfo1" nillable="true" type="tns:WSProjectInfo">
+</xsd:element>
+
+<xsd:element name="isSDCardReady1" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="resetS0Values1" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="resetS0Values2" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="resetS0Values3" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="resetS0Values4" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="resetS0Values5" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="getS0MeterValue1" nillable="true" type="xsd:float">
+</xsd:element>
+
+<xsd:element name="enterProjectChangeMode1" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="exitProjectChangeMode1" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="isIHCProjectAvailable1" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="getIHCProjectSegment1" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="getIHCProjectSegment2" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="getIHCProjectSegment3" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="getIHCProjectSegment4" nillable="true" type="tns:WSFile">
+</xsd:element>
+
+<xsd:element name="storeIHCProjectSegment1" nillable="true" type="tns:WSFile">
+</xsd:element>
+
+<xsd:element name="storeIHCProjectSegment2" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="storeIHCProjectSegment3" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="storeIHCProjectSegment4" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="getIHCProjectSegmentationSize1" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="getIHCProjectNumberOfSegments1" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="waitForControllerStateChange1" nillable="true" type="tns:WSControllerState">
+</xsd:element>
+
+<xsd:element name="waitForControllerStateChange2" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="waitForControllerStateChange3" nillable="true" type="tns:WSControllerState">
+</xsd:element>
+
+<xsd:element name="setS0FiscalYearStart1" nillable="true" type="xsd:byte">
+</xsd:element>
+
+<xsd:element name="setS0FiscalYearStart2" nillable="true" type="xsd:byte">
+</xsd:element>
+</xsd:schema>
+</wsdl:types>
+
+<wsdl:message name="getStateRequest">
+</wsdl:message>
+
+<wsdl:message name="getStateResponse">
+<wsdl:part name="return" element="tns:getState1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getBackupRequest">
+</wsdl:message>
+
+<wsdl:message name="getBackupResponse">
+<wsdl:part name="return" element="tns:getBackup1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getIHCProjectRequest">
+</wsdl:message>
+
+<wsdl:message name="getIHCProjectResponse">
+<wsdl:part name="return" element="tns:getIHCProject1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="storeIHCProjectRequest">
+<wsdl:part name="parameter1" element="tns:storeIHCProject1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="storeIHCProjectResponse">
+<wsdl:part name="return" element="tns:storeIHCProject2">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getSdCardInfoRequest">
+</wsdl:message>
+
+<wsdl:message name="getSdCardInfoResponse">
+<wsdl:part name="return" element="tns:getSdCardInfo1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="setS0ConsumptionRequest">
+<wsdl:part name="parameter2" element="tns:setS0Consumption1">
+</wsdl:part>
+
+<wsdl:part name="parameter3" element="tns:setS0Consumption2">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="setS0ConsumptionResponse">
+</wsdl:message>
+
+<wsdl:message name="restoreRequest">
+</wsdl:message>
+
+<wsdl:message name="restoreResponse">
+<wsdl:part name="return" element="tns:restore1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getProjectInfoRequest">
+</wsdl:message>
+
+<wsdl:message name="getProjectInfoResponse">
+<wsdl:part name="return" element="tns:getProjectInfo1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="isSDCardReadyRequest">
+</wsdl:message>
+
+<wsdl:message name="isSDCardReadyResponse">
+<wsdl:part name="return" element="tns:isSDCardReady1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="resetS0ValuesRequest">
+<wsdl:part name="parameter4" element="tns:resetS0Values1">
+</wsdl:part>
+
+<wsdl:part name="parameter5" element="tns:resetS0Values2">
+</wsdl:part>
+
+<wsdl:part name="parameter6" element="tns:resetS0Values3">
+</wsdl:part>
+
+<wsdl:part name="parameter7" element="tns:resetS0Values4">
+</wsdl:part>
+
+<wsdl:part name="parameter8" element="tns:resetS0Values5">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="resetS0ValuesResponse">
+</wsdl:message>
+
+<wsdl:message name="getS0MeterValueRequest">
+</wsdl:message>
+
+<wsdl:message name="getS0MeterValueResponse">
+<wsdl:part name="return" element="tns:getS0MeterValue1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="enterProjectChangeModeRequest">
+</wsdl:message>
+
+<wsdl:message name="enterProjectChangeModeResponse">
+<wsdl:part name="return" element="tns:enterProjectChangeMode1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="exitProjectChangeModeRequest">
+</wsdl:message>
+
+<wsdl:message name="exitProjectChangeModeResponse">
+<wsdl:part name="return" element="tns:exitProjectChangeMode1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="isIHCProjectAvailableRequest">
+</wsdl:message>
+
+<wsdl:message name="isIHCProjectAvailableResponse">
+<wsdl:part name="return" element="tns:isIHCProjectAvailable1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getIHCProjectSegmentRequest">
+<wsdl:part name="parameter9" element="tns:getIHCProjectSegment1">
+</wsdl:part>
+
+<wsdl:part name="parameter10" element="tns:getIHCProjectSegment2">
+</wsdl:part>
+
+<wsdl:part name="parameter11" element="tns:getIHCProjectSegment3">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getIHCProjectSegmentResponse">
+<wsdl:part name="return" element="tns:getIHCProjectSegment4">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="storeIHCProjectSegmentRequest">
+<wsdl:part name="parameter12" element="tns:storeIHCProjectSegment1">
+</wsdl:part>
+
+<wsdl:part name="parameter13" element="tns:storeIHCProjectSegment2">
+</wsdl:part>
+
+<wsdl:part name="parameter14" element="tns:storeIHCProjectSegment3">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="storeIHCProjectSegmentResponse">
+<wsdl:part name="return" element="tns:storeIHCProjectSegment4">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getIHCProjectSegmentationSizeRequest">
+</wsdl:message>
+
+<wsdl:message name="getIHCProjectSegmentationSizeResponse">
+<wsdl:part name="return" element="tns:getIHCProjectSegmentationSize1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getIHCProjectNumberOfSegmentsRequest">
+</wsdl:message>
+
+<wsdl:message name="getIHCProjectNumberOfSegmentsResponse">
+<wsdl:part name="return" element="tns:getIHCProjectNumberOfSegments1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="waitForControllerStateChangeRequest">
+<wsdl:part name="parameter15" element="tns:waitForControllerStateChange1">
+</wsdl:part>
+
+<wsdl:part name="parameter16" element="tns:waitForControllerStateChange2">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="waitForControllerStateChangeResponse">
+<wsdl:part name="return" element="tns:waitForControllerStateChange3">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="setS0FiscalYearStartRequest">
+<wsdl:part name="parameter17" element="tns:setS0FiscalYearStart1">
+</wsdl:part>
+
+<wsdl:part name="parameter18" element="tns:setS0FiscalYearStart2">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="setS0FiscalYearStartResponse">
+</wsdl:message>
+
+<wsdl:portType name="ControllerService">
+<wsdl:operation name="getState">
+<wsdl:input name="inputMessageName1" message="tns:getStateRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName1" message="tns:getStateResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getBackup">
+<wsdl:input name="inputMessageName2" message="tns:getBackupRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName2" message="tns:getBackupResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getIHCProject">
+<wsdl:input name="inputMessageName3" message="tns:getIHCProjectRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName3" message="tns:getIHCProjectResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="storeIHCProject">
+<wsdl:input name="inputMessageName4" message="tns:storeIHCProjectRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName4" message="tns:storeIHCProjectResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getSdCardInfo">
+<wsdl:input name="inputMessageName5" message="tns:getSdCardInfoRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName5" message="tns:getSdCardInfoResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="setS0Consumption">
+<wsdl:input name="inputMessageName6" message="tns:setS0ConsumptionRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName6" message="tns:setS0ConsumptionResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="restore">
+<wsdl:input name="inputMessageName7" message="tns:restoreRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName7" message="tns:restoreResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getProjectInfo">
+<wsdl:input name="inputMessageName8" message="tns:getProjectInfoRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName8" message="tns:getProjectInfoResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="isSDCardReady">
+<wsdl:input name="inputMessageName9" message="tns:isSDCardReadyRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName9" message="tns:isSDCardReadyResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="resetS0Values">
+<wsdl:input name="inputMessageName10" message="tns:resetS0ValuesRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName10" message="tns:resetS0ValuesResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getS0MeterValue">
+<wsdl:input name="inputMessageName11" message="tns:getS0MeterValueRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName11" message="tns:getS0MeterValueResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="enterProjectChangeMode">
+<wsdl:input name="inputMessageName12" message="tns:enterProjectChangeModeRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName12" message="tns:enterProjectChangeModeResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="exitProjectChangeMode">
+<wsdl:input name="inputMessageName13" message="tns:exitProjectChangeModeRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName13" message="tns:exitProjectChangeModeResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="isIHCProjectAvailable">
+<wsdl:input name="inputMessageName14" message="tns:isIHCProjectAvailableRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName14" message="tns:isIHCProjectAvailableResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getIHCProjectSegment">
+<wsdl:input name="inputMessageName15" message="tns:getIHCProjectSegmentRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName15" message="tns:getIHCProjectSegmentResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="storeIHCProjectSegment">
+<wsdl:input name="inputMessageName16" message="tns:storeIHCProjectSegmentRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName16" message="tns:storeIHCProjectSegmentResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getIHCProjectSegmentationSize">
+<wsdl:input name="inputMessageName17" message="tns:getIHCProjectSegmentationSizeRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName17" message="tns:getIHCProjectSegmentationSizeResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getIHCProjectNumberOfSegments">
+<wsdl:input name="inputMessageName18" message="tns:getIHCProjectNumberOfSegmentsRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName18" message="tns:getIHCProjectNumberOfSegmentsResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="waitForControllerStateChange">
+<wsdl:input name="inputMessageName19" message="tns:waitForControllerStateChangeRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName19" message="tns:waitForControllerStateChangeResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="setS0FiscalYearStart">
+<wsdl:input name="inputMessageName20" message="tns:setS0FiscalYearStartRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName20" message="tns:setS0FiscalYearStartResponse">
+</wsdl:output>
+</wsdl:operation>
+</wsdl:portType>
+
+<wsdl:binding name="ControllerServiceBinding" type="tns:ControllerService">
+<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http">
+</soap:binding>
+
+<wsdl:operation name="getState">
+<soap:operation soapAction="getState" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName1">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName1">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getBackup">
+<soap:operation soapAction="getBackup" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName2">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName2">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getIHCProject">
+<soap:operation soapAction="getIHCProject" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName3">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName3">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="storeIHCProject">
+<soap:operation soapAction="storeIHCProject" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName4">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName4">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getSdCardInfo">
+<soap:operation soapAction="getSdCardInfo" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName5">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName5">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="setS0Consumption">
+<soap:operation soapAction="setS0Consumption" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName6">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName6">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="restore">
+<soap:operation soapAction="restore" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName7">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName7">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getProjectInfo">
+<soap:operation soapAction="getProjectInfo" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName8">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName8">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="isSDCardReady">
+<soap:operation soapAction="isSDCardReady" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName9">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName9">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="resetS0Values">
+<soap:operation soapAction="resetS0Values" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName10">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName10">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getS0MeterValue">
+<soap:operation soapAction="getS0MeterValue" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName11">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName11">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="enterProjectChangeMode">
+<soap:operation soapAction="enterProjectChangeMode" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName12">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName12">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="exitProjectChangeMode">
+<soap:operation soapAction="exitProjectChangeMode" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName13">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName13">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="isIHCProjectAvailable">
+<soap:operation soapAction="isIHCProjectAvailable" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName14">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName14">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getIHCProjectSegment">
+<soap:operation soapAction="getIHCProjectSegment" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName15">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName15">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="storeIHCProjectSegment">
+<soap:operation soapAction="storeIHCProjectSegment" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName16">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName16">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getIHCProjectSegmentationSize">
+<soap:operation soapAction="getIHCProjectSegmentationSize" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName17">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName17">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getIHCProjectNumberOfSegments">
+<soap:operation soapAction="getIHCProjectNumberOfSegments" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName18">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName18">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="waitForControllerStateChange">
+<soap:operation soapAction="waitForControllerStateChange" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName19">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName19">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="setS0FiscalYearStart">
+<soap:operation soapAction="setS0FiscalYearStart" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName20">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName20">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+</wsdl:binding>
+
+<wsdl:service name="ControllerServiceService">
+<wsdl:port name="ControllerServiceBindingPort" binding="tns:ControllerServiceBinding">
+<soap:address location="http://localhost/ControllerService">
+</soap:address>
+</wsdl:port>
+</wsdl:service>
+</wsdl:definitions>

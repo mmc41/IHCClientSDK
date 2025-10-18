@@ -7,256 +7,168 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Ihc.Soap.Timemanager
+namespace Ihc.Soap.Smsmodem
 {
     
     
     [System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Tools.ServiceModel.Svcutil", "8.0.0")]
-    [System.ServiceModel.ServiceContractAttribute(Namespace="utcs", ConfigurationName="Ihc.Soap.Timemanager.TimeManagerService")]
-    public interface TimeManagerService
+    [System.ServiceModel.ServiceContractAttribute(Namespace="utcs", ConfigurationName="Ihc.Soap.Smsmodem.SMSModemService")]
+    public interface SMSModemService
     {
         
-        [System.ServiceModel.OperationContractAttribute(Action="getTimeFromServer", ReplyAction="*")]
+        [System.ServiceModel.OperationContractAttribute(Action="setSMSModemSettings", ReplyAction="*")]
         [System.ServiceModel.XmlSerializerFormatAttribute(SupportFaults=true)]
-        System.Threading.Tasks.Task<Ihc.Soap.Timemanager.outputMessageName1> getTimeFromServerAsync(Ihc.Soap.Timemanager.inputMessageName1 request);
+        System.Threading.Tasks.Task<Ihc.Soap.Smsmodem.outputMessageName1> setSMSModemSettingsAsync(Ihc.Soap.Smsmodem.inputMessageName1 request);
         
-        [System.ServiceModel.OperationContractAttribute(Action="getCurrentLocalTime", ReplyAction="*")]
+        [System.ServiceModel.OperationContractAttribute(Action="getSMSModemSettings", ReplyAction="*")]
         [System.ServiceModel.XmlSerializerFormatAttribute(SupportFaults=true)]
-        System.Threading.Tasks.Task<Ihc.Soap.Timemanager.outputMessageName2> getCurrentLocalTimeAsync(Ihc.Soap.Timemanager.inputMessageName2 request);
+        System.Threading.Tasks.Task<Ihc.Soap.Smsmodem.outputMessageName2> getSMSModemSettingsAsync(Ihc.Soap.Smsmodem.inputMessageName2 request);
         
-        [System.ServiceModel.OperationContractAttribute(Action="getSettings", ReplyAction="*")]
+        [System.ServiceModel.OperationContractAttribute(Action="getSMSModemStatus", ReplyAction="*")]
         [System.ServiceModel.XmlSerializerFormatAttribute(SupportFaults=true)]
-        System.Threading.Tasks.Task<Ihc.Soap.Timemanager.outputMessageName3> getSettingsAsync(Ihc.Soap.Timemanager.inputMessageName3 request);
+        System.Threading.Tasks.Task<Ihc.Soap.Smsmodem.outputMessageName3> getSMSModemStatusAsync(Ihc.Soap.Smsmodem.inputMessageName3 request);
         
-        [System.ServiceModel.OperationContractAttribute(Action="setSettings", ReplyAction="*")]
+        [System.ServiceModel.OperationContractAttribute(Action="getSMSModemInfo", ReplyAction="*")]
         [System.ServiceModel.XmlSerializerFormatAttribute(SupportFaults=true)]
-        System.Threading.Tasks.Task<Ihc.Soap.Timemanager.outputMessageName4> setSettingsAsync(Ihc.Soap.Timemanager.inputMessageName4 request);
+        System.Threading.Tasks.Task<Ihc.Soap.Smsmodem.outputMessageName4> getSMSModemInfoAsync(Ihc.Soap.Smsmodem.inputMessageName4 request);
         
-        [System.ServiceModel.OperationContractAttribute(Action="getUptime", ReplyAction="*")]
+        [System.ServiceModel.OperationContractAttribute(Action="resetSMSModem", ReplyAction="*")]
         [System.ServiceModel.XmlSerializerFormatAttribute(SupportFaults=true)]
-        System.Threading.Tasks.Task<Ihc.Soap.Timemanager.outputMessageName5> getUptimeAsync(Ihc.Soap.Timemanager.inputMessageName5 request);
+        System.Threading.Tasks.Task<Ihc.Soap.Smsmodem.outputMessageName5> resetSMSModemAsync(Ihc.Soap.Smsmodem.inputMessageName5 request);
     }
     
     /// <remarks/>
     [System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Tools.ServiceModel.Svcutil", "8.0.0")]
     [System.Diagnostics.DebuggerStepThroughAttribute()]
     [System.Xml.Serialization.XmlTypeAttribute(Namespace="utcs")]
-    public partial class WSTimeServerConnectionResult
+    public partial class WSSMSModemSettings
     {
         
-        private bool connectionWasSuccessfulField;
+        private string m_powerupMessageField;
         
-        private long dateFromServerField;
+        private string m_powerdownMessageField;
         
-        private bool connectionFailedDueToUnknownHostField;
+        private string m_powerdownNumberField;
         
-        private bool connectionFailedDueToOtherErrorsField;
+        private bool m_relaySMSField;
+        
+        private bool m_forceStandAloneModeField;
+        
+        private bool m_sendLowBatteryNotificationField;
+        
+        private bool m_sendLowBatteryNotificationLanguageField;
+        
+        private bool m_sendLEDDimmerErrorNotificationField;
         
         /// <remarks/>
         [System.Xml.Serialization.XmlElementAttribute(Order=0)]
-        public bool connectionWasSuccessful
+        public string m_powerupMessage
         {
             get
             {
-                return this.connectionWasSuccessfulField;
+                return this.m_powerupMessageField;
             }
             set
             {
-                this.connectionWasSuccessfulField = value;
+                this.m_powerupMessageField = value;
             }
         }
         
         /// <remarks/>
         [System.Xml.Serialization.XmlElementAttribute(Order=1)]
-        public long dateFromServer
+        public string m_powerdownMessage
         {
             get
             {
-                return this.dateFromServerField;
+                return this.m_powerdownMessageField;
             }
             set
             {
-                this.dateFromServerField = value;
+                this.m_powerdownMessageField = value;
             }
         }
         
         /// <remarks/>
         [System.Xml.Serialization.XmlElementAttribute(Order=2)]
-        public bool connectionFailedDueToUnknownHost
+        public string m_powerdownNumber
         {
             get
             {
-                return this.connectionFailedDueToUnknownHostField;
+                return this.m_powerdownNumberField;
             }
             set
             {
-                this.connectionFailedDueToUnknownHostField = value;
+                this.m_powerdownNumberField = value;
             }
         }
         
         /// <remarks/>
         [System.Xml.Serialization.XmlElementAttribute(Order=3)]
-        public bool connectionFailedDueToOtherErrors
+        public bool m_relaySMS
         {
             get
             {
-                return this.connectionFailedDueToOtherErrorsField;
+                return this.m_relaySMSField;
             }
             set
             {
-                this.connectionFailedDueToOtherErrorsField = value;
-            }
-        }
-    }
-    
-    /// <remarks/>
-    [System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Tools.ServiceModel.Svcutil", "8.0.0")]
-    [System.Diagnostics.DebuggerStepThroughAttribute()]
-    [System.Xml.Serialization.XmlTypeAttribute(Namespace="utcs")]
-    public partial class WSTimeManagerSettings
-    {
-        
-        private bool synchroniseTimeAgainstServerField;
-        
-        private bool useDSTField;
-        
-        private int gmtOffsetInHoursField;
-        
-        private string serverNameField;
-        
-        private int syncIntervalInHoursField;
-        
-        private WSDate timeAndDateInUTCField;
-        
-        private bool online_calendar_update_onlineField;
-        
-        private string online_calendar_countryField;
-        
-        private int online_calendar_valid_untilField;
-        
-        /// <remarks/>
-        [System.Xml.Serialization.XmlElementAttribute(Order=0)]
-        public bool synchroniseTimeAgainstServer
-        {
-            get
-            {
-                return this.synchroniseTimeAgainstServerField;
-            }
-            set
-            {
-                this.synchroniseTimeAgainstServerField = value;
-            }
-        }
-        
-        /// <remarks/>
-        [System.Xml.Serialization.XmlElementAttribute(Order=1)]
-        public bool useDST
-        {
-            get
-            {
-                return this.useDSTField;
-            }
-            set
-            {
-                this.useDSTField = value;
-            }
-        }
-        
-        /// <remarks/>
-        [System.Xml.Serialization.XmlElementAttribute(Order=2)]
-        public int gmtOffsetInHours
-        {
-            get
-            {
-                return this.gmtOffsetInHoursField;
-            }
-            set
-            {
-                this.gmtOffsetInHoursField = value;
-            }
-        }
-        
-        /// <remarks/>
-        [System.Xml.Serialization.XmlElementAttribute(Order=3)]
-        public string serverName
-        {
-            get
-            {
-                return this.serverNameField;
-            }
-            set
-            {
-                this.serverNameField = value;
+                this.m_relaySMSField = value;
             }
         }
         
         /// <remarks/>
         [System.Xml.Serialization.XmlElementAttribute(Order=4)]
-        public int syncIntervalInHours
+        public bool m_forceStandAloneMode
         {
             get
             {
-                return this.syncIntervalInHoursField;
+                return this.m_forceStandAloneModeField;
             }
             set
             {
-                this.syncIntervalInHoursField = value;
+                this.m_forceStandAloneModeField = value;
             }
         }
         
         /// <remarks/>
-        [System.Xml.Serialization.XmlElementAttribute(IsNullable=true, Order=5)]
-        public WSDate timeAndDateInUTC
+        [System.Xml.Serialization.XmlElementAttribute(Order=5)]
+        public bool m_sendLowBatteryNotification
         {
             get
             {
-                return this.timeAndDateInUTCField;
+                return this.m_sendLowBatteryNotificationField;
             }
             set
             {
-                this.timeAndDateInUTCField = value;
+                this.m_sendLowBatteryNotificationField = value;
             }
         }
         
         /// <remarks/>
         [System.Xml.Serialization.XmlElementAttribute(Order=6)]
-        public bool online_calendar_update_online
+        public bool m_sendLowBatteryNotificationLanguage
         {
             get
             {
-                return this.online_calendar_update_onlineField;
+                return this.m_sendLowBatteryNotificationLanguageField;
             }
             set
             {
-                this.online_calendar_update_onlineField = value;
+                this.m_sendLowBatteryNotificationLanguageField = value;
             }
         }
         
         /// <remarks/>
         [System.Xml.Serialization.XmlElementAttribute(Order=7)]
-        public string online_calendar_country
+        public bool m_sendLEDDimmerErrorNotification
         {
             get
             {
-                return this.online_calendar_countryField;
+                return this.m_sendLEDDimmerErrorNotificationField;
             }
             set
             {
-                this.online_calendar_countryField = value;
-            }
-        }
-        
-        /// <remarks/>
-        [System.Xml.Serialization.XmlElementAttribute(Order=8)]
-        public int online_calendar_valid_until
-        {
-            get
-            {
-                return this.online_calendar_valid_untilField;
-            }
-            set
-            {
-                this.online_calendar_valid_untilField = value;
+                this.m_sendLEDDimmerErrorNotificationField = value;
             }
         }
     }
@@ -265,96 +177,190 @@ namespace Ihc.Soap.Timemanager
     [System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Tools.ServiceModel.Svcutil", "8.0.0")]
     [System.Diagnostics.DebuggerStepThroughAttribute()]
     [System.Xml.Serialization.XmlTypeAttribute(Namespace="utcs")]
-    public partial class WSDate
+    public partial class WSSMSModemInfo
     {
         
-        private int monthWithJanuaryAsOneField;
+        private string firmwareVersionField;
         
-        private int dayField;
+        private string gSMChipVersionField;
         
-        private int hoursField;
+        private string hardwareRevisionField;
         
-        private int minutesField;
+        private string productionDateField;
         
-        private int secondsField;
+        private bool detectedField;
         
-        private int yearField;
+        private string serialNumberField;
+        
+        private string iMEINumberField;
         
         /// <remarks/>
-        public int monthWithJanuaryAsOne
+        [System.Xml.Serialization.XmlElementAttribute(Order=0)]
+        public string firmwareVersion
         {
             get
             {
-                return this.monthWithJanuaryAsOneField;
+                return this.firmwareVersionField;
             }
             set
             {
-                this.monthWithJanuaryAsOneField = value;
+                this.firmwareVersionField = value;
             }
         }
         
         /// <remarks/>
-        public int day
+        [System.Xml.Serialization.XmlElementAttribute(Order=1)]
+        public string gSMChipVersion
         {
             get
             {
-                return this.dayField;
+                return this.gSMChipVersionField;
             }
             set
             {
-                this.dayField = value;
+                this.gSMChipVersionField = value;
             }
         }
         
         /// <remarks/>
-        public int hours
+        [System.Xml.Serialization.XmlElementAttribute(Order=2)]
+        public string hardwareRevision
         {
             get
             {
-                return this.hoursField;
+                return this.hardwareRevisionField;
             }
             set
             {
-                this.hoursField = value;
+                this.hardwareRevisionField = value;
             }
         }
         
         /// <remarks/>
-        public int minutes
+        [System.Xml.Serialization.XmlElementAttribute(Order=3)]
+        public string productionDate
         {
             get
             {
-                return this.minutesField;
+                return this.productionDateField;
             }
             set
             {
-                this.minutesField = value;
+                this.productionDateField = value;
             }
         }
         
         /// <remarks/>
-        public int seconds
+        [System.Xml.Serialization.XmlElementAttribute(Order=4)]
+        public bool detected
         {
             get
             {
-                return this.secondsField;
+                return this.detectedField;
             }
             set
             {
-                this.secondsField = value;
+                this.detectedField = value;
             }
         }
         
         /// <remarks/>
-        public int year
+        [System.Xml.Serialization.XmlElementAttribute(Order=5)]
+        public string serialNumber
         {
             get
             {
-                return this.yearField;
+                return this.serialNumberField;
             }
             set
             {
-                this.yearField = value;
+                this.serialNumberField = value;
+            }
+        }
+        
+        /// <remarks/>
+        [System.Xml.Serialization.XmlElementAttribute(Order=6)]
+        public string iMEINumber
+        {
+            get
+            {
+                return this.iMEINumberField;
+            }
+            set
+            {
+                this.iMEINumberField = value;
+            }
+        }
+    }
+    
+    /// <remarks/>
+    [System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Tools.ServiceModel.Svcutil", "8.0.0")]
+    [System.Diagnostics.DebuggerStepThroughAttribute()]
+    [System.Xml.Serialization.XmlTypeAttribute(Namespace="utcs")]
+    public partial class WSSMSModemStatus
+    {
+        
+        private string antennaCoverageField;
+        
+        private string mobileOperatorField;
+        
+        private string modemStatusField;
+        
+        private string mobileNumberField;
+        
+        /// <remarks/>
+        [System.Xml.Serialization.XmlElementAttribute(Order=0)]
+        public string antennaCoverage
+        {
+            get
+            {
+                return this.antennaCoverageField;
+            }
+            set
+            {
+                this.antennaCoverageField = value;
+            }
+        }
+        
+        /// <remarks/>
+        [System.Xml.Serialization.XmlElementAttribute(Order=1)]
+        public string mobileOperator
+        {
+            get
+            {
+                return this.mobileOperatorField;
+            }
+            set
+            {
+                this.mobileOperatorField = value;
+            }
+        }
+        
+        /// <remarks/>
+        [System.Xml.Serialization.XmlElementAttribute(Order=2)]
+        public string modemStatus
+        {
+            get
+            {
+                return this.modemStatusField;
+            }
+            set
+            {
+                this.modemStatusField = value;
+            }
+        }
+        
+        /// <remarks/>
+        [System.Xml.Serialization.XmlElementAttribute(Order=3)]
+        public string mobileNumber
+        {
+            get
+            {
+                return this.mobileNumberField;
+            }
+            set
+            {
+                this.mobileNumberField = value;
             }
         }
     }
@@ -368,15 +374,15 @@ namespace Ihc.Soap.Timemanager
         
         [System.ServiceModel.MessageBodyMemberAttribute(Namespace="utcs", Order=0)]
         [System.Xml.Serialization.XmlElementAttribute(IsNullable=true)]
-        public string getTimeFromServer1;
+        public Ihc.Soap.Smsmodem.WSSMSModemSettings setSMSModemSettings1;
         
         public inputMessageName1()
         {
         }
         
-        public inputMessageName1(string getTimeFromServer1)
+        public inputMessageName1(Ihc.Soap.Smsmodem.WSSMSModemSettings setSMSModemSettings1)
         {
-            this.getTimeFromServer1 = getTimeFromServer1;
+            this.setSMSModemSettings1 = setSMSModemSettings1;
         }
     }
     
@@ -387,17 +393,8 @@ namespace Ihc.Soap.Timemanager
     public partial class outputMessageName1
     {
         
-        [System.ServiceModel.MessageBodyMemberAttribute(Namespace="utcs", Order=0)]
-        [System.Xml.Serialization.XmlElementAttribute(IsNullable=true)]
-        public Ihc.Soap.Timemanager.WSTimeServerConnectionResult getTimeFromServer2;
-        
         public outputMessageName1()
         {
-        }
-        
-        public outputMessageName1(Ihc.Soap.Timemanager.WSTimeServerConnectionResult getTimeFromServer2)
-        {
-            this.getTimeFromServer2 = getTimeFromServer2;
         }
     }
     
@@ -422,15 +419,15 @@ namespace Ihc.Soap.Timemanager
         
         [System.ServiceModel.MessageBodyMemberAttribute(Namespace="utcs", Order=0)]
         [System.Xml.Serialization.XmlElementAttribute(IsNullable=true)]
-        public Ihc.Soap.Timemanager.WSDate getCurrentLocalTime1;
+        public Ihc.Soap.Smsmodem.WSSMSModemSettings getSMSModemSettings1;
         
         public outputMessageName2()
         {
         }
         
-        public outputMessageName2(Ihc.Soap.Timemanager.WSDate getCurrentLocalTime1)
+        public outputMessageName2(Ihc.Soap.Smsmodem.WSSMSModemSettings getSMSModemSettings1)
         {
-            this.getCurrentLocalTime1 = getCurrentLocalTime1;
+            this.getSMSModemSettings1 = getSMSModemSettings1;
         }
     }
     
@@ -455,15 +452,15 @@ namespace Ihc.Soap.Timemanager
         
         [System.ServiceModel.MessageBodyMemberAttribute(Namespace="utcs", Order=0)]
         [System.Xml.Serialization.XmlElementAttribute(IsNullable=true)]
-        public Ihc.Soap.Timemanager.WSTimeManagerSettings getSettings1;
+        public Ihc.Soap.Smsmodem.WSSMSModemStatus getSMSModemStatus1;
         
         public outputMessageName3()
         {
         }
         
-        public outputMessageName3(Ihc.Soap.Timemanager.WSTimeManagerSettings getSettings1)
+        public outputMessageName3(Ihc.Soap.Smsmodem.WSSMSModemStatus getSMSModemStatus1)
         {
-            this.getSettings1 = getSettings1;
+            this.getSMSModemStatus1 = getSMSModemStatus1;
         }
     }
     
@@ -474,17 +471,8 @@ namespace Ihc.Soap.Timemanager
     public partial class inputMessageName4
     {
         
-        [System.ServiceModel.MessageBodyMemberAttribute(Namespace="utcs", Order=0)]
-        [System.Xml.Serialization.XmlElementAttribute(IsNullable=true)]
-        public Ihc.Soap.Timemanager.WSTimeManagerSettings setSettings1;
-        
         public inputMessageName4()
         {
-        }
-        
-        public inputMessageName4(Ihc.Soap.Timemanager.WSTimeManagerSettings setSettings1)
-        {
-            this.setSettings1 = setSettings1;
         }
     }
     
@@ -497,15 +485,15 @@ namespace Ihc.Soap.Timemanager
         
         [System.ServiceModel.MessageBodyMemberAttribute(Namespace="utcs", Order=0)]
         [System.Xml.Serialization.XmlElementAttribute(IsNullable=true)]
-        public System.Nullable<int> setSettings2;
+        public Ihc.Soap.Smsmodem.WSSMSModemInfo getSMSModemInfo1;
         
         public outputMessageName4()
         {
         }
         
-        public outputMessageName4(System.Nullable<int> setSettings2)
+        public outputMessageName4(Ihc.Soap.Smsmodem.WSSMSModemInfo getSMSModemInfo1)
         {
-            this.setSettings2 = setSettings2;
+            this.getSMSModemInfo1 = getSMSModemInfo1;
         }
     }
     
@@ -528,28 +516,19 @@ namespace Ihc.Soap.Timemanager
     public partial class outputMessageName5
     {
         
-        [System.ServiceModel.MessageBodyMemberAttribute(Namespace="utcs", Order=0)]
-        [System.Xml.Serialization.XmlElementAttribute(IsNullable=true)]
-        public System.Nullable<long> getUptime1;
-        
         public outputMessageName5()
         {
-        }
-        
-        public outputMessageName5(System.Nullable<long> getUptime1)
-        {
-            this.getUptime1 = getUptime1;
         }
     }
     
     [System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Tools.ServiceModel.Svcutil", "8.0.0")]
-    public interface TimeManagerServiceChannel : Ihc.Soap.Timemanager.TimeManagerService, System.ServiceModel.IClientChannel
+    public interface SMSModemServiceChannel : Ihc.Soap.Smsmodem.SMSModemService, System.ServiceModel.IClientChannel
     {
     }
     
     [System.Diagnostics.DebuggerStepThroughAttribute()]
     [System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Tools.ServiceModel.Svcutil", "8.0.0")]
-    public partial class TimeManagerServiceClient : System.ServiceModel.ClientBase<Ihc.Soap.Timemanager.TimeManagerService>, Ihc.Soap.Timemanager.TimeManagerService
+    public partial class SMSModemServiceClient : System.ServiceModel.ClientBase<Ihc.Soap.Smsmodem.SMSModemService>, Ihc.Soap.Smsmodem.SMSModemService
     {
         
         /// <summary>
@@ -559,99 +538,98 @@ namespace Ihc.Soap.Timemanager
         /// <param name="clientCredentials">The client credentials</param>
         static partial void ConfigureEndpoint(System.ServiceModel.Description.ServiceEndpoint serviceEndpoint, System.ServiceModel.Description.ClientCredentials clientCredentials);
         
-        public TimeManagerServiceClient() : 
-                base(TimeManagerServiceClient.GetDefaultBinding(), TimeManagerServiceClient.GetDefaultEndpointAddress())
+        public SMSModemServiceClient() : 
+                base(SMSModemServiceClient.GetDefaultBinding(), SMSModemServiceClient.GetDefaultEndpointAddress())
         {
-            this.Endpoint.Name = EndpointConfiguration.TimeManagerServiceBindingPort.ToString();
+            this.Endpoint.Name = EndpointConfiguration.SMSModemServiceBindingPort.ToString();
             ConfigureEndpoint(this.Endpoint, this.ClientCredentials);
         }
         
-        public TimeManagerServiceClient(EndpointConfiguration endpointConfiguration) : 
-                base(TimeManagerServiceClient.GetBindingForEndpoint(endpointConfiguration), TimeManagerServiceClient.GetEndpointAddress(endpointConfiguration))
-        {
-            this.Endpoint.Name = endpointConfiguration.ToString();
-            ConfigureEndpoint(this.Endpoint, this.ClientCredentials);
-        }
-        
-        public TimeManagerServiceClient(EndpointConfiguration endpointConfiguration, string remoteAddress) : 
-                base(TimeManagerServiceClient.GetBindingForEndpoint(endpointConfiguration), new System.ServiceModel.EndpointAddress(remoteAddress))
+        public SMSModemServiceClient(EndpointConfiguration endpointConfiguration) : 
+                base(SMSModemServiceClient.GetBindingForEndpoint(endpointConfiguration), SMSModemServiceClient.GetEndpointAddress(endpointConfiguration))
         {
             this.Endpoint.Name = endpointConfiguration.ToString();
             ConfigureEndpoint(this.Endpoint, this.ClientCredentials);
         }
         
-        public TimeManagerServiceClient(EndpointConfiguration endpointConfiguration, System.ServiceModel.EndpointAddress remoteAddress) : 
-                base(TimeManagerServiceClient.GetBindingForEndpoint(endpointConfiguration), remoteAddress)
+        public SMSModemServiceClient(EndpointConfiguration endpointConfiguration, string remoteAddress) : 
+                base(SMSModemServiceClient.GetBindingForEndpoint(endpointConfiguration), new System.ServiceModel.EndpointAddress(remoteAddress))
         {
             this.Endpoint.Name = endpointConfiguration.ToString();
             ConfigureEndpoint(this.Endpoint, this.ClientCredentials);
         }
         
-        public TimeManagerServiceClient(System.ServiceModel.Channels.Binding binding, System.ServiceModel.EndpointAddress remoteAddress) : 
+        public SMSModemServiceClient(EndpointConfiguration endpointConfiguration, System.ServiceModel.EndpointAddress remoteAddress) : 
+                base(SMSModemServiceClient.GetBindingForEndpoint(endpointConfiguration), remoteAddress)
+        {
+            this.Endpoint.Name = endpointConfiguration.ToString();
+            ConfigureEndpoint(this.Endpoint, this.ClientCredentials);
+        }
+        
+        public SMSModemServiceClient(System.ServiceModel.Channels.Binding binding, System.ServiceModel.EndpointAddress remoteAddress) : 
                 base(binding, remoteAddress)
         {
         }
         
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
-        System.Threading.Tasks.Task<Ihc.Soap.Timemanager.outputMessageName1> Ihc.Soap.Timemanager.TimeManagerService.getTimeFromServerAsync(Ihc.Soap.Timemanager.inputMessageName1 request)
+        System.Threading.Tasks.Task<Ihc.Soap.Smsmodem.outputMessageName1> Ihc.Soap.Smsmodem.SMSModemService.setSMSModemSettingsAsync(Ihc.Soap.Smsmodem.inputMessageName1 request)
         {
-            return base.Channel.getTimeFromServerAsync(request);
+            return base.Channel.setSMSModemSettingsAsync(request);
         }
         
-        public System.Threading.Tasks.Task<Ihc.Soap.Timemanager.outputMessageName1> getTimeFromServerAsync(string getTimeFromServer1)
+        public System.Threading.Tasks.Task<Ihc.Soap.Smsmodem.outputMessageName1> setSMSModemSettingsAsync(Ihc.Soap.Smsmodem.WSSMSModemSettings setSMSModemSettings1)
         {
-            Ihc.Soap.Timemanager.inputMessageName1 inValue = new Ihc.Soap.Timemanager.inputMessageName1();
-            inValue.getTimeFromServer1 = getTimeFromServer1;
-            return ((Ihc.Soap.Timemanager.TimeManagerService)(this)).getTimeFromServerAsync(inValue);
-        }
-        
-        [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
-        System.Threading.Tasks.Task<Ihc.Soap.Timemanager.outputMessageName2> Ihc.Soap.Timemanager.TimeManagerService.getCurrentLocalTimeAsync(Ihc.Soap.Timemanager.inputMessageName2 request)
-        {
-            return base.Channel.getCurrentLocalTimeAsync(request);
-        }
-        
-        public System.Threading.Tasks.Task<Ihc.Soap.Timemanager.outputMessageName2> getCurrentLocalTimeAsync()
-        {
-            Ihc.Soap.Timemanager.inputMessageName2 inValue = new Ihc.Soap.Timemanager.inputMessageName2();
-            return ((Ihc.Soap.Timemanager.TimeManagerService)(this)).getCurrentLocalTimeAsync(inValue);
+            Ihc.Soap.Smsmodem.inputMessageName1 inValue = new Ihc.Soap.Smsmodem.inputMessageName1();
+            inValue.setSMSModemSettings1 = setSMSModemSettings1;
+            return ((Ihc.Soap.Smsmodem.SMSModemService)(this)).setSMSModemSettingsAsync(inValue);
         }
         
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
-        System.Threading.Tasks.Task<Ihc.Soap.Timemanager.outputMessageName3> Ihc.Soap.Timemanager.TimeManagerService.getSettingsAsync(Ihc.Soap.Timemanager.inputMessageName3 request)
+        System.Threading.Tasks.Task<Ihc.Soap.Smsmodem.outputMessageName2> Ihc.Soap.Smsmodem.SMSModemService.getSMSModemSettingsAsync(Ihc.Soap.Smsmodem.inputMessageName2 request)
         {
-            return base.Channel.getSettingsAsync(request);
+            return base.Channel.getSMSModemSettingsAsync(request);
         }
         
-        public System.Threading.Tasks.Task<Ihc.Soap.Timemanager.outputMessageName3> getSettingsAsync()
+        public System.Threading.Tasks.Task<Ihc.Soap.Smsmodem.outputMessageName2> getSMSModemSettingsAsync()
         {
-            Ihc.Soap.Timemanager.inputMessageName3 inValue = new Ihc.Soap.Timemanager.inputMessageName3();
-            return ((Ihc.Soap.Timemanager.TimeManagerService)(this)).getSettingsAsync(inValue);
-        }
-        
-        [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
-        System.Threading.Tasks.Task<Ihc.Soap.Timemanager.outputMessageName4> Ihc.Soap.Timemanager.TimeManagerService.setSettingsAsync(Ihc.Soap.Timemanager.inputMessageName4 request)
-        {
-            return base.Channel.setSettingsAsync(request);
-        }
-        
-        public System.Threading.Tasks.Task<Ihc.Soap.Timemanager.outputMessageName4> setSettingsAsync(Ihc.Soap.Timemanager.WSTimeManagerSettings setSettings1)
-        {
-            Ihc.Soap.Timemanager.inputMessageName4 inValue = new Ihc.Soap.Timemanager.inputMessageName4();
-            inValue.setSettings1 = setSettings1;
-            return ((Ihc.Soap.Timemanager.TimeManagerService)(this)).setSettingsAsync(inValue);
+            Ihc.Soap.Smsmodem.inputMessageName2 inValue = new Ihc.Soap.Smsmodem.inputMessageName2();
+            return ((Ihc.Soap.Smsmodem.SMSModemService)(this)).getSMSModemSettingsAsync(inValue);
         }
         
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
-        System.Threading.Tasks.Task<Ihc.Soap.Timemanager.outputMessageName5> Ihc.Soap.Timemanager.TimeManagerService.getUptimeAsync(Ihc.Soap.Timemanager.inputMessageName5 request)
+        System.Threading.Tasks.Task<Ihc.Soap.Smsmodem.outputMessageName3> Ihc.Soap.Smsmodem.SMSModemService.getSMSModemStatusAsync(Ihc.Soap.Smsmodem.inputMessageName3 request)
         {
-            return base.Channel.getUptimeAsync(request);
+            return base.Channel.getSMSModemStatusAsync(request);
         }
         
-        public System.Threading.Tasks.Task<Ihc.Soap.Timemanager.outputMessageName5> getUptimeAsync()
+        public System.Threading.Tasks.Task<Ihc.Soap.Smsmodem.outputMessageName3> getSMSModemStatusAsync()
         {
-            Ihc.Soap.Timemanager.inputMessageName5 inValue = new Ihc.Soap.Timemanager.inputMessageName5();
-            return ((Ihc.Soap.Timemanager.TimeManagerService)(this)).getUptimeAsync(inValue);
+            Ihc.Soap.Smsmodem.inputMessageName3 inValue = new Ihc.Soap.Smsmodem.inputMessageName3();
+            return ((Ihc.Soap.Smsmodem.SMSModemService)(this)).getSMSModemStatusAsync(inValue);
+        }
+        
+        [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
+        System.Threading.Tasks.Task<Ihc.Soap.Smsmodem.outputMessageName4> Ihc.Soap.Smsmodem.SMSModemService.getSMSModemInfoAsync(Ihc.Soap.Smsmodem.inputMessageName4 request)
+        {
+            return base.Channel.getSMSModemInfoAsync(request);
+        }
+        
+        public System.Threading.Tasks.Task<Ihc.Soap.Smsmodem.outputMessageName4> getSMSModemInfoAsync()
+        {
+            Ihc.Soap.Smsmodem.inputMessageName4 inValue = new Ihc.Soap.Smsmodem.inputMessageName4();
+            return ((Ihc.Soap.Smsmodem.SMSModemService)(this)).getSMSModemInfoAsync(inValue);
+        }
+        
+        [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
+        System.Threading.Tasks.Task<Ihc.Soap.Smsmodem.outputMessageName5> Ihc.Soap.Smsmodem.SMSModemService.resetSMSModemAsync(Ihc.Soap.Smsmodem.inputMessageName5 request)
+        {
+            return base.Channel.resetSMSModemAsync(request);
+        }
+        
+        public System.Threading.Tasks.Task<Ihc.Soap.Smsmodem.outputMessageName5> resetSMSModemAsync()
+        {
+            Ihc.Soap.Smsmodem.inputMessageName5 inValue = new Ihc.Soap.Smsmodem.inputMessageName5();
+            return ((Ihc.Soap.Smsmodem.SMSModemService)(this)).resetSMSModemAsync(inValue);
         }
         
         public virtual System.Threading.Tasks.Task OpenAsync()
@@ -668,7 +646,7 @@ namespace Ihc.Soap.Timemanager
         
         private static System.ServiceModel.Channels.Binding GetBindingForEndpoint(EndpointConfiguration endpointConfiguration)
         {
-            if ((endpointConfiguration == EndpointConfiguration.TimeManagerServiceBindingPort))
+            if ((endpointConfiguration == EndpointConfiguration.SMSModemServiceBindingPort))
             {
                 System.ServiceModel.BasicHttpBinding result = new System.ServiceModel.BasicHttpBinding();
                 result.MaxBufferSize = int.MaxValue;
@@ -682,27 +660,27 @@ namespace Ihc.Soap.Timemanager
         
         private static System.ServiceModel.EndpointAddress GetEndpointAddress(EndpointConfiguration endpointConfiguration)
         {
-            if ((endpointConfiguration == EndpointConfiguration.TimeManagerServiceBindingPort))
+            if ((endpointConfiguration == EndpointConfiguration.SMSModemServiceBindingPort))
             {
-                return new System.ServiceModel.EndpointAddress("http://localhost/TimeManagerService");
+                return new System.ServiceModel.EndpointAddress("http://localhost/SMSModemService");
             }
             throw new System.InvalidOperationException(string.Format("Could not find endpoint with name \'{0}\'.", endpointConfiguration));
         }
         
         private static System.ServiceModel.Channels.Binding GetDefaultBinding()
         {
-            return TimeManagerServiceClient.GetBindingForEndpoint(EndpointConfiguration.TimeManagerServiceBindingPort);
+            return SMSModemServiceClient.GetBindingForEndpoint(EndpointConfiguration.SMSModemServiceBindingPort);
         }
         
         private static System.ServiceModel.EndpointAddress GetDefaultEndpointAddress()
         {
-            return TimeManagerServiceClient.GetEndpointAddress(EndpointConfiguration.TimeManagerServiceBindingPort);
+            return SMSModemServiceClient.GetEndpointAddress(EndpointConfiguration.SMSModemServiceBindingPort);
         }
         
         public enum EndpointConfiguration
         {
             
-            TimeManagerServiceBindingPort,
+            SMSModemServiceBindingPort,
         }
     }
 }

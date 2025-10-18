@@ -2,7 +2,7 @@ using System.Threading.Tasks;
 using System;
 using System.Linq;
 using Microsoft.Extensions.Logging;
-using Ihc.Soap.AirlinkManagement;
+using Ihc.Soap.Airlinkmanagement;
 using System.Diagnostics;
 
 namespace Ihc
@@ -68,7 +68,7 @@ namespace Ihc
     {
         private readonly IAuthenticationService authService;
 
-        private class SoapImpl : ServiceBaseImpl, Ihc.Soap.AirlinkManagement.AirlinkManagementService
+        private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Airlinkmanagement.AirlinkManagementService
         {
             public SoapImpl(ILogger logger, ICookieHandler cookieHandler, IhcSettings settings) : base(logger, cookieHandler, settings, "AirlinkManagementService") { }
 

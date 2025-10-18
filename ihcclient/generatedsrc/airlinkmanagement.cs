@@ -7,54 +7,54 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Ihc.Soap.AirlinkManagement
+namespace Ihc.Soap.Airlinkmanagement
 {
     
     
     [System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Tools.ServiceModel.Svcutil", "8.0.0")]
-    [System.ServiceModel.ServiceContractAttribute(Namespace="utcs", ConfigurationName="Ihc.Soap.AirlinkManagement.AirlinkManagementService")]
+    [System.ServiceModel.ServiceContractAttribute(Namespace="utcs", ConfigurationName="Ihc.Soap.Airlinkmanagement.AirlinkManagementService")]
     public interface AirlinkManagementService
     {
         
         [System.ServiceModel.OperationContractAttribute(Action="enterRFConfiguration", ReplyAction="*")]
         [System.ServiceModel.XmlSerializerFormatAttribute(SupportFaults=true)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName1> enterRFConfigurationAsync(Ihc.Soap.AirlinkManagement.inputMessageName1 request);
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName1> enterRFConfigurationAsync(Ihc.Soap.Airlinkmanagement.inputMessageName1 request);
         
         [System.ServiceModel.OperationContractAttribute(Action="exitRFConfiguration", ReplyAction="*")]
         [System.ServiceModel.XmlSerializerFormatAttribute(SupportFaults=true)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName2> exitRFConfigurationAsync(Ihc.Soap.AirlinkManagement.inputMessageName2 request);
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName2> exitRFConfigurationAsync(Ihc.Soap.Airlinkmanagement.inputMessageName2 request);
         
         [System.ServiceModel.OperationContractAttribute(Action="testRFActuatorWithSerialNumber", ReplyAction="*")]
         [System.ServiceModel.XmlSerializerFormatAttribute(SupportFaults=true)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName3> testRFActuatorWithSerialNumberAsync(Ihc.Soap.AirlinkManagement.inputMessageName3 request);
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName3> testRFActuatorWithSerialNumberAsync(Ihc.Soap.Airlinkmanagement.inputMessageName3 request);
         
         [System.ServiceModel.OperationContractAttribute(Action="getDevicesRunningOutOfBattery", ReplyAction="*")]
         [System.ServiceModel.XmlSerializerFormatAttribute(SupportFaults=true)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName4> getDevicesRunningOutOfBatteryAsync(Ihc.Soap.AirlinkManagement.inputMessageName4 request);
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName4> getDevicesRunningOutOfBatteryAsync(Ihc.Soap.Airlinkmanagement.inputMessageName4 request);
         
         [System.ServiceModel.OperationContractAttribute(Action="waitForDeviceDetected", ReplyAction="*")]
         [System.ServiceModel.XmlSerializerFormatAttribute(SupportFaults=true)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName5> waitForDeviceDetectedAsync(Ihc.Soap.AirlinkManagement.inputMessageName5 request);
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName5> waitForDeviceDetectedAsync(Ihc.Soap.Airlinkmanagement.inputMessageName5 request);
         
         [System.ServiceModel.OperationContractAttribute(Action="waitForDeviceTestResult", ReplyAction="*")]
         [System.ServiceModel.XmlSerializerFormatAttribute(SupportFaults=true)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName6> waitForDeviceTestResultAsync(Ihc.Soap.AirlinkManagement.inputMessageName6 request);
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName6> waitForDeviceTestResultAsync(Ihc.Soap.Airlinkmanagement.inputMessageName6 request);
         
         [System.ServiceModel.OperationContractAttribute(Action="getDetectedDeviceList", ReplyAction="*")]
         [System.ServiceModel.XmlSerializerFormatAttribute(SupportFaults=true)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName7> getDetectedDeviceListAsync(Ihc.Soap.AirlinkManagement.inputMessageName7 request);
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName7> getDetectedDeviceListAsync(Ihc.Soap.Airlinkmanagement.inputMessageName7 request);
         
         [System.ServiceModel.OperationContractAttribute(Action="enterRFTest", ReplyAction="*")]
         [System.ServiceModel.XmlSerializerFormatAttribute(SupportFaults=true)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName8> enterRFTestAsync(Ihc.Soap.AirlinkManagement.inputMessageName8 request);
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName8> enterRFTestAsync(Ihc.Soap.Airlinkmanagement.inputMessageName8 request);
         
         [System.ServiceModel.OperationContractAttribute(Action="exitRFTest", ReplyAction="*")]
         [System.ServiceModel.XmlSerializerFormatAttribute(SupportFaults=true)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName9> exitRFTestAsync(Ihc.Soap.AirlinkManagement.inputMessageName9 request);
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName9> exitRFTestAsync(Ihc.Soap.Airlinkmanagement.inputMessageName9 request);
         
         [System.ServiceModel.OperationContractAttribute(Action="getBatteryLevel", ReplyAction="*")]
         [System.ServiceModel.XmlSerializerFormatAttribute(SupportFaults=true)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName10> getBatteryLevelAsync(Ihc.Soap.AirlinkManagement.inputMessageName10 request);
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName10> getBatteryLevelAsync(Ihc.Soap.Airlinkmanagement.inputMessageName10 request);
     }
     
     [System.Diagnostics.DebuggerStepThroughAttribute()]
@@ -333,13 +333,13 @@ namespace Ihc.Soap.AirlinkManagement
         
         [System.ServiceModel.MessageBodyMemberAttribute(Namespace="utcs", Order=0)]
         [System.Xml.Serialization.XmlElementAttribute(IsNullable=true)]
-        public Ihc.Soap.AirlinkManagement.WSRFDevice waitForDeviceDetected2;
+        public Ihc.Soap.Airlinkmanagement.WSRFDevice waitForDeviceDetected2;
         
         public outputMessageName5()
         {
         }
         
-        public outputMessageName5(Ihc.Soap.AirlinkManagement.WSRFDevice waitForDeviceDetected2)
+        public outputMessageName5(Ihc.Soap.Airlinkmanagement.WSRFDevice waitForDeviceDetected2)
         {
             this.waitForDeviceDetected2 = waitForDeviceDetected2;
         }
@@ -375,13 +375,13 @@ namespace Ihc.Soap.AirlinkManagement
         
         [System.ServiceModel.MessageBodyMemberAttribute(Namespace="utcs", Order=0)]
         [System.Xml.Serialization.XmlElementAttribute(IsNullable=true)]
-        public Ihc.Soap.AirlinkManagement.WSRFDevice waitForDeviceTestResult2;
+        public Ihc.Soap.Airlinkmanagement.WSRFDevice waitForDeviceTestResult2;
         
         public outputMessageName6()
         {
         }
         
-        public outputMessageName6(Ihc.Soap.AirlinkManagement.WSRFDevice waitForDeviceTestResult2)
+        public outputMessageName6(Ihc.Soap.Airlinkmanagement.WSRFDevice waitForDeviceTestResult2)
         {
             this.waitForDeviceTestResult2 = waitForDeviceTestResult2;
         }
@@ -409,13 +409,13 @@ namespace Ihc.Soap.AirlinkManagement
         [System.ServiceModel.MessageBodyMemberAttribute(Namespace="utcs", Order=0)]
         [System.Xml.Serialization.XmlArrayAttribute(IsNullable=true)]
         [System.Xml.Serialization.XmlArrayItemAttribute("arrayItem")]
-        public Ihc.Soap.AirlinkManagement.WSRFDevice[] getDetectedDeviceList1;
+        public Ihc.Soap.Airlinkmanagement.WSRFDevice[] getDetectedDeviceList1;
         
         public outputMessageName7()
         {
         }
         
-        public outputMessageName7(Ihc.Soap.AirlinkManagement.WSRFDevice[] getDetectedDeviceList1)
+        public outputMessageName7(Ihc.Soap.Airlinkmanagement.WSRFDevice[] getDetectedDeviceList1)
         {
             this.getDetectedDeviceList1 = getDetectedDeviceList1;
         }
@@ -530,13 +530,13 @@ namespace Ihc.Soap.AirlinkManagement
     }
     
     [System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Tools.ServiceModel.Svcutil", "8.0.0")]
-    public interface AirlinkManagementServiceChannel : Ihc.Soap.AirlinkManagement.AirlinkManagementService, System.ServiceModel.IClientChannel
+    public interface AirlinkManagementServiceChannel : Ihc.Soap.Airlinkmanagement.AirlinkManagementService, System.ServiceModel.IClientChannel
     {
     }
     
     [System.Diagnostics.DebuggerStepThroughAttribute()]
     [System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Tools.ServiceModel.Svcutil", "8.0.0")]
-    public partial class AirlinkManagementServiceClient : System.ServiceModel.ClientBase<Ihc.Soap.AirlinkManagement.AirlinkManagementService>, Ihc.Soap.AirlinkManagement.AirlinkManagementService
+    public partial class AirlinkManagementServiceClient : System.ServiceModel.ClientBase<Ihc.Soap.Airlinkmanagement.AirlinkManagementService>, Ihc.Soap.Airlinkmanagement.AirlinkManagementService
     {
         
         /// <summary>
@@ -580,127 +580,127 @@ namespace Ihc.Soap.AirlinkManagement
         }
         
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName1> Ihc.Soap.AirlinkManagement.AirlinkManagementService.enterRFConfigurationAsync(Ihc.Soap.AirlinkManagement.inputMessageName1 request)
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName1> Ihc.Soap.Airlinkmanagement.AirlinkManagementService.enterRFConfigurationAsync(Ihc.Soap.Airlinkmanagement.inputMessageName1 request)
         {
             return base.Channel.enterRFConfigurationAsync(request);
         }
         
-        public System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName1> enterRFConfigurationAsync()
+        public System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName1> enterRFConfigurationAsync()
         {
-            Ihc.Soap.AirlinkManagement.inputMessageName1 inValue = new Ihc.Soap.AirlinkManagement.inputMessageName1();
-            return ((Ihc.Soap.AirlinkManagement.AirlinkManagementService)(this)).enterRFConfigurationAsync(inValue);
+            Ihc.Soap.Airlinkmanagement.inputMessageName1 inValue = new Ihc.Soap.Airlinkmanagement.inputMessageName1();
+            return ((Ihc.Soap.Airlinkmanagement.AirlinkManagementService)(this)).enterRFConfigurationAsync(inValue);
         }
         
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName2> Ihc.Soap.AirlinkManagement.AirlinkManagementService.exitRFConfigurationAsync(Ihc.Soap.AirlinkManagement.inputMessageName2 request)
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName2> Ihc.Soap.Airlinkmanagement.AirlinkManagementService.exitRFConfigurationAsync(Ihc.Soap.Airlinkmanagement.inputMessageName2 request)
         {
             return base.Channel.exitRFConfigurationAsync(request);
         }
         
-        public System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName2> exitRFConfigurationAsync()
+        public System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName2> exitRFConfigurationAsync()
         {
-            Ihc.Soap.AirlinkManagement.inputMessageName2 inValue = new Ihc.Soap.AirlinkManagement.inputMessageName2();
-            return ((Ihc.Soap.AirlinkManagement.AirlinkManagementService)(this)).exitRFConfigurationAsync(inValue);
+            Ihc.Soap.Airlinkmanagement.inputMessageName2 inValue = new Ihc.Soap.Airlinkmanagement.inputMessageName2();
+            return ((Ihc.Soap.Airlinkmanagement.AirlinkManagementService)(this)).exitRFConfigurationAsync(inValue);
         }
         
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName3> Ihc.Soap.AirlinkManagement.AirlinkManagementService.testRFActuatorWithSerialNumberAsync(Ihc.Soap.AirlinkManagement.inputMessageName3 request)
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName3> Ihc.Soap.Airlinkmanagement.AirlinkManagementService.testRFActuatorWithSerialNumberAsync(Ihc.Soap.Airlinkmanagement.inputMessageName3 request)
         {
             return base.Channel.testRFActuatorWithSerialNumberAsync(request);
         }
         
-        public System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName3> testRFActuatorWithSerialNumberAsync(System.Nullable<long> testRFActuatorWithSerialNumber1)
+        public System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName3> testRFActuatorWithSerialNumberAsync(System.Nullable<long> testRFActuatorWithSerialNumber1)
         {
-            Ihc.Soap.AirlinkManagement.inputMessageName3 inValue = new Ihc.Soap.AirlinkManagement.inputMessageName3();
+            Ihc.Soap.Airlinkmanagement.inputMessageName3 inValue = new Ihc.Soap.Airlinkmanagement.inputMessageName3();
             inValue.testRFActuatorWithSerialNumber1 = testRFActuatorWithSerialNumber1;
-            return ((Ihc.Soap.AirlinkManagement.AirlinkManagementService)(this)).testRFActuatorWithSerialNumberAsync(inValue);
+            return ((Ihc.Soap.Airlinkmanagement.AirlinkManagementService)(this)).testRFActuatorWithSerialNumberAsync(inValue);
         }
         
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName4> Ihc.Soap.AirlinkManagement.AirlinkManagementService.getDevicesRunningOutOfBatteryAsync(Ihc.Soap.AirlinkManagement.inputMessageName4 request)
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName4> Ihc.Soap.Airlinkmanagement.AirlinkManagementService.getDevicesRunningOutOfBatteryAsync(Ihc.Soap.Airlinkmanagement.inputMessageName4 request)
         {
             return base.Channel.getDevicesRunningOutOfBatteryAsync(request);
         }
         
-        public System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName4> getDevicesRunningOutOfBatteryAsync()
+        public System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName4> getDevicesRunningOutOfBatteryAsync()
         {
-            Ihc.Soap.AirlinkManagement.inputMessageName4 inValue = new Ihc.Soap.AirlinkManagement.inputMessageName4();
-            return ((Ihc.Soap.AirlinkManagement.AirlinkManagementService)(this)).getDevicesRunningOutOfBatteryAsync(inValue);
+            Ihc.Soap.Airlinkmanagement.inputMessageName4 inValue = new Ihc.Soap.Airlinkmanagement.inputMessageName4();
+            return ((Ihc.Soap.Airlinkmanagement.AirlinkManagementService)(this)).getDevicesRunningOutOfBatteryAsync(inValue);
         }
         
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName5> Ihc.Soap.AirlinkManagement.AirlinkManagementService.waitForDeviceDetectedAsync(Ihc.Soap.AirlinkManagement.inputMessageName5 request)
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName5> Ihc.Soap.Airlinkmanagement.AirlinkManagementService.waitForDeviceDetectedAsync(Ihc.Soap.Airlinkmanagement.inputMessageName5 request)
         {
             return base.Channel.waitForDeviceDetectedAsync(request);
         }
         
-        public System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName5> waitForDeviceDetectedAsync(System.Nullable<int> waitForDeviceDetected1)
+        public System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName5> waitForDeviceDetectedAsync(System.Nullable<int> waitForDeviceDetected1)
         {
-            Ihc.Soap.AirlinkManagement.inputMessageName5 inValue = new Ihc.Soap.AirlinkManagement.inputMessageName5();
+            Ihc.Soap.Airlinkmanagement.inputMessageName5 inValue = new Ihc.Soap.Airlinkmanagement.inputMessageName5();
             inValue.waitForDeviceDetected1 = waitForDeviceDetected1;
-            return ((Ihc.Soap.AirlinkManagement.AirlinkManagementService)(this)).waitForDeviceDetectedAsync(inValue);
+            return ((Ihc.Soap.Airlinkmanagement.AirlinkManagementService)(this)).waitForDeviceDetectedAsync(inValue);
         }
         
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName6> Ihc.Soap.AirlinkManagement.AirlinkManagementService.waitForDeviceTestResultAsync(Ihc.Soap.AirlinkManagement.inputMessageName6 request)
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName6> Ihc.Soap.Airlinkmanagement.AirlinkManagementService.waitForDeviceTestResultAsync(Ihc.Soap.Airlinkmanagement.inputMessageName6 request)
         {
             return base.Channel.waitForDeviceTestResultAsync(request);
         }
         
-        public System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName6> waitForDeviceTestResultAsync(System.Nullable<int> waitForDeviceTestResult1)
+        public System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName6> waitForDeviceTestResultAsync(System.Nullable<int> waitForDeviceTestResult1)
         {
-            Ihc.Soap.AirlinkManagement.inputMessageName6 inValue = new Ihc.Soap.AirlinkManagement.inputMessageName6();
+            Ihc.Soap.Airlinkmanagement.inputMessageName6 inValue = new Ihc.Soap.Airlinkmanagement.inputMessageName6();
             inValue.waitForDeviceTestResult1 = waitForDeviceTestResult1;
-            return ((Ihc.Soap.AirlinkManagement.AirlinkManagementService)(this)).waitForDeviceTestResultAsync(inValue);
+            return ((Ihc.Soap.Airlinkmanagement.AirlinkManagementService)(this)).waitForDeviceTestResultAsync(inValue);
         }
         
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName7> Ihc.Soap.AirlinkManagement.AirlinkManagementService.getDetectedDeviceListAsync(Ihc.Soap.AirlinkManagement.inputMessageName7 request)
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName7> Ihc.Soap.Airlinkmanagement.AirlinkManagementService.getDetectedDeviceListAsync(Ihc.Soap.Airlinkmanagement.inputMessageName7 request)
         {
             return base.Channel.getDetectedDeviceListAsync(request);
         }
         
-        public System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName7> getDetectedDeviceListAsync()
+        public System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName7> getDetectedDeviceListAsync()
         {
-            Ihc.Soap.AirlinkManagement.inputMessageName7 inValue = new Ihc.Soap.AirlinkManagement.inputMessageName7();
-            return ((Ihc.Soap.AirlinkManagement.AirlinkManagementService)(this)).getDetectedDeviceListAsync(inValue);
+            Ihc.Soap.Airlinkmanagement.inputMessageName7 inValue = new Ihc.Soap.Airlinkmanagement.inputMessageName7();
+            return ((Ihc.Soap.Airlinkmanagement.AirlinkManagementService)(this)).getDetectedDeviceListAsync(inValue);
         }
         
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName8> Ihc.Soap.AirlinkManagement.AirlinkManagementService.enterRFTestAsync(Ihc.Soap.AirlinkManagement.inputMessageName8 request)
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName8> Ihc.Soap.Airlinkmanagement.AirlinkManagementService.enterRFTestAsync(Ihc.Soap.Airlinkmanagement.inputMessageName8 request)
         {
             return base.Channel.enterRFTestAsync(request);
         }
         
-        public System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName8> enterRFTestAsync()
+        public System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName8> enterRFTestAsync()
         {
-            Ihc.Soap.AirlinkManagement.inputMessageName8 inValue = new Ihc.Soap.AirlinkManagement.inputMessageName8();
-            return ((Ihc.Soap.AirlinkManagement.AirlinkManagementService)(this)).enterRFTestAsync(inValue);
+            Ihc.Soap.Airlinkmanagement.inputMessageName8 inValue = new Ihc.Soap.Airlinkmanagement.inputMessageName8();
+            return ((Ihc.Soap.Airlinkmanagement.AirlinkManagementService)(this)).enterRFTestAsync(inValue);
         }
         
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName9> Ihc.Soap.AirlinkManagement.AirlinkManagementService.exitRFTestAsync(Ihc.Soap.AirlinkManagement.inputMessageName9 request)
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName9> Ihc.Soap.Airlinkmanagement.AirlinkManagementService.exitRFTestAsync(Ihc.Soap.Airlinkmanagement.inputMessageName9 request)
         {
             return base.Channel.exitRFTestAsync(request);
         }
         
-        public System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName9> exitRFTestAsync()
+        public System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName9> exitRFTestAsync()
         {
-            Ihc.Soap.AirlinkManagement.inputMessageName9 inValue = new Ihc.Soap.AirlinkManagement.inputMessageName9();
-            return ((Ihc.Soap.AirlinkManagement.AirlinkManagementService)(this)).exitRFTestAsync(inValue);
+            Ihc.Soap.Airlinkmanagement.inputMessageName9 inValue = new Ihc.Soap.Airlinkmanagement.inputMessageName9();
+            return ((Ihc.Soap.Airlinkmanagement.AirlinkManagementService)(this)).exitRFTestAsync(inValue);
         }
         
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
-        System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName10> Ihc.Soap.AirlinkManagement.AirlinkManagementService.getBatteryLevelAsync(Ihc.Soap.AirlinkManagement.inputMessageName10 request)
+        System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName10> Ihc.Soap.Airlinkmanagement.AirlinkManagementService.getBatteryLevelAsync(Ihc.Soap.Airlinkmanagement.inputMessageName10 request)
         {
             return base.Channel.getBatteryLevelAsync(request);
         }
         
-        public System.Threading.Tasks.Task<Ihc.Soap.AirlinkManagement.outputMessageName10> getBatteryLevelAsync(System.Nullable<int> getBatteryLevel1)
+        public System.Threading.Tasks.Task<Ihc.Soap.Airlinkmanagement.outputMessageName10> getBatteryLevelAsync(System.Nullable<int> getBatteryLevel1)
         {
-            Ihc.Soap.AirlinkManagement.inputMessageName10 inValue = new Ihc.Soap.AirlinkManagement.inputMessageName10();
+            Ihc.Soap.Airlinkmanagement.inputMessageName10 inValue = new Ihc.Soap.Airlinkmanagement.inputMessageName10();
             inValue.getBatteryLevel1 = getBatteryLevel1;
-            return ((Ihc.Soap.AirlinkManagement.AirlinkManagementService)(this)).getBatteryLevelAsync(inValue);
+            return ((Ihc.Soap.Airlinkmanagement.AirlinkManagementService)(this)).getBatteryLevelAsync(inValue);
         }
         
         public virtual System.Threading.Tasks.Task OpenAsync()
