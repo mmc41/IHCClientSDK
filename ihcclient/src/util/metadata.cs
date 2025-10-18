@@ -9,6 +9,21 @@ using System.Diagnostics;
 
 namespace Ihc {
     /// <summary>
+    /// Get version of the SDK stored in the project file.
+    /// </summary>
+    public class VersionInfo
+    {
+        public static string GetSdkVersion()
+        {
+            // Get the SDK assembly (ihcclient), not the entry assembly
+            Assembly assembly = typeof(VersionInfo).Assembly;
+            var fileVersion = assembly?.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
+            return fileVersion ?? assembly?.GetName().Version?.ToString() ?? "Unknown";
+        }
+
+    }
+
+    /// <summary>
     /// Type of service operation (method) on a high level IHC service. For use by test and documentation tools.
     /// </summary>
     public enum ServiceOperationKind { AsyncFunction, AsyncEnumerable };

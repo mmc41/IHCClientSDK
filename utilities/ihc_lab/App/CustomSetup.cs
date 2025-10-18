@@ -74,7 +74,7 @@ public static class CustomSetup
                 {
                     loggingOpts.IncludeFormattedMessage = true;
                     loggingOpts.IncludeScopes = true;
-                    loggingOpts.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: IhcLab.Telemetry.AppServiceName));
+                    loggingOpts.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: IhcLab.Telemetry.AppServiceName, serviceNamespace: IhcLab.Telemetry.AppServiceNamespace, serviceVersion: VersionInfo.GetAppVersion()));
 
                     loggingOpts.AddOtlpExporter(opts =>
                     {
@@ -94,7 +94,7 @@ public static class CustomSetup
         {
             var telmetryTracerProvider = Sdk.CreateTracerProviderBuilder()
                 .SetErrorStatusOnException(true)
-                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: IhcLab.Telemetry.AppServiceName))
+                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: IhcLab.Telemetry.AppServiceName, serviceNamespace: IhcLab.Telemetry.AppServiceNamespace, serviceVersion: VersionInfo.GetAppVersion()))
                 .AddSource(Ihc.Telemetry.ActivitySourceName, IhcLab.Telemetry.ActivitySourceName)
                 .AddOtlpExporter(opts =>
                 {

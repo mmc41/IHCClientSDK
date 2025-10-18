@@ -14,6 +14,10 @@ public partial class AboutWindow : Window
         RepoLink.Text = Constants.SDK_REPO_LINK;
         RepoAuthors.Text = Constants.SDK_AUTHORS;
         AppDescription.Text = Constants.APP_DESCRIPTION;
+
+        // Display version information
+        AppVersionText.Text = $"App Version: {IhcLab.VersionInfo.GetAppVersion()}";
+        SdkVersionText.Text = $"SDK Version: {Ihc.VersionInfo.GetSdkVersion()}";
     }
 
     private void OnRepoLinkClick(object? sender, PointerPressedEventArgs e)

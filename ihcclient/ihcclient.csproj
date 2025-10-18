@@ -2,12 +2,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
-    <Version>0.5.0-beta4</Version>
-    <InformationalVersion>This is a prerelease package</InformationalVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Nullable>disable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>CS1591,CS1587</NoWarn>
+    <Version>0.8.1</Version>
+    <InformationalVersion>This is a beta package</InformationalVersion>
+    <Copyright>Apache License 2.0</Copyright>
+    <Authors>mmc41</Authors>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="safe_integration_tests" />

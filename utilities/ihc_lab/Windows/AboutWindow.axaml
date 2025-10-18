@@ -53,6 +53,22 @@
                    TextWrapping="Wrap"
                    Foreground="#666666"/>
 
+        <!-- Version Information -->
+        <StackPanel Grid.Row="7"
+                    Orientation="Vertical"
+                    HorizontalAlignment="Center"
+                    Margin="0,10,0,0">
+            <TextBlock Name="AppVersionText"
+                       FontSize="11"
+                       HorizontalAlignment="Center"
+                       Foreground="#888888"/>
+            <TextBlock Name="SdkVersionText"
+                       FontSize="11"
+                       HorizontalAlignment="Center"
+                       Foreground="#888888"
+                       Margin="0,2,0,0"/>
+        </StackPanel>
+
         <!-- Close Button -->
         <Button Grid.Row="8"
                 Content="Close"

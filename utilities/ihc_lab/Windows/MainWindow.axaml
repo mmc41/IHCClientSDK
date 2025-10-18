@@ -68,8 +68,8 @@
             </Border>
             <Border Name="Status" Height="50" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
                 <StackPanel>
-                    <TextBlock Name="ErrorHeading" FontSize="18" IsVisible="false">Errors:</TextBlock>
-                    <TextBlock Name="WarningHeading" FontSize="18" IsVisible="false">Warnings:</TextBlock>                    
+                    <TextBlock Name="ErrorHeading" FontSize="14" IsVisible="false">Errors:</TextBlock>
+                    <TextBlock Name="WarningHeading" FontSize="14" IsVisible="false">Warnings:</TextBlock>                    
                     <TextBlock Name="ErrorWarningContent" FontSize="12" xml:space="preserve"></TextBlock>
                 </StackPanel>
             </Border>

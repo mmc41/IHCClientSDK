@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Reflection;
 
 namespace Ihc {
     public class TelemetryConfiguration
@@ -14,7 +15,7 @@ namespace Ihc {
     public static class Telemetry
     {
         public const string ActivitySourceName = "ihcclient";
-        public static ActivitySource ActivitySource { get; } = new ActivitySource(ActivitySourceName);
+        public static ActivitySource ActivitySource { get; } = new ActivitySource(name: ActivitySourceName, version: VersionInfo.GetSdkVersion());
 
         public const string argsTagPrefix = "input.";
         public const string returnValueTag = "retv";
