@@ -16,8 +16,8 @@ public static class OperationSupport
 {
     public static async Task<string> DynCall(IIHCService service, ServiceOperationMetadata operationMetadata, object[] parameterValues)
     {
-        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(DynCall), ActivityKind.Internal);
-        activity?.SetTag(Ihc.Telemetry.argsTagPrefix, String.Join(",", parameterValues.Select(p => p.ToString())));
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(OperationSupport) + "." + nameof(DynCall), ActivityKind.Internal);
+        activity?.SetTag(Ihc.Telemetry.argsTagPrefix+"parameterValues", String.Join(",", parameterValues.Select(p => p.ToString())));
 
         if (operationMetadata.Kind != ServiceOperationKind.AsyncFunction)
             throw new NotSupportedException("Only normal async operations currently supported");
@@ -99,6 +99,13 @@ public static class OperationSupport
     /// <param name="prefix">The prefix for the control name (used for nested fields).</param>
     public static void AddFieldControls(Panel parent, FieldMetaData field, string prefix)
     {
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(OperationSupport) + "." + nameof(AddFieldControls), ActivityKind.Internal);
+        activity?.SetParameters(
+            (nameof(parent), parent.Name ?? ""),
+            (nameof(field), field),
+            (nameof(prefix), prefix)
+        );
+        
         // Add legend (TextBlock label) for this parameter
         var legend = new TextBlock
         {
@@ -151,6 +158,12 @@ public static class OperationSupport
     /// <param name="operationMetadata">The operation metadata containing parameter information.</param>
     public static void SetUpParameterControls(Panel parametersPanel, ServiceOperationMetadata operationMetadata)
     {
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(OperationSupport) + "." + nameof(SetUpParameterControls), ActivityKind.Internal);
+        activity?.SetParameters(
+            (nameof(parametersPanel), parametersPanel.Name ?? ""),
+            (nameof(operationMetadata), operationMetadata)
+        );
+
         ClearControls(parametersPanel);
 
         foreach (FieldMetaData parameter in operationMetadata.Parameters)
@@ -174,6 +187,12 @@ public static class OperationSupport
     /// <exception cref="InvalidOperationException">Thrown when a parameter value cannot be retrieved.</exception>
     public static object[] GetParameterValues(Panel parametersPanel, FieldMetaData[] parameters)
     {
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(OperationSupport) + "." + nameof(GetParameterValues), ActivityKind.Internal);
+        activity?.SetParameters(
+            (nameof(parametersPanel), parametersPanel.Name ?? ""),
+            (nameof(parameters), parameters)
+        );
+
         var values = new object[parameters.Length];
 
         for (int i = 0; i < parameters.Length; i++)
@@ -195,6 +214,13 @@ public static class OperationSupport
     /// <returns>The field value, or null if not found.</returns>
     public static object? GetFieldValue(Panel parent, FieldMetaData field, string prefix)
     {
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(OperationSupport) + "." + nameof(GetFieldValue), ActivityKind.Internal);
+        activity?.SetParameters(
+            (nameof(parent), parent.Name ?? ""),
+            (nameof(field), field),
+            (nameof(prefix), prefix)
+        );
+
         string fullName = prefix + field.Name;
 
         // For simple types (primitives and string), find the DynField control and get its value

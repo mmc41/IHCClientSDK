@@ -1,13 +1,12 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
-using System.Net.Http.Headers;
-using System.Reflection.Metadata;
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Ihc;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace IhcLab;
 
@@ -16,9 +15,15 @@ public partial class MainWindow : Window
     private IhcDomain? ihcDomain;
     private IClipboard? clipboard;
 
+    private ILogger<MainWindow> logger;
+
     public MainWindow()
     {
-       using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow)+"Ctr", ActivityKind.Internal);
+       // Use OpenTel activities as the primary way to keep track of operations. This mix well with the SDK activities.
+       using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow)+".Ctr", ActivityKind.Internal);
+
+       // Avalonia uses logger so we might as well use it for important things like errors and warnings.
+       this.logger = Program.loggerFactory!=null ? Program.loggerFactory.CreateLogger<MainWindow>() : NullLoggerFactory.Instance.CreateLogger<MainWindow>();
                     
        try
        {
@@ -71,7 +76,7 @@ public partial class MainWindow : Window
 
     public async void RunButtonClickHandler(object sender, RoutedEventArgs e)
     {
-        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(RunButtonClickHandler), ActivityKind.Internal);
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow)+"."+nameof(RunButtonClickHandler), ActivityKind.Internal);
 
         ClearErrorAndWarning();
         ClearOutput();
@@ -113,7 +118,7 @@ public partial class MainWindow : Window
 
     private void OnServicesComboBoxSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-         using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(OnServicesComboBoxSelectionChanged), ActivityKind.Internal);
+         using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow)+"."+nameof(OnServicesComboBoxSelectionChanged), ActivityKind.Internal);
 
         ClearErrorAndWarning();
         ClearOutput();         
@@ -151,7 +156,7 @@ public partial class MainWindow : Window
 
     private void OnOperationsComboBoxSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(OnOperationsComboBoxSelectionChanged), ActivityKind.Internal);
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow)+"."+ nameof(OnOperationsComboBoxSelectionChanged), ActivityKind.Internal);
 
         ClearErrorAndWarning();
         ClearOutput();
@@ -203,14 +208,14 @@ public partial class MainWindow : Window
 
     public void ExitMenuItemClick(object sender, RoutedEventArgs e)
     {
-        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(ExitMenuItemClick), ActivityKind.Internal);
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow)+"."+nameof(ExitMenuItemClick), ActivityKind.Internal);
 
         Close(); // Calls in turn OnWindowClosing which will dispose our IhcDomain.
     }
 
     public async void AboutMenuItemClick(object sender, RoutedEventArgs e)
     {
-        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(AboutMenuItemClick), ActivityKind.Internal);
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow)+"."+nameof(AboutMenuItemClick), ActivityKind.Internal);
         try
         {
             var aboutWindow = new AboutWindow();
@@ -225,7 +230,7 @@ public partial class MainWindow : Window
 
     public void OpenTelemetryMenuItemClick(object sender, RoutedEventArgs e)
     {
-        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(OpenTelemetryMenuItemClick), ActivityKind.Internal);
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow)+"."+nameof(OpenTelemetryMenuItemClick), ActivityKind.Internal);
         try
         {
             string? telemetryUrl = Program.config?.telemetryConfig?.Host;
@@ -250,7 +255,7 @@ public partial class MainWindow : Window
 
     public async void CopyOutputMenuItemClick(object sender, RoutedEventArgs e)
     {
-        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(CopyOutputMenuItemClick), ActivityKind.Internal);
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow)+"."+nameof(CopyOutputMenuItemClick), ActivityKind.Internal);
 
         try
         {
@@ -268,7 +273,7 @@ public partial class MainWindow : Window
 
     public async void CopyErrorMenuItemClick(object sender, RoutedEventArgs e)
     {
-        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(CopyErrorMenuItemClick), ActivityKind.Internal);
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow)+"."+nameof(CopyErrorMenuItemClick), ActivityKind.Internal);
 
         try
         {
@@ -312,6 +317,8 @@ public partial class MainWindow : Window
 
         ErrorWarningContent.Text = txt;
         ErrorHeading.IsVisible = true;
+
+        logger.Log(LogLevel.Error, message: text, exception: ex);
     }
     
     public void SetWarning(string text, Exception? ex = null)
@@ -322,5 +329,7 @@ public partial class MainWindow : Window
 
         ErrorWarningContent.Text = txt;
         WarningHeading.IsVisible = true;
+
+        logger.Log(LogLevel.Warning, message: text, exception: ex);
     }
 }

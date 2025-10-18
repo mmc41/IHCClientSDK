@@ -3,14 +3,23 @@ using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Ihc;
 
 namespace IhcLab;
 
 public partial class AboutWindow : Window
 {
+    private ILogger<AboutWindow> logger;
+        
     public AboutWindow()
     {
         InitializeComponent();
+
+        // Avalonia uses logger so we might as well use it for important things like errors and warnings.
+        this.logger = Program.loggerFactory != null ? Program.loggerFactory.CreateLogger<AboutWindow>() : NullLoggerFactory.Instance.CreateLogger<AboutWindow>();
+               
         RepoLink.Text = Constants.SDK_REPO_LINK;
         RepoAuthors.Text = Constants.SDK_AUTHORS;
         AppDescription.Text = Constants.APP_DESCRIPTION;
@@ -22,11 +31,12 @@ public partial class AboutWindow : Window
 
     private void OnRepoLinkClick(object? sender, PointerPressedEventArgs e)
     {
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(AboutWindow)+"."+nameof(OnRepoLinkClick), ActivityKind.Internal);
+
+        // Open the GitHub URL in the default browser
+        var url = Constants.SDK_REPO_LINK;
         try
         {
-            // Open the GitHub URL in the default browser
-            var url = Constants.SDK_REPO_LINK;
-
             // Use ProcessStartInfo to open URL in default browser
             var psi = new ProcessStartInfo
             {
@@ -37,14 +47,14 @@ public partial class AboutWindow : Window
         }
         catch (Exception ex)
         {
-            // If opening browser fails, silently ignore
-            // (alternatively, could show a message box with the URL)
-            Debug.WriteLine($"Failed to open URL: {ex.Message}");
+            activity?.SetError(ex);
+            logger.Log(LogLevel.Error, message: "Could not open link " + url, exception: ex);
         }
     }
 
     private void OnCloseClick(object? sender, RoutedEventArgs e)
     {
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(AboutWindow)+"."+nameof(OnCloseClick), ActivityKind.Internal);
         Close();
     }
 }
