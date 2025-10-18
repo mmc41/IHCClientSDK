@@ -28,16 +28,17 @@ namespace Ihc {
         public Task<SDInfo> GetSDCardInfo();
 
         /// <summary>
-        /// Get current controller state (e.g., "ready", "init").
+        /// Get current controller state 
         /// </summary>
-        public Task<string> GetControllerState();
+        public Task<ControllerState> GetControllerState();
 
         /// <summary>
         /// Wait for controller to transition to a specific state.
+        /// Observation: It seems the controller only waits until timeout IF the controller is already in the specified state??
         /// </summary>
         /// <param name="waitState">Target state to wait for</param>
         /// <param name="waitSec">Timeout in seconds</param>
-        public Task<string> WaitForControllerStateChange(string waitState, int waitSec);
+        public Task<ControllerState> WaitForControllerStateChange(ControllerState waitState, int waitSec);
 
         /// <summary>
         /// Get project information including version, customer name, and last modified date.
@@ -353,17 +354,46 @@ namespace Ihc {
             };
         }
 
-        /*
-        private ControllerState mapControllerState(Ihc.Soap.Controller.WSControllerState state)
+            private ControllerState mapControllerState(Ihc.Soap.Controller.WSControllerState state)
         {
+            if (state == null || String.IsNullOrEmpty(state.state))
+                return ControllerState.Uninitialized;
+
             switch (state?.state)
             {
+                case "text.ctrl.state.failed":
+                    return ControllerState.Failed;
                 case "text.ctrl.state.ready":
                     return ControllerState.Ready;
+                case "text.ctrl.state.initialize":
+                    return ControllerState.Initialize;
+                case "text.ctrl.state.rfconfiguration":
+                    return ControllerState.RfConfiguration;
+                case "text.ctrl.state.simulation":
+                    return ControllerState.Simulation;
                 default:
-                    return ControllerState.Unknown;
+                    return ControllerState.Unknown; // Unknown state - add to enum if we find it.
             }
-        }*/
+        }
+
+
+        private Ihc.Soap.Controller.WSControllerState mapControllerState(ControllerState state)
+        {
+            string stateStr;
+            switch (state)
+            {
+                case ControllerState.Failed: stateStr = "text.ctrl.state.failed"; break;
+                case ControllerState.Ready: stateStr = "text.ctrl.state.ready"; break;
+                case ControllerState.Initialize: stateStr = "ext.ctrl.state.initialize"; break;
+                case ControllerState.RfConfiguration: stateStr = "text.ctrl.state.rfconfiguration"; break;
+                case ControllerState.Simulation: stateStr = "text.ctrl.state.simulation"; break;
+                case ControllerState.Uninitialized:
+                case ControllerState.Unknown: stateStr = ""; break;
+                default: throw new ArgumentException("Unknown state " + state);
+            }
+
+            return new WSControllerState() { state = stateStr };
+        }
 
         public async Task<bool> IsIHCProjectAvailable()
         {
@@ -424,21 +454,15 @@ namespace Ihc {
                 }
             }
         }
-/*
-        public async Task<ControllerState> GetControllerState()
-        {
-            var result = await impl.getStateAsync(new inputMessageName1() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            return mapControllerState(result.getState1);
-        }*/
 
-        public async Task<string> GetControllerState()
+        public async Task<ControllerState> GetControllerState()
         {
             using (var activity = StartActivity(nameof(GetControllerState)))
             {
                 try
                 {
                     var result = await impl.getStateAsync(new inputMessageName1() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = result.getState1?.state; // TODO: Convert to ControllerState oncce the enum is more complete.
+                    var retv = mapControllerState(result.getState1);
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -451,7 +475,7 @@ namespace Ihc {
             }
         }
         
-        public async Task<string> WaitForControllerStateChange(string waitState, int waitSec)
+        public async Task<ControllerState> WaitForControllerStateChange(ControllerState waitState, int waitSec)
         {
             using (var activity = StartActivity(nameof(WaitForControllerStateChange)))
             {
@@ -462,8 +486,8 @@ namespace Ihc {
                         (nameof(waitSec), waitSec)
                     );
 
-                    var result = await impl.waitForControllerStateChangeAsync(new inputMessageName19(new Ihc.Soap.Controller.WSControllerState() { state = waitState }, waitSec) { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = result?.waitForControllerStateChange3?.state;
+                    var result = await impl.waitForControllerStateChangeAsync(new inputMessageName19(mapControllerState(waitState), waitSec) { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = mapControllerState(result?.waitForControllerStateChange3);
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -684,7 +708,7 @@ namespace Ihc {
                     );
 
                     // First perform some safty checks similar to what the IHC Visual App does:
-                    bool controllerReady = (await GetControllerState().ConfigureAwait(settings.AsyncContinueOnCapturedContext)) == ControllerStates.READY;
+                    bool controllerReady = (await GetControllerState().ConfigureAwait(settings.AsyncContinueOnCapturedContext)) == ControllerState.Ready;
                     activity?.SetTag("progress.controllerReady", controllerReady);
                     if (!controllerReady)
                         throw new InvalidOperationException("Controller not in ready state");
@@ -704,9 +728,9 @@ namespace Ihc {
                     if (!inChange)
                         throw new InvalidOperationException("Controller could not enter change mode to prepare for project change");
 
-                    var state = await WaitForControllerStateChange(ControllerStates.INIT, 10).ConfigureAwait(settings.AsyncContinueOnCapturedContext); // TODO: Retry x times.
+                    var state = await WaitForControllerStateChange(ControllerState.Initialize, 10).ConfigureAwait(settings.AsyncContinueOnCapturedContext); // TODO: Retry x times.
                     activity?.SetTag("progress.state.in", state);                    
-                    if (state != ControllerStates.INIT)
+                    if (state != ControllerState.Initialize)
                         throw new InvalidOperationException("Controller state did not enter init state to prepare for project change");
 
                     outputMessageName4 result;
@@ -721,8 +745,8 @@ namespace Ihc {
 
                         result = await impl.storeIHCProjectAsync(request).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
-                        state = await WaitForControllerStateChange(ControllerStates.INIT, 10).ConfigureAwait(settings.AsyncContinueOnCapturedContext); // TODO: Retry x times.
-                        if (state != ControllerStates.INIT)
+                        state = await WaitForControllerStateChange(ControllerState.Initialize, 10).ConfigureAwait(settings.AsyncContinueOnCapturedContext); // TODO: Retry x times.
+                        if (state != ControllerState.Initialize)
                             throw new InvalidOperationException("Controller state does not remain in init state after project change");
 
                     }
@@ -733,9 +757,9 @@ namespace Ihc {
                         if (!inChange)
                             throw new InvalidOperationException("Controller could not exit change mode after project change");
 
-                        state = await WaitForControllerStateChange(ControllerStates.READY, 10).ConfigureAwait(settings.AsyncContinueOnCapturedContext); // TODO: Retry x times.
+                        state = await WaitForControllerStateChange(ControllerState.Ready, 10).ConfigureAwait(settings.AsyncContinueOnCapturedContext); // TODO: Retry x times.
                         activity?.SetTag("progress.state.out", state);  
-                        if (state != ControllerStates.READY)
+                        if (state != ControllerState.Ready)
                             throw new InvalidOperationException("Controller state did not enter init state to prepare for project change");
                     }
 

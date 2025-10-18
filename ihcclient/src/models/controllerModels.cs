@@ -11,19 +11,16 @@ public record SDInfo {
         }
 }
 
-/*
 public enum ControllerState
 {
+        Uninitialized,
         Ready,
-        Initializing,
-        Unknown
-}*/
-
-public static class ControllerStates
-{
-        public const string READY = "text.ctrl.state.ready";
-        public const string INIT = "text.ctrl.state.initialize";
-}
+        Initialize,
+        Failed,
+        RfConfiguration,
+        Simulation,
+        Unknown // Should not be used (unless controller has a hidden state we don't know)
+};
 
 public record BackupFile
 {
@@ -34,7 +31,7 @@ public record BackupFile
 
         public override string ToString()
         {
-          return $"BackupFile(Data=byte[{Data?.Length ?? 0}], Filename={Filename})";
+                return $"BackupFile(Data=byte[{Data?.Length ?? 0}], Filename={Filename})";
         }
 }
 
@@ -75,6 +72,6 @@ public record ProjectFile
 
         public override string ToString()
         {
-          return $"ProjectFile(Data=string[{Data?.Length ?? 0}], Filename={Filename})";
+          return $"ProjectFile(Data={Data}, Filename={Filename})";
         }
 }
