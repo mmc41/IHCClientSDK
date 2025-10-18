@@ -24,8 +24,15 @@
                 <MenuItem Header="_About..." Click="AboutMenuItemClick"/>
             </MenuItem>
          </Menu>
-        <StackPanel DockPanel.Dock="Top">
-            <Grid Margin="10,10,10,5">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Margin="10,10,10,5">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="300"/>
@@ -45,11 +52,12 @@
 
                 <Button Name="RunButton" Grid.Row="0" Grid.Column="6" Click="RunButtonClickHandler" ToolTip.Tip="Execute IHC operation">RUN</Button>
             </Grid>
-            <Border Name="Details" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
+
+            <Border Grid.Row="1" Name="Details" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
                 <Grid Name="detail">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>                 
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -61,7 +69,8 @@
                     </ScrollViewer>
                 </Grid>
             </Border>
-            <Border Name="Result" MinHeight="50" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
+
+            <Border Grid.Row="2" Name="Result" MinHeight="50" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
                 <DockPanel>
                     <TextBlock Name="OutputHeading" FontSize="18" DockPanel.Dock="Top">Output</TextBlock>
                     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -69,7 +78,8 @@
                     </ScrollViewer>
                 </DockPanel>
             </Border>
-            <Border Name="Status" MinHeight="50" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
+
+            <Border Grid.Row="3" Name="Status" MinHeight="50" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
                 <DockPanel>
                     <TextBlock Name="ErrorHeading" FontSize="14" IsVisible="false" DockPanel.Dock="Top">Errors:</TextBlock>
                     <TextBlock Name="WarningHeading" FontSize="14" IsVisible="false" DockPanel.Dock="Top">Warnings:</TextBlock>
@@ -78,6 +88,6 @@
                     </ScrollViewer>
                 </DockPanel>
             </Border>
-        </StackPanel>
+        </Grid>
     </DockPanel>
 </Window>
