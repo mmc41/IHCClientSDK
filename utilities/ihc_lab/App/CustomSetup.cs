@@ -65,49 +65,45 @@ public static class CustomSetup
     
     public static ILoggerFactory SetupTelemetryAndLoggingFactory(Configuration configuration)
     {
-        if (string.IsNullOrEmpty(configuration.telemetryConfig.Host) || string.IsNullOrEmpty(configuration.telemetryConfig.Authentication)) {
-            return Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance;
-        }
-
-        string logsEndpoint = $"{configuration.telemetryConfig.Host}/api/{configuration.telemetryConfig.Organization}/v1/logs";
-        string tracingEndpoint = $"{configuration.telemetryConfig.Host}/api/{configuration.telemetryConfig.Organization}/v1/traces";
-        string metricsEndpoint = $"{configuration.telemetryConfig.Host}/api/{configuration.telemetryConfig.Organization}/v1/metrics";
-        string headers = $"Authorization={configuration.telemetryConfig.Authentication}," +
-                         $"stream-name={configuration.telemetryConfig.Stream}," +
-                         $"organization={configuration.telemetryConfig.Organization}";
-
-
         // Create a logger for our application which delegates to Telemetry:
         ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
         {
-            builder.AddOpenTelemetry(loggingOpts =>
+            if (!string.IsNullOrEmpty(configuration.telemetryConfig.Logs))
             {
-                loggingOpts.IncludeFormattedMessage = true;
-                loggingOpts.IncludeScopes = true;
-                loggingOpts.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: IhcLab.Telemetry.AppServiceName));
-
-                loggingOpts.AddOtlpExporter(opts =>
+                builder.AddOpenTelemetry(loggingOpts =>
                 {
-                    opts.Endpoint = new Uri(logsEndpoint);
-                    opts.Headers = headers;
-                    opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+                    loggingOpts.IncludeFormattedMessage = true;
+                    loggingOpts.IncludeScopes = true;
+                    loggingOpts.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: IhcLab.Telemetry.AppServiceName));
+
+                    loggingOpts.AddOtlpExporter(opts =>
+                    {
+                        opts.Endpoint = new Uri(configuration.telemetryConfig.Logs);
+                        if (!string.IsNullOrEmpty(configuration.telemetryConfig.Headers))
+                            opts.Headers = configuration.telemetryConfig.Headers;
+                        opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+                    });
                 });
-            });
-    
+            }
+
             builder.AddConfiguration(configuration.loggingConfig);
         });
 
         // Setup tracing for our application 
-        var telmetryTracerProvider = Sdk.CreateTracerProviderBuilder()
-            .SetErrorStatusOnException(true)
-            .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: IhcLab.Telemetry.AppServiceName))
-            .AddSource(Ihc.Telemetry.ActivitySourceName, IhcLab.Telemetry.ActivitySourceName)
-            .AddOtlpExporter(opts =>
-            {
-                opts.Endpoint = new Uri(tracingEndpoint);
-                opts.Headers = headers;
-                opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
-            }).Build();
+        if (!string.IsNullOrEmpty(configuration.telemetryConfig.Traces))
+        {
+            var telmetryTracerProvider = Sdk.CreateTracerProviderBuilder()
+                .SetErrorStatusOnException(true)
+                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: IhcLab.Telemetry.AppServiceName))
+                .AddSource(Ihc.Telemetry.ActivitySourceName, IhcLab.Telemetry.ActivitySourceName)
+                .AddOtlpExporter(opts =>
+                {
+                    opts.Endpoint = new Uri(configuration.telemetryConfig.Traces);
+                    if (!string.IsNullOrEmpty(configuration.telemetryConfig.Headers))
+                       opts.Headers = configuration.telemetryConfig.Headers;
+                    opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+                }).Build();
+        }
 
         return loggerFactory;
     }

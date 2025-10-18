@@ -19,11 +19,11 @@
         }
     },
     "telemetry": {
-      "comment" : "OpenTelemetry example setting using openobserve default. Set host to blank to disable. Set token to correct value from opentel provider.",
+      "comment" : "OpenTelemetry example setting using Openobserve.ai provider. Set <token> to correct value from Datasource menu under Traces",
       "Host": "http://localhost:5080",
-      "Organization": "default",
-      "Stream": "ihc",
-      "Authentication": "Basic <Token>="
+      "Traces": "http://localhost:5080/api/default/v1/traces",
+      "Logs": "http://localhost:5080/api/default/v1/logs",
+      "Headers": "Authorization=Basic <token>, stream-name=Ihc, organization=default"
     },
     "testConfig": {
       "comment" : "ID's of boolean typed resources that can be used by tests and examples. Chose arbitrary 'tryk' you can press for input and connected 'lampleudtag' for output where you can see if it is on. Get the IDs from IHC Visual by pressing CTRL and hover mouse pointer over suitable input/output (or run IOExtractor project and inspect output)",

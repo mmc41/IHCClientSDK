@@ -43,12 +43,47 @@ This project is hosted in a mono-repo containing the following sub-projects:
     * [IHC Http Proxy recorder](utilities/ihc_httpproxyrecorder/README.md) contains a simple http proxy useful for software (sdk) developers to investigate undocumented IHC controller API's.
     * [IHC Project download/upload](utilities/ihc_project_download_upload/README.md) contains a tool to download/upload project files.
 
-# Configuration
+## Configuration
 
 The SDK use a ihc_settings.json file to configure IHC controller, logging/telemetry, application setup and tests. Before using the SDK or any utilties/tests/examples 
-take a copy the [ihcsettings_template.json](ihcsettings_template.json) into ihcsettings.json in the same directory and fill-in the details of your installation such as username, password etc. See also [ihcsettings_example.json](ihcsettings_example.json).
+take a copy the [ihcsettings_template.json](ihcsettings_template.json) into ihcsettings.json in the same directory and fill-in the details of your installation such as endpoint, username, password etc. See also [ihcsettings_example.json](ihcsettings_example.json). 
 
-As a more powerfull alternative to log files, the SDK optionally supports [OpenTelemetry](https://opentelemetry.io/) to view logs and traces. To enable this change telemetry settings in the config file.
+```json
+"ihcclient": {
+        "endpoint" : "http://192.100.1.10",
+        "userName" : "johndoe",
+        "password" : "mypassword",
+        "application" : "administrator",
+        "logSensitiveData": false,
+        "asyncContinueOnCapturedContext": false
+},
+```
+
+Note: 
+* Endpoint should be the http/https baseurl for the controller. If connecting to controller over usb, use endpoint set to "http://usb".
+* Username and password should match user setup by controller. Ignored by controller if logging in over usb.
+* Application name is can be set to 'treeview', 'openapi', 'administrator'".
+* Keep logSensitiveData and asyncContinueOnCapturedContext set to false unless you know what you are doing.
+
+### OpenTelemtry as a logging replacement
+
+As a more powerfull alternative to log files, the SDK optionally supports [OpenTelemetry](https://opentelemetry.io/) to view logs and traces. To enable this change ```telemetry``` settings in the config file. The SDK should work with any OpenTel solutions. Below is listed one example.
+
+#### OpenTelemetry using OpenObserve details
+
+[OpenObserve.ai](https://openobserve.ai) provides a free, self-hosted easy to install OpenTelemetry solution. A single executable be downloaded from [OpenObserve.ai](https://openobserve.ai/downloads/). Select "Open source" version, your OS and download. Once installed and run you should be able to access OpenObserve from [http://localhost:5080](http://localhost:5080). From the menu select Datasource menu, Select Traces and note the Authorization key. Then update ```ihsettings.json``` with the following information but with the placeholder ```<Authorization Key here>``` replaced with your key.
+
+OpenObserver setup: 
+```json
+ "telemetry": {
+      "Host": "http://localhost:5080",
+      "Traces": "http://localhost:5080/api/default/v1/traces",
+      "Logs": "http://localhost:5080/api/default/v1/logs",
+      "Headers": "Authorization=Basic <Authorization Key here>, stream-name=Ihc, organization=default"
+    },
+```    
+
+
 
 ## FAQ
 

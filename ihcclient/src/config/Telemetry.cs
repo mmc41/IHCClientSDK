@@ -6,9 +6,9 @@ namespace Ihc {
     {
         public static readonly string Key = "telemetry";
         public string Host { get; set; } = string.Empty;
-        public string Organization { get; set; } = string.Empty;
-        public string Stream { get; set; } = string.Empty;
-        public string Authentication { get; set; } = string.Empty;
+        public string Traces { get; set; } = string.Empty;
+        public string Logs { get; set; } = string.Empty;
+        public string Headers { get; set; } = string.Empty;
     }
 
     public static class Telemetry
