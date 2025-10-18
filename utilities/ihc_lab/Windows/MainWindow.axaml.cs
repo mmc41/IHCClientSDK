@@ -37,6 +37,8 @@ public partial class MainWindow : Window
             // Handle window closing event (when user clicks X button)
             Closing += OnWindowClosing;
 
+            this.Title = "IHC Lab : Connected to " + ihcDomain.IhcSettings.Endpoint ?? "(no endpoint set)";
+
             // Initialize ServicesComboBox with all IHC services
             // Create a wrapper to provide display names for services
             var serviceItems = ihcDomain.AllIhcServices

@@ -24,7 +24,7 @@
                 <MenuItem Header="_About..." Click="AboutMenuItemClick"/>
             </MenuItem>
          </Menu>
-        <StackPanel Name="Left">
+        <StackPanel DockPanel.Dock="Top">
             <Grid Margin="10,10,10,5">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -52,26 +52,29 @@
                         <RowDefinition Height="Auto"/>                 
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Grid.Row="0" Name="OperationDescription"></TextBlock>
+                    <TextBlock Grid.Column="0" Grid.Row="0" Name="OperationDescription" TextWrapping="Wrap"></TextBlock>
                     <StackPanel Grid.Column="0" Grid.Row="1" Name="ParametersPanel" Orientation="Vertical">
                     </StackPanel>
                 </Grid>
             </Border>
-            <Border Name="Result" Height="50" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
-                <StackPanel>
-                    <TextBlock Name="OutputHeading" FontSize="18">Output</TextBlock>
-                    <TextBlock xml:space="preserve" FontSize="12" Name="Output"></TextBlock>
-                </StackPanel>
+            <Border Name="Result" MinHeight="50" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
+                <DockPanel>
+                    <TextBlock Name="OutputHeading" FontSize="18" DockPanel.Dock="Top">Output</TextBlock>
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        <TextBlock FontSize="12" Name="Output" TextWrapping="Wrap"></TextBlock>
+                    </ScrollViewer>
+                </DockPanel>
             </Border>
-            <Border Name="Status" Height="50" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
-                <StackPanel>
-                    <TextBlock Name="ErrorHeading" FontSize="14" IsVisible="false">Errors:</TextBlock>
-                    <TextBlock Name="WarningHeading" FontSize="14" IsVisible="false">Warnings:</TextBlock>                    
-                    <TextBlock Name="ErrorWarningContent" FontSize="12" xml:space="preserve"></TextBlock>
-                </StackPanel>
+            <Border Name="Status" MinHeight="50" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
+                <DockPanel>
+                    <TextBlock Name="ErrorHeading" FontSize="14" IsVisible="false" DockPanel.Dock="Top">Errors:</TextBlock>
+                    <TextBlock Name="WarningHeading" FontSize="14" IsVisible="false" DockPanel.Dock="Top">Warnings:</TextBlock>
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        <TextBlock Name="ErrorWarningContent" FontSize="12" TextWrapping="Wrap"></TextBlock>
+                    </ScrollViewer>
+                </DockPanel>
             </Border>
         </StackPanel>
     </DockPanel>
