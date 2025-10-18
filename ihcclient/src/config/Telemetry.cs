@@ -1,9 +1,20 @@
+using System;
 using System.Diagnostics;
 
 namespace Ihc {
+    public class TelemetryConfiguration
+    {
+        public static readonly string Key = "telemetry";
+        public string Host { get; set; } = string.Empty;
+        public string Organization { get; set; } = string.Empty;
+        public string Stream { get; set; } = string.Empty;
+        public string Authentication { get; set; } = string.Empty;
+    }
+
     public static class Telemetry
     {
-        public static ActivitySource ActivitySource { get; } = new ActivitySource("ihcclient");
+        public const string ActivitySourceName = "ihcclient";
+        public static ActivitySource ActivitySource { get; } = new ActivitySource(ActivitySourceName);
 
         public const string argsTagPrefix = "input.";
         public const string returnValueTag = "retv";
@@ -40,6 +51,13 @@ namespace Ihc {
                     activity.SetTag($"{Telemetry.argsTagPrefix}{name}", value);
                 }
             }
+            return activity;
+        }
+
+        public static Activity SetError(this Activity activity, Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.AddException(ex);
             return activity;
         }
     }

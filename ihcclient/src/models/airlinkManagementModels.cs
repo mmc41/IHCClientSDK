@@ -34,4 +34,9 @@ public record RFDevice
     /// Indicates whether the device has been detected.
     /// </summary>
     public bool Detected { get; init; }
+
+    public override string ToString()
+    {
+      return $"RFDevice(BatteryLevel={BatteryLevel}, SignalStrength={SignalStrength}, DeviceType={DeviceType}, SerialNumber={SerialNumber}, Version={Version}, Detected={Detected})";
+    }
 }

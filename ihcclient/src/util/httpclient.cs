@@ -29,48 +29,36 @@ namespace Ihc {
                 this.settings = settings;
             }
 
-            /// <summary>
-            /// Redacts password values from XML content in SOAP request/response logging.
-            /// </summary>
-            private string redactPassword(string input)
-            {
-                if (input == null)
-                {
-                    return null;
-                }
-
-                // Redact password content in XML elements like <ns1:password>xxx</ns1:password>
-                // where ns1 can be any namespace prefix (or no prefix at all)
-                // Pattern explanation:
-                // - (<\w*:?password>) - captures opening tag with optional namespace prefix (e.g., <password>, <ns1:password>, <utcs:password>)
-                // - [^<]+ - matches the password content (one or more characters except '<')
-                // - (</\w*:?password>) - captures closing tag with optional namespace prefix
-                string pattern = @"(<\w*:?password>)[^<]+(</\w*:?password>)";
-                string replacement = "$1***REDACTED***$2";
-
-                return Regex.Replace(input, pattern, replacement, RegexOptions.IgnoreCase);
-            }
-
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
-                using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-
-                string requestLogString = request.Content != null ? await request.Content.ReadAsStringAsync().ConfigureAwait(false) : null;
-                if (!settings.LogSensitiveData)
-                    requestLogString = redactPassword(requestLogString);
-
-                logger.LogTrace("Request: " + requestLogString);
-                activity?.SetParameters(
-                    (nameof(request), requestLogString),
-                    (nameof(cancellationToken), cancellationToken)
-                );
-                
+                using var activity = Telemetry.ActivitySource.StartActivity(nameof(SendAsync), ActivityKind.Internal);
+                activity?.SetTag("http.request.method", request.Method); // Use opentel standard attribute name for method
+                activity?.SetTag("http.url", request.RequestUri); // Use opentel standard attribute name for url
+                foreach (var header in request.Headers) {
+                    activity?.SetTag("http.request.header." + header.Key, header.Value); // Not sure what standard attribute is for this.
+                }
+               
                 HttpResponseMessage response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
                 string responseLogString = response.Content != null ? await response.Content.ReadAsStringAsync().ConfigureAwait(false) : null;
 
-                logger.LogTrace("Response: " + responseLogString);
-                activity?.SetReturnValue(responseLogString);
+                activity?.SetTag("http.response.status_code", response.StatusCode); // Use opentel standard attribute name for status code.
+                activity?.SetTag("http.response.reason", response.ReasonPhrase); // Not sure what standard attribute is for this.
+                foreach (var header in response.Headers)
+                {
+                    if (header.Key == "Set-Cookie")
+                    {
+                        activity?.SetTag("http.response.header.set_cookie", CookieHandler.REDACTED_COOKIE);
+                    }
+                    else
+                    {
+                        activity?.SetTag("http.response.header." + header.Key, header.Value);
+                    }
+                }
+                
+                if (response.IsSuccessStatusCode)
+                    activity?.SetStatus(ActivityStatusCode.Ok);
+                else activity?.SetStatus(ActivityStatusCode.Error);
 
                 return response;
             }
@@ -122,7 +110,7 @@ namespace Ihc {
         public Task<HttpResponseMessage> Post(string action, string body) {
             var content = new StringContent(body, Encoding.UTF8, "text/xml");
             content.Headers.Add("SOAPAction", action);
-            content.Headers.Add("UserAgent", "HomeAutomation");
+            content.Headers.Add("UserAgent", "ihcclient");
             // Manually apply our global cookie if set:
             string cookie = cookieHandler.GetCookie();
             if (cookie != null) {

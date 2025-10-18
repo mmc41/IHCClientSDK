@@ -154,116 +154,210 @@ namespace Ihc
 
         public async Task<bool> EnterRFConfiguration()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using (var activity = StartActivity(nameof(EnterRFConfiguration)))
+            {
+                try
+                {
+                    var result = await impl.enterRFConfigurationAsync(new inputMessageName1()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = result.enterRFConfiguration1.HasValue && result.enterRFConfiguration1.Value;
 
-            var result = await impl.enterRFConfigurationAsync(new inputMessageName1()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = result.enterRFConfiguration1.HasValue && result.enterRFConfiguration1.Value;
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<bool> ExitRFConfiguration()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using (var activity = StartActivity(nameof(ExitRFConfiguration)))
+            {
+                try
+                {
+                    var result = await impl.exitRFConfigurationAsync(new inputMessageName2()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = result.exitRFConfiguration1.HasValue && result.exitRFConfiguration1.Value;
 
-            var result = await impl.exitRFConfigurationAsync(new inputMessageName2()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = result.exitRFConfiguration1.HasValue && result.exitRFConfiguration1.Value;
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<bool> EnterRFTest()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using (var activity = StartActivity(nameof(EnterRFTest)))
+            {
+                try
+                {
+                    var result = await impl.enterRFTestAsync(new inputMessageName8()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = result.enterRFTest1.HasValue && result.enterRFTest1.Value;
 
-            var result = await impl.enterRFTestAsync(new inputMessageName8()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = result.enterRFTest1.HasValue && result.enterRFTest1.Value;
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<bool> ExitRFTest()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using (var activity = StartActivity(nameof(ExitRFTest)))
+            {
+                try
+                {
+                    var result = await impl.exitRFTestAsync(new inputMessageName9()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = result.exitRFTest1.HasValue && result.exitRFTest1.Value;
 
-            var result = await impl.exitRFTestAsync(new inputMessageName9()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = result.exitRFTest1.HasValue && result.exitRFTest1.Value;
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<bool> TestRFActuatorWithSerialNumber(long serialNumber)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters((nameof(serialNumber), serialNumber));
+            using (var activity = StartActivity(nameof(TestRFActuatorWithSerialNumber)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(serialNumber), serialNumber));
 
-            var result = await impl.testRFActuatorWithSerialNumberAsync(new inputMessageName3(serialNumber)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = result.testRFActuatorWithSerialNumber2.HasValue && result.testRFActuatorWithSerialNumber2.Value;
+                    var result = await impl.testRFActuatorWithSerialNumberAsync(new inputMessageName3(serialNumber)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = result.testRFActuatorWithSerialNumber2.HasValue && result.testRFActuatorWithSerialNumber2.Value;
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<int[]> GetDevicesRunningOutOfBattery()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using (var activity = StartActivity(nameof(GetDevicesRunningOutOfBattery)))
+            {
+                try
+                {
+                    var result = await impl.getDevicesRunningOutOfBatteryAsync(new inputMessageName4()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = result.getDevicesRunningOutOfBattery1 != null ? result.getDevicesRunningOutOfBattery1 : Array.Empty<int>();
 
-            var result = await impl.getDevicesRunningOutOfBatteryAsync(new inputMessageName4()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = result.getDevicesRunningOutOfBattery1 != null ? result.getDevicesRunningOutOfBattery1 : Array.Empty<int>();
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<RFDevice> WaitForDeviceDetected(int timeoutSeconds)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters((nameof(timeoutSeconds), timeoutSeconds));
+            using (var activity = StartActivity(nameof(WaitForDeviceDetected)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(timeoutSeconds), timeoutSeconds));
 
-            var result = await impl.waitForDeviceDetectedAsync(new inputMessageName5(timeoutSeconds)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = mapRFDevice(result.waitForDeviceDetected2);
+                    var result = await impl.waitForDeviceDetectedAsync(new inputMessageName5(timeoutSeconds)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = mapRFDevice(result.waitForDeviceDetected2);
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<RFDevice> WaitForDeviceTestResult(int timeoutSeconds)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters((nameof(timeoutSeconds), timeoutSeconds));
+            using (var activity = StartActivity(nameof(WaitForDeviceTestResult)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(timeoutSeconds), timeoutSeconds));
 
-            var result = await impl.waitForDeviceTestResultAsync(new inputMessageName6(timeoutSeconds)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = mapRFDevice(result.waitForDeviceTestResult2);
+                    var result = await impl.waitForDeviceTestResultAsync(new inputMessageName6(timeoutSeconds)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = mapRFDevice(result.waitForDeviceTestResult2);
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<RFDevice[]> GetDetectedDeviceList()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using (var activity = StartActivity(nameof(GetDetectedDeviceList)))
+            {
+                try
+                {
+                    var result = await impl.getDetectedDeviceListAsync(new inputMessageName7()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = result.getDetectedDeviceList1 == null ? Array.Empty<RFDevice>() : result.getDetectedDeviceList1.Select(mapRFDevice).ToArray();
 
-            var result = await impl.getDetectedDeviceListAsync(new inputMessageName7()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = result.getDetectedDeviceList1 == null ? Array.Empty<RFDevice>() : result.getDetectedDeviceList1.Select(mapRFDevice).ToArray();
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<int> GetBatteryLevel(int resourceId)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters((nameof(resourceId), resourceId));
+            using (var activity = StartActivity(nameof(GetBatteryLevel)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(resourceId), resourceId));
 
-            var result = await impl.getBatteryLevelAsync(new inputMessageName10(resourceId)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = result.getBatteryLevel2.HasValue ? result.getBatteryLevel2.Value : 0;
+                    var result = await impl.getBatteryLevelAsync(new inputMessageName10(resourceId)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = result.getBatteryLevel2.HasValue ? result.getBatteryLevel2.Value : 0;
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
     }
 }

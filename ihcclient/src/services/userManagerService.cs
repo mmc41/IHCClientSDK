@@ -76,15 +76,15 @@ namespace Ihc {
             return new IhcUser()
             {
                 Username = u.username,
-                Password = includePassword ? u.password : string.Empty,
+                Password = includePassword ? u.password : UserConstants.REDACTED_PASSWORD,
                 Email = u.email,
                 Firstname = u.firstname,
                 Lastname = u.lastname,
                 Phone = u.phone,
                 Group = u.group?.type,
                 Project = u.project,
-                CreatedDate = u.createdDate != null ? u.createdDate.ToDateTimeOffset() : DateTimeOffset.MinValue,
-                LoginDate = u.loginDate != null ? u.loginDate.ToDateTimeOffset() : DateTimeOffset.MinValue
+                CreatedDate = u.createdDate?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
+                LoginDate = u.loginDate?.ToDateTimeOffset() ?? DateTimeOffset.MinValue
             };
         }
 
@@ -135,17 +135,30 @@ namespace Ihc {
         /// <summary>
         /// Get list of registered controller users and their information.
         /// </summary>
-        /// <param name="includePassword">Include password in returned user objects</param>
-        public async Task<IhcUser[]> GetUsers(bool includePassword)
+        /// <param name="includePassword">Include password in returned user objects (default)</param>
+        public async Task<IhcUser[]> GetUsers(bool includePassword = true)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters((nameof(includePassword), includePassword));
+            using (var activity = StartActivity(nameof(GetUsers)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(includePassword), includePassword));
 
-            var resp = await impl.getUsersAsync(new inputMessageName2() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.getUsers1.Where((v) => v != null).Select((u) => mapUser(u, includePassword)).ToArray();
+                    var resp = await impl.getUsersAsync(new inputMessageName2() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    // Note that we for safty reasons can return users without password in return object
+                    var retv = resp.getUsers1.Where((v) => v != null).Select((u) => mapUser(u, includePassword)).ToArray();
+
+                    // Register activity - note that regardless of if password is included, any password will be also not be logged/observed unless LogSensitiveData allows it.
+                    activity?.SetReturnValue(IhcSettings.LogSensitiveData ? retv.Select(r => r.RedactPasword()).ToArray() : retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         /// <summary>
@@ -153,11 +166,24 @@ namespace Ihc {
         /// </summary>
         /// <param name="user">User information to add</param>
         public async Task AddUser(IhcUser user)
-        {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters((nameof(user), user));
+        {              
+            using (var activity = StartActivity(nameof(AddUser)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(user), IhcSettings.LogSensitiveData ? user : user.RedactPasword()));
 
-            await impl.addUserAsync(new inputMessageName1() { addUser1 = mapUser(user) }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    if (user?.Password == UserConstants.REDACTED_PASSWORD)
+                        throw new ArgumentException($"Password of user should not be set to reserved value ${UserConstants.REDACTED_PASSWORD}. This is likely an error!");
+
+                    await impl.addUserAsync(new inputMessageName1() { addUser1 = mapUser(user) }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         /// <summary>
@@ -166,10 +192,20 @@ namespace Ihc {
         /// <param name="username">Username of the user to remove</param>
         public async Task RemoveUser(string username)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters((nameof(username), username));
+            using (var activity = StartActivity(nameof(RemoveUser)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(username), username));
 
-            await impl.removeUserAsync(new inputMessageName3() { removeUser1 = username }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    await impl.removeUserAsync(new inputMessageName3() { removeUser1 = username }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         /// <summary>
@@ -178,10 +214,24 @@ namespace Ihc {
         /// <param name="user">Updated user information</param>
         public async Task UpdateUser(IhcUser user)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters((nameof(user), user));
+            using (var activity = StartActivity(nameof(UpdateUser)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(user), IhcSettings.LogSensitiveData ? user : user.RedactPasword()));
 
-            await impl.updateUserAsync(new inputMessageName4() { updateUser1 = mapUser(user) }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    if (user?.Password == UserConstants.REDACTED_PASSWORD)
+                        throw new ArgumentException($"Password of user should not be set to reserved value ${UserConstants.REDACTED_PASSWORD}. This is likely an error!");
+
+
+                    await impl.updateUserAsync(new inputMessageName4() { updateUser1 = mapUser(user) }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
     }
 }

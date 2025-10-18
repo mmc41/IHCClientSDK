@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using System.Diagnostics;
 
 namespace Ihc {
     /// <summary>
@@ -13,74 +14,208 @@ namespace Ihc {
     public enum ServiceOperationKind { AsyncFunction, AsyncEnumerable };
 
     /// <summary>
-    /// High level metadata about a service operation (method) on a high level IHC service. For use by test and documentation tools.
+    /// High level metadata about a field/parameter used in a high level IHC service operation type. For use by test and documentation tools.
     /// </summary>
-    /// <param name="Name">The name of the method</param>
-    /// <param name="ReturnType">The return type unwrapped from Task or IAsyncEnumerable wrappers (refer to OperationKind)</param>
-    /// <param name="ParameterTypes">Method parameter types</param>
-    /// <param name="OperationKind">The type of operation</param>
-    /// <param name="OperationDetails">The underlying MethodInfo describing the operation in details</param>
-    /// <param name="Description">The XML documentation summary for this method</param>
-    public record SeviceOperationMetadata(string Name, Type ReturnType, Type[] ParameterTypes, ServiceOperationKind OperationKind, MethodInfo OperationDetails, string Description)
+    // TODO: Add parameter types.
+    public record FieldMetaData(string name, Type type, FieldMetaData[] subtypes, string description)
     {
-        public string Name { get; init; } = Name;
-        public Type ReturnType { get; init; } = ReturnType;
-        public Type[] ParameterTypes { get; init; } = ParameterTypes;
-        public ServiceOperationKind Kind { get; init; } = OperationKind;
-        public MethodInfo MethodInfo { get; init; } = OperationDetails;
-        public string Description { get; init; } = Description;
+        public string Name { get; init; } = name;
+        public Type Type { get; init; } = type;
+        public string Description { get; init; } = description;
+        public FieldMetaData[] SubTypes { get; init; } = subtypes;
+        public bool IsSimple { get { return type.IsPrimitive || type == typeof(String); } }
+        public bool IsArray { get { return type.IsArray; } }
 
         public override string ToString()
         {
-            var parameters = string.Join(", ", ParameterTypes.Select(t => t.Name));
+            var subTypes = string.Join(", ", SubTypes.Select(p => p.Type.Name));
+            return $"FieldMetaData(Name={Name}, Type={Type.Name}, SubTypes={subTypes})";
+        }
+    }
+
+    /// <summary>
+    /// High level metadata about a service operation (method) on a high level IHC service. For use by test and documentation tools.
+    /// </summary>
+    /// <param name="service">IHC service</param>
+    /// <param name="Name">The name of the method</param>
+    /// <param name="ReturnType">The return type unwrapped from Task or IAsyncEnumerable wrappers (refer to OperationKind)</param>
+    /// <param name="Parameters">Method parameter metadata</param>
+    /// <param name="OperationKind">The type of operation</param>
+    /// <param name="OperationDetails">The underlying MethodInfo describing the operation in details</param>
+    /// <param name="Description">The XML documentation summary for this method</param>
+    public class ServiceOperationMetadata(IIHCService service, string Name, Type ReturnType, FieldMetaData[] Parameters, ServiceOperationKind OperationKind, MethodInfo OperationDetails, string Description)
+    {
+        public string Name { get; init; } = Name;
+        public Type ReturnType { get; init; } = ReturnType;
+        public FieldMetaData[] Parameters { get; init; } = Parameters;
+        public ServiceOperationKind Kind { get; init; } = OperationKind;
+        public MethodInfo MethodInfo { get; init; } = OperationDetails;
+        public string Description { get; init; } = Description;
+        public IIHCService service { get; init; } = service;
+
+        public override string ToString()
+        {
+            var parameters = string.Join(", ", Parameters.Select(p => p.Type.Name));
             return $"{ReturnType.Name} {Name}({parameters}) [{Kind}]";
+        }
+
+        /// <summary>
+        /// Invoke the operation on the specified service instance with the provided arguments.
+        /// Returns a Task, Task&lt;T&gt;, or IAsyncEnumerable&lt;T&gt; depending on the operation kind.
+        /// The caller is responsible for awaiting/enumerating the returned value.
+        /// </summary>
+        /// <param name="arguments">The arguments to pass to the method</param>
+        /// <returns>Task, Task&lt;T&gt;, or IAsyncEnumerable&lt;T&gt; representing the async operation</returns>
+        /// <exception cref="ArgumentNullException">Thrown when serviceInstance is null</exception>
+        /// <exception cref="ArgumentException">Thrown when arguments don't match expected parameter types</exception>
+        public object Invoke(object[] arguments)
+        {
+            // Validate arguments length matches expected parameters
+            if (arguments == null && Parameters.Length > 0)
+                throw new ArgumentException($"Method {Name} expects {Parameters.Length} arguments but null was provided");
+
+            if (arguments != null && arguments.Length != Parameters.Length)
+                throw new ArgumentException($"Method {Name} expects {Parameters.Length} arguments but {arguments.Length} were provided");
+
+            // Use reflection to invoke the method on the service instance
+            // This returns Task, Task<T>, or IAsyncEnumerable<T> depending on the operation
+            var result = MethodInfo.Invoke(service, arguments ?? Array.Empty<object>());
+
+            return result;
         }
     }
 
     /// <summary>
     /// Produce high level metadata about service operations (methods) on a high level IHC service. For use by test and documentation tools.
     /// </summary>
-    internal static class ServiceMetadata
+    public static class ServiceMetadata
     {
-        private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, IReadOnlyList<SeviceOperationMetadata>> _cache = new();
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, IReadOnlyList<ServiceOperationMetadata>> _cache = new();
         private static XDocument _xmlDoc;
         private static readonly object _xmlLock = new();
 
-        public static IReadOnlyList<SeviceOperationMetadata> GetOperations(IIHCService service)
+        /// <summary>
+        /// Get metadata about the operations supported by this service.
+        /// For use by test and documentation tools. Not for normal application code.
+        /// </summary>
+        /// <returns>List of metadata for service operations</returns>
+        public static IReadOnlyList<ServiceOperationMetadata> GetOperations(IIHCService service)
         {
+            using Activity activity = Telemetry.ActivitySource.StartActivity(nameof(GetOperations), ActivityKind.Internal);
+            
             var serviceType = service.GetType();
+            activity?.SetParameters((nameof(service), service.GetType().Name));
+            activity?.SetTag("cachedResult", true); // Assume cached by default
 
-            return _cache.GetOrAdd(serviceType, type =>
+            var retv = _cache.GetOrAdd(serviceType, type =>
             {
+                activity?.SetTag("cachedResult", false); // Override if not cached.
+
                 var methods = type.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
 
-                var operations = new List<SeviceOperationMetadata>();
+                var operations = new List<ServiceOperationMetadata>();
 
                 foreach (var method in methods)
                 {
-                    // Skip Dispose and DisposeAsync methods
-                    if (method.Name == "Dispose" || method.Name == "DisposeAsync")
-                        continue;
-
                     // Skip property getters/setters
                     if (method.IsSpecialName)
                         continue;
 
-                    operations.Add(CreateOperationInfo(method));
+                    // Skip methods inherited from System.Object
+                    if (method.DeclaringType == typeof(object))
+                        continue;
+
+                    // Skip methods from ICookieHandlerService, IDisposable, and IAsyncDisposable
+                    if (IsMethodFromExcludedInterface(method))
+                        continue;
+
+                    operations.Add(CreateOperationInfo(service, method));
                 }
 
                 return operations.AsReadOnly();
             });
+
+            activity?.SetReturnValue(retv);
+
+            return retv;
         }
 
-        private static SeviceOperationMetadata CreateOperationInfo(System.Reflection.MethodInfo method)
+        private static bool IsMethodFromExcludedInterface(MethodInfo method)
+        {
+            if (method.DeclaringType == null)
+                return false;
+
+            var excludedInterfaces = new[] { typeof(IDisposable), typeof(IAsyncDisposable), typeof(ICookieHandlerService) };
+
+            // Check if method is declared directly on excluded interfaces
+            if (excludedInterfaces.Contains(method.DeclaringType))
+                return true;
+
+            // Check if the declaring type implements any excluded interfaces and this method implements one of their methods
+            var declaringType = method.DeclaringType;
+
+            foreach (var excludedInterface in excludedInterfaces)
+            {
+                if (excludedInterface.IsAssignableFrom(declaringType))
+                {
+                    // Get the interface map to see if this method implements an interface method
+                    var interfaceMap = declaringType.GetInterfaceMap(excludedInterface);
+                    if (interfaceMap.TargetMethods.Contains(method))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static ServiceOperationMetadata CreateOperationInfo(IIHCService service, System.Reflection.MethodInfo method)
         {
             var operationType = DetermineOperationKind(method.ReturnType);
             var returnType = UnwrapAsyncReturnType(method.ReturnType);
-            var parameterTypes = method.GetParameters().Select(p => p.ParameterType).ToArray();
+            var parameters = method.GetParameters()
+                .Select(p => new FieldMetaData(
+                    name: p.Name ?? string.Empty,
+                    type: p.ParameterType,
+                    subtypes: CreateSubTypes(p.ParameterType),
+                    description: GetParameterDescription(method, p.Name ?? string.Empty)))
+                .ToArray();
             var description = GetMethodDescription(method);
 
-            return new SeviceOperationMetadata(method.Name, returnType, parameterTypes, operationType, method, description);
+            return new ServiceOperationMetadata(service, method.Name, returnType, parameters, operationType, method, description);
+        }
+
+        private static FieldMetaData[] CreateSubTypes(Type parameterType)
+        {
+            // For arrays, return element type with blank name
+            if (parameterType.IsArray)
+            {
+                var elementType = parameterType.GetElementType();
+                if (elementType != null)
+                {
+                    return new[] { new FieldMetaData(name: string.Empty, type: elementType, subtypes: [], description: "") }; // TODO: Read description from XML
+                }
+                return Array.Empty<FieldMetaData>();
+            }
+
+            // For primitives and strings, return empty array (no subtypes)
+            if (parameterType.IsPrimitive || parameterType == typeof(string))
+            {
+                return Array.Empty<FieldMetaData>();
+            }
+
+            // For classes/records, return properties
+            if (parameterType.IsClass || parameterType.IsValueType)
+            {
+                var properties = parameterType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                return properties
+                    .Select(p => new FieldMetaData(name: p.Name, type: p.PropertyType, subtypes: [], description: "")) // TODO: Read description from XML
+                    .ToArray();
+            }
+
+            // Default: return empty array
+            return Array.Empty<FieldMetaData>();
         }
 
         private static ServiceOperationKind DetermineOperationKind(Type returnType)
@@ -203,6 +338,40 @@ namespace Ihc {
             return string.Empty;
         }
 
+        private static string GetParameterDescription(MethodInfo method, string parameterName)
+        {
+            var xmlDoc = LoadXmlDocumentation();
+            if (xmlDoc == null)
+                return string.Empty;
+
+            // Try to find documentation from the declaring type first
+            var description = TryGetParameterDescriptionForType(xmlDoc, method, method.DeclaringType, parameterName);
+            if (description != null)
+                return description;
+
+            // If not found, try all implemented interfaces
+            if (method.DeclaringType != null)
+            {
+                var interfaces = method.DeclaringType.GetInterfaces();
+                foreach (var iface in interfaces)
+                {
+                    // Get the interface map to find the corresponding interface method
+                    var interfaceMap = method.DeclaringType.GetInterfaceMap(iface);
+                    var index = Array.IndexOf(interfaceMap.TargetMethods, method);
+
+                    if (index >= 0)
+                    {
+                        var interfaceMethod = interfaceMap.InterfaceMethods[index];
+                        description = TryGetParameterDescriptionForType(xmlDoc, interfaceMethod, iface, parameterName);
+                        if (description != null)
+                            return description;
+                    }
+                }
+            }
+
+            return string.Empty;
+        }
+
         private static string TryGetDescriptionForType(XDocument xmlDoc, MethodInfo method, Type type)
         {
             if (type == null)
@@ -245,6 +414,51 @@ namespace Ihc {
 
             // Fall back to the member element's direct text content
             return memberElement.Value.Trim();
+        }
+
+        private static string TryGetParameterDescriptionForType(XDocument xmlDoc, MethodInfo method, Type type, string parameterName)
+        {
+            if (type == null)
+                return null;
+
+            var sb = new StringBuilder();
+            sb.Append("M:");
+            sb.Append(type.FullName);
+            sb.Append('.');
+            sb.Append(method.Name);
+
+            var parameters = method.GetParameters();
+            if (parameters.Length > 0)
+            {
+                sb.Append('(');
+                for (int i = 0; i < parameters.Length; i++)
+                {
+                    if (i > 0)
+                        sb.Append(',');
+
+                    var paramType = parameters[i].ParameterType;
+                    sb.Append(GetXmlTypeName(paramType));
+                }
+                sb.Append(')');
+            }
+
+            var memberName = sb.ToString();
+
+            // Find the member element in the XML
+            var memberElement = xmlDoc.Descendants("member")
+                .FirstOrDefault(m => m.Attribute("name")?.Value == memberName);
+
+            if (memberElement == null)
+                return null;
+
+            // Find the param element with matching name attribute
+            var paramElement = memberElement.Elements("param")
+                .FirstOrDefault(p => p.Attribute("name")?.Value == parameterName);
+
+            if (paramElement == null)
+                return null;
+
+            return paramElement.Value.Trim();
         }
 
         private static string GetXmlTypeName(Type type)

@@ -51,7 +51,7 @@ namespace Ihc.Tests
                                           new Ihc.Soap.Resourceinteraction.WSDatalineResource() {resourceID=4, datalineNumber=3}
                                         }));
 
-        string getAllDatalineInputsXml ="""
+    string getAllDatalineInputsXml = """
         <SOAP-ENV:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
                                         <SOAP-ENV:Body>
                                         <ns1:getAllDatalineInputs1 xmlns:ns1="utcs">
@@ -66,6 +66,45 @@ namespace Ihc.Tests
                                         </ns1:getAllDatalineInputs1>
                                         </SOAP-ENV:Body>
                                         </SOAP-ENV:Envelope>
+        """;
+        
+
+        string getUsersResponseXml = """
+          <SOAP-ENV:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+            <SOAP-ENV:Body> 
+             <ns1:getUsers1 xmlns:ns1="utcs"> 
+               <ns1:arrayItem xsi:type="ns1:WSUser">
+                <ns1:createdDate xsi:type="ns1:WSDate">
+                  <ns1:day xsi:type="xsd:int">1</ns1:day>
+                  <ns1:hours xsi:type="xsd:int">20</ns1:hours>
+                  <ns1:minutes xsi:type="xsd:int">54</ns1:minutes>
+                  <ns1:seconds xsi:type="xsd:int">24</ns1:seconds>
+                  <ns1:monthWithJanuaryAsOne xsi:type="xsd:int">10</ns1:monthWithJanuaryAsOne>
+                  <ns1:year xsi:type="xsd:int">2019</ns1:year>
+                </ns1:createdDate>
+                <ns1:loginDate xsi:type="ns1:WSDate">
+                  <ns1:day xsi:type="xsd:int">17</ns1:day>
+                  <ns1:hours xsi:type="xsd:int">18</ns1:hours>
+                  <ns1:minutes xsi:type="xsd:int">31</ns1:minutes>
+                  <ns1:seconds xsi:type="xsd:int">54</ns1:seconds> 
+                  <ns1:monthWithJanuaryAsOne xsi:type="xsd:int">10</ns1:monthWithJanuaryAsOne>
+                  <ns1:year xsi:type="xsd:int">2025</ns1:year> 
+                </ns1:loginDate>
+                <ns1:username xsi:type="xsd:string">testusername</ns1:username>
+                <ns1:password xsi:type="xsd:string">testpassword</ns1:password>
+                <ns1:email xsi:type="xsd:string" xsi:nil="true"></ns1:email>
+                <ns1:firstname xsi:type="xsd:string">test forname</ns1:firstname> 
+                <ns1:lastname xsi:type="xsd:string">test surname</ns1:lastname>
+                <ns1:phone xsi:type="xsd:string" xsi:nil="true"></ns1:phone>
+                <ns1:group xsi:type="ns1:WSUserGroup">
+                  <ns1:type xsi:type="xsd:string">text.usermanager.group_administrators</ns1:type>
+                </ns1:group>
+                <ns1:project xsi:type="xsd:string" xsi:nil="true">
+                </ns1:project>
+              </ns1:arrayItem>
+             </ns1:getUsers1>
+            </SOAP-ENV:Body>
+          </SOAP-ENV:Envelope>
         """;
 
         private string normalize(string str) {
@@ -206,11 +245,43 @@ namespace Ihc.Tests
             }
         }
 
-        private System.Xml.Serialization.XmlSerializer GetOrCreateSerializerAccessor(Type type, System.Xml.Serialization.XmlAttributeOverrides attrs, Type[] extraTypes)
-        {
-            var method = typeof(Serialization).GetMethod("GetOrCreateSerializer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            return (System.Xml.Serialization.XmlSerializer)method.Invoke(null, new object[] { type, attrs, extraTypes });
-        }
+    private System.Xml.Serialization.XmlSerializer GetOrCreateSerializerAccessor(Type type, System.Xml.Serialization.XmlAttributeOverrides attrs, Type[] extraTypes)
+    {
+      var method = typeof(Serialization).GetMethod("GetOrCreateSerializer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+      return (System.Xml.Serialization.XmlSerializer)method.Invoke(null, new object[] { type, attrs, extraTypes });
+    }
         #endregion
+    
+        #region Bug tests
+        /// <summary>
+        /// This bug is due to the controller provided WSDL being inconsistent with the XML returned by the controller.
+        /// The WSDL defines the internal WSDate as a sequence in an order which is different from what the controller provides (the response xml in the test).
+        /// Thus the generate soap class for WSDate has order set [System.Xml.Serialization.XmlElementAttribute(Order=xxx)] which will cause deserialization to set 
+        /// fields out of order to 0. 
+        /// 
+        /// Fix: The WSDL or the generated soap classes must be fixed by replacing <xsd:sequence> with <xsd:all> and regenerating or by removing "Order=xxx" from XmlElementAttribute.
+        /// </summary>
+        [Test]
+        public void DeserializeUserXmlGotWrongDate()
+        {
+          var o = Serialization.DeserializeXml<RequestEnvelope<Ihc.Soap.Usermanager.outputMessageName2>>(getUsersResponseXml);
+
+          Assert.That(o.Body.getUsers1.Length, Is.EqualTo(1));
+
+          // This worked always but included to be sure of no regressions
+          Assert.That(o.Body.getUsers1[0].username, Is.EqualTo("testusername"));
+          Assert.That(o.Body.getUsers1[0].password, Is.EqualTo("testpassword"));
+          
+          // Bug check: Year and month are correctly deserialized
+          Assert.That(o.Body.getUsers1[0].createdDate.monthWithJanuaryAsOne, Is.EqualTo(10));
+          Assert.That(o.Body.getUsers1[0].createdDate.day, Is.EqualTo(1));
+          Assert.That(o.Body.getUsers1[0].createdDate.year, Is.EqualTo(2019));
+          Assert.That(o.Body.getUsers1[0].loginDate.monthWithJanuaryAsOne, Is.EqualTo(10));
+          Assert.That(o.Body.getUsers1[0].loginDate.day, Is.EqualTo(17));
+          Assert.That(o.Body.getUsers1[0].loginDate.year, Is.EqualTo(2025));
+        }
+
+        #endregion
+    
     }
 }

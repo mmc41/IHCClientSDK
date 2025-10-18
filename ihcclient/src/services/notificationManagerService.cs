@@ -83,20 +83,38 @@ namespace Ihc {
 
         public async Task ClearMessages()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-
-            await impl.clearMessagesAsync(new inputMessageName2()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            using (var activity = StartActivity(nameof(ClearMessages)))
+            {
+                try
+                {
+                    await impl.clearMessagesAsync(new inputMessageName2()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<NotificationMessage[]> GetMessages()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using (var activity = StartActivity(nameof(GetMessages)))
+            {
+                try
+                {
+                    var resp = await impl.getMessagesAsync(new inputMessageName1()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.getMessages1.Where((v) => v != null).Select((v) => mapMessage(v)).ToArray();
 
-            var resp = await impl.getMessagesAsync(new inputMessageName1()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.getMessages1.Where((v) => v != null).Select((v) => mapMessage(v)).ToArray();
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
     }
 }

@@ -43,6 +43,9 @@ dotnet run --project utilities/ihc_httpproxyrecorder/ihc_httpproxyrecorder.cspro
 
 # Run project download/upload tool
 dotnet run --project utilities/ihc_project_download_upload/ihc_ProjectDownloadUpload.csproj
+
+# Run IHC Lab GUI utility (Avalonia-based desktop application)
+dotnet run --project utilities/ihc_lab/ihc_lab.csproj
 ```
 
 ## Project Architecture
@@ -57,6 +60,7 @@ This is a .NET 9.0 mono-repository containing an unofficial SDK for IHC (Intelli
 - `utilities/ihc_project_io_extractor/` - Utility to generate C# constants from IHC project files
 - `utilities/ihc_httpproxyrecorder/` - HTTP proxy for debugging/investigating IHC API calls
 - `utilities/ihc_project_download_upload/` - Tool for downloading/uploading IHC project files
+- `utilities/ihc_lab/` - Avalonia-based GUI desktop application for IHC controller interaction and testing
 
 ### SDK Architecture
 The `ihcclient` project follows a layered architecture:
@@ -72,7 +76,7 @@ The `ihcclient` project follows a layered architecture:
 - Auto-generated from WSDL files using dotnet-svcutil (authentication.cs, configuration.cs, controller.cs, resourceinteraction.cs, openapi.cs, airlinkmanagment.cs, etc.)
 - Low-level SOAP implementations in `Ihc.Soap.*.*` namespaces
 - Should not be used directly - access through high-level services
-- Regeneration requires macOS with `download_wsdl.sh` and `generate.sh` scripts
+- Regeneration requires macOS with `download_wsdl.sh` and `generate.sh` scripts located in `ihcclient/`
 
 **Supporting Infrastructure** (`ihcclient/src/util/`):
 - HTTP client utilities, serialization helpers, date extensions
@@ -88,6 +92,8 @@ The `ihcclient` project follows a layered architecture:
 - Custom serialization layer to handle IHC-specific data formats
 - Cookie-based session management for maintaining controller connections
 - Each service uses internal SoapImpl wrapper around generated SOAP code
+- Prioritise the following patterns in specified order of priority: D.R.Y, KISS, YAGNI, Single return statements, SOLID.
+- Use nameof() instead of hardcoded parameter names
 
 ## Configuration Requirements
 

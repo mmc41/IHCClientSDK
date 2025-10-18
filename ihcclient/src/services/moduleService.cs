@@ -133,8 +133,8 @@ namespace Ihc {
                 Filepath = info.filepath,
                 Remote = info.remote,
                 Version = info.version,
-                Created = info.created?.ToDateTimeOffset().DateTime,
-                LastModified = info.lastmodified?.ToDateTimeOffset().DateTime,
+                Created = info.created?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
+                LastModified = info.lastmodified?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
                 Description = info.description,
                 Crc = info.crc
             } : null;
@@ -151,75 +151,142 @@ namespace Ihc {
 
         public async Task<SceneProjectInfo> GetSceneProjectInfo()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using (var activity = StartActivity(nameof(GetSceneProjectInfo)))
+            {
+                try
+                {
+                    var resp = await impl.getSceneProjectInfoAsync(new inputMessageName1() {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = mapSceneProjectInfo(resp.getSceneProjectInfo1);
 
-            var resp = await impl.getSceneProjectInfoAsync(new inputMessageName1() {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = mapSceneProjectInfo(resp.getSceneProjectInfo1);
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<SceneProject> GetSceneProject(string name)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters((nameof(name), name));
+            using (var activity = StartActivity(nameof(GetSceneProject)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(name), name));
 
-            var resp = await impl.getSceneProjectAsync(new inputMessageName5(name) {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = mapSceneProject(resp.getSceneProject2);
+                    var resp = await impl.getSceneProjectAsync(new inputMessageName5(name) {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = mapSceneProject(resp.getSceneProject2);
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task StoreSceneProject(SceneProject project)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters((nameof(project), project));
+            using (var activity = StartActivity(nameof(StoreSceneProject)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(project), project));
 
-            await impl.storeSceneProjectAsync(new inputMessageName2(unmapSceneProject(project))).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    await impl.storeSceneProjectAsync(new inputMessageName2(unmapSceneProject(project))).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<SceneProject> GetSceneProjectSegment(string name, int segmentNumber)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters((nameof(name), name), (nameof(segmentNumber), segmentNumber));
+            using (var activity = StartActivity(nameof(GetSceneProjectSegment)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(name), name), (nameof(segmentNumber), segmentNumber));
 
-            var resp = await impl.getSceneProjectSegmentAsync(new inputMessageName3(name, segmentNumber)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = mapSceneProject(resp.getSceneProjectSegment3);
+                    var resp = await impl.getSceneProjectSegmentAsync(new inputMessageName3(name, segmentNumber)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = mapSceneProject(resp.getSceneProjectSegment3);
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<bool> StoreSceneProjectSegment(SceneProject projectSegment, bool isFirstSegment, bool isLastSegment)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters((nameof(projectSegment), projectSegment), (nameof(isFirstSegment), isFirstSegment), (nameof(isLastSegment), isLastSegment));
+            using (var activity = StartActivity(nameof(StoreSceneProjectSegment)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(projectSegment), projectSegment), (nameof(isFirstSegment), isFirstSegment), (nameof(isLastSegment), isLastSegment));
 
-            var resp = await impl.storeSceneProjectSegmentAsync(new inputMessageName4(unmapSceneProject(projectSegment), isFirstSegment, isLastSegment)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.storeSceneProjectSegment4.HasValue ? resp.storeSceneProjectSegment4.Value : false;
+                    var resp = await impl.storeSceneProjectSegmentAsync(new inputMessageName4(unmapSceneProject(projectSegment), isFirstSegment, isLastSegment)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.storeSceneProjectSegment4.HasValue ? resp.storeSceneProjectSegment4.Value : false;
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task ClearAll()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-
-            await impl.clearAllAsync(new inputMessageName6() {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            using (var activity = StartActivity(nameof(ClearAll)))
+            {
+                try
+                {
+                    await impl.clearAllAsync(new inputMessageName6() {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<int> GetSceneProjectSegmentationSize()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using (var activity = StartActivity(nameof(GetSceneProjectSegmentationSize)))
+            {
+                try
+                {
+                    var resp = await impl.getSceneProjectSegmentationSizeAsync(new inputMessageName7() {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.getSceneProjectSegmentationSize1.HasValue ? resp.getSceneProjectSegmentationSize1.Value : 0;
 
-            var resp = await impl.getSceneProjectSegmentationSizeAsync(new inputMessageName7() {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = resp.getSceneProjectSegmentationSize1.HasValue ? resp.getSceneProjectSegmentationSize1.Value : 0;
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
     }

@@ -38,9 +38,17 @@ This project is hosted in a mono-repo containing the following sub-projects:
 * SDK tests:
     * [Safe integration tests](tests/safe_integration_tests/README.md) contains system and unit tests written in c# that can be safely run aginst a controller in use.
 * SDK utilities:
+    * [Ihc Lab](utilities/ihc_lab/README.md) contains an experimental cross-platform GUI for calling individual API's.
     * [Program code extractor ](utilities/ihc_project_io_extractor/README.md) contains an optional command line utility for software developers that can generate constant definitions of IO addresses in a concrete IHC installation. Use this approach in your projects if you don't want to lookup and hardcode IO addresses yourself.
     * [IHC Http Proxy recorder](utilities/ihc_httpproxyrecorder/README.md) contains a simple http proxy useful for software (sdk) developers to investigate undocumented IHC controller API's.
     * [IHC Project download/upload](utilities/ihc_project_download_upload/README.md) contains a tool to download/upload project files.
+
+# Configuration
+
+The SDK use a ihc_settings.json file to configure IHC controller, logging/telemetry, application setup and tests. Before using the SDK or any utilties/tests/examples 
+take a copy the [ihcsettings_template.json](ihcsettings_template.json) into ihcsettings.json in the same directory and fill-in the details of your installation such as username, password etc. See also [ihcsettings_example.json](ihcsettings_example.json).
+
+As a more powerfull alternative to log files, the SDK optionally supports [OpenTelemetry](https://opentelemetry.io/) to view logs and traces. To enable this change telemetry settings in the config file.
 
 ## FAQ
 

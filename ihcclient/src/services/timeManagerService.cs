@@ -101,7 +101,7 @@ namespace Ihc {
                 GmtOffsetInHours = ws.gmtOffsetInHours,
                 ServerName = ws.serverName,
                 SyncIntervalInHours = ws.syncIntervalInHours,
-                TimeAndDateInUTC = ws.timeAndDateInUTC?.ToDateTimeOffset(),
+                TimeAndDateInUTC = ws.timeAndDateInUTC?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
                 OnlineCalendarUpdateOnline = ws.online_calendar_update_online,
                 OnlineCalendarCountry = ws.online_calendar_country,
                 OnlineCalendarValidUntil = ws.online_calendar_valid_until
@@ -134,7 +134,7 @@ namespace Ihc {
                 ConnectionWasSuccessful = ws.connectionWasSuccessful,
                 DateFromServer = ws.dateFromServer > 0
                     ? DateTimeOffset.FromUnixTimeMilliseconds(ws.dateFromServer)
-                    : null,
+                    : DateTimeOffset.MinValue,
                 ConnectionFailedDueToUnknownHost = ws.connectionFailedDueToUnknownHost,
                 ConnectionFailedDueToOtherErrors = ws.connectionFailedDueToOtherErrors
             };
@@ -161,62 +161,108 @@ namespace Ihc {
 
         public async Task<DateTimeOffset> GetCurrentLocalTime()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using (var activity = StartActivity(nameof(GetCurrentLocalTime)))
+            {
+                try
+                {
+                    var resp = await impl.getCurrentLocalTimeAsync(new inputMessageName2()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var result = resp.getCurrentLocalTime1;
+                    var retv = result != null ? result.ToDateTimeOffset() : DateTimeOffset.MinValue;
 
-            var resp = await impl.getCurrentLocalTimeAsync(new inputMessageName2()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var result = resp.getCurrentLocalTime1;
-            var retv = result != null ? result.ToDateTimeOffset() : DateTimeOffset.MinValue;
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<TimeSpan> GetUptime()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using (var activity = StartActivity(nameof(GetUptime)))
+            {
+                try
+                {
+                    var resp = await impl.getUptimeAsync(new inputMessageName5()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var result = resp.getUptime1;
+                    var retv = result.HasValue ? TimeSpan.FromMilliseconds(result.Value) : TimeSpan.Zero;
 
-            var resp = await impl.getUptimeAsync(new inputMessageName5()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var result = resp.getUptime1;
-            var retv = result.HasValue ? TimeSpan.FromMilliseconds(result.Value) : TimeSpan.Zero;
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<TimeManagerSettings> GetSettings()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using (var activity = StartActivity(nameof(GetSettings)))
+            {
+                try
+                {
+                    var resp = await impl.getSettingsAsync(new inputMessageName3()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = mapSettings(resp.getSettings1);
 
-            var resp = await impl.getSettingsAsync(new inputMessageName3()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = mapSettings(resp.getSettings1);
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<bool> SetSettings(TimeManagerSettings settings)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters((nameof(settings), settings));
+            using (var activity = StartActivity(nameof(SetSettings)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(settings), settings));
 
-            var wsSettings = mapSettings(settings);
-            var resp = await impl.setSettingsAsync(new inputMessageName4 { setSettings1 = wsSettings }).ConfigureAwait(this.settings.AsyncContinueOnCapturedContext);
-            var result = resp.setSettings2;
-            var retv = result.HasValue && result.Value == 1;
+                    var wsSettings = mapSettings(settings);
+                    var resp = await impl.setSettingsAsync(new inputMessageName4 { setSettings1 = wsSettings }).ConfigureAwait(this.settings.AsyncContinueOnCapturedContext);
+                    var result = resp.setSettings2;
+                    var retv = result.HasValue && result.Value == 1;
 
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         public async Task<TimeServerConnectionResult> GetTimeFromServer()
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
+            using (var activity = StartActivity(nameof(GetTimeFromServer)))
+            {
+                try
+                {
+                    var resp = await impl.getTimeFromServerAsync(new inputMessageName1()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = mapTimeServerConnectionResult(resp.getTimeFromServer2);
 
-            var resp = await impl.getTimeFromServerAsync(new inputMessageName1()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            var retv = mapTimeServerConnectionResult(resp.getTimeFromServer2);
-
-            activity?.SetReturnValue(retv);
-            return retv;
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
     }
 }

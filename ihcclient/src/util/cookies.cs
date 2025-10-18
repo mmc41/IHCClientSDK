@@ -22,6 +22,8 @@ namespace Ihc {
 
     internal sealed class CookieHandler : ICookieHandler
     {
+        public const string REDACTED_COOKIE = "**REDACTED**";
+
         private readonly object _lock = new object();
         private readonly ILogger logger;
         private readonly bool logSensitiveData;
@@ -44,36 +46,24 @@ namespace Ihc {
         {
             lock (_lock)
             {
-                if (logSensitiveData)
-                {
-                    logger.LogTrace("USING COOKIE '" + cookie + "'");
-                }
-                else
-                {
-                    logger.LogTrace(cookie != null ? "Using session cookie (value redacted)" : "No session cookie set");
-                }
+                using var activity = Telemetry.ActivitySource.StartActivity(nameof(GetCookie), ActivityKind.Internal);
+                activity?.SetReturnValue(
+                   cookie == null ? "Empty" : (logSensitiveData ? cookie : UserConstants.REDACTED_PASSWORD)
+                );
+
                 return cookie;
             }
         }
 
         public void SetCookie(string _cookie)
         {
-            using var activity = Telemetry.ActivitySource.StartActivity(ActivityKind.Internal);
-            activity?.SetParameters(
-                (nameof(_cookie), logSensitiveData ? _cookie: "***REDACTED***")
-            );
-
             lock (_lock)
             {
-                if (_cookie == null)
-                {
-                    logger.LogInformation("CLEARING COOKIE");
-                }
-                else
-                {
-                    logger.LogInformation("SETTING COOKIE TO: '" + (logSensitiveData ? _cookie: "***REDACTED***") + "'");
-                }
-
+                using var activity = Telemetry.ActivitySource.StartActivity(nameof(SetCookie), ActivityKind.Internal);
+                activity?.SetParameters(
+                    (nameof(_cookie), _cookie == null ? "Empty" : (logSensitiveData ? _cookie : UserConstants.REDACTED_PASSWORD))
+                );
+            
                 cookie = _cookie;
             }
         }
