@@ -63,6 +63,9 @@ public partial class DynField : UserControl
             if (control is TextBox textBox)
             {
                 return textBox.Text;
+            } else if (control is ComboBox comboBox)
+            {
+                return comboBox.SelectedItem;
             }
             else if (control is NumericUpDown numericUpDown)
             {
@@ -99,6 +102,14 @@ public partial class DynField : UserControl
             string typeLower = typeForControl.ToLower();
             if (control is TextBox textBox)
                 textBox.Text = value?.ToString()?.Trim() ?? "";
+            else if (control is ComboBox comboBox)
+            {
+                if (value != null && Tag is Ihc.FieldMetaData fieldMetaData && fieldMetaData.Type.IsEnum)
+                {
+                    // Try to select the enum value in the ComboBox
+                    comboBox.SelectedItem = value;
+                }
+            }
             else if (control is NumericUpDown numericUpDown)
             {
                 if (value == null)
@@ -188,9 +199,29 @@ public partial class DynField : UserControl
             };
             ToolTip.SetTip(textBox, $"Enter {typeLower} value");
             parentPanel.Children.Add(textBox);
-        }
-        else if (typeLower == "integer" || typeLower == "int32" || typeLower == "int64" || typeLower == "int16" || typeLower == "long" || typeLower == "ulong" || typeLower == "byte" || typeLower == "sbyte" || typeLower == "short" || typeLower == "ushort" 
-                || typeLower == "double" || typeLower == "single" || typeLower == "decimal" 
+        } else if (typeLower == "enum")
+        {
+            var comboBox = new ComboBox
+            {
+                Name = "ValueCtrl",
+                MinWidth = 100
+            };
+
+            // Get enum values from Tag if available
+            if (Tag is Ihc.FieldMetaData fieldMetaData && fieldMetaData.Type.IsEnum)
+            {
+                comboBox.ItemsSource = Enum.GetValues(fieldMetaData.Type);
+                if (comboBox.ItemsSource is Array enumValues && enumValues.Length > 0)
+                {
+                    comboBox.SelectedIndex = 0;
+                }
+            } else throw new Exception("No metdat found for enum type " + typeLower);
+
+            ToolTip.SetTip(comboBox, $"Select {typeLower} value");
+            parentPanel.Children.Add(comboBox);
+
+        } else if (typeLower == "integer" || typeLower == "int32" || typeLower == "int64" || typeLower == "int16" || typeLower == "long" || typeLower == "ulong" || typeLower == "byte" || typeLower == "sbyte" || typeLower == "short" || typeLower == "ushort"
+                || typeLower == "double" || typeLower == "single" || typeLower == "decimal"
                 || typeLower == "timespan")
         {
             var numericUpDown = new NumericUpDown
@@ -214,7 +245,7 @@ public partial class DynField : UserControl
                 Spacing = 10,
                 Name = "ValueCtrl"
             };
-            
+
             ToolTip.SetTip(stackPanel, $"Select {typeLower} value");
 
             var radioButtonTrue = new RadioButton
@@ -247,16 +278,17 @@ public partial class DynField : UserControl
 
             ToolTip.SetTip(datePicker, $"Select {typeLower} value");
             parentPanel.Children.Add(datePicker);
-        } else if (typeLower == "resourcevalue")
+        }
+        else if (typeLower == "resourcevalue")
         {
-             // Create a horizontal StackPanel to hold the radio buttons
+            // Create a horizontal StackPanel to hold the radio buttons
             var stackPanel = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
                 Spacing = 10,
                 Name = "ValueCtrl"
             };
-            
+
             ToolTip.SetTip(stackPanel, $"Select {typeLower} value");
 
             var resourceIdUpDown = new NumericUpDown

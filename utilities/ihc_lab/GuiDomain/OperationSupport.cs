@@ -289,8 +289,13 @@ public static class OperationSupport
     {
         if (type == typeof(string))
             return string.Empty;
+        if (type.IsEnum)
+        {
+            var enumValues = Enum.GetValues(type);
+            return enumValues.Length > 0 ? enumValues.GetValue(0) : null;
+        }
         if (type.IsValueType)
-            return Activator.CreateInstance(type) ?? throw new InvalidOperationException($"Failed to create instance of {type.Name}");
+            return Activator.CreateInstance(type) ?? throw new InvalidOperationException($"Failed to create instance of {nameof(type)}");
         return null;
     }
 }
