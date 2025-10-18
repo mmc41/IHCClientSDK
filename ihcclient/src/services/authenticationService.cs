@@ -170,7 +170,7 @@ namespace Ihc {
                             Firstname = result.loggedInUser.firstname,
                             Lastname = result.loggedInUser.lastname,
                             Phone = result.loggedInUser.phone,
-                            Group = result.loggedInUser.group?.type,
+                            Group = UserManagerService.mapUserGroup(result.loggedInUser.group?.type),
                             Project = result.loggedInUser.project,
                             CreatedDate = result.loggedInUser.createdDate.ToDateTimeOffset(),
                             LoginDate = result.loggedInUser.loginDate.ToDateTimeOffset(),

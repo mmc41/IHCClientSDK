@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using Ihc.Soap.Authentication;
 using System.Text;
+using System.Runtime.Serialization;
 
 namespace Ihc {
     public static class UserConstants {
@@ -12,18 +13,34 @@ namespace Ihc {
       public const string REDACTED_PASSWORD = "**REDACTED**";
     };
 
-    /**
-     * High level model of a IHC user without soap distractions.
-     */
-    public record IhcUser {
+  /// <summary>
+  /// High level enumeration for UserGroup values without soap distractions.
+  /// </summary>
+  public enum UserGroup
+  {
+    Administrators,
+
+    Users,
+
+    /// <summary>
+    /// Only used with not specified - not supported by IHC.
+    /// </summary>
+    None 
+  };
+
+    /// <summary>
+    /// High level model of a IHC user without soap distractions.
+    /// </summary>
+    public record IhcUser
+    {
       public string Username { get; init; }
       public string Password { get; init; }
       public string Email { get; init; }
       public string Firstname { get; init; }
       public string Lastname { get; init; }
       public string Phone { get; init; }
-      public string Group { get; init; }
-      public string Project  { get; init; }
+      public UserGroup Group { get; init; }
+      public string Project { get; init; }
       public DateTimeOffset CreatedDate { get; init; }
       public DateTimeOffset LoginDate { get; init; }
 
@@ -44,7 +61,7 @@ namespace Ihc {
       {
         return this.ToString(false); // No password output by default. 
       }
-          
+
       /// <summary>
       /// Safely convert to string. Only convert password if LogSensitiveData set to true.
       /// </summary>
@@ -53,6 +70,5 @@ namespace Ihc {
       {
         return $"IhcUser(Username={Username}, Password={(LogSensitiveData ? Password : UserConstants.REDACTED_PASSWORD)}, Email={Email}, Firstname={Firstname}, Lastname={Lastname}, Phone={Phone}, Group={Group}, Project={Project}, CreatedDate={CreatedDate}, LoginDate={LoginDate})";
       }
-          
     }
 }

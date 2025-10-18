@@ -4,6 +4,7 @@ using System.Linq;
 using Microsoft.Extensions.Logging;
 using Ihc.Soap.Usermanager;
 using System.Diagnostics;
+using System.Diagnostics.Tracing;
 
 namespace Ihc {
     /// <summary>
@@ -71,6 +72,40 @@ namespace Ihc {
 
         private readonly SoapImpl impl;
 
+        private UserGroup mapUserGroup(WSUserGroup group)
+        {
+            if (group == null)
+                return UserGroup.None;
+
+            return mapUserGroup(group.type);
+        }
+
+        internal static UserGroup mapUserGroup(string wsGroupType)
+        {
+            if (string.IsNullOrEmpty(wsGroupType))
+                return UserGroup.None;
+
+            switch (wsGroupType)
+            {
+                case "text.usermanager.group_administrators": return UserGroup.Administrators;
+                case "gtext.users": return UserGroup.Users;
+                default: throw new Exception("Unkown user group " + wsGroupType);
+            }
+        }
+
+        private WSUserGroup mapUserGroup(UserGroup group)
+        {
+            string strType;
+            switch (group)
+            {
+                case UserGroup.Administrators: strType = "text.usermanager.group_administrators"; break;
+                case UserGroup.Users: strType = "gtext.users"; break;
+                default: strType = null; break;
+            }
+
+            return new WSUserGroup() { type = strType };
+        }
+
         private IhcUser mapUser(Ihc.Soap.Usermanager.WSUser u, bool includePassword)
         {
             return new IhcUser()
@@ -81,7 +116,7 @@ namespace Ihc {
                 Firstname = u.firstname,
                 Lastname = u.lastname,
                 Phone = u.phone,
-                Group = u.group?.type,
+                Group = mapUserGroup(u.group),
                 Project = u.project,
                 CreatedDate = u.createdDate?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
                 LoginDate = u.loginDate?.ToDateTimeOffset() ?? DateTimeOffset.MinValue
@@ -98,7 +133,7 @@ namespace Ihc {
                 firstname = u.Firstname,
                 lastname = u.Lastname,
                 phone = u.Phone,
-                group = new Ihc.Soap.Usermanager.WSUserGroup() { type = u.Group },
+                group = mapUserGroup(u.Group),
                 project = u.Project,
                 createdDate = new Ihc.Soap.Usermanager.WSDate()
                 {
