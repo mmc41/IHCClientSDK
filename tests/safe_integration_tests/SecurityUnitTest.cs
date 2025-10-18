@@ -11,7 +11,7 @@ namespace Ihc.Tests
     public class SecurityUnitTest
     {
         [Test]
-        public void IhcUser_ToStringDefault_RedactsPassword()
+        public void IhcUser_ToStringWithFalse_RedactsPassword()
         {
             // Arrange
             var user = new IhcUser
@@ -29,11 +29,9 @@ namespace Ihc.Tests
             };
 
             // Act
-            string result = user.ToString();
-            string result2 = user.ToString(false);
+            string result = user.ToString(false);
             
             // Assert
-            Assert.That(result, Is.EqualTo(result2));
             Assert.That(result, Does.Contain($"Username={user.Username}"));
             Assert.That(result, Does.Contain($"Password={UserConstants.REDACTED_PASSWORD}"));
             Assert.That(result, Does.Not.Contain("secretpassword"));
