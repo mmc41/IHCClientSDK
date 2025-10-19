@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
@@ -114,7 +115,7 @@ public partial class MainWindow : Window
             string txt = await OperationSupport.DynCall(serviceItem.Service, operationMetadata, parameterValues);
 
             // Update result text view
-            await SetOutput(txt);
+            await SetOutput(txt, operationMetadata.ReturnType );
         } catch (Exception ex)
         {
            activity?.SetError(ex);
@@ -305,14 +306,15 @@ public partial class MainWindow : Window
         OutputHeading.IsVisible = false;
     }
 
-    public async Task SetOutput(string text)
+    public async Task SetOutput(string text, Type type)
     {
         Output.Text = text;
+        OutputHeading.Text = $"Output (Size={text.Length}, Type={type.Name}):";
         OutputHeading.IsVisible = true;
 
         // For large content: disable wrapping and enable horizontal scroll
         // For small content: enable wrapping and disable horizontal scroll
-        bool isLargeContent = text.Length > 1000;
+        bool isLargeContent = text.Length > 10000;
 
         Output.TextWrapping = isLargeContent
             ? Avalonia.Media.TextWrapping.NoWrap
