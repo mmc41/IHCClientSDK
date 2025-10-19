@@ -1,10 +1,13 @@
 using System;
 using System.Linq;
+using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
+using Avalonia.Platform.Storage;
+using Ihc;
 
 namespace IhcLab;
 
@@ -63,7 +66,8 @@ public partial class DynField : UserControl
             if (control is TextBox textBox)
             {
                 return textBox.Text;
-            } else if (control is ComboBox comboBox)
+            }
+            else if (control is ComboBox comboBox)
             {
                 return (comboBox.SelectedItem as EnumItem)?.Value;
             }
@@ -86,6 +90,10 @@ public partial class DynField : UserControl
             {
                 return datePicker.SelectedDate.HasValue ? datePicker.SelectedDate.Value : DateTimeOffset.MinValue;
             }
+            else if (control is InputFilePicker inputFilePicker)
+            {
+                return inputFilePicker.Value;
+            }
             else if (control is StackPanel stackPanel)
             {
                 var radioButtonTrue = stackPanel.Children.OfType<RadioButton>().FirstOrDefault(rb => rb.Content?.ToString() == "True");
@@ -100,7 +108,11 @@ public partial class DynField : UserControl
                 return;
 
             string typeLower = typeForControl.Name.ToLower();
-            if (control is TextBox textBox)
+
+            if (control is InputFilePicker inputFilePicker)
+            {
+                inputFilePicker.Value = value;
+            } else if (control is TextBox textBox)
                 textBox.Text = value?.ToString()?.Trim() ?? "";
             else if (control is ComboBox comboBox)
             {
@@ -197,7 +209,42 @@ public partial class DynField : UserControl
         // Create control based on type
         string typeNameLower = typeForControl.Name.ToLower();
 
-        if (typeForControl.IsEnum)
+        Ihc.FieldMetaData? fieldMetaData = Tag as Ihc.FieldMetaData;
+        if (fieldMetaData == null)
+            throw new Exception("Missing tag with FieldMetaData for type " + typeNameLower);
+
+        if (fieldMetaData.IsFile)
+        {
+            // Determine file type based on whether it implements BinaryFile or TextFile
+            InputFilePicker.FileType ft;
+            System.Text.Encoding? encoding = null;
+
+            if (typeof(Ihc.TextFile).IsAssignableFrom(typeForControl))
+            {                
+                ft = InputFilePicker.FileType.StringFile;
+                // Default to UTF-8 for text files
+                // TODO: Lookup encoding on fieldMetaData 
+                encoding = ProjectFile.Encoding;
+            }
+            else if (typeof(Ihc.BinaryFile).IsAssignableFrom(typeForControl))
+            {
+                ft = InputFilePicker.FileType.BinaryFile;
+            }
+            else
+            {
+                throw new Exception("Unsupported element type for file element " + typeNameLower);
+            }
+
+            var uploadFile = new InputFilePicker
+            {
+                Name = "ValueCtrl",
+                CurrentFileType = ft,
+                TextEncoding = encoding ?? System.Text.Encoding.UTF8,
+                MinWidth = 100
+            };
+            ToolTip.SetTip(uploadFile, $"Upload file");
+            parentPanel.Children.Add(uploadFile);
+        } else if (typeForControl.IsEnum)
         {
             var comboBox = new ComboBox
             {
@@ -206,7 +253,7 @@ public partial class DynField : UserControl
             };
 
             // Get enum values from Tag if available
-            if (Tag is Ihc.FieldMetaData fieldMetaData && fieldMetaData.Type.IsEnum)
+            if (fieldMetaData!=null && fieldMetaData.Type.IsEnum)
             {
                 var enumItems = Enum.GetValues(fieldMetaData.Type)
                     .Cast<object>()
@@ -220,12 +267,14 @@ public partial class DynField : UserControl
                 {
                     comboBox.SelectedIndex = 0;
                 }
-            } else throw new Exception("No metadata found for enum type " + typeNameLower);
+            }
+            else throw new Exception("No metadata found for enum type " + typeNameLower);
 
             ToolTip.SetTip(comboBox, $"Select {typeNameLower} value");
             parentPanel.Children.Add(comboBox);
 
-        } else if (typeNameLower == "string")
+        }
+        else if (typeNameLower == "string")
         {
             var textBox = new TextBox
             {
@@ -235,7 +284,8 @@ public partial class DynField : UserControl
             };
             ToolTip.SetTip(textBox, $"Enter {typeNameLower} value");
             parentPanel.Children.Add(textBox);
-        } else if (typeNameLower == "integer" || typeNameLower == "int32" || typeNameLower == "int64" || typeNameLower == "int16" || typeNameLower == "long" || typeNameLower == "ulong" || typeNameLower == "byte" || typeNameLower == "sbyte" || typeNameLower == "short" || typeNameLower == "ushort"
+        }
+        else if (typeNameLower == "integer" || typeNameLower == "int32" || typeNameLower == "int64" || typeNameLower == "int16" || typeNameLower == "long" || typeNameLower == "ulong" || typeNameLower == "byte" || typeNameLower == "sbyte" || typeNameLower == "short" || typeNameLower == "ushort"
                 || typeNameLower == "double" || typeNameLower == "single" || typeNameLower == "decimal"
                 || typeNameLower == "timespan")
         {

@@ -8,17 +8,17 @@ using System.Xml.Linq;
 using System.Diagnostics;
 
 namespace Ihc {
-    [System.AttributeUsage(System.AttributeTargets.Property | System.AttributeTargets.Parameter | System.AttributeTargets.ReturnValue | System.AttributeTargets.Class| System.AttributeTargets.Struct  ) ]
-    public class FileAttribute: System.Attribute
+    [System.AttributeUsage(System.AttributeTargets.Class | System.AttributeTargets.Struct)]
+    public class EndcodingAttribute : System.Attribute
     {
-        public readonly string DefaultFileName;
+        public readonly string Encoding;
 
-        public FileAttribute(string DefaultFileName)
+        public EndcodingAttribute(string Encoding)
         {
-            this.DefaultFileName = DefaultFileName;
+            this.Encoding = Encoding;
         }
     }
-
+    
     /// <summary>
     /// Get version of the SDK stored in the project file.
     /// </summary>
@@ -53,49 +53,14 @@ namespace Ihc {
         public bool IsArray { get { return type.IsArray; } }
 
         /// <summary>
-        /// Some fields are supposed to be saved/retrived from files (indicated by File attribute). Return true if this is the case.
+        /// Some fields are supposed to be saved/retrieved from files (indicated by implements BinaryFile/TextFile interface). Return true if this is the case.
         /// </summary>
         public bool IsFile
         {
             get
             {
-                // Check if the type itself has FileAttribute
-                if (Type.GetCustomAttribute<FileAttribute>() != null)
-                    return true;
-
-                // Check if the member/parameter has FileAttribute
-                if (AttributeProvider != null)
-                {
-                    var attrs = AttributeProvider.GetCustomAttributes(typeof(FileAttribute), false);
-                    if (attrs != null && attrs.Length > 0)
-                        return true;
-                }
-
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Some fields are supposed to be saved/retrived from files (indicated by File attribute). Return a default filename if this is the case.
-        /// </summary>
-        public string SuggestFileName
-        {
-            get
-            {
-                // Check member/parameter first (more specific)
-                if (AttributeProvider != null)
-                {
-                    var attrs = AttributeProvider.GetCustomAttributes(typeof(FileAttribute), false);
-                    if (attrs != null && attrs.Length > 0 && attrs[0] is FileAttribute memberAttr)
-                        return memberAttr.DefaultFileName;
-                }
-
-                // Then check type
-                var typeAttr = Type.GetCustomAttribute<FileAttribute>();
-                if (typeAttr != null)
-                    return typeAttr.DefaultFileName;
-
-                return null;
+                // Check if type implements BinaryFile or TextFile interface
+                return (typeof(BinaryFile).IsAssignableFrom(Type) || typeof(TextFile).IsAssignableFrom(Type));
             }
         }
 

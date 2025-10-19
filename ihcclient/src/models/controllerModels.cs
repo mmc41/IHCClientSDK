@@ -26,11 +26,10 @@ namespace Ihc
         Unknown // Should not be used (unless controller has a hidden state we don't know)
     };
 
-    public record BackupFile
+    public record BackupFile : BinaryFile
     {
         // Hmm. Can't identify the file format.Does not seem to be compressed or encoded text. Raw Binary?
 
-        [File(DefaultFileName: "backup.bin")]
         public byte[] Data { get; init; }
 
         public string Filename { get; init; }
@@ -69,9 +68,9 @@ namespace Ihc
         }
     }
 
-    public record ProjectFile
+    [Endcoding(Encoding: EncodingName)]
+    public record ProjectFile : TextFile
     {
-        [File(DefaultFileName: "Project.vis")]
         public string Data { get; init; }
 
         public string Filename { get; init; }
@@ -79,7 +78,9 @@ namespace Ihc
         /// <summary>
         /// Encoding used for the project file. Always ISO-8859-1 (Latin-1) as shown in top of xml project.
         /// </summary>
-        public static System.Text.Encoding Encoding { get; } = System.Text.Encoding.GetEncoding("ISO-8859-1");
+        internal const string EncodingName = "ISO-8859-1";
+
+        public static System.Text.Encoding Encoding { get; } = System.Text.Encoding.GetEncoding(EncodingName);
 
         public override string ToString()
         {

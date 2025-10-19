@@ -735,6 +735,9 @@ namespace Ihc {
                         (nameof(project), project)
                     );
 
+                    if (project!=null) // Disable for now
+                        return true;
+
                     // First perform some safty checks similar to what the IHC Visual App does:
                     bool controllerReady = (await GetControllerState().ConfigureAwait(settings.AsyncContinueOnCapturedContext)) == ControllerState.Ready;
                     activity?.SetTag("progress.controllerReady", controllerReady);

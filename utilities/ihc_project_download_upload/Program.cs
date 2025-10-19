@@ -82,10 +82,11 @@ namespace Ihc.download_upload_example
                 }
                 else if (command == CMD_STORE)
                 {
+                    var encoding = System.Text.Encoding.GetEncoding("ISO-8859-1");
                     ProjectFile project = new ProjectFile()
                     {
                         Filename = Path.GetFileName(path),
-                        Data = File.ReadAllText(path, ProjectFile.Encoding)
+                        Data = File.ReadAllText(path, encoding)
                     };
 
                     var projectContent = File.ReadAllText(path);

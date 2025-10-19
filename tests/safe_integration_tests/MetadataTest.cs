@@ -99,6 +99,49 @@ namespace Ihc.Tests
             Assert.That(defaultObjectOperations, Is.Null, "Equals/GetHashCode/ToString operations should NOT be found in metadata");
         }
 
+        [Test]
+        public void CheckProjectFileIsFileDetection()
+        {
+            // Create a ControllerService instance
+            var service = new ControllerService(new AuthenticationService(Setup.logger, Setup.settings));
+
+            // Get metadata for all operations
+            var operations = ServiceMetadata.GetOperations(service);
+
+            // Find the GetProject operation
+            const string operationName = nameof(IControllerService.GetProject);
+            var getProjectOperation = operations.FirstOrDefault(op => op.Name == operationName);
+            Assert.That(getProjectOperation, Is.Not.Null, operationName + " operation should be found in metadata");
+
+            // Verify return type is ProjectFile
+            Assert.That(getProjectOperation.ReturnType, Is.EqualTo(typeof(ProjectFile)),
+                "Return type should be ProjectFile");
+
+            // Create FieldMetaData for ProjectFile type
+            var projectFileType = typeof(ProjectFile);
+            var projectFileMetaData = new FieldMetaData(
+                name: "ProjectFile",
+                type: projectFileType,
+                subtypes: [],
+                description: "Project file",
+                attributeProvider: null);
+
+            // Test IsFile - should be true because ProjectFile implements TextFile interface
+            Assert.That(projectFileMetaData.IsFile, Is.True,
+                "ProjectFile type should be identified as a file field because it implements TextFile");
+
+            // Verify BackupFile is also detected as file
+            var backupFileMetaData = new FieldMetaData(
+                name: "BackupFile",
+                type: typeof(BackupFile),
+                subtypes: [],
+                description: "Backup file",
+                attributeProvider: null);
+
+            Assert.That(backupFileMetaData.IsFile, Is.True,
+                "BackupFile type should be identified as a file field because it implements BinaryFile");
+        }
+
     }
 
 }
