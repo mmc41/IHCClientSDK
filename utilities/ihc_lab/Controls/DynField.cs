@@ -90,9 +90,13 @@ public partial class DynField : UserControl
             {
                 return datePicker.SelectedDate.HasValue ? datePicker.SelectedDate.Value : DateTimeOffset.MinValue;
             }
-            else if (control is InputFilePicker inputFilePicker)
+            else if (control is BinaryFilePicker binaryFilePicker)
             {
-                return inputFilePicker.Value;
+                return (BinaryFile)binaryFilePicker;
+            }
+            else if (control is TextFilePicker textFilePicker)
+            {
+                return (TextFile)textFilePicker;
             }
             else if (control is StackPanel stackPanel)
             {
@@ -109,10 +113,25 @@ public partial class DynField : UserControl
 
             string typeLower = typeForControl.Name.ToLower();
 
-            if (control is InputFilePicker inputFilePicker)
+            if (control is BinaryFilePicker binaryFilePicker)
             {
-                inputFilePicker.Value = value;
-            } else if (control is TextBox textBox)
+                var val = value as BinaryFile;
+                if (val != null)
+                {
+                    binaryFilePicker.Filename = val.Filename;
+                    binaryFilePicker.Data = val.Data;
+                }
+            }
+            else if (control is TextFilePicker textFilePicker)
+            {
+                var val = value as TextFile;
+                if (val != null)
+                {
+                    textFilePicker.Filename = val.Filename;
+                    textFilePicker.Data = val.Data;
+                }
+            }
+            else if (control is TextBox textBox)
                 textBox.Text = value?.ToString()?.Trim() ?? "";
             else if (control is ComboBox comboBox)
             {
@@ -216,34 +235,39 @@ public partial class DynField : UserControl
         if (fieldMetaData.IsFile)
         {
             // Determine file type based on whether it implements BinaryFile or TextFile
-            InputFilePicker.FileType ft;
-            System.Text.Encoding? encoding = null;
-
             if (typeof(Ihc.TextFile).IsAssignableFrom(typeForControl))
-            {                
-                ft = InputFilePicker.FileType.StringFile;
-                // Default to UTF-8 for text files
-                // TODO: Lookup encoding on fieldMetaData 
-                encoding = ProjectFile.Encoding;
+            {
+                // Get the static Encoding property from the concrete TextFile type using reflection
+                var encodingProperty = typeForControl.GetProperty("Encoding", BindingFlags.Public | BindingFlags.Static);
+                var encoding = encodingProperty?.GetValue(null) as System.Text.Encoding;
+                if (encoding == null)
+                    throw new Exception("Could not lookup Encoding for type " + typeForControl.Name);
+
+                // Create TextFilePicker for text files
+                var textFilePicker = new TextFilePicker
+                {
+                    Name = "ValueCtrl",
+                    TextEncoding = encoding,
+                    MinWidth = 100
+                };
+                ToolTip.SetTip(textFilePicker, $"Upload text file");
+                parentPanel.Children.Add(textFilePicker);
             }
             else if (typeof(Ihc.BinaryFile).IsAssignableFrom(typeForControl))
             {
-                ft = InputFilePicker.FileType.BinaryFile;
+                // Create BinaryFilePicker for binary files
+                var binaryFilePicker = new BinaryFilePicker
+                {
+                    Name = "ValueCtrl",
+                    MinWidth = 100
+                };
+                ToolTip.SetTip(binaryFilePicker, $"Upload binary file");
+                parentPanel.Children.Add(binaryFilePicker);
             }
             else
             {
                 throw new Exception("Unsupported element type for file element " + typeNameLower);
             }
-
-            var uploadFile = new InputFilePicker
-            {
-                Name = "ValueCtrl",
-                CurrentFileType = ft,
-                TextEncoding = encoding ?? System.Text.Encoding.UTF8,
-                MinWidth = 100
-            };
-            ToolTip.SetTip(uploadFile, $"Upload file");
-            parentPanel.Children.Add(uploadFile);
         } else if (typeForControl.IsEnum)
         {
             var comboBox = new ComboBox

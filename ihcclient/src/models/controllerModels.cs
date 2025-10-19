@@ -28,11 +28,24 @@ namespace Ihc
 
     public record BackupFile : BinaryFile
     {
-        // Hmm. Can't identify the file format.Does not seem to be compressed or encoded text. Raw Binary?
-
+        /// <summary>
+        /// Hmm. Can't identify the file format. Does not seem to be compressed or encoded text. Raw Binary?
+        /// </summary>
         public byte[] Data { get; init; }
 
         public string Filename { get; init; }
+
+        public BackupFile(string Filename, byte[] Data)
+        {
+            this.Data = Data;
+            this.Filename = Filename;
+        }
+        
+        public BackupFile(BinaryFile input)
+        {
+            this.Data = input.Data;
+            this.Filename = input.Filename;
+        }
 
         public override string ToString()
         {
@@ -68,7 +81,6 @@ namespace Ihc
         }
     }
 
-    [Endcoding(Encoding: EncodingName)]
     public record ProjectFile : TextFile
     {
         public string Data { get; init; }
@@ -81,6 +93,18 @@ namespace Ihc
         internal const string EncodingName = "ISO-8859-1";
 
         public static System.Text.Encoding Encoding { get; } = System.Text.Encoding.GetEncoding(EncodingName);
+
+        public ProjectFile(string Filename, string Data)
+        {
+            this.Data = Data;
+            this.Filename = Filename;
+        }
+
+        public ProjectFile(TextFile input)
+        {
+            this.Data = input.Data;
+            this.Filename = input.Filename;
+        }
 
         public override string ToString()
         {

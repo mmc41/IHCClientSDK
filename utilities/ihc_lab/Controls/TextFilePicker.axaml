@@ -3,9 +3,9 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="IhcLab.InputFilePicker">
+             x:Class="IhcLab.TextFilePicker">
     <StackPanel Orientation="Horizontal" Spacing="10">
-        <Button Name="UploadButton" Content="Upload File" Click="OnUploadButtonClick" MinWidth="100" />
+        <Button Name="UploadButton" Content="Upload Text File" Click="OnUploadButtonClick" MinWidth="120" />
         <TextBlock Name="FileStatusLabel" Text="No file selected" VerticalAlignment="Center" />
     </StackPanel>
 </UserControl>

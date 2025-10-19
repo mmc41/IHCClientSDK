@@ -7,18 +7,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using System.Diagnostics;
 
-namespace Ihc {
-    [System.AttributeUsage(System.AttributeTargets.Class | System.AttributeTargets.Struct)]
-    public class EndcodingAttribute : System.Attribute
-    {
-        public readonly string Encoding;
-
-        public EndcodingAttribute(string Encoding)
-        {
-            this.Encoding = Encoding;
-        }
-    }
-    
+namespace Ihc { 
     /// <summary>
     /// Get version of the SDK stored in the project file.
     /// </summary>
@@ -53,7 +42,7 @@ namespace Ihc {
         public bool IsArray { get { return type.IsArray; } }
 
         /// <summary>
-        /// Some fields are supposed to be saved/retrieved from files (indicated by implements BinaryFile/TextFile interface). Return true if this is the case.
+        /// Some types are supposed to be saved/retrieved from files (indicated by implementing BinaryFile/TextFile interface). Return true if this is the case.
         /// </summary>
         public bool IsFile
         {

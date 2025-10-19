@@ -115,7 +115,8 @@ public static class OperationSupport
         };
         ToolTip.SetTip(legend, $"Type: {field.Type.Name}: {field.Description}");
 
-        if (field.SubTypes.Length == 0)
+        bool useSingleControl = field.SubTypes.Length == 0 || field.IsFile;
+        if (useSingleControl)
         {
             parent.Children.Add(legend);
 
@@ -132,7 +133,7 @@ public static class OperationSupport
             parent.Children.Add(dynField);
         }
         else
-        { // Complex types like records or arrays.
+        {   // Complex types like records or arrays.
             // Wrap these controls in a dynamically created StackPanel with horizontal orientation
             var stackPanel = new StackPanel
             {
@@ -230,6 +231,24 @@ public static class OperationSupport
             if (dynField != null)
             {
                 return dynField.Value ?? GetDefaultValue(field.Type);
+            }
+            return GetDefaultValue(field.Type);
+        }
+
+        if (field.IsFile)
+        {
+            var dynField = FindDynFieldByName(parent, fullName);
+            if (dynField != null && dynField.Value != null)
+            {
+                // Create instance of the type by calling constructor with dynField.Value as single argument
+                try
+                {
+                    return Activator.CreateInstance(field.Type, dynField.Value);
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException($"Failed to create instance of {field.Type.Name} with value '{dynField.Value}'. Copy-constructor missing?", ex);
+                }
             }
             return GetDefaultValue(field.Type);
         }

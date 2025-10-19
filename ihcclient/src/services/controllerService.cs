@@ -270,11 +270,13 @@ namespace Ihc {
 
         private BackupFile mapBackup(Ihc.Soap.Controller.WSFile backupFile)
         {
-            return new BackupFile()
-            {
-                Filename = backupFile?.filename,
-                Data = backupFile?.data // Hmm. Can't identify the file format. Binary?
-            };
+            if (backupFile == null)
+                return null;
+
+            return new BackupFile(
+                Filename: backupFile.filename,
+                Data: backupFile.data // Hmm. Can't identify the file format. Binary?
+            );
         }
 
         private DateTimeOffset mapDate(WSDate v)
@@ -338,11 +340,10 @@ namespace Ihc {
             if (wsFile == null)
                 return null;
 
-            return new ProjectFile()
-            {
-                Data = await decompress(wsFile.data).ConfigureAwait(settings.AsyncContinueOnCapturedContext),
-                Filename = wsFile.filename
-            };
+            return new ProjectFile(
+                Filename: wsFile.filename,
+                Data: await decompress(wsFile.data).ConfigureAwait(settings.AsyncContinueOnCapturedContext)
+            );
         }
 
         private async Task<Ihc.Soap.Controller.WSFile> mapProjectFile(ProjectFile projectFile)
@@ -734,9 +735,6 @@ namespace Ihc {
                     activity?.SetParameters(
                         (nameof(project), project)
                     );
-
-                    if (project!=null) // Disable for now
-                        return true;
 
                     // First perform some safty checks similar to what the IHC Visual App does:
                     bool controllerReady = (await GetControllerState().ConfigureAwait(settings.AsyncContinueOnCapturedContext)) == ControllerState.Ready;
