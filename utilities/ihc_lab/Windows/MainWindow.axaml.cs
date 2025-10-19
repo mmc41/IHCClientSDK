@@ -306,6 +306,11 @@ public partial class MainWindow : Window
     {
         Output.Text = text;
         OutputHeading.IsVisible = true;
+
+        // Disable text wrapping for large content to improve UI performance
+        Output.TextWrapping = text.Length > 1000
+            ? Avalonia.Media.TextWrapping.NoWrap
+            : Avalonia.Media.TextWrapping.Wrap;
     }
 
     public void ClearErrorAndWarning()

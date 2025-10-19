@@ -73,8 +73,8 @@
             <Border Grid.Row="2" Name="Result" MinHeight="50" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
                 <DockPanel>
                     <TextBlock Name="OutputHeading" FontSize="18" DockPanel.Dock="Top">Output</TextBlock>
-                    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                        <TextBlock FontSize="12" Name="Output" TextWrapping="Wrap"></TextBlock>
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                        <TextBlock FontSize="12" Name="Output"></TextBlock>
                     </ScrollViewer>
                 </DockPanel>
             </Border>
