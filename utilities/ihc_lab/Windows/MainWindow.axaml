@@ -74,7 +74,7 @@
                 <DockPanel>
                     <TextBlock Name="OutputHeading" FontSize="18" DockPanel.Dock="Top">Output</TextBlock>
                     <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                        <TextBlock FontSize="12" Name="Output"></TextBlock>
+                        <SelectableTextBlock FontSize="12" Name="Output"></SelectableTextBlock>
                     </ScrollViewer>
                 </DockPanel>
             </Border>
