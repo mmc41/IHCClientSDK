@@ -1,42 +1,45 @@
 using System;
 
-/// <summary>
-/// Represents an RF (Radio Frequency) device in the Airlink system.
-/// </summary>
-public record RFDevice
+namespace Ihc
 {
     /// <summary>
-    /// Battery level of the device (0-100).
+    /// Represents an RF (Radio Frequency) device in the Airlink system.
     /// </summary>
-    public int BatteryLevel { get; init; }
-
-    /// <summary>
-    /// Signal strength of the device.
-    /// </summary>
-    public int SignalStrength { get; init; }
-
-    /// <summary>
-    /// Type identifier of the device.
-    /// </summary>
-    public int DeviceType { get; init; }
-
-    /// <summary>
-    /// Unique serial number of the device.
-    /// </summary>
-    public long SerialNumber { get; init; }
-
-    /// <summary>
-    /// Firmware or hardware version of the device.
-    /// </summary>
-    public int Version { get; init; }
-
-    /// <summary>
-    /// Indicates whether the device has been detected.
-    /// </summary>
-    public bool Detected { get; init; }
-
-    public override string ToString()
+    public record RFDevice
     {
-      return $"RFDevice(BatteryLevel={BatteryLevel}, SignalStrength={SignalStrength}, DeviceType={DeviceType}, SerialNumber={SerialNumber}, Version={Version}, Detected={Detected})";
+        /// <summary>
+        /// Battery level of the device (0-100).
+        /// </summary>
+        public int BatteryLevel { get; init; }
+
+        /// <summary>
+        /// Signal strength of the device.
+        /// </summary>
+        public int SignalStrength { get; init; }
+
+        /// <summary>
+        /// Type identifier of the device.
+        /// </summary>
+        public int DeviceType { get; init; }
+
+        /// <summary>
+        /// Unique serial number of the device.
+        /// </summary>
+        public long SerialNumber { get; init; }
+
+        /// <summary>
+        /// Firmware or hardware version of the device.
+        /// </summary>
+        public int Version { get; init; }
+
+        /// <summary>
+        /// Indicates whether the device has been detected.
+        /// </summary>
+        public bool Detected { get; init; }
+
+        public override string ToString()
+        {
+            return $"RFDevice(BatteryLevel={BatteryLevel}, SignalStrength={SignalStrength}, DeviceType={DeviceType}, SerialNumber={SerialNumber}, Version={Version}, Detected={Detected})";
+        }
     }
 }

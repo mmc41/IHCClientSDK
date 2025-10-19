@@ -1,10 +1,13 @@
 using System;
 
-public record LogEventEntry {
+namespace Ihc
+{
+    public record LogEventEntry
+    {
         public DateTimeOffset Date { get; init; }
-        public string ControlType { get; init;}
+        public string ControlType { get; init; }
 
-        public int LogEntryType { get; init;}
+        public int LogEntryType { get; init; }
 
         public string SenderAddress { get; init; }
         public string SenderAddressDescription { get; init; }
@@ -17,6 +20,7 @@ public record LogEventEntry {
 
         public override string ToString()
         {
-          return $"LogEventEntry(Date={Date}, ControlType={ControlType}, LogEntryType={LogEntryType}, SenderAddress={SenderAddress}, SenderAddressDescription={SenderAddressDescription}, TriggerString={TriggerString}, AuthenticationTypeAsString={AuthenticationTypeAsString}, ActionTypeAsString={ActionTypeAsString})";
+            return $"LogEventEntry(Date={Date}, ControlType={ControlType}, LogEntryType={LogEntryType}, SenderAddress={SenderAddress}, SenderAddressDescription={SenderAddressDescription}, TriggerString={TriggerString}, AuthenticationTypeAsString={AuthenticationTypeAsString}, ActionTypeAsString={ActionTypeAsString})";
         }
+    }
 }        

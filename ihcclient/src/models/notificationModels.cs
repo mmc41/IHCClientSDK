@@ -1,7 +1,10 @@
 using System;
 
-public record NotificationMessage {
-        public DateTimeOffset Date { get; init; }  
+namespace Ihc
+{
+    public record NotificationMessage
+    {
+        public DateTimeOffset Date { get; init; }
 
         public string NotificationType;
 
@@ -17,6 +20,7 @@ public record NotificationMessage {
 
         public override string ToString()
         {
-          return $"NotificationMessage(Date={Date}, NotificationType={NotificationType}, Recipient={Recipient}, Sender={Sender}, Subject={Subject}, Body={Body}, Delivered={Delivered})";
+            return $"NotificationMessage(Date={Date}, NotificationType={NotificationType}, Recipient={Recipient}, Sender={Sender}, Subject={Subject}, Body={Body}, Delivered={Delivered})";
         }
+    }
 }        

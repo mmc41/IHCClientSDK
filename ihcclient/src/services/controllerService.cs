@@ -634,6 +634,7 @@ namespace Ihc {
                     var retv = mapBackup(result.getBackup1);
 
                     activity?.SetReturnValue(retv);
+
                     return retv;
                 }
                 catch (Exception ex)
@@ -663,7 +664,7 @@ namespace Ihc {
                 }
             }
         }
-        
+
         public async Task<ProjectFile> GetProject()
         {
             using (var activity = StartActivity(nameof(GetProject)))
