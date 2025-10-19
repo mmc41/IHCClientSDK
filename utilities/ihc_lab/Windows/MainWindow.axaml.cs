@@ -1,10 +1,13 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Ihc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -111,7 +114,7 @@ public partial class MainWindow : Window
             string txt = await OperationSupport.DynCall(serviceItem.Service, operationMetadata, parameterValues);
 
             // Update result text view
-            SetOutput(txt);
+            await SetOutput(txt);
         } catch (Exception ex)
         {
            activity?.SetError(ex);
@@ -302,15 +305,29 @@ public partial class MainWindow : Window
         OutputHeading.IsVisible = false;
     }
 
-    public void SetOutput(string text)
+    public async Task SetOutput(string text)
     {
         Output.Text = text;
         OutputHeading.IsVisible = true;
 
-        // Disable text wrapping for large content to improve UI performance
-        Output.TextWrapping = text.Length > 1000
+        // For large content: disable wrapping and enable horizontal scroll
+        // For small content: enable wrapping and disable horizontal scroll
+        bool isLargeContent = text.Length > 1000;
+
+        Output.TextWrapping = isLargeContent
             ? Avalonia.Media.TextWrapping.NoWrap
             : Avalonia.Media.TextWrapping.Wrap;
+
+        // Get the parent ScrollViewer and update its scroll mode
+        if (Output.Parent is ScrollViewer scrollViewer)
+        {
+            scrollViewer.HorizontalScrollBarVisibility = isLargeContent
+                ? ScrollBarVisibility.Auto
+                : ScrollBarVisibility.Disabled;
+        }
+
+        // Wait for UI to complete layout and rendering
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
     }
 
     public void ClearErrorAndWarning()
