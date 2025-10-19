@@ -240,6 +240,10 @@ namespace Ihc {
                 {
                     activity?.SetParameters((nameof(username), username));
 
+                    if (username == "usb") // Extra security from potential harm here.
+                        throw new ArgumentException(message: "Can not delete reserved usb user", paramName: nameof(username));
+
+
                     await impl.removeUserAsync(new inputMessageName3() { removeUser1 = username }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 }
                 catch (Exception ex)
