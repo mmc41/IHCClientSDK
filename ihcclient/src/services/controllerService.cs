@@ -384,7 +384,7 @@ namespace Ihc {
             {
                 case ControllerState.Failed: stateStr = "text.ctrl.state.failed"; break;
                 case ControllerState.Ready: stateStr = "text.ctrl.state.ready"; break;
-                case ControllerState.Initialize: stateStr = "ext.ctrl.state.initialize"; break;
+                case ControllerState.Initialize: stateStr = "text.ctrl.state.initialize"; break;
                 case ControllerState.RfConfiguration: stateStr = "text.ctrl.state.rfconfiguration"; break;
                 case ControllerState.Simulation: stateStr = "text.ctrl.state.simulation"; break;
                 case ControllerState.Uninitialized:
@@ -474,6 +474,33 @@ namespace Ihc {
                 }
             }
         }
+
+        /*
+        public async Task<string> WaitForControllerStateChangeRaw(string waitState, int waitSec)
+        {
+            using (var activity = StartActivity(nameof(WaitForControllerStateChange)))
+            {
+                try
+                {
+                    activity?.SetParameters(
+                        (nameof(waitState), waitState),
+                        (nameof(waitSec), waitSec)
+                    );
+
+                    var result = await impl.waitForControllerStateChangeAsync(new inputMessageName19(new Ihc.Soap.Controller.WSControllerState { state = waitState }, waitSec) { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = result?.waitForControllerStateChange3.state;
+
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }*/
+
         
         public async Task<ControllerState> WaitForControllerStateChange(ControllerState waitState, int waitSec)
         {
