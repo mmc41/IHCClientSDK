@@ -10,7 +10,6 @@ using OpenTelemetry;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using FakeItEasy;
 using System.Threading.Tasks;
 
 namespace IhcLab;
@@ -124,24 +123,17 @@ public class IhcDomain
             // the app without being connected to a real IHC system. ALso allows for 
             // safe automated testing og the GUI without a real IHC system.
 
-            var fakeAuthenticationService = A.Fake<IAuthenticationService>();
-            this.AuthenticationService = fakeAuthenticationService;
-            A.CallTo(() => fakeAuthenticationService.Authenticate()).Returns(new IhcUser
-            {
-                Username = "MockUser",
-                Group = IhcUserGroup.Administrators
-            });
-            
-            this.ControllerService = A.Fake<IControllerService>();
-            this.ResourceInteractionService = A.Fake<IResourceInteractionService>();
-            this.ConfigurationService = A.Fake<IConfigurationService>();
-            this.OpenAPIService = A.Fake<IOpenAPIService>();
-            this.NotificationManagerService = A.Fake<INotificationManagerService>();
-            this.MessageControlLogService = A.Fake<IMessageControlLogService>();
-            this.ModuleService = A.Fake<IModuleService>();
-            this.TimeManagerService = A.Fake<ITimeManagerService>();
-            this.UserManagerService = A.Fake<IUserManagerService>();
-            this.AirlinkManagementService = A.Fake<IAirlinkManagementService>();
+            this.AuthenticationService = IhcFakeSetup.SetupAuthenticationService(IhcSettings);
+            this.ControllerService = IhcFakeSetup.SetupControllerService(IhcSettings);
+            this.ResourceInteractionService = IhcFakeSetup.SetupResourceInteractionService(IhcSettings);
+            this.ConfigurationService = IhcFakeSetup.SetupConfigurationService(IhcSettings);
+            this.OpenAPIService = IhcFakeSetup.SetupOpenAPIService(IhcSettings);
+            this.NotificationManagerService = IhcFakeSetup.SetupNotificationManagerService(IhcSettings);
+            this.MessageControlLogService = IhcFakeSetup.SetupMessageControlLogService(IhcSettings);
+            this.ModuleService = IhcFakeSetup.SetupModuleService(IhcSettings);
+            this.TimeManagerService = IhcFakeSetup.SetupTimeManagerService(IhcSettings);
+            this.UserManagerService = IhcFakeSetup.SetupUserManagerService(IhcSettings);
+            this.AirlinkManagementService = IhcFakeSetup.SetupAirlinkManagementService(IhcSettings);
         }
        
     }
