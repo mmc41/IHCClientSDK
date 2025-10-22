@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using System;
 using System.Linq;
-using Microsoft.Extensions.Logging;
 using Ihc.Soap.Controller;
 using System.IO;
 using System.Diagnostics;
@@ -140,7 +139,7 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Controller.ControllerService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, IhcSettings settings) : base(logger, cookieHandler, settings, "ControllerService") { }
+            public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "ControllerService") { }
 
             public Task<outputMessageName12> enterProjectChangeModeAsync(inputMessageName12 request)
             {
@@ -250,10 +249,10 @@ namespace Ihc {
         /// </summary>
         /// <param name="authService">AuthenticationService instance</param>
         public ControllerService(IAuthenticationService authService)
-            : base(authService.Logger, authService.IhcSettings)
+            : base(authService.IhcSettings)
         {
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), settings);
+            this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
         private SDInfo mapSDCardData(WSSdCardData e)

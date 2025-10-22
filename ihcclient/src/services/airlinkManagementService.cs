@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using System;
 using System.Linq;
-using Microsoft.Extensions.Logging;
 using Ihc.Soap.Airlinkmanagement;
 using System.Diagnostics;
 
@@ -70,7 +69,7 @@ namespace Ihc
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Airlinkmanagement.AirlinkManagementService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, IhcSettings settings) : base(logger, cookieHandler, settings, "AirlinkManagementService") { }
+            public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "AirlinkManagementService") { }
 
             public Task<outputMessageName1> enterRFConfigurationAsync(inputMessageName1 request)
             {
@@ -130,10 +129,10 @@ namespace Ihc
         /// </summary>
         /// <param name="authService">AuthenticationService instance</param>
         public AirlinkManagementService(IAuthenticationService authService)
-            : base(authService.Logger, authService.IhcSettings)
+            : base(authService.IhcSettings)
         {
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), settings);
+            this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
         private RFDevice mapRFDevice(WSRFDevice device)

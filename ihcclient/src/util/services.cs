@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 namespace Ihc
 {
@@ -22,7 +21,6 @@ namespace Ihc
         /// <param name="enableSubscription">Async function to enable subscription/notifications for resources</param>
         /// <param name="waitForChanges">Async function that waits for changes and returns them as ResourceValue array</param>
         /// <param name="disableSubscription">Async function to disable subscription/notifications for resources</param>
-        /// <param name="logger">Logger instance for diagnostics</param>
         /// <param name="asyncContinueOnCapturedContext">If true, continue on captured context for async operations</param>
         /// <param name="cancellationToken">Cancellation token to stop the async stream</param>
         /// <param name="timeout_between_waits_in_seconds">Timeout in seconds for each wait call (default 15s, should be less than 20s)</param>
@@ -33,7 +31,6 @@ namespace Ihc
             Func<int[], Task> enableSubscription,
             Func<int, Task<ResourceValue[]>> waitForChanges,
             Func<int[], Task> disableSubscription,
-            ILogger logger,
             bool asyncContinueOnCapturedContext,
             [EnumeratorCancellation] CancellationToken cancellationToken = default,
             int timeout_between_waits_in_seconds = 15)
@@ -45,7 +42,6 @@ namespace Ihc
             catch (Exception e)
             {
                 activity.SetError(e);
-                logger.LogError(e, "enable subscription error");
                 throw;
             }
 
@@ -64,11 +60,9 @@ namespace Ihc
                     catch (Exception e)
                     {
                         activity.SetError(e);
-                        logger.LogWarning(e, "wait for changes failed #" + sequentialErrorCount);
                         changes = new ResourceValue[] { };
                         if (++sequentialErrorCount > 10)
                         {
-                            logger.LogError(e, "wait for changes repeated failure");
                             throw; // Fail hard if exception repeats.
                         }
                         else
@@ -94,7 +88,6 @@ namespace Ihc
                 catch (Exception e)
                 {
                     activity.SetError(e);
-                    logger.LogError(e, "disable subscription error");
                     // Do not re-throw in finally block to avoid masking exceptions from try block
                 }
             }

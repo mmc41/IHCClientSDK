@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using System;
 using System.Linq;
-using Microsoft.Extensions.Logging;
 using Ihc.Soap.Authentication;
 using System.Diagnostics;
 
@@ -50,7 +49,7 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Authentication.AuthenticationService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, IhcSettings settings) : base(logger, cookieHandler, settings, "AuthenticationService") { }
+            public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "AuthenticationService") { }
 
             public Task<outputMessageName2> authenticateAsync(inputMessageName2 request)
             {
@@ -101,13 +100,12 @@ namespace Ihc {
         /// Create an AuthenticationService instance for access to the IHC API related to authentication.
         /// NOTE: The AuthenticationService instance should be passed as an argument to other services (except OpenAPI).
         /// </summary>
-        /// <param name="logger">Logger instance for logging operations</param>
         /// <param name="settings">IHC settings configuration</param>
-        public AuthenticationService(ILogger logger, IhcSettings settings)
-            : base(logger, settings)
+        public AuthenticationService(IhcSettings settings)
+            : base(settings)
         {
-            this.cookieHandler = new CookieHandler(logger, settings.LogSensitiveData);
-            this.impl = new SoapImpl(logger, cookieHandler, settings);
+            this.cookieHandler = new CookieHandler(settings.LogSensitiveData);
+            this.impl = new SoapImpl(cookieHandler, settings);
             this.isConnected = false;
         }
 
@@ -147,7 +145,6 @@ namespace Ihc {
                         (nameof(application), application)
                     );
 
-                    logger.LogInformation("IHC Authenticate called");
                     isConnected = false;
                     var resp = await impl.authenticateAsync(new inputMessageName2() { authenticate1 = new WSAuthenticationData { username = userName, password = password, application = application } })
                                         .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
@@ -176,7 +173,6 @@ namespace Ihc {
                             LoginDate = result.loggedInUser.loginDate.ToDateTimeOffset(),
 
                         };
-                        logger.LogInformation($"Successfully authenticated user: {user.Username}");
 
                         activity?.SetReturnValue(user.ToString(settings.LogSensitiveData));
                         return user;
@@ -211,7 +207,6 @@ namespace Ihc {
             {
                 try
                 {
-                    logger.LogInformation("IHC Disconnect called");
                     bool? result;
 
                     try
@@ -245,10 +240,10 @@ namespace Ihc {
                     Task.Run(() => this.Disconnect());
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                this.logger.LogError(e, "Exception during disconnect in Dispose");
-            } // Ignore
+                // Ignore exceptions during dispose
+            }
             GC.SuppressFinalize(this);
         }
 

@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using System;
 using System.Linq;
-using Microsoft.Extensions.Logging;
 using Ihc.Soap.Usermanager;
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
@@ -48,7 +47,7 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Usermanager.UserManagerService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, IhcSettings settings) : base(logger, cookieHandler, settings, "UserManagerService") { }
+            public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "UserManagerService") { }
 
             public Task<outputMessageName1> addUserAsync(inputMessageName1 request)
             {
@@ -162,10 +161,10 @@ namespace Ihc {
         /// </summary>
         /// <param name="authService">AuthenticationService instance</param>
         public UserManagerService(IAuthenticationService authService)
-            : base(authService.Logger, authService.IhcSettings)
+            : base(authService.IhcSettings)
         {
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), settings);
+            this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
         /// <summary>

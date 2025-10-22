@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using Ihc;
 using Microsoft.Extensions.Configuration;
@@ -9,6 +10,8 @@ using OpenTelemetry;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using FakeItEasy;
+using System.Threading.Tasks;
 
 namespace IhcLab;
 
@@ -23,8 +26,25 @@ public class ServiceItem
     public ServiceItem(IIHCService service)
     {
         Service = service;
-        DisplayName = service.GetType().Name;
-        InitialOperationSelectedIndex = 1;
+
+        // Find the IHC service interface (works for both real services and fakes)
+        var serviceInterfaces = service.GetType().GetInterfaces()
+            .Where(i => i != typeof(IIHCService) && typeof(IIHCService).IsAssignableFrom(i))
+            .ToList();
+
+        // Use the interface name, stripping the leading 'I' for display
+        if (serviceInterfaces.Count > 0)
+        {
+            var interfaceName = serviceInterfaces[0].Name;
+            DisplayName = interfaceName.StartsWith("I") ? interfaceName.Substring(1) : interfaceName;
+        }
+        else
+        {
+            // Fallback to type name if no interface found
+            DisplayName = service.GetType().Name;
+        }
+
+        InitialOperationSelectedIndex = 0;
     }
 }
 
@@ -33,17 +53,17 @@ public class IhcDomain
     public IhcSettings IhcSettings { get; init; }
     public ILoggerFactory loggerFactory { get; internal set; }
 
-    public AuthenticationService AuthenticationService { get; init; }
-    public ControllerService ControllerService { get; init; }
-    public ResourceInteractionService ResourceInteractionService { get; init; }
-    public ConfigurationService ConfigurationService { get; init; }
-    public OpenAPIService OpenAPIService { get; init; }
-    public NotificationManagerService NotificationManagerService { get; init; }
-    public MessageControlLogService MessageControlLogService { get; init; }
-    public ModuleService ModuleService { get; init; }
-    public TimeManagerService TimeManagerService { get; init; }
-    public UserManagerService UserManagerService { get; init; }
-    public AirlinkManagementService AirlinkManagementService { get; init; }
+    public IAuthenticationService AuthenticationService { get; init; }
+    public IControllerService ControllerService { get; init; }
+    public IResourceInteractionService ResourceInteractionService { get; init; }
+    public IConfigurationService ConfigurationService { get; init; }
+    public IOpenAPIService OpenAPIService { get; init; }
+    public INotificationManagerService NotificationManagerService { get; init; }
+    public IMessageControlLogService MessageControlLogService { get; init; }
+    public IModuleService ModuleService { get; init; }
+    public ITimeManagerService TimeManagerService { get; init; }
+    public IUserManagerService UserManagerService { get; init; }
+    public IAirlinkManagementService AirlinkManagementService { get; init; }
 
     public IIHCService[] AllIhcServices
     {
@@ -77,20 +97,54 @@ public class IhcDomain
         this.IhcSettings = settings;
         this.loggerFactory = loggerFactory ?? new NullLoggerFactory();
 
-        var logger = this.loggerFactory.CreateLogger<IhcDomain>();
+        if (settings == null)
+            throw new Exception("IhcSettings is null in IhcDomain constructor");  
+        if (settings.Endpoint == null)
+            throw new Exception("IhcSettings.Endpoint is null in IhcDomain constructor");
 
-        this.AuthenticationService = new AuthenticationService(logger, settings);
-        this.ControllerService = new ControllerService(AuthenticationService);
-        this.ResourceInteractionService = new ResourceInteractionService(AuthenticationService);
-        this.ConfigurationService = new ConfigurationService(AuthenticationService);
-        this.OpenAPIService = new OpenAPIService(logger, settings);
-        this.NotificationManagerService = new NotificationManagerService(AuthenticationService);
-        this.MessageControlLogService = new MessageControlLogService(AuthenticationService);
-        this.ModuleService = new ModuleService(AuthenticationService);
-        this.TimeManagerService = new TimeManagerService(AuthenticationService);
-        this.UserManagerService = new UserManagerService(AuthenticationService);
-        this.AirlinkManagementService = new AirlinkManagementService(AuthenticationService);
-}
+        if (!settings.Endpoint.StartsWith(SpecialEndpoints.MockedPrefix))
+        {
+            // Real services by default:
+            this.AuthenticationService = new AuthenticationService(settings);
+            this.ControllerService = new ControllerService(AuthenticationService);
+            this.ResourceInteractionService = new ResourceInteractionService(AuthenticationService);
+            this.ConfigurationService = new ConfigurationService(AuthenticationService);
+            this.OpenAPIService = new OpenAPIService(settings);
+            this.NotificationManagerService = new NotificationManagerService(AuthenticationService);
+            this.MessageControlLogService = new MessageControlLogService(AuthenticationService);
+            this.ModuleService = new ModuleService(AuthenticationService);
+            this.TimeManagerService = new TimeManagerService(AuthenticationService);
+            this.UserManagerService = new UserManagerService(AuthenticationService);
+            this.AirlinkManagementService = new AirlinkManagementService(AuthenticationService);
+        }
+        else
+        {
+            // All services can be faked. This may at first seem out of place,
+            // but it allows for easy human explorative testing of the GUI aspects of
+            // the app without being connected to a real IHC system. ALso allows for 
+            // safe automated testing og the GUI without a real IHC system.
+
+            var fakeAuthenticationService = A.Fake<IAuthenticationService>();
+            this.AuthenticationService = fakeAuthenticationService;
+            A.CallTo(() => fakeAuthenticationService.Authenticate()).Returns(new IhcUser
+            {
+                Username = "MockUser",
+                Group = IhcUserGroup.Administrators
+            });
+            
+            this.ControllerService = A.Fake<IControllerService>();
+            this.ResourceInteractionService = A.Fake<IResourceInteractionService>();
+            this.ConfigurationService = A.Fake<IConfigurationService>();
+            this.OpenAPIService = A.Fake<IOpenAPIService>();
+            this.NotificationManagerService = A.Fake<INotificationManagerService>();
+            this.MessageControlLogService = A.Fake<IMessageControlLogService>();
+            this.ModuleService = A.Fake<IModuleService>();
+            this.TimeManagerService = A.Fake<ITimeManagerService>();
+            this.UserManagerService = A.Fake<IUserManagerService>();
+            this.AirlinkManagementService = A.Fake<IAirlinkManagementService>();
+        }
+       
+    }
 
     public void Dispose()
     {

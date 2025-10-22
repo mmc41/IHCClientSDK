@@ -20,7 +20,7 @@ namespace Ihc.Tests
         public void CheckSampleNormalAsyncOperation()
         {
             // Create a ResourceInteractionService instance
-            var service = new ResourceInteractionService(new AuthenticationService(Setup.logger, Setup.settings));
+            var service = new ResourceInteractionService(new AuthenticationService(Setup.settings));
 
             // Get metadata for all operations
             var operations = ServiceMetadata.GetOperations(service);
@@ -47,7 +47,7 @@ namespace Ihc.Tests
         public void CheckAsyncEnumerableOperation()
         {
             // Create a ResourceInteractionService instance
-            var service = new ResourceInteractionService(new AuthenticationService(Setup.logger, Setup.settings));
+            var service = new ResourceInteractionService(new AuthenticationService(Setup.settings));
 
             // Get metadata for all operations
             var operations = ServiceMetadata.GetOperations(service);
@@ -68,7 +68,7 @@ namespace Ihc.Tests
         public void CheckOperationDescriptionsAreLoaded()
         {
             // Create an AuthenticationService instance
-            var service = new AuthenticationService(Setup.logger, Setup.settings);
+            var service = new AuthenticationService(Setup.settings);
 
             // Get metadata for all operations
             var operations = ServiceMetadata.GetOperations(service);
@@ -91,7 +91,7 @@ namespace Ihc.Tests
         public void CheckInterenalOperationsRemoved()
         {
             // Create a ResourceInteractionService instance
-            var service = new ResourceInteractionService(new AuthenticationService(Setup.logger, Setup.settings));
+            var service = new ResourceInteractionService(new AuthenticationService(Setup.settings));
 
             // Get metadata for all operations
             var operations = ServiceMetadata.GetOperations(service);
@@ -103,7 +103,7 @@ namespace Ihc.Tests
         public void CheckProjectFileIsFileDetection()
         {
             // Create a ControllerService instance
-            var service = new ControllerService(new AuthenticationService(Setup.logger, Setup.settings));
+            var service = new ControllerService(new AuthenticationService(Setup.settings));
 
             // Get metadata for all operations
             var operations = ServiceMetadata.GetOperations(service);

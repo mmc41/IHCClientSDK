@@ -10,7 +10,7 @@
         "asyncContinueOnCapturedContext": false
     },
     "Logging": {
-        "comment" : "Defines how much is logged by ILoggers",
+        "comment" : "Optional section. Not used by SDK but used for some utilities",
         "LogLevel": {
           "Default": "Debug",
           "Microsoft": "Warning",

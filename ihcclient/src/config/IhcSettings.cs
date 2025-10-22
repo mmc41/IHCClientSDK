@@ -1,6 +1,22 @@
 namespace Ihc
 {
     /// <summary>
+    /// Special endpoint constants for IHC client configuration. Other endpoints are expected to be standard HTTP URLs.
+    /// </summary>
+    public static class SpecialEndpoints {
+        /// <summary>
+        /// Endpoint URL for USB connected IHC controller.
+        /// </summary>
+        public const string Usb = "http://usb";
+
+        /// <summary>
+        /// Reserved endpoint URL prefix for test/utilities that support mocked IHC 
+        /// services for testing purposes.
+        /// </summary>
+        public const string MockedPrefix = "mock://";
+    }
+
+    /// <summary>
     /// Configuration settings for IHC client.
     /// </summary>
     public class IhcSettings

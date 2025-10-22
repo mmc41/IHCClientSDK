@@ -35,13 +35,16 @@ This project is hosted in a mono-repo containing the following sub-projects:
 * SDK usage examples:
     * [ihcclient_example1](examples/ihcclient_example1/README.md) contains code for simple command line client console program in c#. Use this for inspiration on how to get started.
     * [ihcclient_example2](examples/ihcclient_example2/README.md) contains code for simple command line client console program in c#. Use this for inspiration on how to get started.
-* SDK tests:
-    * [Safe integration tests](tests/safe_integration_tests/README.md) contains system and unit tests written in c# that can be safely run aginst a controller in use.
 * SDK utilities:
     * [Ihc Lab](utilities/ihc_lab/README.md) contains an experimental cross-platform GUI for calling individual API's.
     * [Program code extractor ](utilities/ihc_project_io_extractor/README.md) contains an optional command line utility for software developers that can generate constant definitions of IO addresses in a concrete IHC installation. Use this approach in your projects if you don't want to lookup and hardcode IO addresses yourself.
     * [IHC Http Proxy recorder](utilities/ihc_httpproxyrecorder/README.md) contains a simple http proxy useful for software (sdk) developers to investigate undocumented IHC controller API's.
     * [IHC Project download/upload](utilities/ihc_project_download_upload/README.md) contains a tool to download/upload project files.
+* SDK and utilitty tests:
+    * [Safe Lab tests](tests/safe_lab_tests/README.md) contains headless gui tests for Ihc Lab utility. Does not access a controller.
+    * [Safe integration tests](tests/safe_integration_tests/README.md) contains system integration tests written in c# that can be safely run aginst a controller in use.
+    * [Safe unit tests](tests/safe_unit_tests/README.md) contains  unit tests written in c# that does not access a controller.
+
 
 ## Configuration
 
@@ -67,7 +70,9 @@ Note:
 
 ### OpenTelemtry as a logging replacement
 
-As a more powerfull alternative to log files, the SDK optionally supports [OpenTelemetry](https://opentelemetry.io/) to view logs and traces. To enable this change ```telemetry``` settings in the config file. The SDK should work with any OpenTel solutions. Below is listed one example.
+As a more powerfull alternative to log files, the SDK (optionally) supports [OpenTelemetry](https://opentelemetry.io/) to view traces. To enable this change ```telemetry``` settings in the config file. The SDK should work with any OpenTel solutions. Below is listed one example.
+
+Note, while the SDK use OpenTelemtry instead of logging. Some utilities/applications using the SDK may still use logging. Therefor the example/template specification for ```ihcssettings.json``` files retains a logging configuration.
 
 #### OpenTelemetry using OpenObserve details
 

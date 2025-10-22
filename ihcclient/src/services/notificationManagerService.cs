@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using System;
 using System.Linq;
-using Microsoft.Extensions.Logging;
 using Ihc.Soap.Notificationmanager;
 using System.Diagnostics;
 
@@ -30,7 +29,7 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Notificationmanager.NotificationManagerService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, IhcSettings settings) : base(logger, cookieHandler, settings, "NotificationManagerService") {}
+            public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "NotificationManagerService") {}
 
             public Task<outputMessageName2> clearMessagesAsync(inputMessageName2 request)
             {
@@ -50,10 +49,10 @@ namespace Ihc {
         /// </summary>
         /// <param name="authService">AuthenticationService instance</param>
         public NotificationManagerService(IAuthenticationService authService)
-            : base(authService.Logger, authService.IhcSettings)
+            : base(authService.IhcSettings)
         {
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), settings);
+            this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
         private NotificationMessage mapMessage(WSNotificationMessage e)

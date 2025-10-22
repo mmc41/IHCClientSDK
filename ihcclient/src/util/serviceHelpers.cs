@@ -3,7 +3,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Net.Http;
 using Ihc.Envelope;
-using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text.Encodings.Web;
@@ -16,22 +15,14 @@ namespace Ihc
         * The IhcSettings used
         */
         public IhcSettings IhcSettings { get; }
-
-        /**
-        * The logger used (supplied to constructor in default implementation).
-        */
-        public ILogger Logger { get; }
     }
 
     public abstract class ServiceBase : IIHCService
     {
-        protected readonly ILogger logger;
-
         protected readonly IhcSettings settings;
 
-        protected ServiceBase(ILogger logger, IhcSettings settings)
+        protected ServiceBase(IhcSettings settings)
         {
-            this.logger = logger;
             this.settings = settings;
 
             if (this.settings == null)
@@ -44,18 +35,16 @@ namespace Ihc
                 throw new ArgumentException("IhcSettings fields Endpoint, Application must be supplied");
             }
 
-            if (logger == null)
+            if (this.settings.Endpoint.StartsWith(SpecialEndpoints.MockedPrefix))
             {
-                throw new ArgumentException("ILogger must be supplied");
+                throw new ArgumentException("IhcSettings specifies a mocked implmentation which does not correspond to this real implemenentation");
             }
         }
-       
+
         public IhcSettings IhcSettings
         {
             get { return settings; }
         }
-
-        public ILogger Logger { get { return logger; } }
 
         protected Activity StartActivity(string operationName)
         {
@@ -77,19 +66,17 @@ namespace Ihc
     internal abstract class ServiceBaseImpl
     {
         protected readonly Client ihcClient;
-        protected readonly ILogger logger;
         protected readonly ICookieHandler cookieHandler;
         public readonly string Url;
         protected IhcSettings settings;
 
 
-        protected ServiceBaseImpl(ILogger logger, ICookieHandler cookieHandler, IhcSettings settings, string serviceName)
+        protected ServiceBaseImpl(ICookieHandler cookieHandler, IhcSettings settings, string serviceName)
         {
-            this.logger = logger;
             this.settings = settings;
             this.Url = settings.Endpoint + "/ws/" + serviceName;
             this.cookieHandler = cookieHandler;
-            this.ihcClient = new Client(logger, cookieHandler, Url, settings);
+            this.ihcClient = new Client(cookieHandler, Url, settings);
         }
 
         private string escapeXMl(string xmlString)

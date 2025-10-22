@@ -7,7 +7,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 namespace Ihc {
     /**
@@ -19,13 +18,11 @@ namespace Ihc {
     internal class Client {
         private class LoggingHandler : DelegatingHandler
         {
-            private readonly ILogger logger;
             private readonly IhcSettings settings;
 
-            public LoggingHandler(ILogger logger, IhcSettings settings, HttpMessageHandler innerHandler)
+            public LoggingHandler(IhcSettings settings, HttpMessageHandler innerHandler)
                 : base(innerHandler)
             {
-                this.logger = logger;
                 this.settings = settings;
             }
 
@@ -70,10 +67,10 @@ namespace Ihc {
 
         /**
          * Return the singleton instance of the configured HttpClient we are using.
-         * Only the first caller of this function will actually set the log.
-         * The log argument is ignored for subsequent callers.
+         * Only the first caller of this function will actually set the settings.
+         * The settings argument is ignored for subsequent callers.
          */
-        static private HttpClient GetOrCreateHttpClient(ILogger logger, IhcSettings settings) {
+        static private HttpClient GetOrCreateHttpClient(IhcSettings settings) {
             lock(_lock) {
                 if (_httpClientSingleton == null) {
                     HttpClientHandler handler = new HttpClientHandler();
@@ -84,7 +81,7 @@ namespace Ihc {
                     // Do not do any kind of certificate check.
                     handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
 
-                    LoggingHandler loggingHandler = new LoggingHandler(logger, settings, handler);
+                    LoggingHandler loggingHandler = new LoggingHandler(settings, handler);
                     _httpClientSingleton = new HttpClient(loggingHandler);
                 }
 
@@ -93,13 +90,11 @@ namespace Ihc {
         }
 
         private readonly string url;
-        private readonly ILogger logger;
         private readonly ICookieHandler cookieHandler;
         private IhcSettings settings;
 
-        public Client(ILogger logger, ICookieHandler cookieHandler, string url, IhcSettings settings) {
+        public Client(ICookieHandler cookieHandler, string url, IhcSettings settings) {
             this.url = url;
-            this.logger = logger;
             this.cookieHandler = cookieHandler;
             this.settings = settings;
         }
@@ -116,7 +111,7 @@ namespace Ihc {
             if (cookie != null) {
                 content.Headers.Add("Cookie", cookie);
             }
-            return GetOrCreateHttpClient(this.logger, this.settings).PostAsync(this.url, content);
+            return GetOrCreateHttpClient(this.settings).PostAsync(this.url, content);
         }
     };
 }

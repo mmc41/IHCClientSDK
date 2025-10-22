@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using System;
 using System.Linq;
-using Microsoft.Extensions.Logging;
 using Ihc.Soap.Messagecontrollog;
 using System.Diagnostics;
 
@@ -31,7 +30,7 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Messagecontrollog.MessageControlLogService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, IhcSettings settings) : base(logger, cookieHandler, settings, "MessageControlLogService") { }
+            public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "MessageControlLogService") { }
 
             public Task<outputMessageName1> emptyLogAsync(inputMessageName1 request)
             {
@@ -51,10 +50,10 @@ namespace Ihc {
         /// </summary>
         /// <param name="authService">AuthenticationService instance</param>
         public MessageControlLogService(IAuthenticationService authService)
-            : base(authService.Logger, authService.IhcSettings)
+            : base(authService.IhcSettings)
         {
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), settings);
+            this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
         private LogEventEntry mapEvent(WSMessageControlLogEntry e)

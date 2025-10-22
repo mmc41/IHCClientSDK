@@ -2,7 +2,6 @@
 using System.IO;
 using System.Threading.Tasks;
 using Ihc;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using System.Reflection;
 using System.Text;
@@ -46,15 +45,6 @@ namespace Ihc.download_upload_example
                       .AddJsonFile("ihcsettings.json")
                       .Build();
 
-            // Create a logger for our application. Alternatively use NullLogger<Setup>.Instance.
-            using var loggerFactory = LoggerFactory.Create(builder =>
-            {
-                builder.AddConfiguration(config.GetSection("Logging"));
-                builder.AddConsole();
-            });
-
-            var logger = loggerFactory.CreateLogger<Program>();
-
             // Read configuration settings
             var settings = config.GetSection("ihcclient").Get<IhcSettings>();
             if (settings == null)
@@ -64,7 +54,7 @@ namespace Ihc.download_upload_example
             }
 
             // Create client for IHC services that this utility use:
-            var authService = new AuthenticationService(logger, settings);
+            var authService = new AuthenticationService(settings);
             var controllerService = new ControllerService(authService);
             var ressourceService = new ResourceInteractionService(authService);
             var configService = new ConfigurationService(authService);

@@ -113,6 +113,55 @@ namespace Ihc {
     }
 
     /// <summary>
+    /// Reflection utility methods that work for both real services and fakes/proxies.
+    /// </summary>
+    internal static class ReflectionUtil
+    {
+        /// <summary>
+        /// Get methods for the specified service in a way that works for both real services and fakes/proxies.
+        /// </summary>
+        public static MethodInfo[] GetMethods(IIHCService service)
+        {
+            var concreteType = service.GetType();
+
+            // Find the IHC service interface (works for both real services and fakes/proxies)
+            var serviceInterfaces = concreteType.GetInterfaces()
+                .Where(i => i != typeof(IIHCService) && typeof(IIHCService).IsAssignableFrom(i))
+                .ToList();
+
+            var serviceInterface = serviceInterfaces.Count > 0 ? serviceInterfaces[0] : null;
+
+            // If we have an interface, get the interface map to get concrete implementation methods
+            if (serviceInterface != null)
+            {
+                var interfaceMap = concreteType.GetInterfaceMap(serviceInterface);
+                return interfaceMap.TargetMethods;
+            }
+            else
+            {
+                return concreteType.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+            }
+        }
+
+        /// <summary>
+        /// Get the service type (interface if available, concrete type otherwise) for a service.
+        /// Works for both real services and fakes/proxies.
+        /// </summary>
+        public static Type GetServiceType(IIHCService service)
+        {
+            // Find the IHC service interface (works for both real services and fakes/proxies)
+            var serviceInterfaces = service.GetType().GetInterfaces()
+                .Where(i => i != typeof(IIHCService) && typeof(IIHCService).IsAssignableFrom(i))
+                .ToList();
+
+            // Use the interface type instead of the concrete type
+            // This ensures we get the actual service interface rather than proxy type
+            var serviceInterface = serviceInterfaces.Count > 0 ? serviceInterfaces[0] : null;
+            return serviceInterface ?? service.GetType();
+        }
+    }
+
+    /// <summary>
     /// Produce high level metadata about service operations (methods) on a high level IHC service. For use by test and documentation tools.
     /// </summary>
     public static class ServiceMetadata
@@ -129,16 +178,17 @@ namespace Ihc {
         public static IReadOnlyList<ServiceOperationMetadata> GetOperations(IIHCService service)
         {
             using Activity activity = Telemetry.ActivitySource.StartActivity(nameof(GetOperations), ActivityKind.Internal);
-            
-            var serviceType = service.GetType();
-            activity?.SetParameters((nameof(service), service.GetType().Name));
+
+            Type serviceType = ReflectionUtil.GetServiceType(service);
+
+            activity?.SetParameters((nameof(service), serviceType.Name));
             activity?.SetTag("cachedResult", true); // Assume cached by default
 
             var retv = _cache.GetOrAdd(serviceType, type =>
             {
                 activity?.SetTag("cachedResult", false); // Override if not cached.
 
-                var methods = type.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                MethodInfo[] methods = ReflectionUtil.GetMethods(service);
 
                 var operations = new List<ServiceOperationMetadata>();
 

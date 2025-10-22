@@ -2,7 +2,6 @@
 using System.IO;
 using System.Threading.Tasks;
 using Ihc;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using System.Reflection;
 
@@ -23,15 +22,6 @@ namespace Ihc.example
 
             IhcSettings settings = config.GetSection("ihcclient").Get<IhcSettings>();
 
-            // Create a logger for our application. Alternatively use NullLogger<Setup>.Instance.
-            using var loggerFactory = LoggerFactory.Create(builder =>
-            {
-                builder.AddConfiguration(config.GetSection("Logging"));
-                builder.AddConsole();
-            });
-
-            var logger = loggerFactory.CreateLogger<Program>();
-
             // Read additional configuration settings
             var testConfig = config.GetSection("testConfig");
             var boolOutput1 = int.Parse(testConfig["boolOutput1"]);
@@ -39,7 +29,7 @@ namespace Ihc.example
             var boolInput2 = int.Parse(testConfig["boolInput2"]);
 
             // Create client for IHC services that this example use (see also ConfigurationService, MessageControlLogService, ModuleService, NotificationManagerService, OpenAPIService, TimeManagerService, UserManagerService).
-            var authService = new AuthenticationService(logger, settings);
+            var authService = new AuthenticationService(settings);
             var resourceInteractionService = new ResourceInteractionService(authService);
             try
             {

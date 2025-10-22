@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using System;
 using System.Linq;
-using Microsoft.Extensions.Logging;
 using Ihc.Soap.Configuration;
 using System.Diagnostics;
 
@@ -149,7 +148,7 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Configuration.ConfigurationService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, IhcSettings settings) : base(logger, cookieHandler, settings, "ConfigurationService") { }
+            public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "ConfigurationService") { }
 
             public Task<outputMessageName3> clearUserLogAsync(inputMessageName3 request)
             {
@@ -279,10 +278,10 @@ namespace Ihc {
         /// </summary>
         /// <param name="authService">AuthenticationService instance</param>
         public ConfigurationService(IAuthenticationService authService)
-            : base(authService.Logger, authService.IhcSettings)
+            : base(authService.IhcSettings)
         {
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), settings);
+            this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
         private SystemInfo mapSystemInfo(Ihc.Soap.Configuration.WSSystemInfo info)

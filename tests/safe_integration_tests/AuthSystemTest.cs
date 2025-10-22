@@ -17,7 +17,7 @@ namespace Ihc.Tests
         [Test]
         public async Task AuthenticateAndDisconnectTest()
         {
-            var authService = new AuthenticationService(Setup.logger, Setup.settings);
+            var authService = new AuthenticationService(Setup.settings);
 
             var result = await authService.Authenticate(Setup.settings.UserName, Setup.settings.Password,  Setup.settings.Application);
             if (Setup.settings.Endpoint!="http://usb") // Username can't be tested like this when using a usb connection, where "usb" is returned istead of name.
@@ -32,7 +32,7 @@ namespace Ihc.Tests
         [Test]
         public async Task PingTest()
         {
-            var authService = new AuthenticationService(Setup.logger, Setup.settings);
+            var authService = new AuthenticationService(Setup.settings);
 
             var pingResult = await authService.Ping();
             Assert.That(pingResult, Is.EqualTo(true));

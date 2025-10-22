@@ -5,7 +5,8 @@
       "Bash(dotnet restore:*)",
       "Bash(dotnet test:*)",
       "mcp__ide__getDiagnostics",
-      "Bash(dotnet ihc_lab.dll --version)"
+      "Bash(dotnet ihc_lab.dll --version)",
+      "WebFetch(domain:docs.avaloniaui.net)"
     ],
     "deny": [],
     "ask": []

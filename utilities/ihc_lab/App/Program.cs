@@ -10,7 +10,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace IhcLab;
 
-class Program
+public class Program
 {
     public static Configuration? config = null;
     public static ILoggerFactory? loggerFactory = null;

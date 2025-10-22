@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using System;
 using System.Linq;
-using Microsoft.Extensions.Logging;
 using Ihc.Soap.Openapi;
 using System.Collections.Generic;
 using System.Threading;
@@ -177,7 +176,7 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Openapi.OpenAPIService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, IhcSettings settings) : base(logger, cookieHandler, settings, "OpenAPIService") { }
+            public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "OpenAPIService") { }
 
             public Task<outputMessageName13> authenticateAsync(inputMessageName13 request)
             {
@@ -496,14 +495,13 @@ namespace Ihc {
         /// <summary>
         /// Create an OpenAPIService instance for access to the IHC API related to the open api.
         /// </summary>
-        /// <param name="logger">A logger instance. Alternatively, use NullLogger&lt;YourClass&gt;.Instance</param>
         /// <param name="settings">IHC settings configuration</param>
-        public OpenAPIService(ILogger logger, IhcSettings settings)
-            : base(logger, settings)
+        public OpenAPIService(IhcSettings settings)
+            : base(settings)
         {
             this.endpoint = settings.Endpoint;
-            this.cookieHandler = new CookieHandler(logger, settings.LogSensitiveData);
-            this.impl = new SoapImpl(logger, cookieHandler, settings);
+            this.cookieHandler = new CookieHandler(settings.LogSensitiveData);
+            this.impl = new SoapImpl(cookieHandler, settings);
         }
 
         public async Task Authenticate()
@@ -533,17 +531,14 @@ namespace Ihc {
                         (nameof(password), settings.AsyncContinueOnCapturedContext ? password : UserConstants.REDACTED_PASSWORD)
                     );
 
-                    logger.LogInformation("IHC OpenAPI Authenticate called");
                     var resp = await impl.authenticateAsync(new inputMessageName13() { authenticate1 = userName, authenticate2 = password }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
                     if (resp.authenticate3.HasValue && resp.authenticate3.Value)
                     {
-                        logger.LogInformation("IHC OpenAPI authentication successful");
                         return;
                     }
                     else
                     {
-                        logger.LogError("IHC OpenAPI authentication failed for endpoint {Url}", impl.Url);
                         throw new ErrorWithCodeException(Errors.LOGIN_UNKNOWN_ERROR, "Ihc server login failed for " + impl.Url);
                     }
                 }
@@ -718,7 +713,7 @@ namespace Ihc {
             {
                 try
                 {
-                    logger.LogWarning("IHC OpenAPI DoReboot called - controller will reboot");
+                    // TODO raise activity event
                     await impl.doRebootAsync(new inputMessageName15()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 }
                 catch (Exception ex)
@@ -863,7 +858,6 @@ namespace Ihc {
                         EnableSubscription,
                         async (timeout) => (await WaitForEvents(timeout).ConfigureAwait(settings.AsyncContinueOnCapturedContext)).ResourceValueEvents,
                         DisableSubscription,
-                        logger,
                         settings.AsyncContinueOnCapturedContext,
                         cancellationToken,
                         timeout_between_waits_in_seconds);

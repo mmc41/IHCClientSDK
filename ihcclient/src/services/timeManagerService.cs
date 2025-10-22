@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using System;
 using Ihc.Soap.Timemanager;
-using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
 namespace Ihc {
@@ -46,7 +45,7 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Timemanager.TimeManagerService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, IhcSettings settings) : base(logger, cookieHandler, settings, "TimeManagerService") { }
+            public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "TimeManagerService") { }
 
             public Task<outputMessageName2> getCurrentLocalTimeAsync(inputMessageName2 request)
             {
@@ -81,10 +80,10 @@ namespace Ihc {
         /// </summary>
         /// <param name="authService">AuthenticationService instance</param>
         public TimeManagerService(IAuthenticationService authService)
-            : base(authService.Logger, authService.IhcSettings)
+            : base(authService.IhcSettings)
         {
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), settings);
+            this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
         
         // Map methods for translating between SOAP models and high-level models

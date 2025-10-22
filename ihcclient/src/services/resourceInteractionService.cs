@@ -2,7 +2,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System;
 using System.Linq;
-using Microsoft.Extensions.Logging;
 using Ihc.Soap.Resourceinteraction;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -155,7 +154,7 @@ namespace Ihc {
         /// </summary>
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Resourceinteraction.ResourceInteractionService
         {
-            public SoapImpl(ILogger logger, ICookieHandler cookieHandler, IhcSettings settings) : base(logger, cookieHandler, settings, "ResourceInteractionService") { }
+            public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "ResourceInteractionService") { }
 
             public Task<outputMessageName7> disableInitialValueNotifactionsAsync(inputMessageName7 request)
             {
@@ -453,10 +452,10 @@ namespace Ihc {
         /// </summary>
         /// <param name="authService">AuthenticationService instance</param>
         public ResourceInteractionService(IAuthenticationService authService)
-            : base(authService.Logger, authService.IhcSettings)
+            : base(authService.IhcSettings)
         {
             this.authService = authService;
-            this.impl = new SoapImpl(logger, authService.GetCookieHandler(), settings);
+            this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
         public async Task<bool> DisableInitialValueNotifactions(int[] resourceIds)
@@ -916,7 +915,6 @@ namespace Ihc {
                         EnableRuntimeValueNotifications,
                         WaitForResourceValueChanges,
                         DisableRuntimeValueNotifactions,
-                        this.logger,
                         settings.AsyncContinueOnCapturedContext,
                         cancellationToken,
                         timeout_between_waits_in_seconds);
