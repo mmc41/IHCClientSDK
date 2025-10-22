@@ -6,6 +6,7 @@ using Ihc;
 using System.Threading.Tasks;
 using System.Threading;
 using System.Collections.Generic;
+using FakeItEasy;
 
 namespace Ihc.Tests
 {
@@ -19,9 +20,8 @@ namespace Ihc.Tests
         [Test]
         public void CheckSampleNormalAsyncOperation()
         {
-            // Create a ResourceInteractionService instance
-            var service = new ResourceInteractionService(new AuthenticationService(Setup.settings));
-
+            var service = A.Fake<IResourceInteractionService>();
+               
             // Get metadata for all operations
             var operations = ServiceMetadata.GetOperations(service);
 
@@ -47,7 +47,7 @@ namespace Ihc.Tests
         public void CheckAsyncEnumerableOperation()
         {
             // Create a ResourceInteractionService instance
-            var service = new ResourceInteractionService(new AuthenticationService(Setup.settings));
+            var service = A.Fake<IResourceInteractionService>();
 
             // Get metadata for all operations
             var operations = ServiceMetadata.GetOperations(service);
@@ -67,8 +67,7 @@ namespace Ihc.Tests
         [Test]
         public void CheckOperationDescriptionsAreLoaded()
         {
-            // Create an AuthenticationService instance
-            var service = new AuthenticationService(Setup.settings);
+            var service = A.Fake<IAuthenticationService>();
 
             // Get metadata for all operations
             var operations = ServiceMetadata.GetOperations(service);
@@ -91,7 +90,7 @@ namespace Ihc.Tests
         public void CheckInterenalOperationsRemoved()
         {
             // Create a ResourceInteractionService instance
-            var service = new ResourceInteractionService(new AuthenticationService(Setup.settings));
+            var service = A.Fake<IResourceInteractionService>();
 
             // Get metadata for all operations
             var operations = ServiceMetadata.GetOperations(service);
@@ -103,7 +102,7 @@ namespace Ihc.Tests
         public void CheckProjectFileIsFileDetection()
         {
             // Create a ControllerService instance
-            var service = new ControllerService(new AuthenticationService(Setup.settings));
+            var service = A.Fake<IControllerService>();
 
             // Get metadata for all operations
             var operations = ServiceMetadata.GetOperations(service);

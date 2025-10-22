@@ -28,10 +28,4 @@
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
     <ProjectReference Include="..\..\utilities\ihc_lab\ihc_lab.csproj" />
   </ItemGroup>
-  
-  <Target Name="CopyConfigFiles" AfterTargets="AfterBuild">
-    <!-- NB: Settings file is required for running/testing but allow build without the file to support compilation in a DevOps pipeline -->
-    <Copy SourceFiles="..\..\ihcsettings.json" DestinationFolder="$(OutDir)" Condition="Exists('..\..\ihcsettings.json')" />
-  </Target>
-
 </Project>

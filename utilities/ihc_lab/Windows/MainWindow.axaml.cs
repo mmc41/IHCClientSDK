@@ -64,8 +64,8 @@ public partial class MainWindow : Window
                 ServicesComboBox.SelectedIndex = 0;
             }
 
-            // Do this last so Warning is not cleared.
-            if (string.IsNullOrEmpty(Program.config?.telemetryConfig?.Host))
+            // Do this last so Warning is not cleared unless we are testing.
+            if (string.IsNullOrEmpty(Program.config?.telemetryConfig?.Host) && (Program.config?.ihcSettings?.Endpoint?.StartsWith(SpecialEndpoints.MockedPrefix) == false))
             {
                 OpenTelemetryMenuItem.IsEnabled = false;
                 SetWarning("OpenTelemtry not configured. It is recommended (but not requireds) to setup telemetry to view logs/traces. See guide in README for details.");

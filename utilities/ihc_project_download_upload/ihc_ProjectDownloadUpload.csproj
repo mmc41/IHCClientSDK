@@ -18,4 +18,8 @@
     <!-- NB: Settings file is required for running/testing but allow build without the file to support compilation in a DevOps pipeline -->
     <Copy SourceFiles="..\..\ihcsettings.json" DestinationFolder="$(OutDir)" Condition="Exists('..\..\ihcsettings.json')"/>
   </Target>
+  <Target Name="DeleteConfigFiles" AfterTargets="Clean">
+    <!-- Delete ihcsettings.json from output directory during clean -->
+    <Delete Files="$(OutDir)ihcsettings.json" Condition="Exists('$(OutDir)ihcsettings.json')" />
+  </Target>
 </Project>

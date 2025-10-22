@@ -19,7 +19,7 @@ namespace Ihc
     /// <summary>
     /// Configuration settings for IHC client.
     /// </summary>
-    public class IhcSettings
+    public record IhcSettings
     {
         /// <summary>
         /// The IHC endpoint URL, e.g. "http://192.100.1.10" or "http://usb" (required value).

@@ -8,21 +8,17 @@ using System.Reflection;
 namespace Ihc.Tests
 {
     /// <summary>
-    /// Unit tests for ReflectionUtil that verify it works correctly with both real services and FakeItEasy fakes.
+    /// Unit tests for ReflectionUtil that verify it works correctly with FakeItEasy mocked services.
     /// </summary>
     [TestFixture]
-    public class ReflectionUtilTest
+    public class ReflectionUtilMockedTest
     {
         [Test]
-        [TestCase(true, TestName = "GetServiceType_RealAuthenticationService")]
-        [TestCase(false, TestName = "GetServiceType_FakeAuthenticationService")]
-        public void GetServiceType_ReturnsInterfaceType(bool useRealService)
+        public void GetServiceType_FakeAuthenticationService_ReturnsInterfaceType()
         {
             // Arrange
-            IAuthenticationService service = useRealService
-                ? new AuthenticationService(Setup.settings!)
-                : A.Fake<IAuthenticationService>();
-            string description = useRealService ? "Real AuthenticationService" : "FakeItEasy IAuthenticationService";
+            IAuthenticationService service = A.Fake<IAuthenticationService>();
+            string description = "FakeItEasy IAuthenticationService";
 
             // Act
             Type serviceType = ReflectionUtil.GetServiceType(service);
@@ -42,15 +38,11 @@ namespace Ihc.Tests
         }
 
         [Test]
-        [TestCase(true, TestName = "GetMethods_ReturnsInterfaceMethods_RealService")]
-        [TestCase(false, TestName = "GetMethods_ReturnsInterfaceMethods_FakeService")]
-        public void GetMethods_ReturnsInterfaceMethods(bool useRealService)
+        public void GetMethods_FakeService_ReturnsInterfaceMethods()
         {
             // Arrange
-            IAuthenticationService service = useRealService
-                ? new AuthenticationService(Setup.settings!)
-                : A.Fake<IAuthenticationService>();
-            string description = useRealService ? "Real AuthenticationService" : "FakeItEasy IAuthenticationService";
+            IAuthenticationService service = A.Fake<IAuthenticationService>();
+            string description = "FakeItEasy IAuthenticationService";
 
             // Act
             MethodInfo[] methods = ReflectionUtil.GetMethods(service);

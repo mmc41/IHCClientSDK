@@ -17,20 +17,15 @@ namespace Ihc.Tests
         [OneTimeSetUp]
         public void RunBeforeAnyTests()
         {
-          var assemblyLocation = Assembly.GetEntryAssembly()?.Location;
-          if (assemblyLocation == null)
-              throw new InvalidOperationException("Unable to determine assembly location");
-
-          var basePath = Path.GetDirectoryName(assemblyLocation);
-          if (basePath == null)
-              throw new InvalidOperationException("Unable to determine base path from assembly location");
-
-          IConfigurationRoot config = new ConfigurationBuilder()
-                .SetBasePath(basePath)
-                .AddJsonFile("ihcsettings.json")
-                .Build();
-
-          settings = config.GetSection("ihcclient").Get<IhcSettings>();
+            settings = new IhcSettings()
+            {
+                Endpoint = "mock://",
+                UserName = "test",
+                Password = "test",
+                Application = "",
+                LogSensitiveData = true,
+                AsyncContinueOnCapturedContext = false
+            };
         }
     }
 }

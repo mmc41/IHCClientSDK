@@ -17,7 +17,8 @@ namespace IhcLab
         public TelemetryConfiguration telemetryConfig { get; init; }
         public IhcSettings ihcSettings { get; init; }
 
-        public Configuration() {
+        public Configuration()
+        {
             // Access configuration file that stores IHC and SDK setup informnation including username, password etc.
             string basePath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? AppContext.BaseDirectory;
             IConfigurationRoot config = new ConfigurationBuilder()
@@ -40,7 +41,22 @@ namespace IhcLab
 
             this.loggingConfig = loggingConfig;
             this.telemetryConfig = telemetryConfig;
+            this.ihcSettings = ihcSettings with
+            {
+                // Make sure async context continuation is false as it might otherwise crash the GUI app.
+                AsyncContinueOnCapturedContext = false
+            };
+        }
+        
+        /// <summary>
+        /// Create configuration with provided IHC settings for testing purposes.
+        /// </summary>
+        /// <param name="ihcSettings"></param>
+        public Configuration(IhcSettings ihcSettings)
+        {
             this.ihcSettings = ihcSettings;
+            this.loggingConfig = null!;
+            this.telemetryConfig = null!;
         }
     }
 }
