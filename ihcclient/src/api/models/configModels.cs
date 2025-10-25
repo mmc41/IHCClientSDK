@@ -175,9 +175,22 @@ namespace Ihc {
         /// </summary>
         public string Gateway { get; init; }
 
+        /// <summary>
+        /// This default ToString method should not be used! Use alternative with bool parameter.
+        /// </summary>
+        /// <returns></returns>
         public override string ToString()
         {
-          return $"WLanSettings(Enabled={Enabled}, Ssid={Ssid}, Key={Key}, SecurityType={SecurityType}, EncryptionType={EncryptionType}, IpAddress={IpAddress}, Netmask={Netmask}, Gateway={Gateway})";
+          return this.ToString(true); // Unsecure - will output key
+        }
+
+        /// <summary>
+        /// Safely convert to string. Only convert key if LogSensitiveData set to true.
+        /// </summary>
+        /// <returns></returns>
+        public string ToString(bool LogSensitiveData)
+        {
+          return $"WLanSettings(Enabled={Enabled}, Ssid={Ssid}, Key={(LogSensitiveData ? Key : UserConstants.REDACTED_PASSWORD)}, SecurityType={SecurityType}, EncryptionType={EncryptionType}, IpAddress={IpAddress}, Netmask={Netmask}, Gateway={Gateway})";
         }
     }
 
@@ -441,9 +454,22 @@ namespace Ihc {
         /// </summary>
         public bool Ssl { get; init; }
 
+        /// <summary>
+        /// This default ToString method should not be used! Use alternative with bool parameter.
+        /// </summary>
+        /// <returns></returns>
         public override string ToString()
         {
-          return $"EmailControlSettings(ServerIpAddress={ServerIpAddress}, ServerPortNumber={ServerPortNumber}, Pop3Username={Pop3Username}, Pop3Password={Pop3Password}, EmailAddress={EmailAddress}, PollInterval={PollInterval}, RemoveEmailsAfterUsage={RemoveEmailsAfterUsage}, Ssl={Ssl})";
+          return this.ToString(true); // Unsecure - will output password
+        }
+
+        /// <summary>
+        /// Safely convert to string. Only convert password if LogSensitiveData set to true.
+        /// </summary>
+        /// <returns></returns>
+        public string ToString(bool LogSensitiveData)
+        {
+          return $"EmailControlSettings(ServerIpAddress={ServerIpAddress}, ServerPortNumber={ServerPortNumber}, Pop3Username={Pop3Username}, Pop3Password={(LogSensitiveData ? Pop3Password : UserConstants.REDACTED_PASSWORD)}, EmailAddress={EmailAddress}, PollInterval={PollInterval}, RemoveEmailsAfterUsage={RemoveEmailsAfterUsage}, Ssl={Ssl})";
         }
     }
 
@@ -486,9 +512,22 @@ namespace Ihc {
         /// </summary>
         public string SendLowBatteryNotificationRecipient { get; init; }
 
+        /// <summary>
+        /// This default ToString method should not be used! Use alternative with bool parameter.
+        /// </summary>
+        /// <returns></returns>
         public override string ToString()
         {
-          return $"SMTPSettings(Hostname={Hostname}, Hostport={Hostport}, Username={Username}, Password={Password}, Ssl={Ssl}, SendLowBatteryNotification={SendLowBatteryNotification}, SendLowBatteryNotificationRecipient={SendLowBatteryNotificationRecipient})";
+          return this.ToString(true); // Unsecure - will output password
+        }
+
+        /// <summary>
+        /// Safely convert to string. Only convert password if LogSensitiveData set to true.
+        /// </summary>
+        /// <returns></returns>
+        public string ToString(bool LogSensitiveData)
+        {
+          return $"SMTPSettings(Hostname={Hostname}, Hostport={Hostport}, Username={Username}, Password={(LogSensitiveData ? Password : UserConstants.REDACTED_PASSWORD)}, Ssl={Ssl}, SendLowBatteryNotification={SendLowBatteryNotification}, SendLowBatteryNotificationRecipient={SendLowBatteryNotificationRecipient})";
         }
     }
 

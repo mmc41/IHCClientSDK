@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Ihc.App
 {
@@ -53,6 +54,31 @@ namespace Ihc.App
         /// Maps to existing WLanSettings model.
         /// </summary>
         public WLanSettings WLanSettings { get; set; }
+
+        /// <summary>
+        /// This default ToString method should not be used! Use alternative with bool parameter.
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString()
+        {
+            return this.ToString(true); // Unsecure - will output sensitive data
+        }
+
+        /// <summary>
+        /// Safely convert to string. Only convert sensitive data if LogSensitiveData set to true.
+        /// </summary>
+        /// <returns></returns>
+        public string ToString(bool LogSensitiveData)
+        {
+            var usersInfo = Users != null
+                ? $"[{string.Join(", ", Users.Select(u => u.ToString(LogSensitiveData)))}]"
+                : "null";
+            var emailControlInfo = EmailControl?.ToString(LogSensitiveData) ?? "null";
+            var smtpInfo = SmtpSettings?.ToString(LogSensitiveData) ?? "null";
+            var wlanInfo = WLanSettings?.ToString(LogSensitiveData) ?? "null";
+
+            return $"AdminModel(Users={usersInfo}, EmailControl={emailControlInfo}, SmtpSettings={smtpInfo}, DnsServers={DnsServers}, NetworkSettings={NetworkSettings}, WebAccess={WebAccess}, WLanSettings={wlanInfo})";
+        }
     }
 
      /// <summary>

@@ -59,7 +59,7 @@ namespace Ihc {
       /// <returns></returns>
       public override string ToString()
       {
-        return this.ToString(true); // Unsecure - may output password
+        return this.ToString(true); // Unsecure - will output password
       }
 
       /// <summary>

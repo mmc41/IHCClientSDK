@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\..\ihcclient\ihcclient.csproj"/>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.0"/>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.0"/>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.0"/>
+  </ItemGroup>
+  <Target Name="CopyConfigFiles" AfterTargets="AfterBuild">
+    <!-- NB: Settings file is required for running/testing but allow build without the file to support compilation in a DevOps pipeline -->
+    <Copy SourceFiles="..\..\ihcsettings.json" DestinationFolder="$(OutDir)" Condition="Exists('..\..\ihcsettings.json')"/>
+  </Target>
+  <Target Name="DeleteConfigFiles" AfterTargets="Clean">
+    <!-- Delete ihcsettings.json from output directory during clean -->
+    <Delete Files="$(OutDir)ihcsettings.json" Condition="Exists('$(OutDir)ihcsettings.json')" />
+  </Target>
+</Project>

@@ -32,5 +32,10 @@ namespace Ihc.App
         /// Maps to existing WebAccessControl model.
         /// </summary>
         public WebAccessControl AccessControl { get; init; }
+
+        public override string ToString()
+        {
+            return $"InformationModel(Network={Network}, Dns={Dns}, Time={Time}, AccessControl={AccessControl})";
+        }
     }
 }
