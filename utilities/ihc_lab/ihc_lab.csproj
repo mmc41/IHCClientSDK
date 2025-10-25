@@ -8,9 +8,11 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <CopyDebugSymbolFilesFromPackages>true</CopyDebugSymbolFilesFromPackages>
     <Version>0.8.0</Version>
-    <InformationalVersion>This is a beta version</InformationalVersion>    
+    <InformationalVersion>This is a beta version</InformationalVersion>
     <Copyright>Apache License 2.0</Copyright>
     <Authors>mmc41</Authors>
+    <AssemblyTitle>IHC Lab</AssemblyTitle>
+    <Product>IHC Lab</Product>
   </PropertyGroup>
 
   <ItemGroup>

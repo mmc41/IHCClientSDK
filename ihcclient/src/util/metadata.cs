@@ -69,7 +69,7 @@ namespace Ihc {
     /// <param name="Parameters">Method parameter metadata</param>
     /// <param name="OperationKind">The type of operation</param>
     /// <param name="OperationDetails">The underlying MethodInfo describing the operation in details</param>
-    /// <param name="Description">The XML documentation summary for this method</param>
+    /// <param name="Description">The XML documentation for this method (summary and remarks sections separated by newline)</param>
     public class ServiceOperationMetadata(IIHCService service, string Name, Type ReturnType, FieldMetaData[] Parameters, ServiceOperationKind OperationKind, MethodInfo OperationDetails, string Description)
     {
         public string Name { get; init; } = Name;
@@ -485,13 +485,34 @@ namespace Ihc {
             if (memberElement == null)
                 return null;
 
-            // Try to get the summary element first
+            // Get the summary element
             var summaryElement = memberElement.Element("summary");
-            if (summaryElement != null)
-                return summaryElement.Value.Trim();
+            var remarksElement = memberElement.Element("remarks");
 
-            // Fall back to the member element's direct text content
-            return memberElement.Value.Trim();
+            if (summaryElement == null && remarksElement == null)
+            {
+                // Fall back to the member element's direct text content
+                return NormalizeWhitespace(memberElement.Value);
+            }
+
+            // Combine summary and remarks with a newline separator
+            var result = new StringBuilder();
+
+            if (summaryElement != null)
+            {
+                result.Append(NormalizeWhitespace(summaryElement.Value));
+            }
+
+            if (remarksElement != null)
+            {
+                if (result.Length > 0)
+                {
+                    result.Append('\n');
+                }
+                result.Append(NormalizeWhitespace(remarksElement.Value));
+            }
+
+            return result.ToString();
         }
 
         private static string TryGetParameterDescriptionForType(XDocument xmlDoc, MethodInfo method, Type type, string parameterName)
@@ -538,6 +559,11 @@ namespace Ihc {
 
             return paramElement.Value.Trim();
         }
+
+        /// <summary>
+        /// Normalize whitespace in XML documentation text by trimming leading and trailing whitespace.
+        /// </summary>
+        private static string NormalizeWhitespace(string text) => text?.Trim() ?? string.Empty;
 
         private static string GetXmlTypeName(Type type)
         {

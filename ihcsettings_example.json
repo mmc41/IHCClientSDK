@@ -7,7 +7,8 @@
         "password" : "mypassword",
         "application" : "administrator",
         "logSensitiveData": false,
-        "asyncContinueOnCapturedContext": false
+        "asyncContinueOnCapturedContext": false,
+        "allowDangerousInternTestCalls": false
     },
     "Logging": {
         "comment" : "Optional section. Not used by SDK but used for some utilities",

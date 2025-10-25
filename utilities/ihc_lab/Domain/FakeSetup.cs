@@ -127,5 +127,17 @@ namespace IhcLab {
             var service = A.Fake<IAirlinkManagementService>();
             return service;
         }
+
+        public static IInternalTestService SetupInternalTestService(IhcSettings settings)
+        {
+            var service = A.Fake<IInternalTestService>();
+            return service;
+        }
+        
+        public static ISmsModelService SetupSmsModelService(IhcSettings settings)
+        {
+            var service = A.Fake<ISmsModelService>();
+            return service;
+        }
     }
 }

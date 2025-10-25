@@ -11,6 +11,7 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using System.Threading.Tasks;
+using Ihc.Soap.Smsmodem;
 
 namespace IhcLab;
 
@@ -64,6 +65,9 @@ public class IhcDomain
     public IUserManagerService UserManagerService { get; init; }
     public IAirlinkManagementService AirlinkManagementService { get; init; }
 
+    public ISmsModelService SmsModemService { get; init; }
+    public IInternalTestService InternalTestService { get; init; }
+
     public IIHCService[] AllIhcServices
     {
         get
@@ -80,7 +84,9 @@ public class IhcDomain
                 ModuleService,
                 TimeManagerService,
                 UserManagerService,
-                AirlinkManagementService
+                AirlinkManagementService,
+                SmsModemService,
+                InternalTestService
             ];
         }
     }
@@ -115,6 +121,8 @@ public class IhcDomain
             this.TimeManagerService = new TimeManagerService(AuthenticationService);
             this.UserManagerService = new UserManagerService(AuthenticationService);
             this.AirlinkManagementService = new AirlinkManagementService(AuthenticationService);
+            this.SmsModemService = new SmsModemService(AuthenticationService);
+            this.InternalTestService = new InternalTestService(AuthenticationService);
         }
         else
         {
@@ -134,6 +142,8 @@ public class IhcDomain
             this.TimeManagerService = IhcFakeSetup.SetupTimeManagerService(IhcSettings);
             this.UserManagerService = IhcFakeSetup.SetupUserManagerService(IhcSettings);
             this.AirlinkManagementService = IhcFakeSetup.SetupAirlinkManagementService(IhcSettings);
+            this.SmsModemService = IhcFakeSetup.SetupSmsModelService(IhcSettings);
+            this.InternalTestService = IhcFakeSetup.SetupInternalTestService(IhcSettings);  
         }
        
     }

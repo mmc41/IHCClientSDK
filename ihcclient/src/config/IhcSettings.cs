@@ -51,9 +51,14 @@ namespace Ihc
         /// </summary>
         public bool AsyncContinueOnCapturedContext { get; init; }
 
+        /// <summary>
+        /// Controls if potentially dangerous internal IHC test operations may be falled (default false).
+        /// </summary>
+        public bool AllowDangerousInternTestCalls { get; init; }
+
         public override string ToString()
         {
-            return $"IhcSettings: Endpoint={Endpoint}, UserName={UserName}, Password={(string.IsNullOrEmpty(Password) ? "<not set>" : "<set>")}, Application={Application}, LogSensitiveData={LogSensitiveData}, AasyncContinueOnCapturedContext={AsyncContinueOnCapturedContext}";
+            return $"IhcSettings: Endpoint={Endpoint}, UserName={UserName}, Password={(string.IsNullOrEmpty(Password) ? "<not set>" : "<set>")}, Application={Application}, LogSensitiveData={LogSensitiveData}, AllowDangerousInternTestCalls={AllowDangerousInternTestCalls}, AasyncContinueOnCapturedContext={AsyncContinueOnCapturedContext}";
         }
     }
 }

@@ -45,10 +45,10 @@
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Service:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                <ComboBox Grid.Row="0" Grid.Column="1" Name="ServicesComboBox" VerticalAlignment="Center" SelectionChanged="OnServicesComboBoxSelectionChanged" ToolTip.Tip="Select IHC webservice"/>
+                <ComboBox Grid.Row="0" Grid.Column="1" Name="ServicesComboBox" VerticalAlignment="Center" SelectionChanged="OnServicesComboBoxSelectionChanged" ToolTip.Tip="Select IHC webservice" MaxDropDownHeight="500"/>
 
                 <TextBlock Grid.Row="0" Grid.Column="3" Text="Operation:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                <ComboBox Grid.Row="0" Grid.Column="4" Name="OperationsComboBox" VerticalAlignment="Center" SelectionChanged="OnOperationsComboBoxSelectionChanged" ToolTip.Tip="Select IHC operation"/>
+                <ComboBox Grid.Row="0" Grid.Column="4" Name="OperationsComboBox" VerticalAlignment="Center" SelectionChanged="OnOperationsComboBoxSelectionChanged" ToolTip.Tip="Select IHC operation" MaxDropDownHeight="500"/>
 
                 <Button Name="RunButton" Grid.Row="0" Grid.Column="6" Click="RunButtonClickHandler" ToolTip.Tip="Execute IHC operation">RUN</Button>
             </Grid>
