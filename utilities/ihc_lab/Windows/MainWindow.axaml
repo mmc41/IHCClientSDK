@@ -10,8 +10,6 @@
     <DockPanel>
         <Menu DockPanel.Dock="Top" Background="#F0F0F0">
             <MenuItem Header="_File">
-                <MenuItem Header="_Open..."/>
-                <Separator/>
                 <MenuItem Header="_Exit" Click="ExitMenuItemClick"/>
             </MenuItem>
             <MenuItem Header="_Edit">
@@ -19,6 +17,7 @@
                 <MenuItem Name="CopyErrorMenuItem" Header="Copy Error to Clipboard" Click="CopyErrorMenuItemClick"/>
             </MenuItem>
             <MenuItem Header="_Help">
+                <MenuItem Name="ListSettingMenuItem" Header="Show settings" Click="ShowSettingsMenuItemClick"/>
                 <MenuItem Name="OpenTelemetryMenuItem" Header="Open telemetry diagnostics" Click="OpenTelemetryMenuItemClick"/>
                 <Separator/>
                 <MenuItem Header="_About..." Click="AboutMenuItemClick"/>

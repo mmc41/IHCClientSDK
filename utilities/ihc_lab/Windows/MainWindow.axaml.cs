@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -235,6 +236,45 @@ public partial class MainWindow : Window
         {
             activity?.SetError(ex);
             SetError("AboutMenu error", ex);
+        }
+    }
+
+    public async void ShowSettingsMenuItemClick(object sender, RoutedEventArgs e)
+    {
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow)+"."+nameof(ShowSettingsMenuItemClick), ActivityKind.Internal);
+        try
+        {
+            ClearErrorAndWarning();
+            ClearOutput();
+
+            // Convert IConfigurationSection to dictionary to properly serialize values
+            var loggingConfigDict = Program.config?.loggingConfig?.GetChildren()
+                .ToDictionary(
+                    section => section.Key,
+                    section => section.GetChildren().Any()
+                        ? section.GetChildren().ToDictionary(child => child.Key, child => child.Value)
+                        : (object?)section.Value
+                );
+
+            var settings = new
+            {
+                IhcSettings = Program.config?.ihcSettings,
+                TelemetryConfiguration = Program.config?.telemetryConfig,
+                LoggingConfig = loggingConfigDict
+            };
+
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true
+            };
+
+            string json = JsonSerializer.Serialize(settings, options);
+            await SetOutput(json, settings.GetType());
+        }
+        catch (Exception ex)
+        {
+            activity?.SetError(ex);
+            SetError("Show settings error", ex);
         }
     }
 
