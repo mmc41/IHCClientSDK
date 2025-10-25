@@ -5,6 +5,7 @@ using Ihc.Soap.Usermanager;
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
 using System.Threading;
+using System.Collections.Generic;
 
 namespace Ihc {
     /// <summary>
@@ -14,10 +15,10 @@ namespace Ihc {
     public interface IUserManagerService : IIHCService
     {
         /// <summary>
-        /// Get list of all users registered on the controller.
+        /// Get set of all users registered on the controller.
         /// </summary>
         /// <param name="includePassword">Include password in returned user objects</param>
-        public Task<IhcUser[]> GetUsers(bool includePassword);
+        public Task<ISet<IhcUser>> GetUsers(bool includePassword);
 
         /// <summary>
         /// Add a new user to the controller.
@@ -168,10 +169,10 @@ namespace Ihc {
         }
 
         /// <summary>
-        /// Get list of registered controller users and their information.
+        /// Get set of registered controller users and their information.
         /// </summary>
         /// <param name="includePassword">Include password in returned user objects (default)</param>
-        public async Task<IhcUser[]> GetUsers(bool includePassword = true)
+        public async Task<ISet<IhcUser>> GetUsers(bool includePassword = true)
         {
             using (var activity = StartActivity(nameof(GetUsers)))
             {
@@ -182,10 +183,10 @@ namespace Ihc {
                     var resp = await impl.getUsersAsync(new inputMessageName2() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
                     // Note that we for safty reasons can return users without password in return object
-                    var retv = resp.getUsers1.Where((v) => v != null).Select((u) => mapUser(u, includePassword)).ToArray();
+                    var retv = new HashSet<IhcUser>(resp.getUsers1.Where((v) => v != null).Select((u) => mapUser(u, includePassword)));
 
                     // Register activity - note that regardless of if password is included, any password will be also not be logged/observed unless LogSensitiveData allows it.
-                    activity?.SetReturnValue(IhcSettings.LogSensitiveData ? retv.Select(r => r.RedactPasword()).ToArray() : retv);
+                    activity?.SetReturnValue(IhcSettings.LogSensitiveData ? retv.Select(r => r.RedactPasword()).ToArray() : retv.ToArray());
                     return retv;
                 }
                 catch (Exception ex)

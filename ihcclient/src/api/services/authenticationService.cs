@@ -33,6 +33,13 @@ namespace Ihc {
         /// Check if the IHC controller is up and running and serving API calls.
         /// </summary>
         public Task<bool> Ping();
+
+        /// <summary>
+        /// Check if the client is currently authenticated with the IHC controller.
+        /// Returns true if Authenticate() was successfully called and Disconnect() has not been called since.
+        /// </summary>
+        /// <returns>True if authenticated, false otherwise</returns>
+        public Task<bool> IsAuthenticated();
     }
 
     /// <summary>
@@ -94,7 +101,8 @@ namespace Ihc {
 
 
         private readonly SoapImpl impl;
-        private bool isConnected;
+        private readonly object isConnectedLock = new object();
+        private volatile bool isConnected;
 
         /// <summary>
         /// Create an AuthenticationService instance for access to the IHC API related to authentication.
@@ -145,7 +153,11 @@ namespace Ihc {
                         (nameof(application), application)
                     );
 
-                    isConnected = false;
+                    lock (isConnectedLock)
+                    {
+                        isConnected = false;
+                    }
+
                     var resp = await impl.authenticateAsync(new inputMessageName2() { authenticate1 = new WSAuthenticationData { username = userName, password = password, application = application } })
                                         .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
@@ -158,7 +170,10 @@ namespace Ihc {
                             throw new ErrorWithCodeException(Errors.LOGIN_UNKNOWN_ERROR, "Ihc server login succeeded but returned null user data for " + impl.Url);
                         }
 
-                        isConnected = true;
+                        lock (isConnectedLock)
+                        {
+                            isConnected = true;
+                        }
 
                         var user = new IhcUser()
                         {
@@ -216,7 +231,10 @@ namespace Ihc {
                     }
                     finally
                     {
-                        isConnected = false;
+                        lock (isConnectedLock)
+                        {
+                            isConnected = false;
+                        }
                     }
 
                     var retv = result.HasValue ? result.Value : false;
@@ -231,11 +249,40 @@ namespace Ihc {
             }
         }
 
+        #pragma warning disable 1998
+        public async Task<bool> IsAuthenticated()
+        {
+            using (var activity = StartActivity(nameof(IsAuthenticated)))
+            {
+                try
+                {
+                    bool retv;
+                    lock (isConnectedLock)
+                    {
+                        retv = isConnected;
+                    }
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
+
         public void Dispose()
         {
             try
             {
-                if (isConnected)
+                bool shouldDisconnect;
+                lock (isConnectedLock)
+                {
+                    shouldDisconnect = isConnected;
+                }
+
+                if (shouldDisconnect)
                 {
                     Task.Run(() => this.Disconnect());
                 }

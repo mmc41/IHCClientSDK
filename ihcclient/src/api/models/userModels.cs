@@ -13,25 +13,25 @@ namespace Ihc {
       public const string REDACTED_PASSWORD = "**REDACTED**";
     };
 
-  /// <summary>
-  /// High level enumeration for UserGroup values without soap distractions.
-  /// </summary>
-  public enum IhcUserGroup
-  {
     /// <summary>
-    /// Only used with not specified - not supported by IHC.
+    /// High level enumeration for UserGroup values without soap distractions.
     /// </summary>
-    None,
-    
-    Administrators,
+    public enum IhcUserGroup
+    {
+      /// <summary>
+      /// Only used with not specified - not supported by IHC.
+      /// </summary>
+      None,
+      
+      Administrators,
 
-    Users
-  };
+      Users
+    };
 
     /// <summary>
     /// High level model of a IHC user without soap distractions.
     /// </summary>
-    public record IhcUser
+    public record IhcUser : IComparable<IhcUser>
     {
       public string Username { get; init; }
       public string Password { get; init; }
@@ -69,6 +69,24 @@ namespace Ihc {
       public string ToString(bool LogSensitiveData)
       {
         return $"IhcUser(Username={Username}, Password={(LogSensitiveData ? Password : UserConstants.REDACTED_PASSWORD)}, Email={Email}, Firstname={Firstname}, Lastname={Lastname}, Phone={Phone}, Group={Group}, Project={Project}, CreatedDate={CreatedDate}, LoginDate={LoginDate})";
+      }
+
+      /// <summary>
+      /// Username is unique identifier so use this for hashcode.
+      /// </summary>
+      /// <returns></returns>
+      public override int GetHashCode()
+      {
+        return string.IsNullOrEmpty(Username) ? 0 : Username.GetHashCode();
+      }
+      
+      /// <summary>
+      /// Order users by username.
+      /// </summary>
+
+      public int CompareTo(IhcUser other)
+      {
+        return string.Compare(this.Username, other?.Username); 
       }
     }
 }
