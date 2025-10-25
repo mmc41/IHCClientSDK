@@ -9,12 +9,11 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace Ihc {
-    /**
-     * Custom http client for IHC with logging and special cookie support.
-
-     * The class is based on a singleton instance of HttpClient shared among all client instances,
-     * as recommended by MS.
-     */
+    /// <summary>
+    /// Custom HTTP client for IHC with logging and special cookie support.
+    /// The class is based on a singleton instance of HttpClient shared among all client instances,
+    /// as recommended by Microsoft.
+    /// </summary>
     internal class Client {
         private class LoggingHandler : DelegatingHandler
         {
@@ -65,11 +64,13 @@ namespace Ihc {
         static private readonly object _lock = new object();
         static private HttpClient _httpClientSingleton = null;
 
-        /**
-         * Return the singleton instance of the configured HttpClient we are using.
-         * Only the first caller of this function will actually set the settings.
-         * The settings argument is ignored for subsequent callers.
-         */
+        /// <summary>
+        /// Returns the singleton instance of the configured HttpClient we are using.
+        /// Only the first caller of this function will actually set the settings.
+        /// The settings argument is ignored for subsequent callers.
+        /// </summary>
+        /// <param name="settings">IHC settings for initial configuration.</param>
+        /// <returns>The singleton HttpClient instance.</returns>
         static private HttpClient GetOrCreateHttpClient(IhcSettings settings) {
             lock(_lock) {
                 if (_httpClientSingleton == null) {
@@ -99,9 +100,12 @@ namespace Ihc {
             this.settings = settings;
         }
 
-       /**
-        * Do HTTP SOAP post against IHC.
-        */
+        /// <summary>
+        /// Performs an HTTP SOAP POST against IHC.
+        /// </summary>
+        /// <param name="action">SOAP action.</param>
+        /// <param name="body">Request body content.</param>
+        /// <returns>Task with the HTTP response message.</returns>
         public Task<HttpResponseMessage> Post(string action, string body) {
             var content = new StringContent(body, Encoding.UTF8, "text/xml");
             content.Headers.Add("SOAPAction", action);

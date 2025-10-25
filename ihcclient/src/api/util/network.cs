@@ -8,13 +8,12 @@ namespace Ihc
 {
     internal class NetworkHelper
     {
-        /**
-        * Convert 32-bit integer to IP address string.
-        * IP addresses are stored in network byte order (big-endian).
-        *
-        * @param ipInt IP address as 32-bit integer
-        * @return IP address string (e.g., "192.168.1.1")
-        */
+        /// <summary>
+        /// Convert 32-bit integer to IP address string.
+        /// IP addresses are stored in network byte order (big-endian).
+        /// </summary>
+        /// <param name="ipInt">IP address as 32-bit integer.</param>
+        /// <returns>IP address string (e.g., "192.168.1.1").</returns>
         public static string ConvertIntToIPAddress(int ipInt)
         {
             byte[] bytes = BitConverter.GetBytes(ipInt);
@@ -25,13 +24,12 @@ namespace Ihc
             return new IPAddress(bytes).ToString();
         }
 
-        /**
-        * Convert IP address string to 32-bit integer.
-        * IP addresses are stored in network byte order (big-endian).
-        *
-        * @param ipString IP address string (e.g., "192.168.1.1")
-        * @return IP address as 32-bit integer
-        */
+        /// <summary>
+        /// Convert IP address string to 32-bit integer.
+        /// IP addresses are stored in network byte order (big-endian).
+        /// </summary>
+        /// <param name="ipString">IP address string (e.g., "192.168.1.1").</param>
+        /// <returns>IP address as 32-bit integer.</returns>
         public static int ConvertIPAddressToInt(string ipString)
         {
             var ipAddress = IPAddress.Parse(ipString);

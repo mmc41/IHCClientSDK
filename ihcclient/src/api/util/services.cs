@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 
 namespace Ihc
 {
-    /**
-     * Utility helpers for service implementations.
-     */
+    /// <summary>
+    /// Utility helpers for service implementations.
+    /// </summary>
     internal static class ServiceHelpers
     {
         /// <summary>

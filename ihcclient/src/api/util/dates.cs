@@ -7,28 +7,38 @@ namespace Ihc {
     internal class DateHelper {
         // Configurable timezone offset for IHC controller
         // Default is UTC+1 (Central European Time) which matches most IHC installations
-        public static readonly TimeSpan TimeOffset = TimeSpan.FromHours(1);
+        public static readonly TimeSpan TimeOffset = TimeSpan.FromHours(1); // TODO: Make configurable
 
-        /**
-        * Get timespan used for converting WS dates to DateTimeOffset.
-        * Default is UTC+1 (Central European Time).
-        */
+        /// <summary>
+        /// Get timespan used for converting WS dates to DateTimeOffset.
+        /// Default is UTC+1 (Central European Time).
+        /// </summary>
+        /// <returns>TimeSpan offset for WS date conversion.</returns>
         internal static TimeSpan GetWSTimeOffset() {
             return TimeOffset;
         }
 
-        /**
-        * Get time kind used for converting WS dates to DateTimeOffset.
-        */
+        /// <summary>
+        /// Get time kind used for converting WS dates to DateTimeOffset.
+        /// </summary>
+        /// <returns>DateTimeKind for WS date conversion.</returns>
         internal static DateTimeKind GetWSDateTimeKind()
         {
             return DateTimeKind.Utc;
         }
 
-        /**
-        * Safely try to create a DateTimeOffset from individual components.
-        * Return MinValue if invalud date.
-        */
+        /// <summary>
+        /// Safely try to create a DateTimeOffset from individual components.
+        /// Returns MinValue if invalid date.
+        /// </summary>
+        /// <param name="year">Year component.</param>
+        /// <param name="month">Month component (1-12).</param>
+        /// <param name="day">Day component (1-31).</param>
+        /// <param name="hours">Hours component (0-23).</param>
+        /// <param name="minutes">Minutes component (0-59).</param>
+        /// <param name="seconds">Seconds component (0-59).</param>
+        /// <param name="offset">Time zone offset.</param>
+        /// <returns>DateTimeOffset or MinValue if invalid.</returns>
         internal static DateTimeOffset CreateDateTimeOffset(int year, int month, int day, int hours, int minutes, int seconds, TimeSpan offset) {
             try {
                 // First validate that the date components are in valid ranges

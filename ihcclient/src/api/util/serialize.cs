@@ -9,11 +9,11 @@ using System.Collections.Concurrent;
 using Ihc;
 
 namespace Ihc {
-  /**
-   * Responsible for low-level serialization/de-serialization of IHC soap requests/responses
-   * so we can communicate with the IHC server without any formal soap libraries involved
-   * as this is not (currently) supported by dot net core.
-   */
+  /// <summary>
+  /// Responsible for low-level serialization/deserialization of IHC SOAP requests/responses
+  /// so we can communicate with the IHC server without any formal SOAP libraries involved
+  /// as this is not (currently) supported by .NET Core.
+  /// </summary>
   internal class Serialization {
     // Cache for XmlSerializer instances to prevent memory leak
     // Key is a combination of type and attribute overrides hash

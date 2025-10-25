@@ -7,16 +7,22 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text.Encodings.Web;
 
-namespace Ihc 
+namespace Ihc
 {
+    /// <summary>
+    /// Base interface for all IHC services.
+    /// </summary>
     public interface IIHCService
     {
-        /**
-        * The IhcSettings used
-        */
+        /// <summary>
+        /// The IhcSettings used by this service.
+        /// </summary>
         public IhcSettings IhcSettings { get; }
     }
 
+    /// <summary>
+    /// Base class for all IHC services.
+    /// </summary>
     public abstract class ServiceBase : IIHCService
     {
         protected readonly IhcSettings settings;
@@ -48,21 +54,22 @@ namespace Ihc
 
         protected Activity StartActivity(string operationName)
         {
-            Activity activity = Telemetry.ActivitySource.StartActivity(this.GetType().Name+"."+operationName, ActivityKind.Internal);
+            Activity activity = Telemetry.ActivitySource.StartActivity(this.GetType().Name + "." + operationName, ActivityKind.Internal);
             activity?.SetTag("service.name", this.GetType().Name); // Set name of IHC webservice highlevel wrapper as telemetry service name.
             activity?.SetTag("service.operation", operationName); // Set name of IHC webservice highlevel wrapper operation.          
             return activity;
         }
     }
 
-    /**
-    * Callback interface for doing sideeffects as part of a soap http post. 
-    */
+    /// <summary>
+    /// Callback interface for doing side effects as part of a SOAP HTTP POST.
+    /// </summary>
+    /// <param name="msg">The HTTP response message.</param>
     public delegate void OnOkCallBack(HttpResponseMessage msg);
 
-    /**
-    * Common baseclass for service implementations of IHC soap interfaces.
-    */
+    /// <summary>
+    /// Common base class for low level service implementations of IHC SOAP interfaces.
+    /// </summary>
     internal abstract class ServiceBaseImpl
     {
         protected readonly Client ihcClient;
@@ -84,9 +91,15 @@ namespace Ihc
             return System.Security.SecurityElement.Escape(xmlString);
         }
 
-        /**
-         * Soap HTTP post action.
-         */
+        /// <summary>
+        /// Performs a SOAP HTTP POST action.
+        /// </summary>
+        /// <typeparam name="RESP">Response type.</typeparam>
+        /// <typeparam name="REQ">Request type.</typeparam>
+        /// <param name="soapAction">SOAP action name.</param>
+        /// <param name="request">Request object.</param>
+        /// <param name="onOkSideEffect">Optional callback for side effects on success.</param>
+        /// <returns>The response object.</returns>
         protected async Task<RESP> soapPost<RESP, REQ>(string soapAction, REQ request, OnOkCallBack onOkSideEffect = null)
         {
             using var activity = Telemetry.ActivitySource.StartActivity(nameof(soapPost)+"."+soapAction, ActivityKind.Internal);

@@ -1,9 +1,9 @@
 using System;
 
 namespace Ihc {
-  /**
-   * IHC communication related exception with a HTTP/IHC/Communication error code.
-   */
+  /// <summary>
+  /// IHC communication related exception with an HTTP/IHC/Communication error code.
+  /// </summary>
   public sealed class ErrorWithCodeException : Exception
   {
     public readonly int ErrorCode;
@@ -27,9 +27,9 @@ namespace Ihc {
     public override string ToString() => ErrorCode + " : " + this.Message;
  };
 
- /**
-  * Standard IHC/HTTP/Communication errors.
-  */
+ /// <summary>
+ /// Standard IHC/HTTP/Communication error codes.
+ /// </summary>
  public class Errors
  {
    public const int XML_FORMAT_ERROR = 1000;

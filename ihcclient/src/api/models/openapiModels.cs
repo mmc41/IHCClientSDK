@@ -5,14 +5,23 @@ using Ihc.Soap.Authentication;
 using System.Text;
 
 namespace Ihc {
-    /**
-     * High level model of a IHC WS version Info without soap distractions.
-     */
+    /// <summary>
+    /// High level model of IHC firmware version information without soap distractions.
+    /// </summary>
     public record FWVersion {
+        /// <summary>
+        /// Major version number.
+        /// </summary>
         public int MajorVersion { get; init; }
 
+        /// <summary>
+        /// Minor version number.
+        /// </summary>
         public int MinorVersion { get; init; }
 
+        /// <summary>
+        /// Build version number.
+        /// </summary>
         public int BuildVersion { get; init; }
 
         public override string ToString()
@@ -21,12 +30,23 @@ namespace Ihc {
         }
     }
 
-    /**
-     * High level model of event package without soap distractions.
-     */
+    /// <summary>
+    /// High level model of an event package containing resource value changes without soap distractions.
+    /// </summary>
     public record EventPackage {
+        /// <summary>
+        /// Array of resource value change events.
+        /// </summary>
         public ResourceValue[] ResourceValueEvents { get; init; }
+
+        /// <summary>
+        /// Indicates whether the controller execution is currently running.
+        /// </summary>
         public bool ControllerExecutionRunning { get; init; }
+
+        /// <summary>
+        /// Number of active subscriptions.
+        /// </summary>
         public int SubscriptionAmount { get; init; }
 
         public override string ToString()

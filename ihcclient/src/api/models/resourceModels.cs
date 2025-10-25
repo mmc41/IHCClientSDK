@@ -5,19 +5,33 @@ using Ihc.Soap.Authentication;
 using System.Text;
 
 namespace Ihc {
-    /**
-    * Valid TypeString values.
-    */
+    /// <summary>
+    /// Valid TypeString values for IHC resource types.
+    /// </summary>
     public class TypeStrings {
+        /// <summary>
+        /// Type string for dataline input resources.
+        /// </summary>
         public static readonly string DatalineInput = "dataline_input";
+
+        /// <summary>
+        /// Type string for dataline output resources.
+        /// </summary>
         public static readonly string DatalineOutput = "dataline_output";
     };
 
-     /**
-     * High level model of a IHC WS Dataline resource without soap distractions.
-     */
+     /// <summary>
+     /// High level model of an IHC WS Dataline resource without soap distractions.
+     /// </summary>
     public record DatalineResource {
+        /// <summary>
+        /// The dataline number in the IHC system.
+        /// </summary>
         public int DatalineNumber { get; set; }
+
+        /// <summary>
+        /// Unique resource identifier for this dataline.
+        /// </summary>
         public int ResourceID { get; set; }
 
         public override string ToString()
@@ -26,36 +40,86 @@ namespace Ihc {
         }
     }
 
-     /**
-     * High level model of a IHC WS resource value without soap distractions.
-     * 
-     * TODO: Support missing types: PhoneNumber, SceneDimmer, SceneRelay, WSSceneShutter
-     */
+     /// <summary>
+     /// High level model of an IHC WS resource value without soap distractions.
+     /// TODO: Support missing types: PhoneNumber, SceneDimmer, SceneRelay, WSSceneShutter
+     /// </summary>
     public record ResourceValue {
-        public enum ValueKind { 
-            BOOL, DATE, INT, DOUBLE, ENUM, 
-            TIME, TIMER, WEEKDAY 
+        /// <summary>
+        /// Enumeration of supported value kinds for resource values.
+        /// </summary>
+        public enum ValueKind {
+            /// <summary>Boolean value type.</summary>
+            BOOL,
+            /// <summary>Date value type.</summary>
+            DATE,
+            /// <summary>Integer value type.</summary>
+            INT,
+            /// <summary>Double precision floating point value type.</summary>
+            DOUBLE,
+            /// <summary>Enumeration value type.</summary>
+            ENUM,
+            /// <summary>Time value type.</summary>
+            TIME,
+            /// <summary>Timer value type.</summary>
+            TIMER,
+            /// <summary>Weekday value type.</summary>
+            WEEKDAY
         };
 
+        /// <summary>
+        /// Union structure holding the actual value based on ValueKind.
+        /// Only the field matching ValueKind should be populated.
+        /// </summary>
         public struct UnionValue {
+            /// <summary>
+            /// Indicates which type of value this union contains.
+            /// </summary>
             public ValueKind ValueKind { get; set; }
-  
+
+            /// <summary>
+            /// Boolean value (when ValueKind is BOOL).
+            /// </summary>
             public bool? BoolValue { get; set; }
 
+            /// <summary>
+            /// DateTime value (when ValueKind is DATE).
+            /// </summary>
             public DateTimeOffset? DateTime { get; set; }
 
+            /// <summary>
+            /// Integer value (when ValueKind is INT).
+            /// </summary>
             public int? IntValue { get; set; }
-            
+
+            /// <summary>
+            /// Double precision value (when ValueKind is DOUBLE).
+            /// </summary>
             public double? DoubleValue  { get; set; }
-            
+
+            /// <summary>
+            /// Date value (when ValueKind is DATE).
+            /// </summary>
             public DateTimeOffset? DateValue { get; set; }
 
+            /// <summary>
+            /// Time span value (when ValueKind is TIME).
+            /// </summary>
             public TimeSpan? TimeValue { get; set; }
 
+            /// <summary>
+            /// Timer value in milliseconds (when ValueKind is TIMER).
+            /// </summary>
             public long? TimerValue { get; set; }
 
+            /// <summary>
+            /// Weekday value as integer (when ValueKind is WEEKDAY).
+            /// </summary>
             public int? WeekdayValue { get; set; }
 
+            /// <summary>
+            /// Enum value (when ValueKind is ENUM).
+            /// </summary>
             public EnumValue EnumValue { get; set; }
 
             public override String ToString() {
@@ -94,31 +158,43 @@ namespace Ihc {
             }
         };
 
-        /**
-        * See TypeStrings constants for valid values.
-        */
-        public string TypeString  { get; set; } 
+        /// <summary>
+        /// Type string identifying the resource type.
+        /// See TypeStrings constants for valid values.
+        /// </summary>
+        public string TypeString  { get; set; }
 
+        /// <summary>
+        /// The union value containing the actual data.
+        /// </summary>
         public UnionValue Value { get; set; }
-        
+
+        /// <summary>
+        /// Unique resource identifier in the IHC system.
+        /// </summary>
         public int ResourceID  { get; set; }
-        
+
+        /// <summary>
+        /// Indicates whether this is a runtime value (vs. configuration value).
+        /// </summary>
         public bool IsValueRuntime  { get; set; }
 
-        /**
-         * Approximately the time this value was created/changed (in most cases just approximated by the the time this object was created).
-         *
-         * Nb. Not used by IHC - For internal diagnostics only.
-         */
+        /// <summary>
+        /// Approximately the time this value was created/changed (in most cases just approximated by the time this object was created).
+        /// Note: Not used by IHC - For internal diagnostics only.
+        /// </summary>
         public DateTimeOffset ValueTime { get; init; }
 
         public ResourceValue(DateTimeOffset valueTime = default(DateTimeOffset)) {
             this.ValueTime = (valueTime == default(DateTimeOffset) ? DateTimeOffset.Now : valueTime);
         }
 
-        /**
-        * Helper that creates an boolean input value.
-        */
+        /// <summary>
+        /// Helper that creates a boolean input value.
+        /// </summary>
+        /// <param name="resourceId">Resource ID for the input.</param>
+        /// <param name="value">Boolean value to set.</param>
+        /// <returns>A new ResourceValue configured as a boolean input.</returns>
         public static ResourceValue CreateBooleanRuntimeInput(int resourceId, bool value) {
             return new ResourceValue() {
               TypeString = TypeStrings.DatalineInput,
@@ -128,9 +204,12 @@ namespace Ihc {
             };
         }
 
-        /**
-        * Helper that creates an boolean output value.
-        */
+        /// <summary>
+        /// Helper that creates a boolean output value.
+        /// </summary>
+        /// <param name="resourceId">Resource ID for the output.</param>
+        /// <param name="value">Boolean value to set.</param>
+        /// <returns>A new ResourceValue configured as a boolean output.</returns>
         public static ResourceValue CreateBooleanRuntimeOutput(int resourceId, bool value) {
             return new ResourceValue() {
               TypeString = TypeStrings.DatalineOutput,
@@ -140,9 +219,12 @@ namespace Ihc {
             };
         }
 
-        /**
-        * Helper that crete a boolean resource value with value is opposite of source.
-        */
+        /// <summary>
+        /// Helper that creates a boolean resource value with the value opposite of the source.
+        /// </summary>
+        /// <param name="src">Source resource value to toggle.</param>
+        /// <returns>A new ResourceValue with the boolean value toggled.</returns>
+        /// <exception cref="ArgumentException">Thrown if source is not a boolean type.</exception>
         public static ResourceValue ToogleBool(ResourceValue src) {
             if (src.Value.ValueKind != ValueKind.BOOL)
                 throw new ArgumentException("Source resource should be of boolean type");
@@ -161,12 +243,23 @@ namespace Ihc {
         }
     }
 
-     /**
-     * High level model of a IHC WS Logged data without soap distractions.
-     */
+     /// <summary>
+     /// High level model of IHC WS logged data without soap distractions.
+     /// </summary>
     public record LoggedData {
+        /// <summary>
+        /// The logged value as a string.
+        /// </summary>
         public string Value  { get; set; }
+
+        /// <summary>
+        /// Unique identifier for this log entry.
+        /// </summary>
         public int Id  { get; init; }
+
+        /// <summary>
+        /// Timestamp when this data was logged.
+        /// </summary>
         public DateTimeOffset Timestamp  { get; init; }
 
         public override string ToString()
@@ -175,11 +268,18 @@ namespace Ihc {
         }
     }
 
-     /**
-     * High level model of a IHC WS Enum definition without soap distractions.
-     */
+     /// <summary>
+     /// High level model of an IHC WS Enum definition without soap distractions.
+     /// </summary>
     public record EnumDefinition {
+         /// <summary>
+         /// Unique identifier for this enumerator definition.
+         /// </summary>
          public int EnumeratorDefinitionID  { get; init; }
+
+         /// <summary>
+         /// Array of possible enum values for this definition.
+         /// </summary>
          public EnumValue[] Values { get; init; }
 
          public override string ToString()
@@ -188,12 +288,23 @@ namespace Ihc {
          }
     }
 
-    /**
-     * High level model of a IHC WS Enum value without soap distractions.
-     */
+    /// <summary>
+    /// High level model of an IHC WS Enum value without soap distractions.
+    /// </summary>
     public record EnumValue {
+        /// <summary>
+        /// Type identifier for the enum definition this value belongs to.
+        /// </summary>
         public int DefinitionTypeID  { get; init; }
+
+        /// <summary>
+        /// Unique identifier for this enum value.
+        /// </summary>
         public int EnumValueID  { get; init; }
+
+        /// <summary>
+        /// Human-readable name of this enum value.
+        /// </summary>
         public string EnumName  { get; init; }
 
         public override string ToString()
@@ -202,12 +313,24 @@ namespace Ihc {
         }
     }
 
+    /// <summary>
+    /// High level model of a scene resource ID and its location without soap distractions.
+    /// </summary>
     public record SceneResourceIdAndLocation
     {
+        /// <summary>
+        /// Scene position as seen from the function block perspective.
+        /// </summary>
         public string ScenePositionSeenFromFunctionBlock  { get; init; }
 
+        /// <summary>
+        /// Unique resource ID for the scene.
+        /// </summary>
         public int SceneResourceId  { get; init; }
 
+        /// <summary>
+        /// Scene position as seen from the product perspective.
+        /// </summary>
         public string ScenePositionSeenFromProduct  { get; init; }
 
         public override string ToString()

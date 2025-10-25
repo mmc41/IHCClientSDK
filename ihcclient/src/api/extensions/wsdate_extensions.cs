@@ -1,10 +1,10 @@
 using System;
 
-/**
- * This file contains extensions to handle dates for all IHC WSDate abstractions.
- * Unfortunately, there is no way to do this once, so we need to repeat the same
- * extension for all ihc namespaces.
- */
+/// <summary>
+/// This file contains extensions to handle dates for all IHC WSDate abstractions.
+/// Unfortunately, there is no way to do this once, so we need to repeat the same
+/// extension for all IHC namespaces.
+/// </summary>
 
 namespace Ihc.Soap.Authentication
 {

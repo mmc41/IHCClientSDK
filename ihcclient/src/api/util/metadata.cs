@@ -9,10 +9,14 @@ using System.Diagnostics;
 
 namespace Ihc { 
     /// <summary>
-    /// Get version of the SDK stored in the project file.
+    /// Provides version information for the IHC Client SDK.
     /// </summary>
     public class VersionInfo
     {
+        /// <summary>
+        /// Gets the version of the SDK from the assembly metadata.
+        /// </summary>
+        /// <returns>The SDK version string, or "Unknown" if not available.</returns>
         public static string GetSdkVersion()
         {
             // Get the SDK assembly (ihcclient), not the entry assembly

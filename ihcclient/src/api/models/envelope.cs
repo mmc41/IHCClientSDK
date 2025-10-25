@@ -1,9 +1,9 @@
 using System.Xml.Serialization;
 
 namespace Ihc.Envelope {
-   /**
-    * This class represents an empty SOAP request message. Use dotnet XmlSerializer to generate the correspondong xml.
-    */
+   /// <summary>
+   /// This class represents an empty SOAP request message. Use .NET XmlSerializer to generate the corresponding XML.
+   /// </summary>
    [XmlRoot(ElementName="Envelope", Namespace ="http://schemas.xmlsoap.org/soap/envelope/", IsNullable=false)]
    public class EmptyRequestEnvelope {
       [XmlElement(Order = 1, IsNullable=false)]
@@ -31,11 +31,12 @@ namespace Ihc.Envelope {
       }
    };
 
-   /**
-    * This class represents a complete SOAP request for a specific request message (which unlike this class is is auto-generated).
-    * Use dotnet XmlSerializer to generate the corresponding xml
-    * Nb. remember to configure the serializer to use utcs namespace for the T data part.
-    */
+   /// <summary>
+   /// This class represents a complete SOAP request for a specific request message (which unlike this class is auto-generated).
+   /// Use .NET XmlSerializer to generate the corresponding XML.
+   /// Note: Remember to configure the serializer to use utcs namespace for the T data part.
+   /// </summary>
+   /// <typeparam name="T">Type of the request body.</typeparam>
    [XmlRoot(ElementName="Envelope", Namespace ="http://schemas.xmlsoap.org/soap/envelope/", IsNullable=false)]
    public class RequestEnvelope<T> {
       [XmlElement(Order = 1, IsNullable=false)]
@@ -65,11 +66,12 @@ namespace Ihc.Envelope {
       }
    };
 
-   /**
-    * This class represents a complete SOAP response for a specific response message (which unlike this class is is auto-generated).
-    * Use dotnet XmlSerializer to generate the corresponding xml.
-    * Nb. remember to configure the serializer to use utcs namespace for the T data part.
-    */
+   /// <summary>
+   /// This class represents a complete SOAP response for a specific response message (which unlike this class is auto-generated).
+   /// Use .NET XmlSerializer to generate the corresponding XML.
+   /// Note: Remember to configure the serializer to use utcs namespace for the T data part.
+   /// </summary>
+   /// <typeparam name="T">Type of the response body.</typeparam>
    [XmlRoot(ElementName="Envelope", Namespace ="http://schemas.xmlsoap.org/soap/envelope/", IsNullable=false)]
    public class ResponseEnvelope<T> {
       [XmlElement(Order = 1, IsNullable=false)]
