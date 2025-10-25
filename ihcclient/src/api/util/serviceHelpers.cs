@@ -10,20 +10,9 @@ using System.Text.Encodings.Web;
 namespace Ihc
 {
     /// <summary>
-    /// Base interface for all IHC services.
+    /// Base class for both high level IHC Api services AND IHC Application services
     /// </summary>
-    public interface IIHCService
-    {
-        /// <summary>
-        /// The IhcSettings used by this service.
-        /// </summary>
-        public IhcSettings IhcSettings { get; }
-    }
-
-    /// <summary>
-    /// Base class for all IHC services.
-    /// </summary>
-    public abstract class ServiceBase : IIHCService
+    public abstract class ServiceBase
     {
         protected readonly IhcSettings settings;
 

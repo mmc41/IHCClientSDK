@@ -10,7 +10,7 @@ namespace Ihc
     /// High-level interface for IHC SMS modem service operations.
     /// Used for control of SMS modem
     /// </summary>
-    public interface ISmsModelService : IIHCService
+    public interface ISmsModelService : IIHCApiService
     {
         /// <summary>
         /// Set SMS modem settings.

@@ -1,23 +1,25 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace Ihc.App
 {
     /// <summary>
-    /// Service for managing administrator-related data including users, email control, and SMTP settings.
-    /// Provides change tracking and efficient updates to the IHC controller. Will auto-authenticate 
+    /// Service for managing administrator-related data including users, email, SMTP and network settings.
+    /// Provides change tracking and efficient updates to the IHC controller. Will auto-authenticate
     /// with provided settings unless already authenticated.
     /// </summary>
-    public class AdminService : IDisposable, IAsyncDisposable
+    public class AdminService : ServiceBase, IDisposable, IAsyncDisposable
     {
         public readonly IAuthenticationService authService;
-        public readonly IhcSettings settings;
         private readonly IUserManagerService userService;
         private readonly IConfigurationService configService;
         private AdminModel _originalSnapshot;
         private readonly bool ownedServices;
+
+        private volatile bool rebootRequiredFlag = false;
 
         /// <summary>
         /// Create an AdminService instance with IhcSettings only.
@@ -25,13 +27,13 @@ namespace Ihc.App
         /// </summary>
         /// <param name="settings">IHC configuration settings</param>
         public AdminService(IhcSettings settings)
+            : base(settings)
         {
-            this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
-
             this.authService = new AuthenticationService(settings);
             this.userService = new UserManagerService(authService);
             this.configService = new ConfigurationService(authService);
             this.ownedServices = true;
+            this.rebootRequiredFlag = false;
         }
 
         /// <summary>
@@ -39,16 +41,37 @@ namespace Ihc.App
         /// Use this constructor when you already have service instances.
         /// </summary>
         /// <param name="settings">IHC configuration settings</param>
+        /// <param name="authService">Auth manager service instance</param>
         /// <param name="userService">User manager service instance</param>
         /// <param name="configService">Configuration service instance</param>
-        public AdminService(IhcSettings settings, IUserManagerService userService, IConfigurationService configService)
+        public AdminService(IhcSettings settings, IAuthenticationService authService, IUserManagerService userService, IConfigurationService configService)
+            : base(settings)
         {
-            this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
             this.userService = userService ?? throw new ArgumentNullException(nameof(userService));
             this.configService = configService ?? throw new ArgumentNullException(nameof(configService));
             this.ownedServices = false;
+            this.rebootRequiredFlag = false;
         }
 
+        /// <summary>
+        /// Indicates whether a reboot of the IHC controller is required after applying network-related changes.
+        /// This flag is set to true when DNS servers, network settings, or WLAN settings are changed.
+        /// </summary>
+        public bool RebootRequired { get; private set; }
+
+        /// <summary>
+        /// Reboot the IHC controller if a reboot is required after applying changes.
+        /// </summary>
+        /// <returns></returns>
+        public async Task RebootIfRequired()
+        {
+            if (rebootRequiredFlag)
+            {
+                await configService.DelayedReboot(1);
+                rebootRequiredFlag = false;
+            }
+        }
 
         /// <summary>
         /// Authenticate with the IHC controller if needed.
@@ -58,7 +81,7 @@ namespace Ihc.App
             if (!await authService.IsAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext))
             {
                 await authService.Authenticate().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            }   
+            }
         }
 
         /// <summary>
@@ -67,40 +90,61 @@ namespace Ihc.App
         /// Stores an internal snapshot for change detection.
         /// </summary>
         /// <returns>AdminModel containing all administrator data</returns>
-        public async Task<AdminModel> GetAdminModel()
+        public async Task<AdminModel> GetModel()
         {
-            await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-
-            var model = await GetAdminModelInternal().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-
-            // Create a deep copy for the snapshot to ensure changes to returned model don't affect snapshot
-            _originalSnapshot = new AdminModel
+            using (var activity = StartActivity(nameof(GetModel)))
             {
-                Users = new HashSet<IhcUser>(model.Users ?? Enumerable.Empty<IhcUser>()),
-                EmailControl = model.EmailControl,
-                SmtpSettings = model.SmtpSettings
-            };
+                try
+                {
+                    await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
-            return model;
+                    var model = await DoGetModel().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+
+                    // Create a deep copy for the snapshot to ensure changes to returned model don't affect snapshot
+                    _originalSnapshot = new AdminModel
+                    {
+                        Users = new HashSet<IhcUser>(model.Users ?? Enumerable.Empty<IhcUser>()),
+                        EmailControl = model.EmailControl,
+                        SmtpSettings = model.SmtpSettings,
+                        DnsServers = model.DnsServers,
+                        NetworkSettings = model.NetworkSettings,
+                        WebAccess = model.WebAccess,
+                        WLanSettings = model.WLanSettings
+                    };
+
+                    activity?.SetReturnValue($"AdminModel(Users={model.Users?.Count ?? 0})");
+                    return model;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
-        /// <summary>
-        /// Internal method to fetch admin model from controller without updating snapshot.
-        /// Used by both GetAdminModel() and SaveAdminModel() when snapshot is needed.
-        /// </summary>
-        private async Task<AdminModel> GetAdminModelInternal()
+        private async Task<AdminModel> DoGetModel()
         {
             var usersTask = userService.GetUsers(includePassword: true);
             var emailControlTask = configService.GetEmailControlSettings();
             var smtpTask = configService.GetSMTPSettings();
+            var dnsTask = configService.GetDNSServers();
+            var networkTask = configService.GetNetworkSettings();
+            var webAccessTask = configService.GetWebAccessControl();
+            var wlanTask = configService.GetWLanSettings();
 
-            await Task.WhenAll(usersTask, emailControlTask, smtpTask).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            await Task.WhenAll(usersTask, emailControlTask, smtpTask, dnsTask, networkTask, webAccessTask, wlanTask)
+                .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
             return new AdminModel
             {
                 Users = await usersTask,
                 EmailControl = await emailControlTask,
-                SmtpSettings = await smtpTask
+                SmtpSettings = await smtpTask,
+                DnsServers = await dnsTask,
+                NetworkSettings = await networkTask,
+                WebAccess = await webAccessTask,
+                WLanSettings = await wlanTask
             };
         }
 
@@ -112,23 +156,42 @@ namespace Ihc.App
         /// Updates the internal snapshot after successful save.
         /// </summary>
         /// <param name="model">Modified administrator model to save</param>
-        public async Task SaveAdminModel(AdminModel model)
+        public async Task Store(AdminModel model)
         {
-            await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                        
-            // Load snapshot from controller if not present
-            if (_originalSnapshot == null)
+            using (var activity = StartActivity(nameof(Store)))
             {
-                _originalSnapshot = await GetAdminModelInternal().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            }
+                try
+                {
+                    activity?.SetParameters((nameof(model), $"AdminModel(Users={model?.Users?.Count ?? 0})"));
 
-            var changes = DetectChanges(_originalSnapshot, model);
-            if (changes.Count > 0)
-            {
-                await ApplyChanges(changes).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            }
+                    await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
-            _originalSnapshot = model;
+                    // Load snapshot from controller if not present
+                    if (_originalSnapshot == null)
+                    {
+                        _originalSnapshot = await DoGetModel().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    }
+
+                    var changes = DetectChanges(_originalSnapshot, model);
+                    if (changes.Count > 0)
+                    {
+                        await ApplyChanges(changes).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    }
+
+                    _originalSnapshot = model;
+
+                    // Update RebootRequired property based on flag set during ApplyChanges
+                    RebootRequired = rebootRequiredFlag;
+
+                    activity?.SetTag("changes.count", changes.Count);
+                    activity?.SetTag("reboot.required", RebootRequired);
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         /// <summary>
@@ -204,11 +267,52 @@ namespace Ihc.App
                 });
             }
 
+            // DNS server changes - default record Equals() does deep comparison
+            if (!Equals(original.DnsServers, current.DnsServers))
+            {
+                changes.Add(new AdminChange
+                {
+                    ChangeType = AdminChangeType.DnsServersChanged,
+                    Payload = current.DnsServers
+                });
+            }
+
+            // Network settings changes - default record Equals() does deep comparison
+            if (!Equals(original.NetworkSettings, current.NetworkSettings))
+            {
+                changes.Add(new AdminChange
+                {
+                    ChangeType = AdminChangeType.NetworkSettingsChanged,
+                    Payload = current.NetworkSettings
+                });
+            }
+
+            // Web access control changes - default record Equals() does deep comparison
+            if (!Equals(original.WebAccess, current.WebAccess))
+            {
+                changes.Add(new AdminChange
+                {
+                    ChangeType = AdminChangeType.WebAccessChanged,
+                    Payload = current.WebAccess
+                });
+            }
+
+            // WLAN settings changes - default record Equals() does deep comparison
+            if (!Equals(original.WLanSettings, current.WLanSettings))
+            {
+                changes.Add(new AdminChange
+                {
+                    ChangeType = AdminChangeType.WLanSettingsChanged,
+                    Payload = current.WLanSettings
+                });
+            }
+
             return changes;
         }
 
         /// <summary>
         /// Apply detected changes to the IHC controller via API services.
+        /// Sets RebootRequired flag if network-related changes are made.
         /// </summary>
         private async Task ApplyChanges(List<AdminChange> changes)
         {
@@ -239,6 +343,29 @@ namespace Ihc.App
                     case AdminChangeType.SmtpSettingsChanged:
                         await configService.SetSMTPSettings((SMTPSettings)change.Payload)
                             .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                        break;
+
+                    case AdminChangeType.DnsServersChanged:
+                        await configService.SetDNSServers((DNSServers)change.Payload)
+                            .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                        rebootRequiredFlag = true;
+                        break;
+
+                    case AdminChangeType.NetworkSettingsChanged:
+                        await configService.SetNetworkSettings((NetworkSettings)change.Payload)
+                            .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                        rebootRequiredFlag = true;
+                        break;
+
+                    case AdminChangeType.WebAccessChanged:
+                        await configService.SetWebAccessControl((WebAccessControl)change.Payload)
+                            .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                        break;
+
+                    case AdminChangeType.WLanSettingsChanged:
+                        await configService.SetWLanSettings((WLanSettings)change.Payload)
+                            .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                        rebootRequiredFlag = true;
                         break;
                 }
             }

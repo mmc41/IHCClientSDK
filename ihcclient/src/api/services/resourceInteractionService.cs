@@ -11,7 +11,7 @@ namespace Ihc {
     /// A highlevel client interface for the IHC ResourceInteractionService without any of the soap distractions.
     /// Status: 100% API coverage but not fully tested or documented.
     /// </summary>
-    public interface IResourceInteractionService : IIHCService
+    public interface IResourceInteractionService : IIHCApiService
     {
         /// <summary>
         /// Disable initial value notifications for specified resource IDs.

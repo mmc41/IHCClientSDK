@@ -8,7 +8,7 @@ namespace Ihc {
     /// <summary>
     /// A highlevel client interface for the IHC NotificationManagerService without any of the soap distractions.
     /// </summary>
-    public interface INotificationManagerService : IIHCService
+    public interface INotificationManagerService : IIHCApiService
     {
         /// <summary>
         /// Clear all notification messages from the controller.

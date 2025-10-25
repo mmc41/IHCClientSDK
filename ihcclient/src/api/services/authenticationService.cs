@@ -9,7 +9,7 @@ namespace Ihc {
     /// <summary>
     /// A highlevel client interface for the IHC AuthenticationService without any of the soap distractions.
     /// </summary>
-    public interface IAuthenticationService : ICookieHandlerService, IDisposable, IAsyncDisposable, IIHCService
+    public interface IAuthenticationService : ICookieHandlerService, IDisposable, IAsyncDisposable, IIHCApiService
     {
         /// <summary>
         /// Login to IHC controller with user/password and application in predefined configuration settings. This method must be called prior to most other calls on other services.

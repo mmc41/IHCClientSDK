@@ -14,7 +14,7 @@ namespace IhcLab;
 /// </summary>
 public static class OperationSupport
 {
-    public static async Task<string> DynCall(IIHCService service, ServiceOperationMetadata operationMetadata, object[] parameterValues)
+    public static async Task<string> DynCall(IIHCApiService service, ServiceOperationMetadata operationMetadata, object[] parameterValues)
     {
         using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(OperationSupport) + "." + nameof(DynCall), ActivityKind.Internal);
         activity?.SetTag(Ihc.Telemetry.argsTagPrefix+"parameterValues", String.Join(",", parameterValues.Select(p => p.ToString())));

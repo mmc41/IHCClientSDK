@@ -12,7 +12,7 @@ namespace Ihc {
     /// A highlevel client interface for the IHC OpenAPIService for v3.0+ controllers without any of the soap distractions. It represents a subset of other services.
     /// The IHC service provided here does not appear to be fully functional, complete and perhaps not with same quality as other services. Probably best to use other services instead.
     /// </summary>
-    public interface IOpenAPIService : ICookieHandlerService, IIHCService
+    public interface IOpenAPIService : ICookieHandlerService, IIHCApiService
     {
         /// <summary>
         /// Login to IHC controller with user/password in predefined configuration settings. This method must be called prior to most other calls on other services.

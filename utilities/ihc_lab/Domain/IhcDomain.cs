@@ -18,18 +18,18 @@ namespace IhcLab;
 // Helper class to wrap services with display names
 public class ServiceItem
 {
-    public IIHCService Service { get; }
+    public IIHCApiService Service { get; }
     public string DisplayName { get; }
 
     public int InitialOperationSelectedIndex { get; set; }
 
-    public ServiceItem(IIHCService service)
+    public ServiceItem(IIHCApiService service)
     {
         Service = service;
 
         // Find the IHC service interface (works for both real services and fakes)
         var serviceInterfaces = service.GetType().GetInterfaces()
-            .Where(i => i != typeof(IIHCService) && typeof(IIHCService).IsAssignableFrom(i))
+            .Where(i => i != typeof(IIHCApiService) && typeof(IIHCApiService).IsAssignableFrom(i))
             .ToList();
 
         // Use the interface name, stripping the leading 'I' for display
@@ -68,7 +68,7 @@ public class IhcDomain
     public ISmsModelService SmsModemService { get; init; }
     public IInternalTestService InternalTestService { get; init; }
 
-    public IIHCService[] AllIhcServices
+    public IIHCApiService[] AllIhcServices
     {
         get
         {

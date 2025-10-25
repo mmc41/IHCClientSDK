@@ -74,7 +74,7 @@ namespace Ihc {
     /// <param name="OperationKind">The type of operation</param>
     /// <param name="OperationDetails">The underlying MethodInfo describing the operation in details</param>
     /// <param name="Description">The XML documentation for this method (summary and remarks sections separated by newline)</param>
-    public class ServiceOperationMetadata(IIHCService service, string Name, Type ReturnType, FieldMetaData[] Parameters, ServiceOperationKind OperationKind, MethodInfo OperationDetails, string Description)
+    public class ServiceOperationMetadata(IIHCApiService service, string Name, Type ReturnType, FieldMetaData[] Parameters, ServiceOperationKind OperationKind, MethodInfo OperationDetails, string Description)
     {
         public string Name { get; init; } = Name;
         public Type ReturnType { get; init; } = ReturnType;
@@ -82,7 +82,7 @@ namespace Ihc {
         public ServiceOperationKind Kind { get; init; } = OperationKind;
         public MethodInfo MethodInfo { get; init; } = OperationDetails;
         public string Description { get; init; } = Description;
-        public IIHCService service { get; init; } = service;
+        public IIHCApiService service { get; init; } = service;
 
         public override string ToString()
         {
@@ -124,13 +124,13 @@ namespace Ihc {
         /// <summary>
         /// Get methods for the specified service in a way that works for both real services and fakes/proxies.
         /// </summary>
-        public static MethodInfo[] GetMethods(IIHCService service)
+        public static MethodInfo[] GetMethods(IIHCApiService service)
         {
             var concreteType = service.GetType();
 
             // Find the IHC service interface (works for both real services and fakes/proxies)
             var serviceInterfaces = concreteType.GetInterfaces()
-                .Where(i => i != typeof(IIHCService) && typeof(IIHCService).IsAssignableFrom(i))
+                .Where(i => i != typeof(IIHCApiService) && typeof(IIHCApiService).IsAssignableFrom(i))
                 .ToList();
 
             var serviceInterface = serviceInterfaces.Count > 0 ? serviceInterfaces[0] : null;
@@ -151,11 +151,11 @@ namespace Ihc {
         /// Get the service type (interface if available, concrete type otherwise) for a service.
         /// Works for both real services and fakes/proxies.
         /// </summary>
-        public static Type GetServiceType(IIHCService service)
+        public static Type GetServiceType(IIHCApiService service)
         {
             // Find the IHC service interface (works for both real services and fakes/proxies)
             var serviceInterfaces = service.GetType().GetInterfaces()
-                .Where(i => i != typeof(IIHCService) && typeof(IIHCService).IsAssignableFrom(i))
+                .Where(i => i != typeof(IIHCApiService) && typeof(IIHCApiService).IsAssignableFrom(i))
                 .ToList();
 
             // Use the interface type instead of the concrete type
@@ -179,7 +179,7 @@ namespace Ihc {
         /// For use by test and documentation tools. Not for normal application code.
         /// </summary>
         /// <returns>List of metadata for service operations</returns>
-        public static IReadOnlyList<ServiceOperationMetadata> GetOperations(IIHCService service)
+        public static IReadOnlyList<ServiceOperationMetadata> GetOperations(IIHCApiService service)
         {
             using Activity activity = Telemetry.ActivitySource.StartActivity(nameof(GetOperations), ActivityKind.Internal);
 
@@ -251,7 +251,7 @@ namespace Ihc {
             return false;
         }
 
-        private static ServiceOperationMetadata CreateOperationInfo(IIHCService service, System.Reflection.MethodInfo method)
+        private static ServiceOperationMetadata CreateOperationInfo(IIHCApiService service, System.Reflection.MethodInfo method)
         {
             var operationType = DetermineOperationKind(method.ReturnType);
             var returnType = UnwrapAsyncReturnType(method.ReturnType);

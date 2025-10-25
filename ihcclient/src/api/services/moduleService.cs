@@ -8,7 +8,7 @@ namespace Ihc {
     /// <summary>
     /// A highlevel client interface for the IHC ModuleService without any of the soap distractions.
     /// </summary>
-    public interface IModuleService : IIHCService
+    public interface IModuleService : IIHCApiService
     {
         /// <summary>
         /// Get information about the scene project on the controller.

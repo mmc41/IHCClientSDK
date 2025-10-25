@@ -1,16 +1,16 @@
 using System.Threading.Tasks;
 using System;
+using System.Diagnostics;
 
 namespace Ihc.App
 {
     /// <summary>
     /// Service for retrieving non-editable information from the IHC controller.
     /// Provides access to network, DNS, time, and access control settings.
-    /// Will auto-authenticate  with provided settings unless already authenticated.
+    /// Will auto-authenticate with provided settings unless already authenticated.
     /// </summary>
-    public class InformationService : IDisposable, IAsyncDisposable
+    public class InformationService : ServiceBase, IDisposable, IAsyncDisposable
     {
-        public readonly IhcSettings settings;
         public readonly IAuthenticationService authService;
         private readonly IConfigurationService configService;
         private readonly ITimeManagerService timeService;
@@ -22,9 +22,8 @@ namespace Ihc.App
         /// </summary>
         /// <param name="settings">IHC configuration settings</param>
         public InformationService(IhcSettings settings)
+            : base(settings)
         {
-            this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
-
             this.authService = new AuthenticationService(settings);
             this.configService = new ConfigurationService(authService);
             this.timeService = new TimeManagerService(authService);
@@ -36,11 +35,13 @@ namespace Ihc.App
         /// Use this constructor when you already have service instances.
         /// </summary>
         /// <param name="settings">IHC configuration settings</param>
+        /// <param name="authService">Auth manager service instance</param>
         /// <param name="configService">Configuration service instance</param>
         /// <param name="timeService">Time manager service instance</param>
-        public InformationService(IhcSettings settings, IConfigurationService configService, ITimeManagerService timeService)
+        public InformationService(IhcSettings settings, IAuthenticationService authService, IConfigurationService configService, ITimeManagerService timeService)
+            : base(settings)
         {
-            this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
             this.configService = configService ?? throw new ArgumentNullException(nameof(configService));
             this.timeService = timeService ?? throw new ArgumentNullException(nameof(timeService));
             this.ownedServices = false;
@@ -64,22 +65,36 @@ namespace Ihc.App
         /// <returns>InformationModel containing all controller information</returns>
         public async Task<InformationModel> GetInformationModel()
         {
-            await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-
-            var networkTask = configService.GetNetworkSettings();
-            var dnsTask = configService.GetDNSServers();
-            var timeTask = timeService.GetSettings();
-            var accessControlTask = configService.GetWebAccessControl();
-
-            await Task.WhenAll(networkTask, dnsTask, timeTask, accessControlTask).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-
-            return new InformationModel
+            using (var activity = StartActivity(nameof(GetInformationModel)))
             {
-                Network = await networkTask,
-                Dns = await dnsTask,
-                Time = await timeTask,
-                AccessControl = await accessControlTask
-            };
+                try
+                {
+                    await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+
+                    var networkTask = configService.GetNetworkSettings();
+                    var dnsTask = configService.GetDNSServers();
+                    var timeTask = timeService.GetSettings();
+                    var accessControlTask = configService.GetWebAccessControl();
+
+                    await Task.WhenAll(networkTask, dnsTask, timeTask, accessControlTask).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+
+                    var retv = new InformationModel
+                    {
+                        Network = await networkTask,
+                        Dns = await dnsTask,
+                        Time = await timeTask,
+                        AccessControl = await accessControlTask
+                    };
+
+                    activity?.SetReturnValue("InformationModel");
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
         }
 
         /// <summary>

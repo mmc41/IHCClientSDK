@@ -12,7 +12,7 @@ namespace Ihc {
     /// A highlevel client interface for the IHC UserManagerService without any of the soap distractions.
     /// Status: Incomplete.
     /// </summary>
-    public interface IUserManagerService : IIHCService
+    public interface IUserManagerService : IIHCApiService
     {
         /// <summary>
         /// Get set of all users registered on the controller.

@@ -7,7 +7,7 @@ namespace Ihc {
     /// <summary>
     /// A highlevel client interface for the IHC TimeManagerService without any of the soap distractions.
     /// </summary>
-    public interface ITimeManagerService : IIHCService
+    public interface ITimeManagerService : IIHCApiService
     {
         /// <summary>
         /// Get the current local time from the controller.

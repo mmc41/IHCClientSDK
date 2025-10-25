@@ -15,6 +15,9 @@ namespace Ihc.Tests
     [TestFixture]
     public class AdminServiceTests
     {
+        #pragma warning disable NUnit1032 // Fakes from FakeItEasy don't need disposal
+        private IAuthenticationService fakeAuthService;
+        #pragma warning restore NUnit1032
         private IUserManagerService fakeUserService;
         private IConfigurationService fakeConfigService;
         private IhcSettings settings;
@@ -23,8 +26,12 @@ namespace Ihc.Tests
         public void Setup()
         {
             // Create fake services
+            fakeAuthService = A.Fake<IAuthenticationService>();
             fakeUserService = A.Fake<IUserManagerService>();
             fakeConfigService = A.Fake<IConfigurationService>();
+
+            // Configure fake auth service to always report as authenticated
+            A.CallTo(() => fakeAuthService.IsAuthenticated()).Returns(Task.FromResult(true));
 
             // Create test settings
             settings = new IhcSettings
@@ -52,25 +59,26 @@ namespace Ihc.Tests
         public void Constructor_WithServicesAndSettings_CreatesInstance()
         {
             // Act
-            var service = new AdminService(settings, fakeUserService, fakeConfigService);
+            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
 
             // Assert
             Assert.That(service, Is.Not.Null);
         }
 
         [Test]
-        public void Constructor_WithNullSettings_ThrowsArgumentNullException()
+        public void Constructor_WithNullSettings_ThrowsArgumentException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new AdminService(null));
+            Assert.Throws<ArgumentException>(() => new AdminService(null));
         }
 
         [Test]
         public void Constructor_WithNullServices_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new AdminService(settings, null, fakeConfigService));
-            Assert.Throws<ArgumentNullException>(() => new AdminService(settings, fakeUserService, null));
+            Assert.Throws<ArgumentNullException>(() => new AdminService(settings, null, fakeUserService, fakeConfigService));
+            Assert.Throws<ArgumentNullException>(() => new AdminService(settings, fakeAuthService, null, fakeConfigService));
+            Assert.Throws<ArgumentNullException>(() => new AdminService(settings, fakeAuthService, fakeUserService, null));
         }
 
         [Test]
@@ -97,14 +105,45 @@ namespace Ihc.Tests
                 Username = "smtp_user"
             };
 
+            var testDns = new DNSServers
+            {
+                PrimaryDNS = "8.8.8.8",
+                SecondaryDNS = "8.8.4.4"
+            };
+
+            var testNetwork = new NetworkSettings
+            {
+                IpAddress = "192.168.1.100",
+                Netmask = "255.255.255.0",
+                Gateway = "192.168.1.1",
+                HttpPort = 80,
+                HttpsPort = 443
+            };
+
+            var testWebAccess = new WebAccessControl
+            {
+                AdministratorInternal = true,
+                OpenapiInternal = true
+            };
+
+            var testWLan = new WLanSettings
+            {
+                Enabled = false,
+                Ssid = "TestNetwork"
+            };
+
             A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult(testUsers));
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(testEmailControl));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(testSmtp));
+            A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(testDns));
+            A.CallTo(() => fakeConfigService.GetNetworkSettings()).Returns(Task.FromResult(testNetwork));
+            A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(testWebAccess));
+            A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(testWLan));
 
-            var service = new AdminService(settings, fakeUserService, fakeConfigService);
+            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
 
             // Act
-            var model = await service.GetAdminModel();
+            var model = await service.GetModel();
 
             // Assert
             Assert.That(model, Is.Not.Null);
@@ -112,11 +151,19 @@ namespace Ihc.Tests
             Assert.That(model.Users.Count, Is.EqualTo(2));
             Assert.That(model.EmailControl, Is.EqualTo(testEmailControl));
             Assert.That(model.SmtpSettings, Is.EqualTo(testSmtp));
+            Assert.That(model.DnsServers, Is.EqualTo(testDns));
+            Assert.That(model.NetworkSettings, Is.EqualTo(testNetwork));
+            Assert.That(model.WebAccess, Is.EqualTo(testWebAccess));
+            Assert.That(model.WLanSettings, Is.EqualTo(testWLan));
 
             // Verify API calls
             A.CallTo(() => fakeUserService.GetUsers(true)).MustHaveHappenedOnceExactly();
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).MustHaveHappenedOnceExactly();
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).MustHaveHappenedOnceExactly();
+            A.CallTo(() => fakeConfigService.GetDNSServers()).MustHaveHappenedOnceExactly();
+            A.CallTo(() => fakeConfigService.GetNetworkSettings()).MustHaveHappenedOnceExactly();
+            A.CallTo(() => fakeConfigService.GetWebAccessControl()).MustHaveHappenedOnceExactly();
+            A.CallTo(() => fakeConfigService.GetWLanSettings()).MustHaveHappenedOnceExactly();
         }
 
         [Test]
@@ -135,11 +182,11 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(testEmailControl));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(testSmtp));
 
-            var service = new AdminService(settings, fakeUserService, fakeConfigService);
-            var model = await service.GetAdminModel();
+            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
+            var model = await service.GetModel();
 
             // Act - save same model without changes
-            await service.SaveAdminModel(model);
+            await service.Store(model);
 
             // Assert - no update calls should be made
             A.CallTo(() => fakeUserService.AddUser(A<IhcUser>._)).MustNotHaveHappened();
@@ -161,14 +208,18 @@ namespace Ihc.Tests
             A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult(initialUsers));
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
+            A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(new DNSServers()));
+            A.CallTo(() => fakeConfigService.GetNetworkSettings()).Returns(Task.FromResult(new NetworkSettings()));
+            A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
+            A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
 
-            var service = new AdminService(settings, fakeUserService, fakeConfigService);
-            var model = await service.GetAdminModel();
+            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
+            var model = await service.GetModel();
 
             // Act - add a new user
             var newUser = new IhcUser { Username = "user2", Email = "user2@test.com", Group = IhcUserGroup.Users };
             model.Users.Add(newUser);
-            await service.SaveAdminModel(model);
+            await service.Store(model);
 
             // Assert
             A.CallTo(() => fakeUserService.AddUser(A<IhcUser>.That.Matches(u => u.Username == "user2")))
@@ -188,14 +239,18 @@ namespace Ihc.Tests
             A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult(initialUsers));
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
+            A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(new DNSServers()));
+            A.CallTo(() => fakeConfigService.GetNetworkSettings()).Returns(Task.FromResult(new NetworkSettings()));
+            A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
+            A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
 
-            var service = new AdminService(settings, fakeUserService, fakeConfigService);
-            var model = await service.GetAdminModel();
+            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
+            var model = await service.GetModel();
 
             // Act - remove a user
             var userToRemove = model.Users.First(u => u.Username == "user2");
             model.Users.Remove(userToRemove);
-            await service.SaveAdminModel(model);
+            await service.Store(model);
 
             // Assert
             A.CallTo(() => fakeUserService.RemoveUser("user2")).MustHaveHappenedOnceExactly();
@@ -225,16 +280,20 @@ namespace Ihc.Tests
             A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult(initialUsers));
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
+            A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(new DNSServers()));
+            A.CallTo(() => fakeConfigService.GetNetworkSettings()).Returns(Task.FromResult(new NetworkSettings()));
+            A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
+            A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
 
-            var service = new AdminService(settings, fakeUserService, fakeConfigService);
-            var model = await service.GetAdminModel();
+            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
+            var model = await service.GetModel();
 
             // Act - update user with new properties (using HashSet operations)
             var oldUser = model.Users.First(u => u.Username == "user1");
             model.Users.Remove(oldUser);
             var updatedUser = oldUser with { Email = "new@test.com", Firstname = "New" };
             model.Users.Add(updatedUser);
-            await service.SaveAdminModel(model);
+            await service.Store(model);
 
             // Assert - verify UpdateUser was called with user containing updated values
             A.CallTo(() => fakeUserService.UpdateUser(A<IhcUser>.That.Matches(u =>
@@ -262,12 +321,12 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(initialEmailControl));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
 
-            var service = new AdminService(settings, fakeUserService, fakeConfigService);
-            var model = await service.GetAdminModel();
+            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
+            var model = await service.GetModel();
 
             // Act - change email control settings (using record 'with' expression)
             model.EmailControl = model.EmailControl with { ServerIpAddress = "new.mail.com", ServerPortNumber = 995 };
-            await service.SaveAdminModel(model);
+            await service.Store(model);
 
             // Assert - verify SetEmailControlSettings was called (don't check exact match due to record equality)
             A.CallTo(() => fakeConfigService.SetEmailControlSettings(A<EmailControlSettings>._))
@@ -293,12 +352,12 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(initialSmtp));
 
-            var service = new AdminService(settings, fakeUserService, fakeConfigService);
-            var model = await service.GetAdminModel();
+            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
+            var model = await service.GetModel();
 
             // Act - change SMTP settings (using record 'with' expression)
             model.SmtpSettings = model.SmtpSettings with { Hostname = "new.smtp.com", Hostport = 587 };
-            await service.SaveAdminModel(model);
+            await service.Store(model);
 
             // Assert - verify SetSMTPSettings was called
             A.CallTo(() => fakeConfigService.SetSMTPSettings(A<SMTPSettings>._))
@@ -317,8 +376,12 @@ namespace Ihc.Tests
             A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult(testUsers));
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
+            A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(new DNSServers()));
+            A.CallTo(() => fakeConfigService.GetNetworkSettings()).Returns(Task.FromResult(new NetworkSettings()));
+            A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
+            A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
 
-            var service = new AdminService(settings, fakeUserService, fakeConfigService);
+            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
 
             // Act - call SaveAdminModel without calling GetAdminModel first
             var newModel = new AdminModel
@@ -327,7 +390,7 @@ namespace Ihc.Tests
                 EmailControl = new EmailControlSettings(),
                 SmtpSettings = new SMTPSettings()
             };
-            await service.SaveAdminModel(newModel);
+            await service.Store(newModel);
 
             // Assert - should have loaded snapshot automatically
             A.CallTo(() => fakeUserService.GetUsers(true)).MustHaveHappenedOnceExactly();
@@ -382,8 +445,8 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(initialEmailControl));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(initialSmtp));
 
-            var service = new AdminService(settings, fakeUserService, fakeConfigService);
-            var model = await service.GetAdminModel();
+            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
+            var model = await service.GetModel();
 
             // Act - make multiple changes
             model.Users.Add(new IhcUser
@@ -401,7 +464,7 @@ namespace Ihc.Tests
             });
             model.EmailControl = model.EmailControl with { ServerIpAddress = "new.mail.com" };
             model.SmtpSettings = model.SmtpSettings with { Hostname = "new.smtp.com" };
-            await service.SaveAdminModel(model);
+            await service.Store(model);
 
             // Assert - all changes should be applied
             A.CallTo(() => fakeUserService.AddUser(A<IhcUser>._)).MustHaveHappenedOnceExactly();

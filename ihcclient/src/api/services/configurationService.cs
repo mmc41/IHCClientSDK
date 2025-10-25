@@ -8,7 +8,7 @@ namespace Ihc {
     /// <summary>
     /// A highlevel client interface for the IHC ConfigurationService without any of the soap distractions.
     /// </summary>
-    public interface IConfigurationService : IIHCService
+    public interface IConfigurationService : IIHCApiService
     {
         /// <summary>
         /// Get system information including uptime, version, serial number, and hardware details.

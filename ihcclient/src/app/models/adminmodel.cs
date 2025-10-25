@@ -30,14 +30,29 @@ namespace Ihc.App
         /// </summary>
         public SMTPSettings SmtpSettings { get; set; }
 
-        /*
+        /// <summary>
+        /// DNS server configuration for the IHC controller network.
+        /// Maps to existing DNSServers model.
+        /// </summary>
         public DNSServers DnsServers { get; set; }
-        public InetAddress IPAddress { get; set; }
 
+        /// <summary>
+        /// Network settings including IP address, netmask, gateway, and HTTP/HTTPS ports.
+        /// Maps to existing NetworkSettings model.
+        /// </summary>
+        public NetworkSettings NetworkSettings { get; set; }
+
+        /// <summary>
+        /// Web access control settings defining which applications can be accessed from different network locations.
+        /// Maps to existing WebAccessControl model.
+        /// </summary>
         public WebAccessControl WebAccess { get; set; }
 
+        /// <summary>
+        /// Wireless LAN settings for the IHC controller network connectivity.
+        /// Maps to existing WLanSettings model.
+        /// </summary>
         public WLanSettings WLanSettings { get; set; }
-        */
     }
 
      /// <summary>
@@ -69,7 +84,27 @@ namespace Ihc.App
         /// <summary>
         /// SMTP notification settings were changed.
         /// </summary>
-        SmtpSettingsChanged
+        SmtpSettingsChanged,
+
+        /// <summary>
+        /// DNS server configuration was changed.
+        /// </summary>
+        DnsServersChanged,
+
+        /// <summary>
+        /// Network settings (IP address, netmask, gateway, ports) were changed.
+        /// </summary>
+        NetworkSettingsChanged,
+
+        /// <summary>
+        /// Web access control settings were changed.
+        /// </summary>
+        WebAccessChanged,
+
+        /// <summary>
+        /// Wireless LAN settings were changed.
+        /// </summary>
+        WLanSettingsChanged
     }
 
     /// <summary>

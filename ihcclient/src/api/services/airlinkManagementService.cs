@@ -10,7 +10,7 @@ namespace Ihc
     /// High-level interface for IHC Wireless (Airlink Management) operations.
     /// Used for managing wireless devices in the IHC system.
     /// </summary>
-    public interface IAirlinkManagementService : IIHCService
+    public interface IAirlinkManagementService : IIHCApiService
     {
         /// <summary>
         /// Enter RF configuration mode to allow device pairing and configuration.

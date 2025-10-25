@@ -10,7 +10,7 @@ namespace Ihc
     /// High-level interface for LK / Schneider Internal Test use. Some of these operations may perhaps be dangerous. Use at own risk. 
     /// For safety, some methods deemed potentially dangerous are disabled by default and must be enabled in IhcSettings by setting 'allowDangerousInternTestCalls' to true.
     /// </summary>
-    public interface IInternalTestService : IIHCService
+    public interface IInternalTestService : IIHCApiService
     {
         /// <summary>
         /// Get the Airlink version string.

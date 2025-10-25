@@ -9,7 +9,7 @@ namespace Ihc {
     /// <summary>
     /// A highlevel client interface for the IHC ControllerService without any of the soap distractions.
     /// </summary>
-    public interface IControllerService : IIHCService
+    public interface IControllerService : IIHCApiService
     {
         /// <summary>
         /// Check if an IHC project is available on the controller.

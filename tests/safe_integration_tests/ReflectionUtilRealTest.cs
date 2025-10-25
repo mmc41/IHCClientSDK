@@ -25,7 +25,7 @@ namespace Ihc.Tests
             // Assert
             Assert.That(serviceType, Is.Not.Null, $"Service type should not be null for {description}");
             Assert.That(serviceType.IsInterface, Is.True, $"Service type should be an interface for {description}");
-            Assert.That(typeof(IIHCService).IsAssignableFrom(serviceType), Is.True,
+            Assert.That(typeof(IIHCApiService).IsAssignableFrom(serviceType), Is.True,
                 $"Service type should be assignable to IIHCService for {description}");
 
             // Verify it's not a proxy type (e.g., "ObjectProxy" or similar)

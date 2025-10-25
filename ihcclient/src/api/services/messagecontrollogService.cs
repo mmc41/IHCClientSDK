@@ -8,7 +8,7 @@ namespace Ihc {
     /// <summary>
     /// A highlevel client interface for the IHC MessageControlLogService without any of the soap distractions.
     /// </summary>
-    public interface IMessageControlLogService : IIHCService
+    public interface IMessageControlLogService : IIHCApiService
     {
         /// <summary>
         /// Clear all entries from the message control log.
