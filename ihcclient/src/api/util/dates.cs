@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 
 namespace Ihc {
-    public class DateHelper {
+    internal class DateHelper {
         // Configurable timezone offset for IHC controller
         // Default is UTC+1 (Central European Time) which matches most IHC installations
         public static readonly TimeSpan TimeOffset = TimeSpan.FromHours(1);
