@@ -10,6 +10,8 @@
     <DockPanel>
         <Menu DockPanel.Dock="Top" Background="#F0F0F0">
             <MenuItem Header="_File">
+                <MenuItem Header="Setup" Click="SetupMenuItemClick"/>
+                <Separator/>
                 <MenuItem Header="_Exit" Click="ExitMenuItemClick"/>
             </MenuItem>
             <MenuItem Header="_Edit">

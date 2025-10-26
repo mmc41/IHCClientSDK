@@ -1,17 +1,8 @@
 using System;
-using System.IO;
 using System.Linq;
-using System.Reflection;
 using Ihc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using OpenTelemetry;
-using OpenTelemetry.Logs;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-using System.Threading.Tasks;
-using Ihc.Soap.Smsmodem;
 
 namespace IhcLab;
 
@@ -53,20 +44,20 @@ public class IhcDomain
     public IhcSettings IhcSettings { get; init; }
     public ILoggerFactory loggerFactory { get; internal set; }
 
-    public IAuthenticationService AuthenticationService { get; init; }
-    public IControllerService ControllerService { get; init; }
-    public IResourceInteractionService ResourceInteractionService { get; init; }
-    public IConfigurationService ConfigurationService { get; init; }
-    public IOpenAPIService OpenAPIService { get; init; }
-    public INotificationManagerService NotificationManagerService { get; init; }
-    public IMessageControlLogService MessageControlLogService { get; init; }
-    public IModuleService ModuleService { get; init; }
-    public ITimeManagerService TimeManagerService { get; init; }
-    public IUserManagerService UserManagerService { get; init; }
-    public IAirlinkManagementService AirlinkManagementService { get; init; }
+    public IAuthenticationService AuthenticationService { get; set; }
+    public IControllerService ControllerService { get; set; }
+    public IResourceInteractionService ResourceInteractionService { get; set; }
+    public IConfigurationService ConfigurationService { get; set; }
+    public IOpenAPIService OpenAPIService { get; set; }
+    public INotificationManagerService NotificationManagerService { get; set; }
+    public IMessageControlLogService MessageControlLogService { get; set; }
+    public IModuleService ModuleService { get; set; }
+    public ITimeManagerService TimeManagerService { get; set; }
+    public IUserManagerService UserManagerService { get; set; }
+    public IAirlinkManagementService AirlinkManagementService { get; set; }
 
-    public ISmsModelService SmsModemService { get; init; }
-    public IInternalTestService InternalTestService { get; init; }
+    public ISmsModelService SmsModemService { get; set; }
+    public IInternalTestService InternalTestService { get; set; }
 
     public IIHCApiService[] AllIhcServices
     {
@@ -91,30 +82,31 @@ public class IhcDomain
         }
     }
 
+    #pragma warning disable CS8618
     public IhcDomain()
     {
-        var loggerFactory = Program.loggerFactory;
+        this.loggerFactory = Program.loggerFactory ?? new NullLoggerFactory();
+        this.IhcSettings = Program.config?.ihcSettings ?? new IhcSettings();
 
-        var config = Program.config;
+        UpdateSetup();
+    }
 
-        var settings = config?.ihcSettings ?? new IhcSettings();
-
-        this.IhcSettings = settings;
-        this.loggerFactory = loggerFactory ?? new NullLoggerFactory();
-
-        if (settings == null)
-            throw new Exception("IhcSettings is null in IhcDomain constructor");  
-        if (settings.Endpoint == null)
-            throw new Exception("IhcSettings.Endpoint is null in IhcDomain constructor");
-
-        if (!settings.Endpoint.StartsWith(SpecialEndpoints.MockedPrefix))
+    public void UpdateSetup()
+    {
+        if (IhcSettings.Endpoint == null)
+            throw new Exception("IhcSettings can not be null in IhcDomain UpdateSetup");
+            
+        if (IhcSettings.Endpoint == null)
+            throw new Exception("IhcSettings.Endpoint is null in IhcDomain UpdateSetup");
+            
+        if (!IhcSettings.Endpoint.StartsWith(SpecialEndpoints.MockedPrefix))
         {
             // Real services by default:
-            this.AuthenticationService = new AuthenticationService(settings);
+            this.AuthenticationService = new AuthenticationService(IhcSettings);
             this.ControllerService = new ControllerService(AuthenticationService);
             this.ResourceInteractionService = new ResourceInteractionService(AuthenticationService);
             this.ConfigurationService = new ConfigurationService(AuthenticationService);
-            this.OpenAPIService = new OpenAPIService(settings);
+            this.OpenAPIService = new OpenAPIService(IhcSettings);
             this.NotificationManagerService = new NotificationManagerService(AuthenticationService);
             this.MessageControlLogService = new MessageControlLogService(AuthenticationService);
             this.ModuleService = new ModuleService(AuthenticationService);
@@ -143,14 +135,12 @@ public class IhcDomain
             this.UserManagerService = IhcFakeSetup.SetupUserManagerService(IhcSettings);
             this.AirlinkManagementService = IhcFakeSetup.SetupAirlinkManagementService(IhcSettings);
             this.SmsModemService = IhcFakeSetup.SetupSmsModelService(IhcSettings);
-            this.InternalTestService = IhcFakeSetup.SetupInternalTestService(IhcSettings);  
+            this.InternalTestService = IhcFakeSetup.SetupInternalTestService(IhcSettings);
         }
-       
     }
 
     public void Dispose()
     {
-        AuthenticationService.Dispose();
-        // TelmetryTracerProvider?.Shutdown();
+        AuthenticationService?.Dispose();
     }
 }

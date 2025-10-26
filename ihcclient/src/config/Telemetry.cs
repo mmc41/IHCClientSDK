@@ -6,7 +6,7 @@ namespace Ihc {
     /// <summary>
     /// Configuration settings for telemetry and observability.
     /// </summary>
-    public class TelemetryConfiguration
+    public record TelemetryConfiguration
     {
         /// <summary>
         /// Configuration key for telemetry settings.

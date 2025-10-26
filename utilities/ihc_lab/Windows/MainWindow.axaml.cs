@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
@@ -25,18 +26,17 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
-       // Use OpenTel activities as the primary way to keep track of operations. This mix well with the SDK activities.
-       using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow)+".Ctr", ActivityKind.Internal);
+        // Use OpenTel activities as the primary way to keep track of operations. This mix well with the SDK activities.
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow) + ".Ctr", ActivityKind.Internal);
 
-       // Avalonia uses logger so we might as well use it for important things like errors and warnings.
-       this.logger = Program.loggerFactory!=null ? Program.loggerFactory.CreateLogger<MainWindow>() : NullLoggerFactory.Instance.CreateLogger<MainWindow>();
-                    
-       try
-       {
+        // Avalonia uses logger so we might as well use it for important things like errors and warnings.
+        this.logger = Program.loggerFactory != null ? Program.loggerFactory.CreateLogger<MainWindow>() : NullLoggerFactory.Instance.CreateLogger<MainWindow>();
+
+        try
+        {
             InitializeComponent();
             DataContext = this;
 
-            ihcDomain = new IhcDomain();
             clipboard = this.Clipboard;
 
             if (clipboard == null)
@@ -47,36 +47,79 @@ public partial class MainWindow : Window
 
             // Handle window closing event (when user clicks X button)
             Closing += OnWindowClosing;
-
-            this.Title = "IHC Lab : Connected to " + ihcDomain.IhcSettings.Endpoint ?? "(no endpoint set)";
-
-            // Initialize ServicesComboBox with all IHC services
-            // Create a wrapper to provide display names for services
-            var serviceItems = ihcDomain.AllIhcServices
-                .Select(service => new ServiceItem(service))
-                .ToList();
-
-            ServicesComboBox.ItemsSource = serviceItems;
-            ServicesComboBox.DisplayMemberBinding = new Avalonia.Data.Binding("DisplayName");
-
-            // Select the first service by default
-            if (serviceItems.Count > 0)
-            {
-                ServicesComboBox.SelectedIndex = 0;
-            }
-
-            // Do this last so Warning is not cleared unless we are testing.
-            if (string.IsNullOrEmpty(Program.config?.telemetryConfig?.Host) && (Program.config?.ihcSettings?.Endpoint?.StartsWith(SpecialEndpoints.MockedPrefix) == false))
-            {
-                OpenTelemetryMenuItem.IsEnabled = false;
-                SetWarning("OpenTelemtry not configured. It is recommended (but not requireds) to setup telemetry to view logs/traces. See guide in README for details.");
-            }
         }
         catch (Exception ex)
         {
             activity?.SetError(ex);
             SetError(nameof(MainWindow) + " constructor error", ex);
             RunButton.IsEnabled = false;
+        }
+    }
+
+    public async Task Start()
+    {
+        // Use OpenTel activities as the primary way to keep track of operations. This mix well with the SDK activities.
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow) + "." + nameof(Start), ActivityKind.Internal);
+
+        try
+        {
+            ihcDomain = new IhcDomain();
+
+            if (!ihcDomain.IhcSettings.IsValid())
+            {
+                var longinWindow = new LoginDialog(ihcDomain!.IhcSettings);
+                await longinWindow.ShowDialog(this);
+            }
+            LoginUpdated();
+        }
+        catch (Exception ex)
+        {
+            activity?.SetError(ex);
+            SetError(nameof(Start) + " error", ex);
+        }
+    }
+
+    public async void SetupMenuItemClick(object sender, RoutedEventArgs e)
+    {
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow) + "." + nameof(SetupMenuItemClick), ActivityKind.Internal);
+        try
+        {
+            var longinWindow = new LoginDialog(ihcDomain!.IhcSettings);
+            await longinWindow.ShowDialog(this);
+            LoginUpdated();
+        }
+        catch (Exception ex)
+        {
+            activity?.SetError(ex);
+            SetError("LoginDialog error", ex);
+        }
+    }
+      
+    private void LoginUpdated()
+    {
+        ihcDomain?.UpdateSetup();
+        this.Title = "IHC Lab : Endpoint set to " + ihcDomain?.IhcSettings.Endpoint ?? "(no endpoint set)";
+
+        // Initialize ServicesComboBox with all IHC services
+        // Create a wrapper to provide display names for services
+        var serviceItems = ihcDomain!=null ? ihcDomain.AllIhcServices
+            .Select(service => new ServiceItem(service))
+            .ToList() : new List<ServiceItem>();
+
+        ServicesComboBox.ItemsSource = serviceItems;
+        ServicesComboBox.DisplayMemberBinding = new Avalonia.Data.Binding("DisplayName");
+
+        // Select the first service by default
+        if (serviceItems.Count > 0)
+        {
+            ServicesComboBox.SelectedIndex = 0;
+        }
+        
+        // Do this last so Warning is not cleared unless we are testing.
+        if (string.IsNullOrEmpty(Program.config?.telemetryConfig?.Host) && (Program.config?.ihcSettings?.Endpoint?.StartsWith(SpecialEndpoints.MockedPrefix) == false))
+        {
+            OpenTelemetryMenuItem.IsEnabled = false;
+            SetWarning("OpenTelemtry not configured. It is recommended (but not requireds) to setup telemetry to view logs/traces. See guide in README for details.");
         }
     }
 
@@ -219,7 +262,7 @@ public partial class MainWindow : Window
 
     public void ExitMenuItemClick(object sender, RoutedEventArgs e)
     {
-        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow)+"."+nameof(ExitMenuItemClick), ActivityKind.Internal);
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow) + "." + nameof(ExitMenuItemClick), ActivityKind.Internal);
 
         Close(); // Calls in turn OnWindowClosing which will dispose our IhcDomain.
     }
@@ -323,7 +366,7 @@ public partial class MainWindow : Window
 
     public async void CopyErrorMenuItemClick(object sender, RoutedEventArgs e)
     {
-        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow)+"."+nameof(CopyErrorMenuItemClick), ActivityKind.Internal);
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow) + "." + nameof(CopyErrorMenuItemClick), ActivityKind.Internal);
 
         try
         {
@@ -339,7 +382,7 @@ public partial class MainWindow : Window
             SetError("Error to clipboard error", ex);
         }
     }
-
+    
      public void ClearOutput()
     {
         Output.Text = "";
