@@ -3,6 +3,7 @@ bin
 obj
 .ionide
 *.log
+*.bak
 node_modules
 
 .claude
