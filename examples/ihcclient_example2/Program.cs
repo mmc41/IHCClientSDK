@@ -16,11 +16,12 @@ namespace Ihc.example
         {
           // Access configuration file that stores IHC and SDK setup informnation including username, password etc.
           IConfigurationRoot config = new ConfigurationBuilder()
-                      .SetBasePath(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location))
-                      .AddJsonFile("ihcsettings.json")
-                      .Build();
-                    
-          IhcSettings settings = config.GetSection("ihcclient").Get<IhcSettings>();
+                    .SetBasePath(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location))
+                    .AddJsonFile("ihcsettings.json")
+                    .Build();          
+
+          // Use this way to read IHC client settings from configuration file as it decrypts sensitive data if encryption is enabled.
+          IhcSettings settings = IhcSettings.GetFromConfiguration(config);                    
 
           // Read configuration settings
           var testConfig = config.GetSection("testConfig");

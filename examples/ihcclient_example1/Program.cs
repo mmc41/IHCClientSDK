@@ -20,7 +20,8 @@ namespace Ihc.example
                       .AddJsonFile("ihcsettings.json")
                       .Build();
 
-            IhcSettings settings = config.GetSection("ihcclient").Get<IhcSettings>();
+            // Use this way to read IHC client settings from configuration file as it decrypts sensitive data if encryption is enabled.
+            IhcSettings settings = IhcSettings.GetFromConfiguration(config);
 
             // Read additional configuration settings
             var testConfig = config.GetSection("testConfig");

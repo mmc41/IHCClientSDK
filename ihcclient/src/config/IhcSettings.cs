@@ -1,3 +1,8 @@
+using System;
+using System.IO;
+using System.Reflection;
+using Microsoft.Extensions.Configuration;
+
 namespace Ihc
 {
     /// <summary>
@@ -85,6 +90,47 @@ namespace Ihc
         public override string ToString()
         {
             return $"IhcSettings: Endpoint={Endpoint}, UserName={UserName}, Password={(string.IsNullOrEmpty(Password) ? "<not set>" : "<set>")}, Application={Application}, LogSensitiveData={LogSensitiveData}, AllowDangerousInternTestCalls={AllowDangerousInternTestCalls}, AasyncContinueOnCapturedContext={AsyncContinueOnCapturedContext}";
+        }
+
+        /// <summary>
+        /// Reads IHC client settings from a IConfiguration (usually built from ihcsettings.json file).
+        /// Will decrypt sensitive data if encryption is enabled (using SimpleSecret).
+        /// </summary>
+        /// <param name="config">The configuration root</param>
+        /// <returns>The IHC client settings.</returns>
+        public static IhcSettings GetFromConfiguration(IConfigurationRoot config)
+        {
+            var settings = config.GetSection("ihcclient").Get<IhcSettings>();
+            if (settings == null)
+            {
+                throw new InvalidOperationException("Could not read IHC client settings from configuration");
+            }
+
+            var encryption = config.GetSection("encryption").Get<EncryptionConfiguration>();
+            bool encrypted = encryption != null && encryption.IsEncrypted;
+
+            if (encrypted)
+            {
+                var secret = new SimpleSecret();
+                settings.Password = secret.DecryptString(settings.Password);
+            }
+
+            return settings;
+        }
+
+        /// <summary>
+        /// Reads IHC client settings from ihcsettings.json file.
+        /// Will decrypt sensitive data if encryption is enabled (using SimpleSecret)
+        /// </summary>
+        /// <returns>The IHC client settings.</returns>
+        public static IhcSettings GetFromFile()
+        {
+            string basePath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? AppContext.BaseDirectory;
+            IConfigurationRoot config = new ConfigurationBuilder()
+                      .SetBasePath(basePath)
+                      .AddJsonFile("ihcsettings.json")
+                      .Build();
+            return GetFromConfiguration(config);
         }
     }
 }

@@ -56,7 +56,11 @@ public partial class MainWindow : Window
         }
     }
 
-    public async Task Start()
+    /// <summary>
+    /// Async initialization of MainWindow that sets up IhcDomain and login if needed. Returns this for chaining.
+    /// </summary>
+    /// <returns>this</returns>
+    public async Task<MainWindow> Start()
     {
         // Use OpenTel activities as the primary way to keep track of operations. This mix well with the SDK activities.
         using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow) + "." + nameof(Start), ActivityKind.Internal);
@@ -77,6 +81,8 @@ public partial class MainWindow : Window
             activity?.SetError(ex);
             SetError(nameof(Start) + " error", ex);
         }
+
+        return this;
     }
 
     public async void SetupMenuItemClick(object sender, RoutedEventArgs e)

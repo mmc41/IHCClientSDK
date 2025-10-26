@@ -19,10 +19,10 @@ namespace Ihc.Tests
         {
             var settings = new IhcSettings()
             {
-                Endpoint = "mock://",
+                Endpoint = SpecialEndpoints.MockedPrefix,
                 UserName = "test",
                 Password = "test",
-                Application = "",
+                Application = "administrator",
                 LogSensitiveData = true,
                 AsyncContinueOnCapturedContext = false
             };

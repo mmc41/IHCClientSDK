@@ -33,12 +33,8 @@ namespace IhcLab
                 throw new InvalidDataException("Could not read Telemtry/logging settings from configuration");
             }
 
-            IhcSettings? ihcSettings = config.GetSection("ihcclient").Get<IhcSettings>();
-            if (ihcSettings == null)
-            {
-                throw new InvalidDataException("Could not read Telemtry/logging settings from configuration");
-            }
-
+            IhcSettings? ihcSettings = IhcSettings.GetFromConfiguration(config);
+            
             this.loggingConfig = loggingConfig;
             this.telemetryConfig = telemetryConfig;
             this.ihcSettings = ihcSettings with

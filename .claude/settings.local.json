@@ -7,7 +7,12 @@
       "mcp__ide__getDiagnostics",
       "Bash(dotnet ihc_lab.dll --version)",
       "WebFetch(domain:docs.avaloniaui.net)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(dotnet run:*)",
+      "Bash(export IHC_ENCRYPT_PASSPHRASE=\"test-passphrase-for-encryption\")",
+      "Bash(unset:*)",
+      "Bash(export IHC_ENCRYPT_PASSPHRASE=\"short\")",
+      "Bash(export IHC_ENCRYPT_PASSPHRASE=\"wrong-passphrase-12345\":*)"
     ],
     "deny": [],
     "ask": []

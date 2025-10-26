@@ -1,5 +1,9 @@
 {
     "comment" : "Example of how your ihcsettings.json file can look like. You need this user supplied file to run examples and tests",
+    "encryption": {
+      "comment": "The setting reflect encryption status of passwords within this file. The value should only be modified by ihc_settings_encrypt tool. Uses IHC_ENCRYPT_PASSPHRASE environment variable",
+      "isEncrypted": false
+    },
     "ihcclient": {
         "comment" : "Refer to your IHC controller config for endpoint and authentication details. Use 'http://usb' for endpoint for a USB connected controller. Known application names include 'treeview', 'openapi', 'administrator'",
         "endpoint" : "http://<Your IP Address here>",

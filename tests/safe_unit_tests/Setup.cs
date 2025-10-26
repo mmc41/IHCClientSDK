@@ -19,7 +19,7 @@ namespace Ihc.Tests
         {
             settings = new IhcSettings()
             {
-                Endpoint = "mock://",
+                Endpoint = SpecialEndpoints.MockedPrefix,
                 UserName = "test",
                 Password = "test",
                 Application = "",

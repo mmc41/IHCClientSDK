@@ -40,7 +40,8 @@ This project is hosted in a mono-repo containing the following sub-projects:
     * [Program code extractor ](utilities/ihc_project_io_extractor/README.md) contains an optional command line utility for software developers that can generate constant definitions of IO addresses in a concrete IHC installation. Use this approach in your projects if you don't want to lookup and hardcode IO addresses yourself.
     * [IHC Http Proxy recorder](utilities/ihc_httpproxyrecorder/README.md) contains a simple http proxy useful for software (sdk) developers to investigate undocumented IHC controller API's.
     * [IHC Project download/upload](utilities/ihc_project_download_upload/README.md) contains a tool to download/upload project files.
-* SDK and utilitty tests:
+    * [IHC Settings encrypt](utilities/ihc_settings_encrypt/README.md) contains a tool to encrypt/decrypt passwords in ihcsettings.json.
+* SDK tests:
     * [Safe Lab tests](tests/safe_lab_tests/README.md) contains headless gui tests for Ihc Lab utility. Does not access a controller.
     * [Safe integration tests](tests/safe_integration_tests/README.md) contains system integration tests written in c# that can be safely run aginst a controller in use.
     * [Safe unit tests](tests/safe_unit_tests/README.md) contains  unit tests written in c# that does not access a controller.
@@ -67,6 +68,52 @@ Note:
 * Username and password should match user setup by controller. Ignored by controller if logging in over usb.
 * Application name is can be set to 'treeview', 'openapi', 'administrator'".
 * Keep logSensitiveData and asyncContinueOnCapturedContext set to false unless you know what you are doing.
+
+## Secure password in configuration
+
+For better security, you can encrypt the password stored in `ihcsettings.json` instead of keeping it in plaintext. The SDK provides an encryption utility and automatically decrypts passwords at runtime when configured correctly.
+
+### Using the IHC Settings Encrypt Utility
+
+The [IHC Settings Encrypt utility](utilities/ihc_settings_encrypt/README.md) allows you to encrypt and decrypt passwords in your configuration file using AES-256-GCM encryption.
+
+**Quick Start:**
+
+1. **Set your encryption passphrase** (12+ characters, keep it secure) in a system enviroment variable:
+   ```bash
+   export IHC_ENCRYPT_PASSPHRASE="your-secure-passphrase-here"
+   ```
+
+2. **Encrypt your password**:
+   ```bash
+   dotnet run --project utilities/ihc_settings_encrypt/ihc_settings_encrypt.csproj -- encrypt ihcsettings.json
+   ```
+
+3. **Your `ihcsettings.json` will be updated** with the encrypted password and `encryption.isEncrypted` set to `true`:
+   ```json
+   {
+     "encryption": {
+       "isEncrypted": true
+     },
+     "ihcclient": {
+       "endpoint": "http://192.168.1.100",
+       "userName": "johndoe",
+       "password": "AUk7A8St5R3czttCtvdE2un-WCO0g49...",
+       "application": "administrator"
+     }
+   }
+   ```
+
+4. **The SDK will automatically decrypt** the password when isEncrypted is set to true when using 
+   the build-in methods ```IhcSettings.GetFromConfiguration()``` or  ```IhcSettings.GetFromFile()``` to read the configuration (all utilities/examples/tests does this).
+
+**Important Notes:**
+- Store your `IHC_ENCRYPT_PASSPHRASE` securely in the system environement.
+- Never commit the passphrase to version control
+- Use different passphrases for different environments (dev/test/production)
+- To decrypt back to plaintext: `dotnet run ... -- decrypt ihcsettings.json`
+
+For complete documentation, see the [IHC Settings Encrypt README](utilities/ihc_settings_encrypt/README.md).
 
 ### OpenTelemtry as a logging replacement
 

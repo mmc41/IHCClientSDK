@@ -7,6 +7,7 @@ using Avalonia.Headless.NUnit;
 using Avalonia.Threading;
 using NUnit.Framework;
 using IhcLab;
+using System.Threading.Tasks;
 
 namespace Ihc.Tests
 {
@@ -17,10 +18,10 @@ namespace Ihc.Tests
     public class LaunchTests
     {
         [AvaloniaTest]
-        public void ApplicationCanLaunchSuccessfully()
+        public async Task ApplicationCanLaunchSuccessfullyAsync()
         {
-            // Arrange - Create and show the main window
-            var window = new MainWindow();
+            // Arrange - Create and initialize the main window
+            var window = await new MainWindow().Start();
 
             // Act - Show the window and wait for it to be ready
             window.Show();
@@ -31,10 +32,11 @@ namespace Ihc.Tests
         }
 
         [AvaloniaTest]
-        public void MainWindowShowsWithoutErrorsOrWarnings()
+        public async Task MainWindowShowsWithoutErrorsOrWarningsAsync()
         {
-            // Arrange - Create and show the main window
-            var window = new MainWindow();
+            // Arrange - Create and initialize the main window
+            var window = await new MainWindow().Start();
+
             window.Show();
             Dispatcher.UIThread.RunJobs(); // Process all pending UI operations
 
@@ -50,10 +52,11 @@ namespace Ihc.Tests
         }
 
         [AvaloniaTest]
-        public void ServicesComboBoxIsPopulated()
+        public async Task ServicesComboBoxIsPopulatedAsync()
         {
-            // Arrange - Create and show the main window
-            var window = new MainWindow();
+            // Arrange - Create and initialize the main window
+            var window = await new MainWindow().Start();
+
             window.Show();
             Dispatcher.UIThread.RunJobs(); // Process all pending UI operations
 
@@ -73,10 +76,11 @@ namespace Ihc.Tests
         }
 
         [AvaloniaTest]
-        public void OperationsComboBoxIsPopulated()
+        public async Task OperationsComboBoxIsPopulatedAsync()
         {
-            // Arrange - Create and show the main window
-            var window = new MainWindow();
+            // Arrange - Create and initialize the main window
+            var window = await new MainWindow().Start();
+
             window.Show();
             Dispatcher.UIThread.RunJobs(); // Process all pending UI operations
 
@@ -95,10 +99,11 @@ namespace Ihc.Tests
         }
 
         [AvaloniaTest]
-        public void BothDropdownsAreNonEmpty()
+        public async Task BothDropdownsAreNonEmptyAsync()
         {
-            // Arrange - Create and show the main window
-            var window = new MainWindow();
+            // Arrange - Create and initialize the main window
+            var window = await new MainWindow().Start();
+
             window.Show();
             Dispatcher.UIThread.RunJobs(); // Process all pending UI operations
 
@@ -117,10 +122,11 @@ namespace Ihc.Tests
         }
 
         [AvaloniaTest]
-        public void MainWindowHasAllExpectedControls()
+        public async Task MainWindowHasAllExpectedControlsAsync()
         {
-            // Arrange - Create and show the main window
-            var window = new MainWindow();
+            // Arrange - Create and initialize the main window
+            var window = await new MainWindow().Start();
+
             window.Show();
             Dispatcher.UIThread.RunJobs(); // Process all pending UI operations
 

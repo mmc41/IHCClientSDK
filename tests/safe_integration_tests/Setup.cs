@@ -25,7 +25,7 @@ namespace Ihc.Tests
                 .AddJsonFile("ihcsettings.json")
                 .Build();
                     
-          settings = config.GetSection("ihcclient").Get<IhcSettings>();
+          settings = IhcSettings.GetFromConfiguration(config);
 
           var testConfig = config.GetSection("testConfig");
           boolOutput1 = int.Parse(testConfig["boolOutput1"]);

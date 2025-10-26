@@ -15,17 +15,8 @@ namespace Ihc.example
     {
         static async Task Main(string[] args)
         {
-            // Access configuration file that stores IHC and SDK setup informnation including username, password etc.
-            string? basePath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location);
-            if (basePath == null)
-                throw new InvalidOperationException("Could not determine application base path.");
-
-            IConfigurationRoot config = new ConfigurationBuilder()
-                      .SetBasePath(basePath)
-                      .AddJsonFile("ihcsettings.json")
-                      .Build();
-
-            IhcSettings? settings = config.GetSection("ihcclient").Get<IhcSettings>();
+            // Read configuration settings
+            var settings = IhcSettings.GetFromFile();
 
             // Create client information app service.
             using (InformationService infoService = new InformationService(settings))

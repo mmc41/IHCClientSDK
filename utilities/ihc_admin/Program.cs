@@ -39,23 +39,11 @@ namespace Ihc.download_upload_example
                 return;
             }
 
-            // Access configuration file that stores IHC and SDK setup informnation including username, password etc.
-            string basePath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? AppContext.BaseDirectory;
-            IConfigurationRoot config = new ConfigurationBuilder()
-                      .SetBasePath(basePath)
-                      .AddJsonFile("ihcsettings.json")
-                      .Build();
-
             // Read configuration settings
-            var settings = config.GetSection("ihcclient").Get<IhcSettings>();
-            if (settings == null)
-            {
-                Console.WriteLine("Could not read IHC client settings from configuration");
-                return;
-            }
+            var settings = IhcSettings.GetFromFile();
 
             // Create client for IHC services that this utility use:
-            
+
             try
             {
                 using (var adminServer = new AdminService(settings))
@@ -71,7 +59,7 @@ namespace Ihc.download_upload_example
                     {
                         // TODO: Implement upload functionality
                     }
-                }              
+                }
             }
             catch (Exception ex)
             {
