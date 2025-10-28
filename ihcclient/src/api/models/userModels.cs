@@ -4,6 +4,7 @@ using System.Linq;
 using Ihc.Soap.Authentication;
 using System.Text;
 using System.Runtime.Serialization;
+using System.ComponentModel.DataAnnotations;
 
 namespace Ihc {
     public static class UserConstants {
@@ -32,13 +33,29 @@ namespace Ihc {
     /// High level model of a IHC user without soap distractions.
     /// </summary>
     public record IhcUser : IComparable<IhcUser>
-    {
+  {
+      [StringLength(20, MinimumLength = 1, ErrorMessage = "Username length can't be more than 20.")]
+      [Required(ErrorMessage = "Username is required")]
       public string Username { get; init; }
+
+      [StringLength(20, ErrorMessage = "Password length can't be more than 20.")]
+      [Required(ErrorMessage = "Username is required")]
+      [DeniedValues(UserConstants.REDACTED_PASSWORD, ErrorMessage = "Password cannot be set to reserved redacted value.")]
       public string Password { get; init; }
+
+      [StringLength(25, ErrorMessage = "Email length can't be more than 25.")]
       public string Email { get; init; }
+
+      [StringLength(15, ErrorMessage = "Firstname length can't be more than 15.")]
       public string Firstname { get; init; }
+
+      [StringLength(15, ErrorMessage = "Lastname length can't be more than 15.")]
       public string Lastname { get; init; }
+
+      [StringLength(15, ErrorMessage = "Phone length can't be more than 15.")]
       public string Phone { get; init; }
+      
+      [AllowedValues(IhcUserGroup.Administrators, IhcUserGroup.Users, ErrorMessage = "Group must be either 'Administrators' or 'Users'.")]
       public IhcUserGroup Group { get; init; }
       public string Project { get; init; }
       public DateTimeOffset CreatedDate { get; init; }

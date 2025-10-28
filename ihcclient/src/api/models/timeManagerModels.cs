@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace Ihc
 {
@@ -25,6 +26,7 @@ namespace Ihc
         /// <summary>
         /// Name or address of the time server to synchronize with.
         /// </summary>
+        [StringLength(20, ErrorMessage = "ServerName length can't be more than 20.")]
         public string ServerName { get; init; }
 
         /// <summary>

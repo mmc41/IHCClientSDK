@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using Ihc.Soap.Authentication;
 using System.Text;
+using System.ComponentModel.DataAnnotations;
 
 namespace Ihc {
     /// <summary>
@@ -103,26 +104,31 @@ namespace Ihc {
         /// <summary>
         /// IP address of the controller.
         /// </summary>
+        [StringLength(15, ErrorMessage = "IpAddress length can't be more than 15.")]
         public string IpAddress { get; init; }
 
         /// <summary>
         /// Network mask.
         /// </summary>
+        [StringLength(15, ErrorMessage = "Netmask length can't be more than 15.")]
         public string Netmask { get; init; }
 
         /// <summary>
         /// Gateway IP address.
         /// </summary>
+        [StringLength(15, ErrorMessage = "Gateway length can't be more than 15.")]
         public string Gateway { get; init; }
 
         /// <summary>
         /// HTTP port number.
         /// </summary>
+        [Range(0, 65535, ErrorMessage = "HttpPort must be between 0 and 65535.")]
         public int HttpPort { get; init; }
 
         /// <summary>
         /// HTTPS port number.
         /// </summary>
+        [Range(0, 65535, ErrorMessage = "HttpsPort must be between 0 and 65535.")]
         public int HttpsPort { get; init; }
 
         public override string ToString()
@@ -143,11 +149,13 @@ namespace Ihc {
         /// <summary>
         /// SSID (network name) of the wireless network.
         /// </summary>
+        [StringLength(16, ErrorMessage = "Ssid length can't be more than 16.")]
         public string Ssid { get; init; }
 
         /// <summary>
         /// Wireless network password/key.
         /// </summary>
+        [StringLength(16, ErrorMessage = "Key length can't be more than 16.")]
         public string Key { get; init; }
 
         /// <summary>
@@ -163,16 +171,19 @@ namespace Ihc {
         /// <summary>
         /// IP address for WLAN interface.
         /// </summary>
+        [StringLength(15, ErrorMessage = "IpAddress length can't be more than 15.")]
         public string IpAddress { get; init; }
 
         /// <summary>
         /// Network mask for WLAN interface.
         /// </summary>
+        [StringLength(15, ErrorMessage = "Netmask length can't be more than 15.")]
         public string Netmask { get; init; }
 
         /// <summary>
         /// Gateway for WLAN interface.
         /// </summary>
+        [StringLength(15, ErrorMessage = "Gateway length can't be more than 15.")]
         public string Gateway { get; init; }
 
         /// <summary>
@@ -417,26 +428,31 @@ namespace Ihc {
         /// <summary>
         /// POP3 server IP address.
         /// </summary>
+        [StringLength(20, ErrorMessage = "ServerIpAddress length can't be more than 20.")]
         public string ServerIpAddress { get; init; }
 
         /// <summary>
         /// POP3 server port number.
         /// </summary>
+        [Range(0, 65535, ErrorMessage = "ServerPortNumber must be between 0 and 65535.")]
         public int ServerPortNumber { get; init; }
 
         /// <summary>
         /// POP3 username for authentication.
         /// </summary>
+        [StringLength(10, ErrorMessage = "Pop3Username length can't be more than 10.")]
         public string Pop3Username { get; init; }
 
         /// <summary>
         /// POP3 password for authentication.
         /// </summary>
+        [StringLength(10, ErrorMessage = "Pop3Password length can't be more than 10.")]
         public string Pop3Password { get; init; }
 
         /// <summary>
         /// Email address to check for control commands.
         /// </summary>
+        [StringLength(20, ErrorMessage = "EmailAddress length can't be more than 20.")]
         public string EmailAddress { get; init; }
 
         /// <summary>
@@ -480,21 +496,25 @@ namespace Ihc {
         /// <summary>
         /// SMTP server hostname.
         /// </summary>
+        [StringLength(20, ErrorMessage = "Hostname length can't be more than 20.")]
         public string Hostname { get; init; }
 
         /// <summary>
         /// SMTP server port number.
         /// </summary>
+        [Range(0, 65535, ErrorMessage = "Hostport must be between 0 and 65535.")]
         public int Hostport { get; init; }
 
         /// <summary>
         /// SMTP username for authentication.
         /// </summary>
+        [StringLength(20, ErrorMessage = "Username length can't be more than 20.")]
         public string Username { get; init; }
 
         /// <summary>
         /// SMTP password for authentication.
         /// </summary>
+        [StringLength(20, ErrorMessage = "Password length can't be more than 20.")]
         public string Password { get; init; }
 
         /// <summary>
@@ -510,6 +530,7 @@ namespace Ihc {
         /// <summary>
         /// Email address to receive low battery notifications.
         /// </summary>
+        [StringLength(20, ErrorMessage = "SendLowBatteryNotificationRecipient length can't be more than 20.")]
         public string SendLowBatteryNotificationRecipient { get; init; }
 
         /// <summary>
@@ -553,11 +574,13 @@ namespace Ihc {
         /// <summary>
         /// Primary DNS server address.
         /// </summary>
+        [StringLength(15, ErrorMessage = "PrimaryDNS length can't be more than 15.")]
         public string PrimaryDNS { get; init; }
 
         /// <summary>
         /// Secondary DNS server address.
         /// </summary>
+        [StringLength(15, ErrorMessage = "SecondaryDNS length can't be more than 15.")]
         public string SecondaryDNS { get; init; }
 
         public override string ToString()
