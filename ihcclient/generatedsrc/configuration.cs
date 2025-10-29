@@ -1643,6 +1643,10 @@ namespace Ihc.Soap.Configuration
         
         private bool applicationIsWithoutViewerField;
         
+        private string smsModemSoftwareVersionField;
+        
+        private string ledDimmerSoftwareVersionField;
+        
         /// <remarks/>
         [System.Xml.Serialization.XmlElementAttribute(Order=0)]
         public long uptime
@@ -1808,6 +1812,34 @@ namespace Ihc.Soap.Configuration
             set
             {
                 this.applicationIsWithoutViewerField = value;
+            }
+        }
+        
+        /// <remarks/>
+        [System.Xml.Serialization.XmlElementAttribute(Order=12)]
+        public string smsModemSoftwareVersion
+        {
+            get
+            {
+                return this.smsModemSoftwareVersionField;
+            }
+            set
+            {
+                this.smsModemSoftwareVersionField = value;
+            }
+        }
+        
+        /// <remarks/>
+        [System.Xml.Serialization.XmlElementAttribute(Order=13)]
+        public string ledDimmerSoftwareVersion
+        {
+            get
+            {
+                return this.ledDimmerSoftwareVersionField;
+            }
+            set
+            {
+                this.ledDimmerSoftwareVersionField = value;
             }
         }
     }
