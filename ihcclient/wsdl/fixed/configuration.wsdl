@@ -95,6 +95,13 @@
 
 <xsd:element name="applicationIsWithoutViewer" type="xsd:boolean">
 </xsd:element>
+
+<xsd:element name="smsModemSoftwareVersion" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="ledDimmerSoftwareVersion" type="xsd:string">
+</xsd:element>
+
 </xsd:sequence>
 </xsd:complexType>
 
