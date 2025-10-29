@@ -58,7 +58,15 @@ namespace Ihc {
       [AllowedValues(IhcUserGroup.Administrators, IhcUserGroup.Users, ErrorMessage = "Group must be either 'Administrators' or 'Users'.")]
       public IhcUserGroup Group { get; init; }
       public string Project { get; init; }
+
+      /// <summary>
+      /// Creation date of user.
+      /// </summary>
       public DateTimeOffset CreatedDate { get; init; }
+
+      /// <summary>
+      /// Last login date of user.
+      /// </summary>
       public DateTimeOffset LoginDate { get; init; }
 
       /// <summary>

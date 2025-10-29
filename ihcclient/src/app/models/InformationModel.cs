@@ -4,38 +4,96 @@ namespace Ihc.App
 {
     /// <summary>
     /// Represents non-editable information from the IHC controller administrator interface.
-    /// This model captures read-only system information including network, DNS, time, and access control settings.
-    /// Reuses existing models from Ihc namespace (NetworkSettings, DNSServers, TimeManagerSettings, WebAccessControl).
+    /// This model captures read-only system information shown in the primary status page.
+    /// Reuses existing models from Ihc namespace where applicable.
     /// </summary>
     public record InformationModel
     {
         /// <summary>
-        /// Network configuration information (IP address, ports, subnet mask, gateway).
-        /// Maps to existing NetworkSettings model.
+        /// Time the controller has been running since last boot (LK IHC® controller oppetid).
+        /// Available from OpenAPIService.GetUptime().
         /// </summary>
-        public NetworkSettings Network { get; init; }
+        public TimeSpan Uptime { get; init; }
 
         /// <summary>
-        /// DNS server configuration information (primary and secondary DNS).
-        /// Maps to existing DNSServers model.
+        /// Current date and time on the IHC controller (Klokken på LK IHC® controlleren).
+        /// Available from OpenAPIService.GetTime().
         /// </summary>
-        public DNSServers Dns { get; init; }
+        public DateTimeOffset ControllerTime { get; init; }
 
         /// <summary>
-        /// Time and date configuration information (timezone, DST, time sync, country, validity).
-        /// Maps to existing TimeManagerSettings model.
+        /// Controller serial number (Serie nummer).
+        /// Note: Not directly available via API in current implementation.
         /// </summary>
-        public TimeManagerSettings Time { get; init; }
+        public string SerialNumber { get; init; }
 
         /// <summary>
-        /// Access control settings for different connection types (USB, internal network, external network).
-        /// Maps to existing WebAccessControl model.
+        /// Production date of the controller (Produktions dato).
+        /// Note: Not directly available via API in current implementation.
         /// </summary>
-        public WebAccessControl AccessControl { get; init; }
+        public string ProductionDate { get; init; }
+
+        /// <summary>
+        /// Controller software/firmware version (Software version).
+        /// Available from OpenAPIService.GetFWVersion().
+        /// </summary>
+        public FWVersion SoftwareVersion { get; init; }
+
+        /// <summary>
+        /// Controller hardware version (Hardware version).
+        /// Note: Not directly available via API in current implementation.
+        /// </summary>
+        public string HardwareVersion { get; init; }
+
+        /// <summary>
+        /// Input/Output module version (IO version).
+        /// Note: Not directly available via API in current implementation.
+        /// </summary>
+        public string IoVersion { get; init; }
+
+        /// <summary>
+        /// Radio Frequency module version (RF version).
+        /// Note: Not directly available via API in current implementation.
+        /// </summary>
+        public string RfVersion { get; init; }
+
+        /// <summary>
+        /// Radio Frequency serial number (RF serie nummer).
+        /// Note: Not directly available via API in current implementation.
+        /// </summary>
+        public string RfSerialNumber { get; init; }
+
+        /// <summary>
+        /// SMS modem firmware version (LK IHC SMS Modem).
+        /// Available from SmsModemService.GetSmsModemInfo().FirmwareVersion.
+        /// </summary>
+        public string SmsModemVersion { get; init; }
+
+        /// <summary>
+        /// Date of the software release (Software dato).
+        /// Note: Not directly available via API in current implementation.
+        /// </summary>
+        public DateTimeOffset SoftwareDate { get; init; }
+
+        /// <summary>
+        /// Current operational status of the controller (LK IHC® controller status).
+        /// Available from ControllerService.GetControllerState().
+        /// </summary>
+        public ControllerState? ControllerStatus { get; init; }
+
+        /// <summary>
+        /// SD card storage information including used and total space (SD kort).
+        /// Available from ControllerService.GetSDCardInfo().
+        /// </summary>
+        public SDInfo SdCard { get; init; }
 
         public override string ToString()
         {
-            return $"InformationModel(Network={Network}, Dns={Dns}, Time={Time}, AccessControl={AccessControl})";
+            return $"InformationModel(Uptime={Uptime}, ControllerTime={ControllerTime}, SerialNumber={SerialNumber}, " +
+                   $"ProductionDate={ProductionDate}, SoftwareVersion={SoftwareVersion}, HardwareVersion={HardwareVersion}, " +
+                   $"IoVersion={IoVersion}, RfVersion={RfVersion}, RfSerialNumber={RfSerialNumber}, " +
+                   $"SmsModemVersion={SmsModemVersion}, SoftwareDate={SoftwareDate}, ControllerStatus={ControllerStatus}, " +
+                   $"SdCard={SdCard})";
         }
     }
 }

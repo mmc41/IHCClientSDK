@@ -32,16 +32,16 @@ namespace Ihc
         /// <summary>Controller is uninitialized.</summary>
         Uninitialized,
 
-        /// <summary>Controller is ready for operation.</summary>
+        /// <summary>Controller is ready aka OK.</summary>
         Ready,
 
         /// <summary>Controller is initializing.</summary>
         Initialize,
 
-        /// <summary>Controller has failed.</summary>
+        /// <summary>Controller has failed and is in an error state.</summary>
         Failed,
 
-        /// <summary>Controller is in RF configuration mode.</summary>
+        /// <summary>Controller is in wireless RF configuration mode.</summary>
         RfConfiguration,
 
         /// <summary>Controller is in simulation mode.</summary>

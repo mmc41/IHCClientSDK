@@ -71,9 +71,19 @@ namespace Ihc {
         /// </summary>
         public bool ApplicationIsWithoutViewer { get; init; }
 
+        /// <summary>
+        /// Get SMS Modem Software Version
+        /// </summary>
+        public string SmsModemSoftwareVersion { get; init; }
+
+        /// <summary>
+        /// Get LED Dimmer Software Version
+        /// </summary>
+        public string LedDimmerSoftwareVersion { get; init; }
+
         public override string ToString()
         {
-          return $"SystemInfo(Uptime={Uptime}, Realtimeclock={Realtimeclock}, SerialNumber={SerialNumber}, ProductionDate={ProductionDate}, Brand={Brand}, Version={Version}, HWRevision={HWRevision}, SWDate={SWDate}, DatalineVersion={DatalineVersion}, RFModuleSoftwareVersion={RFModuleSoftwareVersion}, RFModuleSerialNumber={RFModuleSerialNumber}, ApplicationIsWithoutViewer={ApplicationIsWithoutViewer})";
+          return $"SystemInfo(Uptime={Uptime}, Realtimeclock={Realtimeclock}, SerialNumber={SerialNumber}, ProductionDate={ProductionDate}, Brand={Brand}, Version={Version}, HWRevision={HWRevision}, SWDate={SWDate}, DatalineVersion={DatalineVersion}, RFModuleSoftwareVersion={RFModuleSoftwareVersion}, RFModuleSerialNumber={RFModuleSerialNumber}, ApplicationIsWithoutViewer={ApplicationIsWithoutViewer}, SmsModemSoftwareVersion={SmsModemSoftwareVersion}, LedDimmerSoftwareVersion={LedDimmerSoftwareVersion})";
         }
     }
 
@@ -366,52 +376,52 @@ namespace Ihc {
         public bool IhcvisualExternal { get; init; }
 
         /// <summary>
-        /// Online documentation access via USB.
+        /// Online reports access via USB.
         /// </summary>
         public bool OnlinedocumentationUsb { get; init; }
 
         /// <summary>
-        /// Online documentation access from internal network.
+        /// Online reports access from internal network.
         /// </summary>
         public bool OnlinedocumentationInternal { get; init; }
 
         /// <summary>
-        /// Online documentation access from external network.
+        /// Online reports access from external network.
         /// </summary>
         public bool OnlinedocumentationExternal { get; init; }
 
         /// <summary>
-        /// Web sceneview access via USB.
+        /// Sceneview access via USB.
         /// </summary>
         public bool WebsceneviewUsb { get; init; }
 
         /// <summary>
-        /// Web sceneview access from internal network.
+        /// Sceneview access from internal network.
         /// </summary>
         public bool WebsceneviewInternal { get; init; }
 
         /// <summary>
-        /// Web sceneview access from external network.
+        /// Sceneview access from external network.
         /// </summary>
         public bool WebsceneviewExternal { get; init; }
 
         /// <summary>
-        /// OpenAPI access via USB.
+        /// API access via USB for 3rd-party use.
         /// </summary>
         public bool OpenapiUsb { get; init; }
 
         /// <summary>
-        /// OpenAPI access from internal network.
+        /// API access from internal network for 3rd-party use.
         /// </summary>
         public bool OpenapiInternal { get; init; }
 
         /// <summary>
-        /// OpenAPI access from external network.
+        /// API access from external network for 3rd-party use.
         /// </summary>
         public bool OpenapiExternal { get; init; }
 
         /// <summary>
-        /// Indicates whether OpenAPI is currently being used.
+        /// Indicates whether APIs are enabled for 3rd-party use.
         /// </summary>
         public bool OpenapiUsed { get; init; }
 

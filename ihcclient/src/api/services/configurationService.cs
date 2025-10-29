@@ -305,7 +305,9 @@ namespace Ihc {
                 DatalineVersion = info.datalineVersion,
                 RFModuleSoftwareVersion = info.rfModuleSoftwareVersion,
                 RFModuleSerialNumber = info.rfModuleSerialNumber,
-                ApplicationIsWithoutViewer = info.applicationIsWithoutViewer
+                ApplicationIsWithoutViewer = info.applicationIsWithoutViewer,
+                SmsModemSoftwareVersion = info.smsModemSoftwareVersion,
+                LedDimmerSoftwareVersion = info.ledDimmerSoftwareVersion
             };
         }
 
