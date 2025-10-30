@@ -30,9 +30,9 @@ namespace Ihc.Tests
             var waitForChangesOperation = operations.FirstOrDefault(op => op.Name == operationName);
             Assert.That(waitForChangesOperation, Is.Not.Null, operationName+" operation should be found in metadata");
 
-            // Verify return type (should be ResourceValue[] unwrapped from Task<ResourceValue[]>)
-            Assert.That(waitForChangesOperation.ReturnType, Is.EqualTo(typeof(ResourceValue[])),
-                "Return type should be ResourceValue[]");
+            // Verify return type (should be IReadOnlyList<ResourceValue> unwrapped from Task<IReadOnlyList<ResourceValue>>)
+            Assert.That(waitForChangesOperation.ReturnType, Is.EqualTo(typeof(IReadOnlyList<ResourceValue>)),
+                "Return type should be IReadOnlyList<ResourceValue>");
 
             // Verify parameter types (should have one int parameter for timeout_seconds)
             Assert.That(waitForChangesOperation.Parameters.Length, Is.EqualTo(1), "Should have exactly one parameter");

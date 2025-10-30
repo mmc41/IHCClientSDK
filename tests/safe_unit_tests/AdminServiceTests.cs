@@ -25,6 +25,9 @@ namespace Ihc.Tests
         [SetUp]
         public void Setup()
         {
+            // Set up encryption passphrase for tests
+            Environment.SetEnvironmentVariable("IHC_ENCRYPT_PASSPHRASE", "test-passphrase-for-unit-tests");
+
             // Create fake services
             fakeAuthService = A.Fake<IAuthenticationService>();
             fakeUserService = A.Fake<IUserManagerService>();
@@ -49,7 +52,7 @@ namespace Ihc.Tests
         public void Constructor_WithSettings_CreatesInstance()
         {
             // Act
-            var service = new AdminService(settings);
+            var service = new AdminService(settings, fileEnryption: true);
 
             // Assert
             Assert.That(service, Is.Not.Null);
@@ -59,7 +62,7 @@ namespace Ihc.Tests
         public void Constructor_WithServicesAndSettings_CreatesInstance()
         {
             // Act
-            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
 
             // Assert
             Assert.That(service, Is.Not.Null);
@@ -69,23 +72,23 @@ namespace Ihc.Tests
         public void Constructor_WithNullSettings_ThrowsArgumentException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentException>(() => new AdminService(null));
+            Assert.Throws<ArgumentException>(() => new AdminService(null, fileEnryption: true));
         }
 
         [Test]
         public void Constructor_WithNullServices_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new AdminService(settings, null, fakeUserService, fakeConfigService));
-            Assert.Throws<ArgumentNullException>(() => new AdminService(settings, fakeAuthService, null, fakeConfigService));
-            Assert.Throws<ArgumentNullException>(() => new AdminService(settings, fakeAuthService, fakeUserService, null));
+            Assert.Throws<ArgumentNullException>(() => new AdminService(settings, fileEnryption: true, null, fakeUserService, fakeConfigService));
+            Assert.Throws<ArgumentNullException>(() => new AdminService(settings, fileEnryption: true, fakeAuthService, null, fakeConfigService));
+            Assert.Throws<ArgumentNullException>(() => new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, null));
         }
 
         [Test]
         public async Task GetAdminModel_ReturnsModelWithData()
         {
             // Arrange
-            ISet<IhcUser> testUsers = new HashSet<IhcUser>
+            IReadOnlySet<IhcUser> testUsers = new HashSet<IhcUser>
             {
                 new IhcUser { Username = "user1", Email = "user1@test.com", Group = IhcUserGroup.Administrators },
                 new IhcUser { Username = "user2", Email = "user2@test.com", Group = IhcUserGroup.Users }
@@ -132,7 +135,7 @@ namespace Ihc.Tests
                 Ssid = "TestNetwork"
             };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult(testUsers));
+            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(testUsers));
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(testEmailControl));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(testSmtp));
             A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(testDns));
@@ -140,7 +143,7 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(testWebAccess));
             A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(testWLan));
 
-            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
 
             // Act
             var model = await service.GetModel();
@@ -170,7 +173,7 @@ namespace Ihc.Tests
         public async Task SaveAdminModel_NoChanges_NoApiCalls()
         {
             // Arrange
-            ISet<IhcUser> testUsers = new HashSet<IhcUser>
+            IReadOnlySet<IhcUser> testUsers = new HashSet<IhcUser>
             {
                 new IhcUser { Username = "user1", Email = "user1@test.com", Group = IhcUserGroup.Administrators }
             };
@@ -178,11 +181,11 @@ namespace Ihc.Tests
             var testEmailControl = new EmailControlSettings { ServerIpAddress = "mail.test.com" };
             var testSmtp = new SMTPSettings { Hostname = "smtp.test.com" };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult(testUsers));
+            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(testUsers));
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(testEmailControl));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(testSmtp));
 
-            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
 
             // Act - save same model without changes
@@ -200,12 +203,12 @@ namespace Ihc.Tests
         public async Task SaveAdminModel_UserAdded_CallsAddUser()
         {
             // Arrange
-            ISet<IhcUser> initialUsers = new HashSet<IhcUser>
+            IReadOnlySet<IhcUser> initialUsers = new HashSet<IhcUser>
             {
                 new IhcUser { Username = "user1", Email = "user1@test.com", Group = IhcUserGroup.Users }
             };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult(initialUsers));
+            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(initialUsers));
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
             A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(new DNSServers()));
@@ -213,7 +216,7 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
             A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
 
-            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
 
             // Act - add a new user
@@ -230,13 +233,13 @@ namespace Ihc.Tests
         public async Task SaveAdminModel_UserDeleted_CallsRemoveUser()
         {
             // Arrange
-            ISet<IhcUser> initialUsers = new HashSet<IhcUser>
+            IReadOnlySet<IhcUser> initialUsers = new HashSet<IhcUser>
             {
                 new IhcUser { Username = "user1", Email = "user1@test.com", Group = IhcUserGroup.Users },
                 new IhcUser { Username = "user2", Email = "user2@test.com", Group = IhcUserGroup.Users }
             };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult(initialUsers));
+            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(initialUsers));
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
             A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(new DNSServers()));
@@ -244,7 +247,7 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
             A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
 
-            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
 
             // Act - remove a user
@@ -260,7 +263,7 @@ namespace Ihc.Tests
         public async Task SaveAdminModel_UserUpdated_CallsUpdateUser()
         {
             // Arrange
-            ISet<IhcUser> initialUsers = new HashSet<IhcUser>
+            IReadOnlySet<IhcUser> initialUsers = new HashSet<IhcUser>
             {
                 new IhcUser
                 {
@@ -277,7 +280,7 @@ namespace Ihc.Tests
                 }
             };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult(initialUsers));
+            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(initialUsers));
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
             A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(new DNSServers()));
@@ -285,7 +288,7 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
             A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
 
-            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
 
             // Act - update user with new properties (using HashSet operations)
@@ -317,11 +320,11 @@ namespace Ihc.Tests
                 Ssl = false
             };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<ISet<IhcUser>>(new HashSet<IhcUser>()));
+            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(new HashSet<IhcUser>()));
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(initialEmailControl));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
 
-            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
 
             // Act - change email control settings (using record 'with' expression)
@@ -348,11 +351,11 @@ namespace Ihc.Tests
                 SendLowBatteryNotificationRecipient = ""
             };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<ISet<IhcUser>>(new HashSet<IhcUser>()));
+            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(new HashSet<IhcUser>()));
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(initialSmtp));
 
-            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
 
             // Act - change SMTP settings (using record 'with' expression)
@@ -368,12 +371,12 @@ namespace Ihc.Tests
         public async Task SaveAdminModel_WithoutGetAdminModel_LoadsSnapshotAutomatically()
         {
             // Arrange
-            ISet<IhcUser> testUsers = new HashSet<IhcUser>
+            IReadOnlySet<IhcUser> testUsers = new HashSet<IhcUser>
             {
                 new IhcUser { Username = "user1", Email = "user1@test.com", Group = IhcUserGroup.Users }
             };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult(testUsers));
+            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(testUsers));
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
             A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(new DNSServers()));
@@ -381,10 +384,10 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
             A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
 
-            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
 
             // Act - call SaveAdminModel without calling GetAdminModel first
-            var newModel = new AdminModel
+            var newModel = new MutableAdminModel
             {
                 Users = new HashSet<IhcUser> { new IhcUser { Username = "user2", Email = "user2@test.com", Group = IhcUserGroup.Users } },
                 EmailControl = new EmailControlSettings(),
@@ -403,7 +406,7 @@ namespace Ihc.Tests
         public async Task SaveAdminModel_MultipleChanges_AppliesAllChanges()
         {
             // Arrange
-            ISet<IhcUser> initialUsers = new HashSet<IhcUser>
+            IReadOnlySet<IhcUser> initialUsers = new HashSet<IhcUser>
             {
                 new IhcUser
                 {
@@ -441,11 +444,11 @@ namespace Ihc.Tests
                 SendLowBatteryNotificationRecipient = ""
             };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult(initialUsers));
+            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(initialUsers));
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(initialEmailControl));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(initialSmtp));
 
-            var service = new AdminService(settings, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
 
             // Act - make multiple changes
@@ -471,5 +474,236 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.SetEmailControlSettings(A<EmailControlSettings>._)).MustHaveHappenedOnceExactly();
             A.CallTo(() => fakeConfigService.SetSMTPSettings(A<SMTPSettings>._)).MustHaveHappenedOnceExactly();
         }
+
+        #region JSON Stream Tests
+
+        /// <summary>
+        /// Helper method to create a test AdminModel with all properties populated.
+        /// </summary>
+        private MutableAdminModel CreateTestAdminModel()
+        {
+            return new MutableAdminModel
+            {
+                Users = new HashSet<IhcUser>
+                {
+                    new IhcUser
+                    {
+                        Username = "admin",
+                        Password = "admin123",
+                        Email = "admin@test.com",
+                        Firstname = "Admin",
+                        Lastname = "User",
+                        Phone = "1234567890",
+                        Group = IhcUserGroup.Administrators,
+                        Project = "TestProject",
+                        CreatedDate = new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero),
+                        LoginDate = new DateTimeOffset(2024, 1, 15, 10, 30, 0, TimeSpan.Zero)
+                    },
+                    new IhcUser
+                    {
+                        Username = "user1",
+                        Password = "user123",
+                        Email = "user@test.com",
+                        Firstname = "Regular",
+                        Lastname = "User",
+                        Phone = "9876543210",
+                        Group = IhcUserGroup.Users,
+                        Project = "TestProject",
+                        CreatedDate = new DateTimeOffset(2024, 1, 2, 0, 0, 0, TimeSpan.Zero),
+                        LoginDate = new DateTimeOffset(2024, 1, 16, 14, 20, 0, TimeSpan.Zero)
+                    }
+                },
+                EmailControl = new EmailControlSettings
+                {
+                    ServerIpAddress = "mail.test.com",
+                    ServerPortNumber = 110,
+                    Pop3Username = "testuser",
+                    Pop3Password = "pop3secret",
+                    EmailAddress = "control@test.com",
+                    PollInterval = 5,
+                    RemoveEmailsAfterUsage = true,
+                    Ssl = false
+                },
+                SmtpSettings = new SMTPSettings
+                {
+                    Hostname = "smtp.test.com",
+                    Hostport = 587,
+                    Username = "smtpuser",
+                    Password = "smtpSecret",
+                    Ssl = true,
+                    SendLowBatteryNotification = false,
+                    SendLowBatteryNotificationRecipient = ""
+                },
+                WLanSettings = new WLanSettings
+                {
+                    Enabled = true,
+                    Ssid = "TestWiFi",
+                    Key = "wifiSecret123",
+                    SecurityType = "WPA2",
+                    EncryptionType = "AES",
+                    IpAddress = "192.168.2.1",
+                    Netmask = "255.255.255.0",
+                    Gateway = "192.168.2.254"
+                },
+                DnsServers = new DNSServers
+                {
+                    PrimaryDNS = "8.8.8.8",
+                    SecondaryDNS = "8.8.4.4"
+                },
+                NetworkSettings = new NetworkSettings
+                {
+                    IpAddress = "192.168.1.100",
+                    Netmask = "255.255.255.0",
+                    Gateway = "192.168.1.1",
+                    HttpPort = 80,
+                    HttpsPort = 443
+                },
+                WebAccess = new WebAccessControl
+                {
+                    UsbLoginRequired = false,
+                    AdministratorUsb = true,
+                    AdministratorInternal = true,
+                    AdministratorExternal = false
+                }
+            };
+        }
+
+        [Test]
+        public async Task SaveAndLoadJson_WithEncryptionEnabled_RoundTripSucceeds()
+        {
+            // Arrange
+            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var originalModel = CreateTestAdminModel();
+            var stream = new System.IO.MemoryStream();
+
+            // Act - Save and then load
+            await service.SaveAsJson(originalModel, stream);
+            stream.Position = 0;
+            var loadedModel = await service.LoadFromJson(stream);
+
+            // Assert - All properties should match
+            Assert.That(loadedModel, Is.Not.Null);
+            Assert.That(loadedModel.Users, Is.Not.Null);
+            Assert.That(loadedModel.Users.Count, Is.EqualTo(originalModel.Users.Count));
+
+            // Verify users
+            var originalAdmin = originalModel.Users.First(u => u.Username == "admin");
+            var loadedAdmin = loadedModel.Users.First(u => u.Username == "admin");
+            Assert.That(loadedAdmin.Password, Is.EqualTo(originalAdmin.Password));
+            Assert.That(loadedAdmin.Email, Is.EqualTo(originalAdmin.Email));
+
+            // Verify sensitive fields preserved
+            Assert.That(loadedModel.EmailControl.Pop3Password, Is.EqualTo(originalModel.EmailControl.Pop3Password));
+            Assert.That(loadedModel.SmtpSettings.Password, Is.EqualTo(originalModel.SmtpSettings.Password));
+            Assert.That(loadedModel.WLanSettings.Key, Is.EqualTo(originalModel.WLanSettings.Key));
+
+            // Verify non-sensitive fields
+            Assert.That(loadedModel.DnsServers.PrimaryDNS, Is.EqualTo(originalModel.DnsServers.PrimaryDNS));
+            Assert.That(loadedModel.NetworkSettings.IpAddress, Is.EqualTo(originalModel.NetworkSettings.IpAddress));
+        }
+
+        [Test]
+        public async Task SaveAndLoadJson_WithEncryptionDisabled_RoundTripSucceeds()
+        {
+            // Arrange
+            var service = new AdminService(settings, fileEnryption: false, fakeAuthService, fakeUserService, fakeConfigService);
+            var originalModel = CreateTestAdminModel();
+            var stream = new System.IO.MemoryStream();
+
+            // Act - Save and then load
+            await service.SaveAsJson(originalModel, stream);
+            stream.Position = 0;
+            var loadedModel = await service.LoadFromJson(stream);
+
+            // Assert - All properties should match
+            Assert.That(loadedModel, Is.Not.Null);
+            Assert.That(loadedModel.Users.Count, Is.EqualTo(originalModel.Users.Count));
+            Assert.That(loadedModel.EmailControl.Pop3Password, Is.EqualTo(originalModel.EmailControl.Pop3Password));
+            Assert.That(loadedModel.SmtpSettings.Password, Is.EqualTo(originalModel.SmtpSettings.Password));
+            Assert.That(loadedModel.WLanSettings.Key, Is.EqualTo(originalModel.WLanSettings.Key));
+        }
+
+        [Test]
+        public async Task SaveAsJson_WithEncryptionEnabled_EncryptsSensitiveFieldsOnly()
+        {
+            // Arrange - Verify environment variable is set
+            var envVar = Environment.GetEnvironmentVariable("IHC_ENCRYPT_PASSPHRASE");
+            Assert.That(envVar, Is.Not.Null, "IHC_ENCRYPT_PASSPHRASE environment variable should be set");
+
+            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var model = CreateTestAdminModel();
+            var stream = new System.IO.MemoryStream();
+
+            // Act - Save to stream
+            await service.SaveAsJson(model, stream);
+
+            // Read the JSON string
+            stream.Position = 0;
+            var jsonString = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+
+            // Assert - Sensitive fields should be encrypted (NOT appear in plain text)
+            Assert.That(jsonString, Does.Not.Contain("admin123"), "User password should be encrypted");
+            Assert.That(jsonString, Does.Not.Contain("user123"), "User password should be encrypted");
+            Assert.That(jsonString, Does.Not.Contain("pop3secret"), "POP3 password should be encrypted");
+            Assert.That(jsonString, Does.Not.Contain("smtpSecret"), "SMTP password should be encrypted");
+            Assert.That(jsonString, Does.Not.Contain("wifiSecret123"), "WiFi key should be encrypted");
+
+            // Assert - Non-sensitive fields should appear in plain text
+            Assert.That(jsonString, Does.Contain("admin@test.com"), "Email should not be encrypted");
+            Assert.That(jsonString, Does.Contain("smtp.test.com"), "SMTP hostname should not be encrypted");
+            Assert.That(jsonString, Does.Contain("8.8.8.8"), "DNS should not be encrypted");
+            Assert.That(jsonString, Does.Contain("192.168.1.100"), "IP address should not be encrypted");
+            Assert.That(jsonString, Does.Contain("TestWiFi"), "SSID should not be encrypted");
+        }
+
+        [Test]
+        public async Task SaveAsJson_WithEncryptionDisabled_DoesNotEncryptFields()
+        {
+            // Arrange
+            var service = new AdminService(settings, fileEnryption: false, fakeAuthService, fakeUserService, fakeConfigService);
+            var model = CreateTestAdminModel();
+            var stream = new System.IO.MemoryStream();
+
+            // Act - Save to stream
+            await service.SaveAsJson(model, stream);
+
+            // Read the JSON string
+            stream.Position = 0;
+            var jsonString = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+
+            // Assert - Sensitive fields should appear in plain text (not encrypted)
+            Assert.That(jsonString, Does.Contain("admin123"), "User password should not be encrypted when encryption disabled");
+            Assert.That(jsonString, Does.Contain("user123"), "User password should not be encrypted when encryption disabled");
+            Assert.That(jsonString, Does.Contain("pop3secret"), "POP3 password should not be encrypted when encryption disabled");
+            Assert.That(jsonString, Does.Contain("smtpSecret"), "SMTP password should not be encrypted when encryption disabled");
+            Assert.That(jsonString, Does.Contain("wifiSecret123"), "WiFi key should not be encrypted when encryption disabled");
+        }
+
+        [Test]
+        public async Task SaveAsJson_DoesNotModifyOriginalModel()
+        {
+            // Arrange
+            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var model = CreateTestAdminModel();
+            var stream = new System.IO.MemoryStream();
+
+            // Capture original sensitive values
+            var originalUserPassword = model.Users.First(u => u.Username == "admin").Password;
+            var originalPop3Password = model.EmailControl.Pop3Password;
+            var originalSmtpPassword = model.SmtpSettings.Password;
+            var originalWifiKey = model.WLanSettings.Key;
+
+            // Act - Save to stream (which encrypts internally)
+            await service.SaveAsJson(model, stream);
+
+            // Assert - Original model should remain unchanged
+            var adminUser = model.Users.First(u => u.Username == "admin");
+            Assert.That(adminUser.Password, Is.EqualTo(originalUserPassword), "Original user password should not be modified");
+            Assert.That(model.EmailControl.Pop3Password, Is.EqualTo(originalPop3Password), "Original POP3 password should not be modified");
+            Assert.That(model.SmtpSettings.Password, Is.EqualTo(originalSmtpPassword), "Original SMTP password should not be modified");
+            Assert.That(model.WLanSettings.Key, Is.EqualTo(originalWifiKey), "Original WiFi key should not be modified");
+        }
+
+        #endregion
     }
 }

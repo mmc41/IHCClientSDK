@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using Ihc.Soap.Notificationmanager;
 using System.Diagnostics;
+using System.Collections.Generic;
 
 namespace Ihc {
     /// <summary>
@@ -18,7 +19,7 @@ namespace Ihc {
         /// <summary>
         /// Get all notification messages from the controller.
         /// </summary>
-        public Task<NotificationMessage[]> GetMessages();
+        public Task<IReadOnlyList<NotificationMessage>> GetMessages();
     }
 
     /// <summary>
@@ -96,14 +97,14 @@ namespace Ihc {
             }
         }
 
-        public async Task<NotificationMessage[]> GetMessages()
+        public async Task<IReadOnlyList<NotificationMessage>> GetMessages()
         {
             using (var activity = StartActivity(nameof(GetMessages)))
             {
                 try
                 {
                     var resp = await impl.getMessagesAsync(new inputMessageName1()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getMessages1.Where((v) => v != null).Select((v) => mapMessage(v)).ToArray();
+                    var retv = resp.getMessages1.Where((v) => v != null).Select((v) => mapMessage(v)).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;

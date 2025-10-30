@@ -13,7 +13,10 @@
       "Bash(unset:*)",
       "Bash(export IHC_ENCRYPT_PASSPHRASE=\"short\")",
       "Bash(export IHC_ENCRYPT_PASSPHRASE=\"wrong-passphrase-12345\":*)",
-      "Read(//d/repos/lk_ihc_apps/administrator/**)"
+      "Read(//d/repos/lk_ihc_apps/administrator/**)",
+      "Bash(dotnet clean:*)",
+      "Bash(export IHC_ENCRYPT_PASSPHRASE=\"test-passphrase-for-unit-tests\")",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

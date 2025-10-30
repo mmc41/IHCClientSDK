@@ -18,7 +18,7 @@ namespace Ihc {
         /// Get set of all users registered on the controller.
         /// </summary>
         /// <param name="includePassword">Include password in returned user objects</param>
-        public Task<ISet<IhcUser>> GetUsers(bool includePassword);
+        public Task<IReadOnlySet<IhcUser>> GetUsers(bool includePassword);
 
         /// <summary>
         /// Add a new user to the controller.
@@ -172,7 +172,7 @@ namespace Ihc {
         /// Get set of registered controller users and their information.
         /// </summary>
         /// <param name="includePassword">Include password in returned user objects (default)</param>
-        public async Task<ISet<IhcUser>> GetUsers(bool includePassword = true)
+        public async Task<IReadOnlySet<IhcUser>> GetUsers(bool includePassword = true)
         {
             using (var activity = StartActivity(nameof(GetUsers)))
             {

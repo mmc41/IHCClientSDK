@@ -166,6 +166,7 @@ namespace Ihc {
         /// Wireless network password/key.
         /// </summary>
         [StringLength(16, ErrorMessage = "Key length can't be more than 16.")]
+        [SensitiveData]
         public string Key { get; init; }
 
         /// <summary>
@@ -456,6 +457,7 @@ namespace Ihc {
         /// <summary>
         /// POP3 password for authentication.
         /// </summary>
+        [SensitiveData]
         [StringLength(10, ErrorMessage = "Pop3Password length can't be more than 10.")]
         public string Pop3Password { get; init; }
 
@@ -525,6 +527,7 @@ namespace Ihc {
         /// SMTP password for authentication.
         /// </summary>
         [StringLength(20, ErrorMessage = "Password length can't be more than 20.")]
+        [SensitiveData]
         public string Password { get; init; }
 
         /// <summary>

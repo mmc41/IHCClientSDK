@@ -54,12 +54,12 @@ namespace Ihc {
         /// <summary>
         /// Get resource IDs for all dataline inputs.
         /// </summary>
-        public Task<int[]> GetDatalineInputIDs();
+        public Task<IReadOnlyList<int>> GetDatalineInputIDs();
 
         /// <summary>
         /// Get resource IDs for all dataline outputs.
         /// </summary>
-        public Task<int[]> GetDatalineOutputIDs();
+        public Task<IReadOnlyList<int>> GetDatalineOutputIDs();
 
         /// <summary>
         /// Reboot the controller immediately.
@@ -74,26 +74,26 @@ namespace Ihc {
         /// <summary>
         /// Get current values for specified resource IDs.
         /// </summary>
-        /// <param name="resourceIds">Array of resource IDs to get values for</param>
-        public Task<ResourceValue[]> GetValues(int[] resourceIds);
+        /// <param name="resourceIds">Collection of resource IDs to get values for</param>
+        public Task<IReadOnlyList<ResourceValue>> GetValues(IReadOnlyList<int> resourceIds);
 
         /// <summary>
         /// Set values for multiple resources.
         /// </summary>
-        /// <param name="values">Array of resource values to set</param>
-        public Task<bool> SetValues(ResourceValue[] values);
+        /// <param name="values">Collection of resource values to set</param>
+        public Task<bool> SetValues(IReadOnlyList<ResourceValue> values);
 
         /// <summary>
         /// Enable event subscription for specified resource IDs.
         /// </summary>
-        /// <param name="resourceIds">Array of resource IDs to subscribe to</param>
-        public Task EnableSubscription(int[] resourceIds);
+        /// <param name="resourceIds">Collection of resource IDs to subscribe to</param>
+        public Task EnableSubscription(IReadOnlyList<int> resourceIds);
 
         /// <summary>
         /// Disable event subscription for specified resource IDs.
         /// </summary>
-        /// <param name="resourceIds">Array of resource IDs to unsubscribe from</param>
-        public Task DisableSubscription(int[] resourceIds);
+        /// <param name="resourceIds">Collection of resource IDs to unsubscribe from</param>
+        public Task DisableSubscription(IReadOnlyList<int> resourceIds);
 
         /// <summary>
         /// Wait for resource value change events from subscribed resources.
@@ -104,10 +104,10 @@ namespace Ihc {
         /// <summary>
         /// Get async stream of resource value changes for subscribed resources.
         /// </summary>
-        /// <param name="resourceIds">Array of resource IDs to monitor</param>
+        /// <param name="resourceIds">Collection of resource IDs to monitor</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <param name="timeout_between_waits_in_seconds">Timeout between waits in seconds</param>
-        public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(int[] resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15);
+        public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(IReadOnlyList<int> resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15);
 
         /// <summary>
         /// Get project information.
@@ -448,7 +448,7 @@ namespace Ihc {
                 var resourceValue = mapResourceValue(e.m_value);
                 if (resourceValue != null)
                 {
-                    resourceValue.ResourceID = e.m_resourceID;
+                    resourceValue = resourceValue with { ResourceID = e.m_resourceID };
                 }
                 return resourceValue;
             }).Where(rv => rv != null).ToArray();
@@ -667,14 +667,14 @@ namespace Ihc {
             }
         }
 
-        public async Task<int[]> GetDatalineInputIDs()
+        public async Task<IReadOnlyList<int>> GetDatalineInputIDs()
         {
             using (var activity = StartActivity(nameof(GetDatalineInputIDs)))
             {
                 try
                 {
                     var result = await impl.getDatalineInputIDsAsync(new inputMessageName3()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = result.getDatalineInputIDs1 != null ? result.getDatalineInputIDs1.Select(r => r.resourceID).ToArray() : Array.Empty<int>();
+                    IReadOnlyList<int> retv = result.getDatalineInputIDs1 != null ? result.getDatalineInputIDs1.Select(r => r.resourceID).ToList() : Array.Empty<int>();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -687,14 +687,14 @@ namespace Ihc {
             }
         }
 
-        public async Task<int[]> GetDatalineOutputIDs()
+        public async Task<IReadOnlyList<int>> GetDatalineOutputIDs()
         {
             using (var activity = StartActivity(nameof(GetDatalineOutputIDs)))
             {
                 try
                 {
                     var result = await impl.getDatalineOutputIDsAsync(new inputMessageName4()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = result.getDatalineOutputIDs1 != null ? result.getDatalineOutputIDs1.Select(r => r.resourceID).ToArray() : Array.Empty<int>();
+                    IReadOnlyList<int> retv = result.getDatalineOutputIDs1 != null ? result.getDatalineOutputIDs1.Select(r => r.resourceID).ToList() : Array.Empty<int>();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -724,7 +724,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<ResourceValue[]> GetValues(int[] resourceIds)
+        public async Task<IReadOnlyList<ResourceValue>> GetValues(IReadOnlyList<int> resourceIds)
         {
             using (var activity = StartActivity(nameof(GetValues)))
             {
@@ -733,8 +733,8 @@ namespace Ihc {
                     activity?.SetParameters(
                         (nameof(resourceIds), resourceIds));
 
-                    var result = await impl.getValuesAsync(new inputMessageName6() { getValues1 = resourceIds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = result.getValues2 != null ? result.getValues2.Select(v => mapResourceValue(v)).ToArray() : Array.Empty<ResourceValue>();
+                    var result = await impl.getValuesAsync(new inputMessageName6() { getValues1 = resourceIds.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    IReadOnlyList<ResourceValue> retv = result.getValues2 != null ? result.getValues2.Select(v => mapResourceValue(v)).ToList() : Array.Empty<ResourceValue>();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -747,7 +747,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<bool> SetValues(ResourceValue[] values)
+        public async Task<bool> SetValues(IReadOnlyList<ResourceValue> values)
         {
             using (var activity = StartActivity(nameof(SetValues)))
             {
@@ -771,7 +771,7 @@ namespace Ihc {
             }
         }
 
-        public async Task EnableSubscription(int[] resourceIds)
+        public async Task EnableSubscription(IReadOnlyList<int> resourceIds)
         {
             using (var activity = StartActivity(nameof(EnableSubscription)))
             {
@@ -780,7 +780,7 @@ namespace Ihc {
                     activity?.SetParameters(
                         (nameof(resourceIds), resourceIds));
 
-                    await impl.enableSubscriptionAsync(new inputMessageName1() { enableSubscription1 = resourceIds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    await impl.enableSubscriptionAsync(new inputMessageName1() { enableSubscription1 = resourceIds.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 }
                 catch (Exception ex)
                 {
@@ -790,7 +790,7 @@ namespace Ihc {
             }
         }
 
-        public async Task DisableSubscription(int[] resourceIds)
+        public async Task DisableSubscription(IReadOnlyList<int> resourceIds)
         {
             using (var activity = StartActivity(nameof(DisableSubscription)))
             {
@@ -799,7 +799,7 @@ namespace Ihc {
                     activity?.SetParameters(
                         (nameof(resourceIds), resourceIds));
 
-                    await impl.disableSubscriptionAsync(new inputMessageName2() { disableSubscription1 = resourceIds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    await impl.disableSubscriptionAsync(new inputMessageName2() { disableSubscription1 = resourceIds.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 }
                 catch (Exception ex)
                 {
@@ -841,7 +841,7 @@ namespace Ihc {
         /// <param name="resourceIds">Array of resource IDs to monitor</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <param name="timeout_between_waits_in_seconds">Timeout between waits in seconds</param>
-        public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(int[] resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15)
+        public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(IReadOnlyList<int> resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15)
         {
             using (var activity = StartActivity(nameof(GetResourceValueChanges)))
             {

@@ -28,7 +28,7 @@ namespace Ihc
     /// </para>
     /// <para>
     /// <b>Passphrase handling:</b> Keep the passphrase out of source control. Either pass it directly to the
-    /// <see cref="SimpleSecret(string)"/> constructor or rely on the parameterless constructor which reads it from the
+    /// <see cref="SimpleSecret(string, bool)"/> constructor or rely on the parameterless constructor which reads it from the
     /// <c>IHC_ENCRYPT_PASSPHRASE</c> environment variable. Passphrase must be at least 12 characters long.
     /// </para>
     /// <para>
@@ -58,10 +58,13 @@ namespace Ihc
 
         private readonly string _passphrase;
 
+        private readonly bool enable;
+
         /// <summary>
         /// Initializes the cipher with an explicit passphrase.
         /// </summary>
         /// <param name="passphrase">A secret passphrase. Do not store this in source control. Must be at least 12 characters long.</param>
+        /// <param name="enable">Specifies if encryption/decryption is enabled</param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="passphrase"/> is null.</exception>
         /// <exception cref="ArgumentException">Thrown if <paramref name="passphrase"/> is shorter than 12 characters.</exception>
         /// <example>
@@ -71,12 +74,19 @@ namespace Ihc
         /// var plain = cipher.DecryptString(blob);
         /// ]]></code>
         /// </example>
-        public SimpleSecret(string passphrase)
+        public SimpleSecret(string passphrase, bool enable = true)
         {
-            _passphrase = passphrase ?? throw new ArgumentNullException(nameof(passphrase));
+            _passphrase = passphrase;
+            this.enable = enable;
 
-            if (_passphrase.Length < 12)
-                throw new ArgumentException("Passphrase must be at least 12 characters long for adequate security.", nameof(passphrase));
+            if (enable)
+            {
+                if (_passphrase == null)
+                    throw new ArgumentNullException(nameof(passphrase));
+
+                if (_passphrase.Length < 12)
+                    throw new ArgumentException("Passphrase must be at least 12 characters long for adequate security.", nameof(passphrase));
+            }
         }
 
         /// <summary>
@@ -96,15 +106,18 @@ namespace Ihc
         /// var cipher = new SimpleSecret();
         /// ]]></code>
         /// </example>
-        public SimpleSecret()
+        public SimpleSecret(bool enable = true)
         {
-            _passphrase = Environment.GetEnvironmentVariable(EncryptPassphaseEnvName)
-                ?? throw new InvalidOperationException($"Missing environment variable: {EncryptPassphaseEnvName}");
-            if (string.IsNullOrEmpty(_passphrase))
-                throw new InvalidOperationException($"Environment variable {EncryptPassphaseEnvName} is empty.");
+            this.enable = enable;
+            _passphrase = Environment.GetEnvironmentVariable(EncryptPassphaseEnvName);
 
-            if (_passphrase.Length < 12)
-                throw new InvalidOperationException($"Environment variable {EncryptPassphaseEnvName} must contain at least 12 characters for adequate security.");
+            if (enable) {
+                if (string.IsNullOrEmpty(_passphrase))
+                    throw new InvalidOperationException($"Environment variable {EncryptPassphaseEnvName} is empty/missing.");
+
+                if (_passphrase.Length < 12)
+                    throw new InvalidOperationException($"Environment variable {EncryptPassphaseEnvName} must contain at least 12 characters for adequate security.");
+            }
         }
 
         /// <summary>
@@ -117,6 +130,9 @@ namespace Ihc
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="plaintext"/> is null.</exception>
         public string EncryptString(string plaintext)
         {
+            if (!enable)
+                return plaintext;
+
             if (plaintext is null) throw new ArgumentNullException(nameof(plaintext));
 
             byte[] salt  = RandomNumberGenerator.GetBytes(SaltSize);
@@ -169,6 +185,9 @@ namespace Ihc
         /// <exception cref="CryptographicException">Thrown when decryption fails (wrong passphrase or tampered data).</exception>
         public string DecryptString(string encryptedString)
         {
+            if (!enable)
+                return encryptedString;
+                
             if (encryptedString is null) throw new ArgumentNullException(nameof(encryptedString));
 
             byte[] blob;

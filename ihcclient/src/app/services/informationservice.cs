@@ -81,7 +81,7 @@ namespace Ihc.App
             using (var activity = StartActivity(nameof(GetInformationModel)))
             {
                 try
-                {
+                {                                    
                     await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
                     // Launch all API calls in parallel for efficiency

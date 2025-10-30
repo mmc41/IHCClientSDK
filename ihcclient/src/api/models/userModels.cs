@@ -41,6 +41,7 @@ namespace Ihc {
       [StringLength(20, ErrorMessage = "Password length can't be more than 20.")]
       [Required(ErrorMessage = "Username is required")]
       [DeniedValues(UserConstants.REDACTED_PASSWORD, ErrorMessage = "Password cannot be set to reserved redacted value.")]
+      [SensitiveData]
       public string Password { get; init; }
 
       [StringLength(25, ErrorMessage = "Email length can't be more than 25.")]

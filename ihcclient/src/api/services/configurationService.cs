@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using Ihc.Soap.Configuration;
 using System.Diagnostics;
+using System.Collections.Generic;
 
 namespace Ihc {
     /// <summary>
@@ -24,7 +25,7 @@ namespace Ihc {
         /// Get user log entries from the controller.
         /// </summary>
         /// <param name="lang">Language code (default: "da" for Danish)</param>
-        public Task<string[]> GetUserLog(string lang = "da");
+        public Task<IReadOnlyList<string>> GetUserLog(string lang = "da");
 
         /// <summary>
         /// Reboot the IHC controller after a delay.
@@ -73,7 +74,7 @@ namespace Ihc {
         /// <summary>
         /// Scan for available wireless networks.
         /// </summary>
-        public Task<WLanCell[]> GetWLanScan();
+        public Task<IReadOnlyList<WLanCell>> GetWLanScan();
 
         /// <summary>
         /// Get SMTP server settings for email notifications.
@@ -311,7 +312,7 @@ namespace Ihc {
             };
         }
 
-        private string[] mapLogFile(Ihc.Soap.Configuration.WSFile e)
+        private IReadOnlyList<string> mapLogFile(Ihc.Soap.Configuration.WSFile e)
         {
             if (e == null)
                 return Array.Empty<string>();
@@ -597,7 +598,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<string[]> GetUserLog(string lang) {
+        public async Task<IReadOnlyList<string>> GetUserLog(string lang) {
             using (var activity = StartActivity(nameof(GetUserLog)))
             {
                 try
@@ -773,13 +774,13 @@ namespace Ihc {
             }
         }
 
-        public async Task<WLanCell[]> GetWLanScan() {
+        public async Task<IReadOnlyList<WLanCell>> GetWLanScan() {
             using (var activity = StartActivity(nameof(GetWLanScan)))
             {
                 try
                 {
                     var resp = await impl.getWLanScanAsync(new inputMessageName13()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getWLanScan1?.Select(cell => mapWLanCell(cell)).ToArray();
+                    var retv = resp.getWLanScan1?.Select(cell => mapWLanCell(cell)).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;

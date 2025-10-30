@@ -16,51 +16,51 @@ namespace Ihc {
         /// <summary>
         /// Disable initial value notifications for specified resource IDs.
         /// </summary>
-        /// <param name="resourceIds">Array of resource IDs to disable</param>
-        public Task<bool> DisableInitialValueNotifactions(int[] resourceIds);
+        /// <param name="resourceIds">Collection of resource IDs to disable</param>
+        public Task<bool> DisableInitialValueNotifactions(IReadOnlyList<int> resourceIds);
 
         /// <summary>
         /// Disable runtime value notifications for specified resource IDs.
         /// </summary>
-        /// <param name="resourceIds">Array of resource IDs to disable</param>
-        public Task<bool> DisableRuntimeValueNotifactions(int[] resourceIds);
+        /// <param name="resourceIds">Collection of resource IDs to disable</param>
+        public Task<bool> DisableRuntimeValueNotifactions(IReadOnlyList<int> resourceIds);
 
         /// <summary>
         /// Enable initial value notifications for specified resource IDs and return current values.
         /// </summary>
-        /// <param name="resourceIds">Array of resource IDs to enable</param>
-        public Task<ResourceValue[]> EnableInitialValueNotifications(int[] resourceIds);
+        /// <param name="resourceIds">Collection of resource IDs to enable</param>
+        public Task<IReadOnlyList<ResourceValue>> EnableInitialValueNotifications(IReadOnlyList<int> resourceIds);
 
         /// <summary>
         /// Enable runtime value notifications for specified resource IDs. Must be called before WaitForResourceValueChanges.
         /// </summary>
-        /// <param name="resourceIds">Array of resource IDs to enable</param>
-        public Task<ResourceValue[]> EnableRuntimeValueNotifications(int[] resourceIds);
+        /// <param name="resourceIds">Collection of resource IDs to enable</param>
+        public Task<IReadOnlyList<ResourceValue>> EnableRuntimeValueNotifications(IReadOnlyList<int> resourceIds);
 
         /// <summary>
         /// Get all dataline input resource definitions.
         /// </summary>
-        public Task<DatalineResource[]> GetAllDatalineInputs();
+        public Task<IReadOnlyList<DatalineResource>> GetAllDatalineInputs();
 
         /// <summary>
         /// Get all dataline output resource definitions.
         /// </summary>
-        public Task<DatalineResource[]> GetAllDatalineOutputs();
+        public Task<IReadOnlyList<DatalineResource>> GetAllDatalineOutputs();
 
         /// <summary>
         /// Get all enumerator definitions from the IHC project.
         /// </summary>
-        public Task<EnumDefinition[]> GetEnumeratorDefinitions();
+        public Task<IReadOnlyList<EnumDefinition>> GetEnumeratorDefinitions();
 
         /// <summary>
         /// Get all extra dataline input resource definitions.
         /// </summary>
-        public Task<DatalineResource[]> GetExtraDatalineInputs();
+        public Task<IReadOnlyList<DatalineResource>> GetExtraDatalineInputs();
 
         /// <summary>
         /// Get all extra dataline output resource definitions.
         /// </summary>
-        public Task<DatalineResource[]> GetExtraDatalineOutputs();
+        public Task<IReadOnlyList<DatalineResource>> GetExtraDatalineOutputs();
 
         /// <summary>
         /// Get initial value for a single resource ID.
@@ -71,14 +71,14 @@ namespace Ihc {
         /// <summary>
         /// Get initial values for multiple resource IDs.
         /// </summary>
-        /// <param name="initialValues">Array of resource IDs to get initial values for</param>
-        public Task<ResourceValue[]> GetInitialValues(int[] initialValues);
+        /// <param name="initialValues">Collection of resource IDs to get initial values for</param>
+        public Task<IReadOnlyList<ResourceValue>> GetInitialValues(IReadOnlyList<int> initialValues);
 
         /// <summary>
         /// Get logged historical data for a resource ID.
         /// </summary>
         /// <param name="loggedData1">Resource ID to get logged data for</param>
-        public Task<LoggedData[]> GetLoggedData(int loggedData1);
+        public Task<IReadOnlyList<LoggedData>> GetLoggedData(int loggedData1);
 
         /// <summary>
         /// Get the type string of a resource. Refer to TypeStrings constants for valid return values.
@@ -95,8 +95,8 @@ namespace Ihc {
         /// <summary>
         /// Get current runtime values for multiple resource IDs.
         /// </summary>
-        /// <param name="resourceIDs">Array of resource IDs to get runtime values for</param>
-        public Task<ResourceValue[]> GetRuntimeValues(int[] resourceIDs);
+        /// <param name="resourceIDs">Collection of resource IDs to get runtime values for</param>
+        public Task<IReadOnlyList<ResourceValue>> GetRuntimeValues(IReadOnlyList<int> resourceIDs);
 
         /// <summary>
         /// Set value for a single resource.
@@ -107,14 +107,14 @@ namespace Ihc {
         /// <summary>
         /// Set values for multiple resources.
         /// </summary>
-        /// <param name="values">Array of resource values to set</param>
-        public Task<bool> SetResourceValues(ResourceValue[] values);
+        /// <param name="values">Collection of resource values to set</param>
+        public Task<bool> SetResourceValues(IReadOnlyList<ResourceValue> values);
 
         /// <summary>
         /// Get scene resource IDs and positions for a scene group.
         /// </summary>
         /// <param name="sceneGroupResourceIdAndPositions">Scene group resource ID</param>
-        public Task<SceneResourceIdAndLocation[]> GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions);
+        public Task<IReadOnlyList<SceneResourceIdAndLocation>> GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions);
 
         /// <summary>
         /// Get scene positions for a scene value resource.
@@ -128,17 +128,17 @@ namespace Ihc {
         /// TIP: Consider using GetResourceValueChanges instead.
         /// </summary>
         /// <param name="timeout_seconds">Timeout in seconds (default: 15)</param>
-        public Task<ResourceValue[]> WaitForResourceValueChanges(int timeout_seconds = 15);
+        public Task<IReadOnlyList<ResourceValue>> WaitForResourceValueChanges(int timeout_seconds = 15);
 
         /// <summary>
         /// Returns an async stream of value changes for specified resources.
         /// Automatically handles EnableRuntimeValueNotifications + WaitForResourceValueChanges loop.
         /// Timeout should be lower than system timeout (less than 20 seconds recommended).
         /// </summary>
-        /// <param name="resourceIds">Array of resource IDs to monitor</param>
+        /// <param name="resourceIds">Collection of resource IDs to monitor</param>
         /// <param name="cancellationToken">Cancellation token to stop monitoring</param>
         /// <param name="timeout_between_waits_in_seconds">Timeout between waits in seconds (default: 15)</param>
-        public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(int[] resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15);
+        public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(IReadOnlyList<int> resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15);
     }
 
     /// <summary>
@@ -458,7 +458,7 @@ namespace Ihc {
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
-        public async Task<bool> DisableInitialValueNotifactions(int[] resourceIds)
+        public async Task<bool> DisableInitialValueNotifactions(IReadOnlyList<int> resourceIds)
         {
             using (var activity = StartActivity(nameof(DisableInitialValueNotifactions)))
             {
@@ -466,7 +466,7 @@ namespace Ihc {
                 {
                     activity?.SetParameters((nameof(resourceIds), resourceIds));
 
-                    var result = await this.impl.disableInitialValueNotifactionsAsync(new inputMessageName7() { disableInitialValueNotifactions1 = resourceIds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var result = await this.impl.disableInitialValueNotifactionsAsync(new inputMessageName7() { disableInitialValueNotifactions1 = resourceIds.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = result.disableInitialValueNotifactions2.HasValue ? result.disableInitialValueNotifactions2.Value : false;
 
                     activity?.SetReturnValue(retv);
@@ -480,7 +480,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<bool> DisableRuntimeValueNotifactions(int[] resourceIds)
+        public async Task<bool> DisableRuntimeValueNotifactions(IReadOnlyList<int> resourceIds)
         {
             using (var activity = StartActivity(nameof(DisableRuntimeValueNotifactions)))
             {
@@ -488,7 +488,7 @@ namespace Ihc {
                 {
                     activity?.SetParameters((nameof(resourceIds), resourceIds));
 
-                    var result = await this.impl.disableRuntimeValueNotifactionsAsync(new inputMessageName5() { disableRuntimeValueNotifactions1 = resourceIds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var result = await this.impl.disableRuntimeValueNotifactionsAsync(new inputMessageName5() { disableRuntimeValueNotifactions1 = resourceIds.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = result.disableRuntimeValueNotifactions2.HasValue ? result.disableRuntimeValueNotifactions2.Value : false;
 
                     activity?.SetReturnValue(retv);
@@ -502,7 +502,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<ResourceValue[]> EnableInitialValueNotifications(int[] resourceIds)
+        public async Task<IReadOnlyList<ResourceValue>> EnableInitialValueNotifications(IReadOnlyList<int> resourceIds)
         {
             using (var activity = StartActivity(nameof(EnableInitialValueNotifications)))
             {
@@ -510,8 +510,8 @@ namespace Ihc {
                 {
                     activity?.SetParameters((nameof(resourceIds), resourceIds));
 
-                    var resp = await impl.enableInitialValueNotificationsAsync(new inputMessageName6() { enableInitialValueNotifications1 = resourceIds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.enableInitialValueNotifications2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
+                    var resp = await impl.enableInitialValueNotificationsAsync(new inputMessageName6() { enableInitialValueNotifications1 = resourceIds.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.enableInitialValueNotifications2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -524,7 +524,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<ResourceValue[]> EnableRuntimeValueNotifications(int[] resourceIds)
+        public async Task<IReadOnlyList<ResourceValue>> EnableRuntimeValueNotifications(IReadOnlyList<int> resourceIds)
         {
             using (var activity = StartActivity(nameof(EnableRuntimeValueNotifications)))
             {
@@ -532,8 +532,8 @@ namespace Ihc {
                 {
                     activity?.SetParameters((nameof(resourceIds), resourceIds));
 
-                    var resp = await impl.enableRuntimeValueNotificationsAsync(new inputMessageName4() { enableRuntimeValueNotifications1 = resourceIds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.enableRuntimeValueNotifications2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
+                    var resp = await impl.enableRuntimeValueNotificationsAsync(new inputMessageName4() { enableRuntimeValueNotifications1 = resourceIds.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.enableRuntimeValueNotifications2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -546,14 +546,14 @@ namespace Ihc {
             }
         }
 
-        public async Task<DatalineResource[]> GetAllDatalineInputs()
+        public async Task<IReadOnlyList<DatalineResource>> GetAllDatalineInputs()
         {
             using (var activity = StartActivity(nameof(GetAllDatalineInputs)))
             {
                 try
                 {
                     var resp = await impl.getAllDatalineInputsAsync(new inputMessageName12()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getAllDatalineInputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToArray();
+                    var retv = resp.getAllDatalineInputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -566,14 +566,14 @@ namespace Ihc {
             }
         }
 
-        public async Task<DatalineResource[]> GetExtraDatalineInputs()
+        public async Task<IReadOnlyList<DatalineResource>> GetExtraDatalineInputs()
         {
             using (var activity = StartActivity(nameof(GetExtraDatalineInputs)))
             {
                 try
                 {
                     var resp = await impl.getExtraDatalineInputsAsync(new inputMessageName10()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getExtraDatalineInputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToArray();
+                    var retv = resp.getExtraDatalineInputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -586,14 +586,14 @@ namespace Ihc {
             }
         }
 
-        public async Task<DatalineResource[]> GetAllDatalineOutputs()
+        public async Task<IReadOnlyList<DatalineResource>> GetAllDatalineOutputs()
         {
             using (var activity = StartActivity(nameof(GetAllDatalineOutputs)))
             {
                 try
                 {
                     var resp = await impl.getAllDatalineOutputsAsync(new inputMessageName13()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getAllDatalineOutputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToArray();
+                    var retv = resp.getAllDatalineOutputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -606,14 +606,14 @@ namespace Ihc {
             }
         }
 
-        public async Task<EnumDefinition[]> GetEnumeratorDefinitions()
+        public async Task<IReadOnlyList<EnumDefinition>> GetEnumeratorDefinitions()
         {
             using (var activity = StartActivity(nameof(GetEnumeratorDefinitions)))
             {
                 try
                 {
                     var resp = await impl.getEnumeratorDefinitionsAsync(new inputMessageName9() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getEnumeratorDefinitions1.Where((v) => v != null).Select((e) => mapMapEnumeratorDefinitions(e)).ToArray();
+                    var retv = resp.getEnumeratorDefinitions1.Where((v) => v != null).Select((e) => mapMapEnumeratorDefinitions(e)).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -626,14 +626,14 @@ namespace Ihc {
             }
         }
 
-        public async Task<DatalineResource[]> GetExtraDatalineOutputs()
+        public async Task<IReadOnlyList<DatalineResource>> GetExtraDatalineOutputs()
         {
             using (var activity = StartActivity(nameof(GetExtraDatalineOutputs)))
             {
                 try
                 {
                     var resp = await impl.getExtraDatalineOutputsAsync(new inputMessageName11()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getExtraDatalineOutputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToArray();
+                    var retv = resp.getExtraDatalineOutputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -672,7 +672,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<ResourceValue[]> GetInitialValues(int[] initialValues)
+        public async Task<IReadOnlyList<ResourceValue>> GetInitialValues(IReadOnlyList<int> initialValues)
         {
             using (var activity = StartActivity(nameof(GetInitialValues)))
             {
@@ -680,8 +680,8 @@ namespace Ihc {
                 {
                     activity?.SetParameters((nameof(initialValues), initialValues));
 
-                    var resp = await impl.getInitialValuesAsync(new inputMessageName17() { getInitialValues1 = initialValues }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getInitialValues2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
+                    var resp = await impl.getInitialValuesAsync(new inputMessageName17() { getInitialValues1 = initialValues.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.getInitialValues2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -717,7 +717,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<bool> SetResourceValues(ResourceValue[] values)
+        public async Task<bool> SetResourceValues(IReadOnlyList<ResourceValue> values)
         {
             using (var activity = StartActivity(nameof(SetResourceValues)))
             {
@@ -740,7 +740,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<LoggedData[]> GetLoggedData(int loggedData1)
+        public async Task<IReadOnlyList<LoggedData>> GetLoggedData(int loggedData1)
         {
             using (var activity = StartActivity(nameof(GetLoggedData)))
             {
@@ -749,7 +749,7 @@ namespace Ihc {
                     activity?.SetParameters((nameof(loggedData1), loggedData1));
 
                     var resp = await impl.getLoggedDataAsync(new inputMessageName20() { getLoggedData1 = loggedData1 }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getLoggedData2.Where((v) => v != null).Select((l) => new LoggedData() { Value = l.value, Id = l.id, Timestamp = DateTimeOffset.FromUnixTimeSeconds(l.timestamp) }).ToArray();
+                    var retv = resp.getLoggedData2.Where((v) => v != null).Select((l) => new LoggedData() { Value = l.value, Id = l.id, Timestamp = DateTimeOffset.FromUnixTimeSeconds(l.timestamp) }).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -810,7 +810,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<ResourceValue[]> GetRuntimeValues(int[] resourceIDs)
+        public async Task<IReadOnlyList<ResourceValue>> GetRuntimeValues(IReadOnlyList<int> resourceIDs)
         {
             using (var activity = StartActivity(nameof(GetRuntimeValues)))
             {
@@ -818,8 +818,8 @@ namespace Ihc {
                 {
                     activity?.SetParameters((nameof(resourceIDs), resourceIDs));
 
-                    var resp = await impl.getRuntimeValuesAsync(new inputMessageName16() { getRuntimeValues1 = resourceIDs }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getRuntimeValues2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
+                    var resp = await impl.getRuntimeValuesAsync(new inputMessageName16() { getRuntimeValues1 = resourceIDs.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.getRuntimeValues2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -832,7 +832,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<SceneResourceIdAndLocation[]> GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions)
+        public async Task<IReadOnlyList<SceneResourceIdAndLocation>> GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions)
         {
             using (var activity = StartActivity(nameof(GetSceneGroupResourceIdAndPositions)))
             {
@@ -841,7 +841,7 @@ namespace Ihc {
                     activity?.SetParameters((nameof(sceneGroupResourceIdAndPositions), sceneGroupResourceIdAndPositions));
 
                     var resp = await impl.getSceneGroupResourceIdAndPositionsAsync(new inputMessageName1(sceneGroupResourceIdAndPositions) {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getSceneGroupResourceIdAndPositions2.Where((v) => v != null).Select((v) => mapSceneResourceIdAndLocation(v)).ToArray();
+                    var retv = resp.getSceneGroupResourceIdAndPositions2.Where((v) => v != null).Select((v) => mapSceneResourceIdAndLocation(v)).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -876,7 +876,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<ResourceValue[]> WaitForResourceValueChanges(int timeout_seconds = 15)
+        public async Task<IReadOnlyList<ResourceValue>> WaitForResourceValueChanges(int timeout_seconds = 15)
         {
             using (var activity = StartActivity(nameof(WaitForResourceValueChanges)))
             {
@@ -885,7 +885,7 @@ namespace Ihc {
                     activity?.SetParameters((nameof(timeout_seconds), timeout_seconds));
 
                     var resp = await impl.waitForResourceValueChangesAsync(new inputMessageName8() { waitForResourceValueChanges1 = timeout_seconds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.waitForResourceValueChanges2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToArray();
+                    var retv = resp.waitForResourceValueChanges2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -898,7 +898,7 @@ namespace Ihc {
             }
         }
 
-        public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(int[] resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15)
+        public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(IReadOnlyList<int> resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15)
         {
             using (var activity = StartActivity(nameof(GetResourceValueChanges)))
             {

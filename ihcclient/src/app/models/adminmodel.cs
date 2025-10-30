@@ -6,59 +6,51 @@ using System.Linq;
 namespace Ihc.App
 {
     /// <summary>
-    /// Represents administrator-related editable information from the IHC controller.
-    /// This model captures user management, email control, and SMTP notification settings.
-    /// Reuses existing models from Ihc namespace (IhcUser, EmailControlSettings, SMTPSettings).
+    /// Contains administrator-related editable information from the IHC controller
+    /// which, can be set/read via the AdminService.
+    /// Reuses existing models from Ihc namespace.
+    /// Note that this is a mutable model unlike most other Ihc models.
     /// </summary>
-    public record AdminModel
+    public record MutableAdminModel
     {
         /// <summary>
         /// List of all users registered on the IHC controller.
-        /// Each user contains username, password, email, firstname, lastname, phone, group, etc.
-        /// Maps to existing IhcUser model array.
         /// </summary>
         public ISet<IhcUser> Users { get; set; }
 
         /// <summary>
         /// Email control settings for receiving control commands via email (POP3 configuration).
-        /// Maps to existing EmailControlSettings model.
         /// </summary>
         public EmailControlSettings EmailControl { get; set; }
 
         /// <summary>
         /// SMTP settings for sending email notifications from the controller.
-        /// Maps to existing SMTPSettings model.
         /// </summary>
         public SMTPSettings SmtpSettings { get; set; }
 
         /// <summary>
         /// DNS server configuration for the IHC controller network.
-        /// Maps to existing DNSServers model.
         /// </summary>
         public DNSServers DnsServers { get; set; }
 
         /// <summary>
         /// Network settings including IP address, netmask, gateway, and HTTP/HTTPS ports.
-        /// Maps to existing NetworkSettings model.
         /// </summary>
         public NetworkSettings NetworkSettings { get; set; }
 
         /// <summary>
         /// Web access control settings defining which applications can be accessed from different network locations.
-        /// Maps to existing WebAccessControl model.
         /// </summary>
         public WebAccessControl WebAccess { get; set; }
 
         /// <summary>
         /// Wireless LAN settings for the IHC controller network connectivity.
-        /// Maps to existing WLanSettings model.
         /// </summary>
         public WLanSettings WLanSettings { get; set; }
 
         /// <summary>
         /// This default ToString method should not be used! Use alternative with bool parameter.
         /// </summary>
-        /// <returns></returns>
         public override string ToString()
         {
             return this.ToString(true); // Unsecure - will output sensitive data
@@ -67,7 +59,6 @@ namespace Ihc.App
         /// <summary>
         /// Safely convert to string. Only convert sensitive data if LogSensitiveData set to true.
         /// </summary>
-        /// <returns></returns>
         public string ToString(bool LogSensitiveData)
         {
             var usersInfo = Users != null
@@ -78,6 +69,24 @@ namespace Ihc.App
             var wlanInfo = WLanSettings?.ToString(LogSensitiveData) ?? "null";
 
             return $"AdminModel(Users={usersInfo}, EmailControl={emailControlInfo}, SmtpSettings={smtpInfo}, DnsServers={DnsServers}, NetworkSettings={NetworkSettings}, WebAccess={WebAccess}, WLanSettings={wlanInfo})";
+        }
+
+        /// <summary>
+        /// Creates a shallow copy of the current AdminModel instance (only top-level properties as they are all immutable).
+        /// </summary>
+        /// <returns>A copy</returns>
+        public MutableAdminModel Copy()
+        {
+            return new MutableAdminModel
+            {
+                Users = this.Users != null ? new HashSet<IhcUser>(this.Users) : null,
+                EmailControl = this.EmailControl,
+                SmtpSettings = this.SmtpSettings,
+                DnsServers = this.DnsServers,
+                NetworkSettings = this.NetworkSettings,
+                WebAccess = this.WebAccess,
+                WLanSettings = this.WLanSettings
+            };
         }
     }
 

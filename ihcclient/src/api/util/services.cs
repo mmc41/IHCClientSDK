@@ -27,10 +27,10 @@ namespace Ihc
         /// <returns>Async enumerable stream of ResourceValue changes</returns>
         public static async IAsyncEnumerable<ResourceValue> GetResourceValueChanges(
             Activity activity,
-            int[] resourceIds,
-            Func<int[], Task> enableSubscription,
-            Func<int, Task<ResourceValue[]>> waitForChanges,
-            Func<int[], Task> disableSubscription,
+            IReadOnlyList<int> resourceIds,
+            Func<IReadOnlyList<int>, Task> enableSubscription,
+            Func<int, Task<IReadOnlyList<ResourceValue>>> waitForChanges,
+            Func<IReadOnlyList<int>, Task> disableSubscription,
             bool asyncContinueOnCapturedContext,
             [EnumeratorCancellation] CancellationToken cancellationToken = default,
             int timeout_between_waits_in_seconds = 15)
@@ -51,7 +51,7 @@ namespace Ihc
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     await Task.Delay(25, cancellationToken).ConfigureAwait(asyncContinueOnCapturedContext); // Give the client a short rest between calls.
-                    ResourceValue[] changes;
+                    IReadOnlyList<ResourceValue> changes;
                     try
                     {
                         changes = await waitForChanges(timeout_between_waits_in_seconds).ConfigureAwait(asyncContinueOnCapturedContext);
@@ -60,7 +60,7 @@ namespace Ihc
                     catch (Exception e)
                     {
                         activity.SetError(e);
-                        changes = new ResourceValue[] { };
+                        changes = Array.Empty<ResourceValue>();
                         if (++sequentialErrorCount > 10)
                         {
                             throw; // Fail hard if exception repeats.

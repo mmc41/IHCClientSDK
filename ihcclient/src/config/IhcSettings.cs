@@ -53,6 +53,7 @@ namespace Ihc
         /// <summary>
         /// The IHC user password. Can be set here or supplied at call time to Authenticate (optional value).
         /// </summary>
+        [SensitiveData]
         public string Password { get; set; }
 
         /// <summary>
@@ -106,10 +107,8 @@ namespace Ihc
                 throw new InvalidOperationException("Could not read IHC client settings from configuration");
             }
 
-            var encryption = config.GetSection("encryption").Get<EncryptionConfiguration>();
-            bool encrypted = encryption != null && encryption.IsEncrypted;
-
-            if (encrypted)
+            var encryption = EncryptionConfiguration.GetFromConfiguration(config);
+            if (encryption.IsEncrypted)
             {
                 var secret = new SimpleSecret();
                 settings.Password = secret.DecryptString(settings.Password);

@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using Ihc.Soap.Airlinkmanagement;
 using System.Diagnostics;
+using System.Collections.Generic;
 
 namespace Ihc
 {
@@ -40,7 +41,7 @@ namespace Ihc
         /// <summary>
         /// Get list of resource IDs for devices running out of battery.
         /// </summary>
-        Task<int[]> GetDevicesRunningOutOfBattery();
+        Task<IReadOnlyList<int>> GetDevicesRunningOutOfBattery();
 
         /// <summary>
         /// Wait for a new device to be detected during configuration.
@@ -55,7 +56,7 @@ namespace Ihc
         /// <summary>
         /// Get list of all detected RF devices.
         /// </summary>
-        Task<RFDevice[]> GetDetectedDeviceList();
+        Task<IReadOnlyList<RFDevice>> GetDetectedDeviceList();
 
         /// <summary>
         /// Get battery level for a specific resource ID.
@@ -253,14 +254,14 @@ namespace Ihc
             }
         }
 
-        public async Task<int[]> GetDevicesRunningOutOfBattery()
+        public async Task<IReadOnlyList<int>> GetDevicesRunningOutOfBattery()
         {
             using (var activity = StartActivity(nameof(GetDevicesRunningOutOfBattery)))
             {
                 try
                 {
                     var result = await impl.getDevicesRunningOutOfBatteryAsync(new inputMessageName4()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = result.getDevicesRunningOutOfBattery1 != null ? result.getDevicesRunningOutOfBattery1 : Array.Empty<int>();
+                    IReadOnlyList<int> retv = result.getDevicesRunningOutOfBattery1 != null ? result.getDevicesRunningOutOfBattery1 : Array.Empty<int>();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -317,14 +318,14 @@ namespace Ihc
             }
         }
 
-        public async Task<RFDevice[]> GetDetectedDeviceList()
+        public async Task<IReadOnlyList<RFDevice>> GetDetectedDeviceList()
         {
             using (var activity = StartActivity(nameof(GetDetectedDeviceList)))
             {
                 try
                 {
                     var result = await impl.getDetectedDeviceListAsync(new inputMessageName7()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = result.getDetectedDeviceList1 == null ? Array.Empty<RFDevice>() : result.getDetectedDeviceList1.Select(mapRFDevice).ToArray();
+                    IReadOnlyList<RFDevice> retv = result.getDetectedDeviceList1 == null ? Array.Empty<RFDevice>() : result.getDetectedDeviceList1.Select(mapRFDevice).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;

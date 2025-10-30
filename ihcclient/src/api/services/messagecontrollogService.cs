@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using Ihc.Soap.Messagecontrollog;
 using System.Diagnostics;
+using System.Collections.Generic;
 
 namespace Ihc {
     /// <summary>
@@ -18,7 +19,7 @@ namespace Ihc {
         /// <summary>
         /// Get all message control log event entries.
         /// </summary>
-        public Task<LogEventEntry[]> GetEvents();
+        public Task<IReadOnlyList<LogEventEntry>> GetEvents();
     }
 
     /// <summary>
@@ -98,14 +99,14 @@ namespace Ihc {
             }
         }
 
-        public async Task<LogEventEntry[]> GetEvents()
+        public async Task<IReadOnlyList<LogEventEntry>> GetEvents()
         {
             using (var activity = StartActivity(nameof(GetEvents)))
             {
                 try
                 {
                     var resp = await impl.getEventsAsync(new inputMessageName2()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getEvents1.Where((v) => v != null).Select((v) => mapEvent(v)).ToArray();
+                    var retv = resp.getEvents1.Where((v) => v != null).Select((v) => mapEvent(v)).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;

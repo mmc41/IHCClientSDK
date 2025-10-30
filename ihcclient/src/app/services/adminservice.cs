@@ -3,6 +3,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.IO;
+using System.Text;
+using System.Reflection;
+
 
 namespace Ihc.App
 {
@@ -16,8 +22,10 @@ namespace Ihc.App
         public readonly IAuthenticationService authService;
         private readonly IUserManagerService userService;
         private readonly IConfigurationService configService;
-        private AdminModel _originalSnapshot;
+        private MutableAdminModel _originalSnapshot;
         private readonly bool ownedServices;
+
+        private SimpleSecret secretMaker;
 
         private volatile bool rebootRequiredFlag = false;
 
@@ -26,14 +34,12 @@ namespace Ihc.App
         /// This constructor will internally create needed API services.
         /// </summary>
         /// <param name="settings">IHC configuration settings</param>
-        public AdminService(IhcSettings settings)
-            : base(settings)
+        /// <param name="fileEnryption">Should confidential fields be encrypted/decrypted in stored files</param>
+        public AdminService(IhcSettings settings, bool fileEnryption)
+            : this(settings, fileEnryption, new AuthenticationService(settings),
+                  new UserManagerService(new AuthenticationService(settings)),
+                  new ConfigurationService(new AuthenticationService(settings)))
         {
-            this.authService = new AuthenticationService(settings);
-            this.userService = new UserManagerService(authService);
-            this.configService = new ConfigurationService(authService);
-            this.ownedServices = true;
-            this.rebootRequiredFlag = false;
         }
 
         /// <summary>
@@ -41,10 +47,11 @@ namespace Ihc.App
         /// Use this constructor when you already have service instances.
         /// </summary>
         /// <param name="settings">IHC configuration settings</param>
+        /// <param name="fileEnryption">Should confidential fields be encrypted/decrypted in stored files</param>
         /// <param name="authService">Auth manager service instance</param>
         /// <param name="userService">User manager service instance</param>
         /// <param name="configService">Configuration service instance</param>
-        public AdminService(IhcSettings settings, IAuthenticationService authService, IUserManagerService userService, IConfigurationService configService)
+        public AdminService(IhcSettings settings, bool fileEnryption, IAuthenticationService authService, IUserManagerService userService, IConfigurationService configService)
             : base(settings)
         {
             this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
@@ -52,6 +59,7 @@ namespace Ihc.App
             this.configService = configService ?? throw new ArgumentNullException(nameof(configService));
             this.ownedServices = false;
             this.rebootRequiredFlag = false;
+            this.secretMaker = new SimpleSecret(enable: fileEnryption);
         }
 
         /// <summary>
@@ -90,7 +98,7 @@ namespace Ihc.App
         /// Stores an internal snapshot for change detection.
         /// </summary>
         /// <returns>AdminModel containing all administrator data</returns>
-        public async Task<AdminModel> GetModel()
+        public async Task<MutableAdminModel> GetModel()
         {
             using (var activity = StartActivity(nameof(GetModel)))
             {
@@ -101,7 +109,7 @@ namespace Ihc.App
                     var model = await DoGetModel().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
                     // Create a deep copy for the snapshot to ensure changes to returned model don't affect snapshot
-                    _originalSnapshot = new AdminModel
+                    _originalSnapshot = new MutableAdminModel
                     {
                         Users = new HashSet<IhcUser>(model.Users ?? Enumerable.Empty<IhcUser>()),
                         EmailControl = model.EmailControl,
@@ -112,7 +120,7 @@ namespace Ihc.App
                         WLanSettings = model.WLanSettings
                     };
 
-                    activity?.SetReturnValue($"AdminModel(Users={model.Users?.Count ?? 0})");
+                    activity?.SetReturnValue(model.ToString(settings.LogSensitiveData));
                     return model;
                 }
                 catch (Exception ex)
@@ -123,7 +131,7 @@ namespace Ihc.App
             }
         }
 
-        private async Task<AdminModel> DoGetModel()
+        private async Task<MutableAdminModel> DoGetModel()
         {
             var usersTask = userService.GetUsers(includePassword: true);
             var emailControlTask = configService.GetEmailControlSettings();
@@ -136,9 +144,9 @@ namespace Ihc.App
             await Task.WhenAll(usersTask, emailControlTask, smtpTask, dnsTask, networkTask, webAccessTask, wlanTask)
                 .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
-            return new AdminModel
+            return new MutableAdminModel
             {
-                Users = await usersTask,
+                Users = new HashSet<IhcUser>(await usersTask),
                 EmailControl = await emailControlTask,
                 SmtpSettings = await smtpTask,
                 DnsServers = await dnsTask,
@@ -156,13 +164,13 @@ namespace Ihc.App
         /// Updates the internal snapshot after successful save.
         /// </summary>
         /// <param name="model">Modified administrator model to save</param>
-        public async Task Store(AdminModel model)
+        public async Task Store(MutableAdminModel model)
         {
             using (var activity = StartActivity(nameof(Store)))
             {
                 try
                 {
-                    activity?.SetParameters((nameof(model), $"AdminModel(Users={model?.Users?.Count ?? 0})"));
+                    activity?.SetParameters((nameof(model), model.ToString(settings.LogSensitiveData)));
 
                     await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
@@ -195,11 +203,174 @@ namespace Ihc.App
         }
 
         /// <summary>
+        /// Save the given AdminModel as JSON to a stream. Does not change the controller.
+        /// Encrypts sensitive properties marked with [SensitiveData] attribute if encryption is enabled.
+        /// </summary>
+        /// <param name="adminModel">The admin model to save</param>
+        /// <param name="stream">The stream to write JSON to (caller is responsible for disposing)</param>
+        public async Task SaveAsJson(MutableAdminModel adminModel, Stream stream)
+        {
+            using (var activity = StartActivity(nameof(SaveAsJson)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(adminModel), adminModel.ToString(settings.LogSensitiveData)));
+
+                    var modelCopy = (MutableAdminModel)CopyUtil.DeepCopyAndApply(adminModel, (PropertyInfo prop, object value) =>
+                    {
+                        // If property has SensitiveDataAttribute, encrypt the value
+                        if (prop != null && prop.GetCustomAttribute<SensitiveDataAttribute>() != null)
+                        {
+                            // Handle null values
+                            if (value == null)
+                                return null;
+
+                            // Convert value to string unless already a string
+                            var stringValue = value as string ?? value.ToString();
+
+                            // Encrypt and return
+                            return secretMaker.EncryptString(stringValue);
+                        }
+
+                        // Otherwise just return value as-is
+                        return value;
+                    });
+
+                    var jsonOptions = new JsonSerializerOptions
+                    {
+                        WriteIndented = true,
+                        Converters = { new JsonStringEnumConverter() }
+                    };
+
+                    await JsonSerializer.SerializeAsync(stream, modelCopy, jsonOptions);
+                    await stream.FlushAsync();
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Save the given AdminModel as a JSON file at the specified path. Does not change the controller.
+        /// Encrypts sensitive properties marked with [SensitiveData] attribute if encryption is enabled.
+        /// </summary>
+        /// <param name="adminModel">The admin model to save</param>
+        /// <param name="path">File path where JSON will be written</param>
+        public async Task SaveAsJson(MutableAdminModel adminModel, string path)
+        {
+            using (var activity = StartActivity(nameof(SaveAsJson)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(adminModel), adminModel.ToString(settings.LogSensitiveData)), (nameof(path), path));
+
+                    using var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
+                    await SaveAsJson(adminModel, fileStream);
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Load the AdminModel from a JSON stream. Does not change the controller.
+        /// Must be seperately applied via Store() to change controller.
+        /// Decrypts sensitive properties marked with [SensitiveData] attribute if encryption is enabled.
+        /// </summary>
+        /// <param name="stream">The stream to read JSON from (caller is responsible for disposing)</param>
+        public async Task<MutableAdminModel> LoadFromJson(Stream stream)
+        {
+            using (var activity = StartActivity(nameof(LoadFromJson)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(stream), $"Steam with length={stream.Length}"));
+                                        
+                    var jsonOptions = new JsonSerializerOptions
+                    {
+                        WriteIndented = true,
+                        Converters = { new JsonStringEnumConverter() }
+                    };
+
+                    var adminModel = await JsonSerializer.DeserializeAsync<MutableAdminModel>(stream, jsonOptions);
+
+                    if (adminModel == null)
+                        throw new InvalidOperationException("Failed to deserialize AdminModel from JSON stream");
+
+                    // Decrypt sensitive properties using deep copy with transformation
+                    var decryptedModel = (MutableAdminModel)CopyUtil.DeepCopyAndApply(adminModel, (PropertyInfo prop, object value) =>
+                    {
+                        // If property has SensitiveDataAttribute, decrypt the value
+                        if (prop != null && prop.GetCustomAttribute<SensitiveDataAttribute>() != null)
+                        {
+                            // Handle null values
+                            if (value == null)
+                                return null;
+
+                            // Value should be a string (encrypted data)
+                            var stringValue = value as string;
+                            if (stringValue == null)
+                                return value; // If not a string, return as-is
+
+                            // Decrypt and return
+                            return secretMaker.DecryptString(stringValue);
+                        }
+
+                        // Otherwise just return value as-is
+                        return value;
+                    });
+
+                    activity?.SetReturnValue(decryptedModel.ToString(settings.LogSensitiveData));
+                    return decryptedModel;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Load the AdminModel from a JSON file at the current path. Does not change the controller.
+        /// Must be seperately applied via Store() to change controller.
+        /// Decrypts sensitive properties marked with [SensitiveData] attribute if encryption is enabled.
+        /// </summary>
+        /// <param name="path">File path to read JSON from</param>
+        public async Task<MutableAdminModel> LoadFromJson(string path)
+        {
+            using (var activity = StartActivity(nameof(LoadFromJson)))
+            {
+                try
+                {
+                    activity?.SetParameters((nameof(path), path));
+
+                    using var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+                    var result = await LoadFromJson(fileStream);
+
+                    activity?.SetReturnValue(result.ToString(settings.LogSensitiveData));
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
         /// Detect changes between original and current admin models.
         /// Uses Username-based comparison for user set operations,
         /// then deep equality for detecting actual property changes.
         /// </summary>
-        private List<AdminChange> DetectChanges(AdminModel original, AdminModel current)
+        private List<AdminChange> DetectChanges(MutableAdminModel original, MutableAdminModel current)
         {
             var changes = new List<AdminChange>();
 

@@ -4,6 +4,14 @@ using System.Text.RegularExpressions;
 namespace Ihc
 {
     /// <summary>
+    /// Attribute to mark sensitive data fields that should be redacted in telemetry/logs and optinally encrypted/decrypted when serialized to files.
+    /// </summary>
+    [System.AttributeUsage(System.AttributeTargets.Property)]
+    public class SensitiveDataAttribute: System.Attribute {
+        public SensitiveDataAttribute() { }
+    }
+
+    /// <summary>
     /// Helper class for security-related operations such as password redaction.
     /// </summary>
     internal static class SecurityHelper
@@ -40,7 +48,7 @@ namespace Ihc
         public static IEnumerable<string> RedactSessionId(string key, IEnumerable<string> input)
         {
             if (key == "Set-Cookie")
-                return [ CookieHandler.REDACTED_COOKIE ];
+                return [CookieHandler.REDACTED_COOKIE];
             else return input;
         }
     }

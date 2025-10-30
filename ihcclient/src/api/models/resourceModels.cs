@@ -27,12 +27,12 @@ namespace Ihc {
         /// <summary>
         /// The dataline number in the IHC system.
         /// </summary>
-        public int DatalineNumber { get; set; }
+        public int DatalineNumber { get; init; }
 
         /// <summary>
         /// Unique resource identifier for this dataline.
         /// </summary>
-        public int ResourceID { get; set; }
+        public int ResourceID { get; init; }
 
         public override string ToString()
         {
@@ -162,22 +162,22 @@ namespace Ihc {
         /// Type string identifying the resource type.
         /// See TypeStrings constants for valid values.
         /// </summary>
-        public string TypeString  { get; set; }
+        public string TypeString  { get; init; }
 
         /// <summary>
         /// The union value containing the actual data.
         /// </summary>
-        public UnionValue Value { get; set; }
+        public UnionValue Value { get; init; }
 
         /// <summary>
         /// Unique resource identifier in the IHC system.
         /// </summary>
-        public int ResourceID  { get; set; }
+        public int ResourceID  { get; init; }
 
         /// <summary>
         /// Indicates whether this is a runtime value (vs. configuration value).
         /// </summary>
-        public bool IsValueRuntime  { get; set; }
+        public bool IsValueRuntime  { get; init; }
 
         /// <summary>
         /// Approximately the time this value was created/changed (in most cases just approximated by the time this object was created).
@@ -250,7 +250,7 @@ namespace Ihc {
         /// <summary>
         /// The logged value as a string.
         /// </summary>
-        public string Value  { get; set; }
+        public string Value  { get; init; }
 
         /// <summary>
         /// Unique identifier for this log entry.

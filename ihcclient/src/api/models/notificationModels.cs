@@ -15,32 +15,32 @@ namespace Ihc
         /// <summary>
         /// Type of notification (e.g., email, SMS).
         /// </summary>
-        public string NotificationType;
+        public string NotificationType { get; init; }
 
         /// <summary>
         /// Recipient address or phone number.
         /// </summary>
-        public string Recipient;
+        public string Recipient { get; init; }
 
         /// <summary>
         /// Sender address or identifier.
         /// </summary>
-        public string Sender;
+        public string Sender { get; init; }
 
         /// <summary>
         /// Subject line of the notification.
         /// </summary>
-        public string Subject;
+        public string Subject { get; init; }
 
         /// <summary>
         /// Body content of the notification message.
         /// </summary>
-        public string Body;
+        public string Body { get; init; }
 
         /// <summary>
         /// Indicates whether the notification has been successfully delivered.
         /// </summary>
-        public bool Delivered;
+        public bool Delivered { get; init; }
 
         public override string ToString()
         {

@@ -8,6 +8,10 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Diagnostics;
+using OpenTelemetry;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Resources;
 
 namespace Ihc.download_upload_example
 {
@@ -16,6 +20,11 @@ namespace Ihc.download_upload_example
     /// </summary>
     class Program
     {
+        public const string AppServiceName = "IhcAdminConsole";
+        public const string AppServiceNamespace = "Ihc";
+        public const string ActivitySourceName = "IhcAdminConsole";
+        public static ActivitySource ActivitySource { get; } = new ActivitySource(name: ActivitySourceName);
+
         const string CMD_GET = "GET";
         const string CMD_STORE = "STORE";
 
@@ -42,17 +51,37 @@ namespace Ihc.download_upload_example
             }
 
             // Read configuration settings
-            var settings = IhcSettings.GetFromFile();
+            string basePath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? AppContext.BaseDirectory;
+            IConfigurationRoot config = new ConfigurationBuilder()
+                      .SetBasePath(basePath)
+                      .AddJsonFile("ihcsettings.json")
+                      .Build();
+
+            var encrypted = EncryptionConfiguration.GetFromConfiguration(config);
+            var settings = IhcSettings.GetFromConfiguration(config);
+            var telemetryConfig = TelemetryConfiguration.GetFromConfiguration(config);            
 
             // Create client for IHC services that this utility use:
 
             try
             {
-                using (var adminServer = new AdminService(settings))
+                using var telmetryTracerProvider = Sdk.CreateTracerProviderBuilder()
+                    .SetErrorStatusOnException(true)
+                    .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: AppServiceName, serviceNamespace: AppServiceNamespace))
+                    .AddSource(Ihc.Telemetry.ActivitySourceName, ActivitySourceName)
+                    .AddOtlpExporter(opts =>
+                    {
+                        opts.Endpoint = new Uri(telemetryConfig.Traces);
+                        if (!string.IsNullOrEmpty(telemetryConfig.Headers))
+                            opts.Headers = telemetryConfig.Headers;
+                        opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+                    }).Build();
+                
+                using (var adminServer = new AdminService(settings, encrypted.IsEncrypted))
                 {
                     if (command == CMD_GET)
                     {
-                        AdminModel adminModel = await adminServer.GetModel();
+                        MutableAdminModel adminModel = await adminServer.GetModel();
                         var jsonOptions = new JsonSerializerOptions
                         {
                             WriteIndented = true,
@@ -70,7 +99,7 @@ namespace Ihc.download_upload_example
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed operation: {ex.Message}");
+                Console.WriteLine($"Failed operation:{ex.Message} : {ex.StackTrace}");
             }
         }
     }
