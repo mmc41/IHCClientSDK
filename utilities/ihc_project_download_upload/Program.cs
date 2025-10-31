@@ -5,14 +5,21 @@ using Ihc;
 using Microsoft.Extensions.Configuration;
 using System.Reflection;
 using System.Text;
+using OpenTelemetry;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Resources;
 
 namespace Ihc.download_upload_example
-{
+{      
     /// <summary>
     /// Download or upload an IHC project file
     /// </summary>
     class Program
     {
+        public const string AppServiceName = "IhcProjectDownLoadUpLoad";
+        public const string AppServiceNamespace = "Ihc";
+        public const string ActivitySourceName = "IhcProjectDownLoadUpLoad";
+    
         const string CMD_GET = "GET";
         const string CMD_STORE = "STORE";
 
@@ -39,7 +46,15 @@ namespace Ihc.download_upload_example
             }
 
             // Read configuration settings
-            var settings = IhcSettings.GetFromFile();
+            string basePath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? AppContext.BaseDirectory;
+            IConfigurationRoot config = new ConfigurationBuilder()
+                      .SetBasePath(basePath)
+                      .AddJsonFile("ihcsettings.json")
+                      .Build();
+
+            // Read configuration settings
+            var settings = IhcSettings.GetFromConfiguration(config);
+            var telemetryConfig = TelemetryConfiguration.GetFromConfiguration(config);
 
             // Create client for IHC services that this utility use:
             var authService = new AuthenticationService(settings);
@@ -49,6 +64,21 @@ namespace Ihc.download_upload_example
 
             try
             {
+                using var telmetryTracerProvider = Sdk.CreateTracerProviderBuilder()
+                    .SetErrorStatusOnException(true)
+                    .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: AppServiceName, serviceNamespace: AppServiceNamespace))
+                    .AddSource(Ihc.Telemetry.ActivitySourceName, ActivitySourceName)
+                    .AddOtlpExporter(opts =>
+                    {
+                        if (!string.IsNullOrEmpty(telemetryConfig.Traces))
+                        {
+                            opts.Endpoint = new Uri(telemetryConfig.Traces);
+                            opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+                            if (!string.IsNullOrEmpty(telemetryConfig.Headers))
+                                opts.Headers = telemetryConfig.Headers;
+                        }
+                    }).Build();
+
                 // Authenticate against IHC system. 
                 var login = await authService.Authenticate();
 

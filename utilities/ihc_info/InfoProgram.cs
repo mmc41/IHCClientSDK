@@ -5,6 +5,8 @@ using OpenTelemetry;
 using OpenTelemetry.Trace;
 using OpenTelemetry.Resources;
 using System.Diagnostics;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Ihc.example
 {
@@ -15,7 +17,7 @@ namespace Ihc.example
     {
         public const string AppServiceName = "IhcInfoConsole";
         public const string AppServiceNamespace = "Ihc";
-        public const string ActivitySourceName = "IhcLab";
+        public const string ActivitySourceName = "IhcInfo";
         public static ActivitySource ActivitySource { get; } = new ActivitySource(name: ActivitySourceName);
 
         static async Task Main(string[] args)
@@ -32,24 +34,35 @@ namespace Ihc.example
 
             try
             {
-
                  using var telmetryTracerProvider = Sdk.CreateTracerProviderBuilder()
                     .SetErrorStatusOnException(true)
                     .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: AppServiceName, serviceNamespace: AppServiceNamespace))
                     .AddSource(Ihc.Telemetry.ActivitySourceName, ActivitySourceName)
                     .AddOtlpExporter(opts =>
                     {
-                        opts.Endpoint = new Uri(telemetryConfig.Traces);
-                        if (!string.IsNullOrEmpty(telemetryConfig.Headers))
-                            opts.Headers = telemetryConfig.Headers;
-                        opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+                        if (!string.IsNullOrEmpty(telemetryConfig.Traces))
+                        {
+                            opts.Endpoint = new Uri(telemetryConfig.Traces);
+                            opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+                            if (!string.IsNullOrEmpty(telemetryConfig.Headers))
+                                opts.Headers = telemetryConfig.Headers;
+                        }
                     }).Build();
 
                 // Create client information app service.
                 using (InformationService infoService = new InformationService(settings))
                 {
                     var info = await infoService.GetInformationModel();
-                    Console.WriteLine($"IHC information: {info}");
+
+                    var jsonOptions = new JsonSerializerOptions
+                    {
+                        WriteIndented = true,
+                        Converters = { new JsonStringEnumConverter() }
+                    };
+
+                    string json = JsonSerializer.Serialize(info, jsonOptions);
+
+                    Console.WriteLine($"IHC information: {json}");
                 }
             } catch (Exception ex)
             {

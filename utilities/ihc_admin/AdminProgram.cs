@@ -71,10 +71,13 @@ namespace Ihc.download_upload_example
                     .AddSource(Ihc.Telemetry.ActivitySourceName, ActivitySourceName)
                     .AddOtlpExporter(opts =>
                     {
-                        opts.Endpoint = new Uri(telemetryConfig.Traces);
-                        if (!string.IsNullOrEmpty(telemetryConfig.Headers))
-                            opts.Headers = telemetryConfig.Headers;
-                        opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+                        if (!string.IsNullOrEmpty(telemetryConfig.Traces))
+                        {
+                            opts.Endpoint = new Uri(telemetryConfig.Traces);
+                            opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+                            if (!string.IsNullOrEmpty(telemetryConfig.Headers))
+                                opts.Headers = telemetryConfig.Headers;
+                        }
                     }).Build();
                 
                 using (var adminServer = new AdminService(settings, encrypted.IsEncrypted))
