@@ -119,13 +119,9 @@ namespace Ihc.App
         /// </summary>
         public void Dispose()
         {
-            if (ownedServices)
+            if (ownedServices & authService!=null)
             {
-                (smsModemService as IDisposable)?.Dispose();
-                (controllerService as IDisposable)?.Dispose();
-                (configService as IDisposable)?.Dispose();
-                (timeService as IDisposable)?.Dispose();
-                (authService as IDisposable)?.Dispose();
+                authService.Dispose();
             }
         }
 
@@ -134,12 +130,9 @@ namespace Ihc.App
         /// </summary>
         public async ValueTask DisposeAsync()
         {
-            if (ownedServices)
+            if (ownedServices && authService!=null)
             {
-                if (authService is IAsyncDisposable authDisposable)
-                    await authDisposable.DisposeAsync();
-                else
-                    (authService as IDisposable)?.Dispose();
+                await authService.DisposeAsync();
             }
         }
     }

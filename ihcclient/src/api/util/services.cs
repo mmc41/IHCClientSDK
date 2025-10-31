@@ -82,7 +82,8 @@ namespace Ihc
             {
                 try
                 {
-                    await Task.Delay(25, cancellationToken).ConfigureAwait(asyncContinueOnCapturedContext); // Give the client a short rest between calls.
+                    // Give the client a short rest between calls - no cancellation here to avoid masking exceptions.
+                    await Task.Delay(25, CancellationToken.None).ConfigureAwait(asyncContinueOnCapturedContext);
                     await disableSubscription(resourceIds).ConfigureAwait(asyncContinueOnCapturedContext);
                 }
                 catch (Exception e)

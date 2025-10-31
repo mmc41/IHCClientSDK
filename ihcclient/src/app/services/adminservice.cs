@@ -28,16 +28,23 @@ namespace Ihc.App
         public bool RebootRequired { get;  init; }
     }
     /// <summary>
-    /// High level application service for managing administrator-related data including users, email, SMTP and network settings.
-    /// Provides change tracking and efficient updates to the IHC controller. 
+    /// High-level application service for managing administrator-related data including users, email, SMTP, DNS, network, web access, and WLAN settings.
+    /// Provides change tracking and efficient updates to the IHC controller by detecting and applying only modified settings.
+    /// Supports JSON serialization/deserialization with optional encryption of sensitive data.
     /// Will auto-authenticate with provided settings unless already authenticated.
     /// </summary>
+    /// <remarks>
+    /// This service maintains an internal snapshot of the last retrieved model for efficient change detection.
+    /// When saving via Store(), only the detected changes are sent to the controller, minimizing API calls.
+    /// Some configuration changes (DNS, network, WLAN) require a controller reboot to take effect.
+    /// </remarks>
     public class AdminService : ServiceBase, IDisposable, IAsyncDisposable
     {
         public readonly IAuthenticationService authService;
         private readonly IUserManagerService userService;
         private readonly IConfigurationService configService;
         private MutableAdminModel _originalSnapshot;
+        private readonly object _snapshotLock = new object();
         private readonly bool ownedServices;
 
         private SimpleSecret secretMaker;
@@ -49,14 +56,12 @@ namespace Ihc.App
         /// <param name="settings">IHC configuration settings</param>
         /// <param name="fileEnryption">Should confidential fields be encrypted/decrypted in stored files</param>
         public AdminService(IhcSettings settings, bool fileEnryption)
-            : this(settings, fileEnryption, new AuthenticationService(settings),
-                  new UserManagerService(new AuthenticationService(settings)),
-                  new ConfigurationService(new AuthenticationService(settings)))
+            : base(settings)
         {
             this.authService = new AuthenticationService(settings);
             this.userService = new UserManagerService(this.authService);
             this.configService = new ConfigurationService(this.authService);
-            this.ownedServices = false;
+            this.ownedServices = true;
             this.secretMaker = new SimpleSecret(enable: fileEnryption);
         }
 
@@ -80,9 +85,12 @@ namespace Ihc.App
         }
 
         /// <summary>
-        /// Reboot the IHC controller.
+        /// Reboot the IHC controller with a 1-second delay.
         /// </summary>
-        /// <returns></returns>
+        /// <remarks>
+        /// This method is typically called after making configuration changes that require a reboot (DNS, network, WLAN settings).
+        /// The controller will restart after approximately 1 second.
+        /// </remarks>
         public async Task Restart()
         {
                 await configService.DelayedReboot(1);
@@ -101,10 +109,15 @@ namespace Ihc.App
 
         /// <summary>
         /// Get administrator model filled with data from IHC controller APIs.
-        /// Retrieves users, email control settings, and SMTP settings.
-        /// Stores an internal snapshot for change detection.
+        /// Retrieves users, email control settings, SMTP settings, DNS servers, network settings, web access control, and WLAN settings.
+        /// Stores an internal snapshot for change detection used by Store() method.
         /// </summary>
-        /// <returns>AdminModel containing all administrator data</returns>
+        /// <returns>MutableAdminModel containing all administrator data from the controller</returns>
+        /// <remarks>
+        /// This method performs sequential API calls to retrieve all configuration data.
+        /// The returned model can be modified and saved back using Store() method.
+        /// Validates all data annotations before returning.
+        /// </remarks>
         public async Task<MutableAdminModel> GetModel()
         {
             using (var activity = StartActivity(nameof(GetModel)))
@@ -115,20 +128,14 @@ namespace Ihc.App
 
                     var model = await DoGetModel().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
-                    // Create a deep copy for the snapshot to ensure changes to returned model don't affect snapshot
-                    _originalSnapshot = new MutableAdminModel
-                    {
-                        Users = new HashSet<IhcUser>(model.Users ?? Enumerable.Empty<IhcUser>()),
-                        EmailControl = model.EmailControl,
-                        SmtpSettings = model.SmtpSettings,
-                        DnsServers = model.DnsServers,
-                        NetworkSettings = model.NetworkSettings,
-                        WebAccess = model.WebAccess,
-                        WLanSettings = model.WLanSettings
-                    };
-
                     // Extra check that the model values fullfill constrains (should always be valid unless the sdk has wrong contrains set).
                     ValidationHelper.ValidateDataAnnotations(model, nameof(model));
+
+                    // Create a deep copy for the snapshot to ensure changes to returned model don't affect snapshot
+                    lock (_snapshotLock)
+                    {
+                        _originalSnapshot = model.Copy();
+                    }
 
                     activity?.SetReturnValue(model.ToString(settings.LogSensitiveData));
                     return model;
@@ -141,28 +148,34 @@ namespace Ihc.App
             }
         }
 
+        /// <summary>
+        /// Internal method to retrieve all administrator settings from the IHC controller.
+        /// Performs sequential API calls to fetch users, email, SMTP, DNS, network, web access, and WLAN settings.
+        /// </summary>
+        /// <returns>MutableAdminModel populated with data from the controller</returns>
+        /// <remarks>
+        /// This method executes API calls sequentially to ensure predictable behavior and avoid overwhelming the controller.
+        /// Called by both GetModel() for initial retrieval and Store() for loading snapshots when needed.
+        /// </remarks>
         private async Task<MutableAdminModel> DoGetModel()
         {
-            var usersTask = userService.GetUsers(includePassword: true);
-            var emailControlTask = configService.GetEmailControlSettings();
-            var smtpTask = configService.GetSMTPSettings();
-            var dnsTask = configService.GetDNSServers();
-            var networkTask = configService.GetNetworkSettings();
-            var webAccessTask = configService.GetWebAccessControl();
-            var wlanTask = configService.GetWLanSettings();
-
-            await Task.WhenAll(usersTask, emailControlTask, smtpTask, dnsTask, networkTask, webAccessTask, wlanTask)
-                .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            var users = await userService.GetUsers(includePassword: true).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            var emailControl = await configService.GetEmailControlSettings().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            var smtp = await configService.GetSMTPSettings().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            var dns = await configService.GetDNSServers().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            var network = await configService.GetNetworkSettings().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            var webAccess = await configService.GetWebAccessControl().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            var wlan = await configService.GetWLanSettings().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
             return new MutableAdminModel
             {
-                Users = new HashSet<IhcUser>(await usersTask),
-                EmailControl = await emailControlTask,
-                SmtpSettings = await smtpTask,
-                DnsServers = await dnsTask,
-                NetworkSettings = await networkTask,
-                WebAccess = await webAccessTask,
-                WLanSettings = await wlanTask
+                Users = new HashSet<IhcUser>(users),
+                EmailControl = emailControl,
+                SmtpSettings = smtp,
+                DnsServers = dns,
+                NetworkSettings = network,
+                WebAccess = webAccess,
+                WLanSettings = wlan
             };
         }
 
@@ -174,6 +187,12 @@ namespace Ihc.App
         /// Updates the internal snapshot after successful save.
         /// </summary>
         /// <param name="model">Modified administrator model to save</param>
+        /// <returns>ChangeInformation containing the number of changes applied and whether a reboot is required</returns>
+        /// <remarks>
+        /// This method validates the model using data annotations before applying changes.
+        /// Changes to DNS servers, network settings, or WLAN settings will set the RebootRequired flag.
+        /// If no changes are detected, no API calls are made to the controller.
+        /// </remarks>
         public async Task<ChangeInformation> Store(MutableAdminModel model)
         {
             using (var activity = StartActivity(nameof(Store)))
@@ -182,24 +201,40 @@ namespace Ihc.App
                 {
                     activity?.SetParameters((nameof(model), model.ToString(settings.LogSensitiveData)));
 
-                    ValidationHelper.ValidateDataAnnotations(model, nameof(model));
+                    // Make defensive copy to protect against concurrent mutation now and later
+                    var modelCopy = model.Copy();
+                    
+                    ValidationHelper.ValidateDataAnnotations(modelCopy, nameof(modelCopy));
 
                     await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
                     // Load snapshot from controller if not present
-                    if (_originalSnapshot == null)
+                    MutableAdminModel snapshot = null;
+                    lock (_snapshotLock)
                     {
-                        _originalSnapshot = await DoGetModel().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                        snapshot = _originalSnapshot;
                     }
 
-                    var changes = DetectChanges(_originalSnapshot, model);
+                    if (snapshot == null)
+                    {
+                        snapshot = await DoGetModel().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                        lock (_snapshotLock)
+                        {
+                            _originalSnapshot = snapshot;
+                        }
+                    }
+
+                    var changes = DetectChanges(snapshot, modelCopy);
                     bool rebootRequiredFlag = false;
                     if (changes.Count > 0)
                     {
                         rebootRequiredFlag = await ApplyChanges(changes).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     }
 
-                    _originalSnapshot = model;
+                    lock (_snapshotLock)
+                    {
+                        _originalSnapshot = modelCopy;
+                    }
 
                     var retv = new ChangeInformation
                     {
@@ -297,10 +332,13 @@ namespace Ihc.App
 
         /// <summary>
         /// Load the AdminModel from a JSON stream. Does not change the controller.
-        /// Must be seperately applied via Store() to change controller.
+        /// Must be separately applied via Store() to change controller.
         /// Decrypts sensitive properties marked with [SensitiveData] attribute if encryption is enabled.
         /// </summary>
         /// <param name="stream">The stream to read JSON from (caller is responsible for disposing)</param>
+        /// <returns>MutableAdminModel deserialized from JSON with sensitive data decrypted if encryption is enabled</returns>
+        /// <exception cref="InvalidOperationException">Thrown when deserialization fails or returns null</exception>
+        /// <exception cref="System.Text.Json.JsonException">Thrown when JSON format is invalid</exception>
         public async Task<MutableAdminModel> LoadFromJson(Stream stream)
         {
             using (var activity = StartActivity(nameof(LoadFromJson)))
@@ -355,11 +393,15 @@ namespace Ihc.App
         }
 
         /// <summary>
-        /// Load the AdminModel from a JSON file at the current path. Does not change the controller.
-        /// Must be seperately applied via Store() to change controller.
+        /// Load the AdminModel from a JSON file at the specified path. Does not change the controller.
+        /// Must be separately applied via Store() to change controller.
         /// Decrypts sensitive properties marked with [SensitiveData] attribute if encryption is enabled.
         /// </summary>
         /// <param name="path">File path to read JSON from</param>
+        /// <returns>MutableAdminModel deserialized from JSON file with sensitive data decrypted if encryption is enabled</returns>
+        /// <exception cref="FileNotFoundException">Thrown when the specified file does not exist</exception>
+        /// <exception cref="InvalidOperationException">Thrown when deserialization fails or returns null</exception>
+        /// <exception cref="System.Text.Json.JsonException">Thrown when JSON format is invalid</exception>
         public async Task<MutableAdminModel> LoadFromJson(string path)
         {
             using (var activity = StartActivity(nameof(LoadFromJson)))
@@ -387,6 +429,14 @@ namespace Ihc.App
         /// Uses Username-based comparison for user set operations,
         /// then deep equality for detecting actual property changes.
         /// </summary>
+        /// <param name="original">Original admin model from the controller snapshot</param>
+        /// <param name="current">Current admin model with potential modifications</param>
+        /// <returns>List of AdminChange objects representing detected differences</returns>
+        /// <remarks>
+        /// For users: Compares by Username to detect additions, deletions, and updates.
+        /// For other settings: Uses default record equality for deep comparison.
+        /// Network settings are intentionally ordered last as they may affect connectivity.
+        /// </remarks>
         private List<AdminChange> DetectChanges(MutableAdminModel original, MutableAdminModel current)
         {
             var changes = new List<AdminChange>();
@@ -503,6 +553,13 @@ namespace Ihc.App
         /// Apply detected changes to the IHC controller via API services.
         /// Sets RebootRequired flag if network-related changes are made.
         /// </summary>
+        /// <param name="changes">List of changes to apply to the controller</param>
+        /// <returns>True if a reboot is required for changes to take effect, false otherwise</returns>
+        /// <remarks>
+        /// Changes are applied sequentially in the order provided.
+        /// DNS, network, and WLAN changes require a controller reboot and will set the return value to true.
+        /// Each change type is routed to the appropriate service method (UserManagerService or ConfigurationService).
+        /// </remarks>
         private async Task<bool> ApplyChanges(List<AdminChange> changes)
         {
             bool rebootRequiredFlag = false;
@@ -569,11 +626,9 @@ namespace Ihc.App
         /// </summary>
         public void Dispose()
         {
-            if (ownedServices)
+            if (ownedServices & authService!=null)
             {
-                (userService as IDisposable)?.Dispose();
-                (configService as IDisposable)?.Dispose();
-                (authService as IDisposable)?.Dispose();
+                authService.Dispose();
             }
         }
 
@@ -582,9 +637,9 @@ namespace Ihc.App
         /// </summary>
         public async ValueTask DisposeAsync()
         {
-            if (ownedServices)
+            if (ownedServices && authService!=null)
             {
-                await authService.DisposeAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                await authService.DisposeAsync();
             }
         }
     }
