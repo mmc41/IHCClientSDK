@@ -39,7 +39,7 @@ namespace Ihc {
       public string Username { get; init; }
 
       [StringLength(20, ErrorMessage = "Password length can't be more than 20.")]
-      [Required(ErrorMessage = "Username is required")]
+      [Required(ErrorMessage = "Password is required")]
       [DeniedValues(UserConstants.REDACTED_PASSWORD, ErrorMessage = "Password cannot be set to reserved redacted value.")]
       [SensitiveData]
       public string Password { get; init; }
@@ -55,8 +55,9 @@ namespace Ihc {
 
       [StringLength(15, ErrorMessage = "Phone length can't be more than 15.")]
       public string Phone { get; init; }
-      
+
       [AllowedValues(IhcUserGroup.Administrators, IhcUserGroup.Users, ErrorMessage = "Group must be either 'Administrators' or 'Users'.")]
+      [Required(ErrorMessage = "Group is required")]
       public IhcUserGroup Group { get; init; }
       public string Project { get; init; }
 

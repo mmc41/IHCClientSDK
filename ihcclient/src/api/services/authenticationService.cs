@@ -276,6 +276,19 @@ namespace Ihc {
         {
             try
             {
+                // Block synchronously - this ensures cleanup completes
+                DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+            catch (Exception)
+            {
+                // Ignore exceptions during dispose
+            }
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            try
+            {
                 bool shouldDisconnect;
                 lock (isConnectedLock)
                 {
@@ -284,20 +297,13 @@ namespace Ihc {
 
                 if (shouldDisconnect)
                 {
-                    Task.Run(() => this.Disconnect());
+                    await Disconnect().ConfigureAwait(false);
                 }
             }
-            catch (Exception)
+            finally
             {
-                // Ignore exceptions during dispose
+                GC.SuppressFinalize(this);
             }
-            GC.SuppressFinalize(this);
-        }
-
-        public async ValueTask DisposeAsync()
-        {
-            await this.Disconnect().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            GC.SuppressFinalize(this);
         }
     }
 }

@@ -81,19 +81,20 @@ namespace Ihc.download_upload_example
                 {
                     if (command == CMD_GET)
                     {
-                        MutableAdminModel adminModel = await adminServer.GetModel();
-                        var jsonOptions = new JsonSerializerOptions
-                        {
-                            WriteIndented = true,
-                            Converters = { new JsonStringEnumConverter() }
-                        };
-                        string adminJson = JsonSerializer.Serialize(adminModel, jsonOptions);
-                        await File.WriteAllTextAsync(path, adminJson, Encoding.UTF8);
-                        Console.WriteLine($"Administration file downloaded to {path}");
+                        var adminModel = await adminServer.GetModel();
+                        await adminServer.SaveAsJson(adminModel, path);
+                        Console.WriteLine($"Administration setup file sucessfully saved to {path}");
                     }
                     else if (command == CMD_STORE)
                     {
-                        // TODO: Implement upload functionality
+                        var model = await adminServer.LoadFromJson(path);
+                        var changes = await adminServer.Store(model);
+                        Console.WriteLine($"Administration setup in file {path} sucessfully appplied with {changes.ChangeCount} changes to IHC controller");
+                        if (changes.RebootRequired)
+                        {
+                            Console.WriteLine($"Rebooting IHC controller");
+                            await adminServer.Restart();
+                        }
                     }
                 }
             }

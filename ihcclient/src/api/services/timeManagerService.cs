@@ -228,7 +228,7 @@ namespace Ihc {
                 {
                     activity?.SetParameters((nameof(settings), settings));
 
-                    ValidationHelper.ValidateObject(settings, nameof(settings));
+                    ValidationHelper.ValidateDataAnnotations(settings, nameof(settings));
 
                     var wsSettings = mapSettings(settings);
                     var resp = await impl.setSettingsAsync(new inputMessageName4 { setSettings1 = wsSettings }).ConfigureAwait(this.settings.AsyncContinueOnCapturedContext);

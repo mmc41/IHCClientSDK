@@ -5,7 +5,7 @@ using System.Diagnostics;
 namespace Ihc.App
 {
     /// <summary>
-    /// Service for retrieving non-editable information from the IHC controller.
+    /// High level application service for retrieving a broad set of non-editable information from the IHC controller.
     /// Provides access to system status, versions, time settings, and controller information.
     /// Will auto-authenticate with provided settings unless already authenticated.
     /// </summary>
@@ -14,7 +14,6 @@ namespace Ihc.App
         public readonly IAuthenticationService authService;
         private readonly IConfigurationService configService;
         private readonly ITimeManagerService timeService;
-        private readonly IOpenAPIService openApiService;
         private readonly IControllerService controllerService;
         private readonly ISmsModelService smsModemService;
         private readonly bool ownedServices;
@@ -30,7 +29,6 @@ namespace Ihc.App
             this.authService = new AuthenticationService(settings);
             this.configService = new ConfigurationService(authService);
             this.timeService = new TimeManagerService(authService);
-            this.openApiService = new OpenAPIService(settings);
             this.controllerService = new ControllerService(authService);
             this.smsModemService = new SmsModemService(authService);
             this.ownedServices = true;
@@ -44,16 +42,14 @@ namespace Ihc.App
         /// <param name="authService">Auth manager service instance</param>
         /// <param name="configService">Configuration service instance</param>
         /// <param name="timeService">Time manager service instance</param>
-        /// <param name="openApiService">OpenAPI service instance</param>
         /// <param name="controllerService">Controller service instance</param>
         /// <param name="smsModemService">SMS modem service instance</param>
-        public InformationService(IhcSettings settings, IAuthenticationService authService, IConfigurationService configService, ITimeManagerService timeService, IOpenAPIService openApiService, IControllerService controllerService, ISmsModelService smsModemService)
+        public InformationService(IhcSettings settings, IAuthenticationService authService, IConfigurationService configService, ITimeManagerService timeService, IControllerService controllerService, ISmsModelService smsModemService)
             : base(settings)
         {
             this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
             this.configService = configService ?? throw new ArgumentNullException(nameof(configService));
             this.timeService = timeService ?? throw new ArgumentNullException(nameof(timeService));
-            this.openApiService = openApiService ?? throw new ArgumentNullException(nameof(openApiService));
             this.controllerService = controllerService ?? throw new ArgumentNullException(nameof(controllerService));
             this.smsModemService = smsModemService ?? throw new ArgumentNullException(nameof(smsModemService));
             this.ownedServices = false;
@@ -84,34 +80,19 @@ namespace Ihc.App
                 {                                    
                     await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
-                    // Launch all API calls in parallel for efficiency
-                    var uptimeTask = openApiService.GetUptime();
-                    var controllerTimeTask = openApiService.GetTime();
-                    var softwareVersionTask = openApiService.GetFWVersion();
-                    var controllerStatusTask = controllerService.GetControllerState();
-                    var sdCardTask = controllerService.GetSDCardInfo();
-                    var smsModemInfoTask = smsModemService.GetSmsModemInfo();
-                    var systemInfoTask = configService.GetSystemInfo();
-
-                    await Task.WhenAll(
-                        uptimeTask,
-                        controllerTimeTask,
-                        softwareVersionTask,
-                        controllerStatusTask,
-                        sdCardTask,
-                        smsModemInfoTask,
-                        systemInfoTask
-                    ).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-
-                    var systemInfo = await systemInfoTask;
+                    // Execute API calls sequentially - systemInfo provides uptime, time, and version data
+                    var systemInfo = await configService.GetSystemInfo().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var controllerStatus = await controllerService.GetControllerState().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var sdCard = await controllerService.GetSDCardInfo().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var smsModemInfo = await smsModemService.GetSmsModemInfo().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
                     var retv = new InformationModel
                     {
-                        Uptime = await uptimeTask,
-                        ControllerTime =systemInfo?.Realtimeclock ?? default,
-                        SoftwareVersion = await softwareVersionTask,
-                        ControllerStatus = await controllerStatusTask,
-                        SdCard = await sdCardTask,
+                        Uptime = systemInfo?.Uptime != null ? TimeSpan.FromMilliseconds(systemInfo.Uptime) : default,
+                        ControllerTime = systemInfo?.Realtimeclock ?? default,
+                        SoftwareVersion = systemInfo?.Version,
+                        ControllerStatus = controllerStatus,
+                        SdCard = sdCard,
                         SmsModemVersion = systemInfo?.SmsModemSoftwareVersion,
                         SerialNumber = systemInfo?.SerialNumber,
                         ProductionDate = systemInfo?.ProductionDate,
@@ -122,7 +103,7 @@ namespace Ihc.App
                         SoftwareDate = systemInfo?.SWDate ?? default,
                     };
 
-                    activity?.SetReturnValue("InformationModel");
+                    activity?.SetReturnValue(retv);
                     return retv;
                 }
                 catch (Exception ex)
@@ -142,7 +123,6 @@ namespace Ihc.App
             {
                 (smsModemService as IDisposable)?.Dispose();
                 (controllerService as IDisposable)?.Dispose();
-                (openApiService as IDisposable)?.Dispose();
                 (configService as IDisposable)?.Dispose();
                 (timeService as IDisposable)?.Dispose();
                 (authService as IDisposable)?.Dispose();
@@ -156,31 +136,6 @@ namespace Ihc.App
         {
             if (ownedServices)
             {
-                if (smsModemService is IAsyncDisposable smsModemDisposable)
-                    await smsModemDisposable.DisposeAsync();
-                else
-                    (smsModemService as IDisposable)?.Dispose();
-
-                if (controllerService is IAsyncDisposable controllerDisposable)
-                    await controllerDisposable.DisposeAsync();
-                else
-                    (controllerService as IDisposable)?.Dispose();
-
-                if (openApiService is IAsyncDisposable openApiDisposable)
-                    await openApiDisposable.DisposeAsync();
-                else
-                    (openApiService as IDisposable)?.Dispose();
-
-                if (configService is IAsyncDisposable configDisposable)
-                    await configDisposable.DisposeAsync();
-                else
-                    (configService as IDisposable)?.Dispose();
-
-                if (timeService is IAsyncDisposable timeDisposable)
-                    await timeDisposable.DisposeAsync();
-                else
-                    (timeService as IDisposable)?.Dispose();
-
                 if (authService is IAsyncDisposable authDisposable)
                     await authDisposable.DisposeAsync();
                 else

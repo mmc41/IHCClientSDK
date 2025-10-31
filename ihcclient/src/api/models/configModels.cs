@@ -115,18 +115,21 @@ namespace Ihc {
         /// IP address of the controller.
         /// </summary>
         [StringLength(15, ErrorMessage = "IpAddress length can't be more than 15.")]
+        [Required(ErrorMessage = "IpAddress is required")]
         public string IpAddress { get; init; }
 
         /// <summary>
         /// Network mask.
         /// </summary>
         [StringLength(15, ErrorMessage = "Netmask length can't be more than 15.")]
+        [Required(ErrorMessage = "Netmask is required")]
         public string Netmask { get; init; }
 
         /// <summary>
         /// Gateway IP address.
         /// </summary>
         [StringLength(15, ErrorMessage = "Gateway length can't be more than 15.")]
+        [Required(ErrorMessage = "Gateway is required")]
         public string Gateway { get; init; }
 
         /// <summary>
@@ -183,18 +186,21 @@ namespace Ihc {
         /// IP address for WLAN interface.
         /// </summary>
         [StringLength(15, ErrorMessage = "IpAddress length can't be more than 15.")]
+        [Required(ErrorMessage = "IpAddress is required")]        
         public string IpAddress { get; init; }
 
         /// <summary>
         /// Network mask for WLAN interface.
         /// </summary>
         [StringLength(15, ErrorMessage = "Netmask length can't be more than 15.")]
+        [Required(ErrorMessage = "Netmask is required")]   
         public string Netmask { get; init; }
 
         /// <summary>
         /// Gateway for WLAN interface.
         /// </summary>
         [StringLength(15, ErrorMessage = "Gateway length can't be more than 15.")]
+        [Required(ErrorMessage = "Gateway is required")]   
         public string Gateway { get; init; }
 
         /// <summary>
@@ -246,49 +252,55 @@ namespace Ihc {
         }
     }
 
+  /// <summary>
+  /// High level model of a WLAN interface status without soap distractions.
+  /// </summary>
+  public record WLanInterface
+  {
     /// <summary>
-    /// High level model of a WLAN interface status without soap distractions.
+    /// Indicates whether the interface is connected.
     /// </summary>
-    public record WLanInterface {
-        /// <summary>
-        /// Indicates whether the interface is connected.
-        /// </summary>
-        public bool Connected { get; init; }
+    public bool Connected { get; init; }
 
-        /// <summary>
-        /// Name of the WLAN interface.
-        /// </summary>
-        public string Name { get; init; }
+    /// <summary>
+    /// Name of the WLAN interface.
+    /// </summary>
+    public string Name { get; init; }
 
-        /// <summary>
-        /// SSID of the currently connected network.
-        /// </summary>
-        public string Ssid { get; init; }
+    /// <summary>
+    /// SSID of the currently connected network.
+    /// </summary>
+    public string Ssid { get; init; }
 
-        /// <summary>
-        /// Signal quality indicator.
-        /// </summary>
-        public string Quality { get; init; }
+    /// <summary>
+    /// Signal quality indicator.
+    /// </summary>
+    public string Quality { get; init; }
 
-        public override string ToString()
-        {
-          return $"WLanInterface(Connected={Connected}, Name={Name}, Ssid={Ssid}, Quality={Quality})";
-        }
+    public override string ToString()
+    {
+      return $"WLanInterface(Connected={Connected}, Name={Name}, Ssid={Ssid}, Quality={Quality})";
     }
+  }
 
     /// <summary>
     /// High level model of web access control settings without soap distractions.
     /// Controls which applications can be accessed from different network locations (USB, Internal, External).
+    /// 
+    /// The API appear to allow manipulating USB access which can be dangerous. Thus
+    /// validation attributes are added to disallow non-standard USB access.
     /// </summary>
     public record WebAccessControl {
         /// <summary>
         /// Indicates whether USB login is required.
         /// </summary>
+        [AllowedValues(false, ErrorMessage = "Usb access should be passwordless")]
         public bool UsbLoginRequired { get; init; }
 
         /// <summary>
         /// Administrator application access via USB.
         /// </summary>
+        [AllowedValues(true, ErrorMessage = "Usb access to Administrator should not be disabled")]
         public bool AdministratorUsb { get; init; }
 
         /// <summary>

@@ -13,9 +13,24 @@ using System.Reflection;
 namespace Ihc.App
 {
     /// <summary>
-    /// Service for managing administrator-related data including users, email, SMTP and network settings.
-    /// Provides change tracking and efficient updates to the IHC controller. Will auto-authenticate
-    /// with provided settings unless already authenticated.
+    /// Summary of changes made to controller.
+    /// </summary>
+    public record ChangeInformation
+    {
+        /// <summary>
+        /// Number of changes performed.
+        /// </summary>
+        public int ChangeCount { get; init; }
+
+        /// <summary>
+        /// Reboot needed after changes.
+        /// </summary>
+        public bool RebootRequired { get;  init; }
+    }
+    /// <summary>
+    /// High level application service for managing administrator-related data including users, email, SMTP and network settings.
+    /// Provides change tracking and efficient updates to the IHC controller. 
+    /// Will auto-authenticate with provided settings unless already authenticated.
     /// </summary>
     public class AdminService : ServiceBase, IDisposable, IAsyncDisposable
     {
@@ -26,8 +41,6 @@ namespace Ihc.App
         private readonly bool ownedServices;
 
         private SimpleSecret secretMaker;
-
-        private volatile bool rebootRequiredFlag = false;
 
         /// <summary>
         /// Create an AdminService instance with IhcSettings only.
@@ -40,6 +53,11 @@ namespace Ihc.App
                   new UserManagerService(new AuthenticationService(settings)),
                   new ConfigurationService(new AuthenticationService(settings)))
         {
+            this.authService = new AuthenticationService(settings);
+            this.userService = new UserManagerService(this.authService);
+            this.configService = new ConfigurationService(this.authService);
+            this.ownedServices = false;
+            this.secretMaker = new SimpleSecret(enable: fileEnryption);
         }
 
         /// <summary>
@@ -58,27 +76,16 @@ namespace Ihc.App
             this.userService = userService ?? throw new ArgumentNullException(nameof(userService));
             this.configService = configService ?? throw new ArgumentNullException(nameof(configService));
             this.ownedServices = false;
-            this.rebootRequiredFlag = false;
             this.secretMaker = new SimpleSecret(enable: fileEnryption);
         }
 
         /// <summary>
-        /// Indicates whether a reboot of the IHC controller is required after applying network-related changes.
-        /// This flag is set to true when DNS servers, network settings, or WLAN settings are changed.
-        /// </summary>
-        public bool RebootRequired { get; private set; }
-
-        /// <summary>
-        /// Reboot the IHC controller if a reboot is required after applying changes.
+        /// Reboot the IHC controller.
         /// </summary>
         /// <returns></returns>
-        public async Task RebootIfRequired()
+        public async Task Restart()
         {
-            if (rebootRequiredFlag)
-            {
                 await configService.DelayedReboot(1);
-                rebootRequiredFlag = false;
-            }
         }
 
         /// <summary>
@@ -119,6 +126,9 @@ namespace Ihc.App
                         WebAccess = model.WebAccess,
                         WLanSettings = model.WLanSettings
                     };
+
+                    // Extra check that the model values fullfill constrains (should always be valid unless the sdk has wrong contrains set).
+                    ValidationHelper.ValidateDataAnnotations(model, nameof(model));
 
                     activity?.SetReturnValue(model.ToString(settings.LogSensitiveData));
                     return model;
@@ -164,13 +174,15 @@ namespace Ihc.App
         /// Updates the internal snapshot after successful save.
         /// </summary>
         /// <param name="model">Modified administrator model to save</param>
-        public async Task Store(MutableAdminModel model)
+        public async Task<ChangeInformation> Store(MutableAdminModel model)
         {
             using (var activity = StartActivity(nameof(Store)))
             {
                 try
                 {
                     activity?.SetParameters((nameof(model), model.ToString(settings.LogSensitiveData)));
+
+                    ValidationHelper.ValidateDataAnnotations(model, nameof(model));
 
                     await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
@@ -181,18 +193,23 @@ namespace Ihc.App
                     }
 
                     var changes = DetectChanges(_originalSnapshot, model);
+                    bool rebootRequiredFlag = false;
                     if (changes.Count > 0)
                     {
-                        await ApplyChanges(changes).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                        rebootRequiredFlag = await ApplyChanges(changes).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     }
 
                     _originalSnapshot = model;
 
-                    // Update RebootRequired property based on flag set during ApplyChanges
-                    RebootRequired = rebootRequiredFlag;
+                    var retv = new ChangeInformation
+                    {
+                        ChangeCount = changes.Count,
+                        RebootRequired = rebootRequiredFlag
+                    };
 
-                    activity?.SetTag("changes.count", changes.Count);
-                    activity?.SetTag("reboot.required", RebootRequired);
+                    activity?.SetReturnValue(retv);
+
+                    return retv;
                 }
                 catch (Exception ex)
                 {
@@ -438,26 +455,6 @@ namespace Ihc.App
                 });
             }
 
-            // DNS server changes - default record Equals() does deep comparison
-            if (!Equals(original.DnsServers, current.DnsServers))
-            {
-                changes.Add(new AdminChange
-                {
-                    ChangeType = AdminChangeType.DnsServersChanged,
-                    Payload = current.DnsServers
-                });
-            }
-
-            // Network settings changes - default record Equals() does deep comparison
-            if (!Equals(original.NetworkSettings, current.NetworkSettings))
-            {
-                changes.Add(new AdminChange
-                {
-                    ChangeType = AdminChangeType.NetworkSettingsChanged,
-                    Payload = current.NetworkSettings
-                });
-            }
-
             // Web access control changes - default record Equals() does deep comparison
             if (!Equals(original.WebAccess, current.WebAccess))
             {
@@ -468,6 +465,16 @@ namespace Ihc.App
                 });
             }
 
+            // DNS server changes - default record Equals() does deep comparison
+            if (!Equals(original.DnsServers, current.DnsServers))
+            {
+                changes.Add(new AdminChange
+                {
+                    ChangeType = AdminChangeType.DnsServersChanged,
+                    Payload = current.DnsServers
+                });
+            
+            }
             // WLAN settings changes - default record Equals() does deep comparison
             if (!Equals(original.WLanSettings, current.WLanSettings))
             {
@@ -475,6 +482,17 @@ namespace Ihc.App
                 {
                     ChangeType = AdminChangeType.WLanSettingsChanged,
                     Payload = current.WLanSettings
+                });
+            }
+            
+            // Network settings changes - default record Equals() does deep comparison
+            // This should be the last change as it might(?) affect the controller's ability to make other changes.
+            if (!Equals(original.NetworkSettings, current.NetworkSettings))
+            {
+                changes.Add(new AdminChange
+                {
+                    ChangeType = AdminChangeType.NetworkSettingsChanged,
+                    Payload = current.NetworkSettings
                 });
             }
 
@@ -485,8 +503,10 @@ namespace Ihc.App
         /// Apply detected changes to the IHC controller via API services.
         /// Sets RebootRequired flag if network-related changes are made.
         /// </summary>
-        private async Task ApplyChanges(List<AdminChange> changes)
+        private async Task<bool> ApplyChanges(List<AdminChange> changes)
         {
+            bool rebootRequiredFlag = false;
+
             foreach (var change in changes)
             {
                 switch (change.ChangeType)
@@ -540,6 +560,8 @@ namespace Ihc.App
                         break;
                 }
             }
+
+            return rebootRequiredFlag;
         }
 
         /// <summary>
@@ -562,20 +584,7 @@ namespace Ihc.App
         {
             if (ownedServices)
             {
-                if (userService is IAsyncDisposable userAsync)
-                    await userAsync.DisposeAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                else
-                    (userService as IDisposable)?.Dispose();
-
-                if (configService is IAsyncDisposable configAsync)
-                    await configAsync.DisposeAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                else
-                    (configService as IDisposable)?.Dispose();
-
-                if (authService is IAsyncDisposable authAsync)
-                    await authAsync.DisposeAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                else
-                    (authService as IDisposable)?.Dispose();
+                await authService.DisposeAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             }
         }
     }

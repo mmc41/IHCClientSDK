@@ -503,6 +503,19 @@ namespace Ihc {
             this.cookieHandler = new CookieHandler(settings.LogSensitiveData);
             this.impl = new SoapImpl(cookieHandler, settings);
         }
+        
+        /// <summary>
+        /// Create an OpenAPIService instance for access to the IHC API related to the open api, where 
+        /// authentication is handled through AuthenticationService instead of this API.
+        /// Warning: This is not the intended use case of this service but can be helpful in testing scenarios.
+        /// </summary>
+        /// <param name="authService">AuthenticationService instance</param>
+        public OpenAPIService(IAuthenticationService authService)
+            : base(authService.IhcSettings)
+        {
+            this.cookieHandler = authService.GetCookieHandler();
+            this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
+        }
 
         public async Task Authenticate()
         {

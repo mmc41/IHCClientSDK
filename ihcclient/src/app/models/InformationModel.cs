@@ -31,7 +31,7 @@ namespace Ihc.App
         /// <summary>
         /// Controller software/firmware version
         /// </summary>
-        public FWVersion SoftwareVersion { get; init; }
+        public string SoftwareVersion { get; init; }
 
         /// <summary>
         /// Controller hardware version

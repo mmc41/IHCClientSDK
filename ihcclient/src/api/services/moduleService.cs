@@ -198,6 +198,8 @@ namespace Ihc {
                 {
                     activity?.SetParameters((nameof(project), project));
 
+                    ValidationHelper.ValidateDataAnnotations(project, nameof(project));
+
                     await impl.storeSceneProjectAsync(new inputMessageName2(unmapSceneProject(project))).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 }
                 catch (Exception ex)
@@ -237,6 +239,8 @@ namespace Ihc {
                 try
                 {
                     activity?.SetParameters((nameof(projectSegment), projectSegment), (nameof(isFirstSegment), isFirstSegment), (nameof(isLastSegment), isLastSegment));
+
+                    ValidationHelper.ValidateDataAnnotations(projectSegment, nameof(projectSegment));
 
                     var resp = await impl.storeSceneProjectSegmentAsync(new inputMessageName4(unmapSceneProject(projectSegment), isFirstSegment, isLastSegment)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = resp.storeSceneProjectSegment4.HasValue ? resp.storeSceneProjectSegment4.Value : false;

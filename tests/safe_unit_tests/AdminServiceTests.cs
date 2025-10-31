@@ -189,7 +189,12 @@ namespace Ihc.Tests
             var model = await service.GetModel();
 
             // Act - save same model without changes
-            await service.Store(model);
+            var changeInfo = await service.Store(model);
+
+            // Assert - no changes detected
+            Assert.That(changeInfo, Is.Not.Null);
+            Assert.That(changeInfo.ChangeCount, Is.EqualTo(0));
+            Assert.That(changeInfo.RebootRequired, Is.False);
 
             // Assert - no update calls should be made
             A.CallTo(() => fakeUserService.AddUser(A<IhcUser>._)).MustNotHaveHappened();
@@ -222,9 +227,14 @@ namespace Ihc.Tests
             // Act - add a new user
             var newUser = new IhcUser { Username = "user2", Email = "user2@test.com", Group = IhcUserGroup.Users };
             model.Users.Add(newUser);
-            await service.Store(model);
+            var changeInfo = await service.Store(model);
 
-            // Assert
+            // Assert - verify change information
+            Assert.That(changeInfo, Is.Not.Null);
+            Assert.That(changeInfo.ChangeCount, Is.EqualTo(1));
+            Assert.That(changeInfo.RebootRequired, Is.False);
+
+            // Assert - verify API call
             A.CallTo(() => fakeUserService.AddUser(A<IhcUser>.That.Matches(u => u.Username == "user2")))
                 .MustHaveHappenedOnceExactly();
         }
@@ -253,9 +263,14 @@ namespace Ihc.Tests
             // Act - remove a user
             var userToRemove = model.Users.First(u => u.Username == "user2");
             model.Users.Remove(userToRemove);
-            await service.Store(model);
+            var changeInfo = await service.Store(model);
 
-            // Assert
+            // Assert - verify change information
+            Assert.That(changeInfo, Is.Not.Null);
+            Assert.That(changeInfo.ChangeCount, Is.EqualTo(1));
+            Assert.That(changeInfo.RebootRequired, Is.False);
+
+            // Assert - verify API call
             A.CallTo(() => fakeUserService.RemoveUser("user2")).MustHaveHappenedOnceExactly();
         }
 
@@ -296,7 +311,12 @@ namespace Ihc.Tests
             model.Users.Remove(oldUser);
             var updatedUser = oldUser with { Email = "new@test.com", Firstname = "New" };
             model.Users.Add(updatedUser);
-            await service.Store(model);
+            var changeInfo = await service.Store(model);
+
+            // Assert - verify change information
+            Assert.That(changeInfo, Is.Not.Null);
+            Assert.That(changeInfo.ChangeCount, Is.EqualTo(1));
+            Assert.That(changeInfo.RebootRequired, Is.False);
 
             // Assert - verify UpdateUser was called with user containing updated values
             A.CallTo(() => fakeUserService.UpdateUser(A<IhcUser>.That.Matches(u =>
@@ -329,7 +349,12 @@ namespace Ihc.Tests
 
             // Act - change email control settings (using record 'with' expression)
             model.EmailControl = model.EmailControl with { ServerIpAddress = "new.mail.com", ServerPortNumber = 995 };
-            await service.Store(model);
+            var changeInfo = await service.Store(model);
+
+            // Assert - verify change information
+            Assert.That(changeInfo, Is.Not.Null);
+            Assert.That(changeInfo.ChangeCount, Is.EqualTo(1));
+            Assert.That(changeInfo.RebootRequired, Is.False);
 
             // Assert - verify SetEmailControlSettings was called (don't check exact match due to record equality)
             A.CallTo(() => fakeConfigService.SetEmailControlSettings(A<EmailControlSettings>._))
@@ -360,10 +385,126 @@ namespace Ihc.Tests
 
             // Act - change SMTP settings (using record 'with' expression)
             model.SmtpSettings = model.SmtpSettings with { Hostname = "new.smtp.com", Hostport = 587 };
-            await service.Store(model);
+            var changeInfo = await service.Store(model);
+
+            // Assert - verify change information
+            Assert.That(changeInfo, Is.Not.Null);
+            Assert.That(changeInfo.ChangeCount, Is.EqualTo(1));
+            Assert.That(changeInfo.RebootRequired, Is.False);
 
             // Assert - verify SetSMTPSettings was called
             A.CallTo(() => fakeConfigService.SetSMTPSettings(A<SMTPSettings>._))
+                .MustHaveHappenedOnceExactly();
+        }
+
+        [Test]
+        public async Task SaveAdminModel_DnsServersChanged_CallsSetDNSServersAndRequiresReboot()
+        {
+            // Arrange
+            var initialDns = new DNSServers
+            {
+                PrimaryDNS = "8.8.8.8",
+                SecondaryDNS = "8.8.4.4"
+            };
+
+            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(new HashSet<IhcUser>()));
+            A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
+            A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
+            A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(initialDns));
+            A.CallTo(() => fakeConfigService.GetNetworkSettings()).Returns(Task.FromResult(new NetworkSettings()));
+            A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
+            A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
+
+            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var model = await service.GetModel();
+
+            // Act - change DNS servers (using record 'with' expression)
+            model.DnsServers = model.DnsServers with { PrimaryDNS = "1.1.1.1", SecondaryDNS = "1.0.0.1" };
+            var changeInfo = await service.Store(model);
+
+            // Assert - verify change information and reboot required
+            Assert.That(changeInfo, Is.Not.Null);
+            Assert.That(changeInfo.ChangeCount, Is.EqualTo(1));
+            Assert.That(changeInfo.RebootRequired, Is.True, "DNS changes should require reboot");
+
+            // Assert - verify SetDNSServers was called
+            A.CallTo(() => fakeConfigService.SetDNSServers(A<DNSServers>._))
+                .MustHaveHappenedOnceExactly();
+        }
+
+        [Test]
+        public async Task SaveAdminModel_NetworkSettingsChanged_CallsSetNetworkSettingsAndRequiresReboot()
+        {
+            // Arrange
+            var initialNetwork = new NetworkSettings
+            {
+                IpAddress = "192.168.1.100",
+                Netmask = "255.255.255.0",
+                Gateway = "192.168.1.1",
+                HttpPort = 80,
+                HttpsPort = 443
+            };
+
+            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(new HashSet<IhcUser>()));
+            A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
+            A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
+            A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(new DNSServers()));
+            A.CallTo(() => fakeConfigService.GetNetworkSettings()).Returns(Task.FromResult(initialNetwork));
+            A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
+            A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
+
+            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var model = await service.GetModel();
+
+            // Act - change network settings (using record 'with' expression)
+            model.NetworkSettings = model.NetworkSettings with { IpAddress = "192.168.1.200", Gateway = "192.168.1.254" };
+            var changeInfo = await service.Store(model);
+
+            // Assert - verify change information and reboot required
+            Assert.That(changeInfo, Is.Not.Null);
+            Assert.That(changeInfo.ChangeCount, Is.EqualTo(1));
+            Assert.That(changeInfo.RebootRequired, Is.True, "Network settings changes should require reboot");
+
+            // Assert - verify SetNetworkSettings was called
+            A.CallTo(() => fakeConfigService.SetNetworkSettings(A<NetworkSettings>._))
+                .MustHaveHappenedOnceExactly();
+        }
+
+        [Test]
+        public async Task SaveAdminModel_WLanSettingsChanged_CallsSetWLanSettingsAndRequiresReboot()
+        {
+            // Arrange
+            var initialWLan = new WLanSettings
+            {
+                Enabled = false,
+                Ssid = "OldNetwork",
+                Key = "oldkey123",
+                SecurityType = "WPA2",
+                EncryptionType = "AES"
+            };
+
+            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(new HashSet<IhcUser>()));
+            A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
+            A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
+            A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(new DNSServers()));
+            A.CallTo(() => fakeConfigService.GetNetworkSettings()).Returns(Task.FromResult(new NetworkSettings()));
+            A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
+            A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(initialWLan));
+
+            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var model = await service.GetModel();
+
+            // Act - change WLAN settings (using record 'with' expression)
+            model.WLanSettings = model.WLanSettings with { Enabled = true, Ssid = "NewNetwork", Key = "newkey456" };
+            var changeInfo = await service.Store(model);
+
+            // Assert - verify change information and reboot required
+            Assert.That(changeInfo, Is.Not.Null);
+            Assert.That(changeInfo.ChangeCount, Is.EqualTo(1));
+            Assert.That(changeInfo.RebootRequired, Is.True, "WLAN settings changes should require reboot");
+
+            // Assert - verify SetWLanSettings was called
+            A.CallTo(() => fakeConfigService.SetWLanSettings(A<WLanSettings>._))
                 .MustHaveHappenedOnceExactly();
         }
 
@@ -391,9 +532,18 @@ namespace Ihc.Tests
             {
                 Users = new HashSet<IhcUser> { new IhcUser { Username = "user2", Email = "user2@test.com", Group = IhcUserGroup.Users } },
                 EmailControl = new EmailControlSettings(),
-                SmtpSettings = new SMTPSettings()
+                SmtpSettings = new SMTPSettings(),
+                DnsServers = new DNSServers(),
+                NetworkSettings = new NetworkSettings(),
+                WebAccess = new WebAccessControl(),
+                WLanSettings = new WLanSettings()
             };
-            await service.Store(newModel);
+            var changeInfo = await service.Store(newModel);
+
+            // Assert - verify change information (1 user added, 1 user removed)
+            Assert.That(changeInfo, Is.Not.Null);
+            Assert.That(changeInfo.ChangeCount, Is.EqualTo(2));
+            Assert.That(changeInfo.RebootRequired, Is.False);
 
             // Assert - should have loaded snapshot automatically
             A.CallTo(() => fakeUserService.GetUsers(true)).MustHaveHappenedOnceExactly();
@@ -467,7 +617,12 @@ namespace Ihc.Tests
             });
             model.EmailControl = model.EmailControl with { ServerIpAddress = "new.mail.com" };
             model.SmtpSettings = model.SmtpSettings with { Hostname = "new.smtp.com" };
-            await service.Store(model);
+            var changeInfo = await service.Store(model);
+
+            // Assert - verify change information (3 changes: user added, email control, smtp)
+            Assert.That(changeInfo, Is.Not.Null);
+            Assert.That(changeInfo.ChangeCount, Is.EqualTo(3));
+            Assert.That(changeInfo.RebootRequired, Is.False);
 
             // Assert - all changes should be applied
             A.CallTo(() => fakeUserService.AddUser(A<IhcUser>._)).MustHaveHappenedOnceExactly();

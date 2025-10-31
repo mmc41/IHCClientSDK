@@ -664,7 +664,7 @@ namespace Ihc {
                 {
                     activity?.SetParameters((nameof(settings), settings));
 
-                    ValidationHelper.ValidateObject(settings, nameof(settings));
+                    ValidationHelper.ValidateDataAnnotations(settings, nameof(settings));
 
                     await impl.setNetworkSettingsAsync(new inputMessageName17(unmapNetworkSettings(settings))).ConfigureAwait(this.settings.AsyncContinueOnCapturedContext);
                 }
@@ -702,7 +702,7 @@ namespace Ihc {
                 {
                     activity?.SetParameters((nameof(dnsServers), dnsServers));
 
-                    ValidationHelper.ValidateObject(dnsServers, nameof(dnsServers));
+                    ValidationHelper.ValidateDataAnnotations(dnsServers, nameof(dnsServers));
 
                     var (dns1, dns2) = unmapDNSServers(dnsServers);
                     await impl.setDNSServersAsync(new inputMessageName8(dns1, dns2)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
@@ -743,7 +743,7 @@ namespace Ihc {
                 {
                     activity?.SetParameters((nameof(settings), settings));
 
-                    ValidationHelper.ValidateObject(settings, nameof(settings));
+                    ValidationHelper.ValidateDataAnnotations(settings, nameof(settings));
 
                     await impl.setWLanSettingsAsync(new inputMessageName15(unmapWLanSettings(settings))).ConfigureAwait(this.settings.AsyncContinueOnCapturedContext);
                 }
@@ -821,7 +821,7 @@ namespace Ihc {
                 {
                     activity?.SetParameters((nameof(settings), settings));
 
-                    ValidationHelper.ValidateObject(settings, nameof(settings));
+                    ValidationHelper.ValidateDataAnnotations(settings, nameof(settings));
 
                     await impl.setSMTPSettingsAsync(new inputMessageName4(unmapSMTPSettings(settings))).ConfigureAwait(this.settings.AsyncContinueOnCapturedContext);
                 }
@@ -937,7 +937,7 @@ namespace Ihc {
                 {
                     activity?.SetParameters((nameof(settings), settings));
 
-                    ValidationHelper.ValidateObject(settings, nameof(settings));
+                    ValidationHelper.ValidateDataAnnotations(settings, nameof(settings));
 
                     await impl.setEmailControlSettingsAsync(new inputMessageName23(unmapEmailControlSettings(settings))).ConfigureAwait(this.settings.AsyncContinueOnCapturedContext);
                 }
@@ -976,6 +976,8 @@ namespace Ihc {
                 try
                 {
                     activity?.SetParameters((nameof(accessControl), accessControl));
+
+                    ValidationHelper.ValidateDataAnnotations(accessControl, nameof(accessControl));
 
                     await impl.setWebAccessControlAsync(new inputMessageName19(unmapWebAccessControl(accessControl))).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 }

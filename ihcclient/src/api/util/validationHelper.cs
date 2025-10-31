@@ -16,7 +16,7 @@ namespace Ihc
         /// <param name="obj">Object to validate</param>
         /// <param name="parameterName">Parameter name for exception message</param>
         /// <exception cref="ArgumentException">Thrown when validation fails</exception>
-        public static void ValidateObject(object obj, string parameterName)
+        public static void ValidateDataAnnotations(object obj, string parameterName)
         {
             if (obj == null)
             {

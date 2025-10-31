@@ -735,6 +735,8 @@ namespace Ihc {
                         (nameof(project), project)
                     );
 
+                    ValidationHelper.ValidateDataAnnotations(project, nameof(project));
+
                     // First perform some safty checks similar to what the IHC Visual App does:
                     bool controllerReady = (await GetControllerState().ConfigureAwait(settings.AsyncContinueOnCapturedContext)) == ControllerState.Ready;
                     activity?.SetTag("progress.controllerReady", controllerReady);
@@ -848,6 +850,8 @@ namespace Ihc {
                         (nameof(index), index),
                         (nameof(major), major)
                     );
+
+                    ValidationHelper.ValidateDataAnnotations(segment, nameof(segment));
 
                     var result = await impl.storeIHCProjectSegmentAsync(new inputMessageName16()
                     {

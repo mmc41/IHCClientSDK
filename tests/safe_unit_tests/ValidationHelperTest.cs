@@ -15,7 +15,7 @@ namespace Ihc.Tests
         public void ValidateObject_WithNullObject_ThrowsArgumentException()
         {
             // Act & Assert
-            var ex = Assert.Throws<ArgumentException>(() => ValidationHelper.ValidateObject(null, "testParam"));
+            var ex = Assert.Throws<ArgumentException>(() => ValidationHelper.ValidateDataAnnotations(null, "testParam"));
             Assert.That(ex.ParamName, Is.EqualTo("testParam"));
             Assert.That(ex.Message, Does.Contain("Parameter must be provided"));
         }
@@ -36,7 +36,7 @@ namespace Ihc.Tests
             };
 
             // Act & Assert
-            Assert.DoesNotThrow(() => ValidationHelper.ValidateObject(validUser, nameof(validUser)));
+            Assert.DoesNotThrow(() => ValidationHelper.ValidateDataAnnotations(validUser, nameof(validUser)));
         }
 
         [Test]
@@ -51,7 +51,7 @@ namespace Ihc.Tests
             };
 
             // Act & Assert
-            var ex = Assert.Throws<ArgumentException>(() => ValidationHelper.ValidateObject(invalidUser, nameof(invalidUser)));
+            var ex = Assert.Throws<ArgumentException>(() => ValidationHelper.ValidateDataAnnotations(invalidUser, nameof(invalidUser)));
             Assert.That(ex.ParamName, Is.EqualTo(nameof(invalidUser)));
             Assert.That(ex.Message, Does.Contain("Validation failed"));
             Assert.That(ex.Message, Does.Contain("Username length can't be more than 20"));

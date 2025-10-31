@@ -209,7 +209,7 @@ namespace Ihc {
                 {
                     activity?.SetParameters((nameof(user), IhcSettings.LogSensitiveData ? user : user.RedactPasword()));
 
-                    ValidationHelper.ValidateObject(user, nameof(user));
+                    ValidationHelper.ValidateDataAnnotations(user, nameof(user));
 
                     await impl.addUserAsync(new inputMessageName1() { addUser1 = mapUser(user) }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 }
@@ -259,7 +259,7 @@ namespace Ihc {
                 {
                     activity?.SetParameters((nameof(user), IhcSettings.LogSensitiveData ? user : user.RedactPasword()));
 
-                    ValidationHelper.ValidateObject(user, nameof(user));
+                    ValidationHelper.ValidateDataAnnotations(user, nameof(user));
 
                     if (user?.Password == UserConstants.REDACTED_PASSWORD)
                         throw new ArgumentException($"Password of user should not be set to reserved value ${UserConstants.REDACTED_PASSWORD}. This is likely an error!");
