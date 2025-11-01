@@ -8,7 +8,7 @@ namespace IhcLab
     /// </summary>
     public static class VersionInfo
     {
-        public static string GetAppVersion()
+        public static string GetAppVersionStr()
         {
             Assembly? assembly = Assembly.GetEntryAssembly();
             var fileVersion = assembly?.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;

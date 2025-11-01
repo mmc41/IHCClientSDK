@@ -101,19 +101,45 @@ namespace Ihc {
       /// <summary>
       /// Username is unique identifier so use this for hashcode.
       /// </summary>
-      /// <returns></returns>
+      /// <returns>Hash code based on Username</returns>
+      /// <remarks>
+      /// Note: While GetHashCode uses only Username as the unique identifier,
+      /// the record's default Equals method (inherited) performs deep comparison of all properties.
+      /// This is intentional - Username identifies the user, but Equals detects any property changes.
+      /// </remarks>
       public override int GetHashCode()
       {
         return string.IsNullOrEmpty(Username) ? 0 : Username.GetHashCode();
       }
-      
+
+      /// <summary>
+      /// Compares only the administrative properties of two IhcUser instances.
+      /// Excludes automatic timestamp fields (CreatedDate, LoginDate) that change independentl.
+      /// Use this method to detect if changes should be persisted.
+      /// </summary>
+      public bool EqualsChangeableProperties(IhcUser other)
+      {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+
+        return Username == other.Username &&
+               Password == other.Password &&
+               Email == other.Email &&
+               Firstname == other.Firstname &&
+               Lastname == other.Lastname &&
+               Phone == other.Phone &&
+               Group == other.Group &&
+               Project == other.Project;
+      }
+
       /// <summary>
       /// Order users by username.
       /// </summary>
-
+      /// <param name="other">The other IhcUser to compare with</param>
+      /// <returns>Comparison result for ordering</returns>
       public int CompareTo(IhcUser other)
       {
-        return string.Compare(this.Username, other?.Username); 
+        return string.Compare(this.Username, other?.Username);
       }
     }
 }

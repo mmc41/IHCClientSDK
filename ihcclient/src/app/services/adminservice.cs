@@ -124,12 +124,11 @@ namespace Ihc.App
             {
                 try
                 {
+                    // Make sure we are logged in.
                     await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
+                    // Read Model from controller.
                     var model = await DoGetModel().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-
-                    // Extra check that the model values fullfill constrains (should always be valid unless the sdk has wrong contrains set).
-                    ValidationHelper.ValidateDataAnnotations(model, nameof(model));
 
                     // Create a deep copy for the snapshot to ensure changes to returned model don't affect snapshot
                     lock (_snapshotLock)
@@ -167,8 +166,9 @@ namespace Ihc.App
             var webAccess = await configService.GetWebAccessControl().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             var wlan = await configService.GetWLanSettings().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
-            return new MutableAdminModel
+            var model = new MutableAdminModel
             {
+                ModelMetadata = ModelMetadata.Current(typeof(MutableAdminModel)),
                 Users = new HashSet<IhcUser>(users),
                 EmailControl = emailControl,
                 SmtpSettings = smtp,
@@ -177,6 +177,12 @@ namespace Ihc.App
                 WebAccess = webAccess,
                 WLanSettings = wlan
             };
+
+            // Extra internal check that the model values fullfill constrains (should always be valid unless 
+            // the sdk has an internal error such as wrong contrains specified).
+            ValidationHelper.ValidateDataAnnotations(model, nameof(model));
+
+            return model;
         }
 
         /// <summary>
@@ -204,8 +210,10 @@ namespace Ihc.App
                     // Make defensive copy to protect against concurrent mutation now and later
                     var modelCopy = model.Copy();
                     
+                    // Ensure valid input before we continue.
                     ValidationHelper.ValidateDataAnnotations(modelCopy, nameof(modelCopy));
 
+                    // Make sure we are logged in.
                     await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
                     // Load snapshot from controller if not present
@@ -356,7 +364,20 @@ namespace Ihc.App
                     var adminModel = await JsonSerializer.DeserializeAsync<MutableAdminModel>(stream, jsonOptions);
 
                     if (adminModel == null)
-                        throw new InvalidOperationException("Failed to deserialize AdminModel from JSON stream");
+                        throw new ArgumentException("Failed to deserialize AdminModel from JSON stream");
+
+                    string serializedTypeName = adminModel?.ModelMetadata.TypeFullName;
+                    string expectedTypeName = typeof(MutableAdminModel).FullName;
+                    if (serializedTypeName!=expectedTypeName)
+                        throw new ArgumentException($"Type incompatiblitly. Got {serializedTypeName} but expected {expectedTypeName}");
+
+                    Version streamVersion = adminModel?.ModelMetadata?.Version;
+                    if (streamVersion == null)
+                        throw new ArgumentException("Missing version metadata");
+
+                    System.Version currentVersion = typeof(MutableAdminModel).Assembly.GetName().Version;
+                    if (streamVersion.Major!=currentVersion.Major)
+                        throw new ArgumentException($"Version incompatiblitly. Got {streamVersion.Major} but expected {currentVersion.Major}");
 
                     // Decrypt sensitive properties using deep copy with transformation
                     var decryptedModel = (MutableAdminModel)CopyUtil.DeepCopyAndApply(adminModel, (PropertyInfo prop, object value) =>
@@ -380,6 +401,9 @@ namespace Ihc.App
                         // Otherwise just return value as-is
                         return value;
                     });
+
+                    // Ensure json is valid.
+                    ValidationHelper.ValidateDataAnnotations(decryptedModel, nameof(decryptedModel));
 
                     activity?.SetReturnValue(decryptedModel.ToString(settings.LogSensitiveData));
                     return decryptedModel;
@@ -439,114 +463,185 @@ namespace Ihc.App
         /// </remarks>
         private List<AdminChange> DetectChanges(MutableAdminModel original, MutableAdminModel current)
         {
-            var changes = new List<AdminChange>();
-
-            // User changes - Username-based shallow comparison for set operations
-            var originalUsers = original.Users ?? new HashSet<IhcUser>();
-            var currentUsers = current.Users ?? new HashSet<IhcUser>();
-
-            // Build Username-based dictionaries for efficient lookup
-            var originalByUsername = originalUsers.ToDictionary(u => u.Username);
-            var currentByUsername = currentUsers.ToDictionary(u => u.Username);
-
-            // Added users (Username in current but not in original)
-            foreach (var username in currentByUsername.Keys.Except(originalByUsername.Keys))
+            using (var activity = StartActivity(nameof(DetectChanges)))
             {
-                changes.Add(new AdminChange
-                {
-                    ChangeType = AdminChangeType.UserAdded,
-                    Payload = currentByUsername[username]
-                });
-            }
+                var changes = new List<AdminChange>();
 
-            // Deleted users (Username in original but not in current)
-            foreach (var username in originalByUsername.Keys.Except(currentByUsername.Keys))
-            {
-                changes.Add(new AdminChange
-                {
-                    ChangeType = AdminChangeType.UserDeleted,
-                    Payload = originalByUsername[username]
-                });
-            }
+                // User changes - Username-based shallow comparison for set operations
+                var originalUsers = original.Users ?? new HashSet<IhcUser>();
+                var currentUsers = current.Users ?? new HashSet<IhcUser>();
 
-            // Updated users (Username in both, but properties differ)
-            // Default IhcUser.Equals() does deep comparison of all properties
-            foreach (var username in originalByUsername.Keys.Intersect(currentByUsername.Keys))
-            {
-                var origUser = originalByUsername[username];
-                var currUser = currentByUsername[username];
-                if (!origUser.Equals(currUser))
+                // Build Username-based dictionaries for efficient lookup
+                var originalByUsername = originalUsers.ToDictionary(u => u.Username);
+                var currentByUsername = currentUsers.ToDictionary(u => u.Username);
+
+                // Added users (Username in current but not in original)
+                foreach (var username in currentByUsername.Keys.Except(originalByUsername.Keys))
                 {
-                    changes.Add(new AdminChange
+                    var change = new AdminChange
                     {
-                        ChangeType = AdminChangeType.UserUpdated,
-                        Payload = currUser
-                    });
+                        ChangeType = AdminChangeType.UserAdded,
+                        Payload = currentByUsername[username]
+                    };
+                    changes.Add(change);
+                    activity?.AddEvent(new ActivityEvent(change.ChangeType.ToString(), tags: new ActivityTagsCollection { { "payload", change.Payload } }));
                 }
-            }
 
-            // EmailControl changes - default record Equals() does deep comparison
-            if (!Equals(original.EmailControl, current.EmailControl))
-            {
-                changes.Add(new AdminChange
+                // Deleted users (Username in original but not in current)
+                foreach (var username in originalByUsername.Keys.Except(currentByUsername.Keys))
                 {
-                    ChangeType = AdminChangeType.EmailControlChanged,
-                    Payload = current.EmailControl
-                });
-            }
+                    var change = new AdminChange
+                    {
+                        ChangeType = AdminChangeType.UserDeleted,
+                        Payload = originalByUsername[username]
+                    };
+                    changes.Add(change);
+                    activity?.AddEvent(new ActivityEvent(change.ChangeType.ToString(), tags: new ActivityTagsCollection { { "payload", change.Payload } }));
+                }
 
-            // SMTP changes - default record Equals() does deep comparison
-            if (!Equals(original.SmtpSettings, current.SmtpSettings))
-            {
-                changes.Add(new AdminChange
+                // Updated users (Username in both, but admin-changeable properties differ)
+                // EqualsAdminProperties() compares only fields that admins can change (excludes LoginDate, CreatedDate)
+                foreach (var username in originalByUsername.Keys.Intersect(currentByUsername.Keys))
                 {
-                    ChangeType = AdminChangeType.SmtpSettingsChanged,
-                    Payload = current.SmtpSettings
-                });
-            }
+                    var origUser = originalByUsername[username];
+                    var currUser = currentByUsername[username];
+                    if (!origUser.EqualsChangeableProperties(currUser))
+                    {
+                        var change = new AdminChange
+                        {
+                            ChangeType = AdminChangeType.UserUpdated,
+                            Payload = currUser
+                        };
+                        changes.Add(change);
+                        activity?.AddEvent(new ActivityEvent(change.ChangeType.ToString(), tags: new ActivityTagsCollection {
+                         {
+                            "orginal", origUser.ToString(IhcSettings.LogSensitiveData)
+                         },
+                         {
+                            "payload", currUser.ToString(IhcSettings.LogSensitiveData)
+                         }
+                        }));
+                    }
+                }
 
-            // Web access control changes - default record Equals() does deep comparison
-            if (!Equals(original.WebAccess, current.WebAccess))
-            {
-                changes.Add(new AdminChange
+                // EmailControl changes - default record Equals() does deep comparison
+                if (!Equals(original.EmailControl, current.EmailControl))
                 {
-                    ChangeType = AdminChangeType.WebAccessChanged,
-                    Payload = current.WebAccess
-                });
-            }
+                    var change = new AdminChange
+                    {
+                        ChangeType = AdminChangeType.EmailControlChanged,
+                        Payload = current.EmailControl
+                    };
+                    changes.Add(change);
+                    activity?.AddEvent(new ActivityEvent(change.ChangeType.ToString(), tags: new ActivityTagsCollection {
+                     {
+                        "original", original.EmailControl
+                     },
+                     {
+                        "payload", change.Payload
+                     }
+                    }));
+                }
 
-            // DNS server changes - default record Equals() does deep comparison
-            if (!Equals(original.DnsServers, current.DnsServers))
-            {
-                changes.Add(new AdminChange
+                // SMTP changes - default record Equals() does deep comparison
+                if (!Equals(original.SmtpSettings, current.SmtpSettings))
                 {
-                    ChangeType = AdminChangeType.DnsServersChanged,
-                    Payload = current.DnsServers
-                });
-            
-            }
-            // WLAN settings changes - default record Equals() does deep comparison
-            if (!Equals(original.WLanSettings, current.WLanSettings))
-            {
-                changes.Add(new AdminChange
-                {
-                    ChangeType = AdminChangeType.WLanSettingsChanged,
-                    Payload = current.WLanSettings
-                });
-            }
-            
-            // Network settings changes - default record Equals() does deep comparison
-            // This should be the last change as it might(?) affect the controller's ability to make other changes.
-            if (!Equals(original.NetworkSettings, current.NetworkSettings))
-            {
-                changes.Add(new AdminChange
-                {
-                    ChangeType = AdminChangeType.NetworkSettingsChanged,
-                    Payload = current.NetworkSettings
-                });
-            }
+                    var change = new AdminChange
+                    {
+                        ChangeType = AdminChangeType.SmtpSettingsChanged,
+                        Payload = current.SmtpSettings
+                    };
+                    changes.Add(change);
+                    activity?.AddEvent(new ActivityEvent(change.ChangeType.ToString(), tags: new ActivityTagsCollection {
+                     {
+                        "original", original.SmtpSettings
+                     },
+                     {
+                        "payload", change.Payload
+                     }
+                    }));
+                }
 
-            return changes;
+                // Web access control changes - default record Equals() does deep comparison
+                if (!Equals(original.WebAccess, current.WebAccess))
+                {
+                    var change = new AdminChange
+                    {
+                        ChangeType = AdminChangeType.WebAccessChanged,
+                        Payload = current.WebAccess
+                    };
+                    changes.Add(change);
+                    activity?.AddEvent(new ActivityEvent(change.ChangeType.ToString(), tags: new ActivityTagsCollection {
+                     {
+                        "original", original.WebAccess
+                     },
+                     {
+                        "payload", change.Payload
+                     }
+                    }));
+                }
+
+                // DNS server changes - default record Equals() does deep comparison
+                if (!Equals(original.DnsServers, current.DnsServers))
+                {
+                    var change = new AdminChange
+                    {
+                        ChangeType = AdminChangeType.DnsServersChanged,
+                        Payload = current.DnsServers
+                    };
+                    changes.Add(change);
+                    activity?.AddEvent(new ActivityEvent(change.ChangeType.ToString(), tags: new ActivityTagsCollection {
+                     {
+                        "original", original.DnsServers
+                     },
+                     {
+                        "payload", change.Payload
+                     }
+                    }));
+                }
+                // WLAN settings changes - default record Equals() does deep comparison
+                if (!Equals(original.WLanSettings, current.WLanSettings))
+                {
+                    var change = new AdminChange
+                    {
+                        ChangeType = AdminChangeType.WLanSettingsChanged,
+                        Payload = current.WLanSettings
+                    };
+                    changes.Add(change);
+                    activity?.AddEvent(new ActivityEvent(change.ChangeType.ToString(), tags: new ActivityTagsCollection {
+                     {
+                        "original", original.WLanSettings
+                     },
+                     {
+                        "payload", change.Payload
+                     }
+                    }));
+                }
+
+                // Network settings changes - default record Equals() does deep comparison
+                // This should be the last change as it might(?) affect the controller's ability to make other changes.
+                if (!Equals(original.NetworkSettings, current.NetworkSettings))
+                {
+                    var change = new AdminChange
+                    {
+                        ChangeType = AdminChangeType.NetworkSettingsChanged,
+                        Payload = current.NetworkSettings
+                    };
+                    changes.Add(change);
+                    activity?.AddEvent(new ActivityEvent(change.ChangeType.ToString(), tags: new ActivityTagsCollection {
+                     {
+                        "original", original.NetworkSettings
+                     },
+                     {
+                        "payload", change.Payload
+                     }
+                    }));
+                }
+
+                activity?.SetTag("ChangeCount", changes.Count);
+
+                return changes;
+            }
         }
 
         /// <summary>
@@ -562,63 +657,72 @@ namespace Ihc.App
         /// </remarks>
         private async Task<bool> ApplyChanges(List<AdminChange> changes)
         {
-            bool rebootRequiredFlag = false;
-
-            foreach (var change in changes)
+            using (var activity = StartActivity(nameof(ApplyChanges)))
             {
-                switch (change.ChangeType)
+                bool rebootRequiredFlag = false;
+
+                foreach (var change in changes)
                 {
-                    case AdminChangeType.UserAdded:
-                        await userService.AddUser((IhcUser)change.Payload)
-                            .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                        break;
+                    activity?.AddEvent(new ActivityEvent(change.ChangeType.ToString(), tags: new ActivityTagsCollection {
+                        {
+                            "payload", change.Payload
+                        }
+                    }));
+                        
+                    switch (change.ChangeType)
+                    {
+                        case AdminChangeType.UserAdded:                  
+                            await userService.AddUser((IhcUser)change.Payload)
+                                .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                            break;
 
-                    case AdminChangeType.UserUpdated:
-                        await userService.UpdateUser((IhcUser)change.Payload)
-                            .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                        break;
+                        case AdminChangeType.UserUpdated:
+                            await userService.UpdateUser((IhcUser)change.Payload)
+                                .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                            break;
 
-                    case AdminChangeType.UserDeleted:
-                        await userService.RemoveUser(((IhcUser)change.Payload).Username)
-                            .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                        break;
+                        case AdminChangeType.UserDeleted:
+                            await userService.RemoveUser(((IhcUser)change.Payload).Username)
+                                .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                            break;
 
-                    case AdminChangeType.EmailControlChanged:
-                        await configService.SetEmailControlSettings((EmailControlSettings)change.Payload)
-                            .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                        break;
+                        case AdminChangeType.EmailControlChanged:
+                            await configService.SetEmailControlSettings((EmailControlSettings)change.Payload)
+                                .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                            break;
 
-                    case AdminChangeType.SmtpSettingsChanged:
-                        await configService.SetSMTPSettings((SMTPSettings)change.Payload)
-                            .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                        break;
+                        case AdminChangeType.SmtpSettingsChanged:
+                            await configService.SetSMTPSettings((SMTPSettings)change.Payload)
+                                .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                            break;
 
-                    case AdminChangeType.DnsServersChanged:
-                        await configService.SetDNSServers((DNSServers)change.Payload)
-                            .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                        rebootRequiredFlag = true;
-                        break;
+                        case AdminChangeType.DnsServersChanged:
+                            await configService.SetDNSServers((DNSServers)change.Payload)
+                                .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                            rebootRequiredFlag = true;
+                            break;
 
-                    case AdminChangeType.NetworkSettingsChanged:
-                        await configService.SetNetworkSettings((NetworkSettings)change.Payload)
-                            .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                        rebootRequiredFlag = true;
-                        break;
+                        case AdminChangeType.NetworkSettingsChanged:
+                            await configService.SetNetworkSettings((NetworkSettings)change.Payload)
+                                .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                            rebootRequiredFlag = true;
+                            break;
 
-                    case AdminChangeType.WebAccessChanged:
-                        await configService.SetWebAccessControl((WebAccessControl)change.Payload)
-                            .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                        break;
+                        case AdminChangeType.WebAccessChanged:
+                            await configService.SetWebAccessControl((WebAccessControl)change.Payload)
+                                .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                            break;
 
-                    case AdminChangeType.WLanSettingsChanged:
-                        await configService.SetWLanSettings((WLanSettings)change.Payload)
-                            .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                        rebootRequiredFlag = true;
-                        break;
+                        case AdminChangeType.WLanSettingsChanged:
+                            await configService.SetWLanSettings((WLanSettings)change.Payload)
+                                .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                            rebootRequiredFlag = true;
+                            break;
+                    }
                 }
-            }
 
-            return rebootRequiredFlag;
+                return rebootRequiredFlag;
+            }
         }
 
         /// <summary>

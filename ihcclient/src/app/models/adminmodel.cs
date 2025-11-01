@@ -14,6 +14,11 @@ namespace Ihc.App
     public record MutableAdminModel
     {
         /// <summary>
+        /// Serialization metadata.
+        /// </summary>
+        public ModelMetadata ModelMetadata { get; set; }
+
+        /// <summary>
         /// List of all users registered on the IHC controller.
         /// </summary>
         public ISet<IhcUser> Users { get; set; }
@@ -79,6 +84,7 @@ namespace Ihc.App
         {
             return new MutableAdminModel
             {
+                ModelMetadata = this.ModelMetadata,
                 Users = this.Users != null ? new HashSet<IhcUser>(this.Users) : null,
                 EmailControl = this.EmailControl,
                 SmtpSettings = this.SmtpSettings,

@@ -1,0 +1,342 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IHC AdminModel",
+  "description": "JSON schema for IHC Controller Admin Model configuration",
+  "type": "object",
+  "required": ["ModelMetadata"],
+  "properties": {
+    "ModelMetadata": {
+      "type": "object",
+      "description": "Metadata about the model version and type",
+      "required": ["Version", "TypeFullName"],
+      "properties": {
+        "Version": {
+          "type": "object",
+          "description": "Version information for the model",
+          "required": ["Major", "Minor", "Build", "Revision"],
+          "properties": {
+            "Major": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Minor": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Build": {
+              "type": "integer",
+              "minimum": -1
+            },
+            "Revision": {
+              "type": "integer",
+              "minimum": -1
+            }
+          }
+        },
+        "TypeFullName": {
+          "type": "string",
+          "description": "Fully qualified type name of the model"
+        }
+      }
+    },
+    "Users": {
+      "type": "array",
+      "description": "List of IHC controller users",
+      "items": {
+        "type": "object",
+        "required": ["Username", "Password", "Group"],
+        "properties": {
+          "Username": {
+            "type": "string",
+            "description": "Username for authentication"
+          },
+          "Password": {
+            "type": "string",
+            "description": "Encrypted password (base64 encoded encrypted data)"
+          },
+          "Email": {
+            "type": "string",
+            "format": "email"
+          },
+          "Firstname": {
+            "type": "string"
+          },
+          "Lastname": {
+            "type": "string"
+          },
+          "Phone": {
+            "type": "string"
+          },
+          "Group": {
+            "type": "string",
+            "enum": ["Administrators", "Users"]
+          },
+          "Project": {
+            "type": "string"
+          },
+          "CreatedDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 datetime with timezone"
+          },
+          "LoginDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 datetime with timezone"
+          }
+        }
+      }
+    },
+    "EmailControl": {
+      "type": "object",
+      "description": "Email polling configuration for incoming email control",
+      "properties": {
+        "ServerIpAddress": {
+          "type": "string",
+          "description": "POP3 server IP address or hostname"
+        },
+        "ServerPortNumber": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 110
+        },
+        "Pop3Username": {
+          "type": "string"
+        },
+        "Pop3Password": {
+          "type": "string",
+          "description": "Encrypted password (base64 encoded encrypted data)"
+        },
+        "EmailAddress": {
+          "type": "string",
+          "format": "email"
+        },
+        "PollInterval": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Poll interval in seconds"
+        },
+        "RemoveEmailsAfterUsage": {
+          "type": "boolean"
+        },
+        "Ssl": {
+          "type": "boolean"
+        }
+      }
+    },
+    "SmtpSettings": {
+      "type": "object",
+      "description": "SMTP configuration for sending emails",
+      "properties": {
+        "Hostname": {
+          "type": "string",
+          "description": "SMTP server hostname"
+        },
+        "Hostport": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 25
+        },
+        "Username": {
+          "type": "string"
+        },
+        "Password": {
+          "type": "string",
+          "description": "Encrypted password (base64 encoded encrypted data)"
+        },
+        "Ssl": {
+          "type": "boolean"
+        },
+        "SendLowBatteryNotification": {
+          "type": "boolean"
+        },
+        "SendLowBatteryNotificationRecipient": {
+          "type": "string",
+          "format": "email"
+        }
+      }
+    },
+    "DnsServers": {
+      "type": "object",
+      "description": "DNS server configuration",
+      "properties": {
+        "PrimaryDNS": {
+          "type": "string",
+          "format": "ipv4",
+          "description": "Primary DNS server IP address"
+        },
+        "SecondaryDNS": {
+          "type": "string",
+          "format": "ipv4",
+          "description": "Secondary DNS server IP address"
+        }
+      }
+    },
+    "NetworkSettings": {
+      "type": "object",
+      "description": "Network configuration for the IHC controller",
+      "properties": {
+        "IpAddress": {
+          "type": "string",
+          "format": "ipv4"
+        },
+        "Netmask": {
+          "type": "string",
+          "format": "ipv4"
+        },
+        "Gateway": {
+          "type": "string",
+          "format": "ipv4"
+        },
+        "HttpPort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 80
+        },
+        "HttpsPort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 443
+        }
+      }
+    },
+    "WebAccess": {
+      "type": "object",
+      "description": "Web access permissions for different applications and locations",
+      "properties": {
+        "UsbLoginRequired": {
+          "type": "boolean",
+          "description": "Require USB key for login"
+        },
+        "AdministratorUsb": {
+          "type": "boolean",
+          "description": "Allow Administrator access via USB"
+        },
+        "AdministratorInternal": {
+          "type": "boolean",
+          "description": "Allow Administrator access from internal network"
+        },
+        "AdministratorExternal": {
+          "type": "boolean",
+          "description": "Allow Administrator access from external network"
+        },
+        "TreeviewUsb": {
+          "type": "boolean"
+        },
+        "TreeviewInternal": {
+          "type": "boolean"
+        },
+        "TreeviewExternal": {
+          "type": "boolean"
+        },
+        "SceneviewUsb": {
+          "type": "boolean"
+        },
+        "SceneviewInternal": {
+          "type": "boolean"
+        },
+        "SceneviewExternal": {
+          "type": "boolean"
+        },
+        "ScenedesignUsb": {
+          "type": "boolean"
+        },
+        "ScenedesignInternal": {
+          "type": "boolean"
+        },
+        "ScenedesignExternal": {
+          "type": "boolean"
+        },
+        "ServerstatusUsb": {
+          "type": "boolean"
+        },
+        "ServerstatusInternal": {
+          "type": "boolean"
+        },
+        "ServerstatusExternal": {
+          "type": "boolean"
+        },
+        "IhcvisualUsb": {
+          "type": "boolean"
+        },
+        "IhcvisualInternal": {
+          "type": "boolean"
+        },
+        "IhcvisualExternal": {
+          "type": "boolean"
+        },
+        "OnlinedocumentationUsb": {
+          "type": "boolean"
+        },
+        "OnlinedocumentationInternal": {
+          "type": "boolean"
+        },
+        "OnlinedocumentationExternal": {
+          "type": "boolean"
+        },
+        "WebsceneviewUsb": {
+          "type": "boolean"
+        },
+        "WebsceneviewInternal": {
+          "type": "boolean"
+        },
+        "WebsceneviewExternal": {
+          "type": "boolean"
+        },
+        "OpenapiUsb": {
+          "type": "boolean"
+        },
+        "OpenapiInternal": {
+          "type": "boolean"
+        },
+        "OpenapiExternal": {
+          "type": "boolean"
+        },
+        "OpenapiUsed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "WLanSettings": {
+      "type": "object",
+      "description": "Wireless network configuration",
+      "properties": {
+        "Enabled": {
+          "type": "boolean"
+        },
+        "Ssid": {
+          "type": "string",
+          "description": "Wireless network SSID"
+        },
+        "Key": {
+          "type": "string",
+          "description": "Encrypted wireless key (base64 encoded encrypted data)"
+        },
+        "SecurityType": {
+          "type": "string",
+          "enum": ["WPA", "WPA2", "WEP", "None"]
+        },
+        "EncryptionType": {
+          "type": "string",
+          "enum": ["WPA", "WPA2", "WEP", "None"]
+        },
+        "IpAddress": {
+          "type": "string",
+          "format": "ipv4"
+        },
+        "Netmask": {
+          "type": "string",
+          "format": "ipv4"
+        },
+        "Gateway": {
+          "type": "string",
+          "format": "ipv4"
+        }
+      }
+    }
+  }
+}

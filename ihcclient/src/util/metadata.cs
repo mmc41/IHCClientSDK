@@ -17,12 +17,23 @@ namespace Ihc {
         /// Gets the version of the SDK from the assembly metadata.
         /// </summary>
         /// <returns>The SDK version string, or "Unknown" if not available.</returns>
-        public static string GetSdkVersion()
+        public static string GetSdkVersionStr()
         {
             // Get the SDK assembly (ihcclient), not the entry assembly
             Assembly assembly = typeof(VersionInfo).Assembly;
             var fileVersion = assembly?.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
             return fileVersion ?? assembly?.GetName().Version?.ToString() ?? "Unknown";
+        }
+
+        /// <summary>
+        /// Gets the version of the SDK from the assembly metadata.
+        /// </summary>
+        /// <returns>The SDK version string, or "Unknown" if not available.</returns>
+        public static System.Version GetSdkVersion()
+        {
+            // Get the SDK assembly (ihcclient), not the entry assembly
+            Assembly assembly = typeof(VersionInfo).Assembly;
+            return assembly?.GetName().Version;
         }
 
     }

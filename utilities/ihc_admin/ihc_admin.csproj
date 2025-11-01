@@ -5,6 +5,8 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Version>0.8.0</Version>
+    <AssemblyVersion>$(Version)</AssemblyVersion>    
   </PropertyGroup>
   
   <ItemGroup>

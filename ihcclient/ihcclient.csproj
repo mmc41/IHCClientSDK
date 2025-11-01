@@ -7,6 +7,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>CS1591,CS1587</NoWarn>
     <Version>0.8.1</Version>
+    <AssemblyVersion>$(Version)</AssemblyVersion>
     <InformationalVersion>This is a beta package</InformationalVersion>
     <Copyright>Apache License 2.0</Copyright>
     <Authors>mmc41</Authors>

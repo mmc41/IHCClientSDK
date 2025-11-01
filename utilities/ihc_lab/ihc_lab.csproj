@@ -9,6 +9,7 @@
     <CopyDebugSymbolFilesFromPackages>true</CopyDebugSymbolFilesFromPackages>
     <Version>0.8.0</Version>
     <InformationalVersion>This is a beta version</InformationalVersion>
+    <AssemblyVersion>$(Version)</AssemblyVersion>
     <Copyright>Apache License 2.0</Copyright>
     <Authors>mmc41</Authors>
     <AssemblyTitle>IHC Lab</AssemblyTitle>

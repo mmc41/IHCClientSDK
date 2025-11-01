@@ -63,7 +63,7 @@ namespace Ihc {
         /// <summary>
         /// The main activity source for SDK operations.
         /// </summary>
-        public static ActivitySource ActivitySource { get; } = new ActivitySource(name: ActivitySourceName, version: VersionInfo.GetSdkVersion());
+        public static ActivitySource ActivitySource { get; } = new ActivitySource(name: ActivitySourceName, version: VersionInfo.GetSdkVersionStr());
 
         /// <summary>
         /// Tag prefix for input parameters in activity tags.

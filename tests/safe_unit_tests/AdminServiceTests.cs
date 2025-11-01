@@ -639,6 +639,7 @@ namespace Ihc.Tests
         {
             return new MutableAdminModel
             {
+                ModelMetadata = ModelMetadata.Current(typeof(MutableAdminModel)),
                 Users = new HashSet<IhcUser>
                 {
                     new IhcUser
