@@ -77,8 +77,8 @@ namespace Ihc {
         /// <summary>
         /// Get logged historical data for a resource ID.
         /// </summary>
-        /// <param name="loggedData1">Resource ID to get logged data for</param>
-        public Task<IReadOnlyList<LoggedData>> GetLoggedData(int loggedData1);
+        /// <param name="resourceId">Resource ID to get logged data for</param>
+        public Task<IReadOnlyList<LoggedData>> GetLoggedData(int resourceId);
 
         /// <summary>
         /// Get the type string of a resource. Refer to TypeStrings constants for valid return values.
@@ -740,15 +740,15 @@ namespace Ihc {
             }
         }
 
-        public async Task<IReadOnlyList<LoggedData>> GetLoggedData(int loggedData1)
+        public async Task<IReadOnlyList<LoggedData>> GetLoggedData(int resourceId)
         {
             using (var activity = StartActivity(nameof(GetLoggedData)))
             {
                 try
                 {
-                    activity?.SetParameters((nameof(loggedData1), loggedData1));
+                    activity?.SetParameters((nameof(resourceId), resourceId));
 
-                    var resp = await impl.getLoggedDataAsync(new inputMessageName20() { getLoggedData1 = loggedData1 }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var resp = await impl.getLoggedDataAsync(new inputMessageName20() { getLoggedData1 = resourceId }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = resp.getLoggedData2.Where((v) => v != null).Select((l) => new LoggedData() { Value = l.value, Id = l.id, Timestamp = DateTimeOffset.FromUnixTimeSeconds(l.timestamp) }).ToList();
 
                     activity?.SetReturnValue(retv);

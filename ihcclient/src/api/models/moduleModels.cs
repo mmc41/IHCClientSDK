@@ -8,22 +8,36 @@ namespace Ihc {
     /// <summary>
     /// High level model of a scene project file without soap distractions.
     /// </summary>
-    public record SceneProject {
-            /// <summary>
-            /// Raw binary data of the scene project file.
-            /// TODO: Check if a more useful string format can be returned instead.
-            /// </summary>
-            public byte[] Data { get; init; }
+    public record SceneProject
+    {
+      /// <summary>
+      /// Raw binary data of the scene project file.
+      /// TODO: Check if a more useful string format can be returned instead.
+      /// </summary>
+      public byte[] Data { get; init; }
 
-            /// <summary>
-            /// Name of the scene project file.
-            /// </summary>
-            public string Filename { get; init; }
+      /// <summary>
+      /// Name of the scene project file.
+      /// </summary>
+      public string Filename { get; init; }
 
-            public override string ToString()
-            {
-              return $"SceneProject(Data=byte[{Data?.Length ?? 0}], Filename={Filename})";
-            }
+      public override string ToString()
+      {
+        return $"SceneProject(Data=byte[{Data?.Length ?? 0}], Filename={Filename})";
+      }
+    }
+    
+    /// <summary>
+    /// Segment of a scene project
+    /// </summary>
+    public record SceneProjectSegment
+    {
+      public byte[] Data { get; init; }
+
+      public override string ToString()
+      {
+        return $"SceneProjectSegment(Data=byte[{Data?.Length ?? 0}])";
+      }
     }
 
     /// <summary>

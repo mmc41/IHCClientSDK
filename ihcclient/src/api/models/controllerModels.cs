@@ -182,4 +182,17 @@ namespace Ihc
             return $"ProjectFile(Filename={Filename}, Data={Data})";
         }
     }
+
+    /// <summary>
+    /// Segment of a project
+    /// </summary>
+    public record ProjectSegment
+    {
+      public byte[] Data { get; init; }
+
+      public override string ToString()
+      {
+        return $"ProjectSegment(Data=byte[{Data?.Length ?? 0}])";
+      }
+    }
 }

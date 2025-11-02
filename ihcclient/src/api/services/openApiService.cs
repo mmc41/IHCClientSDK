@@ -130,7 +130,7 @@ namespace Ihc {
         /// <param name="index">Segment index</param>
         /// <param name="majorVersion">Major version number</param>
         /// <param name="minorVersion">Minor version number</param>
-        public Task<byte[]> GetIHCProjectSegment(int index, int majorVersion, int minorVersion);
+        public Task<ProjectSegment> GetIHCProjectSegment(int index, int majorVersion, int minorVersion);
 
         /// <summary>
         /// Get scene project information.
@@ -146,7 +146,7 @@ namespace Ihc {
         /// Get a specific scene project segment by index.
         /// </summary>
         /// <param name="index">Segment index</param>
-        public Task<byte[]> GetSceneProjectSegment(int index);
+        public Task<SceneProjectSegment> GetSceneProjectSegment(int index);
 
         /// <summary>
         /// The IHC endpoint URL.
@@ -946,7 +946,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<byte[]> GetIHCProjectSegment(int index, int majorVersion, int minorVersion)
+        public async Task<ProjectSegment> GetIHCProjectSegment(int index, int majorVersion, int minorVersion)
         {
             using (var activity = StartActivity(nameof(GetIHCProjectSegment)))
             {
@@ -963,7 +963,11 @@ namespace Ihc {
                         getIHCProjectSegment2 = majorVersion,
                         getIHCProjectSegment3 = minorVersion
                     }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = result.getIHCProjectSegment4?.data != null ? result.getIHCProjectSegment4.data : Array.Empty<byte>();
+
+                    var retv = new ProjectSegment
+                    {
+                        Data = result.getIHCProjectSegment4?.data ?? Array.Empty<byte>()
+                    };
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -1016,7 +1020,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<byte[]> GetSceneProjectSegment(int index)
+        public async Task<SceneProjectSegment> GetSceneProjectSegment(int index)
         {
             using (var activity = StartActivity(nameof(GetSceneProjectSegment)))
             {
@@ -1029,7 +1033,11 @@ namespace Ihc {
                     {
                         getSceneProjectSegment1 = index
                     }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = result.getSceneProjectSegment2?.data != null ? result.getSceneProjectSegment2.data : Array.Empty<byte>();
+
+                    var retv = new SceneProjectSegment
+                    {
+                        Data = result.getSceneProjectSegment2?.data ?? Array.Empty<byte>()
+                    };
 
                     activity?.SetReturnValue(retv);
                     return retv;
