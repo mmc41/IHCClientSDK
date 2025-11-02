@@ -42,7 +42,7 @@ namespace Ihc.Tests
                 Endpoint = "http://test",
                 UserName = "testuser",
                 Password = "testpass",
-                Application = "administrator",
+                Application = Application.administrator,
                 LogSensitiveData = false,
                 AsyncContinueOnCapturedContext = false
             };

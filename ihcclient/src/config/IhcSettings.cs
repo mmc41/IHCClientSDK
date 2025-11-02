@@ -34,7 +34,7 @@ namespace Ihc
             Endpoint = string.Empty;
             UserName = string.Empty;
             Password = string.Empty;
-            Application = string.Empty;
+            Application = Application.openapi;
             LogSensitiveData = false;
             AsyncContinueOnCapturedContext = false;
             AllowDangerousInternTestCalls = false;
@@ -57,9 +57,9 @@ namespace Ihc
         public string Password { get; set; }
 
         /// <summary>
-        /// The IHC application name. Known valid names are "treeview", "openapi", "administrator" (required value).
+        /// The IHC application name.
         /// </summary>
-        public string Application { get; set; }
+        public Application Application { get; set; }
 
         /// <summary>
         /// Controls if passwords are logged in clear text or not (default false).
@@ -84,8 +84,7 @@ namespace Ihc
         {
             return !string.IsNullOrEmpty(Endpoint)
                 && !string.IsNullOrEmpty(UserName)
-                && !string.IsNullOrEmpty(Password)
-                && !string.IsNullOrEmpty(Application);
+                && !string.IsNullOrEmpty(Password);
         }
 
         public override string ToString()

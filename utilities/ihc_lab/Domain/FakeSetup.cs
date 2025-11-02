@@ -19,16 +19,16 @@ namespace IhcLab {
                 Username = settings.UserName,
                 Password = settings.Password,
                 Firstname = "Mock",
-                Lastname = settings.Application,
+                Lastname = settings.Application.ToString(),
                 Group = IhcUserGroup.Administrators
             });
 
-            A.CallTo(() => service.Authenticate(A<string>._, A<string>._, A<string>._)).ReturnsLazily((string u, string p, string app) => new IhcUser
+            A.CallTo(() => service.Authenticate(A<string>._, A<string>._, A<Application>._)).ReturnsLazily((string u, string p, Application app) => new IhcUser
             {
                 Username = u,
                 Password = p,
                 Firstname = "Mock",
-                Lastname = app,
+                Lastname = app.ToString(),
                 Group = IhcUserGroup.Administrators
             });
 

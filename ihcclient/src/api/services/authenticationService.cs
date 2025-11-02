@@ -21,8 +21,8 @@ namespace Ihc {
         /// </summary>
         /// <param name="userName">Your registered IHC controller user name</param>
         /// <param name="password">Your registered IHC controller password</param>
-        /// <param name="application">Allowed applications: "treeview", "openapi", "administrator"</param>
-        public Task<IhcUser> Authenticate(string userName, string password, string application = "openapi");
+        /// <param name="application">Application name</param>
+        public Task<IhcUser> Authenticate(string userName, string password, Application application = Application.openapi);
 
         /// <summary>
         /// Logout from IHC controller and clear session cookie.
@@ -142,7 +142,12 @@ namespace Ihc {
             return await Authenticate(settings.UserName, settings.Password, settings.Application);
         }
 
-        public async Task<IhcUser> Authenticate(string userName, string password, string application = "openapi")
+        public Task<IhcUser> Authenticate(string userName, string password, Application application = Application.openapi)
+        {
+            return DoAuthenticate(userName, password, application.ToString().ToLower());
+        }
+
+        private async Task<IhcUser> DoAuthenticate(string userName, string password, string application)
         {
             using (var activity = StartActivity(nameof(Authenticate))) {
                 try

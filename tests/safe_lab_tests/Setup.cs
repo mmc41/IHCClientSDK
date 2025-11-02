@@ -22,7 +22,7 @@ namespace Ihc.Tests
                 Endpoint = SpecialEndpoints.MockedPrefix,
                 UserName = "test",
                 Password = "test",
-                Application = "administrator",
+                Application = Application.administrator,
                 LogSensitiveData = true,
                 AsyncContinueOnCapturedContext = false
             };

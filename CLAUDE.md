@@ -127,7 +127,6 @@ This parameter is available on:
 Before running any code that connects to an IHC controller:
 1. Enable network access in IHC administrator interface
 2. Enable "thirdparty access" 
-3. Use appropriate application name: "treeview", "openapi", or "administrator"
 
 ## Important Notes
 

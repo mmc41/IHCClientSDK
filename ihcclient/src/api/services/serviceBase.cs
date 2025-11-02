@@ -36,9 +36,9 @@ namespace Ihc
                 throw new ArgumentException("IhcSettings must be supplied");
             }
 
-            if (this.settings.Endpoint == null || this.settings.Application == null)
+            if (this.settings.Endpoint == null)
             {
-                throw new ArgumentException("IhcSettings fields Endpoint, Application must be supplied");
+                throw new ArgumentException("IhcSettings field Endpoint must be supplied");
             }
 
             if (this.settings.Endpoint.StartsWith(SpecialEndpoints.MockedPrefix))

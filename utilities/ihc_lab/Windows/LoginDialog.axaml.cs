@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Ihc;
@@ -12,8 +14,14 @@ public partial class LoginDialog : Window
 {
     private readonly IhcSettings _ihcSettings;
     private ILogger<LoginDialog> logger;
+    private readonly List<ApplicationItem> _applicationItems;
 
     public bool DialogResult { get; private set; }
+
+    public record ApplicationItem(string Name, Application Value)
+    {
+        public override string ToString() => Name;
+    }
 
     /// <summary>
     /// Parameterless constructor for design-time support.
@@ -31,7 +39,15 @@ public partial class LoginDialog : Window
 
         _ihcSettings = ihcSettings;
 
+        // Populate application items from enum
+        _applicationItems = Enum.GetValues<Application>()
+            .Select(app => new ApplicationItem(app.ToString(), app))
+            .ToList();
+
         InitializeComponent();
+
+        // Set ComboBox items source
+        ApplicationComboBox.ItemsSource = _applicationItems;
 
         // Initialize logger
         this.logger = Program.loggerFactory != null
@@ -57,23 +73,8 @@ public partial class LoginDialog : Window
             UserNameTextBox.Text = _ihcSettings.UserName ?? string.Empty;
             PasswordTextBox.Text = _ihcSettings.Password ?? string.Empty;
 
-            // Set application combo box
-            string application = _ihcSettings.Application ?? "openapi";
-            switch (application.ToLower())
-            {
-                case "treeview":
-                    ApplicationComboBox.SelectedIndex = 0;
-                    break;
-                case "openapi":
-                    ApplicationComboBox.SelectedIndex = 1;
-                    break;
-                case "administrator":
-                    ApplicationComboBox.SelectedIndex = 2;
-                    break;
-                default:
-                    ApplicationComboBox.SelectedIndex = 0;
-                    break;
-            }
+            // Set application combo box to current value
+            ApplicationComboBox.SelectedItem = _applicationItems.FirstOrDefault(item => item.Value ==  _ihcSettings.Application);
 
             LogSensitiveDataCheckBox.IsChecked = _ihcSettings.LogSensitiveData;
             AllowDangerousTestCallsCheckBox.IsChecked = _ihcSettings.AllowDangerousInternTestCalls;
@@ -154,7 +155,9 @@ public partial class LoginDialog : Window
         try
         {
             // Get application value from combo box
-            string application = ((ComboBoxItem)ApplicationComboBox.SelectedItem!).Content?.ToString() ?? "treeview";
+            Application application = ApplicationComboBox.SelectedItem is ApplicationItem selectedItem
+                ? selectedItem.Value
+                : Application.openapi;
 
             // Update IHC Settings properties directly using reflection
             // Note: Since IhcSettings is a record with init-only properties, we need to use reflection
