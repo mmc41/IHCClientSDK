@@ -21,7 +21,7 @@ namespace Ihc
     }
     
     /// <summary>
-    /// Base class for both high level IHC Api services AND IHC Application services
+    /// Base class for both high level IHC Api services.
     /// </summary>
     public abstract class ServiceBase
     {

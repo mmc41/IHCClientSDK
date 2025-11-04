@@ -50,7 +50,7 @@ namespace Ihc.example
                     }).Build();
 
                 // Create client information app service.
-                using (InformationService infoService = new InformationService(settings))
+                using (InformationAppService infoService = new InformationAppService(settings))
                 {
                     var info = await infoService.GetInformationModel();
 

@@ -65,12 +65,25 @@ This is a .NET 9.0 mono-repository containing an unofficial SDK for IHC (Intelli
 ### SDK Architecture
 The `ihcclient` project follows a layered architecture:
 
-**High-Level Services** (`ihcclient/src/services/`):
-- Service classes: `AuthenticationService`, `ResourceInteractionService`, `ConfigurationService`, `ControllerService`, `MessagecontrollogService`, `ModuleService`, `NotificationManagerService`, `TimeManagerService`, `UserManagerService`, `OpenAPIService`, `AirlinkManagementService`
+**High-Level Services** (`ihcclient/src/api/services/`):
+- Service classes: `AuthenticationService`, `ResourceInteractionService`, `ConfigurationService`, `ControllerService`, `MessagecontrollogService`, `ModuleService`, `NotificationManagerService`, `TimeManagerService`, `UserManagerService`, `OpenAPIService`, `AirlinkManagementService`, `SmsModemService`, `InternalTestService`
 - Each service wraps a corresponding SOAP implementation (SoapImpl classes)
 - Uses custom data models in `src/models/` instead of exposing SOAP artifacts
 - Fully async API design with no SOAP inheritance
 - Services require logger and endpoint in constructor; most require authentication first (except OpenAPIService)
+- `SmsModemService` - SMS modem control including settings, status, hardware/firmware info, and reset operations
+- `InternalTestService` - LK/Schneider internal testing operations for hardware diagnostics, LED control, board version queries, time/date management, and RS485 communication. Some potentially dangerous operations (BurnIO, TestSdCard, TestIOBoard, RS485 operations, ProductionTestPassed) require `allowDangerousInternTestCalls` setting enabled in IhcSettings. Intended for manufacturing/testing scenarios.
+
+**Application Services** (`ihcclient/src/app/services/`, namespace: `Ihc.App`):
+- Higher-level, tech-agnostic backend services intended for GUI or console applications
+- Build on top of SDK services to provide specialized functionality for specific application use cases
+- All application services inherit from `AppServiceBase` and support auto-authentication
+- Service classes:
+  - `AdminAppService` - Manages administrator-related data (users, email, SMTP, DNS, network, web access, WLAN settings). Features change tracking that detects and applies only modified settings to minimize API calls. Supports JSON serialization with optional encryption of sensitive data (marked with `[SensitiveData]` attribute). Provides `GetModel()` to retrieve settings, `Store()` to apply changes, and `SaveAsJson()`/`LoadFromJson()` for file operations.
+  - `InformationAppService` - Retrieves read-only controller information (system status, versions, uptime, time settings, SD card info, SMS modem info). Provides `GetInformationModel()` for comprehensive system information retrieval.
+  - `LabAppService` - Laboratory/testing backend where users can dynamically select and execute individual IHC service operations. Supports runtime service and operation selection for experimentation and testing scenarios.
+- Application services can create their own SDK service instances or accept existing instances via constructor injection
+- Designed to be framework-agnostic, suitable for WPF, Avalonia, console apps, or web backends
 
 **Generated SOAP Layer** (`ihcclient/generatedsrc/`):
 - Auto-generated from WSDL files using dotnet-svcutil (authentication.cs, configuration.cs, controller.cs, resourceinteraction.cs, openapi.cs, airlinkmanagment.cs, etc.)

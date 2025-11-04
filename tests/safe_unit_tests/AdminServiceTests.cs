@@ -52,7 +52,7 @@ namespace Ihc.Tests
         public void Constructor_WithSettings_CreatesInstance()
         {
             // Act
-            var service = new AdminService(settings, fileEnryption: true);
+            var service = new AdminAppService(settings, fileEnryption: true);
 
             // Assert
             Assert.That(service, Is.Not.Null);
@@ -62,7 +62,7 @@ namespace Ihc.Tests
         public void Constructor_WithServicesAndSettings_CreatesInstance()
         {
             // Act
-            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
 
             // Assert
             Assert.That(service, Is.Not.Null);
@@ -72,16 +72,16 @@ namespace Ihc.Tests
         public void Constructor_WithNullSettings_ThrowsArgumentException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentException>(() => new AdminService(null, fileEnryption: true));
+            Assert.Throws<ArgumentException>(() => new AdminAppService(null, fileEnryption: true));
         }
 
         [Test]
         public void Constructor_WithNullServices_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new AdminService(settings, fileEnryption: true, null, fakeUserService, fakeConfigService));
-            Assert.Throws<ArgumentNullException>(() => new AdminService(settings, fileEnryption: true, fakeAuthService, null, fakeConfigService));
-            Assert.Throws<ArgumentNullException>(() => new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, null));
+            Assert.Throws<ArgumentNullException>(() => new AdminAppService(settings, fileEnryption: true, null, fakeUserService, fakeConfigService));
+            Assert.Throws<ArgumentNullException>(() => new AdminAppService(settings, fileEnryption: true, fakeAuthService, null, fakeConfigService));
+            Assert.Throws<ArgumentNullException>(() => new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, null));
         }
 
         [Test]
@@ -143,7 +143,7 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(testWebAccess));
             A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(testWLan));
 
-            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
 
             // Act
             var model = await service.GetModel();
@@ -185,7 +185,7 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(testEmailControl));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(testSmtp));
 
-            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
 
             // Act - save same model without changes
@@ -221,7 +221,7 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
             A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
 
-            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
 
             // Act - add a new user
@@ -257,7 +257,7 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
             A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
 
-            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
 
             // Act - remove a user
@@ -303,7 +303,7 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
             A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
 
-            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
 
             // Act - update user with new properties (using HashSet operations)
@@ -344,7 +344,7 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(initialEmailControl));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
 
-            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
 
             // Act - change email control settings (using record 'with' expression)
@@ -380,7 +380,7 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(initialSmtp));
 
-            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
 
             // Act - change SMTP settings (using record 'with' expression)
@@ -415,7 +415,7 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
             A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
 
-            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
 
             // Act - change DNS servers (using record 'with' expression)
@@ -453,7 +453,7 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
             A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
 
-            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
 
             // Act - change network settings (using record 'with' expression)
@@ -491,7 +491,7 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
             A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(initialWLan));
 
-            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
 
             // Act - change WLAN settings (using record 'with' expression)
@@ -525,7 +525,7 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
             A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
 
-            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
 
             // Act - call SaveAdminModel without calling GetAdminModel first
             var newModel = new MutableAdminModel
@@ -598,7 +598,7 @@ namespace Ihc.Tests
             A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(initialEmailControl));
             A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(initialSmtp));
 
-            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
 
             // Act - make multiple changes
@@ -728,7 +728,7 @@ namespace Ihc.Tests
         public async Task SaveAndLoadJson_WithEncryptionEnabled_RoundTripSucceeds()
         {
             // Arrange
-            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var originalModel = CreateTestAdminModel();
             var stream = new System.IO.MemoryStream();
 
@@ -762,7 +762,7 @@ namespace Ihc.Tests
         public async Task SaveAndLoadJson_WithEncryptionDisabled_RoundTripSucceeds()
         {
             // Arrange
-            var service = new AdminService(settings, fileEnryption: false, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminAppService(settings, fileEnryption: false, fakeAuthService, fakeUserService, fakeConfigService);
             var originalModel = CreateTestAdminModel();
             var stream = new System.IO.MemoryStream();
 
@@ -786,7 +786,7 @@ namespace Ihc.Tests
             var envVar = Environment.GetEnvironmentVariable("IHC_ENCRYPT_PASSPHRASE");
             Assert.That(envVar, Is.Not.Null, "IHC_ENCRYPT_PASSPHRASE environment variable should be set");
 
-            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = CreateTestAdminModel();
             var stream = new System.IO.MemoryStream();
 
@@ -816,7 +816,7 @@ namespace Ihc.Tests
         public async Task SaveAsJson_WithEncryptionDisabled_DoesNotEncryptFields()
         {
             // Arrange
-            var service = new AdminService(settings, fileEnryption: false, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminAppService(settings, fileEnryption: false, fakeAuthService, fakeUserService, fakeConfigService);
             var model = CreateTestAdminModel();
             var stream = new System.IO.MemoryStream();
 
@@ -839,7 +839,7 @@ namespace Ihc.Tests
         public async Task SaveAsJson_DoesNotModifyOriginalModel()
         {
             // Arrange
-            var service = new AdminService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = CreateTestAdminModel();
             var stream = new System.IO.MemoryStream();
 

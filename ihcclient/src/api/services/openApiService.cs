@@ -147,11 +147,6 @@ namespace Ihc {
         /// </summary>
         /// <param name="index">Segment index</param>
         public Task<SceneProjectSegment> GetSceneProjectSegment(int index);
-
-        /// <summary>
-        /// The IHC endpoint URL.
-        /// </summary>
-        public string Endpoint { get; }
     }
 
     /// <summary>
@@ -166,12 +161,6 @@ namespace Ihc {
         public ICookieHandler GetCookieHandler()
         {
             return cookieHandler;
-        }
-
-        public string Endpoint { 
-          get {
-            return endpoint;
-          } 
         }
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Openapi.OpenAPIService

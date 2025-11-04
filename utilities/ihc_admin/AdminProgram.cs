@@ -80,7 +80,7 @@ namespace Ihc.download_upload_example
                         }
                     }).Build();
                 
-                using (var adminServer = new AdminService(settings, encrypted.IsEncrypted))
+                using (var adminServer = new AdminAppService(settings, encrypted.IsEncrypted))
                 {
                     if (command == CMD_GET)
                     {

@@ -6,10 +6,11 @@ namespace Ihc.App
 {
     /// <summary>
     /// High level application service for retrieving a broad set of non-editable information from the IHC controller.
+    /// This applications service is intended as a tech-agnostic backend for a GUI or console IHC admin application.
     /// Provides access to system status, versions, time settings, and controller information.
     /// Will auto-authenticate with provided settings unless already authenticated.
     /// </summary>
-    public class InformationService : ServiceBase, IDisposable, IAsyncDisposable
+    public class InformationAppService : AppServiceBase, IDisposable, IAsyncDisposable
     {
         public readonly IAuthenticationService authService;
         private readonly IConfigurationService configService;
@@ -18,14 +19,16 @@ namespace Ihc.App
         private readonly ISmsModelService smsModemService;
         private readonly bool ownedServices;
 
+        private IhcSettings settings;
+
         /// <summary>
         /// Create an InformationService instance with IhcSettings only.
         /// This constructor will internally create needed API services.
         /// </summary>
         /// <param name="settings">IHC configuration settings</param>
-        public InformationService(IhcSettings settings)
-            : base(settings)
+        public InformationAppService(IhcSettings settings)
         {
+            this.settings = settings;
             this.authService = new AuthenticationService(settings);
             this.configService = new ConfigurationService(authService);
             this.timeService = new TimeManagerService(authService);
@@ -44,9 +47,9 @@ namespace Ihc.App
         /// <param name="timeService">Time manager service instance</param>
         /// <param name="controllerService">Controller service instance</param>
         /// <param name="smsModemService">SMS modem service instance</param>
-        public InformationService(IhcSettings settings, IAuthenticationService authService, IConfigurationService configService, ITimeManagerService timeService, IControllerService controllerService, ISmsModelService smsModemService)
-            : base(settings)
+        public InformationAppService(IhcSettings settings, IAuthenticationService authService, IConfigurationService configService, ITimeManagerService timeService, IControllerService controllerService, ISmsModelService smsModemService)
         {
+            this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
             this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
             this.configService = configService ?? throw new ArgumentNullException(nameof(configService));
             this.timeService = timeService ?? throw new ArgumentNullException(nameof(timeService));

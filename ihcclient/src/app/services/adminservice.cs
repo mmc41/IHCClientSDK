@@ -9,26 +9,11 @@ using System.IO;
 using System.Text;
 using System.Reflection;
 
-
 namespace Ihc.App
 {
     /// <summary>
-    /// Summary of changes made to controller.
-    /// </summary>
-    public record ChangeInformation
-    {
-        /// <summary>
-        /// Number of changes performed.
-        /// </summary>
-        public int ChangeCount { get; init; }
-
-        /// <summary>
-        /// Reboot needed after changes.
-        /// </summary>
-        public bool RebootRequired { get;  init; }
-    }
-    /// <summary>
     /// High-level application service for managing administrator-related data including users, email, SMTP, DNS, network, web access, and WLAN settings.
+    /// This applications service is intended as a tech-agnostic backend for a GUI or console IHC admin application.
     /// Provides change tracking and efficient updates to the IHC controller by detecting and applying only modified settings.
     /// Supports JSON serialization/deserialization with optional encryption of sensitive data.
     /// Will auto-authenticate with provided settings unless already authenticated.
@@ -38,7 +23,7 @@ namespace Ihc.App
     /// When saving via Store(), only the detected changes are sent to the controller, minimizing API calls.
     /// Some configuration changes (DNS, network, WLAN) require a controller reboot to take effect.
     /// </remarks>
-    public class AdminService : ServiceBase, IDisposable, IAsyncDisposable
+    public class AdminAppService : AppServiceBase, IDisposable, IAsyncDisposable
     {
         public readonly IAuthenticationService authService;
         private readonly IUserManagerService userService;
@@ -49,15 +34,33 @@ namespace Ihc.App
 
         private SimpleSecret secretMaker;
 
+        private IhcSettings settings;
+
+        /// <summary>
+        /// Summary of changes made to controller.
+        /// </summary>
+        public record ChangeInformation
+        {
+            /// <summary>
+            /// Number of changes performed.
+            /// </summary>
+            public int ChangeCount { get; init; }
+
+            /// <summary>
+            /// Reboot needed after changes.
+            /// </summary>
+            public bool RebootRequired { get;  init; }
+        }
+
         /// <summary>
         /// Create an AdminService instance with IhcSettings only.
         /// This constructor will internally create needed API services.
         /// </summary>
         /// <param name="settings">IHC configuration settings</param>
         /// <param name="fileEnryption">Should confidential fields be encrypted/decrypted in stored files</param>
-        public AdminService(IhcSettings settings, bool fileEnryption)
-            : base(settings)
+        public AdminAppService(IhcSettings settings, bool fileEnryption)
         {
+            this.settings = settings;
             this.authService = new AuthenticationService(settings);
             this.userService = new UserManagerService(this.authService);
             this.configService = new ConfigurationService(this.authService);
@@ -74,9 +77,9 @@ namespace Ihc.App
         /// <param name="authService">Auth manager service instance</param>
         /// <param name="userService">User manager service instance</param>
         /// <param name="configService">Configuration service instance</param>
-        public AdminService(IhcSettings settings, bool fileEnryption, IAuthenticationService authService, IUserManagerService userService, IConfigurationService configService)
-            : base(settings)
+        public AdminAppService(IhcSettings settings, bool fileEnryption, IAuthenticationService authService, IUserManagerService userService, IConfigurationService configService)
         {
+            this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
             this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
             this.userService = userService ?? throw new ArgumentNullException(nameof(userService));
             this.configService = configService ?? throw new ArgumentNullException(nameof(configService));
@@ -515,10 +518,10 @@ namespace Ihc.App
                         changes.Add(change);
                         activity?.AddEvent(new ActivityEvent(change.ChangeType.ToString(), tags: new ActivityTagsCollection {
                          {
-                            "orginal", origUser.ToString(IhcSettings.LogSensitiveData)
+                            "orginal", origUser.ToString(settings.LogSensitiveData)
                          },
                          {
-                            "payload", currUser.ToString(IhcSettings.LogSensitiveData)
+                            "payload", currUser.ToString(settings.LogSensitiveData)
                          }
                         }));
                     }
