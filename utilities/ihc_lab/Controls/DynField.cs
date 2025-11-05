@@ -16,6 +16,13 @@ namespace IhcLab;
 public partial class DynField : UserControl
 {
     private WrapPanel? parentPanel;
+    private bool _suppressValueChanged = false;
+    private static int _radioGroupCounter = 0;
+
+    /// <summary>
+    /// Event raised when the value of this DynField changes through user interaction.
+    /// </summary>
+    public event EventHandler? ValueChanged;
 
     public DynField()
     {
@@ -32,6 +39,17 @@ public partial class DynField : UserControl
 
         // Create the initial dynamic control
         CreateDynamicControl();
+    }
+
+    /// <summary>
+    /// Raises the ValueChanged event unless suppressed.
+    /// </summary>
+    protected virtual void OnValueChanged()
+    {
+        if (!_suppressValueChanged)
+        {
+            ValueChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     private Type typeForControl = typeof(string);
@@ -107,11 +125,15 @@ public partial class DynField : UserControl
         }
         set
         {
-            var control = GetControl();
-            if (control == null)
-                return;
+            // Suppress ValueChanged events when setting programmatically
+            _suppressValueChanged = true;
+            try
+            {
+                var control = GetControl();
+                if (control == null)
+                    return;
 
-            string typeLower = typeForControl.Name.ToLower();
+                string typeLower = typeForControl.Name.ToLower();
 
             if (control is BinaryFilePicker binaryFilePicker)
             {
@@ -170,7 +192,7 @@ public partial class DynField : UserControl
                     numericUpDown.Value = (decimal)floatValue;
                 else if (value is TimeSpan timespan)
                 {
-                    numericUpDown.Value = timespan.Milliseconds;
+                    numericUpDown.Value = (decimal)timespan.TotalMilliseconds;
                 }
                 else if (int.TryParse(value?.ToString(), out int parsedValue))
                 {
@@ -204,6 +226,11 @@ public partial class DynField : UserControl
                     radioButtonTrue.IsChecked = boolValue;
                 if (radioButtonFalse != null)
                     radioButtonFalse.IsChecked = !boolValue;
+            }
+            }
+            finally
+            {
+                _suppressValueChanged = false;
             }
         }
     }
@@ -295,6 +322,10 @@ public partial class DynField : UserControl
             else throw new Exception("No metadata found for enum type " + typeNameLower);
 
             ToolTip.SetTip(comboBox, $"Select {typeNameLower} value");
+
+            // Wire up event to notify when value changes
+            comboBox.SelectionChanged += (s, e) => OnValueChanged();
+
             parentPanel.Children.Add(comboBox);
 
         }
@@ -307,6 +338,10 @@ public partial class DynField : UserControl
                 MinWidth = 100
             };
             ToolTip.SetTip(textBox, $"Enter {typeNameLower} value");
+
+            // Wire up event to notify when value changes
+            textBox.LostFocus += (s, e) => OnValueChanged();
+
             parentPanel.Children.Add(textBox);
         }
         else if (typeNameLower == "integer" || typeNameLower == "int32" || typeNameLower == "int64" || typeNameLower == "int16" || typeNameLower == "long" || typeNameLower == "ulong" || typeNameLower == "byte" || typeNameLower == "sbyte" || typeNameLower == "short" || typeNameLower == "ushort"
@@ -323,6 +358,10 @@ public partial class DynField : UserControl
                 Value = 0
             };
             ToolTip.SetTip(numericUpDown, $"Enter {typeNameLower} value");
+
+            // Wire up event to notify when value changes
+            numericUpDown.ValueChanged += (s, e) => OnValueChanged();
+
             parentPanel.Children.Add(numericUpDown);
         }
         else if (typeNameLower == "bool" || typeNameLower == "boolean")
@@ -337,19 +376,29 @@ public partial class DynField : UserControl
 
             ToolTip.SetTip(stackPanel, $"Select {typeNameLower} value");
 
+            // Use unique GroupName per DynField to prevent radio buttons from affecting each other
+            // Prefer using the Name property (index path like "0", "1.2"), fallback to counter if null
+            string uniqueGroupName = !string.IsNullOrEmpty(this.Name)
+                ? $"BoolGroup_{this.Name}"
+                : $"BoolGroup_{System.Threading.Interlocked.Increment(ref _radioGroupCounter)}";
+
             var radioButtonTrue = new RadioButton
             {
-                GroupName = "rButtonGrup",
+                GroupName = uniqueGroupName,
                 Content = "True",
                 IsChecked = true
             };
 
             var radioButtonFalse = new RadioButton
             {
-                GroupName = "rButtonGrup",
+                GroupName = uniqueGroupName,
                 Content = "False",
                 IsChecked = false
             };
+
+            // Wire up events to notify when value changes
+            radioButtonTrue.IsCheckedChanged += (s, e) => OnValueChanged();
+            radioButtonFalse.IsCheckedChanged += (s, e) => OnValueChanged();
 
             stackPanel.Children.Add(radioButtonTrue);
             stackPanel.Children.Add(radioButtonFalse);
@@ -366,6 +415,10 @@ public partial class DynField : UserControl
             };
 
             ToolTip.SetTip(datePicker, $"Select {typeNameLower} value");
+
+            // Wire up event to notify when value changes
+            datePicker.SelectedDateChanged += (s, e) => OnValueChanged();
+
             parentPanel.Children.Add(datePicker);
         }
         else if (typeNameLower == "resourcevalue")

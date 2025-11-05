@@ -6,39 +6,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace IhcLab;
 
-// Helper class to wrap services with display names
-public class ServiceItem
-{
-    public IIHCApiService Service { get; }
-    public string DisplayName { get; }
-
-    public int InitialOperationSelectedIndex { get; set; }
-
-    public ServiceItem(IIHCApiService service)
-    {
-        Service = service;
-
-        // Find the IHC service interface (works for both real services and fakes)
-        var serviceInterfaces = service.GetType().GetInterfaces()
-            .Where(i => i != typeof(IIHCApiService) && typeof(IIHCApiService).IsAssignableFrom(i))
-            .ToList();
-
-        // Use the interface name, stripping the leading 'I' for display
-        if (serviceInterfaces.Count > 0)
-        {
-            var interfaceName = serviceInterfaces[0].Name;
-            DisplayName = interfaceName.StartsWith("I") ? interfaceName.Substring(1) : interfaceName;
-        }
-        else
-        {
-            // Fallback to type name if no interface found
-            DisplayName = service.GetType().Name;
-        }
-
-        InitialOperationSelectedIndex = 0;
-    }
-}
-
 public class IhcDomain
 {
     public IhcSettings IhcSettings { get; init; }
@@ -56,7 +23,7 @@ public class IhcDomain
     public IUserManagerService UserManagerService { get; set; }
     public IAirlinkManagementService AirlinkManagementService { get; set; }
 
-    public ISmsModelService SmsModemService { get; set; }
+    public ISmsModemService SmsModemService { get; set; }
     public IInternalTestService InternalTestService { get; set; }
 
     public IIHCApiService[] AllIhcServices
@@ -94,11 +61,8 @@ public class IhcDomain
     public void UpdateSetup()
     {
         if (IhcSettings.Endpoint == null)
-            throw new Exception("IhcSettings can not be null in IhcDomain UpdateSetup");
-            
-        if (IhcSettings.Endpoint == null)
             throw new Exception("IhcSettings.Endpoint is null in IhcDomain UpdateSetup");
-            
+
         if (!IhcSettings.Endpoint.StartsWith(SpecialEndpoints.MockedPrefix))
         {
             // Real services by default:
@@ -134,7 +98,7 @@ public class IhcDomain
             this.TimeManagerService = IhcFakeSetup.SetupTimeManagerService(IhcSettings);
             this.UserManagerService = IhcFakeSetup.SetupUserManagerService(IhcSettings);
             this.AirlinkManagementService = IhcFakeSetup.SetupAirlinkManagementService(IhcSettings);
-            this.SmsModemService = IhcFakeSetup.SetupSmsModelService(IhcSettings);
+            this.SmsModemService = IhcFakeSetup.SetupSmsModemService(IhcSettings);
             this.InternalTestService = IhcFakeSetup.SetupInternalTestService(IhcSettings);
         }
     }

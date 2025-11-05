@@ -10,7 +10,7 @@ namespace Ihc
     /// High-level interface for IHC SMS modem service operations.
     /// Used for control of SMS modem
     /// </summary>
-    public interface ISmsModelService : IIHCApiService
+    public interface ISmsModemService : IIHCApiService
     {
         /// <summary>
         /// Set SMS modem settings.
@@ -39,7 +39,7 @@ namespace Ihc
         Task ResetSmsModem();
     }
 
-    public class SmsModemService : ServiceBase, ISmsModelService
+    public class SmsModemService : ServiceBase, ISmsModemService
     {
         private readonly IAuthenticationService authService;
 

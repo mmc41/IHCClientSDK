@@ -16,7 +16,7 @@ namespace Ihc.App
         private readonly IConfigurationService configService;
         private readonly ITimeManagerService timeService;
         private readonly IControllerService controllerService;
-        private readonly ISmsModelService smsModemService;
+        private readonly ISmsModemService smsModemService;
         private readonly bool ownedServices;
 
         private IhcSettings settings;
@@ -47,7 +47,7 @@ namespace Ihc.App
         /// <param name="timeService">Time manager service instance</param>
         /// <param name="controllerService">Controller service instance</param>
         /// <param name="smsModemService">SMS modem service instance</param>
-        public InformationAppService(IhcSettings settings, IAuthenticationService authService, IConfigurationService configService, ITimeManagerService timeService, IControllerService controllerService, ISmsModelService smsModemService)
+        public InformationAppService(IhcSettings settings, IAuthenticationService authService, IConfigurationService configService, ITimeManagerService timeService, IControllerService controllerService, ISmsModemService smsModemService)
         {
             this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
             this.authService = authService ?? throw new ArgumentNullException(nameof(authService));

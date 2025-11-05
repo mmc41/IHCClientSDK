@@ -3,12 +3,14 @@ using FakeItEasy;
 
 namespace IhcLab {
     /// <summary>
-    /// Create faked services with fixed behavior as a configurable alternative to real IHC servicews. This may at first seem out of place, 
-    /// but it allows for easy human explorative testing of the GUI aspects of the app without being connected to a real IHC system. ALso 
+    /// Create faked services with fixed behavior as a configurable alternative to real IHC servicews. This may at first seem out of place,
+    /// but it allows for easy human explorative testing of the GUI aspects of the app without being connected to a real IHC system. ALso
     /// allows for safe automated testing og the GUI without a real IHC system.
     /// </summary>
     public class IhcFakeSetup
     {
+        private static T CreateEmptyFake<T>() where T : class => A.Fake<T>();
+
         public static IAuthenticationService SetupAuthenticationService(IhcSettings settings)
         {
             var service = A.Fake<IAuthenticationService>();
@@ -75,69 +77,36 @@ namespace IhcLab {
         }
 
         public static IResourceInteractionService SetupResourceInteractionService(IhcSettings settings)
-        {
-            var service = A.Fake<IResourceInteractionService>();
-            return service;
-        }
+            => CreateEmptyFake<IResourceInteractionService>();
 
         public static IConfigurationService SetupConfigurationService(IhcSettings settings)
-        {
-            var service = A.Fake<IConfigurationService>();
-            return service;
-        }
+            => CreateEmptyFake<IConfigurationService>();
 
         public static IOpenAPIService SetupOpenAPIService(IhcSettings settings)
-        {
-            var service = A.Fake<IOpenAPIService>();
-            return service;
-        }
+            => CreateEmptyFake<IOpenAPIService>();
 
         public static INotificationManagerService SetupNotificationManagerService(IhcSettings settings)
-        {
-            var service = A.Fake<INotificationManagerService>();
-            return service;
-        }
+            => CreateEmptyFake<INotificationManagerService>();
 
         public static IMessageControlLogService SetupMessageControlLogService(IhcSettings settings)
-        {
-            var service = A.Fake<IMessageControlLogService>();
-            return service;
-        }
+            => CreateEmptyFake<IMessageControlLogService>();
 
         public static IModuleService SetupModuleService(IhcSettings settings)
-        {
-            var service = A.Fake<IModuleService>();
-            return service;
-        }
+            => CreateEmptyFake<IModuleService>();
 
         public static ITimeManagerService SetupTimeManagerService(IhcSettings settings)
-        {
-            var service = A.Fake<ITimeManagerService>();
-            return service;
-        }
+            => CreateEmptyFake<ITimeManagerService>();
 
         public static IUserManagerService SetupUserManagerService(IhcSettings settings)
-        {
-            var service = A.Fake<IUserManagerService>();
-            return service;
-        }
+            => CreateEmptyFake<IUserManagerService>();
 
         public static IAirlinkManagementService SetupAirlinkManagementService(IhcSettings settings)
-        {
-            var service = A.Fake<IAirlinkManagementService>();
-            return service;
-        }
+            => CreateEmptyFake<IAirlinkManagementService>();
 
         public static IInternalTestService SetupInternalTestService(IhcSettings settings)
-        {
-            var service = A.Fake<IInternalTestService>();
-            return service;
-        }
-        
-        public static ISmsModelService SetupSmsModelService(IhcSettings settings)
-        {
-            var service = A.Fake<ISmsModelService>();
-            return service;
-        }
+            => CreateEmptyFake<IInternalTestService>();
+
+        public static ISmsModemService SetupSmsModemService(IhcSettings settings)
+            => CreateEmptyFake<ISmsModemService>();
     }
 }

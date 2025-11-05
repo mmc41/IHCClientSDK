@@ -16,7 +16,8 @@
       "Read(//d/repos/lk_ihc_apps/administrator/**)",
       "Bash(dotnet clean:*)",
       "Bash(export IHC_ENCRYPT_PASSPHRASE=\"test-passphrase-for-unit-tests\")",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []

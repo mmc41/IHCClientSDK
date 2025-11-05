@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Ihc;
+using Ihc.App;
 
 namespace IhcLab;
 
@@ -14,82 +15,6 @@ namespace IhcLab;
 /// </summary>
 public static class OperationSupport
 {
-    public static async Task<string> DynCall(IIHCApiService service, ServiceOperationMetadata operationMetadata, object[] parameterValues)
-    {
-        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(OperationSupport) + "." + nameof(DynCall), ActivityKind.Internal);
-        activity?.SetTag(Ihc.Telemetry.argsTagPrefix+"parameterValues", String.Join(",", parameterValues.Select(p => p.ToString())));
-
-        if (operationMetadata.Kind != ServiceOperationKind.AsyncFunction)
-            throw new NotSupportedException("Only normal async operations currently supported");
-
-        object taskObject = operationMetadata.Invoke(parameterValues);
-
-        if (taskObject == null)
-            throw new InvalidOperationException("Method invocation returned null");
-
-        // Get the declared return type from the method (not the runtime type which can be AsyncStateMachineBox)
-        Type taskType = operationMetadata.MethodInfo.ReturnType;
-
-        // Check if it's a Task (void) or Task<T>
-        if (taskType == typeof(Task))
-        {
-            // It's a Task (void async method)
-            await (Task)taskObject;
-            return "OK";
-        }
-        else if (taskType.IsGenericType && taskType.GetGenericTypeDefinition() == typeof(Task<>))
-        {
-            // It's a Task<T> - we need to await it and get the result
-            // Use dynamic to await the task
-            dynamic dynamicTask = taskObject;
-            await dynamicTask;
-
-            // Get the Result property
-            var resultProperty = taskType.GetProperty("Result");
-            if (resultProperty == null)
-                throw new InvalidOperationException("Task<T> does not have a Result property");
-
-            object? result = resultProperty.GetValue(taskObject);
-
-            // Format the result as a string
-            return FormatResult(result, operationMetadata.ReturnType);
-        }
-        else
-        {
-            throw new NotSupportedException($"Unsupported return type: {taskType.Name}");
-        }
-    }
-
-    /// <summary>
-    /// Formats a result object into a readable string representation.
-    /// </summary>
-    /// <param name="result">The result to format</param>
-    /// <param name="returnType">The return type metadata</param>
-    /// <returns>String representation of the result</returns>
-    private static string FormatResult(object? result, Type returnType)
-    {
-        if (result == null)
-            return "(null)";
-
-        // Handle arrays
-        if (result is System.Collections.IEnumerable enumerable && result is not string)
-        {
-            var items = enumerable.Cast<object>().ToArray();
-            if (items.Length == 0)
-                return "[]";
-
-            // Format array elements
-            var formattedItems = items.Select(item =>
-                item == null ? "null" :
-                item is string ? $"\"{item}\"" :
-                item.ToString() ?? "null"
-            );
-            return $"[{string.Join(", ", formattedItems)}]";
-        }
-
-        return result.ToString() ?? "(empty)";
-    }
-
     /// <summary>
     /// Adds field controls to the specified panel based on field metadata.
     /// Handles both simple and complex types (records/arrays).
@@ -125,7 +50,7 @@ public static class OperationSupport
             {
                 TypeForControl = field.Type,
                 Margin = new Thickness(0, 0, 20, 15),
-                Name = prefix + field.Name,
+                Name = prefix,  // prefix is now the index path (e.g., "0", "1.2", "2.1.0")
                 Tag = field
             };
 
@@ -144,9 +69,10 @@ public static class OperationSupport
             parent.Children.Add(stackPanel);
 
             stackPanel.Children.Add(legend);
-            foreach (var subField in field.SubTypes)
+            for (int i = 0; i < field.SubTypes.Length; i++)
             {
-                AddFieldControls(stackPanel, subField, field.Name + ".");
+                string subIndexPath = $"{prefix}.{i}";
+                AddFieldControls(stackPanel, field.SubTypes[i], subIndexPath);
             }
         }
     }
@@ -167,9 +93,9 @@ public static class OperationSupport
 
         ClearControls(parametersPanel);
 
-        foreach (FieldMetaData parameter in operationMetadata.Parameters)
+        for (int i = 0; i < operationMetadata.Parameters.Length; i++)
         {
-            AddFieldControls(parametersPanel, parameter, "");
+            AddFieldControls(parametersPanel, operationMetadata.Parameters[i], i.ToString());
         }
     }
 
@@ -199,7 +125,7 @@ public static class OperationSupport
         for (int i = 0; i < parameters.Length; i++)
         {
             var parameter = parameters[i];
-            values[i] = GetFieldValue(parametersPanel, parameter, string.Empty) ?? throw new InvalidOperationException($"Failed to get value for parameter {parameter.Name}");
+            values[i] = GetFieldValue(parametersPanel, parameter, i.ToString()) ?? throw new InvalidOperationException($"Failed to get value for parameter {parameter.Name}");
         }
 
         return values;
@@ -222,22 +148,23 @@ public static class OperationSupport
             (nameof(prefix), prefix)
         );
 
-        string fullName = prefix + field.Name;
+        // prefix is now the complete index path (e.g., "0", "1.2", "2.1.0")
+        string indexPath = prefix;
 
         // For simple types (primitives and string), find the DynField control and get its value
         if (field.IsSimple)
         {
-            var dynField = FindDynFieldByName(parent, fullName);
+            var dynField = FindDynFieldByName(parent, indexPath);
             if (dynField != null)
             {
-                return dynField.Value ?? GetDefaultValue(field.Type);
+                return dynField.Value ?? LabAppService.OperationItem.GetDefaultValue(field.Type);
             }
-            return GetDefaultValue(field.Type);
+            return LabAppService.OperationItem.GetDefaultValue(field.Type);
         }
 
         if (field.IsFile)
         {
-            var dynField = FindDynFieldByName(parent, fullName);
+            var dynField = FindDynFieldByName(parent, indexPath);
             if (dynField != null && dynField.Value != null)
             {
                 // Create instance of the type by calling constructor with dynField.Value as single argument
@@ -250,14 +177,13 @@ public static class OperationSupport
                     throw new InvalidOperationException($"Failed to create instance of {field.Type.Name} with value '{dynField.Value}'. Copy-constructor missing?", ex);
                 }
             }
-            return GetDefaultValue(field.Type);
+            return LabAppService.OperationItem.GetDefaultValue(field.Type);
         }
 
         // For arrays, handle specially
         if (field.IsArray)
         {
             // For now, return empty array of the element type
-            // TODO: Implement array handling with dynamic UI elements
             var elementType = field.Type.GetElementType();
             if (elementType != null)
             {
@@ -273,14 +199,15 @@ public static class OperationSupport
             var instance = Activator.CreateInstance(field.Type);
             if (instance == null)
             {
-                return GetDefaultValue(field.Type);
+                return LabAppService.OperationItem.GetDefaultValue(field.Type);
             }
 
             // Set each property from the subtypes
-            foreach (var subField in field.SubTypes)
+            for (int i = 0; i < field.SubTypes.Length; i++)
             {
-                var subValue = GetFieldValue(parent, subField, fullName + ".");
-                var property = field.Type.GetProperty(subField.Name);
+                string subIndexPath = $"{indexPath}.{i}";
+                var subValue = GetFieldValue(parent, field.SubTypes[i], subIndexPath);
+                var property = field.Type.GetProperty(field.SubTypes[i].Name);
                 if (property != null && property.CanWrite)
                 {
                     property.SetValue(instance, subValue);
@@ -291,7 +218,7 @@ public static class OperationSupport
         }
 
         // Default: return default value for the type
-        return GetDefaultValue(field.Type);
+        return LabAppService.OperationItem.GetDefaultValue(field.Type);
     }
 
     /// <summary>
@@ -321,26 +248,6 @@ public static class OperationSupport
             }
         }
 
-        return null;
-    }
-
-    /// <summary>
-    /// Gets the default value for the specified type.
-    /// </summary>
-    /// <param name="type">The type to get the default value for.</param>
-    /// <returns>The default value for the type.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when a default value cannot be created for a value type.</exception>
-    public static object? GetDefaultValue(Type type)
-    {
-        if (type == typeof(string))
-            return string.Empty;
-        if (type.IsEnum)
-        {
-            var enumValues = Enum.GetValues(type);
-            return enumValues.Length > 0 ? enumValues.GetValue(0) : null;
-        }
-        if (type.IsValueType)
-            return Activator.CreateInstance(type) ?? throw new InvalidOperationException($"Failed to create instance of {nameof(type)}");
         return null;
     }
 }

@@ -159,14 +159,13 @@ public partial class LoginDialog : Window
                 ? selectedItem.Value
                 : Application.openapi;
 
-            // Update IHC Settings properties directly using reflection
-            // Note: Since IhcSettings is a record with init-only properties, we need to use reflection
-            typeof(IhcSettings).GetProperty(nameof(IhcSettings.Endpoint))?.SetValue(_ihcSettings, EndpointTextBox.Text ?? string.Empty);
-            typeof(IhcSettings).GetProperty(nameof(IhcSettings.UserName))?.SetValue(_ihcSettings, UserNameTextBox.Text ?? string.Empty);
-            typeof(IhcSettings).GetProperty(nameof(IhcSettings.Password))?.SetValue(_ihcSettings, PasswordTextBox.Text ?? string.Empty);
-            typeof(IhcSettings).GetProperty(nameof(IhcSettings.Application))?.SetValue(_ihcSettings, application);
-            typeof(IhcSettings).GetProperty(nameof(IhcSettings.LogSensitiveData))?.SetValue(_ihcSettings, LogSensitiveDataCheckBox.IsChecked ?? false);
-            typeof(IhcSettings).GetProperty(nameof(IhcSettings.AllowDangerousInternTestCalls))?.SetValue(_ihcSettings, AllowDangerousTestCallsCheckBox.IsChecked ?? false);
+            // Update IHC Settings properties directly (IhcSettings has mutable properties)
+            _ihcSettings.Endpoint = EndpointTextBox.Text ?? string.Empty;
+            _ihcSettings.UserName = UserNameTextBox.Text ?? string.Empty;
+            _ihcSettings.Password = PasswordTextBox.Text ?? string.Empty;
+            _ihcSettings.Application = application;
+            _ihcSettings.LogSensitiveData = LogSensitiveDataCheckBox.IsChecked ?? false;
+            _ihcSettings.AllowDangerousInternTestCalls = AllowDangerousTestCallsCheckBox.IsChecked ?? false;
 
             activity?.SetTag("configuration.updated", true);
         }
