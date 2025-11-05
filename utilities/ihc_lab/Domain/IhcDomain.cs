@@ -49,14 +49,19 @@ public class IhcDomain
         }
     }
 
+    // CS8618: Non-nullable field must contain a non-null value when exiting constructor.
+    // Suppression is safe here because UpdateSetup() is called immediately in constructor
+    // and will initialize all service fields. If UpdateSetup() throws, the object is not used.
     #pragma warning disable CS8618
     public IhcDomain()
     {
         this.loggerFactory = Program.loggerFactory ?? new NullLoggerFactory();
         this.IhcSettings = Program.config?.ihcSettings ?? new IhcSettings();
 
+        // This will initialize all service properties
         UpdateSetup();
     }
+    #pragma warning restore CS8618
 
     public void UpdateSetup()
     {

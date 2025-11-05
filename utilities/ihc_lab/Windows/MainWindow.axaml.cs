@@ -208,8 +208,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            activity?.SetError(ex);
-            SetError("LoginDialog error", ex);
+            HandleOperationError(activity, "LoginDialog", ex);
         }
     }
       
@@ -333,8 +332,7 @@ public partial class MainWindow : Window
             await SetOutput(operationResult.DisplayResult, operationResult.ReturnType);
         } catch (Exception ex)
         {
-           activity?.SetError(ex);
-           SetError(nameof(RunButtonClickHandler) + " error", ex);
+           HandleOperationError(activity, nameof(RunButtonClickHandler), ex);
         } finally
         {
             this.Cursor = Cursor.Default;
@@ -445,8 +443,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            activity?.SetError(ex);
-            SetError("AboutMenu error", ex);
+            HandleOperationError(activity, "AboutMenu", ex);
         }
     }
 
@@ -484,8 +481,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            activity?.SetError(ex);
-            SetError("Show settings error", ex);
+            HandleOperationError(activity, "Show settings", ex);
         }
     }
 
@@ -509,8 +505,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            activity?.SetError(ex);
-            SetError("Open telemetry in browser error", ex);
+            HandleOperationError(activity, "Open telemetry in browser", ex);
         }
     }
 
@@ -527,8 +522,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            activity?.SetError(ex);
-            SetError("Output to clipboard error", ex);
+            HandleOperationError(activity, "Output to clipboard", ex);
         }
     }
 
@@ -546,8 +540,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            activity?.SetError(ex);
-            SetError("Error to clipboard error", ex);
+            HandleOperationError(activity, "Error to clipboard", ex);
         }
     }
     
@@ -602,6 +595,19 @@ public partial class MainWindow : Window
     public void SetError(string text, Exception? ex = null) => SetMessage(MessageLevel.Error, text, ex);
 
     public void SetWarning(string text, Exception? ex = null) => SetMessage(MessageLevel.Warning, text, ex);
+
+    /// <summary>
+    /// Helper method to handle exceptions consistently: logs to activity and displays error to user.
+    /// Reduces code duplication across catch blocks.
+    /// </summary>
+    /// <param name="activity">The OpenTelemetry activity to record the error (can be null)</param>
+    /// <param name="operation">Name of the operation that failed (e.g., "LoginDialog", "RunButtonClick")</param>
+    /// <param name="ex">The exception that occurred</param>
+    private void HandleOperationError(Activity? activity, string operation, Exception ex)
+    {
+        activity?.SetError(ex);
+        SetError(operation + " error", ex);
+    }
 
     /// <summary>
     /// Creates an operation filter function for LabAppService.

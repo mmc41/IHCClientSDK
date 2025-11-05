@@ -17,6 +17,12 @@ public partial class DynField : UserControl
 {
     private WrapPanel? parentPanel;
     private bool _suppressValueChanged = false;
+
+    /// <summary>
+    /// Static counter for generating unique radio button group names.
+    /// Uses Interlocked.Increment for thread-safe access since DynFields may be created
+    /// on background threads during UI updates.
+    /// </summary>
     private static int _radioGroupCounter = 0;
 
     /// <summary>
@@ -121,7 +127,13 @@ public partial class DynField : UserControl
                 var radioButtonTrue = stackPanel.Children.OfType<RadioButton>().FirstOrDefault(rb => rb.Content?.ToString() == "True");
                 return radioButtonTrue?.IsChecked ?? false;
             }
-            else throw new Exception("Unexpected control: " + control.GetType().Name);
+            else
+            {
+                throw new InvalidOperationException(
+                    $"Unexpected control type '{control.GetType().Name}' for field type '{typeForControl.Name}'. " +
+                    "This indicates a mismatch between CreateDynamicControl() and Value getter logic. " +
+                    $"The control was created for field: Name='{Name}', Type={typeForControl.FullName}");
+            }
         }
         set
         {
@@ -378,6 +390,7 @@ public partial class DynField : UserControl
 
             // Use unique GroupName per DynField to prevent radio buttons from affecting each other
             // Prefer using the Name property (index path like "0", "1.2"), fallback to counter if null
+            // Use Interlocked.Increment for thread-safe counter increment (DynFields may be created on background threads)
             string uniqueGroupName = !string.IsNullOrEmpty(this.Name)
                 ? $"BoolGroup_{this.Name}"
                 : $"BoolGroup_{System.Threading.Interlocked.Increment(ref _radioGroupCounter)}";

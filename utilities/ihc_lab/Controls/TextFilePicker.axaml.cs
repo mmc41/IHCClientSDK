@@ -38,10 +38,13 @@ public partial class TextFilePicker : UserControl, TextFile
     }
 
     /// <summary>
-    /// Gets the encoding used for text files (implements TextFile interface)
+    /// Gets the encoding used for text files (implements TextFile interface).
     /// Not actually used in this class.
     /// </summary>
-    public static Encoding Encoding { get { throw new NotImplementedException("Not relevant for TextFilePicker. Set at runtime"); } }
+    public static Encoding Encoding
+    {
+        get => throw new NotSupportedException("Use TextEncoding instance property instead. This static property should not be accessed.");
+    }
 
     /// <summary>
     /// Gets or sets the text encoding used when reading text files.

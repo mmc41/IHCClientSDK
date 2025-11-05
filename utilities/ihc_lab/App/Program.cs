@@ -12,9 +12,20 @@ namespace IhcLab;
 
 public class Program
 {
+    /// <summary>
+    /// Application configuration loaded at startup.
+    /// IMPORTANT: Initialized once in Main() and should be treated as immutable thereafter.
+    /// Do not modify after initialization to avoid race conditions and unpredictable behavior.
+    /// </summary>
     public static Configuration? config = null;
+
+    /// <summary>
+    /// Logger factory for the application, configured with OpenTelemetry.
+    /// IMPORTANT: Initialized once in Main() and should be treated as immutable thereafter.
+    /// Do not modify after initialization to avoid race conditions and unpredictable behavior.
+    /// </summary>
     public static ILoggerFactory? loggerFactory = null;
-     
+
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
     // yet and stuff might break.

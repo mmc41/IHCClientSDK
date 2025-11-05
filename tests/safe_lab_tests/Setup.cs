@@ -5,6 +5,8 @@ using NUnit.Framework;
 using Ihc;
 using System.Reflection;
 using IhcLab;
+using Avalonia;
+using Avalonia.Headless;
 
 namespace Ihc.Tests
 {
@@ -28,6 +30,10 @@ namespace Ihc.Tests
             };
 
             IhcLab.Program.config = new Configuration(settings);
+/*
+            AppBuilder.Configure<App>()
+            .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = true }) // fast; no Skia frames
+            .LogToTrace(); // or .LogToMySink(level: LogEventLevel.Warning, areas: "Binding","Layout","Render")*/
         }
     }
 }
