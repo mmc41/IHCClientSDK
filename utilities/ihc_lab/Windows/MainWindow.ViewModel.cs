@@ -197,44 +197,23 @@ namespace IhcLab
                         _isUpdatingFromEvent = true;
                         try
                         {
-                            Services.Clear();
-                            foreach (var service in _labAppService.Services)
-                            {
-                                Services.Add(service);
-                            }
+                            PopulateCollectionsFromService();
 
-                            if (_labAppService.Services.Length > 0)
+                            // Set initial operation description (only if services are configured)
+                            try
                             {
-                                // Force binding update by setting to -1 first (in case value is already 0)
-                                _selectedServiceIndex = -1;
-                                OnPropertyChanged(nameof(SelectedServiceIndex));
-                                _selectedServiceIndex = _labAppService.SelectedServiceIndex;
-                                OnPropertyChanged(nameof(SelectedServiceIndex));
-
-                                Operations.Clear();
                                 var selectedService = _labAppService.SelectedService;
-                                if (selectedService != null)
+                                if (selectedService != null && selectedService.OperationItems.Length > 0 && _selectedOperationIndex < selectedService.OperationItems.Length)
                                 {
-                                    foreach (var operation in selectedService.OperationItems)
-                                    {
-                                        Operations.Add(operation);
-                                    }
-
-                                    // Force binding update by setting to -1 first (in case value is already 0)
-                                    _selectedOperationIndex = -1;
-                                    OnPropertyChanged(nameof(SelectedOperationIndex));
-                                    _selectedOperationIndex = selectedService.SelectedOperationIndex;
-                                    OnPropertyChanged(nameof(SelectedOperationIndex));
-
-                                    // Set initial operation description
-                                    if (selectedService.OperationItems.Length > 0 && _selectedOperationIndex < selectedService.OperationItems.Length)
-                                    {
-                                        OperationDescription = selectedService.OperationItems[_selectedOperationIndex].OperationMetadata.Description;
-                                    }
+                                    OperationDescription = selectedService.OperationItems[_selectedOperationIndex].OperationMetadata.Description;
                                 }
-
-                                logger.LogInformation(message: "LabAppService configured");
                             }
+                            catch (InvalidOperationException)
+                            {
+                                // Services not yet configured - description will be set later
+                            }
+
+                            logger.LogInformation(message: "LabAppService configured");
                         }
                         finally
                         {
@@ -569,42 +548,7 @@ namespace IhcLab
             _isUpdatingFromEvent = true;
             try
             {
-                // Repopulate services collection
-                Services.Clear();
-                if (_labAppService != null && _labAppService.Services != null)
-                {
-                    foreach (var service in _labAppService.Services)
-                    {
-                        Services.Add(service);
-                    }
-
-                    // Update selected indices to match LabAppService
-                    if (_labAppService.Services.Length > 0)
-                    {
-                        // Force binding update by setting to -1 first (in case value is already 0)
-                        _selectedServiceIndex = -1;
-                        OnPropertyChanged(nameof(SelectedServiceIndex));
-                        _selectedServiceIndex = _labAppService.SelectedServiceIndex;
-                        OnPropertyChanged(nameof(SelectedServiceIndex));
-
-                        // Populate operations for the selected service
-                        Operations.Clear();
-                        var selectedService = _labAppService.SelectedService;
-                        if (selectedService != null)
-                        {
-                            foreach (var operation in selectedService.OperationItems)
-                            {
-                                Operations.Add(operation);
-                            }
-
-                            // Force binding update by setting to -1 first (in case value is already 0)
-                            _selectedOperationIndex = -1;
-                            OnPropertyChanged(nameof(SelectedOperationIndex));
-                            _selectedOperationIndex = selectedService.SelectedOperationIndex;
-                            OnPropertyChanged(nameof(SelectedOperationIndex));
-                        }
-                    }
-                }
+                PopulateCollectionsFromService();
 
                 ClearOutput();
                 ClearErrorAndWarning();
@@ -612,6 +556,57 @@ namespace IhcLab
             finally
             {
                 _isUpdatingFromEvent = false;
+            }
+        }
+
+        /// <summary>
+        /// Populates Services and Operations collections from LabAppService.
+        /// Handles the -1 trick to force binding updates and maintains synchronization.
+        /// </summary>
+        private void PopulateCollectionsFromService()
+        {
+            if (_labAppService == null || _labAppService.Services == null)
+                return;
+
+            Services.Clear();
+            foreach (var service in _labAppService.Services)
+            {
+                Services.Add(service);
+            }
+
+            // Update selected indices to match LabAppService
+            if (_labAppService.Services.Length > 0)
+            {
+                // Force binding update by setting to -1 first (in case value is already 0)
+                _selectedServiceIndex = -1;
+                OnPropertyChanged(nameof(SelectedServiceIndex));
+                _selectedServiceIndex = _labAppService.SelectedServiceIndex;
+                OnPropertyChanged(nameof(SelectedServiceIndex));
+
+                // Populate operations for the selected service (only if services are configured)
+                Operations.Clear();
+                try
+                {
+                    var selectedService = _labAppService.SelectedService;
+                    if (selectedService != null)
+                    {
+                        foreach (var operation in selectedService.OperationItems)
+                        {
+                            Operations.Add(operation);
+                        }
+
+                        // Force binding update by setting to -1 first (in case value is already 0)
+                        _selectedOperationIndex = -1;
+                        OnPropertyChanged(nameof(SelectedOperationIndex));
+                        _selectedOperationIndex = selectedService.SelectedOperationIndex;
+                        OnPropertyChanged(nameof(SelectedOperationIndex));
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    // Services not yet configured - this is OK during initialization
+                    // Operations collection will be empty until services are configured
+                }
             }
         }
 
