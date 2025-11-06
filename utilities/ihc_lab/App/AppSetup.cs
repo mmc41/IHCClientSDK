@@ -13,7 +13,7 @@ using static IhcLab.Program;
 
 namespace IhcLab;
 
-public static class CustomSetup
+public static class AppSetup
 {
     /// <summary>
     /// ILogSink which logs to both ILogger and another default sink.

@@ -153,3 +153,12 @@ Before running any code that connects to an IHC controller:
 - This is an **unofficial** SDK not affiliated with or supported by LK/Schneider Electric
 - Project treats warnings as errors (TreatWarningsAsErrors=true)
 - Recommended usage: Use Microsoft.Extensions.Hosting (Generic Host or ASP.NET Core) for proper lifecycle management and orderly shutdown
+- When refactoring, do not add simple methods that does nothing but calling another method in another class
+
+## Test notes
+- All tests must be safe from potential harmful side effects on IHC controller, including changing state on controller.
+- Only safe_integration_tests may use real IHC Api services. All other tests should use mocks of IHC services using FakeItEasy framework.
+- When generating tests, only generate valuable tests for functional aspects. 
+- Prefer blockbox testing over whitebox testing.
+- Use best practice test techniques for test cases such as Equivalence Partitioning, Boundary Value Analysis, State Transition Testing. 
+- Unless specificly instructed otherwise, do not add tests for the following: null checks, expected exceptions, multithreading.

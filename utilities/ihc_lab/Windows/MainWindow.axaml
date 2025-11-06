@@ -5,8 +5,7 @@
         xmlns:IhcLab="clr-namespace:IhcLab"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="IhcLab.MainWindow"
-        xmlns:vm="clr-namespace:IhcLab.ViewModels"
-        x:DataType="vm:MainWindowViewModel"
+        x:DataType="IhcLab:MainWindowViewModel"
         Title="IHC Lab">
     <DockPanel>
         <Menu DockPanel.Dock="Top" Background="#F0F0F0">

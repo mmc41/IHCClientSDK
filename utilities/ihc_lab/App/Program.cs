@@ -36,9 +36,9 @@ public class Program
         {
             // First setup logging and telemetry. Note that this goes against above advice but seems to work.
             // In case of trouble first move some of the telemtry setup to mainwindow or so.
-            AppDomain.CurrentDomain.UnhandledException += CustomSetup.UnhandledExceptionHandler;
+            AppDomain.CurrentDomain.UnhandledException += AppSetup.UnhandledExceptionHandler;
             config = new Configuration();
-            loggerFactory = CustomSetup.SetupTelemetryAndLoggingFactory(config);
+            loggerFactory = AppSetup.SetupTelemetryAndLoggingFactory(config);
 
             // throw new Exception("bla during startup");
 
@@ -62,7 +62,7 @@ public class Program
         return AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
-            .LogToTrace(CustomSetup.MapFromIlogToAvaloniaLogLevel(logLevel)) // Important that this default logger (if present) is before our own LogToSink which will forward to it.
-            .LogToSink(loggerFactory, CustomSetup.MapFromIlogToAvaloniaLogLevel(logLevel)); // Install log forwarder to ilogger which is setup to forward to opentel.
+            .LogToTrace(AppSetup.MapFromIlogToAvaloniaLogLevel(logLevel)) // Important that this default logger (if present) is before our own LogToSink which will forward to it.
+            .LogToSink(loggerFactory, AppSetup.MapFromIlogToAvaloniaLogLevel(logLevel)); // Install log forwarder to ilogger which is setup to forward to opentel.
     }
 }

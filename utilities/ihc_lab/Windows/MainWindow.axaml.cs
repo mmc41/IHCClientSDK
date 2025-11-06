@@ -13,7 +13,6 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Ihc;
 using Ihc.App;
-using IhcLab.ViewModels;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -47,21 +46,6 @@ namespace IhcLab;
 /// own DataContext assignment. You can override per-control if needed.
 /// </para>
 ///
-/// <para><b>Binding Examples from MainWindow.axaml:</b></para>
-/// <code>
-/// <!-- ComboBox items populated from ViewModel.Services ObservableCollection -->
-/// &lt;ComboBox ItemsSource="{Binding Services}"
-///           SelectedIndex="{Binding SelectedServiceIndex}" /&gt;
-///
-/// <!-- TextBlock text updates when ViewModel.OperationDescription changes -->
-/// &lt;TextBlock Text="{Binding OperationDescription}" /&gt;
-///
-/// <!-- Output panel visibility controlled by ViewModel.IsOutputVisible -->
-/// &lt;StackPanel IsVisible="{Binding IsOutputVisible}"&gt;
-///   &lt;TextBlock Text="{Binding OutputText}" /&gt;
-/// &lt;/StackPanel&gt;
-/// </code>
-///
 /// <para><b>Why Subscribe to PropertyChanged Manually?</b></para>
 /// <para>
 /// Most ViewModel properties (like SelectedServiceIndex) automatically update bound UI controls via
@@ -81,7 +65,7 @@ namespace IhcLab;
 /// </summary>
 public partial class MainWindow : Window
 {
-    private IhcDomain? ihcDomain;
+    private IhcSetup? ihcDomain;
     private IClipboard? clipboard;
 
     private ILogger<MainWindow> logger;
@@ -159,11 +143,14 @@ public partial class MainWindow : Window
 
             // Handle window closing event (when user clicks X button)
             Closing += OnWindowClosing;
+
+
+            logger.LogInformation(message: "MainWindow sucessfully constructed (awaiting start)");
         }
         catch (Exception ex)
         {
             activity?.SetError(ex);
-            SetError(nameof(MainWindow) + " constructor error", ex);
+            viewModel?.SetError(nameof(MainWindow) + " constructor error", ex);
             RunButton.IsEnabled = false;
         }
     }
@@ -179,7 +166,7 @@ public partial class MainWindow : Window
 
         try
         {
-            ihcDomain = new IhcDomain();
+            ihcDomain = new IhcSetup();
 
             if (!ihcDomain.IhcSettings.IsValid())
             {
@@ -187,11 +174,13 @@ public partial class MainWindow : Window
                 await longinWindow.ShowDialog(this);
             }
             LoginUpdated();
+
+            logger.LogInformation(message: "MainWindow sucessfully started");
         }
         catch (Exception ex)
         {
             activity?.SetError(ex);
-            SetError(nameof(Start) + " error", ex);
+            viewModel?.SetError(nameof(Start) + " error", ex);
         }
 
         return this;
@@ -233,13 +222,6 @@ public partial class MainWindow : Window
     /// 5. Avalonia bindings update UI ComboBoxes with populated data and correct selections
     /// 6. User sees populated ComboBoxes with IHC services and operations ready to run
     /// </para>
-    ///
-    /// <para><b>The Complete Data Flow:</b></para>
-    /// <code>
-    /// IHC Services → LabAppService → MainWindowViewModel → DataContext Bindings → UI ComboBoxes
-    ///                     ↑               ↑                      ↑
-    ///                   Service        ViewModel               View
-    /// </code>
     ///
     /// <para><b>Why Not Directly Bind View to LabAppService?</b></para>
     /// <para>
@@ -290,7 +272,7 @@ public partial class MainWindow : Window
         if (string.IsNullOrEmpty(Program.config?.telemetryConfig?.Host) && (Program.config?.ihcSettings?.Endpoint?.StartsWith(SpecialEndpoints.MockedPrefix) == false))
         {
             OpenTelemetryMenuItem.IsEnabled = false;
-            SetWarning("OpenTelemetry not configured. It is recommended (but not required) to setup telemetry to view logs/traces. See guide in README for details.");
+            viewModel?.SetWarning("OpenTelemetry not configured. It is recommended (but not required) to setup telemetry to view logs/traces. See guide in README for details.");
         }
     }
 
@@ -298,8 +280,8 @@ public partial class MainWindow : Window
     {
         using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow)+"."+nameof(RunButtonClickHandler), ActivityKind.Internal);
 
-        ClearErrorAndWarning();
-        ClearOutput();
+        viewModel?.ClearErrorAndWarning();
+        viewModel?.ClearOutput();
 
         this.Cursor = new Cursor(StandardCursorType.Wait);
 
@@ -328,6 +310,10 @@ public partial class MainWindow : Window
             activity?.SetTag("ihcoperation", labAppService.SelectedOperation.DisplayName);
 
             var operationResult = await labAppService.DynCallSelectedOperation();
+
+            activity?.SetTag("result", operationResult.DisplayResult);
+
+            logger.LogInformation(message: $"Operation {labAppService.SelectedOperation.DisplayName} sucessfullly called with result {operationResult.DisplayResult}");
 
             await SetOutput(operationResult.DisplayResult, operationResult.ReturnType);
         } catch (Exception ex)
@@ -400,7 +386,7 @@ public partial class MainWindow : Window
             }
             catch (Exception ex)
             {
-                SetError("Parameter control setup error", ex);
+                viewModel?.SetError("Parameter control setup error", ex);
                 RunButton.IsEnabled = false;
             }
         }
@@ -452,8 +438,8 @@ public partial class MainWindow : Window
         using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow)+"."+nameof(ShowSettingsMenuItemClick), ActivityKind.Internal);
         try
         {
-            ClearErrorAndWarning();
-            ClearOutput();
+            viewModel?.ClearErrorAndWarning();
+            viewModel?.ClearOutput();
 
             // Convert IConfigurationSection to dictionary to properly serialize values
             var loggingConfigDict = Program.config?.loggingConfig?.GetChildren()
@@ -543,11 +529,6 @@ public partial class MainWindow : Window
             HandleOperationError(activity, "Error to clipboard", ex);
         }
     }
-    
-     public void ClearOutput()
-    {
-        viewModel?.ClearOutput();
-    }
 
     public async Task SetOutput(string text, Type type)
     {
@@ -573,29 +554,6 @@ public partial class MainWindow : Window
         await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
     }
 
-    private enum MessageLevel { Error, Warning }
-
-    public void ClearErrorAndWarning()
-    {
-        viewModel?.ClearErrorAndWarning();
-    }
-
-    private void SetMessage(MessageLevel level, string text, Exception? ex = null)
-    {
-        if (level == MessageLevel.Error)
-        {
-            viewModel?.SetError(text, ex);
-        }
-        else
-        {
-            viewModel?.SetWarning(text, ex);
-        }
-    }
-
-    public void SetError(string text, Exception? ex = null) => SetMessage(MessageLevel.Error, text, ex);
-
-    public void SetWarning(string text, Exception? ex = null) => SetMessage(MessageLevel.Warning, text, ex);
-
     /// <summary>
     /// Helper method to handle exceptions consistently: logs to activity and displays error to user.
     /// Reduces code duplication across catch blocks.
@@ -606,7 +564,7 @@ public partial class MainWindow : Window
     private void HandleOperationError(Activity? activity, string operation, Exception ex)
     {
         activity?.SetError(ex);
-        SetError(operation + " error", ex);
+        viewModel?.SetError(operation + " error", ex);
     }
 
     /// <summary>
