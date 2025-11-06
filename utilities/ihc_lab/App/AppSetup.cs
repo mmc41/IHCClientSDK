@@ -62,7 +62,7 @@ public static class AppSetup
             forwardSink?.Log(level, area, source, messageTemplate, propertyValues);
         }
     }
-    
+
     public static ILoggerFactory SetupTelemetryAndLoggingFactory(Configuration configuration)
     {
         // Create a logger for our application which delegates to Telemetry:
@@ -100,7 +100,7 @@ public static class AppSetup
                 {
                     opts.Endpoint = new Uri(configuration.telemetryConfig.Traces);
                     if (!string.IsNullOrEmpty(configuration.telemetryConfig.Headers))
-                       opts.Headers = configuration.telemetryConfig.Headers;
+                        opts.Headers = configuration.telemetryConfig.Headers;
                     opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
                 }).Build();
         }
@@ -108,7 +108,6 @@ public static class AppSetup
         return loggerFactory;
     }
     
-
     public static AppBuilder LogToSink(this AppBuilder builder, ILoggerFactory logFactory, LogEventLevel level = LogEventLevel.Warning)
     {       
         Logger.Sink = new ChainedILoggerSink(logFactory, Logger.Sink, level);

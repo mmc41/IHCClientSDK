@@ -1,16 +1,17 @@
 using NUnit.Framework;
 using FakeItEasy;
 using Ihc.App;
-using IhcLab.ViewModels;
+using IhcLab;
 using System;
 
-namespace IHCClientSDK.Tests
+namespace Ihc.Tests
 {
     /// <summary>
     /// Tests for MainWindowViewModel to verify event-driven synchronization with LabAppService.
+    /// Unlike other tests these are not GUI tests.
     /// </summary>
     [TestFixture]
-    public class MainWindowViewModelTests
+    public class ModelTests
     {
         [Test]
         public void Constructor_ShouldInitializeProperties()
@@ -135,11 +136,13 @@ namespace IHCClientSDK.Tests
         [Test]
         public void SetError_ShouldSetErrorTextAndShowErrorHeading()
         {
-            // Arrange
-            var viewModel = new MainWindowViewModel();
-
-            // Act
-            viewModel.SetError("Test error");
+            // Arrange & Act
+            MainWindowViewModel viewModel;
+            using (new SuppressLogging())
+            {
+                viewModel = new MainWindowViewModel();
+                viewModel.SetError("Test error");
+            }
 
             // Assert
             Assert.That(viewModel.ErrorWarningText, Is.EqualTo("Test error"));
@@ -151,11 +154,15 @@ namespace IHCClientSDK.Tests
         public void SetError_WithException_ShouldIncludeExceptionDetails()
         {
             // Arrange
-            var viewModel = new MainWindowViewModel();
             var exception = new InvalidOperationException("Test exception");
 
             // Act
-            viewModel.SetError("Test error", exception);
+            MainWindowViewModel viewModel;
+            using (new SuppressLogging())
+            {
+                viewModel = new MainWindowViewModel();
+                viewModel.SetError("Test error", exception);
+            }
 
             // Assert
             Assert.That(viewModel.ErrorWarningText, Does.Contain("Test error"));
@@ -166,11 +173,13 @@ namespace IHCClientSDK.Tests
         [Test]
         public void SetWarning_ShouldSetWarningTextAndShowWarningHeading()
         {
-            // Arrange
-            var viewModel = new MainWindowViewModel();
-
-            // Act
-            viewModel.SetWarning("Test warning");
+            // Arrange & Act
+            MainWindowViewModel viewModel;
+            using (new SuppressLogging())
+            {
+                viewModel = new MainWindowViewModel();
+                viewModel.SetWarning("Test warning");
+            }
 
             // Assert
             Assert.That(viewModel.ErrorWarningText, Is.EqualTo("Test warning"));
@@ -182,11 +191,15 @@ namespace IHCClientSDK.Tests
         public void SetWarning_WithException_ShouldIncludeExceptionDetails()
         {
             // Arrange
-            var viewModel = new MainWindowViewModel();
             var exception = new InvalidOperationException("Test exception");
 
             // Act
-            viewModel.SetWarning("Test warning", exception);
+            MainWindowViewModel viewModel;
+            using (new SuppressLogging())
+            {
+                viewModel = new MainWindowViewModel();
+                viewModel.SetWarning("Test warning", exception);
+            }
 
             // Assert
             Assert.That(viewModel.ErrorWarningText, Does.Contain("Test warning"));

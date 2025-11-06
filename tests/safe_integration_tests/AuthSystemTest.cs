@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 namespace Ihc.Tests
 {
     [TestFixture]
-    [NonParallelizable]
     public class AuthTest
     { 
         [Test]

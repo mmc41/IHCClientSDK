@@ -592,7 +592,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Recursively checks if a field contains unsupported types.
+    /// Recursively checks if a field contains unsupported / unimplemented types.
     /// Checks for arrays, ResourceValue types, and recursively checks subtypes.
     /// </summary>
     /// <param name="field">The field metadata to check</param>

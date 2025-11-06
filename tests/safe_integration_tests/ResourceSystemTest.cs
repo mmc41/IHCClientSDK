@@ -13,7 +13,6 @@ namespace Ihc.Tests
     /// System tests against live IHC system. Requires use of user name/password and test input/outputs specified in configuration file.
     /// </summary>
     [TestFixture]
-    [NonParallelizable]
     public class ResourceTest
     {   
         private AuthenticationService authService;

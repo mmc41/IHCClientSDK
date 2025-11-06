@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
@@ -12,33 +13,29 @@ using System.Threading.Tasks;
 namespace Ihc.Tests
 {
     /// <summary>
-    /// Headless UI tests for IHC Lab application launch and initialization
+    /// Headless UI tests for IHC Lab application launch and initialization.
+    /// Screenshots are automatically captured on test failure using [CaptureScreenshotOnFailure] attribute.
     /// </summary>
     [TestFixture]
-    public class LaunchTests
+    public class LaunchTests : AvaloniaTestBase
     {
         [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
         public async Task ApplicationCanLaunchSuccessfullyAsync()
         {
-            // Arrange - Create and initialize the main window
-            var window = await new MainWindow().Start();
-
-            // Act - Show the window and wait for it to be ready
-            window.Show();
-            Dispatcher.UIThread.RunJobs(); // Process all pending UI operations
+            // Arrange & Act - Create, initialize, and show the main window
+            var window = await SetupMainWindowAsync();
 
             // Assert - Verify window is visible
             Assert.That(window.IsVisible, Is.True, "MainWindow should be visible after showing");
         }
 
         [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
         public async Task MainWindowShowsWithoutErrorsOrWarningsAsync()
         {
-            // Arrange - Create and initialize the main window
-            var window = await new MainWindow().Start();
-
-            window.Show();
-            Dispatcher.UIThread.RunJobs(); // Process all pending UI operations
+            // Arrange - Create, initialize, and show the main window
+            var window = await SetupMainWindowAsync();
 
             // Act - Find the error/warning content TextBlock
             var errorWarningContent = window.FindControl<TextBlock>(MainWindowNames.ErrorWarningContent);
@@ -52,13 +49,11 @@ namespace Ihc.Tests
         }
 
         [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
         public async Task ServicesComboBoxIsPopulatedAsync()
         {
-            // Arrange - Create and initialize the main window
-            var window = await new MainWindow().Start();
-
-            window.Show();
-            Dispatcher.UIThread.RunJobs(); // Process all pending UI operations
+            // Arrange - Create, initialize, and show the main window
+            var window = await SetupMainWindowAsync();
 
             // Act - Find the Services ComboBox
             var servicesComboBox = window.FindControl<ComboBox>(MainWindowNames.ServicesComboBox);
@@ -76,13 +71,11 @@ namespace Ihc.Tests
         }
 
         [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
         public async Task OperationsComboBoxIsPopulatedAsync()
         {
-            // Arrange - Create and initialize the main window
-            var window = await new MainWindow().Start();
-
-            window.Show();
-            Dispatcher.UIThread.RunJobs(); // Process all pending UI operations
+            // Arrange - Create, initialize, and show the main window
+            var window = await SetupMainWindowAsync();
 
             // Act - Find the Operations ComboBox
             var operationsComboBox = window.FindControl<ComboBox>(MainWindowNames.OperationsComboBox);
@@ -99,13 +92,11 @@ namespace Ihc.Tests
         }
 
         [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
         public async Task BothDropdownsAreNonEmptyAsync()
         {
-            // Arrange - Create and initialize the main window
-            var window = await new MainWindow().Start();
-
-            window.Show();
-            Dispatcher.UIThread.RunJobs(); // Process all pending UI operations
+            // Arrange - Create, initialize, and show the main window
+            var window = await SetupMainWindowAsync();
 
             // Act - Find both ComboBoxes
             var servicesComboBox = window.FindControl<ComboBox>(MainWindowNames.ServicesComboBox);
@@ -122,13 +113,11 @@ namespace Ihc.Tests
         }
 
         [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
         public async Task MainWindowHasAllExpectedControlsAsync()
         {
-            // Arrange - Create and initialize the main window
-            var window = await new MainWindow().Start();
-
-            window.Show();
-            Dispatcher.UIThread.RunJobs(); // Process all pending UI operations
+            // Arrange - Create, initialize, and show the main window
+            var window = await SetupMainWindowAsync();
 
             // Act - Find all expected controls
             var servicesComboBox = window.FindControl<ComboBox>(MainWindowNames.ServicesComboBox);

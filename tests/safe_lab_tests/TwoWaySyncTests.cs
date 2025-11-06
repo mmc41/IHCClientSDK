@@ -18,9 +18,10 @@ namespace Ihc.Tests
     /// - LabAppService changes immediately update GUI (LabAppService → GUI)
     /// - No circular updates occur
     /// - Values persist when switching operations
+    /// Screenshots are automatically captured on test failure using [CaptureScreenshotOnFailure] attribute.
     /// </summary>
     [TestFixture]
-    public class TwoWaySyncTests
+    public class TwoWaySyncTests : AvaloniaTestBase
     {
         private const string AuthenticationServiceName = "AuthenticationService";
         private const string SmsModemServiceName = "SmsModemService";
@@ -93,12 +94,11 @@ namespace Ihc.Tests
         }
 
         [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
         public async Task GuiToLabAppService_SimpleStringParameter_SyncsImmediately()
         {
-            // Arrange - Create window and select AuthenticationService.Authenticate operation
-            var window = await new MainWindow().Start();
-            window.Show();
-            Dispatcher.UIThread.RunJobs();
+            // Arrange - Create, initialize, and show the main window
+            var window = await SetupMainWindowAsync();
 
             var servicesComboBox = window.FindControl<ComboBox>(MainWindowNames.ServicesComboBox);
             var operationsComboBox = window.FindControl<ComboBox>(MainWindowNames.OperationsComboBox);
@@ -140,12 +140,11 @@ namespace Ihc.Tests
         }
 
         [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
         public async Task GuiToLabAppService_MultipleBoolParameters_RadioButtonsAreIndependent()
         {
-            // Arrange - Create window and select a service with multiple bool parameters
-            var window = await new MainWindow().Start();
-            window.Show();
-            Dispatcher.UIThread.RunJobs();
+            // Arrange - Create, initialize, and show the main window
+            var window = await SetupMainWindowAsync();
 
             var servicesComboBox = window.FindControl<ComboBox>(MainWindowNames.ServicesComboBox);
             var operationsComboBox = window.FindControl<ComboBox>(MainWindowNames.OperationsComboBox);
@@ -195,12 +194,11 @@ namespace Ihc.Tests
         }
 
         [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
         public async Task GuiToLabAppService_ComplexParameter_ReconstructsEntireObject()
         {
-            // Arrange - Create window and select SmsModemService.SetSmsModemSettings
-            var window = await new MainWindow().Start();
-            window.Show();
-            Dispatcher.UIThread.RunJobs();
+            // Arrange - Create, initialize, and show the main window
+            var window = await SetupMainWindowAsync();
 
             var servicesComboBox = window.FindControl<ComboBox>(MainWindowNames.ServicesComboBox);
             var operationsComboBox = window.FindControl<ComboBox>(MainWindowNames.OperationsComboBox);
@@ -248,12 +246,11 @@ namespace Ihc.Tests
         }
 
         [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
         public async Task LabAppServiceToGui_SimpleParameter_UpdatesGuiImmediately()
         {
-            // Arrange - Create window and select AuthenticationService.Authenticate
-            var window = await new MainWindow().Start();
-            window.Show();
-            Dispatcher.UIThread.RunJobs();
+            // Arrange - Create, initialize, and show the main window
+            var window = await SetupMainWindowAsync();
 
             var servicesComboBox = window.FindControl<ComboBox>(MainWindowNames.ServicesComboBox);
             var operationsComboBox = window.FindControl<ComboBox>(MainWindowNames.OperationsComboBox);
@@ -289,12 +286,11 @@ namespace Ihc.Tests
         }
 
         [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
         public async Task LabAppServiceToGui_ComplexParameter_UpdatesAllSubFieldsRecursively()
         {
-            // Arrange - Create window and select operation with complex parameter
-            var window = await new MainWindow().Start();
-            window.Show();
-            Dispatcher.UIThread.RunJobs();
+            // Arrange - Create, initialize, and show the main window
+            var window = await SetupMainWindowAsync();
 
             var servicesComboBox = window.FindControl<ComboBox>(MainWindowNames.ServicesComboBox);
             var operationsComboBox = window.FindControl<ComboBox>(MainWindowNames.OperationsComboBox);
@@ -357,12 +353,11 @@ namespace Ihc.Tests
         }
 
         [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
         public async Task ValuePersistence_SwitchingOperations_RestoresPreviousValues()
         {
-            // Arrange - Create window
-            var window = await new MainWindow().Start();
-            window.Show();
-            Dispatcher.UIThread.RunJobs();
+            // Arrange - Create, initialize, and show the main window
+            var window = await SetupMainWindowAsync();
 
             var servicesComboBox = window.FindControl<ComboBox>(MainWindowNames.ServicesComboBox);
             var operationsComboBox = window.FindControl<ComboBox>(MainWindowNames.OperationsComboBox);
@@ -407,12 +402,11 @@ namespace Ihc.Tests
         }
 
         [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
         public async Task CircularUpdatePrevention_GuiChange_DoesNotTriggerGuiUpdate()
         {
-            // Arrange - Create window and track ValueChanged events
-            var window = await new MainWindow().Start();
-            window.Show();
-            Dispatcher.UIThread.RunJobs();
+            // Arrange - Create, initialize, and show the main window
+            var window = await SetupMainWindowAsync();
 
             var servicesComboBox = window.FindControl<ComboBox>(MainWindowNames.ServicesComboBox);
             var operationsComboBox = window.FindControl<ComboBox>(MainWindowNames.OperationsComboBox);
@@ -448,12 +442,11 @@ namespace Ihc.Tests
         }
 
         [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
         public async Task CircularUpdatePrevention_LabAppServiceChange_DoesNotTriggerLabAppServiceUpdate()
         {
-            // Arrange - Create window
-            var window = await new MainWindow().Start();
-            window.Show();
-            Dispatcher.UIThread.RunJobs();
+            // Arrange - Create, initialize, and show the main window
+            var window = await SetupMainWindowAsync();
 
             var servicesComboBox = window.FindControl<ComboBox>(MainWindowNames.ServicesComboBox);
             var operationsComboBox = window.FindControl<ComboBox>(MainWindowNames.OperationsComboBox);

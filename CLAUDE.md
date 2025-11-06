@@ -16,8 +16,11 @@ dotnet build tests/safe_integration_tests/safe_integration_tests.csproj
 
 ### Testing
 ```bash
-# Run all tests (run from repository root)
+# Run SDK integration tests (safe to run against active controllers)
 dotnet test tests/safe_integration_tests/safe_integration_tests.csproj
+
+# Run IHC Lab GUI tests (headless Avalonia UI tests)
+dotnet test tests/safe_lab_tests/safe_lab_tests.csproj
 
 # Run tests with detailed output
 dotnet test tests/safe_integration_tests/safe_integration_tests.csproj --verbosity detailed
@@ -55,7 +58,8 @@ This is a .NET 9.0 mono-repository containing an unofficial SDK for IHC (Intelli
 
 **Main Projects:**
 - `ihcclient/` - Core SDK library with high-level API wrapper around SOAP services
-- `tests/safe_integration_tests/` - NUnit test suite for system and unit tests (safe to run against active controllers)
+- `tests/safe_integration_tests/` - NUnit test suite for SDK integration tests (safe to run against active controllers)
+- `tests/safe_lab_tests/` - NUnit test suite for IHC Lab GUI tests (headless Avalonia UI tests with diagnostic features)
 - `examples/ihcclient_example1/` & `examples/ihcclient_example2/` - Console application examples
 - `utilities/ihc_project_io_extractor/` - Utility to generate C# constants from IHC project files
 - `utilities/ihc_httpproxyrecorder/` - HTTP proxy for debugging/investigating IHC API calls
@@ -155,10 +159,56 @@ Before running any code that connects to an IHC controller:
 - Recommended usage: Use Microsoft.Extensions.Hosting (Generic Host or ASP.NET Core) for proper lifecycle management and orderly shutdown
 - When refactoring, do not add simple methods that does nothing but calling another method in another class
 
-## Test notes
+## Test Infrastructure
+
+### Test Suites
+- **safe_integration_tests** - SDK integration tests (safe to run against active controllers)
+- **safe_lab_tests** - Headless Avalonia UI tests for IHC Lab application with advanced diagnostic capabilities (using fake sevices instead of active controller)
+
+### safe_lab_tests Diagnostic Features
+
+The `safe_lab_tests` project includes comprehensive diagnostic capabilities to help troubleshoot test failures:
+
+#### Trace Logging
+All tests output detailed trace-level logs visible in test results:
+- **Application logs**: MainWindow, ViewModel, and app service operations (Trace level)
+- **Avalonia UI logs**: Framework internal logs (Warning level by default)
+
+Log levels configured in `tests/safe_lab_tests/Setup.cs`:
+```csharp
+// Application code logs (line 196)
+builder.SetMinimumLevel(LogLevel.Trace);  // Change to Information or Warning to reduce verbosity
+
+// Avalonia framework logs (line 44)
+.LogToSink(loggerFactory, LogEventLevel.Warning);  // Controls UI framework log verbosity
+```
+
+#### Automatic Screenshot Capture on Failure
+Tests automatically capture screenshots when they fail using the `[CaptureScreenshotOnFailure]` attribute:
+
+**Implementation Details:**
+- Uses `IWrapSetUpTearDown` NUnit interface to hook into test execution pipeline
+- Works alongside `[AvaloniaTest]` attribute (both attributes required on each test method)
+- Executes screenshot capture through Avalonia's headless session dispatcher
+- Must be applied to **each test method individually** (NUnit framework limitation - cannot be applied at class level)
+
+**Screenshot Location:**
+- Saved to: `tests/safe_lab_tests/bin/Debug/{DotNetVersion}/TestFailureScreenshots/`
+- Format: `{TestName}_{Timestamp}.png` (e.g., `MyTest_20251106_094227.png`)
+- Automatically attached to test results via `TestContext.AddTestAttachment()`
+- Requires Skia renderer (already configured in TestAppBuilder)
+
+**Features:**
+- Captures exact visual state at failure
+- 1024x768 resolution headless rendering
+- Timestamped to prevent overwrites
+- Only executes on test failure (no overhead for passing tests)
+- Fully automatic - no try-finally blocks or manual calls required
+
+### Test Guidelines
 - All tests must be safe from potential harmful side effects on IHC controller, including changing state on controller.
 - Only safe_integration_tests may use real IHC Api services. All other tests should use mocks of IHC services using FakeItEasy framework.
-- When generating tests, only generate valuable tests for functional aspects. 
-- Prefer blockbox testing over whitebox testing.
-- Use best practice test techniques for test cases such as Equivalence Partitioning, Boundary Value Analysis, State Transition Testing. 
-- Unless specificly instructed otherwise, do not add tests for the following: null checks, expected exceptions, multithreading.
+- When generating tests, only generate valuable tests for functional aspects.
+- Prefer blackbox testing over whitebox testing.
+- Use best practice test techniques for test cases such as Equivalence Partitioning, Boundary Value Analysis, State Transition Testing.
+- Unless specifically instructed otherwise, do not add tests for the following: null checks, expected exceptions, multithreading.
