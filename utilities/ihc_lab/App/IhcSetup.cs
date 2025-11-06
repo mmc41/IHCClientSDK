@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Ihc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -129,27 +130,28 @@ public class IhcFakeSetup
     {
         var service = A.Fake<IAuthenticationService>();
 
-        // Setup faked return values for authentication service:
-        A.CallTo(() => service.Authenticate()).Returns(new IhcUser
+        A.CallTo(() => service.Authenticate()).Returns(Task.FromResult(new IhcUser
         {
             Username = settings.UserName,
             Password = settings.Password,
             Firstname = "Mock",
             Lastname = settings.Application.ToString(),
             Group = IhcUserGroup.Administrators
-        });
+        }));
 
-        A.CallTo(() => service.Authenticate(A<string>._, A<string>._, A<Application>._)).ReturnsLazily((string u, string p, Application app) => new IhcUser
+        A.CallTo(() => service.Authenticate(A<string>._, A<string>._, A<Application>._))
+            .ReturnsLazily((string u, string p, Application app) => Task.FromResult(new IhcUser
         {
             Username = u,
             Password = p,
             Firstname = "Mock",
             Lastname = app.ToString(),
             Group = IhcUserGroup.Administrators
-        });
+        }));
 
-        A.CallTo(() => service.Ping()).Returns(true);
-        A.CallTo(() => service.Disconnect()).Returns(true);
+        A.CallTo(() => service.Ping()).Returns(Task.FromResult(true));
+        A.CallTo(() => service.Disconnect()).Returns(Task.FromResult(true));
+        A.CallTo(() => service.IsAuthenticated()).Returns(Task.FromResult(true));
 
         return service;
     }
@@ -158,34 +160,88 @@ public class IhcFakeSetup
     {
         var service = A.Fake<IControllerService>();
 
-        A.CallTo(() => service.IsIHCProjectAvailable()).Returns(true);
+        A.CallTo(() => service.IsIHCProjectAvailable()).Returns(Task.FromResult(true));
 
-        A.CallTo(() => service.GetProjectInfo()).Returns(new ProjectInfo()
+        A.CallTo(() => service.GetControllerState()).Returns(Task.FromResult(ControllerState.Ready));
+
+        A.CallTo(() => service.WaitForControllerStateChange(A<ControllerState>._, A<int>._))
+            .ReturnsLazily((ControllerState waitState, int waitSec) => Task.FromResult(waitState));
+
+
+        A.CallTo(() => service.IsSDCardReady()).Returns(Task.FromResult(true));
+
+        A.CallTo(() => service.GetSDCardInfo()).Returns(Task.FromResult(new SDInfo()
         {
-            CustomerName = "ihcclient",
-            InstallerName = "ihcclient",
-        });
+            Size = 8_000_000_000,  
+            Free = 4_500_000_000 
+        }));
 
-        A.CallTo(() => service.GetProject()).Returns(new Ihc.ProjectFile("project-mock.vis",
+        A.CallTo(() => service.GetProjectInfo()).Returns(Task.FromResult(new ProjectInfo()
+        {
+            CustomerName = "Mock Customer",
+            InstallerName = "Mock Installer",
+            ProjectNumber = "12345",
+            VisualMajorVersion = 4,
+            VisualMinorVersion = 0,
+            ProjectMajorRevision = 1,
+            ProjectMinorRevision = 2,
+            Lastmodified = new DateTimeOffset(2025, 10, 4, 17, 6, 0, TimeSpan.Zero)
+        }));
+
+        A.CallTo(() => service.GetProject()).Returns(Task.FromResult(new Ihc.ProjectFile("project-mock.vis",
             """
-                    <?xml version="1.0" encoding="ISO-8859-1"?>
-                    <utcs_project version_major="4" version_minor="0" id1="1" id2="2" last_unique_id="3">
-                        <modified year="2025" month="10" day="4" hour="17" minute="6"/>
-                        <customer_info name="ihcclient"/>
-                        <installer_info name="ihcclient" country="Danmark"/>
-                        <project_info programmer="ihcclient" number="42" description="empty installation"/>
-                    </utcs_project>   
-                """
-        ));
-
-        A.CallTo(() => service.GetBackup()).Returns(new Ihc.BackupFile("backup-mock.dat",
-            new byte[] { 0x42, 0x25 }
-        ));
+            <?xml version="1.0" encoding="ISO-8859-1"?>
+            <utcs_project version_major="4" version_minor="0" id1="1" id2="2" last_unique_id="3">
+                <modified year="2025" month="10" day="4" hour="17" minute="6"/>
+                <customer_info name="Mock Customer"/>
+                <installer_info name="Mock Installer" country="Danmark"/>
+                <project_info programmer="Mock Programmer" number="12345" description="Mock test project"/>
+            </utcs_project>
+            """
+        )));
 
         A.CallTo(() => service.StoreProject(A<ProjectFile>._)).ReturnsLazily((ProjectFile prj) =>
         {
-            return prj?.Data.StartsWith("<?xml") == true;
+            return Task.FromResult(prj?.Data.StartsWith("<?xml") == true);
         });
+
+        A.CallTo(() => service.EnterProjectChangeMode()).Returns(Task.FromResult(true));
+
+        A.CallTo(() => service.ExitProjectChangeMode()).Returns(Task.FromResult(true));
+
+        // ========== Project Segmentation (for large projects) ==========
+
+        A.CallTo(() => service.GetIHCProjectSegmentationSize()).Returns(Task.FromResult(1_048_576)); // 1 MB segments
+
+        A.CallTo(() => service.GetIHCProjectNumberOfSegments()).Returns(Task.FromResult(1)); // Single segment project
+
+        A.CallTo(() => service.GetIHCProjectSegment(A<int>._, A<int>._, A<int>._))
+            .ReturnsLazily((int index, int major, int minor) => Task.FromResult(new Ihc.ProjectFile(
+                $"project-segment-{index}.vis",
+                $"""
+                <?xml version="1.0" encoding="ISO-8859-1"?>
+                """
+            )));
+
+        A.CallTo(() => service.StoreIHCProjectSegment(A<ProjectFile>._, A<int>._, A<int>._))
+            .ReturnsLazily((ProjectFile segment, int index, int major) =>
+            {
+                return Task.FromResult(segment?.Data.StartsWith("<?xml") == true);
+            });
+
+        A.CallTo(() => service.GetBackup()).Returns(Task.FromResult(new Ihc.BackupFile("backup-mock.dat",
+            new byte[] { 0x42, 0x61, 0x63, 0x6B, 0x75, 0x70, 0x00, 0xFF } // "Backup" + null + 0xFF
+        )));
+
+        A.CallTo(() => service.Restore()).Returns(Task.FromResult(0)); // 0 = success
+
+        A.CallTo(() => service.GetS0MeterValue()).Returns(Task.FromResult(1234.56f)); // kWh
+
+        A.CallTo(() => service.ResetS0Values()).Returns(Task.CompletedTask);
+
+        A.CallTo(() => service.SetS0Consumption(A<float>._, A<bool>._)).Returns(Task.CompletedTask);
+
+        A.CallTo(() => service.SetS0FiscalYearStart(A<sbyte>._, A<sbyte>._)).Returns(Task.CompletedTask);
 
         return service;
     }

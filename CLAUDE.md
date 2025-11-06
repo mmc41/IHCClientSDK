@@ -212,3 +212,71 @@ Tests automatically capture screenshots when they fail using the `[CaptureScreen
 - Prefer blackbox testing over whitebox testing.
 - Use best practice test techniques for test cases such as Equivalence Partitioning, Boundary Value Analysis, State Transition Testing.
 - Unless specifically instructed otherwise, do not add tests for the following: null checks, expected exceptions, multithreading.
+
+### Configuring Mocked Services for Tests (safe_lab_tests)
+
+The `safe_lab_tests` project uses mocked IHC services configured in `utilities/ihc_lab/App/IhcSetup.cs` via the `IhcFakeSetup` class.
+
+**How Mocking Works:**
+- When endpoint starts with `SpecialEndpoints.MockedPrefix`, `IhcSetup` creates mocked services instead of real ones
+- Each service has a `Setup*Service` method in `IhcFakeSetup` that configures mock behavior using FakeItEasy
+- Tests automatically use mocked services through the normal application flow
+
+**Adding/Modifying Mocked Operations:**
+
+IControllerService and IAuthenticationService has setup mocks for all method. To add more operations that tests can use,
+update the corresponding setup method in `IhcFakeSetup`:
+
+```csharp
+public static IAuthenticationService SetupAuthenticationService(IhcSettings settings)
+{
+    var service = A.Fake<IAuthenticationService>();
+
+    // Add mock operation behavior
+    A.CallTo(() => service.Login(A<string>._, A<string>._, A<Application>._))
+        .ReturnsLazily((string username, string password, Application app) =>
+        {
+            // Return mock result
+            return new IhcUser { Username = username, ... };
+        });
+
+    return service;
+}
+```
+
+**Example: If tests need a specific operation:**
+1. Identify which service the operation belongs to (e.g., `IAuthenticationService`)
+2. Update `IhcFakeSetup.SetupAuthenticationService()` to configure the operation
+3. Use `A.CallTo()` to define the mock behavior
+4. Tests will automatically see the operation through `LabAppService`
+
+**IMPORTANT: Mocking Restrictions**
+
+Tests MUST follow these rules when using mocks:
+
+- ✅ **ALLOWED**: Mocking IHC API services (implementing `IIHCApiService` interface)
+  - Examples: `IAuthenticationService`, `IControllerService`, `IResourceInteractionService`, etc.
+  - These are low-level SDK services that communicate with the IHC controller
+  - Use `IhcFakeSetup` methods in `utilities/ihc_lab/App/IhcSetup.cs` to configure mocked API services
+
+- ❌ **FORBIDDEN**: Mocking application services (implementing `IIHCAppService` interface)
+  - Examples: `LabAppService`, `AdminAppService`, `InformationAppService`
+  - These are high-level business logic services in `ihcclient/src/app/services/`
+  - Always use real instances: `new LabAppService(null, null)` instead of `A.Fake<LabAppService>()`
+  - Reason: Application services contain business logic that should be tested, not mocked
+
+**Example of correct vs incorrect mocking:**
+
+```csharp
+// ✅ CORRECT - Mocking API service
+var authService = A.Fake<IAuthenticationService>();
+A.CallTo(() => authService.Authenticate()).Returns(Task.FromResult(new IhcUser { ... }));
+
+// ✅ CORRECT - Using real application service
+var labAppService = new LabAppService(null, null);
+
+// ❌ INCORRECT - Do not mock application services
+var labAppService = A.Fake<LabAppService>(); // WRONG!
+```
+
+See `tests/safe_lab_tests/README.md` for detailed test infrastructure documentation.

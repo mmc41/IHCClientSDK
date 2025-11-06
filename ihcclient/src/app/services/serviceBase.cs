@@ -10,9 +10,16 @@ using System.Text.Encodings.Web;
 namespace Ihc.App
 {
     /// <summary>
+    /// Base class for IHC Application services. The services are modular abstractions upon multiple IIHCApiServices that
+    /// combined implement a backend for a application for a specific use. All services should be tested with
+    /// mocked IIHCApiServices. It is not adviced to mock any application for testing. Mock underlaying IIHCApiServices instead.
+    /// </summary>
+    public interface IIHCAppService {}
+    
+    /// <summary>
     /// Base class for IHC Application services
     /// </summary>
-    public abstract class AppServiceBase
+    public abstract class AppServiceBase : IIHCAppService
     {
         protected AppServiceBase()
         {
