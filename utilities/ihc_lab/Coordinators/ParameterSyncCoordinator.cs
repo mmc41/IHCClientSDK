@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 namespace Ihc.App;
 
 /// <summary>
-/// Coordinator responsible for bidirectional synchronization between DynField GUI controls and LabAppService parameters.
+/// Coordinator responsible for bidirectional synchronization between GUI controls and LabAppService parameters.
 /// Uses strategy pattern to handle different field types (simple vs complex) consistently.
 /// </summary>
 public class ParameterSyncCoordinator
@@ -30,10 +30,10 @@ public class ParameterSyncCoordinator
     }
 
     /// <summary>
-    /// Syncs argument values FROM DynField GUI controls TO LabAppService.SelectedOperation.Arguments.
+    /// Syncs argument values FROM GUI controls TO LabAppService.SelectedOperation.Arguments.
     /// Extracts values from all parameter controls and updates the operation's method arguments.
     /// </summary>
-    /// <param name="parametersPanel">Panel containing the DynField controls.</param>
+    /// <param name="parametersPanel">Panel containing the parameter controls.</param>
     /// <param name="operation">Operation item whose arguments will be updated.</param>
     /// <exception cref="ArgumentNullException">Thrown when parametersPanel or operation is null.</exception>
     public void SyncToService(Panel parametersPanel, LabAppService.OperationItem operation)
@@ -56,10 +56,10 @@ public class ParameterSyncCoordinator
     }
 
     /// <summary>
-    /// Syncs argument values FROM LabAppService.SelectedOperation.Arguments TO DynField GUI controls.
+    /// Syncs argument values FROM LabAppService.SelectedOperation.Arguments TO parameter control GUI controls.
     /// This enables argument persistence - when user returns to an operation, previously set values are restored.
     /// </summary>
-    /// <param name="parametersPanel">Panel containing the DynField controls.</param>
+    /// <param name="parametersPanel">Panel containing the parameter control controls.</param>
     /// <param name="operation">Operation item whose arguments will be read.</param>
     /// <exception cref="ArgumentNullException">Thrown when parametersPanel or operation is null.</exception>
     public void SyncFromService(Panel parametersPanel, LabAppService.OperationItem operation)
@@ -110,10 +110,10 @@ public class ParameterSyncCoordinator
     /// Updates GUI controls from a parameter value change in LabAppService.
     /// Handles both simple types (direct update) and complex types (recursive update) using strategy pattern.
     /// </summary>
-    /// <param name="parent">Panel containing the DynField controls.</param>
+    /// <param name="parent">Panel containing the parameter control controls.</param>
     /// <param name="field">Field metadata describing the parameter structure.</param>
     /// <param name="value">New value to display in GUI.</param>
-    /// <param name="indexPath">Index path for finding the DynField.</param>
+    /// <param name="indexPath">Index path for finding the parameter control.</param>
     public void UpdateGuiFromParameter(Panel parent, FieldMetaData field, object? value, string indexPath)
     {
         try
@@ -131,10 +131,10 @@ public class ParameterSyncCoordinator
     /// Unified method to set field values in GUI using strategy pattern.
     /// Handles both simple and complex types by delegating to appropriate strategy.
     /// </summary>
-    /// <param name="parent">Panel containing the DynField controls.</param>
+    /// <param name="parent">Panel containing the parameter control controls.</param>
     /// <param name="field">Field metadata describing the parameter structure.</param>
     /// <param name="value">Value to set in GUI.</param>
-    /// <param name="indexPath">Index path for finding the DynField.</param>
+    /// <param name="indexPath">Index path for finding the parameter control.</param>
     /// <param name="restoredCount">Running count of successfully restored fields (for telemetry).</param>
     private void SetFieldValue(Panel parent, FieldMetaData field, object? value, string indexPath, ref int restoredCount)
     {

@@ -19,21 +19,21 @@ public interface IFieldSyncStrategy
 
     /// <summary>
     /// Syncs a value FROM GUI TO service (GUI → Service direction).
-    /// Extracts the current value from DynField controls.
+    /// Extracts the current value from parameter controls.
     /// </summary>
-    /// <param name="parent">Panel containing the DynField controls.</param>
+    /// <param name="parent">Panel containing the parameter controls.</param>
     /// <param name="field">Field metadata describing the parameter structure.</param>
-    /// <param name="indexPath">Index path for finding the DynField.</param>
+    /// <param name="indexPath">Index path for finding the parameter control.</param>
     /// <returns>The extracted value from the GUI control.</returns>
     object? ExtractValueFromGui(Panel parent, FieldMetaData field, string indexPath);
 
     /// <summary>
     /// Syncs a value FROM service TO GUI (Service → GUI direction).
-    /// Updates DynField controls with the provided value.
+    /// Updates parameter controls with the provided value.
     /// </summary>
-    /// <param name="parent">Panel containing the DynField controls.</param>
+    /// <param name="parent">Panel containing the parameter controls.</param>
     /// <param name="field">Field metadata describing the parameter structure.</param>
     /// <param name="value">Value to set in the GUI controls.</param>
-    /// <param name="indexPath">Index path for finding the DynField.</param>
+    /// <param name="indexPath">Index path for finding the parameter control.</param>
     void SetValueInGui(Panel parent, FieldMetaData field, object? value, string indexPath);
 }

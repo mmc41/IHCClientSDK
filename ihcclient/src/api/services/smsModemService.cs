@@ -93,17 +93,16 @@ namespace Ihc
             if (ws == null)
                 return null;
 
-            return new SmsModemSettings
-            {
-                PowerupMessage = ws.m_powerupMessage,
-                PowerdownMessage = ws.m_powerdownMessage,
-                PowerdownNumber = ws.m_powerdownNumber,
-                RelaySMS = ws.m_relaySMS,
-                ForceStandAloneMode = ws.m_forceStandAloneMode,
-                SendLowBatteryNotification = ws.m_sendLowBatteryNotification,
-                SendLowBatteryNotificationLanguage = ws.m_sendLowBatteryNotificationLanguage,
-                SendLEDDimmerErrorNotification = ws.m_sendLEDDimmerErrorNotification
-            };
+            return new SmsModemSettings(
+                ws.m_powerupMessage,
+                ws.m_powerdownMessage,
+                ws.m_powerdownNumber,
+                ws.m_relaySMS,
+                ws.m_forceStandAloneMode,
+                ws.m_sendLowBatteryNotification,
+                ws.m_sendLowBatteryNotificationLanguage,
+                ws.m_sendLEDDimmerErrorNotification
+            );
         }
 
         private WSSMSModemSettings MapSettings(SmsModemSettings settings)

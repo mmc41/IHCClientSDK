@@ -34,6 +34,12 @@ namespace Ihc.Tests
       boolOutput1 = int.Parse(testConfig["boolOutput1"]);
       boolInput1 = int.Parse(testConfig["boolInput1"]);
       boolInput2 = int.Parse(testConfig["boolInput2"]);
+
+      // Skip all integration tests if endpoint is not configured for real IHC controller
+      if (string.IsNullOrEmpty(settings.Endpoint) || settings.Endpoint.StartsWith("mock://"))
+      {
+        Assert.Ignore("Integration tests skipped: Endpoint is null, empty, or starts with 'mock://'");
+      }
     }
   }
 }
