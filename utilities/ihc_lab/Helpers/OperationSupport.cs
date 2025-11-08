@@ -7,6 +7,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Ihc;
 using Ihc.App;
+using IhcLab.ParameterControls;
 
 namespace IhcLab;
 
@@ -15,67 +16,6 @@ namespace IhcLab;
 /// </summary>
 public static class OperationSupport
 {
-    /// <summary>
-    /// Adds field controls to the specified panel based on field metadata.
-    /// Handles both simple and complex types (records/arrays).
-    /// </summary>
-    /// <param name="parent">The parent panel to add controls to.</param>
-    /// <param name="field">The field metadata describing the control to create.</param>
-    /// <param name="prefix">The prefix for the control name (used for nested fields).</param>
-    public static void AddFieldControls(Panel parent, FieldMetaData field, string prefix)
-    {
-        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(OperationSupport) + "." + nameof(AddFieldControls), ActivityKind.Internal);
-        activity?.SetParameters(
-            (nameof(parent), parent.Name ?? ""),
-            (nameof(field), field),
-            (nameof(prefix), prefix)
-        );
-        
-        // Add legend (TextBlock label) for this parameter
-        var legend = new TextBlock
-        {
-            Text = field.Name + ":",
-            Margin = new Thickness(0, 10, 5, 2),
-            FontWeight = Avalonia.Media.FontWeight.SemiBold,
-        };
-        ToolTip.SetTip(legend, $"Type: {field.Type.Name}: {field.Description}");
-
-        bool useSingleControl = field.SubTypes.Length == 0 || field.IsFile;
-        if (useSingleControl)
-        {
-            parent.Children.Add(legend);
-
-            // Create a DynField control for this parameter
-            var dynField = new DynField
-            {
-                TypeForControl = field.Type,
-                Margin = new Thickness(0, 0, 20, 15),
-                Name = prefix,  // prefix is now the index path (e.g., "0", "1.2", "2.1.0")
-                Tag = field
-            };
-
-            // Add the control to the ParametersPanel
-            parent.Children.Add(dynField);
-        }
-        else
-        {   // Complex types like records or arrays.
-            // Wrap these controls in a dynamically created StackPanel with horizontal orientation
-            var stackPanel = new StackPanel
-            {
-                Orientation = Avalonia.Layout.Orientation.Horizontal,
-                Margin = new Thickness(0, 0, 0, 15)
-            };
-
-            parent.Children.Add(stackPanel);
-
-            stackPanel.Children.Add(legend);
-            for (int i = 0; i < field.SubTypes.Length; i++)
-            {
-                string subIndexPath = $"{prefix}.{i}";
-                AddFieldControls(stackPanel, field.SubTypes[i], subIndexPath);
-            }
-        }
-    }
 
     /// <summary>
     /// Sets up parameter controls for the specified operation.
@@ -125,15 +65,67 @@ public static class OperationSupport
         for (int i = 0; i < parameters.Length; i++)
         {
             var parameter = parameters[i];
-            values[i] = GetFieldValue(parametersPanel, parameter, i.ToString()) ?? throw new InvalidOperationException($"Failed to get value for parameter {parameter.Name}");
+            object? value = GetFieldValue(parametersPanel, parameter, i.ToString());
+            values[i] = value ?? throw new InvalidOperationException($"Failed to get value for parameter {parameter.Name}");
         }
 
         return values;
     }
 
     /// <summary>
-    /// Gets the value for a field from the controls in the specified panel.
-    /// Handles simple types, arrays, and complex types recursively.
+    /// Adds field controls using the strategy pattern.
+    /// Creates a row with label and control for the specified field.
+    /// </summary>
+    /// <param name="parent">The parent panel to add controls to.</param>
+    /// <param name="field">The field metadata describing the control to create.</param>
+    /// <param name="prefix">The prefix for the control name (used for nested fields).</param>
+    public static void AddFieldControls(Panel parent, FieldMetaData field, string prefix)
+    {
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(OperationSupport) + "." + nameof(AddFieldControls), ActivityKind.Internal);
+        activity?.SetParameters(
+            (nameof(parent), parent.Name ?? ""),
+            (nameof(field), field),
+            (nameof(prefix), prefix)
+        );
+
+        // Create a horizontal container for label + control
+        var rowPanel = new StackPanel
+        {
+            Orientation = Avalonia.Layout.Orientation.Horizontal,
+            Margin = new Thickness(0, 0, 0, 15),
+            Spacing = 10
+        };
+
+        // Add label with fixed width for alignment
+        var legend = new TextBlock
+        {
+            Text = field.Name + ":",
+            Width = 150,  // Fixed width for consistent alignment
+            Margin = new Thickness(0, 10, 5, 2),
+            FontWeight = Avalonia.Media.FontWeight.SemiBold,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top
+        };
+        ToolTip.SetTip(legend, $"Type: {field.Type.Name}: {field.Description}");
+        rowPanel.Children.Add(legend);
+
+        // Get strategy and create control
+        var registry = ParameterControlRegistry.Instance;
+        var strategy = registry.GetStrategy(field);
+        var result = strategy.CreateControl(field, prefix);
+
+        // Store strategy reference in control's Tag for later value extraction
+        result.Control.Tag = new ControlMetadata
+        {
+            Field = field,
+            Strategy = strategy
+        };
+
+        rowPanel.Children.Add(result.Control);
+        parent.Children.Add(rowPanel);
+    }
+
+    /// <summary>
+    /// Gets the value for a field using the strategy pattern (V2 implementation).
     /// </summary>
     /// <param name="parent">The parent panel containing the field controls.</param>
     /// <param name="field">The field metadata for the value to retrieve.</param>
@@ -148,99 +140,44 @@ public static class OperationSupport
             (nameof(prefix), prefix)
         );
 
-        // prefix is now the complete index path (e.g., "0", "1.2", "2.1.0")
-        string indexPath = prefix;
-
-        // For simple types (primitives and string), find the DynField control and get its value
-        if (field.IsSimple)
+        // Find the control by name
+        var control = FindControlByName(parent, prefix);
+        if (control == null)
         {
-            var dynField = FindDynFieldByName(parent, indexPath);
-            if (dynField != null)
-            {
-                return dynField.Value ?? LabAppService.OperationItem.GetDefaultValue(field.Type);
-            }
             return LabAppService.OperationItem.GetDefaultValue(field.Type);
         }
 
-        if (field.IsFile)
+        // Get strategy from control's Tag
+        if (control.Tag is ControlMetadata metadata)
         {
-            var dynField = FindDynFieldByName(parent, indexPath);
-            if (dynField != null && dynField.Value != null)
-            {
-                // Create instance of the type by calling constructor with dynField.Value as single argument
-                try
-                {
-                    return Activator.CreateInstance(field.Type, dynField.Value);
-                }
-                catch (Exception ex)
-                {
-                    throw new InvalidOperationException($"Failed to create instance of {field.Type.Name} with value '{dynField.Value}'. Copy-constructor missing?", ex);
-                }
-            }
-            return LabAppService.OperationItem.GetDefaultValue(field.Type);
+            return metadata.Strategy.ExtractValue(control, metadata.Field);
         }
 
-        // For arrays, handle specially
-        if (field.IsArray)
-        {
-            // For now, return empty array of the element type
-            var elementType = field.Type.GetElementType();
-            if (elementType != null)
-            {
-                return Array.CreateInstance(elementType, 0);
-            }
-            return Array.Empty<object>();
-        }
-
-        // For complex types (records/classes with subtypes)
-        if (field.SubTypes.Length > 0)
-        {
-            // Create an instance of the type
-            var instance = Activator.CreateInstance(field.Type);
-            if (instance == null)
-            {
-                return LabAppService.OperationItem.GetDefaultValue(field.Type);
-            }
-
-            // Set each property from the subtypes
-            for (int i = 0; i < field.SubTypes.Length; i++)
-            {
-                string subIndexPath = $"{indexPath}.{i}";
-                var subValue = GetFieldValue(parent, field.SubTypes[i], subIndexPath);
-                var property = field.Type.GetProperty(field.SubTypes[i].Name);
-                if (property != null && property.CanWrite)
-                {
-                    property.SetValue(instance, subValue);
-                }
-            }
-
-            return instance;
-        }
-
-        // Default: return default value for the type
-        return LabAppService.OperationItem.GetDefaultValue(field.Type);
+        // Fallback: get strategy from registry
+        var registry = ParameterControlRegistry.Instance;
+        var strategy = registry.GetStrategy(field);
+        return strategy.ExtractValue(control, field);
     }
 
     /// <summary>
-    /// Finds a DynField control by name in the specified panel.
+    /// Finds a control by name in the specified panel.
     /// Searches recursively through child panels.
     /// </summary>
     /// <param name="parent">The parent panel to search in.</param>
-    /// <param name="name">The name of the DynField control to find.</param>
-    /// <returns>The DynField control if found, otherwise null.</returns>
-    public static DynField? FindDynFieldByName(Panel parent, string name)
+    /// <param name="name">The name of the control to find.</param>
+    /// <returns>The control if found, otherwise null.</returns>
+    private static Control? FindControlByName(Panel parent, string name)
     {
-        // Recursively search for DynField with the given name
         foreach (var child in parent.Children)
         {
-            if (child is DynField dynField && dynField.Name == name)
+            if (child is Control control && control.Name == name)
             {
-                return dynField;
+                return control;
             }
 
             if (child is Panel childPanel)
             {
-                var found = FindDynFieldByName(childPanel, name);
+                var found = FindControlByName(childPanel, name);
                 if (found != null)
                 {
                     return found;
@@ -249,5 +186,15 @@ public static class OperationSupport
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Metadata associated with controls created by strategies.
+    /// Stored in Control.Tag for value extraction.
+    /// </summary>
+    public class ControlMetadata
+    {
+        public required FieldMetaData Field { get; init; }
+        public required IParameterControlStrategy Strategy { get; init; }
     }
 }

@@ -3,47 +3,30 @@ namespace Ihc
     /// <summary>
     /// High level model of SMS modem settings without soap distractions.
     /// </summary>
-    public record SmsModemSettings
+    /// <param name="PowerupMessage">Message to send when the system powers up.</param>
+    /// <param name="PowerdownMessage">Message to send when the system powers down.</param>
+    /// <param name="PowerdownNumber">Phone number to send powerdown message to.</param>
+    /// <param name="RelaySMS">Indicates whether SMS messages should be relayed.</param>
+    /// <param name="ForceStandAloneMode">Forces the modem to operate in standalone mode.</param>
+    /// <param name="SendLowBatteryNotification">Indicates whether low battery notifications should be sent.</param>
+    /// <param name="SendLowBatteryNotificationLanguage">Language setting for low battery notifications.</param>
+    /// <param name="SendLEDDimmerErrorNotification">Indicates whether LED dimmer error notifications should be sent.</param>
+    public record SmsModemSettings(
+        string PowerupMessage,
+        string PowerdownMessage,
+        string PowerdownNumber,
+        bool RelaySMS,
+        bool ForceStandAloneMode,
+        bool SendLowBatteryNotification,
+        bool SendLowBatteryNotificationLanguage,
+        bool SendLEDDimmerErrorNotification)
     {
         /// <summary>
-        /// Message to send when the system powers up.
+        /// Parameterless constructor for reflection-based instantiation.
         /// </summary>
-        public string PowerupMessage { get; init; }
-
-        /// <summary>
-        /// Message to send when the system powers down.
-        /// </summary>
-        public string PowerdownMessage { get; init; }
-
-        /// <summary>
-        /// Phone number to send powerdown message to.
-        /// </summary>
-        public string PowerdownNumber { get; init; }
-
-        /// <summary>
-        /// Indicates whether SMS messages should be relayed.
-        /// </summary>
-        public bool RelaySMS { get; init; }
-
-        /// <summary>
-        /// Forces the modem to operate in standalone mode.
-        /// </summary>
-        public bool ForceStandAloneMode { get; init; }
-
-        /// <summary>
-        /// Indicates whether low battery notifications should be sent.
-        /// </summary>
-        public bool SendLowBatteryNotification { get; init; }
-
-        /// <summary>
-        /// Language setting for low battery notifications.
-        /// </summary>
-        public bool SendLowBatteryNotificationLanguage { get; init; }
-
-        /// <summary>
-        /// Indicates whether LED dimmer error notifications should be sent.
-        /// </summary>
-        public bool SendLEDDimmerErrorNotification { get; init; }
+        public SmsModemSettings() : this("", "", "", false, false, false, false, false)
+        {
+        }
 
         public override string ToString()
         {

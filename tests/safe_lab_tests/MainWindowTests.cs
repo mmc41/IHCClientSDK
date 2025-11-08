@@ -24,6 +24,30 @@ namespace Ihc.Tests
         #region Helper Methods
 
         /// <summary>
+        /// Helper to find control by name recursively.
+        /// </summary>
+        private static Control? FindControlByNameRecursive(Control parent, string name)
+        {
+            if (parent.Name == name)
+                return parent;
+
+            if (parent is Panel panel)
+            {
+                foreach (var child in panel.Children)
+                {
+                    if (child is Control childControl)
+                    {
+                        var found = FindControlByNameRecursive(childControl, name);
+                        if (found != null)
+                            return found;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Helper to find a service by name in the services combobox.
         /// </summary>
         private static int FindServiceIndexByName(ComboBox servicesComboBox, string serviceName)
@@ -78,22 +102,46 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// Helper to simulate user changing a value in a DynField.
+        /// Helper to simulate user changing a value in a control.
         /// </summary>
-        private static void SimulateUserValueChange(DynField dynField, object? value)
+        private static void SimulateUserValueChange(Control control, object? value)
         {
-            dynField.Value = value;
-
-            // Manually trigger the ValueChanged event using reflection
-            var valueChangedField = typeof(DynField).GetEvent("ValueChanged");
-            var eventDelegate = typeof(DynField).GetField("ValueChanged",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-
-            if (eventDelegate != null)
+            // Set value based on control type
+            switch (control)
             {
-                var handler = eventDelegate.GetValue(dynField) as EventHandler;
-                handler?.Invoke(dynField, EventArgs.Empty);
+                case TextBox textBox:
+                    textBox.Text = value?.ToString() ?? string.Empty;
+                    break;
+                case NumericUpDown numeric:
+                    if (value != null)
+                        numeric.Value = Convert.ToDecimal(value);
+                    break;
+                case ComboBox combo:
+                    combo.SelectedItem = value;
+                    break;
+                case DatePicker datePicker:
+                    if (value is DateTimeOffset dto)
+                        datePicker.SelectedDate = dto;
+                    else if (value is DateTime dt)
+                        datePicker.SelectedDate = new DateTimeOffset(dt);
+                    break;
             }
+            // Controls trigger their own value changed events automatically
+        }
+
+        /// <summary>
+        /// Helper to get value from a control.
+        /// </summary>
+        private static object? GetControlValue(Control control)
+        {
+            return control switch
+            {
+                TextBox textBox => textBox.Text,
+                NumericUpDown numeric => numeric.Value,
+                ComboBox combo => combo.SelectedItem,
+                DatePicker datePicker => datePicker.SelectedDate,
+                _ => null
+            };
         }
 
         #endregion
@@ -142,9 +190,9 @@ namespace Ihc.Tests
                 Assert.That(parametersPanel!.Children.Count, Is.GreaterThan(0),
                     "ParametersPanel should contain parameter controls when operation has parameters");
 
-                // Verify at least the first DynField control exists
-                var dynField0 = OperationSupport.FindDynFieldByName(parametersPanel, "0");
-                Assert.That(dynField0, Is.Not.Null, "DynField for parameter 0 should exist");
+                // Verify at least the first parameter control exists
+                var control0 = FindControlByNameRecursive(parametersPanel, "0");
+                Assert.That(control0, Is.Not.Null, "Control for parameter 0 should exist");
             }
             else
             {
@@ -201,11 +249,11 @@ namespace Ihc.Tests
             }
 
             // Act - Set value in first parameter
-            var dynField0 = OperationSupport.FindDynFieldByName(parametersPanel!, "0");
-            Assert.That(dynField0, Is.Not.Null, "DynField for parameter 0 should exist");
+            var control0 = FindControlByNameRecursive(parametersPanel!, "0");
+            Assert.That(control0, Is.Not.Null, "Control for parameter 0 should exist");
 
             string testValue = "testvalue";
-            SimulateUserValueChange(dynField0!, testValue);
+            SimulateUserValueChange(control0!, testValue);
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
             // Switch to another operation (first operation in list)
@@ -217,9 +265,9 @@ namespace Ihc.Tests
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
             // Assert - Previously set value should be restored
-            dynField0 = OperationSupport.FindDynFieldByName(parametersPanel!, "0");
-            Assert.That(dynField0, Is.Not.Null, "DynField should exist after switching back");
-            Assert.That(dynField0!.Value, Is.EqualTo(testValue), "Value should be restored");
+            control0 = FindControlByNameRecursive(parametersPanel!, "0");
+            Assert.That(control0, Is.Not.Null, "Control should exist after switching back");
+            Assert.That(GetControlValue(control0!), Is.EqualTo(testValue), "Value should be restored");
         }
 
         /// <summary>
@@ -228,7 +276,7 @@ namespace Ihc.Tests
         /// </summary>
         [AvaloniaTest]
         [CaptureScreenshotOnFailure]
-        public async Task SyncArgumentsToLabAppService_ExtractsValuesFromDynFields()
+        public async Task SyncArgumentsToLabAppService_ExtractsValuesFromControls()
         {
             // Arrange
             var window = await SetupMainWindowAsync();
@@ -260,15 +308,15 @@ namespace Ihc.Tests
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
             // Act - Set value in first parameter
-            var dynField0 = OperationSupport.FindDynFieldByName(parametersPanel!, "0");
-            if (dynField0 == null)
+            var control0 = FindControlByNameRecursive(parametersPanel!, "0");
+            if (control0 == null)
             {
-                Assert.Inconclusive("DynField not created for parameter 0");
+                Assert.Inconclusive("Control not created for parameter 0");
                 return;
             }
 
             string testValue = "synctest";
-            SimulateUserValueChange(dynField0, testValue);
+            SimulateUserValueChange(control0, testValue);
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
             // Assert - Value should be synced to LabAppService
@@ -279,11 +327,11 @@ namespace Ihc.Tests
 
         /// <summary>
         /// Test 4: Verifies that GUI changes immediately update LabAppService.
-        /// Protects: MainWindow.axaml.cs lines 839-880 (OnDynFieldValueChanged event handler)
+        /// Protects: MainWindow.axaml.cs lines 839-880 (OnControlValueChanged event handler)
         /// </summary>
         [AvaloniaTest]
         [CaptureScreenshotOnFailure]
-        public async Task OnDynFieldValueChanged_UpdatesLabAppServiceImmediately()
+        public async Task OnControlValueChanged_UpdatesLabAppServiceImmediately()
         {
             // Arrange
             var window = await SetupMainWindowAsync();
@@ -314,22 +362,22 @@ namespace Ihc.Tests
             operationsComboBox!.SelectedIndex = opWithParamsIndex;
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
-            var dynField0 = OperationSupport.FindDynFieldByName(parametersPanel!, "0");
-            if (dynField0 == null)
+            var control0 = FindControlByNameRecursive(parametersPanel!, "0");
+            if (control0 == null)
             {
-                Assert.Inconclusive("DynField not created for parameter 0");
+                Assert.Inconclusive("Control not created for parameter 0");
                 return;
             }
 
             // Act - Simulate user changing value
             string newValue = "immediateSyncTest";
-            SimulateUserValueChange(dynField0, newValue);
+            SimulateUserValueChange(control0, newValue);
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
             // Assert - LabAppService should be updated immediately
             var arguments = labAppService!.SelectedOperation.GetMethodArgumentsAsArray();
             Assert.That(arguments[0], Is.EqualTo(newValue),
-                "LabAppService should be updated immediately when DynField value changes");
+                "LabAppService should be updated immediately when Control value changes");
         }
 
         /// <summary>
@@ -369,10 +417,10 @@ namespace Ihc.Tests
             operationsComboBox!.SelectedIndex = opWithParamsIndex;
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
-            var dynField0 = OperationSupport.FindDynFieldByName(parametersPanel!, "0");
-            if (dynField0 == null)
+            var control0 = FindControlByNameRecursive(parametersPanel!, "0");
+            if (control0 == null)
             {
-                Assert.Inconclusive("DynField not created for parameter 0");
+                Assert.Inconclusive("Control not created for parameter 0");
                 return;
             }
 
@@ -382,8 +430,8 @@ namespace Ihc.Tests
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
             // Assert - GUI should be updated
-            dynField0 = OperationSupport.FindDynFieldByName(parametersPanel!, "0");
-            Assert.That(dynField0!.Value, Is.EqualTo(programmaticValue),
+            control0 = FindControlByNameRecursive(parametersPanel!, "0");
+            Assert.That(GetControlValue(control0!), Is.EqualTo(programmaticValue),
                 "GUI should be updated immediately when LabAppService argument changes");
         }
 
@@ -423,12 +471,12 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// Test 7: Verifies that event subscriptions are set up recursively for all DynFields.
-        /// Protects: MainWindow.axaml.cs lines 819-833 (SubscribeToDynFieldEvents)
+        /// Test 7: Verifies that event subscriptions are set up recursively for all Controls.
+        /// Protects: MainWindow.axaml.cs lines 819-833 (SubscribeToControlEvents)
         /// </summary>
         [AvaloniaTest]
         [CaptureScreenshotOnFailure]
-        public async Task SubscribeToDynFieldEvents_RecursivelySubscribes()
+        public async Task SubscribeToControlEvents_RecursivelySubscribes()
         {
             // Arrange
             var window = await SetupMainWindowAsync();
@@ -456,11 +504,11 @@ namespace Ihc.Tests
             operationsComboBox!.SelectedIndex = opWithParamsIndex;
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
-            // Act - Get DynField (event subscription happens in OnViewModelPropertyChanged)
-            var dynField0 = OperationSupport.FindDynFieldByName(parametersPanel!, "0");
-            if (dynField0 == null)
+            // Act - Get Control (event subscription happens in OnViewModelPropertyChanged)
+            var control0 = FindControlByNameRecursive(parametersPanel!, "0");
+            if (control0 == null)
             {
-                Assert.Inconclusive("DynField not created for parameter 0");
+                Assert.Inconclusive("Control not created for parameter 0");
                 return;
             }
 
@@ -468,7 +516,7 @@ namespace Ihc.Tests
             var labAppService = window.LabAppService;
             string testValue = "eventSubscribedTest";
 
-            SimulateUserValueChange(dynField0, testValue);
+            SimulateUserValueChange(control0, testValue);
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
             var arguments = labAppService!.SelectedOperation.GetMethodArgumentsAsArray();
@@ -520,25 +568,28 @@ namespace Ihc.Tests
             // Act - Set values in complex parameter fields
             // SmsModemSettings has sub-fields like Enabled, Pin, etc.
             var dynFields = parametersPanel!.Children.OfType<Control>()
-                .SelectMany(c => c is Panel p ? FindAllDynFields(p) : new[] { c as DynField })
+                .SelectMany(c => c is Panel p ? FindAllControls(p) : new[] { c as Control })
                 .Where(d => d != null)
                 .ToList();
 
             if (dynFields.Count == 0)
             {
-                Assert.Inconclusive("No DynFields found for complex parameter");
+                Assert.Inconclusive("No Controls found for complex parameter");
                 return;
             }
 
             // Set values in available fields
             foreach (var field in dynFields.Take(2))
             {
-                if (field!.TypeForControl == typeof(bool))
+                // Determine type by control type (V2 approach)
+                if (field is StackPanel panel && panel.Children.OfType<RadioButton>().Any())
                 {
+                    // Bool parameter (radio buttons)
                     SimulateUserValueChange(field, true);
                 }
-                else if (field.TypeForControl == typeof(string))
+                else if (field is TextBox)
                 {
+                    // String parameter
                     SimulateUserValueChange(field, "testvalue");
                 }
             }
@@ -559,7 +610,7 @@ namespace Ihc.Tests
             // Assert - Verify complex type restoration occurred without exceptions
             // The fact that we got here without exceptions means recursive restoration worked
             var restoredFields = parametersPanel!.Children.OfType<Control>()
-                .SelectMany(c => c is Panel p ? FindAllDynFields(p) : new[] { c as DynField })
+                .SelectMany(c => c is Panel p ? FindAllControls(p) : new[] { c as Control })
                 .Where(d => d != null)
                 .ToList();
 
@@ -568,20 +619,20 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// Helper to recursively find all DynFields in a panel.
+        /// Helper to recursively find all Controls in a panel.
         /// </summary>
-        private static DynField[] FindAllDynFields(Panel panel)
+        private static Control[] FindAllControls(Panel panel)
         {
-            var result = new System.Collections.Generic.List<DynField>();
+            var result = new System.Collections.Generic.List<Control>();
             foreach (var child in panel.Children)
             {
-                if (child is DynField dynField)
+                if (child is Control dynField)
                 {
                     result.Add(dynField);
                 }
                 else if (child is Panel childPanel)
                 {
-                    result.AddRange(FindAllDynFields(childPanel));
+                    result.AddRange(FindAllControls(childPanel));
                 }
             }
             return result.ToArray();

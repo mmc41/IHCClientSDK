@@ -8,7 +8,7 @@ namespace Ihc
     /// <summary>
     /// Helper class for validating data annotation attributes on model objects.
     /// </summary>
-    internal static class ValidationHelper
+    public static class ValidationHelper
     {
         /// <summary>
         /// Validates an object against its data annotation attributes.

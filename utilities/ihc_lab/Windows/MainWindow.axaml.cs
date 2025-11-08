@@ -13,6 +13,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Ihc;
 using Ihc.App;
+using IhcLab.ParameterControls;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -361,7 +362,19 @@ public partial class MainWindow : Window
                             operationItem,
                             OnDynFieldValueChanged);
 
-                        // Restore previously set argument values from LabAppService
+                        // Initialize LabAppService with default values from GUI controls
+                        // This ensures complex parameters have valid default instances (not null)
+                        try
+                        {
+                            parameterSyncCoordinator.SyncToService(ParametersPanel, operationItem);
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogWarning(ex, "Failed to sync default values to LabAppService for operation {OperationName}", operationItem.OperationMetadata.Name);
+                        }
+
+                        // Restore previously set argument values from LabAppService (if any exist)
+                        // This overwrites defaults with any values that were set in a previous invocation
                         try
                         {
                             parameterSyncCoordinator.SyncFromService(ParametersPanel, operationItem);
@@ -578,7 +591,7 @@ public partial class MainWindow : Window
     /// <returns>Filter function for LabAppService</returns>
 
     /// <summary>
-    /// Syncs parameter values from DynField GUI controls to LabAppService.SelectedOperation.Arguments.
+    /// Syncs parameter values from GUI controls to LabAppService.SelectedOperation.Arguments.
     /// Extracts values from ParametersPanel and uses SetArgumentsFromArray for type-safe bulk setting.
     /// </summary>
     /// <exception cref="InvalidOperationException">Thrown when LabAppService is not configured.</exception>
@@ -609,18 +622,19 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Handles ValueChanged events from DynField controls.
+    /// Handles ValueChanged events from strategy controls.
     /// Immediately syncs the changed value to LabAppService.
     /// </summary>
     private void OnDynFieldValueChanged(object? sender, EventArgs e)
     {
-        if (sender is not DynField dynField || labAppService == null)
+        if (labAppService == null || sender is not Control control)
             return;
 
         try
         {
-            // Get the index path from the DynField name (e.g., "0", "1.2", "2.1.0")
-            string indexPath = dynField.Name ?? "";
+            // Get index path from control.Name
+            string indexPath = control.Name ?? "";
+
             if (string.IsNullOrEmpty(indexPath))
                 return;
 
@@ -638,12 +652,25 @@ public partial class MainWindow : Window
             // For simple types, directly set the argument value
             if (parameter.IsSimple || parameter.IsFile)
             {
-                var value = dynField.Value;
+                // Extract value using strategy
+                var metadata = control.Tag as OperationSupport.ControlMetadata;
+                object? value;
+                if (metadata != null)
+                {
+                    value = metadata.Strategy.ExtractValue(control, metadata.Field);
+                }
+                else
+                {
+                    // Fallback if metadata is missing (shouldn't happen)
+                    var strategy = ParameterControlRegistry.Instance.GetStrategy(parameter);
+                    value = strategy.ExtractValue(control, parameter);
+                }
+
                 labAppService.SelectedOperation.SetMethodArgument(parameterIndex, value);
             }
             else
             {
-                // For complex types, reconstruct the ENTIRE object from ALL DynFields
+                // For complex types, reconstruct the ENTIRE object from ALL controls
                 // This ensures all sub-fields are captured, not just the one that changed
                 var reconstructedValue = OperationSupport.GetFieldValue(ParametersPanel, parameter, parameterIndex.ToString());
                 labAppService.SelectedOperation.SetMethodArgument(parameterIndex, reconstructedValue);
@@ -651,7 +678,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to sync DynField value change to LabAppService");
+            logger.LogWarning(ex, "Failed to sync control value change to LabAppService");
         }
     }
 

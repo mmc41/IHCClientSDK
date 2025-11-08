@@ -32,44 +32,53 @@ namespace Ihc {
     /// <summary>
     /// High level model of a IHC user without soap distractions.
     /// </summary>
-    public record IhcUser : IComparable<IhcUser>
+    public record IhcUser(
+        [property: StringLength(20, MinimumLength = 1, ErrorMessage = "Username length can't be more than 20.")]
+        [property: Required(ErrorMessage = "Username is required")]
+        string Username,
+
+        [property: StringLength(20, ErrorMessage = "Password length can't be more than 20.")]
+        [property: Required(ErrorMessage = "Password is required")]
+        [property: DeniedValues(UserConstants.REDACTED_PASSWORD, ErrorMessage = "Password cannot be set to reserved redacted value.")]
+        [property: SensitiveData]
+        string Password,
+
+        [property: StringLength(25, ErrorMessage = "Email length can't be more than 25.")]
+        string Email,
+
+        [property: StringLength(15, ErrorMessage = "Firstname length can't be more than 15.")]
+        string Firstname,
+
+        [property: StringLength(15, ErrorMessage = "Lastname length can't be more than 15.")]
+        string Lastname,
+
+        [property: StringLength(15, ErrorMessage = "Phone length can't be more than 15.")]
+        string Phone,
+
+        [property: AllowedValues(IhcUserGroup.Administrators, IhcUserGroup.Users, ErrorMessage = "Group must be either 'Administrators' or 'Users'.")]
+        [property: Required(ErrorMessage = "Group is required")]
+        IhcUserGroup Group,
+
+        string Project,
+
+        /// <summary>
+        /// Creation date of user.
+        /// </summary>
+        DateTimeOffset CreatedDate,
+
+        /// <summary>
+        /// Last login date of user.
+        /// </summary>
+        DateTimeOffset LoginDate
+    ) : IComparable<IhcUser>
   {
-      [StringLength(20, MinimumLength = 1, ErrorMessage = "Username length can't be more than 20.")]
-      [Required(ErrorMessage = "Username is required")]
-      public string Username { get; init; }
-
-      [StringLength(20, ErrorMessage = "Password length can't be more than 20.")]
-      [Required(ErrorMessage = "Password is required")]
-      [DeniedValues(UserConstants.REDACTED_PASSWORD, ErrorMessage = "Password cannot be set to reserved redacted value.")]
-      [SensitiveData]
-      public string Password { get; init; }
-
-      [StringLength(25, ErrorMessage = "Email length can't be more than 25.")]
-      public string Email { get; init; }
-
-      [StringLength(15, ErrorMessage = "Firstname length can't be more than 15.")]
-      public string Firstname { get; init; }
-
-      [StringLength(15, ErrorMessage = "Lastname length can't be more than 15.")]
-      public string Lastname { get; init; }
-
-      [StringLength(15, ErrorMessage = "Phone length can't be more than 15.")]
-      public string Phone { get; init; }
-
-      [AllowedValues(IhcUserGroup.Administrators, IhcUserGroup.Users, ErrorMessage = "Group must be either 'Administrators' or 'Users'.")]
-      [Required(ErrorMessage = "Group is required")]
-      public IhcUserGroup Group { get; init; }
-      public string Project { get; init; }
-
       /// <summary>
-      /// Creation date of user.
+      /// Parameterless constructor for reflection-based instantiation.
       /// </summary>
-      public DateTimeOffset CreatedDate { get; init; }
+      public IhcUser() : this("", "", "", "", "", "", IhcUserGroup.Users, "", default, default)
+      {
+      }
 
-      /// <summary>
-      /// Last login date of user.
-      /// </summary>
-      public DateTimeOffset LoginDate { get; init; }
 
       /// <summary>
       /// Creates a safe copy of this user definition without a password.

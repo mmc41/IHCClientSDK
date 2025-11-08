@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Ihc;
@@ -126,6 +128,39 @@ public class IhcFakeSetup
 {
     private static T CreateEmptyFake<T>() where T : class => A.Fake<T>();
 
+    // Stateful storage for UserManagerService mock
+    // Using ConcurrentDictionary for thread-safe username-based lookups
+    private static readonly ConcurrentDictionary<string, IhcUser> mockUsers = new ConcurrentDictionary<string, IhcUser>(
+        new Dictionary<string, IhcUser>
+        {
+            ["admin"] = new IhcUser
+            {
+                Username = "admin",
+                Password = "admin123",
+                Email = "admin@mock.com",
+                Firstname = "Admin",
+                Lastname = "User",
+                Phone = "+4512345678",
+                Group = IhcUserGroup.Administrators,
+                Project = "Mock Project",
+                CreatedDate = new DateTimeOffset(2024, 1, 1, 10, 0, 0, TimeSpan.Zero),
+                LoginDate = new DateTimeOffset(2025, 11, 1, 9, 30, 0, TimeSpan.Zero)
+            },
+            ["testuser"] = new IhcUser
+            {
+                Username = "testuser",
+                Password = "test123",
+                Email = "test@mock.com",
+                Firstname = "Test",
+                Lastname = "User",
+                Phone = "+4587654321",
+                Group = IhcUserGroup.Users,
+                Project = "Mock Project",
+                CreatedDate = new DateTimeOffset(2024, 6, 15, 14, 30, 0, TimeSpan.Zero),
+                LoginDate = new DateTimeOffset(2025, 11, 5, 11, 15, 0, TimeSpan.Zero)
+            }
+        });
+
     public static IAuthenticationService SetupAuthenticationService(IhcSettings settings)
     {
         var service = A.Fake<IAuthenticationService>();
@@ -172,8 +207,8 @@ public class IhcFakeSetup
 
         A.CallTo(() => service.GetSDCardInfo()).Returns(Task.FromResult(new SDInfo()
         {
-            Size = 8_000_000_000,  
-            Free = 4_500_000_000 
+            Size = 8_000_000_000,
+            Free = 4_500_000_000
         }));
 
         A.CallTo(() => service.GetProjectInfo()).Returns(Task.FromResult(new ProjectInfo()
@@ -246,6 +281,86 @@ public class IhcFakeSetup
         return service;
     }
 
+    public static IUserManagerService SetupUserManagerService(IhcSettings settings)
+    {
+        var service = A.Fake<IUserManagerService>();
+
+        // GetUsers - returns users from state with optional password filtering
+        A.CallTo(() => service.GetUsers(A<bool>._))
+            .ReturnsLazily((bool includePassword) =>
+            {
+                var users = mockUsers.Values
+                    .Select(u => includePassword ? u : u.RedactPasword())
+                    .ToHashSet();
+                return Task.FromResult<IReadOnlySet<IhcUser>>(users);
+            });
+
+        // AddUser - adds user to state
+        A.CallTo(() => service.AddUser(A<IhcUser>._))
+            .ReturnsLazily((IhcUser user) =>
+            {
+                // Validate using same validation as real service
+                ValidationHelper.ValidateDataAnnotations(user, nameof(user));
+
+                // Add user with current timestamp if dates are not set
+                var userToAdd = user with
+                {
+                    CreatedDate = user.CreatedDate == default ? DateTimeOffset.Now : user.CreatedDate,
+                    LoginDate = user.LoginDate == default ? DateTimeOffset.MinValue : user.LoginDate
+                };
+
+                // Simulate SOAP-level failure for duplicate user
+                if (!mockUsers.TryAdd(userToAdd.Username, userToAdd))
+                    throw new InvalidOperationException($"User '{user.Username}' already exists");
+
+                return Task.CompletedTask;
+            });
+
+        // RemoveUser - removes user from state
+        A.CallTo(() => service.RemoveUser(A<string>._))
+            .ReturnsLazily((string username) =>
+            {
+                // Match real service validation - check for reserved "usb" user
+                if (username == "usb")
+                    throw new ArgumentException(message: "Can not delete reserved usb user", paramName: nameof(username));
+
+                // Simulate SOAP-level failure for non-existent user
+                if (!mockUsers.TryRemove(username, out _))
+                    throw new InvalidOperationException($"User '{username}' not found");
+
+                return Task.CompletedTask;
+            });
+
+        // UpdateUser - updates existing user in state
+        A.CallTo(() => service.UpdateUser(A<IhcUser>._))
+            .ReturnsLazily((IhcUser user) =>
+            {
+                // Validate using same validation as real service
+                ValidationHelper.ValidateDataAnnotations(user, nameof(user));
+
+                // Match real service validation - check for REDACTED_PASSWORD
+                // After validation, user is guaranteed non-null, but keeping ?. for consistency with real service
+                if (user?.Password == UserConstants.REDACTED_PASSWORD)
+                    throw new ArgumentException($"Password of user should not be set to reserved value ${UserConstants.REDACTED_PASSWORD}. This is likely an error!");
+
+                // Simulate SOAP-level failure for non-existent user
+                if (!mockUsers.TryGetValue(user!.Username, out var existingUser))
+                    throw new InvalidOperationException($"User '{user!.Username}' not found");
+
+                // Update user while preserving CreatedDate, update LoginDate if not set
+                var userToUpdate = user with
+                {
+                    CreatedDate = existingUser.CreatedDate, // Preserve original creation date
+                    LoginDate = user.LoginDate == default ? existingUser.LoginDate : user.LoginDate
+                };
+
+                mockUsers[user!.Username] = userToUpdate;
+                return Task.CompletedTask;
+            });
+
+        return service;
+    }
+
     public static IResourceInteractionService SetupResourceInteractionService(IhcSettings settings)
         => CreateEmptyFake<IResourceInteractionService>();
 
@@ -267,9 +382,6 @@ public class IhcFakeSetup
     public static ITimeManagerService SetupTimeManagerService(IhcSettings settings)
         => CreateEmptyFake<ITimeManagerService>();
 
-    public static IUserManagerService SetupUserManagerService(IhcSettings settings)
-        => CreateEmptyFake<IUserManagerService>();
-
     public static IAirlinkManagementService SetupAirlinkManagementService(IhcSettings settings)
         => CreateEmptyFake<IAirlinkManagementService>();
 
@@ -277,6 +389,27 @@ public class IhcFakeSetup
         => CreateEmptyFake<IInternalTestService>();
 
     public static ISmsModemService SetupSmsModemService(IhcSettings settings)
-        => CreateEmptyFake<ISmsModemService>();
+    {
+        var service = A.Fake<ISmsModemService>();
+
+        // Mock SetSmsModemSettings operation
+        A.CallTo(() => service.SetSmsModemSettings(A<SmsModemSettings>._))
+            .Returns(Task.CompletedTask);
+
+        // Mock GetSmsModemSettings operation
+        A.CallTo(() => service.GetSmsModemSettings())
+            .Returns(Task.FromResult(new SmsModemSettings(
+                "",  // PowerupMessage
+                "",  // PowerdownMessage
+                "",  // PowerdownNumber
+                false,  // RelaySMS
+                false,  // ForceStandAloneMode
+                false,  // SendLowBatteryNotification
+                false,  // SendLowBatteryNotificationLanguage
+                false   // SendLEDDimmerErrorNotification
+            )));
+
+        return service;
+    }
 }
     

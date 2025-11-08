@@ -19,7 +19,11 @@
       "Bash(find:*)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:docs.nunit.org)"
+      "WebFetch(domain:docs.nunit.org)",
+      "WebFetch(domain:www.anthropic.com)",
+      "WebFetch(domain:code.claude.com)",
+      "WebFetch(domain:www.hindawi.com)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
