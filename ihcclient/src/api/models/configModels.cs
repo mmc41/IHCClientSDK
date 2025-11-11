@@ -67,7 +67,8 @@ namespace Ihc {
         public string RFModuleSerialNumber { get; init; }
 
         /// <summary>
-        /// Indicates whether the application is running without the IHC viewer.
+        /// Indicates whether the application is running without the IHC viewer (legacy module for IHC1.x)
+        /// True for all modern IHC controllers.
         /// </summary>
         public bool ApplicationIsWithoutViewer { get; init; }
 

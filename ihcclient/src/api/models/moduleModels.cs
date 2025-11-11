@@ -11,13 +11,13 @@ namespace Ihc {
     public record SceneProject
     {
       /// <summary>
-      /// Raw binary data of the scene project file.
+      /// Raw binary data of the scene project file
       /// TODO: Check if a more useful string format can be returned instead.
       /// </summary>
       public byte[] Data { get; init; }
 
       /// <summary>
-      /// Name of the scene project file.
+      /// Name of the scene project file (.icw/.icz file)
       /// </summary>
       public string Filename { get; init; }
 
@@ -41,7 +41,7 @@ namespace Ihc {
     }
 
     /// <summary>
-    /// High level model of scene project information without soap distractions.
+    /// High level model of scene project information without soap distractions
     /// </summary>
     public record SceneProjectInfo {
             /// <summary>

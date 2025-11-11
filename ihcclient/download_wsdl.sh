@@ -23,5 +23,8 @@ $wget http://$ip/wsdl/openapi.wsdl
 $wget http://$ip/wsdl/airlinkmanagement.wsdl
 $wget http://$ip/wsdl/smsmodem.wsdl
 $wget http://$ip/wsdl/testihc.wsdl
+$wget http://$ip/wsdl/leddimmermanagement.wsdl
+$wget http://$ip/wsdl/productiontest.wsdl
+
 
 cd ..

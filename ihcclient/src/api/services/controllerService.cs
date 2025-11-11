@@ -371,6 +371,8 @@ namespace Ihc {
                     return ControllerState.RfConfiguration;
                 case "text.ctrl.state.simulation":
                     return ControllerState.Simulation;
+                case "text.ctrl.state.uninitialized":
+                    return ControllerState.Uninitialized;                    
                 default:
                     return ControllerState.Unknown; // Unknown state - add to enum if we find it.
             }
@@ -387,8 +389,7 @@ namespace Ihc {
                 case ControllerState.Initialize: stateStr = "text.ctrl.state.initialize"; break;
                 case ControllerState.RfConfiguration: stateStr = "text.ctrl.state.rfconfiguration"; break;
                 case ControllerState.Simulation: stateStr = "text.ctrl.state.simulation"; break;
-                case ControllerState.Uninitialized:
-                case ControllerState.Unknown: stateStr = ""; break;
+                case ControllerState.Uninitialized: stateStr = "text.ctrl.state.uninitialized"; break;
                 default: throw new ArgumentException("Unknown state " + state);
             }
 

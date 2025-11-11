@@ -30,8 +30,8 @@ namespace Ihc {
         /// <summary>
         /// Reboot the IHC controller after a delay.
         /// </summary>
-        /// <param name="delayUnknownUnit">Delay before reboot (time unit unknown - requires testing)</param>
-        public Task DelayedReboot(int delayUnknownUnit);
+        /// <param name="delay">Delay in miliseconds)</param>
+        public Task DelayedReboot(int delay);
 
         /// <summary>
         /// Get network settings including IP address, netmask, gateway, and ports.
@@ -619,14 +619,14 @@ namespace Ihc {
             }
         }
 
-        public async Task DelayedReboot(int delayUnknownUnit) {
+        public async Task DelayedReboot(int delay) {
             using (var activity = StartActivity(nameof(DelayedReboot)))
             {
                 try
                 {
-                    activity?.SetParameters((nameof(delayUnknownUnit), delayUnknownUnit));
+                    activity?.SetParameters((nameof(delay), delay));
 
-                    await impl.delayedRebootAsync(new inputMessageName1(delayUnknownUnit) {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    await impl.delayedRebootAsync(new inputMessageName1(delay) {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 }
                 catch (Exception ex)
                 {

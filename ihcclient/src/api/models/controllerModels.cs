@@ -151,7 +151,7 @@ namespace Ihc
         public string Data { get; init; }
 
         /// <summary>
-        /// Name of the project file.
+        /// Name of the project file (*.ihc)
         /// </summary>
         public string Filename { get; init; }
 
