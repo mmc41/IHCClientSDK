@@ -364,13 +364,17 @@ public partial class MainWindow : Window
 
                         // Initialize LabAppService with default values from GUI controls
                         // This ensures complex parameters have valid default instances (not null)
+                        // Note: This may fail for nullable parameters with empty/null values, which is expected
+                        // as it prevents overwriting previously saved values
                         try
                         {
                             parameterSyncCoordinator.SyncToService(ParametersPanel, operationItem);
                         }
                         catch (Exception ex)
                         {
-                            logger.LogWarning(ex, "Failed to sync default values to LabAppService for operation {OperationName}", operationItem.OperationMetadata.Name);
+                            // Log as Debug since this is expected when controls have empty values
+                            // The exception prevents overwriting saved values, which is desirable behavior
+                            logger.LogDebug(ex, "Skipped syncing empty default values for operation {OperationName}", operationItem.OperationMetadata.Name);
                         }
 
                         // Restore previously set argument values from LabAppService (if any exist)

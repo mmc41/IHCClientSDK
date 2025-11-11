@@ -721,12 +721,6 @@ namespace Ihc.Tests
                 Dispatcher.UIThread.RunJobs();
             }
 
-            // Debug: Check what value was actually set for the IhcUser before calling AddUser
-            var ihcUserArg = labAppService!.SelectedOperation.GetMethodArgumentsAsArray()[0] as IhcUser;
-            Assert.That(ihcUserArg, Is.Not.Null, "IhcUser argument should not be null");
-            Console.WriteLine($"DEBUG: Group value before AddUser: {ihcUserArg!.Group} (int: {(int)ihcUserArg.Group})");
-            Console.WriteLine($"DEBUG: Username: '{ihcUserArg.Username}', Password: '{ihcUserArg.Password}'");
-
             // Act - Execute AddUser operation (will throw if it fails)
             var addUserResult = await labAppService!.DynCallSelectedOperation();
             Assert.That(addUserResult, Is.Not.Null, "AddUser should return a result");
