@@ -104,8 +104,19 @@ namespace Ihc.Tests
                     result = context.CurrentResult;
                 }
 
-                // Capture screenshot if test failed
-                if (result?.ResultState.Status == TestStatus.Failed || testException != null)
+                // Capture screenshot only if test actually failed (not for Inconclusive or Passed)
+                // Check result status first to avoid capturing for Assert.Inconclusive() or Assert.Pass()
+                bool shouldCaptureScreenshot = result?.ResultState.Status == TestStatus.Failed;
+
+                // Also capture if there's an unhandled exception that's not from Assert.Inconclusive or Assert.Pass
+                if (testException != null && !shouldCaptureScreenshot)
+                {
+                    // Don't capture for test outcome exceptions (Inconclusive, Success)
+                    var exceptionType = testException.GetType().Name;
+                    shouldCaptureScreenshot = exceptionType != "InconclusiveException" && exceptionType != "SuccessException";
+                }
+
+                if (shouldCaptureScreenshot)
                 {
                     try
                     {
