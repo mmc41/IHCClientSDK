@@ -105,8 +105,7 @@ public class ArrayParameterStrategy : IParameterControlStrategy
 
         return new ControlCreationResult
         {
-            Control = mainPanel,
-            IsComposite = true
+            Control = mainPanel
         };
     }
 

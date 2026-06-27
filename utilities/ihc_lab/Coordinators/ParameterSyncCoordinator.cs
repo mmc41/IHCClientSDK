@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.Linq;
 using Avalonia.Controls;
 using IhcLab;
 using Microsoft.Extensions.Logging;
@@ -9,24 +8,17 @@ namespace Ihc.App;
 
 /// <summary>
 /// Coordinator responsible for bidirectional synchronization between GUI controls and LabAppService parameters.
-/// Uses strategy pattern to handle different field types (simple vs complex) consistently.
+/// The Service-to-GUI direction delegates to each control's own parameter-control strategy (stored in its Tag as
+/// OperationSupport.ControlMetadata), so the leaf-vs-complex routing lives in one place - the control strategies -
+/// rather than being duplicated here.
 /// </summary>
 public class ParameterSyncCoordinator
 {
     private readonly ILogger<ParameterSyncCoordinator> logger;
-    private readonly IFieldSyncStrategy[] syncStrategies;
 
     public ParameterSyncCoordinator(ILogger<ParameterSyncCoordinator> logger)
     {
         this.logger = logger;
-
-        // Initialize strategies (order matters - check simple types before complex)
-        var simpleStrategy = new SimpleFieldSyncStrategy();
-        this.syncStrategies = new IFieldSyncStrategy[]
-        {
-            simpleStrategy,
-            new ComplexFieldSyncStrategy(new[] { simpleStrategy }) // Complex strategy needs simple strategy for recursion
-        };
     }
 
     /// <summary>
@@ -77,7 +69,7 @@ public class ParameterSyncCoordinator
         int restoredCount = 0;
         int failedCount = 0;
 
-        // For each parameter, restore its value using the strategy pattern
+        // Restore each top-level parameter by delegating to its control's own strategy.
         for (int i = 0; i < operationMetadata.Parameters.Length; i++)
         {
             var parameter = operationMetadata.Parameters[i];
@@ -85,7 +77,8 @@ public class ParameterSyncCoordinator
 
             try
             {
-                SetFieldValue(parametersPanel, parameter, savedValue, i.ToString(), ref restoredCount);
+                RestoreValue(parametersPanel, savedValue, i.ToString());
+                restoredCount++;
             }
             catch (Exception ex)
             {
@@ -102,13 +95,15 @@ public class ParameterSyncCoordinator
             }
         }
 
+        // restored_count is a top-level parameter count (one per parameter restored without error),
+        // not a leaf-field count.
         activity?.SetTag("arguments.restored_count", restoredCount);
         activity?.SetTag("arguments.failed_count", failedCount);
     }
 
     /// <summary>
-    /// Updates GUI controls from a parameter value change in LabAppService.
-    /// Handles both simple types (direct update) and complex types (recursive update) using strategy pattern.
+    /// Updates GUI controls from a single parameter value change in LabAppService.
+    /// Delegates to the target control's own strategy, which handles simple and complex types alike.
     /// </summary>
     /// <param name="parent">Panel containing the parameter control controls.</param>
     /// <param name="field">Field metadata describing the parameter structure.</param>
@@ -118,8 +113,7 @@ public class ParameterSyncCoordinator
     {
         try
         {
-            int dummyCount = 0;
-            SetFieldValue(parent, field, value, indexPath, ref dummyCount);
+            RestoreValue(parent, value, indexPath);
         }
         catch (Exception ex)
         {
@@ -128,53 +122,19 @@ public class ParameterSyncCoordinator
     }
 
     /// <summary>
-    /// Unified method to set field values in GUI using strategy pattern.
-    /// Handles both simple and complex types by delegating to appropriate strategy.
+    /// Restores a value into the GUI by locating the control at the given index path and delegating to the
+    /// strategy captured in its OperationSupport.ControlMetadata tag. The strategy owns leaf-vs-complex routing
+    /// (complex strategies recurse via the registry), so nested complex records restore correctly.
     /// </summary>
     /// <param name="parent">Panel containing the parameter control controls.</param>
-    /// <param name="field">Field metadata describing the parameter structure.</param>
-    /// <param name="value">Value to set in GUI.</param>
+    /// <param name="value">Value to set in the GUI.</param>
     /// <param name="indexPath">Index path for finding the parameter control.</param>
-    /// <param name="restoredCount">Running count of successfully restored fields (for telemetry).</param>
-    private void SetFieldValue(Panel parent, FieldMetaData field, object? value, string indexPath, ref int restoredCount)
+    private static void RestoreValue(Panel parent, object? value, string indexPath)
     {
-        // Find the appropriate strategy for this field type
-        var strategy = syncStrategies.FirstOrDefault(s => s.CanHandle(field));
-        if (strategy != null)
+        var control = OperationSupport.FindControlByName(parent, indexPath);
+        if (control?.Tag is OperationSupport.ControlMetadata metadata)
         {
-            strategy.SetValueInGui(parent, field, value, indexPath);
-
-            // Increment count for simple types only (complex types increment recursively)
-            if (strategy is SimpleFieldSyncStrategy)
-            {
-                restoredCount++;
-            }
-            else if (strategy is ComplexFieldSyncStrategy && field.SubTypes.Length > 0 && value != null)
-            {
-                // For complex types, count the number of leaf fields that will be set
-                restoredCount += CountLeafFields(field);
-            }
+            metadata.Strategy.SetValue(control, value, metadata.Field);
         }
-    }
-
-    /// <summary>
-    /// Counts the number of leaf (simple/file) fields in a complex field hierarchy.
-    /// Used for telemetry to track how many individual fields were restored.
-    /// </summary>
-    private int CountLeafFields(FieldMetaData field)
-    {
-        int count = 0;
-        foreach (var subField in field.SubTypes)
-        {
-            if (subField.IsSimple || subField.IsFile)
-            {
-                count++;
-            }
-            else if (subField.SubTypes.Length > 0)
-            {
-                count += CountLeafFields(subField);
-            }
-        }
-        return count;
     }
 }

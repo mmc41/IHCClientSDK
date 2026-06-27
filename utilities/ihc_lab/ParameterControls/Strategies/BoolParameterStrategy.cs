@@ -63,8 +63,7 @@ public class BoolParameterStrategy : IParameterControlStrategy
 
         return new ControlCreationResult
         {
-            Control = stackPanel,
-            IsComposite = false
+            Control = stackPanel
         };
     }
 

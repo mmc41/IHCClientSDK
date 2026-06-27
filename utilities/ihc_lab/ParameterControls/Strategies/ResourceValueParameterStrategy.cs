@@ -90,8 +90,7 @@ public class ResourceValueParameterStrategy : IParameterControlStrategy
 
         return new ControlCreationResult
         {
-            Control = stackPanel,
-            IsComposite = false
+            Control = stackPanel
         };
     }
 

@@ -58,8 +58,7 @@ public class NumericParameterStrategy : IParameterControlStrategy
 
         return new ControlCreationResult
         {
-            Control = numericUpDown,
-            IsComposite = false
+            Control = numericUpDown
         };
     }
 

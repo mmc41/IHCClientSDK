@@ -18,3 +18,4 @@ tmp
 
 # Important to exclude - user config file - contains secrets.
 ihcsettings.json
+mcp.json

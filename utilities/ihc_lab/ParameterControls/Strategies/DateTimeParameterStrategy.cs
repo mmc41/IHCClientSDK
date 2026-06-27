@@ -42,8 +42,7 @@ public class DateTimeParameterStrategy : IParameterControlStrategy
 
         return new ControlCreationResult
         {
-            Control = datePicker,
-            IsComposite = false
+            Control = datePicker
         };
     }
 

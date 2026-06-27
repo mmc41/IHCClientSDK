@@ -128,7 +128,7 @@ public partial class MainWindow : Window
         // Initialize extracted coordinators
         var loggerFactory = Program.loggerFactory ?? NullLoggerFactory.Instance;
         this.parameterSyncCoordinator = new ParameterSyncCoordinator(loggerFactory.CreateLogger<ParameterSyncCoordinator>());
-        this.parameterControlCoordinator = new ParameterControlCoordinator(loggerFactory.CreateLogger<ParameterControlCoordinator>());
+        this.parameterControlCoordinator = new ParameterControlCoordinator();
 
         try
         {
@@ -590,26 +590,6 @@ public partial class MainWindow : Window
         activity?.SetError(ex);
         viewModel?.SetError(operation + " error", ex);
     }
-
-    /// <summary>
-    /// Creates an operation filter function for LabAppService.
-    /// Excludes: AsyncEnumerable operations, operations with array parameters, operations with ResourceValue parameters.
-    /// </summary>
-    /// <returns>Filter function for LabAppService</returns>
-
-    /// <summary>
-    /// Syncs parameter values from GUI controls to LabAppService.SelectedOperation.Arguments.
-    /// Extracts values from ParametersPanel and uses SetArgumentsFromArray for type-safe bulk setting.
-    /// </summary>
-    /// <exception cref="InvalidOperationException">Thrown when LabAppService is not configured.</exception>
-    private void SyncArgumentsToLabAppService()
-    {
-        if (labAppService == null)
-            throw new InvalidOperationException("LabAppService is not configured");
-
-        parameterSyncCoordinator.SyncToService(ParametersPanel, labAppService.SelectedOperation);
-    }
-
 
     /// <summary>
     /// Handles ArgumentChanged events from LabAppService.

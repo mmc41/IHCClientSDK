@@ -68,7 +68,6 @@ public class StringParameterStrategyTests
         Assert.That(result, Is.Not.Null);
         Assert.That(result.Control, Is.InstanceOf<TextBox>());
         Assert.That(result.Control.Name, Is.EqualTo("TestControl"));
-        Assert.That(result.IsComposite, Is.False);
     }
 
     [Test]

@@ -60,7 +60,6 @@ public class ArrayParameterStrategyTests
         Assert.That(result, Is.Not.Null);
         Assert.That(result.Control, Is.InstanceOf<StackPanel>());
         Assert.That(result.Control.Name, Is.EqualTo("TestControl"));
-        Assert.That(result.IsComposite, Is.True);
     }
 
     [Test]

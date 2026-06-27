@@ -68,7 +68,6 @@ public class BoolParameterStrategyTests
         Assert.That(result, Is.Not.Null);
         Assert.That(result.Control, Is.InstanceOf<StackPanel>());
         Assert.That(result.Control.Name, Is.EqualTo("TestControl"));
-        Assert.That(result.IsComposite, Is.False);
 
         var stackPanel = (StackPanel)result.Control;
         var radioButtons = stackPanel.Children.OfType<RadioButton>().ToList();

@@ -31,18 +31,13 @@ public static class OperationSupport
             (nameof(operationMetadata), operationMetadata)
         );
 
-        ClearControls(parametersPanel);
+        // Clear any existing parameter controls before adding new ones
+        parametersPanel.Children.Clear();
 
         for (int i = 0; i < operationMetadata.Parameters.Length; i++)
         {
             AddFieldControls(parametersPanel, operationMetadata.Parameters[i], i.ToString());
         }
-    }
-
-    public static void ClearControls(Panel parametersPanel)
-    {
-        // Clear any existing child controls under panel with Name ParametersPanel
-        parametersPanel.Children.Clear();
     }
 
     /// <summary>
@@ -160,27 +155,29 @@ public static class OperationSupport
     }
 
     /// <summary>
-    /// Finds a control by name in the specified panel.
-    /// Searches recursively through child panels.
+    /// Finds a control by name, searching the given control and its descendant panels recursively.
     /// </summary>
-    /// <param name="parent">The parent panel to search in.</param>
+    /// <param name="parent">The control (typically a panel) to search in.</param>
     /// <param name="name">The name of the control to find.</param>
     /// <returns>The control if found, otherwise null.</returns>
-    private static Control? FindControlByName(Panel parent, string name)
+    public static Control? FindControlByName(Control parent, string name)
     {
-        foreach (var child in parent.Children)
+        if (parent.Name == name)
         {
-            if (child is Control control && control.Name == name)
-            {
-                return control;
-            }
+            return parent;
+        }
 
-            if (child is Panel childPanel)
+        if (parent is Panel panel)
+        {
+            foreach (var child in panel.Children)
             {
-                var found = FindControlByName(childPanel, name);
-                if (found != null)
+                if (child is Control childControl)
                 {
-                    return found;
+                    var found = FindControlByName(childControl, name);
+                    if (found != null)
+                    {
+                        return found;
+                    }
                 }
             }
         }

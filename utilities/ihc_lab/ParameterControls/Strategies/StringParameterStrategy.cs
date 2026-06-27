@@ -42,8 +42,7 @@ public class StringParameterStrategy : IParameterControlStrategy
 
         return new ControlCreationResult
         {
-            Control = textBox,
-            IsComposite = false
+            Control = textBox
         };
     }
 

@@ -74,8 +74,7 @@ public class FileParameterStrategy : IParameterControlStrategy
 
         return new ControlCreationResult
         {
-            Control = filePicker,
-            IsComposite = false
+            Control = filePicker
         };
     }
 

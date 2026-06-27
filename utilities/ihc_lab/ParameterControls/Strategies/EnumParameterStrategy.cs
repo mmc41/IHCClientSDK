@@ -58,8 +58,7 @@ public class EnumParameterStrategy : IParameterControlStrategy
 
         return new ControlCreationResult
         {
-            Control = comboBox,
-            IsComposite = false
+            Control = comboBox
         };
     }
 

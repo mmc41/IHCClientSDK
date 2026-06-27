@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Avalonia;
@@ -53,8 +52,6 @@ public class ComplexTypeParameterStrategy : IParameterControlStrategy
             ToolTip.SetTip(stackPanel, field.Description);
         }
 
-        var subStrategies = new Dictionary<string, IParameterControlStrategy>();
-
         // Create controls for each sub-field
         for (int i = 0; i < field.SubTypes.Length; i++)
         {
@@ -92,16 +89,11 @@ public class ComplexTypeParameterStrategy : IParameterControlStrategy
             };
 
             stackPanel.Children.Add(subResult.Control);
-
-            // Store strategy for later value extraction
-            subStrategies[subControlName] = subStrategy;
         }
 
         return new ControlCreationResult
         {
-            Control = stackPanel,
-            IsComposite = true,
-            SubStrategies = subStrategies
+            Control = stackPanel
         };
     }
 
@@ -123,7 +115,7 @@ public class ComplexTypeParameterStrategy : IParameterControlStrategy
             string subControlName = $"{stackPanel.Name}.{i}";
 
             // Find the sub-control by name
-            var subControl = FindControlByName(stackPanel, subControlName);
+            var subControl = OperationSupport.FindControlByName(stackPanel, subControlName);
             if (subControl == null)
                 throw new InvalidOperationException(
                     $"Could not find sub-control '{subControlName}' in complex type control");
@@ -188,7 +180,7 @@ public class ComplexTypeParameterStrategy : IParameterControlStrategy
             string subControlName = $"{stackPanel.Name}.{i}";
 
             // Find the sub-control by name
-            var subControl = FindControlByName(stackPanel, subControlName);
+            var subControl = OperationSupport.FindControlByName(stackPanel, subControlName);
             if (subControl == null)
                 continue;
 
@@ -204,29 +196,5 @@ public class ComplexTypeParameterStrategy : IParameterControlStrategy
             var subStrategy = registry.GetStrategy(subField);
             subStrategy.SetValue(subControl, subValue, subField);
         }
-    }
-
-    /// <summary>
-    /// Helper method to find a control by name recursively.
-    /// </summary>
-    private static Control? FindControlByName(Control parent, string name)
-    {
-        if (parent.Name == name)
-            return parent;
-
-        if (parent is Panel panel)
-        {
-            foreach (var child in panel.Children)
-            {
-                if (child is Control childControl)
-                {
-                    var found = FindControlByName(childControl, name);
-                    if (found != null)
-                        return found;
-                }
-            }
-        }
-
-        return null;
     }
 }
