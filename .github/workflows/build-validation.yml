@@ -33,3 +33,13 @@ jobs:
       
     - name: Build
       run: dotnet build --no-restore
+
+    - name: Test (controller-free unit tests)
+      run: dotnet test tests/safe_unit_tests/safe_unit_tests.csproj --no-build
+
+    - name: Test (headless Lab UI tests)
+      # Avalonia + Skia headless rendering is validated on the Windows runner (the primary
+      # development environment). Scope here rather than risk missing native render/font deps
+      # on the Linux/macOS runners. safe_lab_tests is [NonParallelizable] and uses mock:// services.
+      if: matrix.os == 'windows-latest'
+      run: dotnet test tests/safe_lab_tests/safe_lab_tests.csproj --no-build

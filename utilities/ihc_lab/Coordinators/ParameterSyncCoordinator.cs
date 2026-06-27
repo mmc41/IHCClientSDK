@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.Linq;
 using Avalonia.Controls;
 using IhcLab;
 using Microsoft.Extensions.Logging;
@@ -8,58 +7,81 @@ using Microsoft.Extensions.Logging;
 namespace Ihc.App;
 
 /// <summary>
-/// Coordinator responsible for bidirectional synchronization between DynField GUI controls and LabAppService parameters.
-/// Uses strategy pattern to handle different field types (simple vs complex) consistently.
+/// Coordinator responsible for bidirectional synchronization between GUI controls and LabAppService parameters.
+/// The Service-to-GUI direction delegates to each control's own parameter-control strategy (stored in its Tag as
+/// OperationSupport.ControlMetadata), so the leaf-vs-complex routing lives in one place - the control strategies -
+/// rather than being duplicated here.
 /// </summary>
 public class ParameterSyncCoordinator
 {
     private readonly ILogger<ParameterSyncCoordinator> logger;
-    private readonly IFieldSyncStrategy[] syncStrategies;
 
     public ParameterSyncCoordinator(ILogger<ParameterSyncCoordinator> logger)
     {
         this.logger = logger;
-
-        // Initialize strategies (order matters - check simple types before complex)
-        var simpleStrategy = new SimpleFieldSyncStrategy();
-        this.syncStrategies = new IFieldSyncStrategy[]
-        {
-            simpleStrategy,
-            new ComplexFieldSyncStrategy(new[] { simpleStrategy }) // Complex strategy needs simple strategy for recursion
-        };
     }
 
     /// <summary>
-    /// Syncs argument values FROM DynField GUI controls TO LabAppService.SelectedOperation.Arguments.
-    /// Extracts values from all parameter controls and updates the operation's method arguments.
+    /// Initializes only the service arguments that are still uninitialized (null), using the current default
+    /// values of the freshly created GUI controls. Arguments that already hold a value - whether a generated
+    /// default or a value entered on a previous visit to this operation - are deliberately left untouched.
     /// </summary>
-    /// <param name="parametersPanel">Panel containing the DynField controls.</param>
-    /// <param name="operation">Operation item whose arguments will be updated.</param>
+    /// <remarks>
+    /// This exists because complex reference-type parameters default to <c>null</c> on the service side (see
+    /// <see cref="LabAppService.OperationItem.GetDefaultValue"/>), yet their freshly built GUI control holds a
+    /// valid default instance. Initializing those avoids passing null to the operation. Crucially, unlike a
+    /// blanket GUI-&gt;service sync, this never overwrites previously entered values with control defaults, so
+    /// argument persistence (switch away and back) keeps working - the saved values are restored by
+    /// <see cref="SyncFromService"/> immediately afterwards.
+    /// </remarks>
+    /// <param name="parametersPanel">Panel containing the parameter controls.</param>
+    /// <param name="operation">Operation item whose arguments will be initialized where still missing.</param>
     /// <exception cref="ArgumentNullException">Thrown when parametersPanel or operation is null.</exception>
-    public void SyncToService(Panel parametersPanel, LabAppService.OperationItem operation)
+    public void InitializeUninitializedArguments(Panel parametersPanel, LabAppService.OperationItem operation)
     {
-        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(ParameterSyncCoordinator) + "." + nameof(SyncToService), ActivityKind.Internal);
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(ParameterSyncCoordinator) + "." + nameof(InitializeUninitializedArguments), ActivityKind.Internal);
 
         if (parametersPanel == null)
             throw new ArgumentNullException(nameof(parametersPanel));
         if (operation == null)
             throw new ArgumentNullException(nameof(operation));
 
-        var operationMetadata = operation.OperationMetadata;
+        var parameters = operation.OperationMetadata.Parameters;
+        var currentArguments = operation.GetMethodArgumentsAsArray();
 
-        // Extract parameter values from GUI controls using existing helper
-        var parameterValues = OperationSupport.GetParameterValues(parametersPanel, operationMetadata.Parameters);
+        int initializedCount = 0;
 
-        operation.SetMethodArgumentsFromArray(parameterValues);
+        for (int i = 0; i < parameters.Length; i++)
+        {
+            // Only fill genuinely uninitialized arguments; never clobber an existing (default or restored) value.
+            if (currentArguments[i] != null)
+                continue;
 
-        activity?.SetTag("arguments.synced_count", parameterValues.Length);
+            try
+            {
+                object? value = OperationSupport.GetFieldValue(parametersPanel, parameters[i], i.ToString());
+                if (value != null)
+                {
+                    operation.SetMethodArgument(i, value);
+                    initializedCount++;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Best-effort: a control whose value cannot yet be extracted (e.g. an empty nullable field)
+                // simply stays null. Continue with the remaining parameters.
+                logger.LogDebug(ex, "Skipped initializing default value for parameter {ParameterName} of operation {OperationName}", parameters[i].Name, operation.OperationMetadata.Name);
+            }
+        }
+
+        activity?.SetTag("arguments.initialized_count", initializedCount);
     }
 
     /// <summary>
-    /// Syncs argument values FROM LabAppService.SelectedOperation.Arguments TO DynField GUI controls.
+    /// Syncs argument values FROM LabAppService.SelectedOperation.Arguments TO parameter control GUI controls.
     /// This enables argument persistence - when user returns to an operation, previously set values are restored.
     /// </summary>
-    /// <param name="parametersPanel">Panel containing the DynField controls.</param>
+    /// <param name="parametersPanel">Panel containing the parameter control controls.</param>
     /// <param name="operation">Operation item whose arguments will be read.</param>
     /// <exception cref="ArgumentNullException">Thrown when parametersPanel or operation is null.</exception>
     public void SyncFromService(Panel parametersPanel, LabAppService.OperationItem operation)
@@ -77,7 +99,7 @@ public class ParameterSyncCoordinator
         int restoredCount = 0;
         int failedCount = 0;
 
-        // For each parameter, restore its value using the strategy pattern
+        // Restore each top-level parameter by delegating to its control's own strategy.
         for (int i = 0; i < operationMetadata.Parameters.Length; i++)
         {
             var parameter = operationMetadata.Parameters[i];
@@ -85,7 +107,8 @@ public class ParameterSyncCoordinator
 
             try
             {
-                SetFieldValue(parametersPanel, parameter, savedValue, i.ToString(), ref restoredCount);
+                RestoreValue(parametersPanel, savedValue, i.ToString());
+                restoredCount++;
             }
             catch (Exception ex)
             {
@@ -102,24 +125,24 @@ public class ParameterSyncCoordinator
             }
         }
 
+        // restored_count is a top-level parameter count (one per parameter restored without error),
+        // not a leaf-field count.
         activity?.SetTag("arguments.restored_count", restoredCount);
         activity?.SetTag("arguments.failed_count", failedCount);
     }
 
     /// <summary>
-    /// Updates GUI controls from a parameter value change in LabAppService.
-    /// Handles both simple types (direct update) and complex types (recursive update) using strategy pattern.
+    /// Updates GUI controls from a single parameter value change in LabAppService.
+    /// Delegates to the target control's own strategy, which handles simple and complex types alike.
     /// </summary>
-    /// <param name="parent">Panel containing the DynField controls.</param>
-    /// <param name="field">Field metadata describing the parameter structure.</param>
+    /// <param name="parent">Panel containing the parameter control controls.</param>
     /// <param name="value">New value to display in GUI.</param>
-    /// <param name="indexPath">Index path for finding the DynField.</param>
-    public void UpdateGuiFromParameter(Panel parent, FieldMetaData field, object? value, string indexPath)
+    /// <param name="indexPath">Index path for finding the parameter control.</param>
+    public void UpdateGuiFromParameter(Panel parent, object? value, string indexPath)
     {
         try
         {
-            int dummyCount = 0;
-            SetFieldValue(parent, field, value, indexPath, ref dummyCount);
+            RestoreValue(parent, value, indexPath);
         }
         catch (Exception ex)
         {
@@ -128,53 +151,19 @@ public class ParameterSyncCoordinator
     }
 
     /// <summary>
-    /// Unified method to set field values in GUI using strategy pattern.
-    /// Handles both simple and complex types by delegating to appropriate strategy.
+    /// Restores a value into the GUI by locating the control at the given index path and delegating to the
+    /// strategy captured in its OperationSupport.ControlMetadata tag. The strategy owns leaf-vs-complex routing
+    /// (complex strategies recurse via the registry), so nested complex records restore correctly.
     /// </summary>
-    /// <param name="parent">Panel containing the DynField controls.</param>
-    /// <param name="field">Field metadata describing the parameter structure.</param>
-    /// <param name="value">Value to set in GUI.</param>
-    /// <param name="indexPath">Index path for finding the DynField.</param>
-    /// <param name="restoredCount">Running count of successfully restored fields (for telemetry).</param>
-    private void SetFieldValue(Panel parent, FieldMetaData field, object? value, string indexPath, ref int restoredCount)
+    /// <param name="parent">Panel containing the parameter control controls.</param>
+    /// <param name="value">Value to set in the GUI.</param>
+    /// <param name="indexPath">Index path for finding the parameter control.</param>
+    private static void RestoreValue(Panel parent, object? value, string indexPath)
     {
-        // Find the appropriate strategy for this field type
-        var strategy = syncStrategies.FirstOrDefault(s => s.CanHandle(field));
-        if (strategy != null)
+        var control = OperationSupport.FindControlByName(parent, indexPath);
+        if (control?.Tag is OperationSupport.ControlMetadata metadata)
         {
-            strategy.SetValueInGui(parent, field, value, indexPath);
-
-            // Increment count for simple types only (complex types increment recursively)
-            if (strategy is SimpleFieldSyncStrategy)
-            {
-                restoredCount++;
-            }
-            else if (strategy is ComplexFieldSyncStrategy && field.SubTypes.Length > 0 && value != null)
-            {
-                // For complex types, count the number of leaf fields that will be set
-                restoredCount += CountLeafFields(field);
-            }
+            metadata.Strategy.SetValue(control, value, metadata.Field);
         }
-    }
-
-    /// <summary>
-    /// Counts the number of leaf (simple/file) fields in a complex field hierarchy.
-    /// Used for telemetry to track how many individual fields were restored.
-    /// </summary>
-    private int CountLeafFields(FieldMetaData field)
-    {
-        int count = 0;
-        foreach (var subField in field.SubTypes)
-        {
-            if (subField.IsSimple || subField.IsFile)
-            {
-                count++;
-            }
-            else if (subField.SubTypes.Length > 0)
-            {
-                count += CountLeafFields(subField);
-            }
-        }
-        return count;
     }
 }

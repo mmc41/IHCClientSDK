@@ -171,7 +171,7 @@ namespace Ihc.App
         }
 
         /// <summary>
-        /// Provides data for the ParameterChanged event.
+        /// Provides data for the MethodArgumentChanged event.
         /// Contains information about which method argument changed, including its index and old/new values.
         /// </summary>
         public class MethodArgumentChangedEventArgs : EventArgs
@@ -193,7 +193,7 @@ namespace Ihc.App
             public object NewValue { get; }
 
             /// <summary>
-            /// Initializes a new instance of the ParameterChangedEventArgs class.
+            /// Initializes a new instance of the MethodArgumentChangedEventArgs class.
             /// </summary>
             /// <param name="index">The zero-based index of the argument that changed.</param>
             /// <param name="oldValue">The previous value of the argument.</param>
@@ -305,22 +305,22 @@ namespace Ihc.App
             /// <summary>
             /// Array of method argument values to pass when invoking the operation.
             /// Each element corresponds to a parameter defined in OperationMetadata.
-            /// Use SetArgument() method for type-safe argument modification.
+            /// Use SetMethodArgument() method for type-safe argument modification.
             /// </summary>
             public object[] MethodArguments { get; private set; }
 
             /// <summary>
             /// Gets the number of parameters for this operation.
-            /// Equivalent to Arguments.Length.
+            /// Equivalent to MethodArguments.Length.
             /// </summary>
             public int MethodParameterCount => MethodArguments?.Length ?? 0;
 
             /// <summary>
-            /// Occurs when an argument value is changed via SetArgument() or SetArgumentsFromArray().
+            /// Occurs when an argument value is changed via SetMethodArgument() or SetMethodArgumentsFromArray().
             /// Provides the index of the changed argument along with its old and new values.
             /// This event enables two-way synchronization between the backend and GUI layers.
             /// </summary>
-            public event EventHandler<MethodArgumentChangedEventArgs> ArgumentChanged;
+            public event EventHandler<MethodArgumentChangedEventArgs> MethodArgumentChanged;
 
             /// <summary>
             /// Creates a new OperationItem instance with default arguments.
@@ -412,7 +412,7 @@ namespace Ihc.App
             /// Validates that the array length matches the number of parameters and performs type validation for each argument.
             /// This is a convenience method for bulk argument setting, particularly useful when populating from GUI controls.
             /// </summary>
-            /// <param name="values">Array of argument values. Length must match ParameterCount. Each value is validated via SetArgument().</param>
+            /// <param name="values">Array of argument values. Length must match MethodParameterCount. Each value is validated via SetMethodArgument().</param>
             /// <exception cref="ArgumentNullException">Thrown when values is null.</exception>
             /// <exception cref="ArgumentException">Thrown when array length doesn't match parameter count, or when any value has incompatible type.</exception>
             /// <exception cref="InvalidOperationException">Thrown when the operation has no parameters but a non-empty array is provided.</exception>
@@ -428,7 +428,7 @@ namespace Ihc.App
                         $"Argument array length ({values.Length}) does not match parameter count ({expectedCount}) for operation '{DisplayName}'.",
                         nameof(values));
 
-                // Validate and set each argument using SetArgument for type safety
+                // Validate and set each argument using SetMethodArgument for type safety
                 for (int i = 0; i < values.Length; i++)
                 {
                     SetMethodArgument(i, values[i]);
@@ -438,7 +438,7 @@ namespace Ihc.App
             /// <summary>
             /// Returns a defensive copy of the current argument array.
             /// Modifications to the returned array will not affect the internal Arguments array.
-            /// Use SetArgument() or SetArgumentsFromArray() to modify arguments.
+            /// Use SetMethodArgument() or SetMethodArgumentsFromArray() to modify arguments.
             /// </summary>
             /// <returns>A new array containing copies of the current argument values.</returns>
             public object[] GetMethodArgumentsAsArray()
@@ -473,12 +473,12 @@ namespace Ihc.App
             }
 
             /// <summary>
-            /// Raises the ArgumentChanged event with the specified event data.
+            /// Raises the MethodArgumentChanged event with the specified event data.
             /// </summary>
             /// <param name="e">Event data containing the index, old value, and new value.</param>
             protected virtual void OnMethodArgumentChanged(MethodArgumentChangedEventArgs e)
             {
-                ArgumentChanged?.Invoke(this, e);
+                MethodArgumentChanged?.Invoke(this, e);
             }
 
             /// <summary>

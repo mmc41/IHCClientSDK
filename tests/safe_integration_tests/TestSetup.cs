@@ -25,8 +25,15 @@ namespace Ihc.Tests
     {
       IConfigurationRoot config = new ConfigurationBuilder()
             .SetBasePath(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location))
-            .AddJsonFile("ihcsettings.json")
+            .AddJsonFile("ihcsettings.json", optional: true)
             .Build();
+
+      // A clean checkout has no ihcsettings.json. Skip the controller-dependent integration suite
+      // instead of failing OneTimeSetUp when no configuration is present.
+      if (!config.GetSection("ihcclient").Exists())
+      {
+        Assert.Ignore("Integration tests skipped: no ihcsettings.json configuration found.");
+      }
 
       settings = IhcSettings.GetFromConfiguration(config);
 
@@ -34,6 +41,12 @@ namespace Ihc.Tests
       boolOutput1 = int.Parse(testConfig["boolOutput1"]);
       boolInput1 = int.Parse(testConfig["boolInput1"]);
       boolInput2 = int.Parse(testConfig["boolInput2"]);
+
+      // Skip all integration tests if endpoint is not configured for real IHC controller
+      if (string.IsNullOrEmpty(settings.Endpoint) || settings.Endpoint.StartsWith("mock://"))
+      {
+        Assert.Ignore("Integration tests skipped: Endpoint is null, empty, or starts with 'mock://'");
+      }
     }
   }
 }

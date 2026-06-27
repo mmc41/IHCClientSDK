@@ -1,0 +1,72 @@
+using System;
+using Avalonia.Controls;
+using Ihc;
+
+namespace IhcLab.ParameterControls.Strategies;
+
+/// <summary>
+/// Strategy for handling string parameters.
+/// Creates a TextBox control for string input.
+/// </summary>
+public class StringParameterStrategy : ParameterControlStrategyBase
+{
+    /// <summary>
+    /// Determines if this strategy can handle string types.
+    /// </summary>
+    public override bool CanHandle(FieldMetaData field)
+    {
+        return field.Type == typeof(string);
+    }
+
+    /// <summary>
+    /// Creates a TextBox control for string input.
+    /// </summary>
+    public override Control CreateControl(FieldMetaData field, string controlName)
+    {
+        EnsureCanHandle(field);
+
+        var textBox = new TextBox
+        {
+            Name = controlName,
+            Watermark = "Enter text...",
+            Width = 300
+        };
+
+        ApplyDescriptionTooltip(textBox, field);
+
+        return textBox;
+    }
+
+    /// <summary>
+    /// Subscribes to the TextBox's TextChanged event.
+    /// </summary>
+    public override void SubscribeToValueChanged(Control control, EventHandler handler)
+    {
+        if (control is TextBox textBox)
+            textBox.TextChanged += (s, e) => handler(textBox, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Extracts the text value from a TextBox control.
+    /// </summary>
+    public override object? ExtractValue(Control control, FieldMetaData field)
+    {
+        var textBox = RequireControl<TextBox>(control);
+
+        // Treat an empty field as an empty string, not null. This keeps string handling consistent (the
+        // default value for a string parameter is also string.Empty), avoids driving sync control flow via
+        // exceptions, and means clearing a field syncs "" rather than silently switching the value to null.
+        return textBox.Text ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Sets a text value into a TextBox control.
+    /// </summary>
+    public override void SetValue(Control control, object? value, FieldMetaData field)
+    {
+        var textBox = RequireControl<TextBox>(control);
+
+        // Whitespace is intentionally preserved (no .Trim()): the value must round-trip exactly as entered.
+        textBox.Text = value?.ToString() ?? string.Empty;
+    }
+}

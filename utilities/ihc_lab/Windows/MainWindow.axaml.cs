@@ -13,6 +13,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Ihc;
 using Ihc.App;
+using IhcLab.ParameterControls;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -72,6 +73,9 @@ public partial class MainWindow : Window
     private LabAppService? labAppService;
     private MainWindowViewModel? viewModel;
     private LabAppService.OperationItem? currentOperationItem;
+
+    // Guards against a service->GUI->service echo while we push service values into the controls.
+    private bool isSyncingFromService;
 
     // Extracted coordinators for better separation of concerns
     private readonly ParameterSyncCoordinator parameterSyncCoordinator;
@@ -359,9 +363,19 @@ public partial class MainWindow : Window
                         await parameterControlCoordinator.SetupControlsAsync(
                             ParametersPanel,
                             operationItem,
-                            OnDynFieldValueChanged);
+                            OnParameterControlValueChanged);
 
-                        // Restore previously set argument values from LabAppService
+                        // Initialize any still-uninitialized (null) service arguments from the freshly created
+                        // GUI controls. This gives complex reference-type parameters a valid default instance
+                        // instead of null, while deliberately NOT touching arguments that already hold a value -
+                        // so values entered on a previous visit to this operation survive and are restored below
+                        // rather than being overwritten with control defaults.
+                        parameterSyncCoordinator.InitializeUninitializedArguments(ParametersPanel, operationItem);
+
+                        // Restore previously set argument values from LabAppService into the GUI (argument persistence).
+                        // Suppress the GUI change events this restore raises so they don't echo straight back as
+                        // redundant GUI->service syncs - the values being pushed in already came from the service.
+                        isSyncingFromService = true;
                         try
                         {
                             parameterSyncCoordinator.SyncFromService(ParametersPanel, operationItem);
@@ -371,16 +385,20 @@ public partial class MainWindow : Window
                             // Log warning but continue with default values if restoration fails
                             logger.LogWarning(ex, "Failed to restore argument values from LabAppService for operation {OperationName}", operationItem.OperationMetadata.Name);
                         }
-
-                        // Unsubscribe from previous operation's ArgumentChanged event
-                        if (currentOperationItem != null)
+                        finally
                         {
-                            currentOperationItem.ArgumentChanged -= OnLabAppServiceArgumentChanged;
+                            isSyncingFromService = false;
                         }
 
-                        // Subscribe to ArgumentChanged events for LabAppService → GUI synchronization
+                        // Unsubscribe from previous operation's MethodArgumentChanged event
+                        if (currentOperationItem != null)
+                        {
+                            currentOperationItem.MethodArgumentChanged -= OnLabAppServiceMethodArgumentChanged;
+                        }
+
+                        // Subscribe to MethodArgumentChanged events for LabAppService → GUI synchronization
                         currentOperationItem = operationItem;
-                        currentOperationItem.ArgumentChanged += OnLabAppServiceArgumentChanged;
+                        currentOperationItem.MethodArgumentChanged += OnLabAppServiceMethodArgumentChanged;
                     }
                     else
                     {
@@ -404,7 +422,7 @@ public partial class MainWindow : Window
         // Unsubscribe from LabAppService events
         if (currentOperationItem != null)
         {
-            currentOperationItem.ArgumentChanged -= OnLabAppServiceArgumentChanged;
+            currentOperationItem.MethodArgumentChanged -= OnLabAppServiceMethodArgumentChanged;
             currentOperationItem = null;
         }
 
@@ -572,30 +590,10 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Creates an operation filter function for LabAppService.
-    /// Excludes: AsyncEnumerable operations, operations with array parameters, operations with ResourceValue parameters.
-    /// </summary>
-    /// <returns>Filter function for LabAppService</returns>
-
-    /// <summary>
-    /// Syncs parameter values from DynField GUI controls to LabAppService.SelectedOperation.Arguments.
-    /// Extracts values from ParametersPanel and uses SetArgumentsFromArray for type-safe bulk setting.
-    /// </summary>
-    /// <exception cref="InvalidOperationException">Thrown when LabAppService is not configured.</exception>
-    private void SyncArgumentsToLabAppService()
-    {
-        if (labAppService == null)
-            throw new InvalidOperationException("LabAppService is not configured");
-
-        parameterSyncCoordinator.SyncToService(ParametersPanel, labAppService.SelectedOperation);
-    }
-
-
-    /// <summary>
-    /// Handles ArgumentChanged events from LabAppService.
+    /// Handles MethodArgumentChanged events from LabAppService.
     /// Updates GUI controls when LabAppService arguments are changed programmatically.
     /// </summary>
-    private void OnLabAppServiceArgumentChanged(object? sender, LabAppService.MethodArgumentChangedEventArgs e)
+    private void OnLabAppServiceMethodArgumentChanged(object? sender, LabAppService.MethodArgumentChangedEventArgs e)
     {
         if (labAppService == null)
             return;
@@ -604,23 +602,37 @@ public partial class MainWindow : Window
         if (e.Index < 0 || e.Index >= operationMetadata.Parameters.Length)
             return;
 
-        var parameter = operationMetadata.Parameters[e.Index];
-        parameterSyncCoordinator.UpdateGuiFromParameter(ParametersPanel, parameter, e.NewValue, e.Index.ToString());
+        // Suppress the GUI change events this update raises so they don't echo straight back to the service.
+        isSyncingFromService = true;
+        try
+        {
+            parameterSyncCoordinator.UpdateGuiFromParameter(ParametersPanel, e.NewValue, e.Index.ToString());
+        }
+        finally
+        {
+            isSyncingFromService = false;
+        }
     }
 
     /// <summary>
-    /// Handles ValueChanged events from DynField controls.
+    /// Handles ValueChanged events from strategy controls.
     /// Immediately syncs the changed value to LabAppService.
     /// </summary>
-    private void OnDynFieldValueChanged(object? sender, EventArgs e)
+    private void OnParameterControlValueChanged(object? sender, EventArgs e)
     {
-        if (sender is not DynField dynField || labAppService == null)
+        if (labAppService == null || sender is not Control control)
+            return;
+
+        // Ignore GUI change events raised while we are programmatically restoring service values into the
+        // controls; otherwise the service->GUI update would immediately echo back as a GUI->service sync.
+        if (isSyncingFromService)
             return;
 
         try
         {
-            // Get the index path from the DynField name (e.g., "0", "1.2", "2.1.0")
-            string indexPath = dynField.Name ?? "";
+            // Get index path from control.Name
+            string indexPath = control.Name ?? "";
+
             if (string.IsNullOrEmpty(indexPath))
                 return;
 
@@ -635,23 +647,16 @@ public partial class MainWindow : Window
 
             var parameter = operationMetadata.Parameters[parameterIndex];
 
-            // For simple types, directly set the argument value
-            if (parameter.IsSimple || parameter.IsFile)
-            {
-                var value = dynField.Value;
-                labAppService.SelectedOperation.SetMethodArgument(parameterIndex, value);
-            }
-            else
-            {
-                // For complex types, reconstruct the ENTIRE object from ALL DynFields
-                // This ensures all sub-fields are captured, not just the one that changed
-                var reconstructedValue = OperationSupport.GetFieldValue(ParametersPanel, parameter, parameterIndex.ToString());
-                labAppService.SelectedOperation.SetMethodArgument(parameterIndex, reconstructedValue);
-            }
+            // Extract the value via the control's own strategy. GetFieldValue locates the control, reads the
+            // strategy from its ControlMetadata tag (falling back to the registry), and for complex types
+            // reconstructs the entire object from all sub-controls - so simple, file and complex parameters
+            // are all handled uniformly here, matching the service->GUI direction in ParameterSyncCoordinator.
+            var value = OperationSupport.GetFieldValue(ParametersPanel, parameter, parameterIndex.ToString());
+            labAppService.SelectedOperation.SetMethodArgument(parameterIndex, value);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to sync DynField value change to LabAppService");
+            logger.LogWarning(ex, "Failed to sync control value change to LabAppService");
         }
     }
 

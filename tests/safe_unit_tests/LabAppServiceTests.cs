@@ -1787,10 +1787,10 @@ namespace Ihc.Tests
 
         #endregion
 
-        #region ArgumentChanged Event Tests
+        #region MethodArgumentChanged Event Tests
 
         [Test]
-        public void ArgumentChanged_SetArgument_FiresEvent()
+        public void MethodArgumentChanged_SetArgument_FiresEvent()
         {
             // Arrange
             var labService = new LabAppService(null, null);
@@ -1803,7 +1803,7 @@ namespace Ihc.Tests
             bool eventFired = false;
             LabAppService.MethodArgumentChangedEventArgs? capturedArgs = null;
 
-            operation.ArgumentChanged += (sender, e) =>
+            operation.MethodArgumentChanged += (sender, e) =>
             {
                 eventFired = true;
                 capturedArgs = e;
@@ -1813,14 +1813,14 @@ namespace Ihc.Tests
             operation.SetMethodArgument(0, 12345);
 
             // Assert
-            Assert.That(eventFired, Is.True, "ArgumentChanged event should fire");
+            Assert.That(eventFired, Is.True, "MethodArgumentChanged event should fire");
             Assert.That(capturedArgs, Is.Not.Null);
             Assert.That(capturedArgs!.Index, Is.EqualTo(0));
             Assert.That(capturedArgs.NewValue, Is.EqualTo(12345));
         }
 
         [Test]
-        public void ArgumentChanged_SetArgumentSameValue_DoesNotFireEvent()
+        public void MethodArgumentChanged_SetArgumentSameValue_DoesNotFireEvent()
         {
             // Arrange
             var labService = new LabAppService(null, null);
@@ -1834,7 +1834,7 @@ namespace Ihc.Tests
             operation.SetMethodArgument(0, 99999);
 
             int eventFireCount = 0;
-            operation.ArgumentChanged += (sender, e) =>
+            operation.MethodArgumentChanged += (sender, e) =>
             {
                 eventFireCount++;
             };
@@ -1843,11 +1843,11 @@ namespace Ihc.Tests
             operation.SetMethodArgument(0, 99999);
 
             // Assert - event should not fire because value didn't change
-            Assert.That(eventFireCount, Is.EqualTo(0), "ArgumentChanged should not fire when value is unchanged");
+            Assert.That(eventFireCount, Is.EqualTo(0), "MethodArgumentChanged should not fire when value is unchanged");
         }
 
         [Test]
-        public void ArgumentChanged_SetArgumentsFromArray_FiresEventsForChangedValues()
+        public void MethodArgumentChanged_SetArgumentsFromArray_FiresEventsForChangedValues()
         {
             // Arrange
             var labService = new LabAppService(null, null);
@@ -1861,7 +1861,7 @@ namespace Ihc.Tests
             operation.SetMethodArgument(0, 100);
 
             var firedEvents = new List<LabAppService.MethodArgumentChangedEventArgs>();
-            operation.ArgumentChanged += (sender, e) =>
+            operation.MethodArgumentChanged += (sender, e) =>
             {
                 firedEvents.Add(e);
             };
@@ -1877,7 +1877,7 @@ namespace Ihc.Tests
         }
 
         [Test]
-        public void ArgumentChanged_SetArgumentsFromArray_NoEventsForUnchangedValues()
+        public void MethodArgumentChanged_SetArgumentsFromArray_NoEventsForUnchangedValues()
         {
             // Arrange
             var labService = new LabAppService(null, null);
@@ -1891,7 +1891,7 @@ namespace Ihc.Tests
             operation.SetMethodArgument(0, 777);
 
             int eventFireCount = 0;
-            operation.ArgumentChanged += (sender, e) =>
+            operation.MethodArgumentChanged += (sender, e) =>
             {
                 eventFireCount++;
             };
@@ -1904,7 +1904,7 @@ namespace Ihc.Tests
         }
 
         [Test]
-        public void ArgumentChanged_EventArgs_ContainsCorrectIndex()
+        public void MethodArgumentChanged_EventArgs_ContainsCorrectIndex()
         {
             // Arrange
             var labService = new LabAppService(null, null);
@@ -1915,7 +1915,7 @@ namespace Ihc.Tests
             var operation = serviceItem.OperationItems[opIndex];
 
             LabAppService.MethodArgumentChangedEventArgs? capturedArgs = null;
-            operation.ArgumentChanged += (sender, e) => { capturedArgs = e; };
+            operation.MethodArgumentChanged += (sender, e) => { capturedArgs = e; };
 
             // Act
             operation.SetMethodArgument(0, 555);
@@ -1926,7 +1926,7 @@ namespace Ihc.Tests
         }
 
         [Test]
-        public void ArgumentChanged_EventArgs_ContainsCorrectOldValue()
+        public void MethodArgumentChanged_EventArgs_ContainsCorrectOldValue()
         {
             // Arrange
             var labService = new LabAppService(null, null);
@@ -1940,7 +1940,7 @@ namespace Ihc.Tests
             operation.SetMethodArgument(0, 111);
 
             LabAppService.MethodArgumentChangedEventArgs? capturedArgs = null;
-            operation.ArgumentChanged += (sender, e) => { capturedArgs = e; };
+            operation.MethodArgumentChanged += (sender, e) => { capturedArgs = e; };
 
             // Act
             operation.SetMethodArgument(0, 222);
@@ -1951,7 +1951,7 @@ namespace Ihc.Tests
         }
 
         [Test]
-        public void ArgumentChanged_EventArgs_ContainsCorrectNewValue()
+        public void MethodArgumentChanged_EventArgs_ContainsCorrectNewValue()
         {
             // Arrange
             var labService = new LabAppService(null, null);
@@ -1962,7 +1962,7 @@ namespace Ihc.Tests
             var operation = serviceItem.OperationItems[opIndex];
 
             LabAppService.MethodArgumentChangedEventArgs? capturedArgs = null;
-            operation.ArgumentChanged += (sender, e) => { capturedArgs = e; };
+            operation.MethodArgumentChanged += (sender, e) => { capturedArgs = e; };
 
             // Act
             operation.SetMethodArgument(0, 333);
@@ -1973,7 +1973,7 @@ namespace Ihc.Tests
         }
 
         [Test]
-        public void ArgumentChanged_NullToValue_OldValueIsNull()
+        public void MethodArgumentChanged_NullToValue_OldValueIsNull()
         {
             // Arrange - need an operation with a nullable parameter
             var labService = new LabAppService(null, null);
@@ -2020,7 +2020,7 @@ namespace Ihc.Tests
             operationWithNullableParam.SetMethodArgument(nullableParamIndex, null);
 
             LabAppService.MethodArgumentChangedEventArgs? capturedArgs = null;
-            operationWithNullableParam.ArgumentChanged += (sender, e) => { capturedArgs = e; };
+            operationWithNullableParam.MethodArgumentChanged += (sender, e) => { capturedArgs = e; };
 
             // Act - set from null to a value
             operationWithNullableParam.SetMethodArgument(nullableParamIndex, "test-value");
@@ -2032,7 +2032,7 @@ namespace Ihc.Tests
         }
 
         [Test]
-        public void ArgumentChanged_MultipleSubscribers_AllReceiveEvent()
+        public void MethodArgumentChanged_MultipleSubscribers_AllReceiveEvent()
         {
             // Arrange
             var labService = new LabAppService(null, null);
@@ -2046,9 +2046,9 @@ namespace Ihc.Tests
             bool subscriber2Fired = false;
             bool subscriber3Fired = false;
 
-            operation.ArgumentChanged += (sender, e) => { subscriber1Fired = true; };
-            operation.ArgumentChanged += (sender, e) => { subscriber2Fired = true; };
-            operation.ArgumentChanged += (sender, e) => { subscriber3Fired = true; };
+            operation.MethodArgumentChanged += (sender, e) => { subscriber1Fired = true; };
+            operation.MethodArgumentChanged += (sender, e) => { subscriber2Fired = true; };
+            operation.MethodArgumentChanged += (sender, e) => { subscriber3Fired = true; };
 
             // Act
             operation.SetMethodArgument(0, 999);
@@ -2060,7 +2060,7 @@ namespace Ihc.Tests
         }
 
         [Test]
-        public void ArgumentChanged_Unsubscribe_StopsReceivingEvents()
+        public void MethodArgumentChanged_Unsubscribe_StopsReceivingEvents()
         {
             // Arrange
             var labService = new LabAppService(null, null);
@@ -2073,14 +2073,14 @@ namespace Ihc.Tests
             int eventFireCount = 0;
             EventHandler<LabAppService.MethodArgumentChangedEventArgs> handler = (sender, e) => { eventFireCount++; };
 
-            operation.ArgumentChanged += handler;
+            operation.MethodArgumentChanged += handler;
 
             // First change - should fire event
             operation.SetMethodArgument(0, 100);
             Assert.That(eventFireCount, Is.EqualTo(1), "Event should fire before unsubscribe");
 
             // Unsubscribe
-            operation.ArgumentChanged -= handler;
+            operation.MethodArgumentChanged -= handler;
 
             // Act - second change - should NOT fire event
             operation.SetMethodArgument(0, 200);
@@ -2090,7 +2090,7 @@ namespace Ihc.Tests
         }
 
         [Test]
-        public void ArgumentChanged_TypeValidationFailure_NoEventFired()
+        public void MethodArgumentChanged_TypeValidationFailure_NoEventFired()
         {
             // Arrange
             var labService = new LabAppService(null, null);
@@ -2101,7 +2101,7 @@ namespace Ihc.Tests
             var operation = serviceItem.OperationItems[opIndex];
 
             int eventFireCount = 0;
-            operation.ArgumentChanged += (sender, e) => { eventFireCount++; };
+            operation.MethodArgumentChanged += (sender, e) => { eventFireCount++; };
 
             // Act - try to set invalid type (should throw exception)
             Assert.Throws<ArgumentException>(() => operation.SetMethodArgument(0, "not-an-int"));
@@ -2244,7 +2244,7 @@ namespace Ihc.Tests
             operation.SetMethodArgument(0, 12345);
 
             var firedEvents = new List<LabAppService.MethodArgumentChangedEventArgs>();
-            operation.ArgumentChanged += (sender, e) => { firedEvents.Add(e); };
+            operation.MethodArgumentChanged += (sender, e) => { firedEvents.Add(e); };
 
             // Act - reset to defaults
             operation.ResetMethodArguments();
@@ -2269,7 +2269,7 @@ namespace Ihc.Tests
             // Don't modify argument - it's already at default
 
             int eventFireCount = 0;
-            operation.ArgumentChanged += (sender, e) => { eventFireCount++; };
+            operation.MethodArgumentChanged += (sender, e) => { eventFireCount++; };
 
             // Act - reset (should not fire since already at default)
             operation.ResetMethodArguments();
