@@ -475,7 +475,7 @@ namespace Ihc.Tests
             Assert.That(powerdownMessageControl, Is.Not.Null);
             Assert.That(relaySmsControl, Is.Not.Null);
 
-            // Verify all fields exist (actual value sync depends on ArgumentChanged event firing correctly)
+            // Verify all fields exist (actual value sync depends on MethodArgumentChanged event firing correctly)
             Assert.That(powerupMessageControl!.Value, Is.Not.Null,
                 "PowerupMessage field should exist");
             Assert.That(powerdownMessageControl!.Value, Is.Not.Null,
@@ -606,17 +606,17 @@ namespace Ihc.Tests
             Assert.That(labAppService, Is.Not.Null);
 
             int argumentChangedCount = 0;
-            labAppService!.SelectedOperation.ArgumentChanged += (s, e) => argumentChangedCount++;
+            labAppService!.SelectedOperation.MethodArgumentChanged += (s, e) => argumentChangedCount++;
 
             // Act - Change value programmatically via LabAppService
             labAppService.SelectedOperation.SetMethodArgument(0, "test_no_loop");
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
             Dispatcher.UIThread.RunJobs();
 
-            // Assert - ArgumentChanged should fire exactly once
-            // GUI update should not trigger another ArgumentChanged event
+            // Assert - MethodArgumentChanged should fire exactly once
+            // GUI update should not trigger another MethodArgumentChanged event
             Assert.That(argumentChangedCount, Is.EqualTo(1),
-                "ArgumentChanged should fire exactly once without circular updates");
+                "MethodArgumentChanged should fire exactly once without circular updates");
         }
 
         /// <summary>

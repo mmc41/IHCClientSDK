@@ -1,7 +1,9 @@
 using System;
+using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using IhcLab;
+using Microsoft.Extensions.Logging;
 
 namespace Ihc.App;
 
@@ -11,6 +13,13 @@ namespace Ihc.App;
 /// </summary>
 public class ParameterControlCoordinator
 {
+    private readonly ILogger<ParameterControlCoordinator> logger;
+
+    public ParameterControlCoordinator(ILogger<ParameterControlCoordinator> logger)
+    {
+        this.logger = logger;
+    }
+
     /// <summary>
     /// Sets up parameter controls for an operation asynchronously.
     /// Creates parameter control controls, waits for layout completion, and subscribes to events.
@@ -24,15 +33,19 @@ public class ParameterControlCoordinator
         LabAppService.OperationItem operation,
         EventHandler? valueChangedHandler)
     {
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(ParameterControlCoordinator) + "." + nameof(SetupControlsAsync), ActivityKind.Internal);
+
         if (parametersPanel == null)
             throw new ArgumentNullException(nameof(parametersPanel));
         if (operation == null)
             throw new ArgumentNullException(nameof(operation));
 
         var operationMetadata = operation.OperationMetadata;
+        activity?.SetTag("operation.name", operationMetadata.Name);
 
         // Create parameter controls with default values
         OperationSupport.SetUpParameterControls(parametersPanel, operationMetadata);
+        logger.LogDebug("Set up {ParameterCount} parameter control(s) for operation {OperationName}", operationMetadata.Parameters.Length, operationMetadata.Name);
 
         // Wait for Avalonia layout pass to complete so controls are fully initialized
         // and attached to the visual tree before we try to restore values or subscribe to events
@@ -54,6 +67,8 @@ public class ParameterControlCoordinator
     /// <exception cref="ArgumentNullException">Thrown when parent or handler is null.</exception>
     public void SubscribeToValueChanges(Panel parent, EventHandler handler)
     {
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(ParameterControlCoordinator) + "." + nameof(SubscribeToValueChanges), ActivityKind.Internal);
+
         if (parent == null)
             throw new ArgumentNullException(nameof(parent));
         if (handler == null)

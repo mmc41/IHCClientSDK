@@ -10,8 +10,10 @@ namespace IhcLab.ParameterControls;
 /// Implements chain of responsibility pattern to select the appropriate strategy for a given field type.
 /// </summary>
 /// <remarks>
-/// Strategies are evaluated in registration order, so register more specific strategies before general ones.
-/// Example order: Array → Enum → Numeric → String → ComplexType
+/// Strategies are evaluated in registration order and the first whose <see cref="IParameterControlStrategy.CanHandle"/>
+/// returns true wins. The concrete strategies are mutually exclusive (each handles a disjoint set of types), so their
+/// relative order is irrelevant; the only ordering constraint is that the catch-all
+/// <see cref="Strategies.ComplexTypeParameterStrategy"/> matches any type and must therefore be registered last.
 ///
 /// The registry is built once (the singleton via <see cref="Lazy{T}"/>, or directly with <c>new</c> in tests)
 /// and then only read, all on the Avalonia UI thread, so no synchronization is needed.
@@ -84,32 +86,30 @@ public class ParameterControlRegistry
 
     /// <summary>
     /// Creates a new registry with default strategies registered.
-    /// Registration order matters - more specific types first, general types last.
+    /// Registration order only matters for the catch-all, which must be registered last.
     /// </summary>
     /// <returns>A new registry instance with default strategies</returns>
     private static ParameterControlRegistry CreateDefaultRegistry()
     {
         var registry = new ParameterControlRegistry();
 
-        // Register strategies in order of specificity (most specific first)
-        // IMPORTANT: Order matters! More specific strategies must be registered before general ones.
+        // Concrete strategies handle disjoint type sets, so their relative order does not matter; only the
+        // catch-all must come last (see the class remarks).
 
-        // Phase 1 strategies (basic types)
+        // Scalar types
         registry.Register(new Strategies.StringParameterStrategy());
         registry.Register(new Strategies.BoolParameterStrategy());
         registry.Register(new Strategies.NumericParameterStrategy());
 
-        // Phase 2 strategies (existing types - specific to general)
-        registry.Register(new Strategies.FileParameterStrategy());           // Check before complex types
-        registry.Register(new Strategies.ResourceValueParameterStrategy());  // Specific type
-        registry.Register(new Strategies.EnumParameterStrategy());           // Enums before complex
-        registry.Register(new Strategies.DateTimeParameterStrategy());       // DateTime/DateTimeOffset
+        // Specialized types
+        registry.Register(new Strategies.FileParameterStrategy());
+        registry.Register(new Strategies.ResourceValueParameterStrategy());
+        registry.Register(new Strategies.EnumParameterStrategy());
+        registry.Register(new Strategies.DateTimeParameterStrategy());
+        registry.Register(new Strategies.ArrayParameterStrategy());
 
-        // Phase 3 strategies (new functionality)
-        registry.Register(new Strategies.ArrayParameterStrategy());          // Arrays (NEW - before complex!)
-
-        // Catch-all strategy (MUST be last!)
-        registry.Register(new Strategies.ComplexTypeParameterStrategy());    // Catch-all for SubTypes (last!)
+        // Catch-all (must be registered last)
+        registry.Register(new Strategies.ComplexTypeParameterStrategy());
 
         return registry;
     }

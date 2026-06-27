@@ -22,6 +22,9 @@ dotnet test tests/safe_integration_tests/safe_integration_tests.csproj
 # Run IHC Lab GUI tests (headless Avalonia UI tests)
 dotnet test tests/safe_lab_tests/safe_lab_tests.csproj
 
+# Run controller-free unit tests (no Avalonia headless app, no active controller)
+dotnet test tests/safe_unit_tests/safe_unit_tests.csproj
+
 # Run tests with detailed output
 dotnet test tests/safe_integration_tests/safe_integration_tests.csproj --verbosity detailed
 
@@ -60,6 +63,7 @@ This is a .NET 9.0 mono-repository containing an unofficial SDK for IHC (Intelli
 - `ihcclient/` - Core SDK library with high-level API wrapper around SOAP services
 - `tests/safe_integration_tests/` - NUnit test suite for SDK integration tests (safe to run against active controllers)
 - `tests/safe_lab_tests/` - NUnit test suite for IHC Lab GUI tests (headless Avalonia UI tests with diagnostic features)
+- `tests/safe_unit_tests/` - NUnit test suite for controller-free unit tests (no Avalonia headless app; mocks IHC services with FakeItEasy)
 - `examples/ihcclient_example1/` & `examples/ihcclient_example2/` - Console application examples
 - `utilities/ihc_project_io_extractor/` - Utility to generate C# constants from IHC project files
 - `utilities/ihc_httpproxyrecorder/` - HTTP proxy for debugging/investigating IHC API calls
@@ -164,6 +168,7 @@ Before running any code that connects to an IHC controller:
 ### Test Suites
 - **safe_integration_tests** - SDK integration tests (safe to run against active controllers)
 - **safe_lab_tests** - Headless Avalonia UI tests for IHC Lab application with advanced diagnostic capabilities (using fake sevices instead of active controller)
+- **safe_unit_tests** - Controller-free unit tests for SDK and Lab business logic (no Avalonia headless app; mocks IHC services with FakeItEasy). UI control-construction tests belong in safe_lab_tests instead.
 
 ### safe_lab_tests Diagnostic Features
 

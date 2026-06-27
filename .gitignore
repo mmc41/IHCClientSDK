@@ -14,8 +14,8 @@ tmp
 .aiworkdata
 
 # Exclude IHC project files.
-*.vis
+.\*.vis
 
 # Important to exclude - user config file - contains secrets.
 ihcsettings.json
-mcp.json
+.mcp.json

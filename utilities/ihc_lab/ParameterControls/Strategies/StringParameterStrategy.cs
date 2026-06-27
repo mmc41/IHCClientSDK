@@ -76,6 +76,7 @@ public class StringParameterStrategy : IParameterControlStrategy
             throw new InvalidOperationException(
                 $"Expected TextBox control but got {control.GetType().Name}");
 
+        // Whitespace is intentionally preserved (no .Trim()): the value must round-trip exactly as entered.
         textBox.Text = value?.ToString() ?? string.Empty;
     }
 }

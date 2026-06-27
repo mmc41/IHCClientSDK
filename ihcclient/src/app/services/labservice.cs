@@ -171,7 +171,7 @@ namespace Ihc.App
         }
 
         /// <summary>
-        /// Provides data for the ArgumentChanged event.
+        /// Provides data for the MethodArgumentChanged event.
         /// Contains information about which method argument changed, including its index and old/new values.
         /// </summary>
         public class MethodArgumentChangedEventArgs : EventArgs
@@ -320,7 +320,7 @@ namespace Ihc.App
             /// Provides the index of the changed argument along with its old and new values.
             /// This event enables two-way synchronization between the backend and GUI layers.
             /// </summary>
-            public event EventHandler<MethodArgumentChangedEventArgs> ArgumentChanged;
+            public event EventHandler<MethodArgumentChangedEventArgs> MethodArgumentChanged;
 
             /// <summary>
             /// Creates a new OperationItem instance with default arguments.
@@ -473,12 +473,12 @@ namespace Ihc.App
             }
 
             /// <summary>
-            /// Raises the ArgumentChanged event with the specified event data.
+            /// Raises the MethodArgumentChanged event with the specified event data.
             /// </summary>
             /// <param name="e">Event data containing the index, old value, and new value.</param>
             protected virtual void OnMethodArgumentChanged(MethodArgumentChangedEventArgs e)
             {
-                ArgumentChanged?.Invoke(this, e);
+                MethodArgumentChanged?.Invoke(this, e);
             }
 
             /// <summary>

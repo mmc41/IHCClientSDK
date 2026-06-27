@@ -107,7 +107,7 @@ dotnet test tests/safe_lab_tests/safe_lab_tests.csproj --verbosity detailed
 - Parameter control setup and lifecycle
 - Bidirectional synchronization (GUI ↔ LabAppService)
 - Value persistence across operation switches
-- Event subscription for DynField controls
+- Event subscription for parameter strategy controls
 
 ### TwoWaySyncTests (8 tests)
 - Real-time GUI → LabAppService synchronization

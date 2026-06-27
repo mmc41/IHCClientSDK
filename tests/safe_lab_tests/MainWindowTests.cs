@@ -382,11 +382,11 @@ namespace Ihc.Tests
 
         /// <summary>
         /// Test 5: Verifies that LabAppService changes update GUI immediately.
-        /// Protects: MainWindow.axaml.cs lines 741-774 (OnLabAppServiceArgumentChanged event handler)
+        /// Protects: MainWindow.axaml.cs lines 741-774 (OnLabAppServiceMethodArgumentChanged event handler)
         /// </summary>
         [AvaloniaTest]
         [CaptureScreenshotOnFailure]
-        public async Task OnLabAppServiceArgumentChanged_UpdatesGuiImmediately()
+        public async Task OnLabAppServiceMethodArgumentChanged_UpdatesGuiImmediately()
         {
             // Arrange
             var window = await SetupMainWindowAsync();

@@ -132,10 +132,11 @@ public class ComplexTypeParameterStrategy : IParameterControlStrategy
         }
 
         // Construct the complex type from the extracted sub-values. Two record shapes are supported:
-        //  1. positional/primary-constructor records (e.g. IhcUser, SmsModemSettings) whose constructor
-        //     parameter count matches the sub-value count -> construct positionally; and
-        //  2. property-only records (e.g. NetworkSettings, TimeManagerSettings) that expose only a
-        //     parameterless constructor -> construct empty, then assign each value to its property by name.
+        //  1. positional/primary-constructor records whose constructor parameter count matches the sub-value
+        //     count -> construct positionally; and
+        //  2. property-only records (e.g. IhcUser, SmsModemSettings, NetworkSettings, TimeManagerSettings) that
+        //     expose only a parameterless constructor -> construct empty, then assign each value to its property
+        //     by name. This by-name path is the norm for the high-level models.
         // By-name assignment is also more robust than positional binding, which silently relies on the
         // GetProperties() order matching the constructor order. Reflection SetValue works on init setters.
         try

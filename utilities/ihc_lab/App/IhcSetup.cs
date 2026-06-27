@@ -400,16 +400,17 @@ public class IhcFakeSetup
 
         // Mock GetSmsModemSettings operation
         A.CallTo(() => service.GetSmsModemSettings())
-            .Returns(Task.FromResult(new SmsModemSettings(
-                "",  // PowerupMessage
-                "",  // PowerdownMessage
-                "",  // PowerdownNumber
-                false,  // RelaySMS
-                false,  // ForceStandAloneMode
-                false,  // SendLowBatteryNotification
-                false,  // SendLowBatteryNotificationLanguage
-                false   // SendLEDDimmerErrorNotification
-            )));
+            .Returns(Task.FromResult(new SmsModemSettings
+            {
+                PowerupMessage = "",
+                PowerdownMessage = "",
+                PowerdownNumber = "",
+                RelaySMS = false,
+                ForceStandAloneMode = false,
+                SendLowBatteryNotification = false,
+                SendLowBatteryNotificationLanguage = false,
+                SendLEDDimmerErrorNotification = false
+            }));
 
         return service;
     }

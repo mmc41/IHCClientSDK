@@ -128,7 +128,7 @@ public partial class MainWindow : Window
         // Initialize extracted coordinators
         var loggerFactory = Program.loggerFactory ?? NullLoggerFactory.Instance;
         this.parameterSyncCoordinator = new ParameterSyncCoordinator(loggerFactory.CreateLogger<ParameterSyncCoordinator>());
-        this.parameterControlCoordinator = new ParameterControlCoordinator();
+        this.parameterControlCoordinator = new ParameterControlCoordinator(loggerFactory.CreateLogger<ParameterControlCoordinator>());
 
         try
         {
@@ -363,7 +363,7 @@ public partial class MainWindow : Window
                         await parameterControlCoordinator.SetupControlsAsync(
                             ParametersPanel,
                             operationItem,
-                            OnDynFieldValueChanged);
+                            OnParameterControlValueChanged);
 
                         // Initialize any still-uninitialized (null) service arguments from the freshly created
                         // GUI controls. This gives complex reference-type parameters a valid default instance
@@ -383,15 +383,15 @@ public partial class MainWindow : Window
                             logger.LogWarning(ex, "Failed to restore argument values from LabAppService for operation {OperationName}", operationItem.OperationMetadata.Name);
                         }
 
-                        // Unsubscribe from previous operation's ArgumentChanged event
+                        // Unsubscribe from previous operation's MethodArgumentChanged event
                         if (currentOperationItem != null)
                         {
-                            currentOperationItem.ArgumentChanged -= OnLabAppServiceArgumentChanged;
+                            currentOperationItem.MethodArgumentChanged -= OnLabAppServiceMethodArgumentChanged;
                         }
 
-                        // Subscribe to ArgumentChanged events for LabAppService → GUI synchronization
+                        // Subscribe to MethodArgumentChanged events for LabAppService → GUI synchronization
                         currentOperationItem = operationItem;
-                        currentOperationItem.ArgumentChanged += OnLabAppServiceArgumentChanged;
+                        currentOperationItem.MethodArgumentChanged += OnLabAppServiceMethodArgumentChanged;
                     }
                     else
                     {
@@ -415,7 +415,7 @@ public partial class MainWindow : Window
         // Unsubscribe from LabAppService events
         if (currentOperationItem != null)
         {
-            currentOperationItem.ArgumentChanged -= OnLabAppServiceArgumentChanged;
+            currentOperationItem.MethodArgumentChanged -= OnLabAppServiceMethodArgumentChanged;
             currentOperationItem = null;
         }
 
@@ -583,10 +583,10 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Handles ArgumentChanged events from LabAppService.
+    /// Handles MethodArgumentChanged events from LabAppService.
     /// Updates GUI controls when LabAppService arguments are changed programmatically.
     /// </summary>
-    private void OnLabAppServiceArgumentChanged(object? sender, LabAppService.MethodArgumentChangedEventArgs e)
+    private void OnLabAppServiceMethodArgumentChanged(object? sender, LabAppService.MethodArgumentChangedEventArgs e)
     {
         if (labAppService == null)
             return;
@@ -611,7 +611,7 @@ public partial class MainWindow : Window
     /// Handles ValueChanged events from strategy controls.
     /// Immediately syncs the changed value to LabAppService.
     /// </summary>
-    private void OnDynFieldValueChanged(object? sender, EventArgs e)
+    private void OnParameterControlValueChanged(object? sender, EventArgs e)
     {
         if (labAppService == null || sender is not Control control)
             return;
