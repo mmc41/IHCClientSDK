@@ -365,23 +365,14 @@ public partial class MainWindow : Window
                             operationItem,
                             OnDynFieldValueChanged);
 
-                        // Initialize LabAppService with default values from GUI controls
-                        // This ensures complex parameters have valid default instances (not null)
-                        // Note: This may fail for nullable parameters with empty/null values, which is expected
-                        // as it prevents overwriting previously saved values
-                        try
-                        {
-                            parameterSyncCoordinator.SyncToService(ParametersPanel, operationItem);
-                        }
-                        catch (Exception ex)
-                        {
-                            // Log as Debug since this is expected when controls have empty values
-                            // The exception prevents overwriting saved values, which is desirable behavior
-                            logger.LogDebug(ex, "Skipped syncing empty default values for operation {OperationName}", operationItem.OperationMetadata.Name);
-                        }
+                        // Initialize any still-uninitialized (null) service arguments from the freshly created
+                        // GUI controls. This gives complex reference-type parameters a valid default instance
+                        // instead of null, while deliberately NOT touching arguments that already hold a value -
+                        // so values entered on a previous visit to this operation survive and are restored below
+                        // rather than being overwritten with control defaults.
+                        parameterSyncCoordinator.InitializeUninitializedArguments(ParametersPanel, operationItem);
 
-                        // Restore previously set argument values from LabAppService (if any exist)
-                        // This overwrites defaults with any values that were set in a previous invocation
+                        // Restore previously set argument values from LabAppService into the GUI (argument persistence).
                         try
                         {
                             parameterSyncCoordinator.SyncFromService(ParametersPanel, operationItem);
@@ -604,13 +595,11 @@ public partial class MainWindow : Window
         if (e.Index < 0 || e.Index >= operationMetadata.Parameters.Length)
             return;
 
-        var parameter = operationMetadata.Parameters[e.Index];
-
         // Suppress the GUI change events this update raises so they don't echo straight back to the service.
         isSyncingFromService = true;
         try
         {
-            parameterSyncCoordinator.UpdateGuiFromParameter(ParametersPanel, parameter, e.NewValue, e.Index.ToString());
+            parameterSyncCoordinator.UpdateGuiFromParameter(ParametersPanel, e.NewValue, e.Index.ToString());
         }
         finally
         {
@@ -651,32 +640,12 @@ public partial class MainWindow : Window
 
             var parameter = operationMetadata.Parameters[parameterIndex];
 
-            // For simple types, directly set the argument value
-            if (parameter.IsSimple || parameter.IsFile)
-            {
-                // Extract value using strategy
-                var metadata = control.Tag as OperationSupport.ControlMetadata;
-                object? value;
-                if (metadata != null)
-                {
-                    value = metadata.Strategy.ExtractValue(control, metadata.Field);
-                }
-                else
-                {
-                    // Fallback if metadata is missing (shouldn't happen)
-                    var strategy = ParameterControlRegistry.Instance.GetStrategy(parameter);
-                    value = strategy.ExtractValue(control, parameter);
-                }
-
-                labAppService.SelectedOperation.SetMethodArgument(parameterIndex, value);
-            }
-            else
-            {
-                // For complex types, reconstruct the ENTIRE object from ALL controls
-                // This ensures all sub-fields are captured, not just the one that changed
-                var reconstructedValue = OperationSupport.GetFieldValue(ParametersPanel, parameter, parameterIndex.ToString());
-                labAppService.SelectedOperation.SetMethodArgument(parameterIndex, reconstructedValue);
-            }
+            // Extract the value via the control's own strategy. GetFieldValue locates the control, reads the
+            // strategy from its ControlMetadata tag (falling back to the registry), and for complex types
+            // reconstructs the entire object from all sub-controls - so simple, file and complex parameters
+            // are all handled uniformly here, matching the service->GUI direction in ParameterSyncCoordinator.
+            var value = OperationSupport.GetFieldValue(ParametersPanel, parameter, parameterIndex.ToString());
+            labAppService.SelectedOperation.SetMethodArgument(parameterIndex, value);
         }
         catch (Exception ex)
         {

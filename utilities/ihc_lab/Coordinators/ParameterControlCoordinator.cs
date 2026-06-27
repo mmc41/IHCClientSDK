@@ -1,7 +1,5 @@
 using System;
-using System.Linq;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Threading;
 using IhcLab;
 
@@ -71,14 +69,15 @@ public class ParameterControlCoordinator
     {
         foreach (var child in parent.Children)
         {
-            if (child is Control control && control.Tag is OperationSupport.ControlMetadata)
+            if (child is Control control && control.Tag is OperationSupport.ControlMetadata metadata)
             {
-                // Subscribe to control-specific events
-                // This catches the actual strategy control (TextBox, NumericUpDown, etc.)
-                SubscribeToControlEvent(control, handler);
+                // Let the control's own strategy wire its value-changed event(s). This keeps the
+                // "which event signals an edit" knowledge inside each strategy rather than in a type
+                // switch here, so a new strategy only has to implement SubscribeToValueChanged.
+                metadata.Strategy.SubscribeToValueChanged(control, handler);
 
-                // Also recurse into it if it's a panel (for complex types)
-                // Complex parameters have nested controls that also need event subscriptions
+                // Complex parameters have nested controls (each carrying their own metadata) that also
+                // need subscribing, so recurse into panel controls.
                 if (control is Panel controlAsPanel)
                 {
                     SubscribeRecursive(controlAsPanel, handler);
@@ -86,44 +85,9 @@ public class ParameterControlCoordinator
             }
             else if (child is Panel childPanel)
             {
-                // Recursively subscribe to nested panels
-                // This will descend into the row StackPanels to find the actual controls
+                // Descend into layout panels (e.g. the row StackPanels) to reach the actual controls.
                 SubscribeRecursive(childPanel, handler);
             }
-        }
-    }
-
-    /// <summary>
-    /// Subscribes to the appropriate event for a strategy-created control.
-    /// </summary>
-    private void SubscribeToControlEvent(Control control, EventHandler handler)
-    {
-        switch (control)
-        {
-            case TextBox textBox:
-                textBox.TextChanged += (s, e) => handler(s, EventArgs.Empty);
-                break;
-            case NumericUpDown numeric:
-                numeric.ValueChanged += (s, e) => handler(s, EventArgs.Empty);
-                break;
-            case ComboBox combo:
-                combo.SelectionChanged += (s, e) => handler(s, EventArgs.Empty);
-                break;
-            case DatePicker datePicker:
-                datePicker.SelectedDateChanged += (s, e) => handler(s, EventArgs.Empty);
-                break;
-            case StackPanel stackPanel when stackPanel.Children.OfType<ToggleButton>().Any():
-                // Special case: BoolParameterStrategy creates a StackPanel with RadioButtons
-                // Subscribe to each RadioButton's IsCheckedChanged event
-                foreach (var radioButton in stackPanel.Children.OfType<ToggleButton>())
-                {
-                    radioButton.IsCheckedChanged += (s, e) =>
-                    {
-                        // Pass the StackPanel (which has the metadata) as sender, not the RadioButton
-                        handler(stackPanel, EventArgs.Empty);
-                    };
-                }
-                break;
         }
     }
 }

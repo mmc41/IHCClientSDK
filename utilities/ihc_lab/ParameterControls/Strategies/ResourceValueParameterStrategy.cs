@@ -36,7 +36,7 @@ public class ResourceValueParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Creates a StackPanel with NumericUpDown for ResourceID and ComboBox for ValueKind.
     /// </summary>
-    public ControlCreationResult CreateControl(FieldMetaData field, string controlName)
+    public Control CreateControl(FieldMetaData field, string controlName)
     {
         if (!CanHandle(field))
             throw new NotSupportedException(
@@ -88,10 +88,16 @@ public class ResourceValueParameterStrategy : IParameterControlStrategy
             ToolTip.SetTip(stackPanel, field.Description);
         }
 
-        return new ControlCreationResult
-        {
-            Control = stackPanel
-        };
+        return stackPanel;
+    }
+
+    /// <summary>
+    /// ResourceValue editing is not yet wired for live GUI-&gt;service sync (see remarks), so there is no
+    /// value-changed event to subscribe.
+    /// </summary>
+    public void SubscribeToValueChanged(Control control, EventHandler handler)
+    {
+        // Intentionally a no-op: see the deferred-wiring TODO on this strategy.
     }
 
     /// <summary>
@@ -103,20 +109,12 @@ public class ResourceValueParameterStrategy : IParameterControlStrategy
             throw new InvalidOperationException(
                 $"Expected StackPanel control but got {control.GetType().Name}");
 
-        // Find ResourceID control
-        var resourceIdControl = stackPanel.Children
-            .OfType<NumericUpDown>()
-            .FirstOrDefault(c => c.Name?.EndsWith(".ResourceID") == true);
-
+        var resourceIdControl = FindResourceIdControl(stackPanel);
         if (resourceIdControl == null)
             throw new InvalidOperationException(
                 "Could not find ResourceID NumericUpDown control");
 
-        // Find ValueKind control
-        var valueKindControl = stackPanel.Children
-            .OfType<ComboBox>()
-            .FirstOrDefault(c => c.Name?.EndsWith(".ValueKind") == true);
-
+        var valueKindControl = FindValueKindControl(stackPanel);
         if (valueKindControl == null)
             throw new InvalidOperationException(
                 "Could not find ValueKind ComboBox control");
@@ -152,27 +150,23 @@ public class ResourceValueParameterStrategy : IParameterControlStrategy
             throw new InvalidOperationException(
                 $"Expected StackPanel control but got {control.GetType().Name}");
 
+        var resourceIdControl = FindResourceIdControl(stackPanel);
+        var valueKindControl = FindValueKindControl(stackPanel);
+
         if (value is not ResourceValue resourceValue)
         {
-            // Set defaults
-            SetDefaultValues(stackPanel);
+            // No ResourceValue to display: reset to defaults (ResourceID 0, first ValueKind).
+            if (resourceIdControl != null)
+                resourceIdControl.Value = 0;
+            if (valueKindControl != null)
+                valueKindControl.SelectedIndex = 0;
             return;
         }
-
-        // Find ResourceID control
-        var resourceIdControl = stackPanel.Children
-            .OfType<NumericUpDown>()
-            .FirstOrDefault(c => c.Name?.EndsWith(".ResourceID") == true);
 
         if (resourceIdControl != null)
         {
             resourceIdControl.Value = resourceValue.ResourceID;
         }
-
-        // Find ValueKind control
-        var valueKindControl = stackPanel.Children
-            .OfType<ComboBox>()
-            .FirstOrDefault(c => c.Name?.EndsWith(".ValueKind") == true);
 
         if (valueKindControl != null && valueKindControl.ItemsSource != null)
         {
@@ -188,28 +182,22 @@ public class ResourceValueParameterStrategy : IParameterControlStrategy
     }
 
     /// <summary>
-    /// Sets default values into the controls.
+    /// Finds the ResourceID NumericUpDown among the strategy's child controls.
     /// </summary>
-    private static void SetDefaultValues(StackPanel stackPanel)
+    private static NumericUpDown? FindResourceIdControl(StackPanel stackPanel)
     {
-        // Find ResourceID control and set to 0
-        var resourceIdControl = stackPanel.Children
+        return stackPanel.Children
             .OfType<NumericUpDown>()
             .FirstOrDefault(c => c.Name?.EndsWith(".ResourceID") == true);
+    }
 
-        if (resourceIdControl != null)
-        {
-            resourceIdControl.Value = 0;
-        }
-
-        // Find ValueKind control and select first item
-        var valueKindControl = stackPanel.Children
+    /// <summary>
+    /// Finds the ValueKind ComboBox among the strategy's child controls.
+    /// </summary>
+    private static ComboBox? FindValueKindControl(StackPanel stackPanel)
+    {
+        return stackPanel.Children
             .OfType<ComboBox>()
             .FirstOrDefault(c => c.Name?.EndsWith(".ValueKind") == true);
-
-        if (valueKindControl != null)
-        {
-            valueKindControl.SelectedIndex = 0;
-        }
     }
 }

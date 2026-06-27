@@ -120,7 +120,7 @@ public class ComplexTypeParameterStrategyTests
     /// </summary>
     private object? RoundTrip(FieldMetaData field, object knownValue)
     {
-        var control = _strategy.CreateControl(field, "Param0").Control;
+        var control = _strategy.CreateControl(field, "Param0");
         _strategy.SetValue(control, knownValue, field);
         return _strategy.ExtractValue(control, field);
     }

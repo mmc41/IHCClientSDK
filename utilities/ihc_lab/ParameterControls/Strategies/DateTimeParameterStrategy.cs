@@ -21,7 +21,7 @@ public class DateTimeParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Creates a DatePicker control for date selection.
     /// </summary>
-    public ControlCreationResult CreateControl(FieldMetaData field, string controlName)
+    public Control CreateControl(FieldMetaData field, string controlName)
     {
         if (!CanHandle(field))
             throw new NotSupportedException(
@@ -40,10 +40,16 @@ public class DateTimeParameterStrategy : IParameterControlStrategy
             ToolTip.SetTip(datePicker, field.Description);
         }
 
-        return new ControlCreationResult
-        {
-            Control = datePicker
-        };
+        return datePicker;
+    }
+
+    /// <summary>
+    /// Subscribes to the DatePicker's SelectedDateChanged event.
+    /// </summary>
+    public void SubscribeToValueChanged(Control control, EventHandler handler)
+    {
+        if (control is DatePicker datePicker)
+            datePicker.SelectedDateChanged += (s, e) => handler(datePicker, EventArgs.Empty);
     }
 
     /// <summary>

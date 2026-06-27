@@ -774,5 +774,114 @@ namespace Ihc.Tests
             Assert.That(addedUser.Group, Is.EqualTo(IhcUserGroup.Administrators), "Group should match");
             Assert.That(addedUser.Project, Is.EqualTo("TestProject"), "Project should match");
         }
+
+        /// <summary>
+        /// Regression test for the argument-persistence bug: switching away from and back to an operation
+        /// whose parameters all extract to non-null defaults (here three ints) used to overwrite the saved
+        /// values with the freshly created control defaults, because the pre-restore sync ran unconditionally.
+        /// The string-based persistence test above only passed because empty string parameters threw during
+        /// that sync; an all-numeric operation exposes the bug directly.
+        /// </summary>
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
+        public async Task ValuePersistence_NumericOnlyOperation_RestoresPreviousValues()
+        {
+            // Arrange - Create, initialize, and show the main window
+            var window = await SetupMainWindowAsync();
+
+            var servicesComboBox = window.FindControl<ComboBox>(MainWindowNames.ServicesComboBox);
+            var operationsComboBox = window.FindControl<ComboBox>(MainWindowNames.OperationsComboBox);
+            var parametersPanel = window.FindControl<StackPanel>(MainWindowNames.ParametersPanel);
+
+            // Select ControllerService
+            int controllerServiceIndex = FindServiceIndexByName(servicesComboBox!, "ControllerService");
+            Assert.That(controllerServiceIndex, Is.GreaterThanOrEqualTo(0), "ControllerService should exist");
+            servicesComboBox!.SelectedIndex = controllerServiceIndex;
+            Dispatcher.UIThread.RunJobs();
+
+            // Select GetIHCProjectSegment (parameters: int index, int major, int minor - all numeric, so every
+            // default extracts to a non-null value, which is the case that triggered the overwrite bug).
+            int opIndex = FindOperationIndexByName(operationsComboBox!, "GetIHCProjectSegment");
+            Assert.That(opIndex, Is.GreaterThanOrEqualTo(0), "GetIHCProjectSegment operation should exist");
+            operationsComboBox!.SelectedIndex = opIndex;
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
+            Dispatcher.UIThread.RunJobs();
+
+            // Set the first numeric parameter (index) to a distinctive non-default value
+            var indexControl = FindParameterControl(parametersPanel!, "0");
+            Assert.That(indexControl, Is.Not.Null, "Index parameter control should exist");
+            indexControl!.SimulateUserChange(42);
+            Dispatcher.UIThread.RunJobs();
+
+            var labAppService = window.LabAppService;
+            Assert.That(labAppService, Is.Not.Null);
+            Assert.That(labAppService!.SelectedOperation.GetMethodArgumentsAsArray()[0], Is.EqualTo(42),
+                "Sanity check: the GUI change should have synced to the service argument before switching");
+
+            // Act - Switch to a different (parameter-less) operation, then back
+            int otherOpIndex = FindOperationIndexByName(operationsComboBox!, "GetIHCProjectSegmentationSize");
+            Assert.That(otherOpIndex, Is.GreaterThanOrEqualTo(0), "GetIHCProjectSegmentationSize operation should exist");
+            operationsComboBox.SelectedIndex = otherOpIndex;
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
+            Dispatcher.UIThread.RunJobs();
+
+            operationsComboBox.SelectedIndex = opIndex;
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
+            Dispatcher.UIThread.RunJobs();
+
+            // Assert - the previously entered value must survive (was overwritten with default 0 before the fix)
+            Assert.That(labAppService.SelectedOperation.GetMethodArgumentsAsArray()[0], Is.EqualTo(42),
+                "Numeric argument should persist when switching away from and back to the operation");
+
+            var restoredControl = FindParameterControl(parametersPanel!, "0");
+            Assert.That(restoredControl, Is.Not.Null);
+            Assert.That(restoredControl!.Value, Is.EqualTo(42m),
+                "GUI numeric control should show the restored value");
+        }
+
+        /// <summary>
+        /// Regression test for empty-string handling: clearing a string parameter must sync an empty string
+        /// to the service argument, not null. Previously the strategy converted empty text to null, which
+        /// was both inconsistent and used to drive control flow via exceptions in the sync path.
+        /// </summary>
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
+        public async Task GuiToLabAppService_ClearedStringParameter_SyncsEmptyStringNotNull()
+        {
+            // Arrange - Create, initialize, and show the main window
+            var window = await SetupMainWindowAsync();
+
+            var servicesComboBox = window.FindControl<ComboBox>(MainWindowNames.ServicesComboBox);
+            var operationsComboBox = window.FindControl<ComboBox>(MainWindowNames.OperationsComboBox);
+            var parametersPanel = window.FindControl<StackPanel>(MainWindowNames.ParametersPanel);
+
+            // Select AuthenticationService and Authenticate (3-parameter overload, index 0 = string username)
+            int authServiceIndex = FindServiceIndexByName(servicesComboBox!, AuthenticationServiceName);
+            servicesComboBox!.SelectedIndex = authServiceIndex;
+            Dispatcher.UIThread.RunJobs();
+
+            int authenticateIndex = FindOperationIndexByName(operationsComboBox!, "Authenticate", parameterCount: 3);
+            Assert.That(authenticateIndex, Is.GreaterThanOrEqualTo(0), "Authenticate operation with 3 parameters should exist");
+            operationsComboBox!.SelectedIndex = authenticateIndex;
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
+            Dispatcher.UIThread.RunJobs();
+
+            var usernameControl = FindParameterControl(parametersPanel!, "0");
+            Assert.That(usernameControl, Is.Not.Null, "Username control should exist");
+
+            // Act - set a value, then clear it (simulating the user emptying the field)
+            usernameControl!.SimulateUserChange("someuser");
+            Dispatcher.UIThread.RunJobs();
+
+            usernameControl.SimulateUserChange("");
+            Dispatcher.UIThread.RunJobs();
+
+            // Assert - the service argument should be an empty string, not null
+            var labAppService = window.LabAppService;
+            Assert.That(labAppService, Is.Not.Null);
+            var arguments = labAppService!.SelectedOperation.GetMethodArgumentsAsArray();
+            Assert.That(arguments[0], Is.EqualTo(string.Empty),
+                "Clearing a string parameter should sync an empty string to the service, not null.");
+        }
     }
 }

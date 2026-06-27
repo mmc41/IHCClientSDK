@@ -128,39 +128,6 @@ public class IhcFakeSetup
 {
     private static T CreateEmptyFake<T>() where T : class => A.Fake<T>();
 
-    // Stateful storage for UserManagerService mock
-    // Using ConcurrentDictionary for thread-safe username-based lookups
-    private static readonly ConcurrentDictionary<string, IhcUser> mockUsers = new ConcurrentDictionary<string, IhcUser>(
-        new Dictionary<string, IhcUser>
-        {
-            ["admin"] = new IhcUser
-            {
-                Username = "admin",
-                Password = "admin123",
-                Email = "admin@mock.com",
-                Firstname = "Admin",
-                Lastname = "User",
-                Phone = "+4512345678",
-                Group = IhcUserGroup.Administrators,
-                Project = "Mock Project",
-                CreatedDate = new DateTimeOffset(2024, 1, 1, 10, 0, 0, TimeSpan.Zero),
-                LoginDate = new DateTimeOffset(2025, 11, 1, 9, 30, 0, TimeSpan.Zero)
-            },
-            ["testuser"] = new IhcUser
-            {
-                Username = "testuser",
-                Password = "test123",
-                Email = "test@mock.com",
-                Firstname = "Test",
-                Lastname = "User",
-                Phone = "+4587654321",
-                Group = IhcUserGroup.Users,
-                Project = "Mock Project",
-                CreatedDate = new DateTimeOffset(2024, 6, 15, 14, 30, 0, TimeSpan.Zero),
-                LoginDate = new DateTimeOffset(2025, 11, 5, 11, 15, 0, TimeSpan.Zero)
-            }
-        });
-
     public static IAuthenticationService SetupAuthenticationService(IhcSettings settings)
     {
         var service = A.Fake<IAuthenticationService>();
@@ -284,6 +251,41 @@ public class IhcFakeSetup
     public static IUserManagerService SetupUserManagerService(IhcSettings settings)
     {
         var service = A.Fake<IUserManagerService>();
+
+        // Per-call user store: a fresh, independently seeded dictionary captured by the lambdas below as a
+        // closure. This keeps each fake service instance's state isolated, so AddUser/RemoveUser/UpdateUser
+        // mutations never leak across fake instances or across test cases (a static store would leak).
+        // ConcurrentDictionary keeps the username-based lookups thread-safe.
+        var mockUsers = new ConcurrentDictionary<string, IhcUser>(
+            new Dictionary<string, IhcUser>
+            {
+                ["admin"] = new IhcUser
+                {
+                    Username = "admin",
+                    Password = "admin123",
+                    Email = "admin@mock.com",
+                    Firstname = "Admin",
+                    Lastname = "User",
+                    Phone = "+4512345678",
+                    Group = IhcUserGroup.Administrators,
+                    Project = "Mock Project",
+                    CreatedDate = new DateTimeOffset(2024, 1, 1, 10, 0, 0, TimeSpan.Zero),
+                    LoginDate = new DateTimeOffset(2025, 11, 1, 9, 30, 0, TimeSpan.Zero)
+                },
+                ["testuser"] = new IhcUser
+                {
+                    Username = "testuser",
+                    Password = "test123",
+                    Email = "test@mock.com",
+                    Firstname = "Test",
+                    Lastname = "User",
+                    Phone = "+4587654321",
+                    Group = IhcUserGroup.Users,
+                    Project = "Mock Project",
+                    CreatedDate = new DateTimeOffset(2024, 6, 15, 14, 30, 0, TimeSpan.Zero),
+                    LoginDate = new DateTimeOffset(2025, 11, 5, 11, 15, 0, TimeSpan.Zero)
+                }
+            });
 
         // GetUsers - returns users from state with optional password filtering
         A.CallTo(() => service.GetUsers(A<bool>._))

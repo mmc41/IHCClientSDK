@@ -66,8 +66,8 @@ public class StringParameterStrategyTests
 
         // Assert
         Assert.That(result, Is.Not.Null);
-        Assert.That(result.Control, Is.InstanceOf<TextBox>());
-        Assert.That(result.Control.Name, Is.EqualTo("TestControl"));
+        Assert.That(result, Is.InstanceOf<TextBox>());
+        Assert.That(result.Name, Is.EqualTo("TestControl"));
     }
 
     [Test]
@@ -90,7 +90,7 @@ public class StringParameterStrategyTests
         var result = _strategy.CreateControl(field, "TestControl");
 
         // Assert
-        var tooltip = ToolTip.GetTip(result.Control);
+        var tooltip = ToolTip.GetTip(result);
         Assert.That(tooltip, Is.EqualTo("Test tooltip description"));
     }
 
@@ -109,7 +109,7 @@ public class StringParameterStrategyTests
     }
 
     [Test]
-    public void ExtractValue_TextBoxEmpty_ReturnsNull()
+    public void ExtractValue_TextBoxEmpty_ReturnsEmptyString()
     {
         // Arrange
         var field = new FieldMetaData("testParam", typeof(string), [], "Test description");
@@ -118,8 +118,9 @@ public class StringParameterStrategyTests
         // Act
         var value = _strategy.ExtractValue(textBox, field);
 
-        // Assert
-        Assert.That(value, Is.Null);
+        // Assert - an empty field extracts as an empty string, not null, so empty values sync consistently
+        // (matching the string parameter default of string.Empty) rather than silently switching to null.
+        Assert.That(value, Is.EqualTo(string.Empty));
     }
 
     [Test]

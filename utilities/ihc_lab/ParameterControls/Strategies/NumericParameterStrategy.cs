@@ -13,6 +13,8 @@ namespace IhcLab.ParameterControls.Strategies;
 /// </summary>
 public class NumericParameterStrategy : IParameterControlStrategy
 {
+    private const decimal DefaultNumericValue = 0m;
+
     private static readonly HashSet<Type> NumericTypes = new()
     {
         typeof(byte), typeof(sbyte),
@@ -33,7 +35,7 @@ public class NumericParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Creates a NumericUpDown control for numeric input.
     /// </summary>
-    public ControlCreationResult CreateControl(FieldMetaData field, string controlName)
+    public Control CreateControl(FieldMetaData field, string controlName)
     {
         if (!CanHandle(field))
             throw new NotSupportedException(
@@ -45,7 +47,7 @@ public class NumericParameterStrategy : IParameterControlStrategy
             Width = 200,
             Minimum = GetMinValue(field.Type),
             Maximum = GetMaxValue(field.Type),
-            Value = GetDefaultValue(field.Type),
+            Value = DefaultNumericValue,
             Increment = GetIncrement(field.Type),
             FormatString = GetFormatString(field.Type)
         };
@@ -56,10 +58,16 @@ public class NumericParameterStrategy : IParameterControlStrategy
             ToolTip.SetTip(numericUpDown, field.Description);
         }
 
-        return new ControlCreationResult
-        {
-            Control = numericUpDown
-        };
+        return numericUpDown;
+    }
+
+    /// <summary>
+    /// Subscribes to the NumericUpDown's ValueChanged event.
+    /// </summary>
+    public void SubscribeToValueChanged(Control control, EventHandler handler)
+    {
+        if (control is NumericUpDown numericUpDown)
+            numericUpDown.ValueChanged += (s, e) => handler(numericUpDown, EventArgs.Empty);
     }
 
     /// <summary>
@@ -72,7 +80,7 @@ public class NumericParameterStrategy : IParameterControlStrategy
                 $"Expected NumericUpDown control but got {control.GetType().Name}");
 
         if (numericUpDown.Value == null)
-            return GetDefaultValue(field.Type);
+            return DefaultNumericValue;
 
         decimal value = numericUpDown.Value.Value;
 
@@ -105,7 +113,7 @@ public class NumericParameterStrategy : IParameterControlStrategy
 
         if (value == null)
         {
-            numericUpDown.Value = GetDefaultValue(field.Type);
+            numericUpDown.Value = DefaultNumericValue;
             return;
         }
 
@@ -155,14 +163,6 @@ public class NumericParameterStrategy : IParameterControlStrategy
             nameof(Decimal) => decimal.MaxValue,
             _ => decimal.MaxValue
         };
-    }
-
-    /// <summary>
-    /// Gets the default value for the numeric type.
-    /// </summary>
-    private static decimal GetDefaultValue(Type type)
-    {
-        return 0;
     }
 
     /// <summary>

@@ -34,7 +34,7 @@ public class ArrayParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Creates a vertical StackPanel with array item controls and add/remove buttons.
     /// </summary>
-    public ControlCreationResult CreateControl(FieldMetaData field, string controlName)
+    public Control CreateControl(FieldMetaData field, string controlName)
     {
         if (!CanHandle(field))
             throw new NotSupportedException(
@@ -103,10 +103,16 @@ public class ArrayParameterStrategy : IParameterControlStrategy
             ToolTip.SetTip(mainPanel, field.Description);
         }
 
-        return new ControlCreationResult
-        {
-            Control = mainPanel
-        };
+        return mainPanel;
+    }
+
+    /// <summary>
+    /// Array editing is not yet wired for live GUI-&gt;service sync (see remarks), so there is no
+    /// value-changed event to subscribe.
+    /// </summary>
+    public void SubscribeToValueChanged(Control control, EventHandler handler)
+    {
+        // Intentionally a no-op: see the deferred-wiring TODO on this strategy.
     }
 
     /// <summary>
@@ -135,8 +141,7 @@ public class ArrayParameterStrategy : IParameterControlStrategy
 
         // Extract values from each item
         var values = new List<object?>();
-        var registry = ParameterControlRegistry.Instance;
-        var elementStrategy = registry.GetStrategy(elementField);
+        var elementStrategy = ParameterControlRegistry.Instance.GetStrategy(elementField);
 
         foreach (var itemContainer in itemsPanel.Children.OfType<StackPanel>())
         {
@@ -201,19 +206,18 @@ public class ArrayParameterStrategy : IParameterControlStrategy
         }
 
         // Create controls for each array element
-        var registry = ParameterControlRegistry.Instance;
-        var elementStrategy = registry.GetStrategy(elementField);
+        var elementStrategy = ParameterControlRegistry.Instance.GetStrategy(elementField);
 
         for (int i = 0; i < array.Length; i++)
         {
             string itemControlName = $"{mainPanel.Name}.Item{i}";
-            var elementResult = elementStrategy.CreateControl(elementField, itemControlName);
+            var elementControl = elementStrategy.CreateControl(elementField, itemControlName);
 
             // Set the value
-            elementStrategy.SetValue(elementResult.Control, array.GetValue(i), elementField);
+            elementStrategy.SetValue(elementControl, array.GetValue(i), elementField);
 
             // Add the control with remove button
-            AddItemControl(itemsPanel, elementResult.Control, mainPanel.Name ?? string.Empty, i);
+            AddItemControl(itemsPanel, elementControl, mainPanel.Name ?? string.Empty, i);
         }
 
         UpdateItemCount(label, itemsPanel, field.Name);
@@ -224,14 +228,13 @@ public class ArrayParameterStrategy : IParameterControlStrategy
     /// </summary>
     private static void AddArrayItem(StackPanel itemsPanel, FieldMetaData elementField, string arrayControlName)
     {
-        var registry = ParameterControlRegistry.Instance;
-        var elementStrategy = registry.GetStrategy(elementField);
+        var elementStrategy = ParameterControlRegistry.Instance.GetStrategy(elementField);
 
         int index = itemsPanel.Children.Count;
         string itemControlName = $"{arrayControlName}.Item{index}";
 
-        var elementResult = elementStrategy.CreateControl(elementField, itemControlName);
-        AddItemControl(itemsPanel, elementResult.Control, arrayControlName, index);
+        var elementControl = elementStrategy.CreateControl(elementField, itemControlName);
+        AddItemControl(itemsPanel, elementControl, arrayControlName, index);
     }
 
     /// <summary>

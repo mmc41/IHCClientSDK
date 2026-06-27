@@ -19,6 +19,8 @@ namespace Ihc.App;
 ///         (see the TODO header on ArrayParameterStrategy).</item>
 ///   <item>ResourceValue / ResourceValue[] - ResourceValueParameterStrategy likewise exists, but its GUI
 ///         wiring is deferred.</item>
+///   <item>Non-array generic collections (IReadOnlyList&lt;T&gt;, IEnumerable&lt;T&gt;, IList&lt;T&gt;, ...) -
+///         no control strategy renders them yet, so operations taking them are excluded.</item>
 /// </list>
 ///
 /// Nested complex records are fully supported and intentionally NOT filtered: the control strategies build
@@ -53,8 +55,9 @@ public static class OperationFilterConfiguration
 
     /// <summary>
     /// Recursively checks whether a field (or any of its sub-fields) uses a type whose two-way GUI wiring is
-    /// not yet implemented: arrays or ResourceValue / ResourceValue[]. Nested complex records are NOT
-    /// unsupported - their sub-fields are checked recursively, but the records themselves are fully wired.
+    /// not yet implemented: arrays, ResourceValue / ResourceValue[], or non-array generic collections. Nested
+    /// complex records are NOT unsupported - their sub-fields are checked recursively, but the records
+    /// themselves are fully wired.
     /// </summary>
     /// <param name="field">The field metadata to check.</param>
     /// <returns>True if the field contains a not-yet-supported type, false otherwise.</returns>
@@ -73,6 +76,13 @@ public static class OperationFilterConfiguration
         if (field.Type == typeof(ResourceValue) || field.Type == typeof(ResourceValue[]))
             return true;
 
+        // Non-array generic collection parameters (IReadOnlyList<int>, IEnumerable<T>, IList<T>, List<T>, ...)
+        // are not arrays, expose no SubTypes, and have no dedicated control strategy, so the registry would
+        // throw "No strategy found" when the GUI tried to build a control. Exclude them until a collection
+        // strategy with full two-way GUI wiring lands (same rationale as the array gate above).
+        if (IsUnsupportedCollectionType(field.Type))
+            return true;
+
         // Recursively check subtypes (this is how nested complex records are validated, not rejected).
         foreach (var subType in field.SubTypes)
         {
@@ -82,4 +92,15 @@ public static class OperationFilterConfiguration
 
         return false; // by default nothing should be unsupported
     }
+
+    /// <summary>
+    /// Returns true for collection-shaped parameter types the GUI cannot yet render: any non-array type that
+    /// implements <see cref="System.Collections.IEnumerable"/> (e.g. IReadOnlyList&lt;T&gt;, IList&lt;T&gt;,
+    /// List&lt;T&gt;). Arrays are handled by the dedicated <see cref="FieldMetaData.IsArray"/> gate above, and
+    /// <see cref="string"/> - though enumerable - is a fully supported simple type and is never a collection here.
+    /// </summary>
+    private static bool IsUnsupportedCollectionType(Type type)
+        => type != typeof(string)
+           && !type.IsArray
+           && typeof(System.Collections.IEnumerable).IsAssignableFrom(type);
 }

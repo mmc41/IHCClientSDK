@@ -22,29 +22,59 @@ public class ParameterSyncCoordinator
     }
 
     /// <summary>
-    /// Syncs argument values FROM GUI controls TO LabAppService.SelectedOperation.Arguments.
-    /// Extracts values from all parameter controls and updates the operation's method arguments.
+    /// Initializes only the service arguments that are still uninitialized (null), using the current default
+    /// values of the freshly created GUI controls. Arguments that already hold a value - whether a generated
+    /// default or a value entered on a previous visit to this operation - are deliberately left untouched.
     /// </summary>
+    /// <remarks>
+    /// This exists because complex reference-type parameters default to <c>null</c> on the service side (see
+    /// <see cref="LabAppService.OperationItem.GetDefaultValue"/>), yet their freshly built GUI control holds a
+    /// valid default instance. Initializing those avoids passing null to the operation. Crucially, unlike a
+    /// blanket GUI-&gt;service sync, this never overwrites previously entered values with control defaults, so
+    /// argument persistence (switch away and back) keeps working - the saved values are restored by
+    /// <see cref="SyncFromService"/> immediately afterwards.
+    /// </remarks>
     /// <param name="parametersPanel">Panel containing the parameter controls.</param>
-    /// <param name="operation">Operation item whose arguments will be updated.</param>
+    /// <param name="operation">Operation item whose arguments will be initialized where still missing.</param>
     /// <exception cref="ArgumentNullException">Thrown when parametersPanel or operation is null.</exception>
-    public void SyncToService(Panel parametersPanel, LabAppService.OperationItem operation)
+    public void InitializeUninitializedArguments(Panel parametersPanel, LabAppService.OperationItem operation)
     {
-        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(ParameterSyncCoordinator) + "." + nameof(SyncToService), ActivityKind.Internal);
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(ParameterSyncCoordinator) + "." + nameof(InitializeUninitializedArguments), ActivityKind.Internal);
 
         if (parametersPanel == null)
             throw new ArgumentNullException(nameof(parametersPanel));
         if (operation == null)
             throw new ArgumentNullException(nameof(operation));
 
-        var operationMetadata = operation.OperationMetadata;
+        var parameters = operation.OperationMetadata.Parameters;
+        var currentArguments = operation.GetMethodArgumentsAsArray();
 
-        // Extract parameter values from GUI controls using existing helper
-        var parameterValues = OperationSupport.GetParameterValues(parametersPanel, operationMetadata.Parameters);
+        int initializedCount = 0;
 
-        operation.SetMethodArgumentsFromArray(parameterValues);
+        for (int i = 0; i < parameters.Length; i++)
+        {
+            // Only fill genuinely uninitialized arguments; never clobber an existing (default or restored) value.
+            if (currentArguments[i] != null)
+                continue;
 
-        activity?.SetTag("arguments.synced_count", parameterValues.Length);
+            try
+            {
+                object? value = OperationSupport.GetFieldValue(parametersPanel, parameters[i], i.ToString());
+                if (value != null)
+                {
+                    operation.SetMethodArgument(i, value);
+                    initializedCount++;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Best-effort: a control whose value cannot yet be extracted (e.g. an empty nullable field)
+                // simply stays null. Continue with the remaining parameters.
+                logger.LogDebug(ex, "Skipped initializing default value for parameter {ParameterName} of operation {OperationName}", parameters[i].Name, operation.OperationMetadata.Name);
+            }
+        }
+
+        activity?.SetTag("arguments.initialized_count", initializedCount);
     }
 
     /// <summary>
@@ -106,10 +136,9 @@ public class ParameterSyncCoordinator
     /// Delegates to the target control's own strategy, which handles simple and complex types alike.
     /// </summary>
     /// <param name="parent">Panel containing the parameter control controls.</param>
-    /// <param name="field">Field metadata describing the parameter structure.</param>
     /// <param name="value">New value to display in GUI.</param>
     /// <param name="indexPath">Index path for finding the parameter control.</param>
-    public void UpdateGuiFromParameter(Panel parent, FieldMetaData field, object? value, string indexPath)
+    public void UpdateGuiFromParameter(Panel parent, object? value, string indexPath)
     {
         try
         {

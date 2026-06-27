@@ -66,10 +66,10 @@ public class BoolParameterStrategyTests
 
         // Assert
         Assert.That(result, Is.Not.Null);
-        Assert.That(result.Control, Is.InstanceOf<StackPanel>());
-        Assert.That(result.Control.Name, Is.EqualTo("TestControl"));
+        Assert.That(result, Is.InstanceOf<StackPanel>());
+        Assert.That(result.Name, Is.EqualTo("TestControl"));
 
-        var stackPanel = (StackPanel)result.Control;
+        var stackPanel = (StackPanel)result;
         var radioButtons = stackPanel.Children.OfType<RadioButton>().ToList();
         Assert.That(radioButtons, Has.Count.EqualTo(2));
         Assert.That(radioButtons[0].Content, Is.EqualTo("True"));
@@ -96,7 +96,7 @@ public class BoolParameterStrategyTests
         var result = _strategy.CreateControl(field, "TestControl");
 
         // Assert
-        var tooltip = ToolTip.GetTip(result.Control);
+        var tooltip = ToolTip.GetTip(result);
         Assert.That(tooltip, Is.EqualTo("Test tooltip description"));
     }
 
@@ -108,7 +108,7 @@ public class BoolParameterStrategyTests
 
         // Act
         var result = _strategy.CreateControl(field, "TestControl");
-        var extractedValue = _strategy.ExtractValue(result.Control, field);
+        var extractedValue = _strategy.ExtractValue(result, field);
 
         // Assert
         Assert.That(extractedValue, Is.False);
@@ -120,7 +120,7 @@ public class BoolParameterStrategyTests
         // Arrange
         var field = new FieldMetaData("testParam", typeof(bool), [], "Test description");
         var result = _strategy.CreateControl(field, "TestControl");
-        var stackPanel = (StackPanel)result.Control;
+        var stackPanel = (StackPanel)result;
         var trueRadio = stackPanel.Children.OfType<RadioButton>().First(r => r.Content?.ToString() == "True");
         trueRadio.IsChecked = true;
 
@@ -137,7 +137,7 @@ public class BoolParameterStrategyTests
         // Arrange
         var field = new FieldMetaData("testParam", typeof(bool), [], "Test description");
         var result = _strategy.CreateControl(field, "TestControl");
-        var stackPanel = (StackPanel)result.Control;
+        var stackPanel = (StackPanel)result;
         var falseRadio = stackPanel.Children.OfType<RadioButton>().First(r => r.Content?.ToString() == "False");
         falseRadio.IsChecked = true;
 
@@ -165,7 +165,7 @@ public class BoolParameterStrategyTests
         // Arrange
         var field = new FieldMetaData("testParam", typeof(bool), [], "Test description");
         var result = _strategy.CreateControl(field, "TestControl");
-        var stackPanel = (StackPanel)result.Control;
+        var stackPanel = (StackPanel)result;
 
         // Act
         _strategy.SetValue(stackPanel, true, field);
@@ -183,7 +183,7 @@ public class BoolParameterStrategyTests
         // Arrange
         var field = new FieldMetaData("testParam", typeof(bool), [], "Test description");
         var result = _strategy.CreateControl(field, "TestControl");
-        var stackPanel = (StackPanel)result.Control;
+        var stackPanel = (StackPanel)result;
 
         // Act
         _strategy.SetValue(stackPanel, false, field);
@@ -201,7 +201,7 @@ public class BoolParameterStrategyTests
         // Arrange
         var field = new FieldMetaData("testParam", typeof(bool), [], "Test description");
         var result = _strategy.CreateControl(field, "TestControl");
-        var stackPanel = (StackPanel)result.Control;
+        var stackPanel = (StackPanel)result;
 
         // Act
         _strategy.SetValue(stackPanel, null, field);

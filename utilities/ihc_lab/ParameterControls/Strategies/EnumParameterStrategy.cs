@@ -23,7 +23,7 @@ public class EnumParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Creates a ComboBox control populated with enum values.
     /// </summary>
-    public ControlCreationResult CreateControl(FieldMetaData field, string controlName)
+    public Control CreateControl(FieldMetaData field, string controlName)
     {
         if (!CanHandle(field))
             throw new NotSupportedException(
@@ -56,10 +56,16 @@ public class EnumParameterStrategy : IParameterControlStrategy
             ToolTip.SetTip(comboBox, field.Description);
         }
 
-        return new ControlCreationResult
-        {
-            Control = comboBox
-        };
+        return comboBox;
+    }
+
+    /// <summary>
+    /// Subscribes to the ComboBox's SelectionChanged event.
+    /// </summary>
+    public void SubscribeToValueChanged(Control control, EventHandler handler)
+    {
+        if (control is ComboBox comboBox)
+            comboBox.SelectionChanged += (s, e) => handler(comboBox, EventArgs.Empty);
     }
 
     /// <summary>

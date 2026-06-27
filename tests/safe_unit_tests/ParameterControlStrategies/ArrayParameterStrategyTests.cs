@@ -58,8 +58,8 @@ public class ArrayParameterStrategyTests
 
         // Assert
         Assert.That(result, Is.Not.Null);
-        Assert.That(result.Control, Is.InstanceOf<StackPanel>());
-        Assert.That(result.Control.Name, Is.EqualTo("TestControl"));
+        Assert.That(result, Is.InstanceOf<StackPanel>());
+        Assert.That(result.Name, Is.EqualTo("TestControl"));
     }
 
     [Test]
@@ -71,7 +71,7 @@ public class ArrayParameterStrategyTests
 
         // Act
         var result = _strategy.CreateControl(field, "TestControl");
-        var mainPanel = (StackPanel)result.Control;
+        var mainPanel = (StackPanel)result;
 
         // Assert
         var headerPanel = mainPanel.Children.OfType<StackPanel>().FirstOrDefault();
@@ -91,7 +91,7 @@ public class ArrayParameterStrategyTests
 
         // Act
         var result = _strategy.CreateControl(field, "TestControl");
-        var mainPanel = (StackPanel)result.Control;
+        var mainPanel = (StackPanel)result;
 
         // Assert
         var itemsPanel = mainPanel.Children
@@ -109,7 +109,7 @@ public class ArrayParameterStrategyTests
 
         // Act
         var result = _strategy.CreateControl(field, "TestControl");
-        var mainPanel = (StackPanel)result.Control;
+        var mainPanel = (StackPanel)result;
 
         // Assert
         var headerPanel = mainPanel.Children.OfType<StackPanel>().FirstOrDefault();
@@ -127,7 +127,7 @@ public class ArrayParameterStrategyTests
         var result = _strategy.CreateControl(field, "TestControl");
 
         // Act
-        var value = _strategy.ExtractValue(result.Control, field);
+        var value = _strategy.ExtractValue(result, field);
 
         // Assert
         Assert.That(value, Is.InstanceOf<int[]>());
@@ -145,10 +145,10 @@ public class ArrayParameterStrategyTests
         var arrayValue = new int[] { 1, 2, 3 };
 
         // Act
-        _strategy.SetValue(result.Control, arrayValue, field);
+        _strategy.SetValue(result, arrayValue, field);
 
         // Assert
-        var mainPanel = (StackPanel)result.Control;
+        var mainPanel = (StackPanel)result;
         var itemsPanel = mainPanel.Children
             .OfType<StackPanel>()
             .FirstOrDefault(p => p.Name == "TestControl.Items");
@@ -167,10 +167,10 @@ public class ArrayParameterStrategyTests
         var arrayValue = new int[] { 10, 20 };
 
         // Act
-        _strategy.SetValue(result.Control, arrayValue, field);
+        _strategy.SetValue(result, arrayValue, field);
 
         // Assert
-        var mainPanel = (StackPanel)result.Control;
+        var mainPanel = (StackPanel)result;
         var headerPanel = mainPanel.Children.OfType<StackPanel>().FirstOrDefault();
         var label = headerPanel?.Children.OfType<TextBlock>().FirstOrDefault();
 
@@ -187,13 +187,13 @@ public class ArrayParameterStrategyTests
         var result = _strategy.CreateControl(field, "TestControl");
 
         // First set some values
-        _strategy.SetValue(result.Control, new int[] { 1, 2, 3 }, field);
+        _strategy.SetValue(result, new int[] { 1, 2, 3 }, field);
 
         // Act - set to null
-        _strategy.SetValue(result.Control, null, field);
+        _strategy.SetValue(result, null, field);
 
         // Assert
-        var mainPanel = (StackPanel)result.Control;
+        var mainPanel = (StackPanel)result;
         var itemsPanel = mainPanel.Children
             .OfType<StackPanel>()
             .FirstOrDefault(p => p.Name == "TestControl.Items");
@@ -211,10 +211,10 @@ public class ArrayParameterStrategyTests
         var arrayValue = new string[] { "hello", "world" };
 
         // Act
-        _strategy.SetValue(result.Control, arrayValue, field);
+        _strategy.SetValue(result, arrayValue, field);
 
         // Assert
-        var mainPanel = (StackPanel)result.Control;
+        var mainPanel = (StackPanel)result;
         var itemsPanel = mainPanel.Children
             .OfType<StackPanel>()
             .FirstOrDefault(p => p.Name == "TestControl.Items");
@@ -239,10 +239,10 @@ public class ArrayParameterStrategyTests
         var arrayValue = new bool[] { true, false };
 
         // Act
-        _strategy.SetValue(result.Control, arrayValue, field);
+        _strategy.SetValue(result, arrayValue, field);
 
         // Assert
-        var mainPanel = (StackPanel)result.Control;
+        var mainPanel = (StackPanel)result;
         var itemsPanel = mainPanel.Children
             .OfType<StackPanel>()
             .FirstOrDefault(p => p.Name == "TestControl.Items");
@@ -260,8 +260,8 @@ public class ArrayParameterStrategyTests
         var originalArray = new int[] { 5, 10, 15 };
 
         // Act
-        _strategy.SetValue(result.Control, originalArray, field);
-        var extractedValue = _strategy.ExtractValue(result.Control, field);
+        _strategy.SetValue(result, originalArray, field);
+        var extractedValue = _strategy.ExtractValue(result, field);
 
         // Assert
         Assert.That(extractedValue, Is.InstanceOf<int[]>());

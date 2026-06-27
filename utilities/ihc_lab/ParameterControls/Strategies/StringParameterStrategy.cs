@@ -21,7 +21,7 @@ public class StringParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Creates a TextBox control for string input.
     /// </summary>
-    public ControlCreationResult CreateControl(FieldMetaData field, string controlName)
+    public Control CreateControl(FieldMetaData field, string controlName)
     {
         if (!CanHandle(field))
             throw new NotSupportedException(
@@ -40,10 +40,16 @@ public class StringParameterStrategy : IParameterControlStrategy
             ToolTip.SetTip(textBox, field.Description);
         }
 
-        return new ControlCreationResult
-        {
-            Control = textBox
-        };
+        return textBox;
+    }
+
+    /// <summary>
+    /// Subscribes to the TextBox's TextChanged event.
+    /// </summary>
+    public void SubscribeToValueChanged(Control control, EventHandler handler)
+    {
+        if (control is TextBox textBox)
+            textBox.TextChanged += (s, e) => handler(textBox, EventArgs.Empty);
     }
 
     /// <summary>
@@ -55,8 +61,10 @@ public class StringParameterStrategy : IParameterControlStrategy
             throw new InvalidOperationException(
                 $"Expected TextBox control but got {control.GetType().Name}");
 
-        // Return null for empty strings to match typical parameter behavior
-        return string.IsNullOrEmpty(textBox.Text) ? null : textBox.Text;
+        // Treat an empty field as an empty string, not null. This keeps string handling consistent (the
+        // default value for a string parameter is also string.Empty), avoids driving sync control flow via
+        // exceptions, and means clearing a field syncs "" rather than silently switching the value to null.
+        return textBox.Text ?? string.Empty;
     }
 
     /// <summary>

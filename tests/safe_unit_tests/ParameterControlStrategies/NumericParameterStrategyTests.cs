@@ -76,8 +76,8 @@ public class NumericParameterStrategyTests
 
         // Assert
         Assert.That(result, Is.Not.Null);
-        Assert.That(result.Control, Is.InstanceOf<NumericUpDown>());
-        Assert.That(result.Control.Name, Is.EqualTo("TestControl"));
+        Assert.That(result, Is.InstanceOf<NumericUpDown>());
+        Assert.That(result.Name, Is.EqualTo("TestControl"));
     }
 
     [Test]
@@ -100,7 +100,7 @@ public class NumericParameterStrategyTests
         var result = _strategy.CreateControl(field, "TestControl");
 
         // Assert
-        var tooltip = ToolTip.GetTip(result.Control);
+        var tooltip = ToolTip.GetTip(result);
         Assert.That(tooltip, Is.EqualTo("Test tooltip description"));
     }
 
@@ -112,7 +112,7 @@ public class NumericParameterStrategyTests
 
         // Act
         var result = _strategy.CreateControl(field, "TestControl");
-        var numericUpDown = (NumericUpDown)result.Control;
+        var numericUpDown = (NumericUpDown)result;
 
         // Assert
         Assert.That(numericUpDown.Minimum, Is.EqualTo(int.MinValue));
@@ -127,7 +127,7 @@ public class NumericParameterStrategyTests
 
         // Act
         var result = _strategy.CreateControl(field, "TestControl");
-        var numericUpDown = (NumericUpDown)result.Control;
+        var numericUpDown = (NumericUpDown)result;
 
         // Assert
         Assert.That(numericUpDown.Minimum, Is.EqualTo(byte.MinValue));

@@ -42,7 +42,7 @@ public class ParameterControlRegistryTests
     public void Register_ValidStrategy_IncreasesCount()
     {
         // Arrange
-        var registry = ParameterControlRegistry.CreateEmpty();
+        var registry = new ParameterControlRegistry();
         int initialCount = registry.StrategyCount;
         var strategy = new StringParameterStrategy();
 
@@ -57,7 +57,7 @@ public class ParameterControlRegistryTests
     public void Register_NullStrategy_ThrowsArgumentNullException()
     {
         // Arrange
-        var registry = ParameterControlRegistry.CreateEmpty();
+        var registry = new ParameterControlRegistry();
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => registry.Register(null!));
@@ -109,7 +109,7 @@ public class ParameterControlRegistryTests
     public void GetStrategy_UnsupportedType_ThrowsNotSupportedException()
     {
         // Arrange
-        var registry = ParameterControlRegistry.CreateEmpty();
+        var registry = new ParameterControlRegistry();
         var field = new FieldMetaData("testParam", typeof(object), [], "Test description");
 
         // Act & Assert
@@ -146,7 +146,7 @@ public class ParameterControlRegistryTests
     public void CanHandle_UnsupportedType_ReturnsFalse()
     {
         // Arrange
-        var registry = ParameterControlRegistry.CreateEmpty();
+        var registry = new ParameterControlRegistry();
         var field = new FieldMetaData("testParam", typeof(object), [], "Test description");
 
         // Act
@@ -173,7 +173,7 @@ public class ParameterControlRegistryTests
     public void GetStrategy_RegistrationOrder_ReturnsFirstMatch()
     {
         // Arrange
-        var registry = ParameterControlRegistry.CreateEmpty();
+        var registry = new ParameterControlRegistry();
 
         // Create a custom strategy that handles all types
         var catchAllStrategy = new TestCatchAllStrategy();
@@ -193,10 +193,10 @@ public class ParameterControlRegistryTests
     }
 
     [Test]
-    public void CreateEmpty_ReturnsEmptyRegistry()
+    public void NewRegistry_IsEmpty()
     {
         // Act
-        var registry = ParameterControlRegistry.CreateEmpty();
+        var registry = new ParameterControlRegistry();
 
         // Assert
         Assert.That(registry.StrategyCount, Is.EqualTo(0));
@@ -206,7 +206,7 @@ public class ParameterControlRegistryTests
     public void StrategyCount_AfterMultipleRegistrations_ReturnsCorrectCount()
     {
         // Arrange
-        var registry = ParameterControlRegistry.CreateEmpty();
+        var registry = new ParameterControlRegistry();
         registry.Register(new StringParameterStrategy());
         registry.Register(new BoolParameterStrategy());
         registry.Register(new NumericParameterStrategy());
@@ -223,7 +223,12 @@ public class ParameterControlRegistryTests
     {
         public bool CanHandle(FieldMetaData field) => true;
 
-        public ControlCreationResult CreateControl(FieldMetaData field, string controlName)
+        public Avalonia.Controls.Control CreateControl(FieldMetaData field, string controlName)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void SubscribeToValueChanged(Avalonia.Controls.Control control, EventHandler handler)
         {
             throw new NotImplementedException();
         }

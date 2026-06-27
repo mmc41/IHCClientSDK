@@ -32,7 +32,7 @@ public class ComplexTypeParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Creates a StackPanel with nested controls for each property.
     /// </summary>
-    public ControlCreationResult CreateControl(FieldMetaData field, string controlName)
+    public Control CreateControl(FieldMetaData field, string controlName)
     {
         if (!CanHandle(field))
             throw new NotSupportedException(
@@ -59,8 +59,7 @@ public class ComplexTypeParameterStrategy : IParameterControlStrategy
             string subControlName = $"{controlName}.{i}";
 
             // Get strategy for this sub-field
-            var registry = ParameterControlRegistry.Instance;
-            var subStrategy = registry.GetStrategy(subField);
+            var subStrategy = ParameterControlRegistry.Instance.GetStrategy(subField);
 
             // Add label for the sub-field
             var label = new TextBlock
@@ -79,22 +78,28 @@ public class ComplexTypeParameterStrategy : IParameterControlStrategy
             stackPanel.Children.Add(label);
 
             // Create control for sub-field
-            var subResult = subStrategy.CreateControl(subField, subControlName);
+            var subControl = subStrategy.CreateControl(subField, subControlName);
 
             // Set metadata on sub-control so event coordinator can subscribe to it
-            subResult.Control.Tag = new OperationSupport.ControlMetadata
+            subControl.Tag = new OperationSupport.ControlMetadata
             {
                 Field = subField,
                 Strategy = subStrategy
             };
 
-            stackPanel.Children.Add(subResult.Control);
+            stackPanel.Children.Add(subControl);
         }
 
-        return new ControlCreationResult
-        {
-            Control = stackPanel
-        };
+        return stackPanel;
+    }
+
+    /// <summary>
+    /// Complex types have no leaf value-changed event of their own; each sub-control carries its own
+    /// strategy metadata and is subscribed individually as the event coordinator recurses, so this is a no-op.
+    /// </summary>
+    public void SubscribeToValueChanged(Control control, EventHandler handler)
+    {
+        // Intentionally a no-op: sub-controls are subscribed individually via their own strategies.
     }
 
     /// <summary>
@@ -120,9 +125,9 @@ public class ComplexTypeParameterStrategy : IParameterControlStrategy
                 throw new InvalidOperationException(
                     $"Could not find sub-control '{subControlName}' in complex type control");
 
-            // Get strategy and extract value
-            var registry = ParameterControlRegistry.Instance;
-            var subStrategy = registry.GetStrategy(subField);
+            // Reuse the strategy captured on the sub-control during CreateControl; fall back to the registry.
+            var subStrategy = (subControl.Tag as OperationSupport.ControlMetadata)?.Strategy
+                ?? ParameterControlRegistry.Instance.GetStrategy(subField);
             subValues[i] = subStrategy.ExtractValue(subControl, subField);
         }
 
@@ -191,9 +196,9 @@ public class ComplexTypeParameterStrategy : IParameterControlStrategy
 
             var subValue = property.GetValue(value);
 
-            // Get strategy and set value
-            var registry = ParameterControlRegistry.Instance;
-            var subStrategy = registry.GetStrategy(subField);
+            // Reuse the strategy captured on the sub-control during CreateControl; fall back to the registry.
+            var subStrategy = (subControl.Tag as OperationSupport.ControlMetadata)?.Strategy
+                ?? ParameterControlRegistry.Instance.GetStrategy(subField);
             subStrategy.SetValue(subControl, subValue, subField);
         }
     }

@@ -98,8 +98,8 @@ public class Phase2IntegrationTests
 
         // Assert
         Assert.That(result, Is.Not.Null);
-        Assert.That(result.Control, Is.Not.Null);
-        Assert.That(result.Control.Name, Is.EqualTo("TestControl"));
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.Name, Is.EqualTo("TestControl"));
     }
 
     [Test]
@@ -114,8 +114,8 @@ public class Phase2IntegrationTests
 
         // Assert
         Assert.That(result, Is.Not.Null);
-        Assert.That(result.Control, Is.Not.Null);
-        Assert.That(result.Control.Name, Is.EqualTo("TestControl"));
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.Name, Is.EqualTo("TestControl"));
     }
 
     [Test]
@@ -130,15 +130,15 @@ public class Phase2IntegrationTests
 
         // Assert
         Assert.That(result, Is.Not.Null);
-        Assert.That(result.Control, Is.Not.Null);
-        Assert.That(result.Control.Name, Is.EqualTo("TestControl"));
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.Name, Is.EqualTo("TestControl"));
     }
 
     [Test]
     public void Phase2Strategies_AllRegisterInCorrectOrder()
     {
         // Arrange
-        var registry = ParameterControlRegistry.CreateEmpty();
+        var registry = new ParameterControlRegistry();
 
         // Act - Register in same order as default registry
         registry.Register(new StringParameterStrategy());

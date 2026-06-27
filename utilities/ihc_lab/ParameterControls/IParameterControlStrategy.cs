@@ -13,6 +13,8 @@ namespace IhcLab.ParameterControls;
 /// - CanHandle() should be specific and return true only for types this strategy can manage
 /// - CreateControl() should set the control.Name property to the provided controlName
 /// - CreateControl() should add a tooltip with the field description if available
+/// - SubscribeToValueChanged() should wire the control's own change event(s) so the strategy
+///   (not the caller) owns the knowledge of which event signals an edit
 /// - ExtractValue() should handle null controls gracefully
 /// - SetValue() should handle null values gracefully
 /// - All methods should be thread-safe if used in concurrent scenarios
@@ -31,9 +33,20 @@ public interface IParameterControlStrategy
     /// </summary>
     /// <param name="field">The field metadata describing the parameter</param>
     /// <param name="controlName">The name to assign to the created control (for identification)</param>
-    /// <returns>A ControlCreationResult containing the created control and metadata</returns>
+    /// <returns>The created control</returns>
     /// <exception cref="NotSupportedException">Thrown if the field type is not supported by this strategy</exception>
-    ControlCreationResult CreateControl(FieldMetaData field, string controlName);
+    Control CreateControl(FieldMetaData field, string controlName);
+
+    /// <summary>
+    /// Subscribes the given handler to the value-changed event(s) of a control created by this strategy.
+    /// Each strategy knows which event on its own control signals an edit, so this keeps that knowledge
+    /// next to <see cref="CreateControl"/> rather than in a central type switch. Implementations that have
+    /// no editable leaf event (e.g. complex containers whose sub-controls are subscribed individually) may
+    /// leave this as a no-op.
+    /// </summary>
+    /// <param name="control">The control to subscribe to</param>
+    /// <param name="handler">The handler to invoke when the control's value changes</param>
+    void SubscribeToValueChanged(Control control, EventHandler handler);
 
     /// <summary>
     /// Extracts the current value from a control created by this strategy.

@@ -23,7 +23,7 @@ public class BoolParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Creates a StackPanel with two RadioButton controls for true/false selection.
     /// </summary>
-    public ControlCreationResult CreateControl(FieldMetaData field, string controlName)
+    public Control CreateControl(FieldMetaData field, string controlName)
     {
         if (!CanHandle(field))
             throw new NotSupportedException(
@@ -61,10 +61,23 @@ public class BoolParameterStrategy : IParameterControlStrategy
             ToolTip.SetTip(stackPanel, field.Description);
         }
 
-        return new ControlCreationResult
+        return stackPanel;
+    }
+
+    /// <summary>
+    /// Subscribes to each RadioButton's IsCheckedChanged event. The owning StackPanel (which carries the
+    /// field metadata) is passed as the sender so the handler can locate the parameter, mirroring how the
+    /// control is identified elsewhere.
+    /// </summary>
+    public void SubscribeToValueChanged(Control control, EventHandler handler)
+    {
+        if (control is not StackPanel stackPanel)
+            return;
+
+        foreach (var radioButton in stackPanel.Children.OfType<RadioButton>())
         {
-            Control = stackPanel
-        };
+            radioButton.IsCheckedChanged += (s, e) => handler(stackPanel, EventArgs.Empty);
+        }
     }
 
     /// <summary>

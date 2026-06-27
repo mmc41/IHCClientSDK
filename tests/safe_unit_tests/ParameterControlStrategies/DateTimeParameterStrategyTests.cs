@@ -39,7 +39,7 @@ public class DateTimeParameterStrategyTests
     {
         // Arrange
         var field = new FieldMetaData("when", typeof(DateTimeOffset), [], "A date field");
-        var control = _strategy.CreateControl(field, "DateControl").Control;
+        var control = _strategy.CreateControl(field, "DateControl");
         var known = new DateTimeOffset(2024, 6, 15, 0, 0, 0, TimeSpan.Zero);
 
         // Act
@@ -55,7 +55,7 @@ public class DateTimeParameterStrategyTests
     {
         // Arrange
         var field = new FieldMetaData("when", typeof(DateTime), [], "A date field");
-        var control = _strategy.CreateControl(field, "DateControl").Control;
+        var control = _strategy.CreateControl(field, "DateControl");
         var known = new DateTime(2024, 6, 15, 0, 0, 0, DateTimeKind.Unspecified);
 
         // Act
@@ -71,7 +71,7 @@ public class DateTimeParameterStrategyTests
     {
         // Arrange
         var field = new FieldMetaData("when", typeof(DateTimeOffset), [], "A date field");
-        var datePicker = (DatePicker)_strategy.CreateControl(field, "DateControl").Control;
+        var datePicker = (DatePicker)_strategy.CreateControl(field, "DateControl");
 
         // Act - the null branch defaults to "now" rather than leaving the picker blank.
         _strategy.SetValue(datePicker, null, field);

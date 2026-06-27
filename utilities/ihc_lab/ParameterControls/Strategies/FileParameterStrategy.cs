@@ -23,7 +23,7 @@ public class FileParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Creates a BinaryFilePicker or TextFilePicker control based on the field type.
     /// </summary>
-    public ControlCreationResult CreateControl(FieldMetaData field, string controlName)
+    public Control CreateControl(FieldMetaData field, string controlName)
     {
         if (!CanHandle(field))
             throw new NotSupportedException(
@@ -72,10 +72,15 @@ public class FileParameterStrategy : IParameterControlStrategy
                 $"File type '{field.Type.FullName}' must implement BinaryFile or TextFile interface");
         }
 
-        return new ControlCreationResult
-        {
-            Control = filePicker
-        };
+        return filePicker;
+    }
+
+    /// <summary>
+    /// File pickers expose no value-changed event that drives GUI-&gt;service sync, so there is nothing to wire.
+    /// </summary>
+    public void SubscribeToValueChanged(Control control, EventHandler handler)
+    {
+        // Intentionally a no-op: BinaryFilePicker/TextFilePicker have no value-changed event to subscribe.
     }
 
     /// <summary>

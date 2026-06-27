@@ -13,13 +13,13 @@ namespace IhcLab.ParameterControls;
 /// Strategies are evaluated in registration order, so register more specific strategies before general ones.
 /// Example order: Array → Enum → Numeric → String → ComplexType
 ///
-/// The registry is typically used as a singleton, but can be instantiated for testing purposes.
+/// The registry is built once (the singleton via <see cref="Lazy{T}"/>, or directly with <c>new</c> in tests)
+/// and then only read, all on the Avalonia UI thread, so no synchronization is needed.
 /// </remarks>
 public class ParameterControlRegistry
 {
     private static readonly Lazy<ParameterControlRegistry> _instance = new(() => CreateDefaultRegistry());
     private readonly List<IParameterControlStrategy> _strategies = new();
-    private readonly object _lock = new();
 
     /// <summary>
     /// Gets the singleton instance of the registry with default strategies registered.
@@ -37,10 +37,7 @@ public class ParameterControlRegistry
         if (strategy == null)
             throw new ArgumentNullException(nameof(strategy));
 
-        lock (_lock)
-        {
-            _strategies.Add(strategy);
-        }
+        _strategies.Add(strategy);
     }
 
     /// <summary>
@@ -56,13 +53,10 @@ public class ParameterControlRegistry
         if (field == null)
             throw new ArgumentNullException(nameof(field));
 
-        lock (_lock)
+        foreach (var strategy in _strategies)
         {
-            foreach (var strategy in _strategies)
-            {
-                if (strategy.CanHandle(field))
-                    return strategy;
-            }
+            if (strategy.CanHandle(field))
+                return strategy;
         }
 
         throw new NotSupportedException(
@@ -80,25 +74,13 @@ public class ParameterControlRegistry
         if (field == null)
             return false;
 
-        lock (_lock)
-        {
-            return _strategies.Any(s => s.CanHandle(field));
-        }
+        return _strategies.Any(s => s.CanHandle(field));
     }
 
     /// <summary>
     /// Gets the count of registered strategies.
     /// </summary>
-    public int StrategyCount
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _strategies.Count;
-            }
-        }
-    }
+    public int StrategyCount => _strategies.Count;
 
     /// <summary>
     /// Creates a new registry with default strategies registered.
@@ -130,14 +112,5 @@ public class ParameterControlRegistry
         registry.Register(new Strategies.ComplexTypeParameterStrategy());    // Catch-all for SubTypes (last!)
 
         return registry;
-    }
-
-    /// <summary>
-    /// Creates an empty registry for testing purposes.
-    /// </summary>
-    /// <returns>A new empty registry</returns>
-    public static ParameterControlRegistry CreateEmpty()
-    {
-        return new ParameterControlRegistry();
     }
 }

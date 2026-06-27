@@ -104,18 +104,17 @@ public static class OperationSupport
         rowPanel.Children.Add(legend);
 
         // Get strategy and create control
-        var registry = ParameterControlRegistry.Instance;
-        var strategy = registry.GetStrategy(field);
-        var result = strategy.CreateControl(field, prefix);
+        var strategy = ParameterControlRegistry.Instance.GetStrategy(field);
+        var control = strategy.CreateControl(field, prefix);
 
         // Store strategy reference in control's Tag for later value extraction
-        result.Control.Tag = new ControlMetadata
+        control.Tag = new ControlMetadata
         {
             Field = field,
             Strategy = strategy
         };
 
-        rowPanel.Children.Add(result.Control);
+        rowPanel.Children.Add(control);
         parent.Children.Add(rowPanel);
     }
 
