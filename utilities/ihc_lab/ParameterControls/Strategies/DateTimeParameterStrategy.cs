@@ -8,12 +8,12 @@ namespace IhcLab.ParameterControls.Strategies;
 /// Strategy for handling DateTime and DateTimeOffset parameters.
 /// Creates a DatePicker control for date selection.
 /// </summary>
-public class DateTimeParameterStrategy : IParameterControlStrategy
+public class DateTimeParameterStrategy : ParameterControlStrategyBase
 {
     /// <summary>
     /// Determines if this strategy can handle DateTime or DateTimeOffset types.
     /// </summary>
-    public bool CanHandle(FieldMetaData field)
+    public override bool CanHandle(FieldMetaData field)
     {
         return field.Type == typeof(DateTime) || field.Type == typeof(DateTimeOffset);
     }
@@ -21,11 +21,9 @@ public class DateTimeParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Creates a DatePicker control for date selection.
     /// </summary>
-    public Control CreateControl(FieldMetaData field, string controlName)
+    public override Control CreateControl(FieldMetaData field, string controlName)
     {
-        if (!CanHandle(field))
-            throw new NotSupportedException(
-                $"DateTimeParameterStrategy cannot handle type '{field.Type.FullName}'");
+        EnsureCanHandle(field);
 
         var datePicker = new DatePicker
         {
@@ -34,11 +32,7 @@ public class DateTimeParameterStrategy : IParameterControlStrategy
             SelectedDate = DateTimeOffset.Now
         };
 
-        // Add tooltip if description is available
-        if (!string.IsNullOrWhiteSpace(field.Description))
-        {
-            ToolTip.SetTip(datePicker, field.Description);
-        }
+        ApplyDescriptionTooltip(datePicker, field);
 
         return datePicker;
     }
@@ -46,7 +40,7 @@ public class DateTimeParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Subscribes to the DatePicker's SelectedDateChanged event.
     /// </summary>
-    public void SubscribeToValueChanged(Control control, EventHandler handler)
+    public override void SubscribeToValueChanged(Control control, EventHandler handler)
     {
         if (control is DatePicker datePicker)
             datePicker.SelectedDateChanged += (s, e) => handler(datePicker, EventArgs.Empty);
@@ -55,11 +49,9 @@ public class DateTimeParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Extracts the date value from a DatePicker control.
     /// </summary>
-    public object? ExtractValue(Control control, FieldMetaData field)
+    public override object? ExtractValue(Control control, FieldMetaData field)
     {
-        if (control is not DatePicker datePicker)
-            throw new InvalidOperationException(
-                $"Expected DatePicker control but got {control.GetType().Name}");
+        var datePicker = RequireControl<DatePicker>(control);
 
         if (datePicker.SelectedDate == null)
             return field.Type == typeof(DateTime) ? DateTime.Now : DateTimeOffset.Now;
@@ -82,11 +74,9 @@ public class DateTimeParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Sets a date value into a DatePicker control.
     /// </summary>
-    public void SetValue(Control control, object? value, FieldMetaData field)
+    public override void SetValue(Control control, object? value, FieldMetaData field)
     {
-        if (control is not DatePicker datePicker)
-            throw new InvalidOperationException(
-                $"Expected DatePicker control but got {control.GetType().Name}");
+        var datePicker = RequireControl<DatePicker>(control);
 
         if (value == null)
         {

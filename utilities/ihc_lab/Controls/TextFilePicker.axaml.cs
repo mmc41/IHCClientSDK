@@ -20,6 +20,14 @@ public partial class TextFilePicker : UserControl, TextFile
     private Encoding textEncoding = Encoding.UTF8;
 
     /// <summary>
+    /// Raised after a file has been picked and its name/data captured, giving the Lab's parameter sync the
+    /// only signal it can use to push the picked file to the service. Programmatic <see cref="Data"/>/
+    /// <see cref="Filename"/> assignment (e.g. the service-&gt;GUI restore path) is intentionally silent and
+    /// does NOT raise this event.
+    /// </summary>
+    public event EventHandler? FileChanged;
+
+    /// <summary>
     /// Gets the text file data (implements TextFile interface)
     /// </summary>
     public string Data
@@ -35,6 +43,19 @@ public partial class TextFilePicker : UserControl, TextFile
     {
         get => fileName ?? string.Empty;
         set => fileName = value;
+    }
+
+    /// <summary>
+    /// Applies a picked file (name + text content) and raises <see cref="FileChanged"/>. This is the single
+    /// entry point the file-open flow uses; setting the data this way - rather than via the <see cref="Data"/>/
+    /// <see cref="Filename"/> setters - is what notifies listeners that the user picked a new file.
+    /// </summary>
+    public void ApplyPickedFile(string filename, string data)
+    {
+        fileName = filename;
+        textData = data;
+        UpdateStatusLabel();
+        FileChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
@@ -106,10 +127,7 @@ public partial class TextFilePicker : UserControl, TextFile
             // Read file content as text using configured encoding
             await using var stream = await file.OpenReadAsync();
             using var reader = new StreamReader(stream, textEncoding);
-            textData = await reader.ReadToEndAsync();
-            fileName = file.Name;
-
-            UpdateStatusLabel();
+            ApplyPickedFile(file.Name, await reader.ReadToEndAsync());
         }
         catch (Exception ex)
         {

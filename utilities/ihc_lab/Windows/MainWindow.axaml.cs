@@ -373,6 +373,9 @@ public partial class MainWindow : Window
                         parameterSyncCoordinator.InitializeUninitializedArguments(ParametersPanel, operationItem);
 
                         // Restore previously set argument values from LabAppService into the GUI (argument persistence).
+                        // Suppress the GUI change events this restore raises so they don't echo straight back as
+                        // redundant GUI->service syncs - the values being pushed in already came from the service.
+                        isSyncingFromService = true;
                         try
                         {
                             parameterSyncCoordinator.SyncFromService(ParametersPanel, operationItem);
@@ -381,6 +384,10 @@ public partial class MainWindow : Window
                         {
                             // Log warning but continue with default values if restoration fails
                             logger.LogWarning(ex, "Failed to restore argument values from LabAppService for operation {OperationName}", operationItem.OperationMetadata.Name);
+                        }
+                        finally
+                        {
+                            isSyncingFromService = false;
                         }
 
                         // Unsubscribe from previous operation's MethodArgumentChanged event

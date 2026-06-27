@@ -19,6 +19,14 @@ public partial class BinaryFilePicker : UserControl, BinaryFile
     private string? fileName;
 
     /// <summary>
+    /// Raised after a file has been picked and its name/data captured, giving the Lab's parameter sync the
+    /// only signal it can use to push the picked file to the service. Programmatic <see cref="Data"/>/
+    /// <see cref="Filename"/> assignment (e.g. the service-&gt;GUI restore path) is intentionally silent and
+    /// does NOT raise this event.
+    /// </summary>
+    public event EventHandler? FileChanged;
+
+    /// <summary>
     /// Gets or sets the binary file data
     /// </summary>
     public byte[] Data
@@ -34,6 +42,19 @@ public partial class BinaryFilePicker : UserControl, BinaryFile
     {
         get => fileName ?? string.Empty;
         set => fileName = value;
+    }
+
+    /// <summary>
+    /// Applies a picked file (name + binary content) and raises <see cref="FileChanged"/>. This is the single
+    /// entry point the file-open flow uses; setting the data this way - rather than via the <see cref="Data"/>/
+    /// <see cref="Filename"/> setters - is what notifies listeners that the user picked a new file.
+    /// </summary>
+    public void ApplyPickedFile(string filename, byte[] data)
+    {
+        fileName = filename;
+        binaryData = data;
+        UpdateStatusLabel();
+        FileChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public BinaryFilePicker()
@@ -88,10 +109,7 @@ public partial class BinaryFilePicker : UserControl, BinaryFile
             using var memoryStream = new MemoryStream();
             await stream.CopyToAsync(memoryStream);
 
-            binaryData = memoryStream.ToArray();
-            fileName = file.Name;
-
-            UpdateStatusLabel();
+            ApplyPickedFile(file.Name, memoryStream.ToArray());
         }
         catch (Exception ex)
         {

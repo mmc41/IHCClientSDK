@@ -10,12 +10,12 @@ namespace IhcLab.ParameterControls.Strategies;
 /// Strategy for handling enum parameters.
 /// Creates a ComboBox control with enum values.
 /// </summary>
-public class EnumParameterStrategy : IParameterControlStrategy
+public class EnumParameterStrategy : ParameterControlStrategyBase
 {
     /// <summary>
     /// Determines if this strategy can handle enum types.
     /// </summary>
-    public bool CanHandle(FieldMetaData field)
+    public override bool CanHandle(FieldMetaData field)
     {
         return field.Type.IsEnum;
     }
@@ -23,11 +23,9 @@ public class EnumParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Creates a ComboBox control populated with enum values.
     /// </summary>
-    public Control CreateControl(FieldMetaData field, string controlName)
+    public override Control CreateControl(FieldMetaData field, string controlName)
     {
-        if (!CanHandle(field))
-            throw new NotSupportedException(
-                $"EnumParameterStrategy cannot handle type '{field.Type.FullName}'");
+        EnsureCanHandle(field);
 
         var comboBox = new ComboBox
         {
@@ -50,11 +48,7 @@ public class EnumParameterStrategy : IParameterControlStrategy
             comboBox.SelectedIndex = 0;
         }
 
-        // Add tooltip if description is available
-        if (!string.IsNullOrWhiteSpace(field.Description))
-        {
-            ToolTip.SetTip(comboBox, field.Description);
-        }
+        ApplyDescriptionTooltip(comboBox, field);
 
         return comboBox;
     }
@@ -62,7 +56,7 @@ public class EnumParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Subscribes to the ComboBox's SelectionChanged event.
     /// </summary>
-    public void SubscribeToValueChanged(Control control, EventHandler handler)
+    public override void SubscribeToValueChanged(Control control, EventHandler handler)
     {
         if (control is ComboBox comboBox)
             comboBox.SelectionChanged += (s, e) => handler(comboBox, EventArgs.Empty);
@@ -71,11 +65,9 @@ public class EnumParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Extracts the selected enum value from a ComboBox control.
     /// </summary>
-    public object? ExtractValue(Control control, FieldMetaData field)
+    public override object? ExtractValue(Control control, FieldMetaData field)
     {
-        if (control is not ComboBox comboBox)
-            throw new InvalidOperationException(
-                $"Expected ComboBox control but got {control.GetType().Name}");
+        var comboBox = RequireControl<ComboBox>(control);
 
         if (comboBox.SelectedItem is EnumItem enumItem)
         {
@@ -96,11 +88,9 @@ public class EnumParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Sets an enum value into a ComboBox control.
     /// </summary>
-    public void SetValue(Control control, object? value, FieldMetaData field)
+    public override void SetValue(Control control, object? value, FieldMetaData field)
     {
-        if (control is not ComboBox comboBox)
-            throw new InvalidOperationException(
-                $"Expected ComboBox control but got {control.GetType().Name}");
+        var comboBox = RequireControl<ComboBox>(control);
 
         if (value == null)
         {

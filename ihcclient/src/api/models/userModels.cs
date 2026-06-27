@@ -59,7 +59,6 @@ namespace Ihc {
       [AllowedValues(IhcUserGroup.Administrators, IhcUserGroup.Users, ErrorMessage = "Group must be either 'Administrators' or 'Users'.")]
       [Required(ErrorMessage = "Group is required")]
       public IhcUserGroup Group { get; init; }
-
       public string Project { get; init; }
 
       /// <summary>
@@ -71,7 +70,6 @@ namespace Ihc {
       /// Last login date of user.
       /// </summary>
       public DateTimeOffset LoginDate { get; init; }
-
 
       /// <summary>
       /// Creates a safe copy of this user definition without a password.

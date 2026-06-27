@@ -10,12 +10,12 @@ namespace IhcLab.ParameterControls.Strategies;
 /// Strategy for handling boolean parameters.
 /// Creates a pair of RadioButton controls for true/false selection.
 /// </summary>
-public class BoolParameterStrategy : IParameterControlStrategy
+public class BoolParameterStrategy : ParameterControlStrategyBase
 {
     /// <summary>
     /// Determines if this strategy can handle boolean types.
     /// </summary>
-    public bool CanHandle(FieldMetaData field)
+    public override bool CanHandle(FieldMetaData field)
     {
         return field.Type == typeof(bool);
     }
@@ -23,11 +23,9 @@ public class BoolParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Creates a StackPanel with two RadioButton controls for true/false selection.
     /// </summary>
-    public Control CreateControl(FieldMetaData field, string controlName)
+    public override Control CreateControl(FieldMetaData field, string controlName)
     {
-        if (!CanHandle(field))
-            throw new NotSupportedException(
-                $"BoolParameterStrategy cannot handle type '{field.Type.FullName}'");
+        EnsureCanHandle(field);
 
         var stackPanel = new StackPanel
         {
@@ -36,12 +34,14 @@ public class BoolParameterStrategy : IParameterControlStrategy
             Spacing = 10
         };
 
+        // Tag carries the boolean meaning structurally so extract/set never depend on the display caption.
         var trueRadio = new RadioButton
         {
             Name = controlName, // Set name so event handler can identify it
             Content = "True",
             GroupName = controlName,
-            IsChecked = false
+            IsChecked = false,
+            Tag = true
         };
 
         var falseRadio = new RadioButton
@@ -49,17 +49,14 @@ public class BoolParameterStrategy : IParameterControlStrategy
             Name = controlName, // Set same name (they represent the same field)
             Content = "False",
             GroupName = controlName,
-            IsChecked = true // Default to false
+            IsChecked = true, // Default to false
+            Tag = false
         };
 
         stackPanel.Children.Add(trueRadio);
         stackPanel.Children.Add(falseRadio);
 
-        // Add tooltip if description is available
-        if (!string.IsNullOrWhiteSpace(field.Description))
-        {
-            ToolTip.SetTip(stackPanel, field.Description);
-        }
+        ApplyDescriptionTooltip(stackPanel, field);
 
         return stackPanel;
     }
@@ -69,7 +66,7 @@ public class BoolParameterStrategy : IParameterControlStrategy
     /// field metadata) is passed as the sender so the handler can locate the parameter, mirroring how the
     /// control is identified elsewhere.
     /// </summary>
-    public void SubscribeToValueChanged(Control control, EventHandler handler)
+    public override void SubscribeToValueChanged(Control control, EventHandler handler)
     {
         if (control is not StackPanel stackPanel)
             return;
@@ -83,16 +80,14 @@ public class BoolParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Extracts the boolean value from the RadioButton controls.
     /// </summary>
-    public object? ExtractValue(Control control, FieldMetaData field)
+    public override object? ExtractValue(Control control, FieldMetaData field)
     {
-        if (control is not StackPanel stackPanel)
-            throw new InvalidOperationException(
-                $"Expected StackPanel control but got {control.GetType().Name}");
+        var stackPanel = RequireControl<StackPanel>(control);
 
-        // Find the "True" radio button
+        // Locate the "true" radio by its Tag rather than its caption.
         var trueRadio = stackPanel.Children
             .OfType<RadioButton>()
-            .FirstOrDefault(r => r.Content?.ToString() == "True");
+            .FirstOrDefault(r => r.Tag is true);
 
         if (trueRadio == null)
             throw new InvalidOperationException(
@@ -104,26 +99,17 @@ public class BoolParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Sets a boolean value into the RadioButton controls.
     /// </summary>
-    public void SetValue(Control control, object? value, FieldMetaData field)
+    public override void SetValue(Control control, object? value, FieldMetaData field)
     {
-        if (control is not StackPanel stackPanel)
-            throw new InvalidOperationException(
-                $"Expected StackPanel control but got {control.GetType().Name}");
+        var stackPanel = RequireControl<StackPanel>(control);
 
         bool boolValue = value is bool b ? b : false;
 
-        // Find and update the radio buttons
+        // Each radio's Tag holds the boolean it represents; the true radio is checked when the value is true.
         foreach (var radio in stackPanel.Children.OfType<RadioButton>())
         {
-            string? content = radio.Content?.ToString();
-            if (content == "True")
-            {
-                radio.IsChecked = boolValue;
-            }
-            else if (content == "False")
-            {
-                radio.IsChecked = !boolValue;
-            }
+            if (radio.Tag is bool isTrueRadio)
+                radio.IsChecked = isTrueRadio ? boolValue : !boolValue;
         }
     }
 }

@@ -23,8 +23,10 @@ namespace Ihc.App;
 ///         no control strategy renders them yet, so operations taking them are excluded.</item>
 /// </list>
 ///
-/// Nested complex records are fully supported and intentionally NOT filtered: the control strategies build
-/// and restore them recursively via the registry.
+/// Complex records are supported and intentionally NOT filtered: the control strategies build and restore a
+/// record's (simple/enum/file) properties via the registry. The parameter metadata expands one level of
+/// properties, so a record whose own property is itself a complex record is not representable - such an
+/// operation surfaces a control-creation error at selection time rather than being filtered out here.
 /// </summary>
 public static class OperationFilterConfiguration
 {
@@ -56,8 +58,8 @@ public static class OperationFilterConfiguration
     /// <summary>
     /// Recursively checks whether a field (or any of its sub-fields) uses a type whose two-way GUI wiring is
     /// not yet implemented: arrays, ResourceValue / ResourceValue[], or non-array generic collections. Nested
-    /// complex records are NOT unsupported - their sub-fields are checked recursively, but the records
-    /// themselves are fully wired.
+    /// complex records are NOT unsupported here - their sub-fields are checked recursively, and a record's
+    /// own simple/enum/file properties are fully wired.
     /// </summary>
     /// <param name="field">The field metadata to check.</param>
     /// <returns>True if the field contains a not-yet-supported type, false otherwise.</returns>

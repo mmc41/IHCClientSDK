@@ -23,12 +23,12 @@ namespace IhcLab.ParameterControls.Strategies;
 /// builds an empty union value.
 /// </para>
 /// </remarks>
-public class ResourceValueParameterStrategy : IParameterControlStrategy
+public class ResourceValueParameterStrategy : ParameterControlStrategyBase
 {
     /// <summary>
     /// Determines if this strategy can handle ResourceValue types.
     /// </summary>
-    public bool CanHandle(FieldMetaData field)
+    public override bool CanHandle(FieldMetaData field)
     {
         return field.Type == typeof(ResourceValue);
     }
@@ -36,11 +36,9 @@ public class ResourceValueParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Creates a StackPanel with NumericUpDown for ResourceID and ComboBox for ValueKind.
     /// </summary>
-    public Control CreateControl(FieldMetaData field, string controlName)
+    public override Control CreateControl(FieldMetaData field, string controlName)
     {
-        if (!CanHandle(field))
-            throw new NotSupportedException(
-                $"ResourceValueParameterStrategy cannot handle type '{field.Type.FullName}'");
+        EnsureCanHandle(field);
 
         // Create horizontal StackPanel to hold both controls
         var stackPanel = new StackPanel
@@ -82,32 +80,20 @@ public class ResourceValueParameterStrategy : IParameterControlStrategy
         stackPanel.Children.Add(resourceIdUpDown);
         stackPanel.Children.Add(valueKindDropDown);
 
-        // Add tooltip if description is available
-        if (!string.IsNullOrWhiteSpace(field.Description))
-        {
-            ToolTip.SetTip(stackPanel, field.Description);
-        }
+        ApplyDescriptionTooltip(stackPanel, field);
 
         return stackPanel;
     }
 
-    /// <summary>
-    /// ResourceValue editing is not yet wired for live GUI-&gt;service sync (see remarks), so there is no
-    /// value-changed event to subscribe.
-    /// </summary>
-    public void SubscribeToValueChanged(Control control, EventHandler handler)
-    {
-        // Intentionally a no-op: see the deferred-wiring TODO on this strategy.
-    }
+    // SubscribeToValueChanged: ResourceValue editing is not yet wired for live GUI->service sync (see the
+    // deferred-wiring TODO in the class remarks), so the base no-op is inherited.
 
     /// <summary>
     /// Extracts ResourceID and ValueKind from controls and creates a ResourceValue instance.
     /// </summary>
-    public object? ExtractValue(Control control, FieldMetaData field)
+    public override object? ExtractValue(Control control, FieldMetaData field)
     {
-        if (control is not StackPanel stackPanel)
-            throw new InvalidOperationException(
-                $"Expected StackPanel control but got {control.GetType().Name}");
+        var stackPanel = RequireControl<StackPanel>(control);
 
         var resourceIdControl = FindResourceIdControl(stackPanel);
         if (resourceIdControl == null)
@@ -144,11 +130,9 @@ public class ResourceValueParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Sets a ResourceValue into the controls.
     /// </summary>
-    public void SetValue(Control control, object? value, FieldMetaData field)
+    public override void SetValue(Control control, object? value, FieldMetaData field)
     {
-        if (control is not StackPanel stackPanel)
-            throw new InvalidOperationException(
-                $"Expected StackPanel control but got {control.GetType().Name}");
+        var stackPanel = RequireControl<StackPanel>(control);
 
         var resourceIdControl = FindResourceIdControl(stackPanel);
         var valueKindControl = FindValueKindControl(stackPanel);

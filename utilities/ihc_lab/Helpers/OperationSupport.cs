@@ -41,33 +41,6 @@ public static class OperationSupport
     }
 
     /// <summary>
-    /// Gets parameter values from the controls in the specified panel.
-    /// </summary>
-    /// <param name="parametersPanel">The panel containing the parameter controls.</param>
-    /// <param name="parameters">The parameter metadata to extract values for.</param>
-    /// <returns>An array of parameter values.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when a parameter value cannot be retrieved.</exception>
-    public static object[] GetParameterValues(Panel parametersPanel, FieldMetaData[] parameters)
-    {
-        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(OperationSupport) + "." + nameof(GetParameterValues), ActivityKind.Internal);
-        activity?.SetParameters(
-            (nameof(parametersPanel), parametersPanel.Name ?? ""),
-            (nameof(parameters), parameters)
-        );
-
-        var values = new object[parameters.Length];
-
-        for (int i = 0; i < parameters.Length; i++)
-        {
-            var parameter = parameters[i];
-            object? value = GetFieldValue(parametersPanel, parameter, i.ToString());
-            values[i] = value ?? throw new InvalidOperationException($"Failed to get value for parameter {parameter.Name}");
-        }
-
-        return values;
-    }
-
-    /// <summary>
     /// Adds field controls using the strategy pattern.
     /// Creates a row with label and control for the specified field.
     /// </summary>

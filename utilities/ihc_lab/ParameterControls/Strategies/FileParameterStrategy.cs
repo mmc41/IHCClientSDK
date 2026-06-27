@@ -10,12 +10,12 @@ namespace IhcLab.ParameterControls.Strategies;
 /// Strategy for handling file parameters (BinaryFile and TextFile).
 /// Creates BinaryFilePicker or TextFilePicker controls based on the type.
 /// </summary>
-public class FileParameterStrategy : IParameterControlStrategy
+public class FileParameterStrategy : ParameterControlStrategyBase
 {
     /// <summary>
     /// Determines if this strategy can handle BinaryFile or TextFile types.
     /// </summary>
-    public bool CanHandle(FieldMetaData field)
+    public override bool CanHandle(FieldMetaData field)
     {
         return field.IsFile;
     }
@@ -23,11 +23,9 @@ public class FileParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Creates a BinaryFilePicker or TextFilePicker control based on the field type.
     /// </summary>
-    public Control CreateControl(FieldMetaData field, string controlName)
+    public override Control CreateControl(FieldMetaData field, string controlName)
     {
-        if (!CanHandle(field))
-            throw new NotSupportedException(
-                $"FileParameterStrategy cannot handle type '{field.Type.FullName}'");
+        EnsureCanHandle(field);
 
         Control filePicker;
 
@@ -76,66 +74,67 @@ public class FileParameterStrategy : IParameterControlStrategy
     }
 
     /// <summary>
-    /// File pickers expose no value-changed event that drives GUI-&gt;service sync, so there is nothing to wire.
+    /// Subscribes to the file picker's <c>FileChanged</c> event so that a user picking a file is synced to the
+    /// service. The pickers expose no bindable value; <c>FileChanged</c> is their only edit signal (raised by
+    /// the file-open flow, not by programmatic Data/Filename assignment), which is why this can't be a no-op.
     /// </summary>
-    public void SubscribeToValueChanged(Control control, EventHandler handler)
+    public override void SubscribeToValueChanged(Control control, EventHandler handler)
     {
-        // Intentionally a no-op: BinaryFilePicker/TextFilePicker have no value-changed event to subscribe.
+        switch (control)
+        {
+            case BinaryFilePicker binaryPicker:
+                binaryPicker.FileChanged += (s, e) => handler(binaryPicker, EventArgs.Empty);
+                break;
+            case TextFilePicker textPicker:
+                textPicker.FileChanged += (s, e) => handler(textPicker, EventArgs.Empty);
+                break;
+        }
     }
 
     /// <summary>
     /// Extracts the file data from a BinaryFilePicker or TextFilePicker control.
     /// </summary>
-    public object? ExtractValue(Control control, FieldMetaData field)
+    public override object? ExtractValue(Control control, FieldMetaData field)
     {
+        // The picker implements BinaryFile/TextFile, so build the concrete parameter type from it via the
+        // copy constructor every file model is required to expose (see the BinaryFile/TextFile remarks).
         if (control is BinaryFile binaryFile)
-        {
-            // For BinaryFile types, we need to create an instance using the copy constructor
-            // The control itself implements BinaryFile, so we can pass it directly
-            try
-            {
-                var constructor = field.Type.GetConstructor(new[] { typeof(BinaryFile) });
-                if (constructor != null)
-                {
-                    return constructor.Invoke(new object[] { binaryFile });
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException(
-                    $"Failed to create instance of {field.Type.Name} from BinaryFile. " +
-                    $"Ensure type has a copy constructor: {ex.Message}", ex);
-            }
-        }
+            return ConstructFromFile(field.Type, typeof(BinaryFile), binaryFile);
 
         if (control is TextFile textFile)
-        {
-            // For TextFile types, we need to create an instance using the copy constructor
-            // The control itself implements TextFile, so we can pass it directly
-            try
-            {
-                var constructor = field.Type.GetConstructor(new[] { typeof(TextFile) });
-                if (constructor != null)
-                {
-                    return constructor.Invoke(new object[] { textFile });
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException(
-                    $"Failed to create instance of {field.Type.Name} from TextFile. " +
-                    $"Ensure type has a copy constructor: {ex.Message}", ex);
-            }
-        }
+            return ConstructFromFile(field.Type, typeof(TextFile), textFile);
 
         throw new InvalidOperationException(
             $"Expected BinaryFilePicker or TextFilePicker control but got {control.GetType().Name}");
     }
 
     /// <summary>
+    /// Builds an instance of <paramref name="targetType"/> from a file picker via the copy constructor that
+    /// every BinaryFile/TextFile model is required to expose, with a clear error when it is missing rather
+    /// than falling through to a misleading "wrong control type" message.
+    /// </summary>
+    private static object ConstructFromFile(Type targetType, Type fileInterface, object pickerAsFile)
+    {
+        var constructor = targetType.GetConstructor(new[] { fileInterface })
+            ?? throw new InvalidOperationException(
+                $"File type '{targetType.Name}' must declare a copy constructor taking {fileInterface.Name} " +
+                $"for the Lab to build it from a file picker.");
+
+        try
+        {
+            return constructor.Invoke(new[] { pickerAsFile });
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"Failed to create instance of {targetType.Name} from {fileInterface.Name}: {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
     /// Sets file data into a BinaryFilePicker or TextFilePicker control.
     /// </summary>
-    public void SetValue(Control control, object? value, FieldMetaData field)
+    public override void SetValue(Control control, object? value, FieldMetaData field)
     {
         if (value == null)
             return;

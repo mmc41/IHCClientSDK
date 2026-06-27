@@ -21,12 +21,12 @@ namespace IhcLab.ParameterControls.Strategies;
 /// (c) wiring per-element <c>ControlMetadata</c> + value-changed events and fixing the <c>.ItemN</c> element
 /// naming so two-way sync can locate elements. The isolated unit tests stay valid; only the GUI wiring is deferred.
 /// </remarks>
-public class ArrayParameterStrategy : IParameterControlStrategy
+public class ArrayParameterStrategy : ParameterControlStrategyBase
 {
     /// <summary>
     /// Determines if this strategy can handle array types.
     /// </summary>
-    public bool CanHandle(FieldMetaData field)
+    public override bool CanHandle(FieldMetaData field)
     {
         return field.Type.IsArray;
     }
@@ -34,11 +34,9 @@ public class ArrayParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Creates a vertical StackPanel with array item controls and add/remove buttons.
     /// </summary>
-    public Control CreateControl(FieldMetaData field, string controlName)
+    public override Control CreateControl(FieldMetaData field, string controlName)
     {
-        if (!CanHandle(field))
-            throw new NotSupportedException(
-                $"ArrayParameterStrategy cannot handle type '{field.Type.FullName}'");
+        EnsureCanHandle(field);
 
         if (field.SubTypes.Length == 0)
             throw new InvalidOperationException(
@@ -97,32 +95,20 @@ public class ArrayParameterStrategy : IParameterControlStrategy
             UpdateItemCount(label, itemsPanel, field.Name);
         };
 
-        // Add tooltip if description is available
-        if (!string.IsNullOrWhiteSpace(field.Description))
-        {
-            ToolTip.SetTip(mainPanel, field.Description);
-        }
+        ApplyDescriptionTooltip(mainPanel, field);
 
         return mainPanel;
     }
 
-    /// <summary>
-    /// Array editing is not yet wired for live GUI-&gt;service sync (see remarks), so there is no
-    /// value-changed event to subscribe.
-    /// </summary>
-    public void SubscribeToValueChanged(Control control, EventHandler handler)
-    {
-        // Intentionally a no-op: see the deferred-wiring TODO on this strategy.
-    }
+    // SubscribeToValueChanged: array editing is not yet wired for live GUI->service sync (see the
+    // deferred-wiring TODO in the class remarks), so the base no-op is inherited.
 
     /// <summary>
     /// Extracts array values from all item controls.
     /// </summary>
-    public object? ExtractValue(Control control, FieldMetaData field)
+    public override object? ExtractValue(Control control, FieldMetaData field)
     {
-        if (control is not StackPanel mainPanel)
-            throw new InvalidOperationException(
-                $"Expected StackPanel control but got {control.GetType().Name}");
+        var mainPanel = RequireControl<StackPanel>(control);
 
         if (field.SubTypes.Length == 0)
             throw new InvalidOperationException(
@@ -169,11 +155,9 @@ public class ArrayParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Sets array values into the controls by creating item controls for each element.
     /// </summary>
-    public void SetValue(Control control, object? value, FieldMetaData field)
+    public override void SetValue(Control control, object? value, FieldMetaData field)
     {
-        if (control is not StackPanel mainPanel)
-            throw new InvalidOperationException(
-                $"Expected StackPanel control but got {control.GetType().Name}");
+        var mainPanel = RequireControl<StackPanel>(control);
 
         if (field.SubTypes.Length == 0)
             throw new InvalidOperationException(

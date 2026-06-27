@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
@@ -17,13 +16,13 @@ namespace IhcLab.ParameterControls.Strategies;
 /// This is a fallback strategy that should be registered last in the registry.
 /// It handles any type that has SubTypes (properties/fields).
 /// </remarks>
-public class ComplexTypeParameterStrategy : IParameterControlStrategy
+public class ComplexTypeParameterStrategy : ParameterControlStrategyBase
 {
     /// <summary>
     /// Determines if this strategy can handle complex types with sub-properties.
     /// This should be registered last as it's a catch-all for types with SubTypes.
     /// </summary>
-    public bool CanHandle(FieldMetaData field)
+    public override bool CanHandle(FieldMetaData field)
     {
         // Handle any type with sub-types (except files which are handled separately)
         return field.SubTypes.Length > 0 && !field.IsFile;
@@ -32,11 +31,9 @@ public class ComplexTypeParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Creates a StackPanel with nested controls for each property.
     /// </summary>
-    public Control CreateControl(FieldMetaData field, string controlName)
+    public override Control CreateControl(FieldMetaData field, string controlName)
     {
-        if (!CanHandle(field))
-            throw new NotSupportedException(
-                $"ComplexTypeParameterStrategy cannot handle type '{field.Type.FullName}'");
+        EnsureCanHandle(field);
 
         // Create a horizontal StackPanel to hold all sub-controls
         var stackPanel = new StackPanel
@@ -46,11 +43,7 @@ public class ComplexTypeParameterStrategy : IParameterControlStrategy
             Spacing = 10
         };
 
-        // Add tooltip if description is available
-        if (!string.IsNullOrWhiteSpace(field.Description))
-        {
-            ToolTip.SetTip(stackPanel, field.Description);
-        }
+        ApplyDescriptionTooltip(stackPanel, field);
 
         // Create controls for each sub-field
         for (int i = 0; i < field.SubTypes.Length; i++)
@@ -93,23 +86,16 @@ public class ComplexTypeParameterStrategy : IParameterControlStrategy
         return stackPanel;
     }
 
-    /// <summary>
-    /// Complex types have no leaf value-changed event of their own; each sub-control carries its own
-    /// strategy metadata and is subscribed individually as the event coordinator recurses, so this is a no-op.
-    /// </summary>
-    public void SubscribeToValueChanged(Control control, EventHandler handler)
-    {
-        // Intentionally a no-op: sub-controls are subscribed individually via their own strategies.
-    }
+    // SubscribeToValueChanged: complex types have no leaf value-changed event of their own; each sub-control
+    // carries its own strategy metadata and is subscribed individually as the event coordinator recurses, so
+    // the base no-op is inherited.
 
     /// <summary>
     /// Extracts values from all sub-controls and creates an instance of the complex type.
     /// </summary>
-    public object? ExtractValue(Control control, FieldMetaData field)
+    public override object? ExtractValue(Control control, FieldMetaData field)
     {
-        if (control is not StackPanel stackPanel)
-            throw new InvalidOperationException(
-                $"Expected StackPanel control but got {control.GetType().Name}");
+        var stackPanel = RequireControl<StackPanel>(control);
 
         // Extract values from each sub-control
         var subValues = new object?[field.SubTypes.Length];
@@ -141,10 +127,15 @@ public class ComplexTypeParameterStrategy : IParameterControlStrategy
         // GetProperties() order matching the constructor order. Reflection SetValue works on init setters.
         try
         {
-            bool hasMatchingPositionalCtor = field.Type.GetConstructors()
-                .Any(ctor => ctor.GetParameters().Length == subValues.Length);
+            // Prefer by-name construction (assign each value to its property by name) whenever the type can be
+            // created empty - i.e. it is a value type or exposes a parameterless constructor. By-name is robust
+            // against constructor parameter ordering; positional construction is used only as a fallback for
+            // types WITHOUT a parameterless constructor (e.g. positional records), where the compiler
+            // guarantees the constructor parameter order matches the property declaration order behind subValues.
+            bool canConstructEmpty = field.Type.IsValueType
+                || field.Type.GetConstructor(Type.EmptyTypes) != null;
 
-            if (hasMatchingPositionalCtor)
+            if (!canConstructEmpty)
                 return Activator.CreateInstance(field.Type, subValues);
 
             var instance = Activator.CreateInstance(field.Type);
@@ -170,11 +161,9 @@ public class ComplexTypeParameterStrategy : IParameterControlStrategy
     /// <summary>
     /// Sets values into all sub-controls from a complex type instance.
     /// </summary>
-    public void SetValue(Control control, object? value, FieldMetaData field)
+    public override void SetValue(Control control, object? value, FieldMetaData field)
     {
-        if (control is not StackPanel stackPanel)
-            throw new InvalidOperationException(
-                $"Expected StackPanel control but got {control.GetType().Name}");
+        var stackPanel = RequireControl<StackPanel>(control);
 
         if (value == null)
             return;
@@ -190,8 +179,10 @@ public class ComplexTypeParameterStrategy : IParameterControlStrategy
             if (subControl == null)
                 continue;
 
-            // Get the property value from the complex object
-            var property = value.GetType().GetProperty(subField.Name);
+            // Reuse the PropertyInfo captured in the field metadata (as ExtractValue does); fall back to a
+            // by-name lookup on the value's runtime type.
+            var property = subField.AttributeProvider as PropertyInfo
+                ?? value.GetType().GetProperty(subField.Name);
             if (property == null)
                 continue;
 

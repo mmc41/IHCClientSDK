@@ -27,6 +27,7 @@ namespace Ihc.Tests
     {
         private const string AuthenticationServiceName = "AuthenticationService";
         private const string SmsModemServiceName = "SmsModemService";
+        private const string ControllerServiceName = "ControllerService";
 
         /// <summary>
         /// Helper to find a service by name in the services combobox.
@@ -270,6 +271,54 @@ namespace Ihc.Tests
             var arguments = labAppService!.SelectedOperation.GetMethodArgumentsAsArray();
             Assert.That(arguments[0], Is.EqualTo(testUsername),
                 "LabAppService should have the updated username value");
+        }
+
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
+        public async Task GuiToLabAppService_FileParameter_SyncsPickedFileToService()
+        {
+            // Arrange - ControllerService.StoreProject takes a single ProjectFile (TextFile) parameter, so it
+            // renders as a TextFilePicker - the one reachable file parameter in the Lab.
+            var window = await SetupMainWindowAsync();
+
+            var servicesComboBox = window.FindControl<ComboBox>(MainWindowNames.ServicesComboBox);
+            var operationsComboBox = window.FindControl<ComboBox>(MainWindowNames.OperationsComboBox);
+            var parametersPanel = window.FindControl<StackPanel>(MainWindowNames.ParametersPanel);
+
+            Assert.That(servicesComboBox, Is.Not.Null);
+            Assert.That(operationsComboBox, Is.Not.Null);
+            Assert.That(parametersPanel, Is.Not.Null);
+
+            int controllerServiceIndex = FindServiceIndexByName(servicesComboBox!, ControllerServiceName);
+            Assert.That(controllerServiceIndex, Is.GreaterThanOrEqualTo(0), "ControllerService should exist");
+            servicesComboBox!.SelectedIndex = controllerServiceIndex;
+            Dispatcher.UIThread.RunJobs();
+
+            int storeProjectIndex = FindOperationIndexByName(operationsComboBox!, "StoreProject", parameterCount: 1);
+            Assert.That(storeProjectIndex, Is.GreaterThanOrEqualTo(0), "StoreProject(ProjectFile) operation should exist");
+            operationsComboBox!.SelectedIndex = storeProjectIndex;
+
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
+            Dispatcher.UIThread.RunJobs();
+
+            // Act - simulate the user picking a project file in the file picker (parameter index 0)
+            var filePicker = FindControlByNameRecursive(parametersPanel!, "0") as TextFilePicker;
+            Assert.That(filePicker, Is.Not.Null, "StoreProject parameter should render as a TextFilePicker");
+
+            const string pickedFilename = "picked-project.vis";
+            const string pickedContent = "<?xml version=\"1.0\"?><utcs_project/>";
+            filePicker!.ApplyPickedFile(pickedFilename, pickedContent);
+            Dispatcher.UIThread.RunJobs();
+
+            // Assert - the picked file must reach LabAppService (the GUI->service sync under test). Before the
+            // fix, picking a file raised no synced change and the service kept the empty file captured at setup.
+            var labAppService = window.LabAppService;
+            Assert.That(labAppService, Is.Not.Null);
+            var arguments = labAppService!.SelectedOperation.GetMethodArgumentsAsArray();
+            Assert.That(arguments[0], Is.InstanceOf<ProjectFile>(), "Argument should be a ProjectFile built from the picker");
+            var projectFile = (ProjectFile)arguments[0];
+            Assert.That(projectFile.Data, Is.EqualTo(pickedContent), "Picked file content should sync to the service");
+            Assert.That(projectFile.Filename, Is.EqualTo(pickedFilename), "Picked file name should sync to the service");
         }
 
         [AvaloniaTest]
