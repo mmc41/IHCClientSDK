@@ -42,6 +42,10 @@ public static class OperationFilterConfiguration
     /// <returns>True if the field contains unsupported types, false otherwise.</returns>
     public static bool ContainsUnsupportedType(FieldMetaData field)
     {
+        // Deliberate, not an oversight: array and ResourceValue operations are excluded from the GUI even
+        // though ArrayParameterStrategy and ResourceValueParameterStrategy exist and are unit-tested. Their
+        // two-way GUI wiring is deferred (see the TODO blocks on those strategies); keep excluding them here.
+
         // Check if this field is an array
         if (field.IsArray)
             return true;

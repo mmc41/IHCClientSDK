@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -132,17 +134,38 @@ public class ComplexTypeParameterStrategy : IParameterControlStrategy
             subValues[i] = subStrategy.ExtractValue(subControl, subField);
         }
 
-        // Create instance of the complex type using primary constructor
-        // Complex types must have a primary constructor that accepts all properties in order
+        // Construct the complex type from the extracted sub-values. Two record shapes are supported:
+        //  1. positional/primary-constructor records (e.g. IhcUser, SmsModemSettings) whose constructor
+        //     parameter count matches the sub-value count -> construct positionally; and
+        //  2. property-only records (e.g. NetworkSettings, TimeManagerSettings) that expose only a
+        //     parameterless constructor -> construct empty, then assign each value to its property by name.
+        // By-name assignment is also more robust than positional binding, which silently relies on the
+        // GetProperties() order matching the constructor order. Reflection SetValue works on init setters.
         try
         {
-            return Activator.CreateInstance(field.Type, subValues);
+            bool hasMatchingPositionalCtor = field.Type.GetConstructors()
+                .Any(ctor => ctor.GetParameters().Length == subValues.Length);
+
+            if (hasMatchingPositionalCtor)
+                return Activator.CreateInstance(field.Type, subValues);
+
+            var instance = Activator.CreateInstance(field.Type);
+            for (int i = 0; i < field.SubTypes.Length; i++)
+            {
+                var subField = field.SubTypes[i];
+                var property = subField.AttributeProvider as PropertyInfo
+                    ?? field.Type.GetProperty(subField.Name);
+                if (property != null && property.CanWrite)
+                    property.SetValue(instance, subValues[i]);
+            }
+            return instance;
         }
         catch (Exception ex)
         {
             throw new InvalidOperationException(
-                $"Failed to create instance of {field.Type.Name} with extracted values. " +
-                $"Ensure type has a primary constructor accepting {field.SubTypes.Length} parameters in declaration order: {ex.Message}", ex);
+                $"Failed to create instance of {field.Type.Name} with extracted values. Ensure the type has " +
+                $"either a matching positional constructor accepting {field.SubTypes.Length} parameters in " +
+                $"declaration order, or a parameterless constructor plus settable properties: {ex.Message}", ex);
         }
     }
 

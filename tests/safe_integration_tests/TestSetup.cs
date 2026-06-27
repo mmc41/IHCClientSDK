@@ -25,8 +25,15 @@ namespace Ihc.Tests
     {
       IConfigurationRoot config = new ConfigurationBuilder()
             .SetBasePath(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location))
-            .AddJsonFile("ihcsettings.json")
+            .AddJsonFile("ihcsettings.json", optional: true)
             .Build();
+
+      // A clean checkout has no ihcsettings.json. Skip the controller-dependent integration suite
+      // instead of failing OneTimeSetUp when no configuration is present.
+      if (!config.GetSection("ihcclient").Exists())
+      {
+        Assert.Ignore("Integration tests skipped: no ihcsettings.json configuration found.");
+      }
 
       settings = IhcSettings.GetFromConfiguration(config);
 

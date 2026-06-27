@@ -74,6 +74,9 @@ public partial class MainWindow : Window
     private MainWindowViewModel? viewModel;
     private LabAppService.OperationItem? currentOperationItem;
 
+    // Guards against a service->GUI->service echo while we push service values into the controls.
+    private bool isSyncingFromService;
+
     // Extracted coordinators for better separation of concerns
     private readonly ParameterSyncCoordinator parameterSyncCoordinator;
     private readonly ParameterControlCoordinator parameterControlCoordinator;
@@ -622,7 +625,17 @@ public partial class MainWindow : Window
             return;
 
         var parameter = operationMetadata.Parameters[e.Index];
-        parameterSyncCoordinator.UpdateGuiFromParameter(ParametersPanel, parameter, e.NewValue, e.Index.ToString());
+
+        // Suppress the GUI change events this update raises so they don't echo straight back to the service.
+        isSyncingFromService = true;
+        try
+        {
+            parameterSyncCoordinator.UpdateGuiFromParameter(ParametersPanel, parameter, e.NewValue, e.Index.ToString());
+        }
+        finally
+        {
+            isSyncingFromService = false;
+        }
     }
 
     /// <summary>
@@ -632,6 +645,11 @@ public partial class MainWindow : Window
     private void OnDynFieldValueChanged(object? sender, EventArgs e)
     {
         if (labAppService == null || sender is not Control control)
+            return;
+
+        // Ignore GUI change events raised while we are programmatically restoring service values into the
+        // controls; otherwise the service->GUI update would immediately echo back as a GUI->service sync.
+        if (isSyncingFromService)
             return;
 
         try

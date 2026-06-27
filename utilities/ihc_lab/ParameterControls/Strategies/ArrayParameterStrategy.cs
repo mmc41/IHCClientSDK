@@ -13,6 +13,14 @@ namespace IhcLab.ParameterControls.Strategies;
 /// Strategy for handling array parameters (T[]).
 /// Creates a dynamic list with add/remove buttons for managing array elements.
 /// </summary>
+/// <remarks>
+/// TODO (deferred): this strategy is registered in the <c>ParameterControlRegistry</c> but is intentionally
+/// <b>not reachable</b> from the running Lab: <c>OperationFilterConfiguration.ContainsUnsupportedType</c>
+/// excludes operations with array parameters from the GUI. Enabling array editing requires: (a) relaxing
+/// that filter; (b) the service-to-GUI re-entrancy guard (<c>MainWindow.isSyncingFromService</c>); and
+/// (c) wiring per-element <c>ControlMetadata</c> + value-changed events and fixing the <c>.ItemN</c> element
+/// naming so two-way sync can locate elements. The isolated unit tests stay valid; only the GUI wiring is deferred.
+/// </remarks>
 public class ArrayParameterStrategy : IParameterControlStrategy
 {
     /// <summary>

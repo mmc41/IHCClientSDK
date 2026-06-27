@@ -15,7 +15,11 @@ public class SimpleFieldSyncStrategy : IFieldSyncStrategy
 {
     public bool CanHandle(FieldMetaData field)
     {
-        return field.IsSimple || field.IsFile;
+        // DateTime/DateTimeOffset are leaf controls (a single DatePicker), not complex types, even though
+        // FieldMetaData.IsSimple excludes them. Mirror DateTimeParameterStrategy.CanHandle so a top-level
+        // date is not mis-routed to the complex strategy and a date sub-field is not skipped on restore.
+        return field.IsSimple || field.IsFile
+            || field.Type == typeof(DateTime) || field.Type == typeof(DateTimeOffset);
     }
 
     public object? ExtractValueFromGui(Panel parent, FieldMetaData field, string indexPath)

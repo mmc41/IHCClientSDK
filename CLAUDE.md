@@ -147,8 +147,8 @@ Before running any code that connects to an IHC controller:
 
 ## Important Notes
 
-- Target framework: .NET 9.0 (version 0.5.0-beta4)
-- Test framework: NUnit 3.x
+- Target framework: .NET 9.0 (version 0.8.1)
+- Test framework: NUnit 4.x
 - The project wraps SOAP web services since .NET Core doesn't natively support SOAP
 - `AuthenticationService` and `ResourceInteractionService` are feature-complete
 - Other services are partially implemented but can be extended via the underlying SoapImpl classes

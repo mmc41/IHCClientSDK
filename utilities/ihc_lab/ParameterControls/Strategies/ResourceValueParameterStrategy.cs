@@ -14,6 +14,14 @@ namespace IhcLab.ParameterControls.Strategies;
 /// <remarks>
 /// This is a simplified implementation that handles only the metadata (ResourceID and ValueKind).
 /// Full union value editing based on ValueKind can be added in future enhancements.
+/// <para>
+/// TODO (deferred): this strategy is registered in the <c>ParameterControlRegistry</c> but is intentionally
+/// <b>not reachable</b> from the running Lab: <c>OperationFilterConfiguration.ContainsUnsupportedType</c>
+/// excludes operations with <c>ResourceValue</c> parameters from the GUI. Enabling requires: (a) relaxing
+/// that filter; (b) the service-to-GUI re-entrancy guard (<c>MainWindow.isSyncingFromService</c>); and
+/// (d) typed-payload editing: currently only ResourceID and ValueKind are edited and <c>ExtractValue</c>
+/// builds an empty union value.
+/// </para>
 /// </remarks>
 public class ResourceValueParameterStrategy : IParameterControlStrategy
 {
