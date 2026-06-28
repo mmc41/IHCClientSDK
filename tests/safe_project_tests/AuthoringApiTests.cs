@@ -1,23 +1,20 @@
+using System;
 using System.Threading.Tasks;
-using Ihc.App;
-using Ihc.Vis.Building;
-using Ihc.Vis.Catalog;
-using Ihc.Vis.Io;
-using Ihc.Vis.Model;
-using IhcSettings = Ihc.IhcSettings;
+using Ihc.Projects;
+using Microsoft.Extensions.Time.Testing;
 
-namespace Ihc.Vis.Tests
+namespace Ihc.Projects.Tests
 {
     /// <summary>
     /// Stage 1 authoring-API preview. Shows, in real C#, exactly how a future GUI/console caller drives
     /// the mutable edit session — both building a project from scratch (<see cref="BuildProject1_FromCode_ShowsAuthoringApi"/>)
     /// and editing a loaded one (<see cref="EditLoadedProject_AddLink_ShowsRoundTripEntry"/>). Element
     /// identity is the real <c>_0x</c> id (preserved on load, allocated on add), so loading and re-saving
-    /// a <c>.vis</c> never changes existing ids. Both tests are <c>[Explicit]</c>: the solution builds and
-    /// they are present but never run (they exercise stub handles/services); their only purpose is to let
-    /// the user approve the authoring surface.
+    /// a project never changes existing ids. A single <c>using Ihc.Projects;</c> covers the whole authoring
+    /// surface. Both tests are <c>[Explicit]</c>: the solution builds and they are present but never run (they
+    /// exercise stub handles/services); their only purpose is to let the user approve the authoring surface.
     /// </summary>
-    public class VisAuthoringApiTests
+    public class AuthoringApiTests
     {
         private IhcSettings settings => TestSetup.Settings;
 
@@ -25,14 +22,14 @@ namespace Ihc.Vis.Tests
         public void BuildProject1_FromCode_ShowsAuthoringApi()
         {
             var cat   = CatalogDiscovery.FromInstallDir(settings.IhcVisualInstallDir);
-            var clock = new TestVisClock("2026-06-27 14:58:31");                // creation time → id1
+            var clock = new FakeTimeProvider(new DateTimeOffset(2026, 6, 27, 14, 58, 31, TimeSpan.Zero)); // creation time → id1
             var app   = new ProjectAppService(settings, cat, clock);
 
             // Live, mutable edit session — the same model a GUI drives. CreateNew reads the catalog's
             // File→New template, so it is an instance op using the service's injected catalog + clock.
             var editor = app
-                .CreateNew(new VisProjectInfo(Programmer: "Morten Christensen"),
-                           installer: new InstallerInfo(Name: "Morten", Country: "Danmark"))
+                .CreateNew(new ProjectDetails(Programmer: "Morten Christensen",
+                                              InstallerName: "Morten", InstallerCountry: "Danmark"))
                 .Edit();                                       // seeds the 10 default rooms (Stue, Entré, … Udendørs)
 
             // ===== room "Stue": 2 products + 1 catalog function block =====
@@ -92,7 +89,7 @@ namespace Ihc.Vis.Tests
             var project = editor.ToProject();
 
             // Stage-2 assertion (commented; shown only to convey intent):
-            // var bytes = ProjectAppService.SaveToBytes(project);
+            // var bytes = ProjectSerializer.Serialize(project);
             // Assert.That(bytes, Is.EqualTo(File.ReadAllBytes("testdata/Project1.vis")));
             Assert.That(project, Is.Not.Null);
         }
@@ -101,7 +98,7 @@ namespace Ihc.Vis.Tests
         public async Task EditLoadedProject_AddLink_ShowsRoundTripEntry()
         {
             var cat   = CatalogDiscovery.FromInstallDir(settings.IhcVisualInstallDir);
-            var clock = new TestVisClock("2026-06-28 10:00:00");
+            var clock = new FakeTimeProvider(new DateTimeOffset(2026, 6, 28, 10, 0, 0, TimeSpan.Zero));
             var app   = new ProjectAppService(settings, cat, clock);
 
             // Load an existing project, then open the same mutable edit session over it. Every existing

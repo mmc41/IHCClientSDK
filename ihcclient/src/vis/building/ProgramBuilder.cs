@@ -1,13 +1,13 @@
 #nullable enable
 using System;
 
-namespace Ihc.Vis.Building
+namespace Ihc.Projects
 {
     /// <summary>
     /// Nested fluent builder for authoring a custom program (<c>program_simple</c>/<c>program_sub</c>/
     /// <c>program_case</c>) directly, rather than receiving one via a catalog deep-copy. Leaf
     /// event/condition/action elements reference resources by live <see cref="ResourceRef"/> handle —
-    /// the same handles consumed by <see cref="VisProjectEditor.Link"/>, so programs and links address
+    /// the same handles consumed by <see cref="ProjectEditor.Link"/>, so programs and links address
     /// resources the same way.
     /// </summary>
     /// <remarks>

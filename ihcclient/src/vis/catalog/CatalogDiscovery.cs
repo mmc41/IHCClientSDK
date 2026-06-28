@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Ihc.Vis.Catalog
+namespace Ihc.Projects
 {
     /// <summary>
     /// The catalog of products and function blocks available for insertion. Modelled as an interface so

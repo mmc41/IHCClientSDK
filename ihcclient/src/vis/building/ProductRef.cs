@@ -1,7 +1,7 @@
 #nullable enable
 using System;
 
-namespace Ihc.Vis.Building
+namespace Ihc.Projects
 {
     /// <summary>
     /// A live, mutable handle to a product instance (<c>product_dataline</c> / <c>product_airlink</c>)
