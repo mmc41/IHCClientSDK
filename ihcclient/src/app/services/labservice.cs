@@ -630,11 +630,12 @@ namespace Ihc.App
 
         /// <summary>
         /// Builds the content to save for an operation result (D6 "smart save"): the real bytes for a byte[] or
-        /// BinaryFile result - with a type-appropriate file name/extension - or the shown text otherwise (UTF-8,
-        /// .txt). Reads the raw result object, not the display preview, so a binary payload is saved verbatim.
+        /// BinaryFile result, the real XML for an IHC ProjectFile result (its own ISO-8859-1 encoding and a *.vis
+        /// name), or the shown text otherwise (UTF-8, .txt) - each with a type-appropriate file name/extension.
+        /// Reads the raw result object, not the display preview, so the payload is saved verbatim.
         /// </summary>
         /// <param name="rawResult">The unwrapped operation result (see <see cref="OperationResult.RawResult"/>).</param>
-        /// <param name="displayText">The shown result text, used for non-binary results.</param>
+        /// <param name="displayText">The shown result text, used only for results without a file-typed payload.</param>
         /// <param name="operationName">Operation name, used to derive the default file name.</param>
         public static ResultFileContent BuildResultFileContent(object rawResult, string displayText, string operationName)
         {
@@ -648,7 +649,25 @@ namespace Ihc.App
             if (rawResult is byte[] bytes)
                 return new ResultFileContent(bytes, $"{baseName}.bin");
 
+            // An IHC project is a TextFile that must be saved as its real XML using the project's own encoding
+            // (ISO-8859-1) with the canonical *.vis extension - not the display preview as UTF-8 .txt. Preserve a
+            // controller-supplied base name but force the .vis extension so the saved file is a valid IHC project.
+            if (rawResult is ProjectFile projectFile)
+                return new ResultFileContent(
+                    ProjectFile.Encoding.GetBytes(projectFile.Data ?? string.Empty),
+                    $"{ProjectBaseName(projectFile.Filename, baseName)}.{ProjectFile.FileExtension}");
+
             return new ResultFileContent(System.Text.Encoding.UTF8.GetBytes(displayText ?? string.Empty), $"{baseName}.txt");
+        }
+
+        /// <summary>
+        /// Derives the project file's base name (without extension): the controller-supplied filename's stem when
+        /// present, otherwise the operation-derived <paramref name="baseName"/>.
+        /// </summary>
+        private static string ProjectBaseName(string filename, string baseName)
+        {
+            string stem = string.IsNullOrWhiteSpace(filename) ? string.Empty : Path.GetFileNameWithoutExtension(filename);
+            return string.IsNullOrWhiteSpace(stem) ? baseName : stem;
         }
 
         private readonly object _lock = new object();

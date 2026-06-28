@@ -1514,6 +1514,84 @@ namespace Ihc.Tests
             Assert.That(content.SuggestedFileName, Is.EqualTo("result.txt"));
         }
 
+        /// <summary>
+        /// US-C4 / D6: an IHC ProjectFile (a TextFile) is saved as its real XML content - not the display
+        /// preview - using the project's own encoding (ISO-8859-1) and a *.vis name. The 'ø' (U+00F8) char
+        /// encodes to a single 0xF8 byte in ISO-8859-1 but two bytes (0xC3 0xB8) in UTF-8, so the saved bytes
+        /// prove the encoding is Latin-1 rather than the default UTF-8.
+        /// </summary>
+        [Test]
+        public void BuildResultFileContent_ProjectFile_SavesRealXmlAsVisInLatin1()
+        {
+            var xml = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><project name=\"Brøndby\"/>";
+            var project = new ProjectFile("myhouse.vis", xml);
+
+            var content = LabAppService.BuildResultFileContent(project, "ProjectFile(preview…)", "GetProject");
+
+            Assert.That(content.SuggestedFileName, Is.EqualTo("myhouse.vis"));
+            Assert.That(content.Bytes, Is.EqualTo(ProjectFile.Encoding.GetBytes(xml)));
+            Assert.That(content.Bytes, Does.Contain((byte)0xF8), "ISO-8859-1 encodes 'ø' as a single 0xF8 byte");
+        }
+
+        /// <summary>
+        /// US-C4 / D6: when a ProjectFile carries no filename, the suggested name falls back to the operation
+        /// name with the project's canonical *.vis extension (never *.txt).
+        /// </summary>
+        [Test]
+        public void BuildResultFileContent_ProjectFileWithoutFilename_FallsBackToVisName()
+        {
+            var project = new ProjectFile("", "<project/>");
+
+            var content = LabAppService.BuildResultFileContent(project, "preview", "GetProject");
+
+            Assert.That(content.SuggestedFileName, Is.EqualTo("GetProject.vis"));
+        }
+
+        /// <summary>
+        /// US-C4 / D6: a controller-supplied project filename with a non-.vis extension is normalized to the
+        /// canonical *.vis extension - the core of the reported defect - while preserving the name stem.
+        /// </summary>
+        [Test]
+        public void BuildResultFileContent_ProjectFileWithNonVisExtension_NormalizesToVis()
+        {
+            var project = new ProjectFile("myhouse.ihc", "<project/>");
+
+            var content = LabAppService.BuildResultFileContent(project, "preview", "GetProject");
+
+            Assert.That(content.SuggestedFileName, Is.EqualTo("myhouse.vis"));
+        }
+
+        /// <summary>
+        /// US-C4 / D6: a ProjectSegment result (raw binary chunk from the OpenAPI segmented transfer) is saved as
+        /// its real bytes with a .bin name - not the ToString() preview as UTF-8 .txt, which would lose the data.
+        /// </summary>
+        [Test]
+        public void BuildResultFileContent_ProjectSegment_SavesRealBytesAsBin()
+        {
+            var bytes = new byte[] { 0x1f, 0x8b, 0x00, 0xFF };
+            var segment = new ProjectSegment { Data = bytes };
+
+            var content = LabAppService.BuildResultFileContent(segment, "ProjectSegment(Data=byte[4])", "GetIHCProjectSegment");
+
+            Assert.That(content.Bytes, Is.EqualTo(bytes));
+            Assert.That(content.SuggestedFileName, Is.EqualTo("GetIHCProjectSegment.bin"));
+        }
+
+        /// <summary>
+        /// US-C4 / D6: a SceneProjectSegment result is likewise saved as its real bytes with a .bin name.
+        /// </summary>
+        [Test]
+        public void BuildResultFileContent_SceneProjectSegment_SavesRealBytesAsBin()
+        {
+            var bytes = new byte[] { 0x01, 0x02, 0x03, 0x04 };
+            var segment = new SceneProjectSegment { Data = bytes };
+
+            var content = LabAppService.BuildResultFileContent(segment, "SceneProjectSegment(Data=byte[4])", "GetSceneProjectSegment");
+
+            Assert.That(content.Bytes, Is.EqualTo(bytes));
+            Assert.That(content.SuggestedFileName, Is.EqualTo("GetSceneProjectSegment.bin"));
+        }
+
         #endregion
 
         #region StoreSceneProject (US-A6) Tests

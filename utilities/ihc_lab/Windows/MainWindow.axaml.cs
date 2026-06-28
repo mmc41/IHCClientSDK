@@ -636,8 +636,9 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Saves the most recent operation result to a file (US-C4 / D6 "smart save"): real bytes for a byte[] /
-    /// BinaryFile result with a type-appropriate extension, the shown text otherwise. Reads the raw result
-    /// object rather than the display preview.
+    /// BinaryFile result, the real XML for an IHC ProjectFile result (ISO-8859-1, *.vis), or the shown text
+    /// otherwise - each with a type-appropriate file name/extension. Reads the raw result object rather than
+    /// the display preview.
     /// </summary>
     public async void SaveOutputMenuItemClick(object sender, RoutedEventArgs e)
     {
@@ -658,10 +659,16 @@ public partial class MainWindow : Window
             if (topLevel == null)
                 throw new NotSupportedException("No top-level window available for the save dialog");
 
+            // Carry the type-appropriate extension (e.g. "vis" for a project) so the dialog applies it even when
+            // the user edits the name. Map an extension-less suggestion to null (not "") so every storage provider
+            // treats it as "no default extension" rather than appending a stray trailing dot.
+            string suggestedExtension = System.IO.Path.GetExtension(content.SuggestedFileName).TrimStart('.');
+
             var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
             {
                 Title = "Save Result to File",
-                SuggestedFileName = content.SuggestedFileName
+                SuggestedFileName = content.SuggestedFileName,
+                DefaultExtension = suggestedExtension.Length == 0 ? null : suggestedExtension
             });
 
             if (file == null)

@@ -23,6 +23,12 @@ namespace Ihc {
       /// </summary>
       public string Filename { get; init; }
 
+      /// <summary>
+      /// Canonical file extensions (without leading dot) for a scene project. Single source of truth used by the
+      /// Lab to default the upload dialog's filter to *.icw/*.icz.
+      /// </summary>
+      public static string[] FileExtensions { get; } = { "icw", "icz" };
+
       public SceneProject(string Filename, byte[] Data)
       {
         this.Data = Data;
@@ -46,11 +52,32 @@ namespace Ihc {
     }
     
     /// <summary>
-    /// Segment of a scene project
+    /// Segment of a scene project (a raw binary chunk of a segmented scene-project transfer).
+    /// Implements <see cref="BinaryFile"/> so the IHC Lab saves it as its real bytes (see the BinaryFile remarks
+    /// about the required copy-constructor), not a text preview.
     /// </summary>
-    public record SceneProjectSegment
+    public record SceneProjectSegment : BinaryFile
     {
+      /// <summary>
+      /// Raw binary data of the scene project segment.
+      /// </summary>
       public byte[] Data { get; init; }
+
+      /// <summary>
+      /// Name of the segment file. The controller supplies none, so the Lab saves it as {operation}.bin.
+      /// </summary>
+      public string Filename { get; init; }
+
+      public SceneProjectSegment() { }
+
+      /// <summary>
+      /// Copy-constructor required by the BinaryFile contract.
+      /// </summary>
+      public SceneProjectSegment(BinaryFile input)
+      {
+        this.Data = input.Data;
+        this.Filename = input.Filename;
+      }
 
       public override string ToString()
       {

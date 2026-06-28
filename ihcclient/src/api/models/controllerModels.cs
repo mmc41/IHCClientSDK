@@ -151,7 +151,7 @@ namespace Ihc
         public string Data { get; init; }
 
         /// <summary>
-        /// Name of the project file (*.ihc)
+        /// Name of the project file (*.vis)
         /// </summary>
         public string Filename { get; init; }
 
@@ -164,6 +164,12 @@ namespace Ihc
         /// Text encoding for the project file (ISO-8859-1/Latin-1).
         /// </summary>
         public static System.Text.Encoding Encoding { get; } = System.Text.Encoding.GetEncoding(EncodingName);
+
+        /// <summary>
+        /// Canonical file extension (without leading dot) for an IHC project file. Single source of truth used by
+        /// the Lab to suggest *.vis when saving a project result and to default the upload dialog to *.vis.
+        /// </summary>
+        public static string FileExtension { get; } = "vis";
 
         public ProjectFile(string Filename, string Data)
         {
@@ -184,11 +190,32 @@ namespace Ihc
     }
 
     /// <summary>
-    /// Segment of a project
+    /// Segment of a project (a raw binary chunk of a segmented project transfer).
+    /// Implements <see cref="BinaryFile"/> so the IHC Lab saves it as its real bytes (see the BinaryFile remarks
+    /// about the required copy-constructor), not a text preview.
     /// </summary>
-    public record ProjectSegment
+    public record ProjectSegment : BinaryFile
     {
+      /// <summary>
+      /// Raw binary data of the project segment.
+      /// </summary>
       public byte[] Data { get; init; }
+
+      /// <summary>
+      /// Name of the segment file. The controller supplies none, so the Lab saves it as {operation}.bin.
+      /// </summary>
+      public string Filename { get; init; }
+
+      public ProjectSegment() { }
+
+      /// <summary>
+      /// Copy-constructor required by the BinaryFile contract.
+      /// </summary>
+      public ProjectSegment(BinaryFile input)
+      {
+        this.Data = input.Data;
+        this.Filename = input.Filename;
+      }
 
       public override string ToString()
       {

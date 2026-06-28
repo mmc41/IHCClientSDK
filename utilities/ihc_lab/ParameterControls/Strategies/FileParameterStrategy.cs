@@ -32,27 +32,39 @@ public class FileParameterStrategy : ParameterControlStrategyBase
         if (typeof(TextFile).IsAssignableFrom(field.Type))
         {
             // Get the static Encoding property from the concrete TextFile type using reflection
-            var encodingProperty = field.Type.GetProperty("Encoding", BindingFlags.Public | BindingFlags.Static);
+            var encodingProperty = field.Type.GetProperty(nameof(ProjectFile.Encoding), BindingFlags.Public | BindingFlags.Static);
             var encoding = encodingProperty?.GetValue(null) as Encoding;
 
             if (encoding == null)
                 throw new InvalidOperationException(
                     $"Could not lookup Encoding for TextFile type '{field.Type.Name}'");
 
+            // Optionally read the type's canonical file extension (e.g. *.vis for a project) to default the
+            // upload dialog's filter. Types without one simply keep the generic all-files behaviour.
+            var extensionProperty = field.Type.GetProperty(nameof(ProjectFile.FileExtension), BindingFlags.Public | BindingFlags.Static);
+            var fileExtension = extensionProperty?.GetValue(null) as string;
+
             // Create TextFilePicker for text files
             filePicker = new TextFilePicker
             {
                 Name = controlName,
                 TextEncoding = encoding,
+                FileTypeExtension = fileExtension,
                 MinWidth = 150
             };
         }
         else if (typeof(BinaryFile).IsAssignableFrom(field.Type))
         {
+            // Optionally read the type's canonical file extensions (e.g. *.icw/*.icz for a scene project) to
+            // default the upload dialog's filter. Types without them simply keep the generic all-files behaviour.
+            var extensionsProperty = field.Type.GetProperty(nameof(SceneProject.FileExtensions), BindingFlags.Public | BindingFlags.Static);
+            var fileExtensions = extensionsProperty?.GetValue(null) as string[];
+
             // Create BinaryFilePicker for binary files
             filePicker = new BinaryFilePicker
             {
                 Name = controlName,
+                FileTypeExtensions = fileExtensions,
                 MinWidth = 150
             };
         }

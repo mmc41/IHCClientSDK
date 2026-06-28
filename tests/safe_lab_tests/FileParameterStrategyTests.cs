@@ -47,6 +47,45 @@ namespace Ihc.Tests
             Assert.That(control.Name, Is.EqualTo("TestControl"));
         }
 
+        /// <summary>
+        /// StoreSceneProject upload: a SceneProject parameter renders a BinaryFilePicker whose dialog defaults to
+        /// the scene project's canonical *.icw/*.icz extensions rather than showing every file.
+        /// </summary>
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
+        public void CreateControl_SceneProject_SetsIcwIczFilter()
+        {
+            var control = strategy.CreateControl(SceneProjectField(), "TestControl");
+
+            var picker = (BinaryFilePicker)control;
+            Assert.That(picker.FileTypeExtensions, Is.EqualTo(new[] { "icw", "icz" }));
+        }
+
+        private static FieldMetaData ProjectFileField() => new FieldMetaData(
+            "project",
+            typeof(ProjectFile),
+            [
+                new FieldMetaData("Data", typeof(string), [], ""),
+                new FieldMetaData("Filename", typeof(string), [], "")
+            ],
+            "Project to store");
+
+        /// <summary>
+        /// StoreProject upload: a ProjectFile parameter renders a TextFilePicker configured to read as the
+        /// project's own encoding (ISO-8859-1) and to default its file dialog to *.vis - not UTF-8 / any file.
+        /// </summary>
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
+        public void CreateControl_ProjectFile_UsesLatin1AndVisFilter()
+        {
+            var control = strategy.CreateControl(ProjectFileField(), "TestControl");
+
+            Assert.That(control, Is.InstanceOf<TextFilePicker>());
+            var picker = (TextFilePicker)control;
+            Assert.That(picker.TextEncoding, Is.EqualTo(ProjectFile.Encoding), "project upload must read as ISO-8859-1");
+            Assert.That(picker.FileTypeExtension, Is.EqualTo("vis"), "project upload dialog must default to *.vis");
+        }
+
         [AvaloniaTest]
         [CaptureScreenshotOnFailure]
         public void CreateControl_NoDescription_HasNoTooltip()

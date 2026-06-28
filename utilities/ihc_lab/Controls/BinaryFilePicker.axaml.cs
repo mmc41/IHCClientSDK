@@ -57,6 +57,12 @@ public partial class BinaryFilePicker : UserControl, BinaryFile
         FileChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    /// Optional canonical file extensions (without leading dot, e.g. "icw"/"icz") used to default the upload
+    /// dialog's file-type filter. Null/empty keeps the generic all-files behaviour.
+    /// </summary>
+    public string[]? FileTypeExtensions { get; set; }
+
     public BinaryFilePicker()
     {
         InitializeComponent();
@@ -86,12 +92,10 @@ public partial class BinaryFilePicker : UserControl, BinaryFile
                 return;
             }
 
-            // Configure file picker options
-            var filePickerOptions = new FilePickerOpenOptions
-            {
-                Title = "Select Binary File to Upload",
-                AllowMultiple = false
-            };
+            // Configure file picker options. When canonical extensions are known (e.g. *.icw/*.icz for a scene
+            // project), default the dialog to them - while still allowing all files - and reflect them in the
+            // title, rather than showing every file with a generic prompt.
+            var filePickerOptions = UploadFilePickerOptions.Build(FileTypeExtensions, "Binary");
 
             // Open file picker
             var files = await topLevel.StorageProvider.OpenFilePickerAsync(filePickerOptions);

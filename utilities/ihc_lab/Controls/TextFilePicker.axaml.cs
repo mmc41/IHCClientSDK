@@ -77,6 +77,12 @@ public partial class TextFilePicker : UserControl, TextFile
         set => textEncoding = value ?? throw new ArgumentNullException(nameof(value));
     }
 
+    /// <summary>
+    /// Optional canonical file extension (without leading dot, e.g. "vis") used to default the upload dialog's
+    /// file-type filter to that type. Null/empty keeps the generic all-files behaviour.
+    /// </summary>
+    public string? FileTypeExtension { get; set; }
+
     public TextFilePicker()
     {
         InitializeComponent();
@@ -106,12 +112,11 @@ public partial class TextFilePicker : UserControl, TextFile
                 return;
             }
 
-            // Configure file picker options
-            var filePickerOptions = new FilePickerOpenOptions
-            {
-                Title = "Select Text File to Upload",
-                AllowMultiple = false
-            };
+            // Configure file picker options. When a canonical extension is known (e.g. *.vis for an IHC project),
+            // default the dialog to it - while still allowing all files - and reflect it in the title, rather than
+            // showing every file with a generic "text file" prompt.
+            var extensions = FileTypeExtension is null ? null : new[] { FileTypeExtension };
+            var filePickerOptions = UploadFilePickerOptions.Build(extensions, "Text");
 
             // Open file picker
             var files = await topLevel.StorageProvider.OpenFilePickerAsync(filePickerOptions);
