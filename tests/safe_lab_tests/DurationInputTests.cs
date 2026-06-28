@@ -67,5 +67,19 @@ namespace Ihc.Tests
 
             Assert.That(input.Text, Is.EqualTo(string.Empty));
         }
+
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
+        public void SetValue_WhileMidEdit_LeavesPartialEntryUnchanged()
+        {
+            // "01:02:" is a valid-so-far entry the user is still typing (seconds not entered yet) that does not
+            // parse. The two-way round-trip restore fires SetValue on every keystroke, so it must leave an
+            // in-progress, not-yet-parseable entry untouched rather than reformat and clobber the caret.
+            var input = new DurationInput { Text = "01:02:" };
+
+            input.SetValue(new TimeSpan(5, 0, 0));
+
+            Assert.That(input.Text, Is.EqualTo("01:02:"));
+        }
     }
 }

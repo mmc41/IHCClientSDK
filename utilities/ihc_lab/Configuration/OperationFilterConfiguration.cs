@@ -76,6 +76,23 @@ public static class OperationFilterConfiguration
     /// <returns>True if the field contains a not-yet-supported type, false otherwise.</returns>
     public static bool ContainsUnsupportedType(FieldMetaData field)
     {
+        return ContainsUnsupportedType(field, depth: 0);
+    }
+
+    /// <summary>
+    /// Hard cap on the sub-field recursion. It is an infinite-loop backstop, not a real limit: the metadata layer
+    /// expands only one level of record properties, so genuine nesting is at most ~2 deep. The cap exists so a
+    /// future metadata change that produced a deeper or self-referential field graph cannot loop forever.
+    /// </summary>
+    private const int MaxFieldDepth = 16;
+
+    private static bool ContainsUnsupportedType(FieldMetaData field, int depth)
+    {
+        // Past the backstop the graph is deeper (or more cyclic) than anything the GUI can render: fail safe by
+        // treating the field as unsupported so the operation is filtered out rather than recursed into forever.
+        if (depth > MaxFieldDepth)
+            return true;
+
         var strategy = ParameterControlRegistry.Instance.TryGetStrategy(field);
 
         // No strategy can build a control for this field (e.g. a complex sub-field the one-level metadata left
@@ -88,7 +105,7 @@ public static class OperationFilterConfiguration
         // report their constituent fields, each of which must also be renderable.
         foreach (var subField in strategy.GetRenderedSubFields(field))
         {
-            if (ContainsUnsupportedType(subField))
+            if (ContainsUnsupportedType(subField, depth + 1))
                 return true;
         }
 

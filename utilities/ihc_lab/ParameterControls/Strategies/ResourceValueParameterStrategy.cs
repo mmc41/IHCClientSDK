@@ -31,9 +31,22 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
         ResourceValue.ValueKind.WEEKDAY => new[] { new PayloadField("value", PayloadKind.Int) },
         ResourceValue.ValueKind.ENUM => new[] { new PayloadField("definitionTypeID", PayloadKind.Int), new PayloadField("enumValueID", PayloadKind.Int) },
         ResourceValue.ValueKind.PhoneNumber => new[] { new PayloadField("number", PayloadKind.String) },
-        ResourceValue.ValueKind.SceneDimmer => new[] { new PayloadField("dimmerPercentage", PayloadKind.Int), new PayloadField("delayTime", PayloadKind.Int), new PayloadField("rampTime", PayloadKind.Int) },
-        ResourceValue.ValueKind.SceneRelay => new[] { new PayloadField("delayTime", PayloadKind.Int), new PayloadField("relayValue", PayloadKind.Bool) },
-        ResourceValue.ValueKind.SceneShutter => new[] { new PayloadField("shutterPositionIsUp", PayloadKind.Bool), new PayloadField("delayTime", PayloadKind.Int) },
+        ResourceValue.ValueKind.SceneDimmer => new[]
+        {
+            new PayloadField("dimmerPercentage", PayloadKind.Int),
+            new PayloadField("delayTime", PayloadKind.Int),
+            new PayloadField("rampTime", PayloadKind.Int)
+        },
+        ResourceValue.ValueKind.SceneRelay => new[]
+        {
+            new PayloadField("delayTime", PayloadKind.Int),
+            new PayloadField("relayValue", PayloadKind.Bool)
+        },
+        ResourceValue.ValueKind.SceneShutter => new[]
+        {
+            new PayloadField("shutterPositionIsUp", PayloadKind.Bool),
+            new PayloadField("delayTime", PayloadKind.Int)
+        },
         _ => Array.Empty<PayloadField>()
     };
 

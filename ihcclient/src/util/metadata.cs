@@ -19,21 +19,25 @@ namespace Ihc {
         /// <returns>The SDK version string, or "Unknown" if not available.</returns>
         public static string GetSdkVersionStr()
         {
-            // Get the SDK assembly (ihcclient), not the entry assembly
+            // Get the SDK assembly (ihcclient), not the entry assembly. typeof(...).Assembly is never null.
             Assembly assembly = typeof(VersionInfo).Assembly;
-            var fileVersion = assembly?.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
-            return fileVersion ?? assembly?.GetName().Version?.ToString() ?? "Unknown";
+            var fileVersion = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
+            return fileVersion ?? assembly.GetName().Version?.ToString() ?? "Unknown";
         }
 
         /// <summary>
         /// Gets the version of the SDK from the assembly metadata.
         /// </summary>
-        /// <returns>The SDK version string, or "Unknown" if not available.</returns>
-        public static System.Version GetSdkVersion()
+        /// <returns>The SDK version, or null if the assembly carries no version.</returns>
+        // Assembly.GetName().Version is nullable, so the return type is honestly annotated nullable. The
+        // assembly is nullable-disabled, so a local annotations context is opened just for this signature.
+#nullable enable annotations
+        public static System.Version? GetSdkVersion()
+#nullable restore
         {
-            // Get the SDK assembly (ihcclient), not the entry assembly
+            // Get the SDK assembly (ihcclient), not the entry assembly. typeof(...).Assembly is never null.
             Assembly assembly = typeof(VersionInfo).Assembly;
-            return assembly?.GetName().Version;
+            return assembly.GetName().Version;
         }
 
     }
@@ -48,6 +52,9 @@ namespace Ihc {
     /// </summary>
     public record FieldMetaData(string name, Type type, FieldMetaData[] subtypes, string description, ICustomAttributeProvider attributeProvider = null)
     {
+        // The positional parameters are deliberately lower-cased and the public surface is re-declared here in
+        // PascalCase: callers see idiomatic Name/Type/SubTypes/... while construction stays positional. The
+        // re-declarations are intentional renames, not accidental duplication of the generated positional members.
         public string Name { get; init; } = name;
         public Type Type { get; init; } = type;
         public string Description { get; init; } = description;
@@ -78,14 +85,14 @@ namespace Ihc {
     /// <summary>
     /// High level metadata about a service operation (method) on a high level IHC service. For use by test and documentation tools.
     /// </summary>
-    /// <param name="service">IHC service</param>
+    /// <param name="Service">IHC service</param>
     /// <param name="Name">The name of the method</param>
     /// <param name="ReturnType">The return type unwrapped from Task or IAsyncEnumerable wrappers (refer to OperationKind)</param>
     /// <param name="Parameters">Method parameter metadata</param>
     /// <param name="OperationKind">The type of operation</param>
     /// <param name="OperationDetails">The underlying MethodInfo describing the operation in details</param>
     /// <param name="Description">The XML documentation for this method (summary and remarks sections separated by newline)</param>
-    public class ServiceOperationMetadata(IIHCApiService service, string Name, Type ReturnType, FieldMetaData[] Parameters, ServiceOperationKind OperationKind, MethodInfo OperationDetails, string Description)
+    public class ServiceOperationMetadata(IIHCApiService Service, string Name, Type ReturnType, FieldMetaData[] Parameters, ServiceOperationKind OperationKind, MethodInfo OperationDetails, string Description)
     {
         public string Name { get; init; } = Name;
         public Type ReturnType { get; init; } = ReturnType;
@@ -93,7 +100,7 @@ namespace Ihc {
         public ServiceOperationKind Kind { get; init; } = OperationKind;
         public MethodInfo MethodInfo { get; init; } = OperationDetails;
         public string Description { get; init; } = Description;
-        public IIHCApiService service { get; init; } = service;
+        public IIHCApiService Service { get; init; } = Service;
 
         public override string ToString()
         {
@@ -121,7 +128,7 @@ namespace Ihc {
 
             // Use reflection to invoke the method on the service instance
             // This returns Task, Task<T>, or IAsyncEnumerable<T> depending on the operation
-            var result = MethodInfo.Invoke(service, arguments ?? Array.Empty<object>());
+            var result = MethodInfo.Invoke(Service, arguments ?? Array.Empty<object>());
 
             return result;
         }
@@ -242,7 +249,7 @@ namespace Ihc {
                     if (IsMethodFromExcludedInterface(method))
                         continue;
 
-                    // Cache an instance-less shape (service: null) so the static cache never pins the first
+                    // Cache an instance-less shape (Service: null) so the static cache never pins the first
                     // service instance (or its object graph) for the process lifetime; every returned operation is
                     // rebound to the live instance below via WithService, so the cached shape needs no instance.
                     operations.Add(CreateOperationInfo(null!, method));
@@ -251,7 +258,7 @@ namespace Ihc {
                 return operations.AsReadOnly();
             });
 
-            // The cache is keyed by service *type* and stores an instance-less operation shape (service: null,
+            // The cache is keyed by service *type* and stores an instance-less operation shape (Service: null,
             // see above). Bind every cached operation to the live `service` so Invoke() has a concrete instance
             // to target - the caller's, never a stale (possibly disposed, or differently-configured in tests) one.
             var retv = cached.Select(op => op.WithService(service)).ToList().AsReadOnly();
@@ -537,11 +544,14 @@ namespace Ihc {
             return string.Empty;
         }
 
-        private static string TryGetDescriptionForType(XDocument xmlDoc, MethodInfo method, Type type)
+        /// <summary>
+        /// Builds the XML documentation member id (e.g. <c>M:Ns.Type.Method(System.Int32)</c>) for
+        /// <paramref name="method"/> as declared on <paramref name="type"/>. This is the key used to look the
+        /// method up in the generated XML doc file; shared by the summary and parameter lookups so the
+        /// (namespace + method name + parameter types) encoding lives in one place.
+        /// </summary>
+        private static string BuildXmlMemberName(MethodInfo method, Type type)
         {
-            if (type == null)
-                return null;
-
             var sb = new StringBuilder();
             sb.Append("M:");
             sb.Append(type.FullName);
@@ -557,18 +567,31 @@ namespace Ihc {
                     if (i > 0)
                         sb.Append(',');
 
-                    var paramType = parameters[i].ParameterType;
-                    sb.Append(GetXmlTypeName(paramType));
+                    sb.Append(GetXmlTypeName(parameters[i].ParameterType));
                 }
                 sb.Append(')');
             }
 
-            var memberName = sb.ToString();
+            return sb.ToString();
+        }
 
-            // Find the member element in the XML
-            var memberElement = xmlDoc.Descendants("member")
+        /// <summary>
+        /// Finds the <c>&lt;member&gt;</c> element documenting <paramref name="method"/> (as declared on
+        /// <paramref name="type"/>) in the XML documentation, or null if it is absent.
+        /// </summary>
+        private static XElement FindMemberElement(XDocument xmlDoc, MethodInfo method, Type type)
+        {
+            var memberName = BuildXmlMemberName(method, type);
+            return xmlDoc.Descendants("member")
                 .FirstOrDefault(m => m.Attribute("name")?.Value == memberName);
+        }
 
+        private static string TryGetDescriptionForType(XDocument xmlDoc, MethodInfo method, Type type)
+        {
+            if (type == null)
+                return null;
+
+            var memberElement = FindMemberElement(xmlDoc, method, type);
             if (memberElement == null)
                 return null;
 
@@ -607,33 +630,7 @@ namespace Ihc {
             if (type == null)
                 return null;
 
-            var sb = new StringBuilder();
-            sb.Append("M:");
-            sb.Append(type.FullName);
-            sb.Append('.');
-            sb.Append(method.Name);
-
-            var parameters = method.GetParameters();
-            if (parameters.Length > 0)
-            {
-                sb.Append('(');
-                for (int i = 0; i < parameters.Length; i++)
-                {
-                    if (i > 0)
-                        sb.Append(',');
-
-                    var paramType = parameters[i].ParameterType;
-                    sb.Append(GetXmlTypeName(paramType));
-                }
-                sb.Append(')');
-            }
-
-            var memberName = sb.ToString();
-
-            // Find the member element in the XML
-            var memberElement = xmlDoc.Descendants("member")
-                .FirstOrDefault(m => m.Attribute("name")?.Value == memberName);
-
+            var memberElement = FindMemberElement(xmlDoc, method, type);
             if (memberElement == null)
                 return null;
 
