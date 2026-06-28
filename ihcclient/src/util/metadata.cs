@@ -243,10 +243,9 @@ namespace Ihc {
                 return operations.AsReadOnly();
             });
 
-            // The cache is keyed by service *type* and stores instance-independent operation shape, but each
-            // cached ServiceOperationMetadata pins the service instance that first populated the cache. Re-bind
-            // every operation to the live `service` so Invoke() targets the caller's instance rather than a
-            // stale (possibly disposed, or differently-configured in tests) instance of the same service type.
+            // The cache is keyed by service *type* and stores an instance-less operation shape (service: null,
+            // see above). Bind every cached operation to the live `service` so Invoke() has a concrete instance
+            // to target - the caller's, never a stale (possibly disposed, or differently-configured in tests) one.
             var retv = cached.Select(op => op.WithService(service)).ToList().AsReadOnly();
 
             activity?.SetReturnValue(retv);
