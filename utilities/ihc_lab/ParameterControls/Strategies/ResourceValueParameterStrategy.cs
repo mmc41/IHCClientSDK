@@ -7,8 +7,9 @@ using Ihc;
 namespace IhcLab.ParameterControls.Strategies;
 
 /// <summary>
-/// Strategy for ResourceValue parameters. Renders a ResourceID field, a ValueKind dropdown (all 12 kinds), and a
-/// payload editor that is rebuilt to match the selected ValueKind (decision D4) - so only the valid payload
+/// Strategy for ResourceValue parameters. Renders the full WSResourceValueEnvelope a SetResourceValue(s) write
+/// needs: a ResourceID field, a TypeString field, an IsValueRuntime toggle, a ValueKind dropdown (all 12 kinds),
+/// and a payload editor that is rebuilt to match the selected ValueKind (decision D4) - so only the valid payload
 /// field(s) are ever editable. ENUM is entered as two numeric id fields (decision D5). The composite scene kinds
 /// (SceneDimmer/SceneRelay/SceneShutter) and PhoneNumber show their multiple payload fields.
 /// </summary>
@@ -65,6 +66,24 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
         };
         mainPanel.Children.Add(OperationSupport.LabeledRow("Resource ID", resourceIdUpDown, labelAlignment: VerticalAlignment.Center));
 
+        // TypeString + IsValueRuntime complete the envelope alongside ResourceID and the union value; a
+        // SetResourceValue(s) write needs all of them, so the editor exposes them rather than sending defaults.
+        var typeStringBox = new TextBox
+        {
+            Name = $"{controlName}.TypeString",
+            Width = 180,
+            Watermark = "e.g. dataline_output (optional)"
+        };
+        mainPanel.Children.Add(OperationSupport.LabeledRow("Type String", typeStringBox, labelAlignment: VerticalAlignment.Center));
+
+        var isValueRuntimeCheck = new CheckBox
+        {
+            Name = $"{controlName}.IsValueRuntime",
+            IsThreeState = false,
+            IsChecked = true
+        };
+        mainPanel.Children.Add(OperationSupport.LabeledRow("Is Value Runtime", isValueRuntimeCheck, labelAlignment: VerticalAlignment.Center));
+
         var valueKindDropDown = new ComboBox
         {
             Name = $"{controlName}.ValueKind",
@@ -93,8 +112,10 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
             RaiseContainerChanged(mainPanel);
         };
 
-        // ResourceID edits also change the parameter.
+        // ResourceID / TypeString / IsValueRuntime edits also change the parameter.
         resourceIdUpDown.ValueChanged += (s, e) => RaiseContainerChanged(mainPanel);
+        typeStringBox.TextChanged += (s, e) => RaiseContainerChanged(mainPanel);
+        isValueRuntimeCheck.IsCheckedChanged += (s, e) => RaiseContainerChanged(mainPanel);
 
         ApplyDescriptionTooltip(mainPanel, field);
 
@@ -115,6 +136,8 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
         var mainPanel = RequireControl<StackPanel>(control);
 
         var resourceIdControl = FindNamed<NumericUpDown>(mainPanel, $"{mainPanel.Name}.ResourceID");
+        var typeStringControl = FindNamed<TextBox>(mainPanel, $"{mainPanel.Name}.TypeString");
+        var isValueRuntimeControl = FindNamed<CheckBox>(mainPanel, $"{mainPanel.Name}.IsValueRuntime");
         var valueKindControl = FindNamed<ComboBox>(mainPanel, $"{mainPanel.Name}.ValueKind");
         var payloadHost = FindNamed<StackPanel>(mainPanel, $"{mainPanel.Name}.Payload");
 
@@ -124,7 +147,8 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
         return new ResourceValue
         {
             ResourceID = resourceId,
-            IsValueRuntime = true,
+            TypeString = TypeStringOrNull(typeStringControl?.Text),
+            IsValueRuntime = isValueRuntimeControl?.IsChecked ?? true,
             Value = BuildUnion(kind, payloadHost)
         };
     }
@@ -137,21 +161,32 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
         var mainPanel = RequireControl<StackPanel>(control);
 
         var resourceIdControl = FindNamed<NumericUpDown>(mainPanel, $"{mainPanel.Name}.ResourceID");
+        var typeStringControl = FindNamed<TextBox>(mainPanel, $"{mainPanel.Name}.TypeString");
+        var isValueRuntimeControl = FindNamed<CheckBox>(mainPanel, $"{mainPanel.Name}.IsValueRuntime");
         var valueKindControl = FindNamed<ComboBox>(mainPanel, $"{mainPanel.Name}.ValueKind");
         var payloadHost = FindNamed<StackPanel>(mainPanel, $"{mainPanel.Name}.Payload");
 
         if (value is not ResourceValue resourceValue)
         {
             if (resourceIdControl != null && resourceIdControl.Value != 0) resourceIdControl.Value = 0;
+            if (typeStringControl != null && !string.IsNullOrEmpty(typeStringControl.Text)) typeStringControl.Text = string.Empty;
+            if (isValueRuntimeControl != null && isValueRuntimeControl.IsChecked != true) isValueRuntimeControl.IsChecked = true;
             if (valueKindControl != null) valueKindControl.SelectedIndex = 0;
             if (payloadHost != null) EnsurePayloadMatchesKind(payloadHost, SelectedKind(valueKindControl));
             return;
         }
 
-        // Set ResourceID/ValueKind only when they actually differ, so a GUI->service->GUI round-trip restore does
-        // not fire redundant change events.
+        // Set ResourceID/TypeString/IsValueRuntime/ValueKind only when they actually differ, so a GUI->service->GUI
+        // round-trip restore does not fire redundant change events.
         if (resourceIdControl != null && resourceIdControl.Value != resourceValue.ResourceID)
             resourceIdControl.Value = resourceValue.ResourceID;
+
+        var typeString = resourceValue.TypeString ?? string.Empty;
+        if (typeStringControl != null && (typeStringControl.Text ?? string.Empty) != typeString)
+            typeStringControl.Text = typeString;
+
+        if (isValueRuntimeControl != null && isValueRuntimeControl.IsChecked != resourceValue.IsValueRuntime)
+            isValueRuntimeControl.IsChecked = resourceValue.IsValueRuntime;
 
         var kind = resourceValue.Value.ValueKind;
         if (valueKindControl?.ItemsSource != null)
@@ -328,6 +363,9 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
             return kind;
         return ResourceValue.ValueKind.BOOL;
     }
+
+    // An empty/blank TypeString box means "no type string" (null), matching the absent SOAP field, rather than "".
+    private static string? TypeStringOrNull(string? text) => string.IsNullOrWhiteSpace(text) ? null : text;
 
     private static StackPanel? MainPanelOf(StackPanel payloadHost)
         => payloadHost.Parent as StackPanel;

@@ -312,7 +312,7 @@ public partial class MainWindow : Window
         }
 
         viewModel?.ClearErrorAndWarning();
-        viewModel?.ClearOutput();
+        viewModel?.ClearOutput(); // Also drops any prior saved result (see OnViewModelPropertyChanged / IsOutputVisible).
 
         this.Cursor = new Cursor(StandardCursorType.Wait);
 
@@ -439,6 +439,17 @@ public partial class MainWindow : Window
     /// </summary>
     private async void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        // Keep the "Save Result" payload in lockstep with the shown output: every path that clears or replaces the
+        // output (a new/failed/streaming run, an operation or service switch, or the Settings view) routes through
+        // ViewModel.ClearOutput, which sets IsOutputVisible=false. Dropping the saved result here - the single point
+        // at which output is hidden - means "Save Result to File…" can never write a previous operation's bytes into
+        // an empty or unrelated output. A successful non-streaming run re-sets the saved result *after* this fires.
+        if (e.PropertyName == nameof(MainWindowViewModel.IsOutputVisible) && viewModel?.IsOutputVisible == false)
+        {
+            ClearSavedResult();
+            return;
+        }
+
         // When operation selection changes, update parameter controls
         if (e.PropertyName == nameof(MainWindowViewModel.SelectedOperationIndex))
         {
@@ -561,7 +572,7 @@ public partial class MainWindow : Window
         try
         {
             viewModel?.ClearErrorAndWarning();
-            viewModel?.ClearOutput();
+            viewModel?.ClearOutput(); // Also drops any prior saved result (see OnViewModelPropertyChanged / IsOutputVisible).
 
             // Convert IConfigurationSection to dictionary to properly serialize values
             var loggingConfigDict = Program.config?.loggingConfig?.GetChildren()
@@ -632,6 +643,17 @@ public partial class MainWindow : Window
         {
             HandleOperationError(activity, "Output to clipboard", ex);
         }
+    }
+
+    /// <summary>
+    /// Forgets the most recent operation result so "Save Result to File…" cannot write stale bytes. Invoked centrally
+    /// from <see cref="OnViewModelPropertyChanged"/> whenever the output is hidden (IsOutputVisible -&gt; false) - the
+    /// single point every output-clearing path routes through; a successful non-streaming run sets it again afterwards.
+    /// </summary>
+    private void ClearSavedResult()
+    {
+        lastOperationResult = null;
+        lastResultOperationName = null;
     }
 
     /// <summary>

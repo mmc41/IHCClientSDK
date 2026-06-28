@@ -209,10 +209,18 @@ namespace Ihc {
 
             Type serviceType = ReflectionUtil.GetServiceType(service);
 
-            activity?.SetParameters((nameof(service), serviceType.Name));
+            activity?.SetParameters((nameof(service), serviceType.Name)); // Interface name: for human-readable telemetry only.
             activity?.SetTag("cachedResult", true); // Assume cached by default
 
-            var cached = _cache.GetOrAdd(serviceType, type =>
+            // Key the cache by the CONCRETE implementation type, not the interface. The cached operation shapes hold
+            // MethodInfo taken from the concrete type's interface map (ReflectionUtil.GetMethods returns the concrete
+            // TargetMethods); such a MethodInfo only invokes correctly on an instance of that same concrete type. Two
+            // implementations of one interface - e.g. a FakeItEasy proxy in a test and the real service after the
+            // GUI's endpoint is switched - must therefore NOT share an entry, or WithService would rebind one type's
+            // shape onto the other's instance and MethodInfo.Invoke would throw "object does not match target type".
+            Type cacheKey = service.GetType();
+
+            var cached = _cache.GetOrAdd(cacheKey, _ =>
             {
                 activity?.SetTag("cachedResult", false); // Override if not cached.
 

@@ -255,6 +255,106 @@ namespace Ihc.Tests
 
         [AvaloniaTest]
         [CaptureScreenshotOnFailure]
+        public void ExtractValue_IncludesTypeStringAndIsValueRuntime()
+        {
+            // Full-envelope support: the editor must also produce TypeString and IsValueRuntime, not just the union,
+            // so SetResourceValue(s) writes send a complete WSResourceValueEnvelope (FOUND-02).
+            var control = strategy.CreateControl(Field, "0");
+            SelectKind(control, ResourceValue.ValueKind.BOOL);
+            Find<TextBox>(control, "0.TypeString").Text = "dataline_output";
+            Find<CheckBox>(control, "0.IsValueRuntime").IsChecked = false;
+            Find<CheckBox>(control, "0.Payload.value").IsChecked = true;
+
+            var rv = strategy.ExtractValue(control, Field) as ResourceValue;
+
+            Assert.That(rv!.TypeString, Is.EqualTo("dataline_output"));
+            Assert.That(rv!.IsValueRuntime, Is.False);
+            Assert.That(rv!.Value.ValueKind, Is.EqualTo(ResourceValue.ValueKind.BOOL));
+            Assert.That(rv!.Value.BoolValue, Is.True);
+        }
+
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
+        public void ExtractValue_EmptyTypeString_ExtractsAsNull()
+        {
+            // An empty TypeString box maps to null (no type string) rather than "", matching the SOAP "absent" shape.
+            var control = strategy.CreateControl(Field, "0");
+            SelectKind(control, ResourceValue.ValueKind.INT);
+
+            var rv = strategy.ExtractValue(control, Field) as ResourceValue;
+
+            Assert.That(rv!.TypeString, Is.Null);
+        }
+
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
+        public void ExtractValue_DefaultIsValueRuntime_IsTrue()
+        {
+            // The IsValueRuntime checkbox defaults to checked, preserving the editor's prior hardcoded behavior.
+            var control = strategy.CreateControl(Field, "0");
+            SelectKind(control, ResourceValue.ValueKind.INT);
+
+            var rv = strategy.ExtractValue(control, Field) as ResourceValue;
+
+            Assert.That(rv!.IsValueRuntime, Is.True);
+        }
+
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
+        public void ExtractValue_WhitespaceTypeString_ExtractsAsNull()
+        {
+            // A blank (whitespace-only) TypeString box also means "no type string" (null), not a stray "   ".
+            var control = strategy.CreateControl(Field, "0");
+            SelectKind(control, ResourceValue.ValueKind.INT);
+            Find<TextBox>(control, "0.TypeString").Text = "   ";
+
+            var rv = strategy.ExtractValue(control, Field) as ResourceValue;
+
+            Assert.That(rv!.TypeString, Is.Null);
+        }
+
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
+        public void SetValue_NonResourceValue_ResetsEnvelopeFieldsToDefaults()
+        {
+            // Restoring a null/non-ResourceValue resets the editor (incl. the new envelope fields) to its defaults.
+            var control = strategy.CreateControl(Field, "0");
+            Find<TextBox>(control, "0.TypeString").Text = "dataline_output";
+            Find<CheckBox>(control, "0.IsValueRuntime").IsChecked = false;
+
+            strategy.SetValue(control, null, Field);
+
+            Assert.That(Find<TextBox>(control, "0.TypeString").Text, Is.Empty);
+            Assert.That(Find<CheckBox>(control, "0.IsValueRuntime").IsChecked, Is.True);
+        }
+
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
+        public void SetValue_RestoresTypeStringAndIsValueRuntime()
+        {
+            var control = strategy.CreateControl(Field, "0");
+            var stored = new ResourceValue
+            {
+                ResourceID = 7,
+                TypeString = "dataline_input",
+                IsValueRuntime = false,
+                Value = new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.INT, IntValue = 12 }
+            };
+
+            strategy.SetValue(control, stored, Field);
+
+            Assert.That(Find<TextBox>(control, "0.TypeString").Text, Is.EqualTo("dataline_input"));
+            Assert.That(Find<CheckBox>(control, "0.IsValueRuntime").IsChecked, Is.False);
+
+            // ... and the full envelope round-trips back out unchanged.
+            var rv = strategy.ExtractValue(control, Field) as ResourceValue;
+            Assert.That(rv!.TypeString, Is.EqualTo("dataline_input"));
+            Assert.That(rv!.IsValueRuntime, Is.False);
+            Assert.That(rv!.Value.IntValue, Is.EqualTo(12));
+        }
+
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
         public void ExtractValue_SceneShutterKind_BuildsCompositeUnion()
         {
             var control = strategy.CreateControl(Field, "0");

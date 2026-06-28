@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using FakeItEasy;
@@ -35,6 +36,50 @@ namespace Ihc.Tests
                 return true;
 
             return field.SubTypes.All(sub => IsRenderable(registry, sub));
+        }
+
+        /// <summary>
+        /// The full set of IHC service fakes - one per service the Lab exposes - used by the cross-service guards.
+        /// Reflection-based metadata reads the service interface, so a fake yields the same operation shapes as the
+        /// real service.
+        /// </summary>
+        private static IIHCApiService[] AllServiceFakes() => new IIHCApiService[]
+        {
+            A.Fake<IAuthenticationService>(), A.Fake<IControllerService>(), A.Fake<IResourceInteractionService>(),
+            A.Fake<IConfigurationService>(), A.Fake<IOpenAPIService>(), A.Fake<INotificationManagerService>(),
+            A.Fake<IMessageControlLogService>(), A.Fake<IModuleService>(), A.Fake<ITimeManagerService>(),
+            A.Fake<IUserManagerService>(), A.Fake<IAirlinkManagementService>(), A.Fake<ISmsModemService>(),
+            A.Fake<IInternalTestService>()
+        };
+
+        /// <summary>The IHC service interface name behind a fake proxy, for readable warning messages.</summary>
+        private static string ServiceName(IIHCApiService service)
+            => service.GetType().GetInterfaces()
+                .Where(i => i != typeof(IIHCApiService) && typeof(IIHCApiService).IsAssignableFrom(i))
+                .Select(i => i.Name)
+                .FirstOrDefault() ?? service.GetType().Name;
+
+        /// <summary>
+        /// Describes why a field is un-renderable, walking the same registry path the filter uses: a field no
+        /// strategy can handle is the culprit; otherwise recurse into the first un-renderable sub-field the
+        /// strategy decomposes into. Used only to make the warning message actionable.
+        /// </summary>
+        private static string FirstUnsupportedReason(FieldMetaData field)
+        {
+            var strategy = ParameterControlRegistry.Instance.TryGetStrategy(field);
+            if (strategy == null)
+                return $"no control strategy for '{field.Type.Name}' (likely a complex/collection type left with no sub-fields by the one-level metadata limit)";
+
+            foreach (var sub in strategy.GetRenderedSubFields(field))
+            {
+                if (OperationFilterConfiguration.ContainsUnsupportedType(sub))
+                {
+                    string subName = string.IsNullOrEmpty(sub.Name) ? "<element>" : sub.Name;
+                    return $"sub-field '{subName}' ({sub.Type.Name}): {FirstUnsupportedReason(sub)}";
+                }
+            }
+
+            return "unknown";
         }
 
         [Test]
@@ -111,16 +156,7 @@ namespace Ihc.Tests
             var filter = OperationFilterConfiguration.CreateDefaultFilter();
             var registry = ParameterControlRegistry.Instance;
 
-            IIHCApiService[] services =
-            {
-                A.Fake<IAuthenticationService>(), A.Fake<IControllerService>(), A.Fake<IResourceInteractionService>(),
-                A.Fake<IConfigurationService>(), A.Fake<IOpenAPIService>(), A.Fake<INotificationManagerService>(),
-                A.Fake<IMessageControlLogService>(), A.Fake<IModuleService>(), A.Fake<ITimeManagerService>(),
-                A.Fake<IUserManagerService>(), A.Fake<IAirlinkManagementService>(), A.Fake<ISmsModemService>(),
-                A.Fake<IInternalTestService>()
-            };
-
-            foreach (var service in services)
+            foreach (var service in AllServiceFakes())
             {
                 var exposed = ServiceMetadata.GetOperations(service).Where(filter);
                 foreach (var operation in exposed)
@@ -136,6 +172,40 @@ namespace Ihc.Tests
                             $"'{parameter.Name}' of type '{parameter.Type}' - it would crash at selection.");
                     }
                 }
+            }
+        }
+
+        [Test]
+        public void DefaultFilter_HidesNoOperation_AcrossAllServices_WarnOnly()
+        {
+            // Guard (WARNING, not failure): hiding an operation the GUI cannot two-way-sync is a deliberate
+            // fail-safe, so it must not fail the build. But today every SDK operation across all services is
+            // renderable, so nothing should be hidden. If a new or changed SDK parameter shape (e.g. a nested
+            // complex record, a collection-of-complex, or a complex record gaining a collection property) starts
+            // tripping the one-level renderability limit, its operation silently disappears from the Lab GUI.
+            // This surfaces that as an NUnit warning so it is noticed - and a control strategy added or the
+            // metadata widened - rather than going unseen.
+            var filter = OperationFilterConfiguration.CreateDefaultFilter();
+
+            var hidden = new List<string>();
+            foreach (var service in AllServiceFakes())
+            {
+                foreach (var op in ServiceMetadata.GetOperations(service).Where(o => !filter(o)))
+                {
+                    var culprits = op.Parameters
+                        .Where(p => p.Type != typeof(CancellationToken) && OperationFilterConfiguration.ContainsUnsupportedType(p))
+                        .Select(p => $"{p.Name}:{p.Type.Name} ({FirstUnsupportedReason(p)})");
+                    hidden.Add($"  {ServiceName(service)}.{op.Name} -> {string.Join("; ", culprits)}");
+                }
+            }
+
+            if (hidden.Count > 0)
+            {
+                Assert.Warn(
+                    $"{hidden.Count} SDK operation(s) are now HIDDEN by the GUI operation filter. Hiding is a " +
+                    $"deliberate fail-safe (the build is intentionally not failed), but it means these operations " +
+                    $"vanished from the Lab GUI - add a control strategy or widen the metadata so they render again:\n" +
+                    string.Join("\n", hidden));
             }
         }
 

@@ -7,7 +7,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <CopyDebugSymbolFilesFromPackages>true</CopyDebugSymbolFilesFromPackages>
-    <Version>0.8.0</Version>
+    <Version>0.9.0</Version>
     <InformationalVersion>This is a beta version</InformationalVersion>
     <AssemblyVersion>$(Version)</AssemblyVersion>
     <Copyright>Apache License 2.0</Copyright>

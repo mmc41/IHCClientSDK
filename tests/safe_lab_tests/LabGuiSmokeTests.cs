@@ -143,5 +143,82 @@ namespace Ihc.Tests
             Assert.That(vm.OutputText, Does.Contain("Ready"),
                 $"GetControllerState should report the mocked Ready state, but output was: {vm.OutputText}");
         }
+
+        /// <summary>
+        /// Regression (FOUND-03): "Save Result to File" must not write a previous operation's result once the
+        /// output has been replaced by something that has no saveable result. After running an operation and then
+        /// opening the Settings view, Save Result reports "No result to save" instead of silently saving the stale
+        /// operation bytes that no longer match what the user sees.
+        /// </summary>
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
+        public async Task SaveResult_AfterRunThenShowSettings_DoesNotSaveStaleResult()
+        {
+            var window = await SetupMainWindowAsync();
+            var vm = (MainWindowViewModel)window.DataContext!;
+            var servicesCombo = window.FindControl<ComboBox>("ServicesComboBox")!;
+            var operationsCombo = window.FindControl<ComboBox>("OperationsComboBox")!;
+
+            // Run a (mocked) operation so a result is captured for "Save Result".
+            servicesCombo.SelectedIndex = IndexOfService(servicesCombo, "ControllerService");
+            await Pump();
+            operationsCombo.SelectedIndex = IndexOfOperation(operationsCombo, "GetControllerState");
+            await Pump();
+            window.RunButtonClickHandler(window, new RoutedEventArgs());
+            for (int i = 0; i < 100 && !vm.IsOutputVisible && !vm.IsErrorVisible; i++)
+                await Pump();
+            Assert.That(vm.IsErrorVisible, Is.False, $"Run produced an error: {vm.ErrorWarningText}");
+
+            // Replace the output with the Settings view, which has no saveable operation result.
+            window.ShowSettingsMenuItemClick(window, new RoutedEventArgs());
+            for (int i = 0; i < 100 && !vm.OutputText.Contains("IhcSettings"); i++)
+                await Pump();
+
+            // Saving now must report "no result" rather than write the stale GetControllerState bytes.
+            window.SaveOutputMenuItemClick(window, new RoutedEventArgs());
+            await Pump();
+
+            Assert.That(vm.IsWarningVisible, Is.True, "Save after Settings should warn there is no result to save");
+            Assert.That(vm.ErrorWarningText, Does.Contain("No result to save"));
+        }
+
+        /// <summary>
+        /// Regression (FOUND-03): switching to a different operation clears the output pane (without running the new
+        /// operation), so "Save Result" must not write the previous operation's bytes into the now-empty output.
+        /// </summary>
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
+        public async Task SaveResult_AfterRunThenChangeOperation_DoesNotSaveStaleResult()
+        {
+            var window = await SetupMainWindowAsync();
+            var vm = (MainWindowViewModel)window.DataContext!;
+            var servicesCombo = window.FindControl<ComboBox>("ServicesComboBox")!;
+            var operationsCombo = window.FindControl<ComboBox>("OperationsComboBox")!;
+
+            servicesCombo.SelectedIndex = IndexOfService(servicesCombo, "ControllerService");
+            await Pump();
+            int runIdx = IndexOfOperation(operationsCombo, "GetControllerState");
+            operationsCombo.SelectedIndex = runIdx;
+            await Pump();
+            window.RunButtonClickHandler(window, new RoutedEventArgs());
+            for (int i = 0; i < 100 && !vm.IsOutputVisible && !vm.IsErrorVisible; i++)
+                await Pump();
+            Assert.That(vm.IsErrorVisible, Is.False, $"Run produced an error: {vm.ErrorWarningText}");
+            Assert.That(vm.IsOutputVisible, Is.True);
+
+            // Switch to a different operation WITHOUT running it - this clears the output pane.
+            int otherIdx = Enumerable.Range(0, operationsCombo.Items.Count).First(i => i != runIdx);
+            operationsCombo.SelectedIndex = otherIdx;
+            for (int i = 0; i < 100 && vm.IsOutputVisible; i++)
+                await Pump();
+            Assert.That(vm.IsOutputVisible, Is.False, "Switching operations should clear the output");
+
+            // Saving now must report "no result" rather than write the stale GetControllerState bytes.
+            window.SaveOutputMenuItemClick(window, new RoutedEventArgs());
+            await Pump();
+
+            Assert.That(vm.IsWarningVisible, Is.True, "Save after switching operations should warn there is no result to save");
+            Assert.That(vm.ErrorWarningText, Does.Contain("No result to save"));
+        }
     }
 }

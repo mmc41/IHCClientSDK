@@ -29,6 +29,12 @@ namespace Ihc.App;
 /// whose own property is itself a complex record leaves that sub-field with no sub-types; such a field is
 /// un-renderable and is now detected via <see cref="ParameterControlRegistry.TryGetStrategy"/> (returning null)
 /// and filtered out (rather than crashing with "No strategy found" at selection time).
+///
+/// NOTE: this filter is a crash guard rail, not an everyday selector - no current SDK service operation is
+/// expected to be filtered out (every shipped operation's parameters stay within the renderable envelope). It
+/// exists to fail safe ("filter, don't crash") if a future or changed parameter shape ever exceeds that
+/// envelope; the safe_lab_tests DefaultFilter_HidesNoOperation_AcrossAllServices_WarnOnly guard warns when that
+/// happens so a control strategy can be added.
 /// </summary>
 public static class OperationFilterConfiguration
 {

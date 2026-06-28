@@ -72,6 +72,52 @@ namespace Ihc.Tests
                 "GetOperations must bind metadata to the live service instance, not the stale cached one");
         }
 
+        /// <summary>A test-only IHC service interface with two distinct concrete implementations below. Keeping it
+        /// private to this test gives it its own (process-wide static) ServiceMetadata cache entry, so the
+        /// cross-concrete-type scenario is deterministic regardless of what other tests cache.</summary>
+        public interface ICrossConcreteTypeProbeService : IIHCApiService
+        {
+            Task<string> Probe();
+        }
+
+        private sealed class ProbeServiceImplA : ICrossConcreteTypeProbeService
+        {
+            public IhcSettings IhcSettings => null!;
+            public Task<string> Probe() => Task.FromResult("AAA");
+        }
+
+        private sealed class ProbeServiceImplB : ICrossConcreteTypeProbeService
+        {
+            public IhcSettings IhcSettings => null!;
+            public Task<string> Probe() => Task.FromResult("BBB");
+        }
+
+        /// <summary>
+        /// Regression: the metadata cache stores MethodInfo taken from the *concrete* type's interface map, so it
+        /// must key by concrete type - not by the interface. Two distinct concrete types implementing one interface
+        /// (e.g. a FakeItEasy proxy in a test vs. the real service after the GUI's endpoint is switched) would
+        /// otherwise share a cache entry, and WithService would rebind one type's MethodInfo onto the other's
+        /// instance - so Invoke throws "object does not match target type". (The existing rebind test above uses two
+        /// fakes of one interface, which share a single Castle proxy type, so it does not catch this.)
+        /// </summary>
+        [Test]
+        public async Task GetOperations_DistinctConcreteTypesSharingAnInterface_InvokeTargetsTheLiveInstancesType()
+        {
+            // First concrete type populates the metadata cache for the shared interface.
+            var implA = new ProbeServiceImplA();
+            var probeA = ServiceMetadata.GetOperations(implA)
+                .First(op => op.Name == nameof(ICrossConcreteTypeProbeService.Probe));
+            Assert.That(await (Task<string>)probeA.Invoke(Array.Empty<object>()), Is.EqualTo("AAA"));
+
+            // A DIFFERENT concrete type implementing the SAME interface. Before the fix the cache (keyed by
+            // interface) handed back implA's MethodInfo, so Invoke on an implB instance threw a TargetException.
+            var implB = new ProbeServiceImplB();
+            var probeB = ServiceMetadata.GetOperations(implB)
+                .First(op => op.Name == nameof(ICrossConcreteTypeProbeService.Probe));
+            Assert.That(await (Task<string>)probeB.Invoke(Array.Empty<object>()), Is.EqualTo("BBB"),
+                "metadata must key per concrete type so Invoke targets the live instance's actual type");
+        }
+
         /// <summary>
         /// US-A1: CreateSubTypes must emit the element type for a generic collection parameter (like it does for
         /// arrays), so the collection control strategy can find the element FieldMetaData.
