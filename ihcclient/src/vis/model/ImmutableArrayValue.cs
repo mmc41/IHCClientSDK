@@ -15,12 +15,10 @@ namespace Ihc.Projects
     internal static class ImmutableArrayValue
     {
         /// <summary>Order-sensitive content equality of two arrays; <c>default</c> and empty compare equal.</summary>
-        public static bool Equal<T>(ImmutableArray<T> a, ImmutableArray<T> b)
-        {
-            bool bothEmpty = a.IsDefaultOrEmpty && b.IsDefaultOrEmpty;
-            bool eitherEmpty = a.IsDefaultOrEmpty || b.IsDefaultOrEmpty;
-            return bothEmpty || (!eitherEmpty && a.SequenceEqual(b));
-        }
+        public static bool Equal<T>(ImmutableArray<T> a, ImmutableArray<T> b) =>
+            a.IsDefaultOrEmpty || b.IsDefaultOrEmpty
+                ? a.IsDefaultOrEmpty && b.IsDefaultOrEmpty   // if either is "no items", equal only when both are
+                : a.SequenceEqual(b);
 
         /// <summary>Order-sensitive content hash, consistent with <see cref="Equal{T}"/>.</summary>
         public static int Hash<T>(ImmutableArray<T> items)

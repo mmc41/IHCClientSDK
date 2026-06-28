@@ -29,7 +29,7 @@ namespace Ihc.Projects
     /// Auto-discovers the products and function blocks installed with IHC Visual by scanning
     /// <c>Products\**\*.def</c> (~100) and <c>FunctionBlocks\**\*.ifb</c> (~72) under the configured
     /// install dir. These catalog files are the source of truth for instance specifics; a <c>.vis</c>
-    /// is fully self-sufficient once a component has been inserted (plan §2, §3.7).
+    /// is fully self-sufficient once a component has been inserted.
     /// </summary>
     /// <remarks>
     /// Stage 1: signatures only. The discovery/parsing/caching is implemented in Stage 2.

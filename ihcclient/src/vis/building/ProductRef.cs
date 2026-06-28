@@ -60,8 +60,8 @@ namespace Ihc.Projects
         public ResourceRef Output(string name) => throw new NotImplementedException();
 
         /// <summary>
-        /// Removes an input child (and any links to/from it). Its retired <c>_0x</c> id is not reused
-        /// (plan §3.4); the passed handle is dead afterwards.
+        /// Removes an input child (and any links to/from it). Its retired <c>_0x</c> id is not reused;
+        /// the passed handle is dead afterwards.
         /// </summary>
         public void RemoveInput(ResourceRef input) => throw new NotImplementedException();
 

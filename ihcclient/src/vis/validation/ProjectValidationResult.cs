@@ -7,7 +7,7 @@ namespace Ihc.Projects
     /// <summary>
     /// The outcome of validating a project against the pre-serialize checklist (id uniqueness, IDREF
     /// resolution, reciprocal link/scene bijection, function-block child sequence, Latin-1
-    /// encodability, ...). See plan §7 <c>VisValidator</c>.
+    /// encodability, ...).
     /// </summary>
     public sealed record ProjectValidationResult(bool IsValid, ImmutableArray<string> Errors)
     {

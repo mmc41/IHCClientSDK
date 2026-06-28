@@ -41,8 +41,8 @@ namespace Ihc.Projects
 
         /// <summary>
         /// Removes a product from this room (and any links to/from its resources). The product's
-        /// <c>_0x</c> ids are retired permanently — deletes leave counter holes and ids are never reused
-        /// (plan §3.4). The passed handle is dead afterwards.
+        /// <c>_0x</c> ids are retired permanently — deletes leave counter holes and ids are never reused.
+        /// The passed handle is dead afterwards.
         /// </summary>
         public void RemoveProduct(ProductRef product) => throw new NotImplementedException();
 

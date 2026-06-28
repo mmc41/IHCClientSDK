@@ -26,7 +26,7 @@ namespace Ihc.Projects
 
         /// <summary>
         /// Removes a locality (room) and everything in it (and any links to/from its resources). Retired
-        /// <c>_0x</c> ids are not reused (plan §3.4); returns <c>this</c> for optional chaining.
+        /// <c>_0x</c> ids are not reused; returns <c>this</c> for optional chaining.
         /// </summary>
         public ProjectEditor RemoveGroup(GroupRef group) => throw new NotImplementedException();
 

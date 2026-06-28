@@ -13,7 +13,7 @@ namespace Ihc.Projects
     /// </summary>
     /// <remarks>
     /// This is the shape the writer/reader/insert-transform all operate on, and the shape that holds
-    /// deep-copied catalog subtrees verbatim (plan §3.7), so attributes added by newer IHC Visual
+    /// deep-copied catalog subtrees verbatim, so attributes added by newer IHC Visual
     /// versions are preserved rather than dropped. The wire-format facts (ATTLIST order, defaults,
     /// rendering) live in the schema registry, never on the node.
     /// </remarks>
