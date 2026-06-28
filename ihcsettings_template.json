@@ -12,7 +12,8 @@
         "application" : "administrator",
         "logSensitiveData": false,
         "asyncContinueOnCapturedContext": false,
-        "allowDangerousInternTestCalls": false
+        "allowDangerousInternTestCalls": false,
+        "ihcVisualInstallDir": "C:\\Program Files (x86)\\LK IHC Control\\IHC Visual"
     },
     "Logging": {
         "comment" : "Optional section. Not used by SDK but used for some utilities",
