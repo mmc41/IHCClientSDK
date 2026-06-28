@@ -28,6 +28,27 @@ namespace Ihc.Projects
         /// <summary>Renders the id as a <c>_0x</c> + lowercase-hex token with leading zeros stripped.</summary>
         public string ToToken() => HexToken.Format(Value);
 
+        /// <summary>
+        /// Parses a <c>_0x</c> id token into its <c>(Counter, TypeCode)</c> split (<c>counter = value &gt;&gt; 8</c>,
+        /// <c>typeCode = value &amp; 0xFF</c>). Returns <c>false</c> for a token that is not a well-formed
+        /// <c>_0x</c>+hex value (e.g. an opaque catalog token); such ids are still preserved verbatim in the model.
+        /// </summary>
+        public static bool TryParse(string? token, out ElementId id)
+        {
+            id = default;
+            if (token is null || !token.StartsWith("_0x", StringComparison.Ordinal))
+            {
+                return false;
+            }
+            if (!long.TryParse(token.AsSpan(3), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out long value)
+                || value < 0)
+            {
+                return false;
+            }
+            id = new ElementId((int)(value >> 8), (int)(value & 0xFF));
+            return true;
+        }
+
         /// <inheritdoc/>
         public override string ToString() => ToToken();
     }

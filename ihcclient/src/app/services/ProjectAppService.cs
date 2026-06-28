@@ -16,10 +16,14 @@ namespace Ihc.Projects
     /// GUI/infrastructure concerns baked in.
     /// </summary>
     /// <remarks>
-    /// Stage 1: the file engine (<c>Load</c>/<c>Save</c>/<c>CreateNew</c>/<c>Validate</c>) bodies are stubs; the
-    /// byte-identical IO, catalog discovery, validation and builder engine are delivered in Stage 2. The
-    /// controller bridge (<see cref="DownloadFrom"/>/<see cref="UploadTo"/>) is implemented now by reusing the
-    /// <c>Load</c>/<c>Save</c> stream overloads, so it lights up automatically once Stage 2 lands.
+    /// The full engine is implemented: <c>Load</c>/<c>Save</c> with the byte-identical round-trip
+    /// reader/writer/schema registry, <see cref="CreateNew"/> from the catalog File→New template,
+    /// <see cref="Validate"/> (the pre-serialize checklist), catalog discovery
+    /// (<see cref="GetAvailableProducts"/>/<see cref="GetAvailableFunctionBlocks"/>), and the controller bridge
+    /// (<see cref="DownloadFrom"/>/<see cref="UploadTo"/>, which rides the same <c>Load</c>/<c>Save</c> stream
+    /// overloads). Editing a loaded/created project starts via its <c>Edit()</c> extension. Catalog discovery is
+    /// lazy, so file and controller IO never require an IHC Visual install — only <see cref="CreateNew"/> and the
+    /// <c>GetAvailable*</c> methods force it.
     /// </remarks>
     public sealed class ProjectAppService : AppServiceBase
     {
@@ -82,29 +86,141 @@ namespace Ihc.Projects
         /// <c>id1</c>/<c>id2</c>/<c>modified</c> are stamped from the clock at creation time; a later
         /// <c>Save</c> re-stamps <c>id2</c>.
         /// </summary>
-        public Project CreateNew(ProjectDetails details) => throw new NotImplementedException();
+        public Project CreateNew(ProjectDetails details)
+        {
+            ArgumentNullException.ThrowIfNull(details);
+            using (var activity = StartActivity(nameof(CreateNew)))
+            {
+                try
+                {
+                    Project project = NewProjectBuilder.Build(catalog.Value, details, timeProvider.GetLocalNow());
+                    activity?.SetReturnValue(project);
+                    return project;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
 
         /// <summary>Loads a project from a file path.</summary>
-        public Task<Project> Load(string path) => throw new NotImplementedException();
+        public async Task<Project> Load(string path)
+        {
+            ArgumentNullException.ThrowIfNull(path);
+            using (var activity = StartActivity(nameof(Load)))
+            {
+                try
+                {
+                    await using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
+                                                          bufferSize: 4096, useAsync: true);
+                    using var buffer = new MemoryStream();
+                    await file.CopyToAsync(buffer).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    buffer.Position = 0;
+                    Project project = ProjectReader.Read(buffer);
+                    activity?.SetReturnValue(project);
+                    return project;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
 
         /// <summary>Loads a project from a stream.</summary>
-        public Task<Project> Load(Stream stream) => throw new NotImplementedException();
+        public Task<Project> Load(Stream stream)
+        {
+            ArgumentNullException.ThrowIfNull(stream);
+            using (var activity = StartActivity(nameof(Load)))
+            {
+                try
+                {
+                    Project project = ProjectReader.Read(stream);
+                    activity?.SetReturnValue(project);
+                    return Task.FromResult(project);
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
 
         /// <summary>
         /// Saves a project to a file path. A <c>null</c> <paramref name="options"/> is treated as
         /// <see cref="ProjectSaveOptions.Default"/> (vendor-like re-stamping); pass
         /// <see cref="ProjectSaveOptions.PreserveExistingMetadata"/> for byte-exact round-trips.
         /// </summary>
-        public Task Save(Project project, string path, ProjectSaveOptions? options = null) =>
-            throw new NotImplementedException();
+        public async Task Save(Project project, string path, ProjectSaveOptions? options = null)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            ArgumentNullException.ThrowIfNull(path);
+            ProjectSaveOptions effective = options ?? ProjectSaveOptions.Default;
+            using (var activity = StartActivity(nameof(Save)))
+            {
+                try
+                {
+                    byte[] bytes = SerializeForSave(project, effective);
+                    if (effective.CreateBackup && File.Exists(path))
+                    {
+                        string backup = Path.ChangeExtension(path, ".BAK");
+                        File.Delete(backup);           // overwrite any existing .BAK
+                        File.Move(path, backup);       // vendor convention: previous content becomes .BAK
+                    }
+                    await using var file = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None,
+                                                          bufferSize: 4096, useAsync: true);
+                    await file.WriteAsync(bytes).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    activity?.SetReturnValue(bytes.Length);
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
 
         /// <summary>
         /// Saves a project to a stream. A <c>null</c> <paramref name="options"/> is treated as
         /// <see cref="ProjectSaveOptions.Default"/> (vendor-like re-stamping) — this is the single point that
         /// normalizes the default, so callers such as <see cref="UploadTo"/> may forward a <c>null</c> through.
         /// </summary>
-        public Task Save(Project project, Stream stream, ProjectSaveOptions? options = null) =>
-            throw new NotImplementedException();
+        public async Task Save(Project project, Stream stream, ProjectSaveOptions? options = null)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            ArgumentNullException.ThrowIfNull(stream);
+            using (var activity = StartActivity(nameof(Save)))
+            {
+                try
+                {
+                    byte[] bytes = SerializeForSave(project, options ?? ProjectSaveOptions.Default);
+                    await stream.WriteAsync(bytes).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    activity?.SetReturnValue(bytes.Length);
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Produces the on-disk bytes for a save: the default path re-stamps <c>id2</c>/<c>modified</c> from the
+        /// clock (vendor-like); <see cref="ProjectSaveOptions.PreserveExistingMetadata"/> writes the project's
+        /// metadata verbatim for byte-exact round-trips.
+        /// </summary>
+        private byte[] SerializeForSave(Project project, ProjectSaveOptions options)
+        {
+            Project toWrite = options.WriteMetadataVerbatim
+                ? project
+                : MetadataStamper.Restamp(project, timeProvider.GetLocalNow());
+            return ProjectSerializer.Serialize(toWrite);
+        }
 
         /// <summary>
         /// Downloads the project from the injected controller and parses it into a <see cref="Project"/>. The
@@ -179,6 +295,15 @@ namespace Ihc.Projects
         // service-level Edit, to keep a single mutation entry point.
 
         /// <summary>Validates a project against the pre-serialize checklist.</summary>
-        public ProjectValidationResult Validate(Project project) => throw new NotImplementedException();
+        public ProjectValidationResult Validate(Project project)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            using (var activity = StartActivity(nameof(Validate)))
+            {
+                ProjectValidationResult result = ProjectValidator.Validate(project);
+                activity?.SetReturnValue(result);
+                return result;
+            }
+        }
     }
 }

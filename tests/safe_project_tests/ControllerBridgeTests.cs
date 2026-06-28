@@ -9,8 +9,8 @@ namespace Ihc.Projects.Tests
     /// (<see cref="ProjectAppService.DownloadFrom"/> / <see cref="ProjectAppService.UploadTo"/>). The
     /// low-level <see cref="IControllerService"/> is mocked with FakeItEasy; a REAL
     /// <see cref="ProjectAppService"/> and a fake <see cref="ICatalog"/> are used (per the test rules: mock
-    /// IHC API services, never app services). The bridge reuses <c>Load</c>/<c>Save</c>, which are Stage-1
-    /// stubs, so these are <c>[Explicit]</c> and go green automatically once the Stage-2 reader/writer land.
+    /// IHC API services, never app services). The bridge reuses the now-implemented <c>Load</c>/<c>Save</c>
+    /// byte engine, so it exercises the same byte-exact reader/writer the file path uses.
     /// </summary>
     public class ControllerBridgeTests
     {
@@ -29,7 +29,7 @@ namespace Ihc.Projects.Tests
                 clock ?? new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)),
                 controller);
 
-        [Test, Explicit("Activates in Stage 2 once Load is implemented")]
+        [Test]
         public async Task DownloadFrom_ParsesControllerPayload_PreservesHeaderIds()
         {
             string xml = File.ReadAllText(ProjectDataPath, ProjectFile.Encoding);
@@ -46,7 +46,7 @@ namespace Ihc.Projects.Tests
             });
         }
 
-        [Test, Explicit("Activates in Stage 2 once Load/Save are implemented")]
+        [Test]
         public async Task UploadTo_PreserveExistingMetadata_StoresBytewiseIdenticalPayload()
         {
             byte[] original = File.ReadAllBytes(ProjectDataPath);
@@ -66,7 +66,7 @@ namespace Ihc.Projects.Tests
             Assert.That(ProjectFile.Encoding.GetBytes(stored.Data), Is.EqualTo(original));
         }
 
-        [Test, Explicit("Activates in Stage 2 once Load/Save are implemented")]
+        [Test]
         public async Task UploadTo_DefaultOptions_RestampsId2_PreservesId1AndLastUniqueId()
         {
             var clock = new FakeTimeProvider(new DateTimeOffset(2030, 1, 2, 3, 4, 5, TimeSpan.Zero));

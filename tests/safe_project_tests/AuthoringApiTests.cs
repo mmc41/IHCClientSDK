@@ -109,8 +109,8 @@ namespace Ihc.Projects.Tests
             // Look existing rooms/products/function blocks up by name — no re-creation. AddInput/AddOutput
             // are for new children; Product/FunctionBlock + Input/Output retrieve existing ones.
             var stue = editor.Group("Stue");
-            var fuga = stue.Product("LK FUGA Tryk 2 tast");      // existing product handle
-            var kip  = stue.FunctionBlock("Kip tænd sluk");      // existing function-block handle
+            var fuga = stue.Product("LK FUGA Tryk 2 tast");          // existing product handle
+            var kip  = stue.FunctionBlock("1.1.01.e. Kip tænd sluk"); // FB name is the composed provenance label (§9.1)
 
             // Edit an instance field and wire one new reciprocal link between existing resources.
             fuga.Note("Tryk med 2 SL (revideret)");
@@ -120,7 +120,9 @@ namespace Ihc.Projects.Tests
 
             // Default Save re-stamps id2/modified from the clock and rewrites last_unique_id, but leaves
             // id1 and every existing element id untouched (vendor-like save).
-            await app.Save(edited, "out/Project1-edited.vis");
+            string outPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "Project1-edited.vis");
+            await app.Save(edited, outPath);
+            System.IO.File.Delete(outPath);
             Assert.That(edited, Is.Not.Null);
         }
     }
