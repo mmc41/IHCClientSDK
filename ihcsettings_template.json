@@ -5,7 +5,7 @@
       "isEncrypted": false
     },
     "ihcclient": {
-        "comment" : "Refer to your IHC controller config for endpoint and authentication details. Use 'http://usb' for endpoint for a USB connected controller. Known application names include 'treeview', 'openapi', 'administrator'",
+        "comment" : "Refer to your IHC controller config for endpoint and authentication details. Use 'http://usb' for endpoint for a USB connected controller. Known application names include 'treeview', 'openapi', 'administrator'. The optional 'ihcVisualInstallDir' is only used by the project-edit service (ProjectAppService) to auto-discover products/function blocks and File->New templates from your IHC Visual installation; leave it out for file/controller IO that does not create new projects.",
         "endpoint" : "http://<Your IP Address here>",
         "userName" : "<Your IHC username>",
         "password" : "<Your IHC password>",

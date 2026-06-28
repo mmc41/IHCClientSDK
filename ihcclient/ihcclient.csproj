@@ -15,7 +15,16 @@
   <ItemGroup>
     <InternalsVisibleTo Include="safe_integration_tests" />
     <InternalsVisibleTo Include="safe_unit_tests" />
+    <InternalsVisibleTo Include="safe_project_tests" />
     <InternalsVisibleTo Include="ihc_lab" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Verbatim canonical .vis DTD blocks (the schema registry's single source of truth). Embedded so the
+         byte-exact serializer reproduces IHC Visual's inline DTD without recomputing any DTD text. -->
+    <None Remove="src\vis\schema\CanonicalDtdBlocks.dtd" />
+    <EmbeddedResource Include="src\vis\schema\CanonicalDtdBlocks.dtd">
+      <LogicalName>Ihc.Projects.CanonicalDtdBlocks.dtd</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <GlobalAnalyzerConfigFiles Include="analyser.config" />

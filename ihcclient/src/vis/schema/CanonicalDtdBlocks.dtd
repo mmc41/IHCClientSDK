@@ -1,0 +1,684 @@
+   <!ELEMENT utcs_project ANY>
+   <!ATTLIST utcs_project version_major CDATA #REQUIRED
+                  version_minor CDATA #REQUIRED
+                  id1 CDATA #REQUIRED
+                  id2 CDATA #REQUIRED
+                  icon CDATA "_0x0"
+                  last_unique_id CDATA #REQUIRED>
+   <!ELEMENT modified ANY>
+   <!ATTLIST modified year CDATA #REQUIRED
+                  month CDATA #REQUIRED
+                  day CDATA #REQUIRED
+                  hour CDATA #REQUIRED
+                  minute CDATA #REQUIRED>
+   <!ELEMENT customer_info ANY>
+   <!ATTLIST customer_info name CDATA ""
+                  address CDATA ""
+                  city CDATA ""
+                  zipcode CDATA ""
+                  country CDATA ""
+                  phone CDATA ""
+                  mobilephone CDATA ""
+                  email CDATA ""
+                  udf CDATA "">
+   <!ELEMENT installer_info ANY>
+   <!ATTLIST installer_info name CDATA ""
+                  address CDATA ""
+                  city CDATA ""
+                  zipcode CDATA ""
+                  country CDATA ""
+                  phone CDATA ""
+                  mobilephone CDATA ""
+                  email CDATA ""
+                  udf CDATA "">
+   <!ELEMENT project_info ANY>
+   <!ATTLIST project_info programmer CDATA ""
+                  number CDATA ""
+                  drawing CDATA ""
+                  type CDATA ""
+                  description CDATA ""
+                  udf CDATA "">
+   <!ELEMENT enum_definitions ANY>
+   <!ATTLIST enum_definitions id ID #REQUIRED
+                  name CDATA ""
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT enum_definition ANY>
+   <!ATTLIST enum_definition id ID #REQUIRED
+                  typeid CDATA "_0x0"
+                  name CDATA ""
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT enum_value ANY>
+   <!ATTLIST enum_value id ID #REQUIRED
+                  typeid CDATA "_0x0"
+                  name CDATA ""
+                  note CDATA ""
+                  index CDATA "0"
+                  udf CDATA "">
+   <!ELEMENT groups ANY>
+   <!ATTLIST groups id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT group ANY>
+   <!ATTLIST group id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT product_dataline ANY>
+   <!ATTLIST product_dataline id ID #REQUIRED
+                  product_identifier CDATA #REQUIRED
+                  name CDATA ""
+                  locked (yes | no) "no"
+                  enduser_report (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  helpfile CDATA ""
+                  position CDATA ""
+                  cabletype CDATA ""
+                  cablenumber CDATA ""
+                  documentation_tag CDATA ""
+                  power_group CDATA ""
+                  udf CDATA "">
+   <!ELEMENT dataline_input ANY>
+   <!ATTLIST dataline_input id ID #REQUIRED
+                  name CDATA ""
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  address_dataline CDATA "_0x0"
+                  cable_colour CDATA ""
+                  udf CDATA "">
+   <!ELEMENT link_from_resource ANY>
+   <!ATTLIST link_from_resource id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link IDREF #REQUIRED
+                  udf CDATA "">
+   <!ELEMENT dataline_output ANY>
+   <!ATTLIST dataline_output id ID #REQUIRED
+                  name CDATA ""
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  backup (yes | no) "no"
+                  type (led | unspecified) "unspecified"
+                  address_dataline CDATA "_0x0"
+                  cable_colour CDATA ""
+                  udf CDATA "">
+   <!ELEMENT link_to_resource ANY>
+   <!ATTLIST link_to_resource id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link IDREF #REQUIRED
+                  udf CDATA "">
+   <!ELEMENT scenes ANY>
+   <!ATTLIST scenes id ID #REQUIRED
+                  name CDATA ""
+                  scene_resource IDREF #REQUIRED
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT functionblock ANY>
+   <!ATTLIST functionblock id ID #REQUIRED
+                  name CDATA ""
+                  master_schneider_electric (yes | no) "no"
+                  master_type CDATA ""
+                  master_version CDATA ""
+                  master_name CDATA ""
+                  master_programmer CDATA ""
+                  master_date_year CDATA "0"
+                  master_date_month CDATA "0"
+                  master_date_day CDATA "0"
+                  locked (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  helpfile CDATA ""
+                  udf CDATA "">
+   <!ELEMENT inputs ANY>
+   <!ATTLIST inputs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_input ANY>
+   <!ATTLIST resource_input id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT outputs ANY>
+   <!ATTLIST outputs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_output ANY>
+   <!ATTLIST resource_output id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_scene ANY>
+   <!ATTLIST resource_scene id ID #REQUIRED
+                  name CDATA ""
+                  note CDATA ""
+                  icon CDATA "_0x89"
+                  hide_dialog (yes | no) "no"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT settings ANY>
+   <!ATTLIST settings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_timer ANY>
+   <!ATTLIST resource_timer id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  hour CDATA #REQUIRED
+                  minute CDATA #REQUIRED
+                  second CDATA #REQUIRED
+                  millisecond CDATA #REQUIRED
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT internalsettings ANY>
+   <!ATTLIST internalsettings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT programs ANY>
+   <!ATTLIST programs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT program_simple ANY>
+   <!ATTLIST program_simple id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT events ANY>
+   <!ATTLIST events id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT event ANY>
+   <!ATTLIST event id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT actions ANY>
+   <!ATTLIST actions id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  type CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT program_sub ANY>
+   <!ATTLIST program_sub id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT conditions ANY>
+   <!ATTLIST conditions id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  type (and | or) "and"
+                  udf CDATA "">
+   <!ELEMENT condition ANY>
+   <!ATTLIST condition id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT action ANY>
+   <!ATTLIST action id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT resource_enum ANY>
+   <!ATTLIST resource_enum id ID #REQUIRED
+                  name CDATA ""
+                  typedef IDREF #REQUIRED
+                  inivalue IDREF #REQUIRED
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT documentation_modules ANY>
+   <!ATTLIST documentation_modules id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT dataline_input_modules ANY>
+   <!ATTLIST dataline_input_modules id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT dataline_output_modules ANY>
+   <!ATTLIST dataline_output_modules id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT airlink_dimmer_decrease ANY>
+   <!ATTLIST airlink_dimmer_decrease id ID #REQUIRED
+                  name CDATA ""
+                  address_channel CDATA #REQUIRED
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT airlink_dimmer_increase ANY>
+   <!ATTLIST airlink_dimmer_increase id ID #REQUIRED
+                  name CDATA ""
+                  address_channel CDATA #REQUIRED
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT airlink_dimming ANY>
+   <!ATTLIST airlink_dimming id ID #REQUIRED
+                  name CDATA ""
+                  note CDATA ""
+                  address_channel CDATA #REQUIRED
+                  udf CDATA "">
+   <!ELEMENT airlink_input ANY>
+   <!ATTLIST airlink_input id ID #REQUIRED
+                  name CDATA ""
+                  note CDATA ""
+                  address_channel CDATA #REQUIRED
+                  udf CDATA "">
+   <!ELEMENT airlink_relay ANY>
+   <!ATTLIST airlink_relay id ID #REQUIRED
+                  name CDATA ""
+                  address_channel CDATA #REQUIRED
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  backup (yes | no) "no"
+                  udf CDATA "">
+   <!ELEMENT airlink_shutter_down ANY>
+   <!ATTLIST airlink_shutter_down id ID #REQUIRED
+                  name CDATA ""
+                  address_channel CDATA #REQUIRED
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT airlink_shutter_lock ANY>
+   <!ATTLIST airlink_shutter_lock id ID #REQUIRED
+                  name CDATA ""
+                  note CDATA ""
+                  address_channel CDATA #REQUIRED
+                  udf CDATA "">
+   <!ELEMENT airlink_shutter_up ANY>
+   <!ATTLIST airlink_shutter_up id ID #REQUIRED
+                  name CDATA ""
+                  address_channel CDATA #REQUIRED
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT case_action ANY>
+   <!ATTLIST case_action id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  variable IDREF #REQUIRED
+                  value IDREF #REQUIRED
+                  udf CDATA "">
+   <!ELEMENT dimmer_setting_dimming_rate ANY>
+   <!ATTLIST dimmer_setting_dimming_rate id ID #REQUIRED
+                  value CDATA "0"
+                  minimum CDATA "0"
+                  maximum CDATA "99999999"
+                  udf CDATA "">
+   <!ELEMENT dimmer_setting_fade_rate_down ANY>
+   <!ATTLIST dimmer_setting_fade_rate_down id ID #REQUIRED
+                  value CDATA "0"
+                  minimum CDATA "0"
+                  maximum CDATA "99999999"
+                  udf CDATA "">
+   <!ELEMENT dimmer_setting_fade_rate_up ANY>
+   <!ATTLIST dimmer_setting_fade_rate_up id ID #REQUIRED
+                  value CDATA "0"
+                  minimum CDATA "0"
+                  maximum CDATA "99999999"
+                  udf CDATA "">
+   <!ELEMENT dimmer_setting_load_mode ANY>
+   <!ATTLIST dimmer_setting_load_mode id ID #REQUIRED
+                  value (auto | rc | rl) "auto"
+                  udf CDATA "">
+   <!ELEMENT dimmer_setting_maximum_value ANY>
+   <!ATTLIST dimmer_setting_maximum_value id ID #REQUIRED
+                  value CDATA "0"
+                  minimum CDATA "0"
+                  maximum CDATA "99999999"
+                  udf CDATA "">
+   <!ELEMENT dimmer_setting_minimum_value ANY>
+   <!ATTLIST dimmer_setting_minimum_value id ID #REQUIRED
+                  value CDATA "0"
+                  minimum CDATA "0"
+                  maximum CDATA "99999999"
+                  udf CDATA "">
+   <!ELEMENT dimmer_settings ANY>
+   <!ATTLIST dimmer_settings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT event_power ANY>
+   <!ATTLIST event_power id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  type (up | down) "up"
+                  udf CDATA "">
+   <!ELEMENT kWh ANY>
+   <!ATTLIST kWh id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  note CDATA ""
+                  inivalue CDATA "0.00"
+                  accessibility (read | write | read-write) "read-write"
+                  setting (yes | no) "no"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT light_indication ANY>
+   <!ATTLIST light_indication id ID #REQUIRED
+                  name CDATA ""
+                  note CDATA ""
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT product_airlink ANY>
+   <!ATTLIST product_airlink id ID #REQUIRED
+                  product_identifier CDATA #REQUIRED
+                  device_type CDATA #REQUIRED
+                  name CDATA ""
+                  serialnumber CDATA #REQUIRED
+                  locked (yes | no) "no"
+                  enduser_report (yes | no) "no"
+                  position CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  helpfile CDATA ""
+                  documentation_tag CDATA ""
+                  power_group CDATA ""
+                  udf CDATA "">
+   <!ELEMENT product_rs485_led_dimmer ANY>
+   <!ATTLIST product_rs485_led_dimmer id ID #REQUIRED
+                  product_identifier CDATA #REQUIRED
+                  name CDATA ""
+                  locked (yes | no) "no"
+                  enduser_report (yes | no) "no"
+                  position CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  documentation_tag CDATA ""
+                  serialnumber CDATA ""
+                  udf CDATA "">
+   <!ELEMENT product_rs485_sms_modem ANY>
+   <!ATTLIST product_rs485_sms_modem id ID #REQUIRED
+                  product_identifier CDATA #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  helpfile CDATA ""
+                  documentation_tag CDATA ""
+                  note CDATA ""
+                  position CDATA ""
+                  cablecolour_0V CDATA ""
+                  cablecolour_24V CDATA ""
+                  cablecolour_RS485Minus CDATA ""
+                  cablecolour_RS485Plus CDATA ""
+                  udf CDATA "">
+   <!ELEMENT program_case ANY>
+   <!ATTLIST program_case id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link IDREF #IMPLIED
+                  udf CDATA "">
+   <!ELEMENT resource_counter ANY>
+   <!ATTLIST resource_counter id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  note CDATA ""
+                  inivalue CDATA "0"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_date ANY>
+   <!ATTLIST resource_date id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  year CDATA #REQUIRED
+                  month CDATA #REQUIRED
+                  day CDATA #REQUIRED
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_flag ANY>
+   <!ATTLIST resource_flag id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_humidity_level ANY>
+   <!ATTLIST resource_humidity_level id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  note CDATA ""
+                  inivalue CDATA "0.00"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_integer ANY>
+   <!ATTLIST resource_integer id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  note CDATA ""
+                  inivalue CDATA "0"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_light ANY>
+   <!ATTLIST resource_light id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  note CDATA ""
+                  inivalue CDATA "0"
+                  accessibility (read | write | read-write) "read-write"
+                  setting (yes | no) "no"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_light_level ANY>
+   <!ATTLIST resource_light_level id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  note CDATA ""
+                  inivalue CDATA "0"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_temperature ANY>
+   <!ATTLIST resource_temperature id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  note CDATA ""
+                  inivalue CDATA "0.00"
+                  accessibility (read | write | read-write) "read-write"
+                  setting (yes | no) "no"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_time ANY>
+   <!ATTLIST resource_time id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  hour CDATA #REQUIRED
+                  minute CDATA #REQUIRED
+                  second CDATA #REQUIRED
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_timertime ANY>
+   <!ATTLIST resource_timertime id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  hour CDATA #REQUIRED
+                  minute CDATA #REQUIRED
+                  second CDATA #REQUIRED
+                  millisecond CDATA #REQUIRED
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_weekday ANY>
+   <!ATTLIST resource_weekday id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (monday | tuesday | wednesday | thursday | friday | saturday | sunday) "monday"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT rs485_led_dimmer_channel ANY>
+   <!ATTLIST rs485_led_dimmer_channel id ID #REQUIRED
+                  product_identifier CDATA #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  position CDATA ""
+                  note CDATA ""
+                  documentation_tag CDATA ""
+                  power_group CDATA ""
+                  udf CDATA ""
+                  channel CDATA #REQUIRED
+                  channel_id CDATA #REQUIRED>
+   <!ELEMENT rs485_led_dimmer_error_state_loadfailure ANY>
+   <!ATTLIST rs485_led_dimmer_error_state_loadfailure id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT rs485_led_dimmer_error_state_overcurrent ANY>
+   <!ATTLIST rs485_led_dimmer_error_state_overcurrent id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT rs485_led_dimmer_error_state_overheating ANY>
+   <!ATTLIST rs485_led_dimmer_error_state_overheating id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT rs485_led_dimmer_error_state_overvoltage ANY>
+   <!ATTLIST rs485_led_dimmer_error_state_overvoltage id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT s0_device ANY>
+   <!ATTLIST s0_device id ID #REQUIRED
+                  product_identifier CDATA #REQUIRED
+                  name CDATA ""
+                  locked (yes | no) "no"
+                  enduser_report (yes | no) "no"
+                  position CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  documentation_tag CDATA ""
+                  cable_colour_minus CDATA ""
+                  cable_colour_plus CDATA ""
+                  ticks CDATA ""
+                  udf CDATA "">
+   <!ELEMENT shutter_setting_travel_time_down ANY>
+   <!ATTLIST shutter_setting_travel_time_down id ID #REQUIRED
+                  value CDATA "0"
+                  minimum CDATA "0"
+                  maximum CDATA "99999999"
+                  udf CDATA "">
+   <!ELEMENT shutter_setting_travel_time_up ANY>
+   <!ATTLIST shutter_setting_travel_time_up id ID #REQUIRED
+                  value CDATA "0"
+                  minimum CDATA "0"
+                  maximum CDATA "99999999"
+                  udf CDATA "">
+   <!ELEMENT shutter_settings ANY>
+   <!ATTLIST shutter_settings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT sms_modem_phonenumber ANY>
+   <!ATTLIST sms_modem_phonenumber id ID #REQUIRED
+                  address CDATA #REQUIRED
+                  phonenumber CDATA ""
+                  udf CDATA "">
+   <!ELEMENT sms_modem_pincode ANY>
+   <!ATTLIST sms_modem_pincode id ID #REQUIRED
+                  value CDATA "0"
+                  minimum CDATA "0"
+                  maximum CDATA "99999999"
+                  udf CDATA "">
+   <!ELEMENT sms_modem_settings ANY>
+   <!ATTLIST sms_modem_settings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT W ANY>
+   <!ATTLIST W id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  note CDATA ""
+                  inivalue CDATA "0.00"
+                  accessibility (read | write | read-write) "read-write"
+                  setting (yes | no) "no"
+                  note-2 CDATA ""
+                  udf CDATA "">

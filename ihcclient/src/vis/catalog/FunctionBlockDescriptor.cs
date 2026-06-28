@@ -1,4 +1,5 @@
 #nullable enable
+using System.Collections.Immutable;
 
 namespace Ihc.Projects
 {
@@ -24,6 +25,14 @@ namespace Ihc.Projects
         string CategoryPath,
         ProjectElement Body)
     {
+        /// <summary>
+        /// The block's own inline-DTD blocks (tag → verbatim block), captured from its <c>.ifb</c> file, so an
+        /// element type the static registry does not declare can still be inserted and saved (open-world): on insert
+        /// the non-registry blocks are merged into the project's <see cref="Project.InlineDtdBlocks"/>. Empty when
+        /// the descriptor was hand-built without a source file.
+        /// </summary>
+        public ImmutableDictionary<string, string> InlineDtdBlocks { get; init; } = ImmutableDictionary<string, string>.Empty;
+
         public override string ToString() =>
             $"FunctionBlockDescriptor(MasterType={MasterType}, MasterVersion={MasterVersion}, MasterName={MasterName}, DisplayName={DisplayName}, CategoryPath={CategoryPath}, Body={Body})";
     }
