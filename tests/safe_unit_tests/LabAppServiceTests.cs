@@ -2,6 +2,8 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Ihc;
 using Ihc.App;
@@ -1071,6 +1073,15 @@ namespace Ihc.Tests
             Assert.That(result, Is.Null);
         }
 
+        [Test]
+        public void GetDefaultValue_NullableValueType_ReturnsNull()
+        {
+            // US-A4: Nullable<T> is unset by default (and must not trip the value-type instantiation throw).
+            Assert.That(LabAppService.OperationItem.GetDefaultValue(typeof(int?)), Is.Null);
+            Assert.That(LabAppService.OperationItem.GetDefaultValue(typeof(bool?)), Is.Null);
+            Assert.That(LabAppService.OperationItem.GetDefaultValue(typeof(TimeSpan?)), Is.Null);
+        }
+
         #endregion
 
         #region DynCallSelectedOperation Tests
@@ -1191,6 +1202,356 @@ namespace Ihc.Tests
             // Assert - operation succeeded
             Assert.That(result, Is.Not.Null);
             Assert.That(result.DisplayResult, Does.Contain("ResourceValue"));
+        }
+
+        #endregion
+
+        #region Result Rendering Tests (C1/C2/C5 - D1 status-quo contract)
+
+        /// <summary>
+        /// US-C1C2 MUST (D1): complex objects render via FormatResult's ToString() path, not JSON.
+        /// Locks in the decision that no JSON branch is added - the model's own record/ToString output is shown.
+        /// </summary>
+        [Test]
+        public async Task FormatResult_ComplexObject_RendersViaToStringNotJson()
+        {
+            // Arrange
+            var labService = new LabAppService(null, null);
+            labService.Configure(settings, new IIHCApiService[] { fakeConfigService });
+            var serviceItem = labService.Services.First(s => s.Service == fakeConfigService);
+            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetSystemInfo");
+            Assert.That(opIndex, Is.GreaterThanOrEqualTo(0), "GetSystemInfo operation should exist");
+            var operation = serviceItem.OperationItems[opIndex];
+            labService.SelectedOperation = operation;
+
+            // Act
+            var result = await labService.DynCallSelectedOperation();
+
+            // Assert - rendered via SystemInfo.ToString(), field values legible, NOT JSON
+            Assert.That(result.DisplayResult, Does.StartWith("SystemInfo("));
+            Assert.That(result.DisplayResult, Does.Contain("Version=3.0"));
+            Assert.That(result.DisplayResult, Does.Contain("Brand=LK"));
+            Assert.That(result.DisplayResult, Does.Not.Contain("\"Version\""), "Result must not be JSON (D1)");
+        }
+
+        /// <summary>
+        /// US-C1C2 MUST (D1): collections render as a bracketed list of per-item ToString(), not JSON.
+        /// </summary>
+        [Test]
+        public async Task FormatResult_Collection_RendersAsBracketedItemList()
+        {
+            // Arrange
+            A.CallTo(() => fakeResourceService.GetAllDatalineInputs()).Returns(
+                Task.FromResult<IReadOnlyList<DatalineResource>>(new List<DatalineResource>
+                {
+                    new DatalineResource { DatalineNumber = 1, ResourceID = 100 },
+                    new DatalineResource { DatalineNumber = 2, ResourceID = 200 }
+                }));
+            var labService = new LabAppService(null, null);
+            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
+            var serviceItem = labService.Services.First(s => s.Service == fakeResourceService);
+            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetAllDatalineInputs");
+            Assert.That(opIndex, Is.GreaterThanOrEqualTo(0), "GetAllDatalineInputs operation should exist");
+            var operation = serviceItem.OperationItems[opIndex];
+            labService.SelectedOperation = operation;
+
+            // Act
+            var result = await labService.DynCallSelectedOperation();
+
+            // Assert - bracketed list of each element's ToString()
+            Assert.That(result.DisplayResult, Does.StartWith("["));
+            Assert.That(result.DisplayResult, Does.Contain("DatalineResource(DatalineNumber=1, ResourceID=100)"));
+            Assert.That(result.DisplayResult, Does.Contain("DatalineResource(DatalineNumber=2, ResourceID=200)"));
+        }
+
+        /// <summary>
+        /// US-C1C2 MAY / C5: a ResourceValue result renders its populated UnionValue field legibly
+        /// (kind + value) via UnionValue.ToString(), rather than an opaque type name.
+        /// </summary>
+        [Test]
+        public async Task FormatResult_ResourceValue_RendersPopulatedUnionFieldLegibly()
+        {
+            // Arrange - Setup() mocks GetRuntimeValue to return a BOOL=true ResourceValue
+            var labService = new LabAppService(null, null);
+            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
+            var serviceItem = labService.Services.First(s => s.Service == fakeResourceService);
+            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
+            Assert.That(opIndex, Is.GreaterThanOrEqualTo(0), "GetRuntimeValue operation should exist");
+            var operation = serviceItem.OperationItems[opIndex];
+            labService.SelectedOperation = operation;
+            operation.SetMethodArgument(0, 123456);
+
+            // Act
+            var result = await labService.DynCallSelectedOperation();
+
+            // Assert - the value kind and the populated payload field are both visible
+            Assert.That(result.DisplayResult, Does.Contain("BOOL"));
+            Assert.That(result.DisplayResult, Does.Contain("BoolValue=True"));
+        }
+
+        #endregion
+
+        #region Collection Parameter (US-A1) Tests
+
+        /// <summary>
+        /// US-A1 happy path: a collection operation (GetRuntimeValues(IReadOnlyList&lt;int&gt;)) is selectable and
+        /// invocable; a materialized int[] argument is passed through to the service in order.
+        /// </summary>
+        [Test]
+        public async Task DynCallSelectedOperation_GetRuntimeValues_PassesCollectionToService()
+        {
+            // Arrange - echo the received ids back as ResourceValues so we can assert the order/content received
+            IReadOnlyList<int>? receivedIds = null;
+            A.CallTo(() => fakeResourceService.GetRuntimeValues(A<IReadOnlyList<int>>._))
+                .ReturnsLazily((IReadOnlyList<int> ids) =>
+                {
+                    receivedIds = ids;
+                    return Task.FromResult<IReadOnlyList<ResourceValue>>(new List<ResourceValue>());
+                });
+
+            var labService = new LabAppService(null, null);
+            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
+
+            var serviceItem = labService.Services.First(s => s.Service == fakeResourceService);
+            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValues");
+            Assert.That(opIndex, Is.GreaterThanOrEqualTo(0), "GetRuntimeValues operation should exist");
+            var operation = serviceItem.OperationItems[opIndex];
+            labService.SelectedOperation = operation;
+
+            Assert.That(operation.OperationMetadata.Parameters[0].Type, Is.EqualTo(typeof(IReadOnlyList<int>)));
+
+            // A materialized int[] satisfies the IReadOnlyList<int> parameter directly (D8)
+            operation.SetMethodArgument(0, new int[] { 5, 6, 7 });
+
+            // Act
+            await labService.DynCallSelectedOperation();
+
+            // Assert - the mocked service received the exact ids in order
+            Assert.That(receivedIds, Is.Not.Null);
+            Assert.That(receivedIds, Is.EqualTo(new[] { 5, 6, 7 }));
+        }
+
+        #endregion
+
+        #region Streaming (US-B1) Tests
+
+        // A finite, cancellation-aware change stream used to drive the streaming tests.
+        private static async IAsyncEnumerable<ResourceValue> CountingStream(int count, [EnumeratorCancellation] CancellationToken ct)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                ct.ThrowIfCancellationRequested();
+                yield return new ResourceValue
+                {
+                    ResourceID = i,
+                    Value = new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.INT, IntValue = i }
+                };
+                await Task.Yield();
+            }
+        }
+
+        private LabAppService SelectGetResourceValueChanges()
+        {
+            var labService = new LabAppService(null, null);
+            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
+            var serviceItem = labService.Services.First(s => s.Service == fakeResourceService);
+            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetResourceValueChanges");
+            Assert.That(opIndex, Is.GreaterThanOrEqualTo(0), "GetResourceValueChanges operation should exist");
+            var operation = serviceItem.OperationItems[opIndex];
+            labService.SelectedOperation = operation;
+            operation.SetMethodArgument(0, new int[] { 1, 2 }); // the IReadOnlyList<int> resourceIds parameter
+            return labService;
+        }
+
+        /// <summary>
+        /// US-B1: streamed items append in arrival order. The CancellationToken parameter is auto-filled from the
+        /// LabAppService stream token (D11), so the mocked stream receives a usable token.
+        /// </summary>
+        [Test]
+        public async Task StartStream_AppendsAllItemsInArrivalOrder()
+        {
+            A.CallTo(() => fakeResourceService.GetResourceValueChanges(A<IReadOnlyList<int>>._, A<CancellationToken>._, A<int>._))
+                .ReturnsLazily((IReadOnlyList<int> ids, CancellationToken ct, int t) => CountingStream(3, ct));
+
+            var labService = SelectGetResourceValueChanges();
+
+            var received = new List<object>();
+            await labService.StartStream(item => received.Add(item));
+
+            Assert.That(received, Has.Count.EqualTo(3));
+            Assert.That(((ResourceValue)received[0]).Value.IntValue, Is.EqualTo(0));
+            Assert.That(((ResourceValue)received[1]).Value.IntValue, Is.EqualTo(1));
+            Assert.That(((ResourceValue)received[2]).Value.IntValue, Is.EqualTo(2));
+        }
+
+        /// <summary>
+        /// US-B1: StopStream cancels the harness-injected token, so no further items append.
+        /// </summary>
+        [Test]
+        public async Task StopStream_CancelsTheStream()
+        {
+            A.CallTo(() => fakeResourceService.GetResourceValueChanges(A<IReadOnlyList<int>>._, A<CancellationToken>._, A<int>._))
+                .ReturnsLazily((IReadOnlyList<int> ids, CancellationToken ct, int t) => CountingStream(100, ct));
+
+            var labService = SelectGetResourceValueChanges();
+
+            var received = new List<object>();
+            // Stop after the first item; the next enumeration step sees the cancelled token and ends the stream.
+            await labService.StartStream(item =>
+            {
+                received.Add(item);
+                if (received.Count == 1)
+                    labService.StopStream();
+            });
+
+            Assert.That(received, Has.Count.EqualTo(1));
+        }
+
+        #endregion
+
+        #region SetResourceValue (US-A3) Tests
+
+        /// <summary>
+        /// US-A3 happy path: SetResourceValue(ResourceValue) is selectable and invocable, and the full union
+        /// payload (here ValueKind INT, IntValue 42) flows through to the service.
+        /// </summary>
+        [Test]
+        public async Task DynCallSelectedOperation_SetResourceValue_PassesUnionToService()
+        {
+            // Arrange - capture the ResourceValue the service receives
+            ResourceValue? received = null;
+            A.CallTo(() => fakeResourceService.SetResourceValue(A<ResourceValue>._))
+                .Invokes((ResourceValue rv) => received = rv)
+                .Returns(Task.FromResult(true));
+
+            var labService = new LabAppService(null, null);
+            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
+
+            var serviceItem = labService.Services.First(s => s.Service == fakeResourceService);
+            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "SetResourceValue");
+            Assert.That(opIndex, Is.GreaterThanOrEqualTo(0), "SetResourceValue operation should exist");
+            var operation = serviceItem.OperationItems[opIndex];
+            labService.SelectedOperation = operation;
+
+            var rv = new ResourceValue
+            {
+                ResourceID = 100,
+                IsValueRuntime = true,
+                Value = new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.INT, IntValue = 42 }
+            };
+            operation.SetMethodArgument(0, rv);
+
+            // Act
+            await labService.DynCallSelectedOperation();
+
+            // Assert - the mocked service received the full union value
+            Assert.That(received, Is.Not.Null);
+            Assert.That(received!.ResourceID, Is.EqualTo(100));
+            Assert.That(received!.Value.ValueKind, Is.EqualTo(ResourceValue.ValueKind.INT));
+            Assert.That(received!.Value.IntValue, Is.EqualTo(42));
+        }
+
+        #endregion
+
+        #region Save Result to File (US-C4 / D6) Tests
+
+        /// <summary>
+        /// US-C4 / D6: a byte[] result is saved as its real bytes (not the hex preview) with a .bin name derived
+        /// from the operation.
+        /// </summary>
+        [Test]
+        public void BuildResultFileContent_ByteArray_SavesRawBytesWithBinName()
+        {
+            var bytes = new byte[] { 1, 2, 3, 255 };
+
+            var content = LabAppService.BuildResultFileContent(bytes, "byte[4] [...]", "GetData");
+
+            Assert.That(content.Bytes, Is.EqualTo(bytes));
+            Assert.That(content.SuggestedFileName, Is.EqualTo("GetData.bin"));
+        }
+
+        /// <summary>
+        /// US-C4 / D6: a BinaryFile result is saved as its real bytes with the file's own name/extension.
+        /// </summary>
+        [Test]
+        public void BuildResultFileContent_BinaryFile_SavesDataWithItsFilename()
+        {
+            var backup = new BackupFile("backup-mock.dat", new byte[] { 0x42, 0x00, 0xFF });
+
+            var content = LabAppService.BuildResultFileContent(backup, "BackupFile(...)", "GetBackup");
+
+            Assert.That(content.Bytes, Is.EqualTo(new byte[] { 0x42, 0x00, 0xFF }));
+            Assert.That(content.SuggestedFileName, Is.EqualTo("backup-mock.dat"));
+        }
+
+        [Test]
+        public void BuildResultFileContent_BinaryFileWithoutFilename_FallsBackToOperationName()
+        {
+            var binary = new BackupFile("", new byte[] { 1 });
+
+            var content = LabAppService.BuildResultFileContent(binary, "preview", "GetBackup");
+
+            Assert.That(content.SuggestedFileName, Is.EqualTo("GetBackup.bin"));
+        }
+
+        /// <summary>
+        /// US-C4 / D6: a non-binary result is saved as the shown text (UTF-8) with a .txt name.
+        /// </summary>
+        [Test]
+        public void BuildResultFileContent_TextResult_SavesDisplayTextAsTxt()
+        {
+            var content = LabAppService.BuildResultFileContent(42, "SystemInfo(Version=3.0)", "GetSystemInfo");
+
+            Assert.That(content.Bytes, Is.EqualTo(System.Text.Encoding.UTF8.GetBytes("SystemInfo(Version=3.0)")));
+            Assert.That(content.SuggestedFileName, Is.EqualTo("GetSystemInfo.txt"));
+        }
+
+        [Test]
+        public void BuildResultFileContent_EmptyOperationName_UsesResultBaseName()
+        {
+            var content = LabAppService.BuildResultFileContent(null, "ok", "");
+
+            Assert.That(content.SuggestedFileName, Is.EqualTo("result.txt"));
+        }
+
+        #endregion
+
+        #region StoreSceneProject (US-A6) Tests
+
+        /// <summary>
+        /// US-A6 happy path: selecting StoreSceneProject and supplying a SceneProject argument (as the file
+        /// picker would build it) invokes the service with the exact picked bytes and filename.
+        /// </summary>
+        [Test]
+        public async Task DynCallSelectedOperation_StoreSceneProject_PassesPickedFileToService()
+        {
+            // Arrange - a module service that captures the SceneProject it receives
+            var fakeModuleService = A.Fake<IModuleService>();
+            SceneProject? received = null;
+            A.CallTo(() => fakeModuleService.StoreSceneProject(A<SceneProject>._))
+                .Invokes((SceneProject p) => received = p)
+                .Returns(Task.CompletedTask);
+
+            var labService = new LabAppService(null, null);
+            labService.Configure(settings, new IIHCApiService[] { fakeModuleService });
+
+            var serviceItem = labService.Services.First(s => s.Service == fakeModuleService);
+            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "StoreSceneProject");
+            Assert.That(opIndex, Is.GreaterThanOrEqualTo(0), "StoreSceneProject operation should exist");
+            var operation = serviceItem.OperationItems[opIndex];
+            labService.SelectedOperation = operation;
+
+            // The SceneProject argument as the file picker would produce it from a picked file
+            var bytes = new byte[] { 1, 2, 3, 4, 5 };
+            operation.SetMethodArgument(0, new SceneProject("scene.icw", bytes));
+
+            // Act
+            await labService.DynCallSelectedOperation();
+
+            // Assert - the mocked service received the exact bytes and filename
+            Assert.That(received, Is.Not.Null);
+            Assert.That(received!.Data, Is.EqualTo(bytes));
+            Assert.That(received!.Filename, Is.EqualTo("scene.icw"));
         }
 
         #endregion

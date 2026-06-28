@@ -316,6 +316,34 @@ namespace Ihc {
                 value.ValueKind = ResourceValue.ValueKind.WEEKDAY;
             }
 
+            if (v.value is WSPhoneNumberValue phoneVal)
+            {
+                value.PhoneNumberValue = phoneVal.number;
+                value.ValueKind = ResourceValue.ValueKind.PhoneNumber;
+            }
+
+            if (v.value is WSSceneDimmerValue dimmerVal)
+            {
+                value.DimmerPercentage = dimmerVal.dimmerPercentage;
+                value.DimmerDelayTime = dimmerVal.delayTime;
+                value.DimmerRampTime = dimmerVal.rampTime;
+                value.ValueKind = ResourceValue.ValueKind.SceneDimmer;
+            }
+
+            if (v.value is WSSceneRelayValue relayVal)
+            {
+                value.RelayDelayTime = relayVal.delayTime;
+                value.RelayValue = relayVal.relayValue;
+                value.ValueKind = ResourceValue.ValueKind.SceneRelay;
+            }
+
+            if (v.value is WSSceneShutterSimpleValue shutterVal)
+            {
+                value.ShutterPositionIsUp = shutterVal.shutterPositionIsUp;
+                value.ShutterDelayTime = shutterVal.delayTime;
+                value.ValueKind = ResourceValue.ValueKind.SceneShutter;
+            }
+
             return new ResourceValue() { ResourceID = v.resourceID, IsValueRuntime = v.isValueRuntime, TypeString = v.typeString, Value = value };
         }
 
@@ -336,6 +364,10 @@ namespace Ihc {
                 case ResourceValue.ValueKind.TIME: val = mapTime((TimeSpan)v.Value.TimeValue); break;
                 case ResourceValue.ValueKind.TIMER: val = mapTimer((long)v.Value.TimerValue); break;
                 case ResourceValue.ValueKind.WEEKDAY: val = mapWeekday((int)v.Value.WeekdayValue); break;
+                case ResourceValue.ValueKind.PhoneNumber: val = new WSPhoneNumberValue() { number = v.Value.PhoneNumberValue }; break;
+                case ResourceValue.ValueKind.SceneDimmer: val = new WSSceneDimmerValue() { dimmerPercentage = (int)v.Value.DimmerPercentage, delayTime = (int)v.Value.DimmerDelayTime, rampTime = (int)v.Value.DimmerRampTime }; break;
+                case ResourceValue.ValueKind.SceneRelay: val = new WSSceneRelayValue() { delayTime = (int)v.Value.RelayDelayTime, relayValue = (bool)v.Value.RelayValue }; break;
+                case ResourceValue.ValueKind.SceneShutter: val = new WSSceneShutterSimpleValue() { shutterPositionIsUp = (bool)v.Value.ShutterPositionIsUp, delayTime = (int)v.Value.ShutterDelayTime }; break;
                 default: throw new ErrorWithCodeException(Errors.FEATURE_NOT_IMPLEMENTED, "Support for value kind " + v.Value.ValueKind + " not (yet) implemented.");
             }
 

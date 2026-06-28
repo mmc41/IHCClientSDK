@@ -42,7 +42,6 @@ namespace Ihc {
 
      /// <summary>
      /// High level model of an IHC WS resource value without soap distractions.
-     /// TODO: Support missing types: PhoneNumber, SceneDimmer, SceneRelay, WSSceneShutter
      /// </summary>
     public record ResourceValue {
         /// <summary>
@@ -64,7 +63,15 @@ namespace Ihc {
             /// <summary>Timer value type.</summary>
             TIMER,
             /// <summary>Weekday value type.</summary>
-            WEEKDAY
+            WEEKDAY,
+            /// <summary>Phone number value type.</summary>
+            PhoneNumber,
+            /// <summary>Scene dimmer value type (dimmer percentage + delay/ramp times).</summary>
+            SceneDimmer,
+            /// <summary>Scene relay value type (relay state + delay time).</summary>
+            SceneRelay,
+            /// <summary>Scene shutter value type (shutter up/down + delay time).</summary>
+            SceneShutter
         };
 
         /// <summary>
@@ -122,6 +129,46 @@ namespace Ihc {
             /// </summary>
             public EnumValue EnumValue { get; set; }
 
+            /// <summary>
+            /// Phone number (when ValueKind is PhoneNumber).
+            /// </summary>
+            public string PhoneNumberValue { get; set; }
+
+            /// <summary>
+            /// Dimmer percentage 0-100 (when ValueKind is SceneDimmer).
+            /// </summary>
+            public int? DimmerPercentage { get; set; }
+
+            /// <summary>
+            /// Dimmer delay time in milliseconds (when ValueKind is SceneDimmer).
+            /// </summary>
+            public int? DimmerDelayTime { get; set; }
+
+            /// <summary>
+            /// Dimmer ramp time in milliseconds (when ValueKind is SceneDimmer).
+            /// </summary>
+            public int? DimmerRampTime { get; set; }
+
+            /// <summary>
+            /// Relay delay time in milliseconds (when ValueKind is SceneRelay).
+            /// </summary>
+            public int? RelayDelayTime { get; set; }
+
+            /// <summary>
+            /// Relay on/off state (when ValueKind is SceneRelay).
+            /// </summary>
+            public bool? RelayValue { get; set; }
+
+            /// <summary>
+            /// Shutter position - true = up (when ValueKind is SceneShutter).
+            /// </summary>
+            public bool? ShutterPositionIsUp { get; set; }
+
+            /// <summary>
+            /// Shutter delay time in milliseconds (when ValueKind is SceneShutter).
+            /// </summary>
+            public int? ShutterDelayTime { get; set; }
+
             public override String ToString() {
                 StringBuilder buf = new StringBuilder();
 
@@ -151,10 +198,34 @@ namespace Ihc {
                 }
                 if (WeekdayValue.HasValue) {
                     buf.AppendFormat(", WeekdayValue={0}", WeekdayValue.Value);
-                } 
+                }
+                if (PhoneNumberValue != null) {
+                    buf.AppendFormat(", PhoneNumberValue={0}", PhoneNumberValue);
+                }
+                if (DimmerPercentage.HasValue) {
+                    buf.AppendFormat(", DimmerPercentage={0}", DimmerPercentage.Value);
+                }
+                if (DimmerDelayTime.HasValue) {
+                    buf.AppendFormat(", DimmerDelayTime={0}", DimmerDelayTime.Value);
+                }
+                if (DimmerRampTime.HasValue) {
+                    buf.AppendFormat(", DimmerRampTime={0}", DimmerRampTime.Value);
+                }
+                if (RelayDelayTime.HasValue) {
+                    buf.AppendFormat(", RelayDelayTime={0}", RelayDelayTime.Value);
+                }
+                if (RelayValue.HasValue) {
+                    buf.AppendFormat(", RelayValue={0}", RelayValue.Value);
+                }
+                if (ShutterPositionIsUp.HasValue) {
+                    buf.AppendFormat(", ShutterPositionIsUp={0}", ShutterPositionIsUp.Value);
+                }
+                if (ShutterDelayTime.HasValue) {
+                    buf.AppendFormat(", ShutterDelayTime={0}", ShutterDelayTime.Value);
+                }
                 buf.Append("}");
 
-                return buf.ToString(); 
+                return buf.ToString();
             }
         };
 

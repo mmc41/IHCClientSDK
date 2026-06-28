@@ -125,6 +125,19 @@ namespace Ihc {
 
             return result;
         }
+
+        /// <summary>
+        /// Returns a copy of this metadata bound to a different service instance.
+        /// The (per-type) operation shape - name, return type, parameters, kind, MethodInfo, description -
+        /// is reused unchanged; only the service instance that <see cref="Invoke"/> targets is replaced.
+        /// Used to re-bind cached, instance-independent metadata to a live service instance.
+        /// </summary>
+        /// <param name="newService">The service instance to bind to.</param>
+        /// <returns>A new ServiceOperationMetadata identical except for the bound service.</returns>
+        public ServiceOperationMetadata WithService(IIHCApiService newService)
+        {
+            return new ServiceOperationMetadata(newService, Name, ReturnType, Parameters, Kind, MethodInfo, Description);
+        }
     }
 
     /// <summary>
@@ -199,7 +212,7 @@ namespace Ihc {
             activity?.SetParameters((nameof(service), serviceType.Name));
             activity?.SetTag("cachedResult", true); // Assume cached by default
 
-            var retv = _cache.GetOrAdd(serviceType, type =>
+            var cached = _cache.GetOrAdd(serviceType, type =>
             {
                 activity?.SetTag("cachedResult", false); // Override if not cached.
 
@@ -221,11 +234,20 @@ namespace Ihc {
                     if (IsMethodFromExcludedInterface(method))
                         continue;
 
-                    operations.Add(CreateOperationInfo(service, method));
+                    // Cache an instance-less shape (service: null) so the static cache never pins the first
+                    // service instance (or its object graph) for the process lifetime; every returned operation is
+                    // rebound to the live instance below via WithService, so the cached shape needs no instance.
+                    operations.Add(CreateOperationInfo(null!, method));
                 }
 
                 return operations.AsReadOnly();
             });
+
+            // The cache is keyed by service *type* and stores instance-independent operation shape, but each
+            // cached ServiceOperationMetadata pins the service instance that first populated the cache. Re-bind
+            // every operation to the live `service` so Invoke() targets the caller's instance rather than a
+            // stale (possibly disposed, or differently-configured in tests) instance of the same service type.
+            var retv = cached.Select(op => op.WithService(service)).ToList().AsReadOnly();
 
             activity?.SetReturnValue(retv);
 
@@ -298,6 +320,14 @@ namespace Ihc {
                 return Array.Empty<FieldMetaData>();
             }
 
+            // For generic collections (IReadOnlyList<T>, IList<T>, List<T>, ...), emit the element type just
+            // like an array, so a collection control strategy can find the element FieldMetaData. This must run
+            // before the class/record branch below, otherwise List<T> would be expanded into its own properties.
+            if (TryGetCollectionElementType(parameterType, out var collectionElementType))
+            {
+                return new[] { new FieldMetaData(name: string.Empty, type: collectionElementType, subtypes: [], description: "", attributeProvider: null) };
+            }
+
             // For classes/records, return properties
             if (parameterType.IsClass || parameterType.IsValueType)
             {
@@ -309,6 +339,38 @@ namespace Ihc {
 
             // Default: return empty array
             return Array.Empty<FieldMetaData>();
+        }
+
+        /// <summary>
+        /// Determines the element type of a generic collection type (one implementing <c>IEnumerable&lt;T&gt;</c>),
+        /// e.g. <c>IReadOnlyList&lt;int&gt;</c> -&gt; <c>int</c>. Arrays and <see cref="string"/> are excluded
+        /// (arrays are handled by the dedicated array branch; string is a supported simple type).
+        /// </summary>
+        private static bool TryGetCollectionElementType(Type type, out Type elementType)
+        {
+            elementType = typeof(object);
+
+            if (type.IsArray || type == typeof(string))
+                return false;
+
+            // The type may itself be IEnumerable<T> (e.g. the parameter is declared as IEnumerable<T>) ...
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+            {
+                elementType = type.GetGenericArguments()[0];
+                return true;
+            }
+
+            // ... or it implements IEnumerable<T> (IReadOnlyList<T>, IList<T>, List<T>, IReadOnlySet<T>, ...).
+            var enumerableInterface = Array.Find(type.GetInterfaces(),
+                i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+
+            if (enumerableInterface != null)
+            {
+                elementType = enumerableInterface.GetGenericArguments()[0];
+                return true;
+            }
+
+            return false;
         }
 
         private static ServiceOperationKind DetermineOperationKind(Type returnType)

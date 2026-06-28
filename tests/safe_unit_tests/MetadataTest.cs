@@ -43,6 +43,54 @@ namespace Ihc.Tests
                 "Operation type should be AsyncFunction");
         }
 
+        /// <summary>
+        /// Regression test: ServiceMetadata caches operation metadata per service *type* in a static cache.
+        /// Each cached entry must be re-bound to the live service instance on retrieval; otherwise Invoke()
+        /// targets the (stale) instance that first populated the cache for that type - causing a second
+        /// LabAppService/service instance of the same type to call operations on the wrong object.
+        /// </summary>
+        [Test]
+        public async Task GetOperations_RebindsToLiveInstance_NotStaleCachedInstance()
+        {
+            // First instance of IConfigurationService, configured to report version "AAA".
+            var serviceA = A.Fake<IConfigurationService>();
+            A.CallTo(() => serviceA.GetSystemInfo()).Returns(Task.FromResult(new SystemInfo { Version = "AAA" }));
+            var getInfoA = ServiceMetadata.GetOperations(serviceA)
+                .First(op => op.Name == nameof(IConfigurationService.GetSystemInfo));
+            var resultA = await (Task<SystemInfo>)getInfoA.Invoke(Array.Empty<object>());
+            Assert.That(resultA.Version, Is.EqualTo("AAA"));
+
+            // A second, distinct instance of the SAME service type, configured to report "BBB".
+            var serviceB = A.Fake<IConfigurationService>();
+            A.CallTo(() => serviceB.GetSystemInfo()).Returns(Task.FromResult(new SystemInfo { Version = "BBB" }));
+            var getInfoB = ServiceMetadata.GetOperations(serviceB)
+                .First(op => op.Name == nameof(IConfigurationService.GetSystemInfo));
+            var resultB = await (Task<SystemInfo>)getInfoB.Invoke(Array.Empty<object>());
+
+            // Before the fix this returned "AAA" (the stale cached instance bound into the cached metadata).
+            Assert.That(resultB.Version, Is.EqualTo("BBB"),
+                "GetOperations must bind metadata to the live service instance, not the stale cached one");
+        }
+
+        /// <summary>
+        /// US-A1: CreateSubTypes must emit the element type for a generic collection parameter (like it does for
+        /// arrays), so the collection control strategy can find the element FieldMetaData.
+        /// </summary>
+        [Test]
+        public void GetOperations_GenericCollectionParameter_EmitsElementSubType()
+        {
+            var service = A.Fake<IResourceInteractionService>();
+
+            var getRuntimeValues = ServiceMetadata.GetOperations(service)
+                .First(op => op.Name == nameof(IResourceInteractionService.GetRuntimeValues));
+
+            Assert.That(getRuntimeValues.Parameters.Length, Is.EqualTo(1));
+            var param = getRuntimeValues.Parameters[0];
+            Assert.That(param.Type, Is.EqualTo(typeof(IReadOnlyList<int>)));
+            Assert.That(param.SubTypes.Length, Is.EqualTo(1), "Collection parameter should emit one element subtype");
+            Assert.That(param.SubTypes[0].Type, Is.EqualTo(typeof(int)), "Element subtype should be int");
+        }
+
         [Test]
         public void CheckAsyncEnumerableOperation()
         {

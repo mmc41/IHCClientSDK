@@ -34,28 +34,28 @@ public class NumericParameterStrategy : ParameterControlStrategyBase
     };
 
     /// <summary>
-    /// Determines if this strategy can handle numeric types.
+    /// Determines if this strategy can handle numeric types (including their <c>Nullable&lt;T&gt;</c> form).
     /// </summary>
     public override bool CanHandle(FieldMetaData field)
     {
-        return NumericTypeInfos.ContainsKey(field.Type);
+        return NumericTypeInfos.ContainsKey(UnwrapNullable(field.Type));
     }
 
     /// <summary>
-    /// Creates a NumericUpDown control for numeric input.
+    /// Creates a NumericUpDown control for numeric input. A nullable numeric starts empty (unset = null, D3).
     /// </summary>
     public override Control CreateControl(FieldMetaData field, string controlName)
     {
         EnsureCanHandle(field);
 
-        var info = NumericTypeInfos[field.Type];
+        var info = NumericTypeInfos[UnwrapNullable(field.Type)];
         var numericUpDown = new NumericUpDown
         {
             Name = controlName,
             Width = 200,
             Minimum = info.Minimum,
             Maximum = info.Maximum,
-            Value = DefaultNumericValue,
+            Value = IsNullableValueType(field.Type) ? (decimal?)null : DefaultNumericValue,
             Increment = info.Increment,
             FormatString = info.FormatString
         };
@@ -81,13 +81,15 @@ public class NumericParameterStrategy : ParameterControlStrategyBase
     {
         var numericUpDown = RequireControl<NumericUpDown>(control);
 
-        if (numericUpDown.Value == null)
-            return DefaultNumericValue;
+        // Empty control: a nullable numeric extracts as null (D3); a non-nullable one falls back to the typed zero.
+        if (numericUpDown.Value == null && IsNullableValueType(field.Type))
+            return null;
 
-        decimal value = numericUpDown.Value.Value;
+        decimal value = numericUpDown.Value ?? DefaultNumericValue;
+        var underlying = UnwrapNullable(field.Type);
 
-        // Convert decimal to the appropriate numeric type
-        return field.Type.Name switch
+        // Convert decimal to the appropriate numeric type (a boxed T is assignable to a T? parameter).
+        return underlying.Name switch
         {
             nameof(Byte) => (byte)value,
             nameof(SByte) => (sbyte)value,
@@ -100,12 +102,13 @@ public class NumericParameterStrategy : ParameterControlStrategyBase
             nameof(Single) => (float)value,
             nameof(Double) => (double)value,
             nameof(Decimal) => value,
-            _ => throw new NotSupportedException($"Numeric type '{field.Type.Name}' is not supported")
+            _ => throw new NotSupportedException($"Numeric type '{underlying.Name}' is not supported")
         };
     }
 
     /// <summary>
-    /// Sets a numeric value into a NumericUpDown control.
+    /// Sets a numeric value into a NumericUpDown control. A null value restores the empty (unset) state for a
+    /// nullable numeric, or 0 for a non-nullable one.
     /// </summary>
     public override void SetValue(Control control, object? value, FieldMetaData field)
     {
@@ -113,7 +116,7 @@ public class NumericParameterStrategy : ParameterControlStrategyBase
 
         if (value == null)
         {
-            numericUpDown.Value = DefaultNumericValue;
+            numericUpDown.Value = IsNullableValueType(field.Type) ? (decimal?)null : DefaultNumericValue;
             return;
         }
 

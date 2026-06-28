@@ -364,7 +364,15 @@ public class IhcFakeSetup
     }
 
     public static IResourceInteractionService SetupResourceInteractionService(IhcSettings settings)
-        => CreateEmptyFake<IResourceInteractionService>();
+    {
+        var service = A.Fake<IResourceInteractionService>();
+
+        // Accept resource value writes from the Lab's ResourceValue union editor (single + collection).
+        A.CallTo(() => service.SetResourceValue(A<ResourceValue>._)).Returns(Task.FromResult(true));
+        A.CallTo(() => service.SetResourceValues(A<IReadOnlyList<ResourceValue>>._)).Returns(Task.FromResult(true));
+
+        return service;
+    }
 
     public static IConfigurationService SetupConfigurationService(IhcSettings settings)
         => CreateEmptyFake<IConfigurationService>();
@@ -379,7 +387,17 @@ public class IhcFakeSetup
         => CreateEmptyFake<IMessageControlLogService>();
 
     public static IModuleService SetupModuleService(IhcSettings settings)
-        => CreateEmptyFake<IModuleService>();
+    {
+        var service = A.Fake<IModuleService>();
+
+        // Accept a stored scene project picked via the Lab's file picker (StoreSceneProject /
+        // StoreSceneProjectSegment take a SceneProject : BinaryFile). Report success when bytes were supplied.
+        A.CallTo(() => service.StoreSceneProject(A<SceneProject>._)).Returns(Task.CompletedTask);
+        A.CallTo(() => service.StoreSceneProjectSegment(A<SceneProject>._, A<bool>._, A<bool>._))
+            .ReturnsLazily((SceneProject project, bool isFirst, bool isLast) => Task.FromResult(project?.Data != null));
+
+        return service;
+    }
 
     public static ITimeManagerService SetupTimeManagerService(IhcSettings settings)
         => CreateEmptyFake<ITimeManagerService>();

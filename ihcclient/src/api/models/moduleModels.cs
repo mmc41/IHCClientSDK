@@ -7,8 +7,10 @@ namespace Ihc {
 
     /// <summary>
     /// High level model of a scene project file without soap distractions.
+    /// Implements <see cref="BinaryFile"/> so the IHC Lab can supply it via a file picker (see the BinaryFile
+    /// remarks about the required copy-constructor).
     /// </summary>
-    public record SceneProject
+    public record SceneProject : BinaryFile
     {
       /// <summary>
       /// Raw binary data of the scene project file
@@ -20,6 +22,22 @@ namespace Ihc {
       /// Name of the scene project file (.icw/.icz file)
       /// </summary>
       public string Filename { get; init; }
+
+      public SceneProject(string Filename, byte[] Data)
+      {
+        this.Data = Data;
+        this.Filename = Filename;
+      }
+
+      /// <summary>
+      /// Copy-constructor required by the BinaryFile contract so the Lab's FileParameterStrategy can build a
+      /// SceneProject from a picked file.
+      /// </summary>
+      public SceneProject(BinaryFile input)
+      {
+        this.Data = input.Data;
+        this.Filename = input.Filename;
+      }
 
       public override string ToString()
       {

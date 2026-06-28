@@ -10,6 +10,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Ihc;
 using Ihc.App;
@@ -73,6 +74,14 @@ public partial class MainWindow : Window
     private LabAppService? labAppService;
     private MainWindowViewModel? viewModel;
     private LabAppService.OperationItem? currentOperationItem;
+
+    // The most recent operation result and the name of the operation that produced it, used by
+    // "Save Result to File…" so it saves the real result (e.g. binary bytes), not the display preview.
+    private LabAppService.OperationResult? lastOperationResult;
+    private string? lastResultOperationName;
+
+    // True while a streaming (IAsyncEnumerable) operation is running; the Run button then acts as Stop (D7).
+    private bool isStreaming;
 
     // Guards against a service->GUI->service echo while we push service values into the controls.
     private bool isSyncingFromService;
@@ -293,6 +302,13 @@ public partial class MainWindow : Window
     {
         using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow)+"."+nameof(RunButtonClickHandler), ActivityKind.Internal);
 
+        // While a stream is running the Run button acts as Stop (D7): cancel and let the running stream end.
+        if (isStreaming)
+        {
+            labAppService?.StopStream();
+            return;
+        }
+
         viewModel?.ClearErrorAndWarning();
         viewModel?.ClearOutput();
 
@@ -300,6 +316,14 @@ public partial class MainWindow : Window
 
         try
         {
+            // Streaming operations (IAsyncEnumerable, e.g. GetResourceValueChanges) use a live Start/Stop output
+            // surface instead of the single-result Run path (D7).
+            if (labAppService?.SelectedOperation?.OperationMetadata.Kind == ServiceOperationKind.AsyncEnumerable)
+            {
+                await RunStreamingOperation();
+                return;
+            }
+
             activity?.SetParameters(
                 (nameof(sender), sender),
                 (nameof(e), e)
@@ -328,6 +352,10 @@ public partial class MainWindow : Window
 
             logger.LogInformation(message: $"Operation {labAppService.SelectedOperation.DisplayName} sucessfullly called with result {operationResult.DisplayResult}");
 
+            // Remember the raw result so "Save Result to File…" can write the real bytes, not the display preview.
+            lastOperationResult = operationResult;
+            lastResultOperationName = labAppService.SelectedOperation.OperationMetadata.Name;
+
             await SetOutput(operationResult.DisplayResult, operationResult.ReturnType);
         } catch (Exception ex)
         {
@@ -336,6 +364,61 @@ public partial class MainWindow : Window
         {
             this.Cursor = Cursor.Default;
         }
+    }
+
+    /// <summary>
+    /// Runs the selected streaming (IAsyncEnumerable) operation as a live stream (D7): the Run button becomes
+    /// Stop, items append to the output area as they arrive, and Stop cancels via LabAppService's stream token.
+    /// </summary>
+    private async Task RunStreamingOperation()
+    {
+        if (labAppService == null)
+            return;
+
+        isStreaming = true;
+        RunButton.Content = "STOP";
+        this.Cursor = Cursor.Default; // streaming is long-running, not a brief wait
+        viewModel?.SetOutput("(streaming - click STOP to end)\n", typeof(string));
+
+        try
+        {
+            await labAppService.StartStream(item =>
+            {
+                // Items arrive on a background context; marshal to the UI thread to append to the output.
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (viewModel != null)
+                        viewModel.OutputText = AppendStreamLine(viewModel.OutputText, item?.ToString() ?? "null");
+                });
+            });
+        }
+        catch (Exception ex)
+        {
+            HandleOperationError(null, nameof(RunStreamingOperation), ex);
+        }
+        finally
+        {
+            isStreaming = false;
+            RunButton.Content = "RUN";
+        }
+    }
+
+    // Cap the retained streaming output so an indefinite long-poll (e.g. GetResourceValueChanges) cannot grow the
+    // bound text without bound. Keeps roughly the most recent MaxStreamOutputChars characters, trimming whole
+    // oldest lines and marking the cut so the truncation is visible (not silent).
+    private const int MaxStreamOutputChars = 100_000;
+    private const string StreamTrimMarker = "... (older output trimmed) ...\n";
+
+    private static string AppendStreamLine(string current, string line)
+    {
+        string text = current + line + "\n";
+        if (text.Length <= MaxStreamOutputChars)
+            return text;
+
+        int cut = text.Length - MaxStreamOutputChars;
+        int newlineIndex = text.IndexOf('\n', cut);
+        string tail = newlineIndex >= 0 ? text.Substring(newlineIndex + 1) : text.Substring(cut);
+        return StreamTrimMarker + tail;
     }
 
     /// <summary>
@@ -416,6 +499,10 @@ public partial class MainWindow : Window
 
     private void OnWindowClosing(object? sender, WindowClosingEventArgs e)
     {
+        // Stop any running stream first so its CancellationTokenSource is cancelled (releasing the controller
+        // subscription via the enumerator's DisposeAsync) before the IHC domain is torn down.
+        labAppService?.StopStream();
+
         // Clean up IHC domain when window is closing
         ihcDomain?.Dispose();
 
@@ -531,6 +618,48 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             HandleOperationError(activity, "Output to clipboard", ex);
+        }
+    }
+
+    /// <summary>
+    /// Saves the most recent operation result to a file (US-C4 / D6 "smart save"): real bytes for a byte[] /
+    /// BinaryFile result with a type-appropriate extension, the shown text otherwise. Reads the raw result
+    /// object rather than the display preview.
+    /// </summary>
+    public async void SaveOutputMenuItemClick(object sender, RoutedEventArgs e)
+    {
+        using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow) + "." + nameof(SaveOutputMenuItemClick), ActivityKind.Internal);
+
+        try
+        {
+            if (lastOperationResult == null)
+            {
+                viewModel?.SetWarning("No result to save. Run an operation first.");
+                return;
+            }
+
+            var content = LabAppService.BuildResultFileContent(
+                lastOperationResult.RawResult, lastOperationResult.DisplayResult, lastResultOperationName ?? "result");
+
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel == null)
+                throw new NotSupportedException("No top-level window available for the save dialog");
+
+            var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "Save Result to File",
+                SuggestedFileName = content.SuggestedFileName
+            });
+
+            if (file == null)
+                return; // user cancelled
+
+            await using var stream = await file.OpenWriteAsync();
+            await stream.WriteAsync(content.Bytes);
+        }
+        catch (Exception ex)
+        {
+            HandleOperationError(activity, "Save result to file", ex);
         }
     }
 

@@ -36,6 +36,12 @@ public static class OperationSupport
 
         for (int i = 0; i < operationMetadata.Parameters.Length; i++)
         {
+            // A CancellationToken parameter is harness-injected (auto-filled from LabAppService's stream token,
+            // D11): it is not user-edited, so no control is built for it. Its argument slot keeps its default and
+            // is replaced at invoke time. Skipping does not shift the other parameters' index-based control names.
+            if (operationMetadata.Parameters[i].Type == typeof(System.Threading.CancellationToken))
+                continue;
+
             AddFieldControls(parametersPanel, operationMetadata.Parameters[i], i.ToString());
         }
     }

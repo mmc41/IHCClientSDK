@@ -16,6 +16,7 @@
             </MenuItem>
             <MenuItem Header="_Edit">
                 <MenuItem Name="CopyOutputMenuItem" Header="Copy Result to Clipboard" Click="CopyOutputMenuItemClick"/>
+                <MenuItem Name="SaveOutputMenuItem" Header="Save Result to File…" Click="SaveOutputMenuItemClick"/>
                 <MenuItem Name="CopyErrorMenuItem" Header="Copy Error to Clipboard" Click="CopyErrorMenuItemClick"/>
             </MenuItem>
             <MenuItem Header="_Help">

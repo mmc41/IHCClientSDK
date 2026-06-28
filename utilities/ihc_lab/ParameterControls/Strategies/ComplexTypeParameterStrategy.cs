@@ -29,6 +29,12 @@ public class ComplexTypeParameterStrategy : ParameterControlStrategyBase
     }
 
     /// <summary>
+    /// A complex record is rendered by building a control for each of its properties via the registry, so the
+    /// filter recurses into all of them.
+    /// </summary>
+    public override FieldMetaData[] GetRenderedSubFields(FieldMetaData field) => field.SubTypes;
+
+    /// <summary>
     /// Creates a StackPanel with nested controls for each property.
     /// </summary>
     public override Control CreateControl(FieldMetaData field, string controlName)

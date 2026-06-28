@@ -116,11 +116,8 @@ namespace Ihc {
 
         private SceneProject mapSceneProject(Ihc.Soap.Module.WSFile proj)
         {
-            return new SceneProject()
-            {
-                Filename = proj?.filename,
-                Data = proj?.data // TODO: Check if binary data can be converet/decompressed to something useful?
-            };
+            // TODO: Check if binary data can be converted/decompressed to something useful?
+            return new SceneProject(proj?.filename, proj?.data);
         }
 
         private SceneProjectInfo mapSceneProjectInfo(Ihc.Soap.Module.WSSceneProjectInfo info)

@@ -35,6 +35,13 @@ public abstract class ParameterControlStrategyBase : IParameterControlStrategy
     public abstract void SetValue(Control control, object? value, FieldMetaData field);
 
     /// <summary>
+    /// Default: a leaf strategy renders the field wholesale and delegates to no sub-field controls, so the
+    /// filter must not recurse into its sub-types. Container strategies (complex record, array/collection)
+    /// override this to return their constituent fields.
+    /// </summary>
+    public virtual FieldMetaData[] GetRenderedSubFields(FieldMetaData field) => Array.Empty<FieldMetaData>();
+
+    /// <summary>
     /// Throws <see cref="NotSupportedException"/> when this strategy cannot handle the given field.
     /// Call at the top of <see cref="CreateControl"/>.
     /// </summary>
@@ -64,4 +71,16 @@ public abstract class ParameterControlStrategyBase : IParameterControlStrategy
             ?? throw new InvalidOperationException(
                 $"Expected {typeof(T).Name} control but got {control.GetType().Name}");
     }
+
+    /// <summary>
+    /// Returns the non-nullable underlying type of a <see cref="Nullable{T}"/> (e.g. <c>int?</c> -&gt; <c>int</c>),
+    /// or the type unchanged when it is not nullable. Lets leaf strategies handle both <c>T</c> and <c>T?</c>.
+    /// </summary>
+    protected static Type UnwrapNullable(Type type) => Nullable.GetUnderlyingType(type) ?? type;
+
+    /// <summary>
+    /// True when the type is a <see cref="Nullable{T}"/> value type (e.g. <c>int?</c>, <c>bool?</c>). For such
+    /// types an empty/unset control extracts as <c>null</c> (the "empty = null" convention, decision D3).
+    /// </summary>
+    protected static bool IsNullableValueType(Type type) => Nullable.GetUnderlyingType(type) != null;
 }

@@ -7,25 +7,40 @@ using Ihc;
 namespace IhcLab.ParameterControls.Strategies;
 
 /// <summary>
-/// Strategy for handling boolean parameters.
-/// Creates a pair of RadioButton controls for true/false selection.
+/// Strategy for handling boolean parameters. A non-nullable <c>bool</c> is rendered as a pair of RadioButtons
+/// (true/false); a nullable <c>bool?</c> is rendered as a three-state CheckBox whose indeterminate state means
+/// null (the "empty = null" convention, decision D3 - a checkbox cannot otherwise be "empty").
 /// </summary>
 public class BoolParameterStrategy : ParameterControlStrategyBase
 {
     /// <summary>
-    /// Determines if this strategy can handle boolean types.
+    /// Determines if this strategy can handle boolean types (including <c>bool?</c>).
     /// </summary>
     public override bool CanHandle(FieldMetaData field)
     {
-        return field.Type == typeof(bool);
+        return UnwrapNullable(field.Type) == typeof(bool);
     }
 
     /// <summary>
-    /// Creates a StackPanel with two RadioButton controls for true/false selection.
+    /// Creates a three-state CheckBox for <c>bool?</c>, or a StackPanel of two RadioButtons for <c>bool</c>.
     /// </summary>
     public override Control CreateControl(FieldMetaData field, string controlName)
     {
         EnsureCanHandle(field);
+
+        if (IsNullableValueType(field.Type))
+        {
+            var checkBox = new CheckBox
+            {
+                Name = controlName,
+                Content = string.IsNullOrWhiteSpace(field.Name) ? "value" : field.Name,
+                IsThreeState = true,
+                IsChecked = null // indeterminate = null (unset)
+            };
+
+            ApplyDescriptionTooltip(checkBox, field);
+            return checkBox;
+        }
 
         var stackPanel = new StackPanel
         {
@@ -62,26 +77,35 @@ public class BoolParameterStrategy : ParameterControlStrategyBase
     }
 
     /// <summary>
-    /// Subscribes to each RadioButton's IsCheckedChanged event. The owning StackPanel (which carries the
-    /// field metadata) is passed as the sender so the handler can locate the parameter, mirroring how the
-    /// control is identified elsewhere.
+    /// Subscribes to the control's change event. For the three-state CheckBox it is IsCheckedChanged; for the
+    /// RadioButton pair each radio's IsCheckedChanged is wired, with the owning StackPanel passed as the sender.
     /// </summary>
     public override void SubscribeToValueChanged(Control control, EventHandler handler)
     {
-        if (control is not StackPanel stackPanel)
-            return;
-
-        foreach (var radioButton in stackPanel.Children.OfType<RadioButton>())
+        if (control is CheckBox checkBox)
         {
-            radioButton.IsCheckedChanged += (s, e) => handler(stackPanel, EventArgs.Empty);
+            checkBox.IsCheckedChanged += (s, e) => handler(checkBox, EventArgs.Empty);
+            return;
+        }
+
+        if (control is StackPanel stackPanel)
+        {
+            foreach (var radioButton in stackPanel.Children.OfType<RadioButton>())
+            {
+                radioButton.IsCheckedChanged += (s, e) => handler(stackPanel, EventArgs.Empty);
+            }
         }
     }
 
     /// <summary>
-    /// Extracts the boolean value from the RadioButton controls.
+    /// Extracts the boolean value. A three-state CheckBox returns its <c>bool?</c> (null when indeterminate);
+    /// the RadioButton pair returns a non-nullable bool.
     /// </summary>
     public override object? ExtractValue(Control control, FieldMetaData field)
     {
+        if (control is CheckBox checkBox)
+            return checkBox.IsChecked; // bool? : true / false / null (unset)
+
         var stackPanel = RequireControl<StackPanel>(control);
 
         // Locate the "true" radio by its Tag rather than its caption.
@@ -97,10 +121,16 @@ public class BoolParameterStrategy : ParameterControlStrategyBase
     }
 
     /// <summary>
-    /// Sets a boolean value into the RadioButton controls.
+    /// Sets a boolean value. For the three-state CheckBox, null restores the indeterminate (unset) state.
     /// </summary>
     public override void SetValue(Control control, object? value, FieldMetaData field)
     {
+        if (control is CheckBox checkBox)
+        {
+            checkBox.IsChecked = value as bool?; // null -> indeterminate (unset)
+            return;
+        }
+
         var stackPanel = RequireControl<StackPanel>(control);
 
         bool boolValue = value is bool b ? b : false;
