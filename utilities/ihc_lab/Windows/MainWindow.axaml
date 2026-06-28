@@ -8,7 +8,7 @@
         x:DataType="IhcLab:MainWindowViewModel"
         Title="IHC Lab">
     <DockPanel>
-        <Menu DockPanel.Dock="Top" Background="#F0F0F0">
+        <Menu DockPanel.Dock="Top" Background="{StaticResource MenuBackgroundBrush}">
             <MenuItem Header="_File">
                 <MenuItem Header="Setup" Click="SetupMenuItemClick"/>
                 <Separator/>
@@ -16,6 +16,7 @@
             </MenuItem>
             <MenuItem Header="_Edit">
                 <MenuItem Name="CopyOutputMenuItem" Header="Copy Result to Clipboard" Click="CopyOutputMenuItemClick"/>
+                <MenuItem Name="SaveOutputMenuItem" Header="Save Result to File…" Click="SaveOutputMenuItemClick"/>
                 <MenuItem Name="CopyErrorMenuItem" Header="Copy Error to Clipboard" Click="CopyErrorMenuItemClick"/>
             </MenuItem>
             <MenuItem Header="_Help">
@@ -76,7 +77,7 @@
                 <Button Name="RunButton" Grid.Row="0" Grid.Column="6" Click="RunButtonClickHandler" ToolTip.Tip="Execute IHC operation">RUN</Button>
             </Grid>
 
-            <Border Grid.Row="1" Name="Details" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
+            <Border Grid.Row="1" Name="Details" Margin="10,10,10,5" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="10">
                 <Grid Name="detail">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -93,21 +94,22 @@
                 </Grid>
             </Border>
 
-            <Border Grid.Row="2" Name="Result" MinHeight="50" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
+            <Border Grid.Row="2" Name="Result" MinHeight="50" Margin="10,10,10,5" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="10">
                 <DockPanel>
-                    <TextBlock Name="OutputHeading" FontSize="14" DockPanel.Dock="Top" Text="{Binding OutputHeading}" IsVisible="{Binding IsOutputVisible}"></TextBlock>
+                    <TextBlock Name="OutputHeading" FontSize="{StaticResource SubheadingFontSize}" DockPanel.Dock="Top" Text="{Binding OutputHeading}" IsVisible="{Binding IsOutputVisible}"></TextBlock>
+                    <TextBlock Name="OutputPlaceholder" FontSize="{StaticResource BodyFontSize}" Foreground="{StaticResource TertiaryTextBrush}" DockPanel.Dock="Top" Text="Run an operation to see output." IsVisible="{Binding !IsOutputVisible}"></TextBlock>
                     <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                        <SelectableTextBlock FontSize="12" Name="Output" Text="{Binding OutputText}"></SelectableTextBlock>
+                        <SelectableTextBlock FontSize="{StaticResource BodyFontSize}" Name="Output" Text="{Binding OutputText}"></SelectableTextBlock>
                     </ScrollViewer>
                 </DockPanel>
             </Border>
 
-            <Border Grid.Row="3" Name="Status" MinHeight="50" Margin="10,10,10,5" BorderBrush="#C0C0C0" BorderThickness="1" CornerRadius="4" Padding="10">
+            <Border Grid.Row="3" Name="Status" MinHeight="50" Margin="10,10,10,5" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="10" IsVisible="{Binding IsStatusVisible}">
                 <DockPanel>
-                    <TextBlock Name="ErrorHeading" FontSize="14" IsVisible="{Binding IsErrorVisible}" DockPanel.Dock="Top">Errors:</TextBlock>
-                    <TextBlock Name="WarningHeading" FontSize="14" IsVisible="{Binding IsWarningVisible}" DockPanel.Dock="Top">Warnings:</TextBlock>
+                    <TextBlock Name="ErrorHeading" FontSize="{StaticResource SubheadingFontSize}" IsVisible="{Binding IsErrorVisible}" DockPanel.Dock="Top">Errors:</TextBlock>
+                    <TextBlock Name="WarningHeading" FontSize="{StaticResource SubheadingFontSize}" IsVisible="{Binding IsWarningVisible}" DockPanel.Dock="Top">Warnings:</TextBlock>
                     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                        <TextBlock Name="ErrorWarningContent" FontSize="12" Text="{Binding ErrorWarningText}" TextWrapping="Wrap"></TextBlock>
+                        <TextBlock Name="ErrorWarningContent" FontSize="{StaticResource BodyFontSize}" Text="{Binding ErrorWarningText}" TextWrapping="Wrap"></TextBlock>
                     </ScrollViewer>
                 </DockPanel>
             </Border>

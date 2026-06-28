@@ -41,10 +41,7 @@ public class StringParameterStrategy : ParameterControlStrategyBase
     /// Subscribes to the TextBox's TextChanged event.
     /// </summary>
     public override void SubscribeToValueChanged(Control control, EventHandler handler)
-    {
-        if (control is TextBox textBox)
-            textBox.TextChanged += (s, e) => handler(textBox, EventArgs.Empty);
-    }
+        => SubscribeLeafChange(control, handler);
 
     /// <summary>
     /// Extracts the text value from a TextBox control.

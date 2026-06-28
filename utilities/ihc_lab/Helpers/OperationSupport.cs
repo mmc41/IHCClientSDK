@@ -36,7 +36,24 @@ public static class OperationSupport
 
         for (int i = 0; i < operationMetadata.Parameters.Length; i++)
         {
+            // A CancellationToken parameter is harness-injected (auto-filled from LabAppService's stream token,
+            // D11): it is not user-edited, so no control is built for it. Its argument slot keeps its default and
+            // is replaced at invoke time. Skipping does not shift the other parameters' index-based control names.
+            if (operationMetadata.Parameters[i].Type == typeof(System.Threading.CancellationToken))
+                continue;
+
             AddFieldControls(parametersPanel, operationMetadata.Parameters[i], i.ToString());
+        }
+
+        // Show an explicit note for parameter-less operations so the panel does not look empty/broken.
+        if (parametersPanel.Children.Count == 0)
+        {
+            parametersPanel.Children.Add(new TextBlock
+            {
+                Text = "No parameters required.",
+                FontStyle = Avalonia.Media.FontStyle.Italic,
+                Foreground = Avalonia.Media.Brushes.Gray
+            });
         }
     }
 
@@ -56,26 +73,6 @@ public static class OperationSupport
             (nameof(prefix), prefix)
         );
 
-        // Create a horizontal container for label + control
-        var rowPanel = new StackPanel
-        {
-            Orientation = Avalonia.Layout.Orientation.Horizontal,
-            Margin = new Thickness(0, 0, 0, 15),
-            Spacing = 10
-        };
-
-        // Add label with fixed width for alignment
-        var legend = new TextBlock
-        {
-            Text = field.Name + ":",
-            Width = 150,  // Fixed width for consistent alignment
-            Margin = new Thickness(0, 10, 5, 2),
-            FontWeight = Avalonia.Media.FontWeight.SemiBold,
-            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top
-        };
-        ToolTip.SetTip(legend, $"Type: {field.Type.Name}: {field.Description}");
-        rowPanel.Children.Add(legend);
-
         // Get strategy and create control
         var strategy = ParameterControlRegistry.Instance.GetStrategy(field);
         var control = strategy.CreateControl(field, prefix);
@@ -87,8 +84,52 @@ public static class OperationSupport
             Strategy = strategy
         };
 
-        rowPanel.Children.Add(control);
+        // Build the "label : control" row via the shared helper so labels line up across nesting levels. The label
+        // tooltip shows the description only (no leaked .NET type name) and only when a description exists.
+        var rowPanel = LabeledRow(field.Name + ":", control, tooltip: field.Description);
+        rowPanel.Margin = new Thickness(0, 0, 0, 15);
         parent.Children.Add(rowPanel);
+    }
+
+    /// <summary>
+    /// Builds a horizontal "label : editor" row with a fixed-width label column, used for every parameter row so
+    /// labels align across nesting levels (top-level, complex sub-fields, ResourceValue payload). The editor stays
+    /// a direct child of the returned panel - container strategies locate it one level deep by name - so this must
+    /// not introduce extra wrapping.
+    /// </summary>
+    /// <param name="label">The label text.</param>
+    /// <param name="editor">The editor control placed next to the label.</param>
+    /// <param name="labelWidth">Fixed label-column width for consistent alignment; pass <see cref="double.NaN"/> to
+    /// auto-size the label (used by inline complex-type sub-field rows that should not reserve a fixed column).</param>
+    /// <param name="labelAlignment">Vertical alignment of the label (Top suits tall editors, Center inline ones).</param>
+    /// <param name="tooltip">Optional tooltip; applied only when non-empty, matching control tooltip behaviour.</param>
+    public static StackPanel LabeledRow(
+        string label,
+        Control editor,
+        double labelWidth = 150,
+        Avalonia.Layout.VerticalAlignment labelAlignment = Avalonia.Layout.VerticalAlignment.Top,
+        string? tooltip = null)
+    {
+        var row = new StackPanel
+        {
+            Orientation = Avalonia.Layout.Orientation.Horizontal,
+            Spacing = 10
+        };
+
+        var legend = new TextBlock
+        {
+            Text = label,
+            Width = labelWidth,
+            Margin = new Thickness(0, 0, 5, 0),
+            FontWeight = Avalonia.Media.FontWeight.SemiBold,
+            VerticalAlignment = labelAlignment
+        };
+        if (!string.IsNullOrWhiteSpace(tooltip))
+            ToolTip.SetTip(legend, tooltip);
+
+        row.Children.Add(legend);
+        row.Children.Add(editor);
+        return row;
     }
 
     /// <summary>

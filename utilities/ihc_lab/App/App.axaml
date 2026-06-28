@@ -6,4 +6,26 @@
     <Application.Styles>
         <SimpleTheme />
     </Application.Styles>
+
+    <!-- Shared design tokens. Reference these from every window/control via {StaticResource ...} so colours,
+         font sizes and dialog metrics stay consistent and have a single source of truth. -->
+    <Application.Resources>
+        <!-- Brushes -->
+        <SolidColorBrush x:Key="MenuBackgroundBrush" Color="#F0F0F0"/>
+        <SolidColorBrush x:Key="PanelBorderBrush" Color="#C0C0C0"/>
+        <SolidColorBrush x:Key="SecondaryTextBrush" Color="#666666"/>
+        <SolidColorBrush x:Key="TertiaryTextBrush" Color="#888888"/>
+        <SolidColorBrush x:Key="ErrorBrush" Color="Red"/>
+        <SolidColorBrush x:Key="LinkBrush" Color="Blue"/>
+
+        <!-- Font sizes -->
+        <x:Double x:Key="TitleFontSize">24</x:Double>
+        <x:Double x:Key="HeadingFontSize">16</x:Double>
+        <x:Double x:Key="SubheadingFontSize">14</x:Double>
+        <x:Double x:Key="BodyFontSize">12</x:Double>
+        <x:Double x:Key="CaptionFontSize">11</x:Double>
+
+        <!-- Dialog metrics -->
+        <x:Double x:Key="DialogButtonWidth">100</x:Double>
+    </Application.Resources>
 </Application>

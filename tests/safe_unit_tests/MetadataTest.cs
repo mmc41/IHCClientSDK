@@ -43,6 +43,100 @@ namespace Ihc.Tests
                 "Operation type should be AsyncFunction");
         }
 
+        /// <summary>
+        /// Regression test: ServiceMetadata caches operation metadata per service *type* in a static cache.
+        /// Each cached entry must be re-bound to the live service instance on retrieval; otherwise Invoke()
+        /// targets the (stale) instance that first populated the cache for that type - causing a second
+        /// LabAppService/service instance of the same type to call operations on the wrong object.
+        /// </summary>
+        [Test]
+        public async Task GetOperations_RebindsToLiveInstance_NotStaleCachedInstance()
+        {
+            // First instance of IConfigurationService, configured to report version "AAA".
+            var serviceA = A.Fake<IConfigurationService>();
+            A.CallTo(() => serviceA.GetSystemInfo()).Returns(Task.FromResult(new SystemInfo { Version = "AAA" }));
+            var getInfoA = ServiceMetadata.GetOperations(serviceA)
+                .First(op => op.Name == nameof(IConfigurationService.GetSystemInfo));
+            var resultA = await (Task<SystemInfo>)getInfoA.Invoke(Array.Empty<object>());
+            Assert.That(resultA.Version, Is.EqualTo("AAA"));
+
+            // A second, distinct instance of the SAME service type, configured to report "BBB".
+            var serviceB = A.Fake<IConfigurationService>();
+            A.CallTo(() => serviceB.GetSystemInfo()).Returns(Task.FromResult(new SystemInfo { Version = "BBB" }));
+            var getInfoB = ServiceMetadata.GetOperations(serviceB)
+                .First(op => op.Name == nameof(IConfigurationService.GetSystemInfo));
+            var resultB = await (Task<SystemInfo>)getInfoB.Invoke(Array.Empty<object>());
+
+            // Before the fix this returned "AAA" (the stale cached instance bound into the cached metadata).
+            Assert.That(resultB.Version, Is.EqualTo("BBB"),
+                "GetOperations must bind metadata to the live service instance, not the stale cached one");
+        }
+
+        /// <summary>A test-only IHC service interface with two distinct concrete implementations below. Keeping it
+        /// private to this test gives it its own (process-wide static) ServiceMetadata cache entry, so the
+        /// cross-concrete-type scenario is deterministic regardless of what other tests cache.</summary>
+        public interface ICrossConcreteTypeProbeService : IIHCApiService
+        {
+            Task<string> Probe();
+        }
+
+        private sealed class ProbeServiceImplA : ICrossConcreteTypeProbeService
+        {
+            public IhcSettings IhcSettings => null!;
+            public Task<string> Probe() => Task.FromResult("AAA");
+        }
+
+        private sealed class ProbeServiceImplB : ICrossConcreteTypeProbeService
+        {
+            public IhcSettings IhcSettings => null!;
+            public Task<string> Probe() => Task.FromResult("BBB");
+        }
+
+        /// <summary>
+        /// Regression: the metadata cache stores MethodInfo taken from the *concrete* type's interface map, so it
+        /// must key by concrete type - not by the interface. Two distinct concrete types implementing one interface
+        /// (e.g. a FakeItEasy proxy in a test vs. the real service after the GUI's endpoint is switched) would
+        /// otherwise share a cache entry, and WithService would rebind one type's MethodInfo onto the other's
+        /// instance - so Invoke throws "object does not match target type". (The existing rebind test above uses two
+        /// fakes of one interface, which share a single Castle proxy type, so it does not catch this.)
+        /// </summary>
+        [Test]
+        public async Task GetOperations_DistinctConcreteTypesSharingAnInterface_InvokeTargetsTheLiveInstancesType()
+        {
+            // First concrete type populates the metadata cache for the shared interface.
+            var implA = new ProbeServiceImplA();
+            var probeA = ServiceMetadata.GetOperations(implA)
+                .First(op => op.Name == nameof(ICrossConcreteTypeProbeService.Probe));
+            Assert.That(await (Task<string>)probeA.Invoke(Array.Empty<object>()), Is.EqualTo("AAA"));
+
+            // A DIFFERENT concrete type implementing the SAME interface. Before the fix the cache (keyed by
+            // interface) handed back implA's MethodInfo, so Invoke on an implB instance threw a TargetException.
+            var implB = new ProbeServiceImplB();
+            var probeB = ServiceMetadata.GetOperations(implB)
+                .First(op => op.Name == nameof(ICrossConcreteTypeProbeService.Probe));
+            Assert.That(await (Task<string>)probeB.Invoke(Array.Empty<object>()), Is.EqualTo("BBB"),
+                "metadata must key per concrete type so Invoke targets the live instance's actual type");
+        }
+
+        /// <summary>
+        /// US-A1: CreateSubTypes must emit the element type for a generic collection parameter (like it does for
+        /// arrays), so the collection control strategy can find the element FieldMetaData.
+        /// </summary>
+        [Test]
+        public void GetOperations_GenericCollectionParameter_EmitsElementSubType()
+        {
+            var service = A.Fake<IResourceInteractionService>();
+
+            var getRuntimeValues = ServiceMetadata.GetOperations(service)
+                .First(op => op.Name == nameof(IResourceInteractionService.GetRuntimeValues));
+
+            Assert.That(getRuntimeValues.Parameters.Length, Is.EqualTo(1));
+            var param = getRuntimeValues.Parameters[0];
+            Assert.That(param.Type, Is.EqualTo(typeof(IReadOnlyList<int>)));
+            Assert.That(param.SubTypes.Length, Is.EqualTo(1), "Collection parameter should emit one element subtype");
+            Assert.That(param.SubTypes[0].Type, Is.EqualTo(typeof(int)), "Element subtype should be int");
+        }
+
         [Test]
         public void CheckAsyncEnumerableOperation()
         {

@@ -52,10 +52,10 @@ namespace Ihc.Tests
 
             // Assert
             // Scalar: 3 (String, Bool, Numeric)
-            // Specialized: 5 (File, ResourceValue, Enum, DateTime, Array)
+            // Specialized: 6 (File, ResourceValue, Enum, DateTime, TimeSpan, Array)
             // Catch-all: 1 (ComplexType)
-            // Total: 9 strategies
-            Assert.That(registry.StrategyCount, Is.EqualTo(9));
+            // Total: 10 strategies
+            Assert.That(registry.StrategyCount, Is.EqualTo(10));
         }
 
         [Test]
@@ -218,7 +218,12 @@ namespace Ihc.Tests
             // Act & Assert
             foreach (var type in types)
             {
-                var field = new FieldMetaData("test", type, [], "Test field");
+                // Array/collection fields carry their element type as a sub-field (as the metadata layer emits);
+                // the collection strategy needs that element metadata to claim the field. Scalars have none.
+                FieldMetaData[] subTypes = type.IsArray
+                    ? [new FieldMetaData("", type.GetElementType()!, [], "")]
+                    : [];
+                var field = new FieldMetaData("test", type, subTypes, "Test field");
                 Assert.That(registry.CanHandle(field), Is.True, $"Registry should handle {type.Name}");
             }
         }
@@ -390,6 +395,8 @@ namespace Ihc.Tests
             {
                 throw new NotImplementedException();
             }
+
+            public FieldMetaData[] GetRenderedSubFields(FieldMetaData field) => System.Array.Empty<FieldMetaData>();
         }
     }
 }

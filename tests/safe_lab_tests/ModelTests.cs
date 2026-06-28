@@ -205,6 +205,44 @@ namespace Ihc.Tests
         }
 
         [Test]
+        public void SetError_WithException_OmitsExceptionSource()
+        {
+            // FOUND-05: the user-facing message shows the exception message but not the non-actionable ex.Source.
+            var exception = new InvalidOperationException("Test exception") { Source = "Some.Internal.Assembly" };
+
+            MainWindowViewModel viewModel;
+            using (new SuppressLogging())
+            {
+                viewModel = new MainWindowViewModel();
+                viewModel.SetError("Run operation error", exception);
+            }
+
+            Assert.That(viewModel.ErrorWarningText, Does.Contain("Test exception"));
+            Assert.That(viewModel.ErrorWarningText, Does.Not.Contain("Some.Internal.Assembly"));
+        }
+
+        [Test]
+        public void IsStatusVisible_TracksErrorAndWarningVisibility()
+        {
+            // C9/DESIGN-02: the status panel binds its visibility to this so it collapses when there is nothing to show.
+            MainWindowViewModel viewModel;
+            using (new SuppressLogging())
+            {
+                viewModel = new MainWindowViewModel();
+                Assert.That(viewModel.IsStatusVisible, Is.False);
+
+                viewModel.SetError("boom");
+                Assert.That(viewModel.IsStatusVisible, Is.True);
+
+                viewModel.ClearErrorAndWarning();
+                Assert.That(viewModel.IsStatusVisible, Is.False);
+
+                viewModel.SetWarning("careful");
+                Assert.That(viewModel.IsStatusVisible, Is.True);
+            }
+        }
+
+        [Test]
         public void Dispose_ShouldUnsubscribeFromLabAppServiceEvents()
         {
             // Arrange

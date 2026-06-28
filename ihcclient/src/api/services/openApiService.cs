@@ -365,6 +365,30 @@ namespace Ihc {
                 value.WeekdayValue = weekdayVal.weekdayNumber;
                 value.ValueKind = ResourceValue.ValueKind.WEEKDAY;
             }
+            else if (v is Ihc.Soap.Openapi.WSPhoneNumberValue phoneVal)
+            {
+                value.PhoneNumberValue = phoneVal.number;
+                value.ValueKind = ResourceValue.ValueKind.PhoneNumber;
+            }
+            else if (v is Ihc.Soap.Openapi.WSSceneDimmerValue dimmerVal)
+            {
+                value.DimmerPercentage = dimmerVal.dimmerPercentage;
+                value.DimmerDelayTime = dimmerVal.delayTime;
+                value.DimmerRampTime = dimmerVal.rampTime;
+                value.ValueKind = ResourceValue.ValueKind.SceneDimmer;
+            }
+            else if (v is Ihc.Soap.Openapi.WSSceneRelayValue relayVal)
+            {
+                value.RelayDelayTime = relayVal.delayTime;
+                value.RelayValue = relayVal.relayValue;
+                value.ValueKind = ResourceValue.ValueKind.SceneRelay;
+            }
+            else if (v is Ihc.Soap.Openapi.WSSceneShutterSimpleValue shutterVal)
+            {
+                value.ShutterPositionIsUp = shutterVal.shutterPositionIsUp;
+                value.ShutterDelayTime = shutterVal.delayTime;
+                value.ValueKind = ResourceValue.ValueKind.SceneShutter;
+            }
 
             return new ResourceValue() { Value = value };
         }
@@ -406,6 +430,14 @@ namespace Ihc {
                     return new Ihc.Soap.Openapi.WSTimerValue() { milliseconds = (long)v.Value.TimerValue };
                 case ResourceValue.ValueKind.WEEKDAY:
                     return new Ihc.Soap.Openapi.WSWeekdayValue() { weekdayNumber = (int)v.Value.WeekdayValue };
+                case ResourceValue.ValueKind.PhoneNumber:
+                    return new Ihc.Soap.Openapi.WSPhoneNumberValue() { number = v.Value.PhoneNumberValue };
+                case ResourceValue.ValueKind.SceneDimmer:
+                    return new Ihc.Soap.Openapi.WSSceneDimmerValue() { dimmerPercentage = (int)v.Value.DimmerPercentage, delayTime = (int)v.Value.DimmerDelayTime, rampTime = (int)v.Value.DimmerRampTime };
+                case ResourceValue.ValueKind.SceneRelay:
+                    return new Ihc.Soap.Openapi.WSSceneRelayValue() { delayTime = (int)v.Value.RelayDelayTime, relayValue = (bool)v.Value.RelayValue };
+                case ResourceValue.ValueKind.SceneShutter:
+                    return new Ihc.Soap.Openapi.WSSceneShutterSimpleValue() { shutterPositionIsUp = (bool)v.Value.ShutterPositionIsUp, delayTime = (int)v.Value.ShutterDelayTime };
                 default:
                     throw new ErrorWithCodeException(Errors.FEATURE_NOT_IMPLEMENTED, "Support for value kind " + v.Value.ValueKind + " not (yet) implemented.");
             }

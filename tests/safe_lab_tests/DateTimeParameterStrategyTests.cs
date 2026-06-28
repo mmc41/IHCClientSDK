@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using NUnit.Framework;
@@ -72,16 +73,34 @@ namespace Ihc.Tests
 
         [AvaloniaTest]
         [CaptureScreenshotOnFailure]
+        public void RoundTrip_DateTimeOffset_PreservesTimeOfDay()
+        {
+            // Arrange - a non-midnight time must survive (the time-of-day is no longer dropped to 00:00:00).
+            var field = new FieldMetaData("when", typeof(DateTimeOffset), [], "A date field");
+            var control = strategy.CreateControl(field, "DateControl");
+            var known = new DateTimeOffset(2024, 6, 15, 13, 45, 30, TimeSpan.Zero);
+
+            // Act
+            strategy.SetValue(control, known, field);
+            var result = strategy.ExtractValue(control, field);
+
+            // Assert
+            Assert.That(result, Is.EqualTo(known));
+        }
+
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
         public void SetValue_Null_DefaultsSelectedDateToNow()
         {
             // Arrange
             var field = new FieldMetaData("when", typeof(DateTimeOffset), [], "A date field");
-            var datePicker = (DatePicker)strategy.CreateControl(field, "DateControl");
+            var control = strategy.CreateControl(field, "DateControl");
 
             // Act - the null branch defaults to "now" rather than leaving the picker blank.
-            strategy.SetValue(datePicker, null, field);
+            strategy.SetValue(control, null, field);
 
             // Assert
+            var datePicker = DatePickerOf(control);
             Assert.That(datePicker.SelectedDate, Is.Not.Null);
             Assert.That(datePicker.SelectedDate!.Value, Is.EqualTo(DateTimeOffset.Now).Within(NowTolerance));
         }
@@ -92,14 +111,18 @@ namespace Ihc.Tests
         {
             // Arrange - a picker with no selection extracts "now" instead of null.
             var field = new FieldMetaData("when", typeof(DateTimeOffset), [], "A date field");
-            var datePicker = new DatePicker { SelectedDate = null };
+            var control = strategy.CreateControl(field, "DateControl");
+            DatePickerOf(control).SelectedDate = null;
 
             // Act
-            var result = strategy.ExtractValue(datePicker, field);
+            var result = strategy.ExtractValue(control, field);
 
             // Assert
             Assert.That(result, Is.InstanceOf<DateTimeOffset>());
             Assert.That((DateTimeOffset)result!, Is.EqualTo(DateTimeOffset.Now).Within(NowTolerance));
         }
+
+        private static DatePicker DatePickerOf(Control control)
+            => ((StackPanel)control).Children.OfType<DatePicker>().First();
     }
 }

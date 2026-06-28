@@ -65,4 +65,14 @@ public interface IParameterControlStrategy
     /// <param name="field">The field metadata (for type conversion)</param>
     /// <exception cref="InvalidOperationException">Thrown if the control type doesn't match this strategy</exception>
     void SetValue(Control control, object? value, FieldMetaData field);
+
+    /// <summary>
+    /// Returns the sub-fields whose controls this strategy builds via the registry, so the operation filter can
+    /// recurse into them to decide renderability. Container strategies return their constituent fields (a complex
+    /// record's properties, a collection's element); leaf strategies that render a field wholesale (scalars,
+    /// files, the ResourceValue editor) return an empty array.
+    /// </summary>
+    /// <param name="field">The field metadata describing the parameter.</param>
+    /// <returns>The sub-fields rendered via the registry, or an empty array for a leaf-rendered field.</returns>
+    FieldMetaData[] GetRenderedSubFields(FieldMetaData field);
 }

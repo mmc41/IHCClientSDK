@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -509,8 +510,24 @@ namespace Ihc.App
                     return Array.Empty<object>();
 
                 return OperationMetadata.Parameters
-                    .Select(param => GetDefaultValue(param.Type))
+                    .Select(GetDefaultArgument)
                     .ToArray();
+            }
+
+            /// <summary>
+            /// Default value for one parameter: the declared default (e.g. <c>int timeout = 15</c>) when present,
+            /// otherwise the bare type default. This keeps an optional parameter the GUI does not edit (such as a
+            /// streaming poll timeout) at its intended default instead of type-zero.
+            /// </summary>
+            private static object GetDefaultArgument(FieldMetaData param)
+            {
+                if (param.AttributeProvider is System.Reflection.ParameterInfo pi
+                    && pi.HasDefaultValue
+                    && pi.DefaultValue != null
+                    && param.Type.IsInstanceOfType(pi.DefaultValue))
+                    return pi.DefaultValue;
+
+                return GetDefaultValue(param.Type);
             }
 
             /// <summary>
@@ -541,10 +558,6 @@ namespace Ihc.App
                 if (type == typeof(byte[]))
                     return Array.Empty<byte>();
 
-                // Handle Guid
-                if (type == typeof(Guid))
-                    return Guid.Empty;
-
                 // Handle TimeSpan
                 if (type == typeof(TimeSpan))
                     return TimeSpan.Zero;
@@ -566,6 +579,12 @@ namespace Ihc.App
                     return Array.CreateInstance(type.GetElementType() ?? throw new InvalidOperationException($"Cannot determine element type for array {type.Name}"), 0);
                 }
 
+                // Nullable<T> (int?, bool?, ...) is unset by default - the "empty = null" convention (D3).
+                // Must precede the value-type branch below: Nullable<T> is itself a value type but
+                // Activator.CreateInstance returns null for it, which would trip the throw.
+                if (Nullable.GetUnderlyingType(type) != null)
+                    return null;
+
                 // Handle value types (structs, primitives)
                 if (type.IsValueType)
                     return Activator.CreateInstance(type) ?? throw new InvalidOperationException($"Failed to create instance of {type.Name}");
@@ -586,6 +605,12 @@ namespace Ihc.App
             public object Result { get; init; }
 
             /// <summary>
+            /// The unwrapped result value (the T of Task&lt;T&gt;), or null for void operations. Used to save the
+            /// real result to a file (e.g. the actual bytes of a byte[] / BinaryFile, not the display preview).
+            /// </summary>
+            public object RawResult { get; init; }
+
+            /// <summary>
             /// A formatted string representation of the result suitable for display to the user.
             /// For void operations, this is "OK". For operations returning values, this contains
             /// the formatted result with special handling for DateTime, byte arrays, and collections.
@@ -598,9 +623,62 @@ namespace Ihc.App
             public Type ReturnType { get; init; }
         };
 
+        /// <summary>
+        /// The bytes and a suggested file name for saving an operation result to disk (US-C4 / D6).
+        /// </summary>
+        public record ResultFileContent(byte[] Bytes, string SuggestedFileName);
+
+        /// <summary>
+        /// Builds the content to save for an operation result (D6 "smart save"): the real bytes for a byte[] or
+        /// BinaryFile result, the real XML for an IHC ProjectFile result (its own ISO-8859-1 encoding and a *.vis
+        /// name), or the shown text otherwise (UTF-8, .txt) - each with a type-appropriate file name/extension.
+        /// Reads the raw result object, not the display preview, so the payload is saved verbatim.
+        /// </summary>
+        /// <param name="rawResult">The unwrapped operation result (see <see cref="OperationResult.RawResult"/>).</param>
+        /// <param name="displayText">The shown result text, used only for results without a file-typed payload.</param>
+        /// <param name="operationName">Operation name, used to derive the default file name.</param>
+        public static ResultFileContent BuildResultFileContent(object rawResult, string displayText, string operationName)
+        {
+            string baseName = string.IsNullOrWhiteSpace(operationName) ? "result" : operationName;
+
+            if (rawResult is BinaryFile binaryFile)
+                return new ResultFileContent(
+                    binaryFile.Data ?? Array.Empty<byte>(),
+                    string.IsNullOrWhiteSpace(binaryFile.Filename) ? $"{baseName}.bin" : binaryFile.Filename);
+
+            if (rawResult is byte[] bytes)
+                return new ResultFileContent(bytes, $"{baseName}.bin");
+
+            // An IHC project is a TextFile that must be saved as its real XML using the project's own encoding
+            // (ISO-8859-1) with the canonical *.vis extension - not the display preview as UTF-8 .txt. Preserve a
+            // controller-supplied base name but force the .vis extension so the saved file is a valid IHC project.
+            if (rawResult is ProjectFile projectFile)
+                return new ResultFileContent(
+                    ProjectFile.Encoding.GetBytes(projectFile.Data ?? string.Empty),
+                    $"{ProjectBaseName(projectFile.Filename, baseName)}.{ProjectFile.FileExtension}");
+
+            return new ResultFileContent(System.Text.Encoding.UTF8.GetBytes(displayText ?? string.Empty), $"{baseName}.txt");
+        }
+
+        /// <summary>
+        /// Derives the project file's base name (without extension): the controller-supplied filename's stem when
+        /// present, otherwise the operation-derived <paramref name="baseName"/>.
+        /// </summary>
+        private static string ProjectBaseName(string filename, string baseName)
+        {
+            string stem = string.IsNullOrWhiteSpace(filename) ? string.Empty : Path.GetFileNameWithoutExtension(filename);
+            return string.IsNullOrWhiteSpace(stem) ? baseName : stem;
+        }
+
         private readonly object _lock = new object();
         private ServiceItem[] _services;
         private int _selectedServiceIndex;
+
+        // LabAppService owns the streaming CancellationTokenSource (decision D11): created by StartStream,
+        // cancelled by StopStream, disposed when the stream ends. The operation's CancellationToken parameter is
+        // auto-filled from this token. Access is serialised by _streamLock so StopStream cannot race StartStream.
+        private CancellationTokenSource _streamCts;
+        private readonly object _streamLock = new object();
 
         /// <summary>
         /// Occurs when the services array is replaced via Configure() or Services setter.
@@ -1151,6 +1229,7 @@ namespace Ihc.App
                     var operationResult = new OperationResult()
                     {
                         Result = taskObject,
+                        RawResult = result,
                         DisplayResult = strResult,
                         ReturnType = taskType
                     };
@@ -1170,6 +1249,118 @@ namespace Ihc.App
             }
         }
         
+        /// <summary>
+        /// Starts streaming the selected <see cref="ServiceOperationKind.AsyncEnumerable"/> operation (e.g.
+        /// <c>GetResourceValueChanges</c>), delivering each item to <paramref name="onItem"/> as it arrives until
+        /// the stream ends or <see cref="StopStream"/> is called.
+        /// </summary>
+        /// <remarks>
+        /// LabAppService owns the <see cref="CancellationTokenSource"/> (decision D11): a fresh one is created here
+        /// and cancelled by <see cref="StopStream"/>. Any <see cref="CancellationToken"/> parameter of the operation
+        /// is auto-filled with this token (it is harness-injected, not user-edited), so the GUI only calls
+        /// Start/Stop. Items are delivered on the enumerating context; a GUI caller should marshal to the UI thread.
+        /// </remarks>
+        /// <param name="onItem">Callback invoked once per streamed item.</param>
+        /// <exception cref="NotSupportedException">Thrown when the selected operation is not AsyncEnumerable.</exception>
+        public async Task StartStream(Action<object> onItem)
+        {
+            if (onItem == null)
+                throw new ArgumentNullException(nameof(onItem));
+
+            ServiceOperationMetadata operationMetadata;
+            object[] args;
+            lock (_lock)
+            {
+                operationMetadata = SelectedOperation.OperationMetadata;
+                args = (object[])SelectedOperation.MethodArguments.Clone();
+            }
+
+            if (operationMetadata.Kind != ServiceOperationKind.AsyncEnumerable)
+                throw new NotSupportedException($"StartStream requires an AsyncEnumerable operation but '{operationMetadata.Name}' is {operationMetadata.Kind}");
+
+            // LabAppService owns the CTS (D11). Under the stream lock, cancel any prior stream and install a fresh
+            // CTS. This call owns `cts` and disposes it in the finally below (so no CTS leaks, including the last
+            // run's). A prior still-running stream disposes its own CTS in its own finally, so we do not dispose it
+            // here - only cancel it.
+            CancellationTokenSource cts;
+            lock (_streamLock)
+            {
+                _streamCts?.Cancel();
+                cts = new CancellationTokenSource();
+                _streamCts = cts;
+            }
+            // Wrap everything from here so the CTS this call owns is ALWAYS disposed - even if Invoke or the
+            // enumerator setup throws synchronously (e.g. a bad user-supplied argument) before enumeration starts.
+            // The enumerator itself is disposed by the inner finally, which only runs once it has been created.
+            try
+            {
+                var token = cts.Token;
+
+                // Auto-fill any CancellationToken parameter with the stream token (harness-injected, not user-edited).
+                for (int i = 0; i < operationMetadata.Parameters.Length; i++)
+                {
+                    if (operationMetadata.Parameters[i].Type == typeof(CancellationToken))
+                        args[i] = token;
+                }
+
+                object asyncEnumerable = operationMetadata.Invoke(args);
+                if (asyncEnumerable == null)
+                    throw new InvalidOperationException($"Operation '{operationMetadata.Name}' returned a null stream");
+
+                // The item type T is not known at compile time. Enumerate the IAsyncEnumerable<T> via its interface
+                // methods (the compiler-generated iterator implements them explicitly, so dynamic dispatch on the
+                // concrete type fails). The element type T is the operation's unwrapped return type.
+                Type itemType = operationMetadata.ReturnType;
+                Type enumerableType = typeof(IAsyncEnumerable<>).MakeGenericType(itemType);
+                Type enumeratorType = typeof(IAsyncEnumerator<>).MakeGenericType(itemType);
+
+                object enumerator = enumerableType.GetMethod("GetAsyncEnumerator").Invoke(asyncEnumerable, new object[] { token });
+                var moveNextAsync = enumeratorType.GetMethod("MoveNextAsync");
+                var currentProperty = enumeratorType.GetProperty("Current");
+                var disposeAsync = typeof(IAsyncDisposable).GetMethod("DisposeAsync");
+
+                try
+                {
+                    while (await (ValueTask<bool>)moveNextAsync.Invoke(enumerator, null))
+                    {
+                        onItem(currentProperty.GetValue(enumerator));
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // StopStream cancels the token; a cancelled stream is a normal end, not an error.
+                }
+                finally
+                {
+                    await (ValueTask)disposeAsync.Invoke(enumerator, null);
+                }
+            }
+            finally
+            {
+                // Dispose the CTS this call created (no CTS leaks - including the last run's and any early-failure
+                // path), and clear the field only if it still points to this CTS (a later StartStream may have
+                // installed a newer one).
+                lock (_streamLock)
+                {
+                    cts.Dispose();
+                    if (ReferenceEquals(_streamCts, cts))
+                        _streamCts = null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Stops the active stream by cancelling the <see cref="CancellationTokenSource"/> that
+        /// <see cref="StartStream"/> created (decision D11). No-op when no stream is running.
+        /// </summary>
+        public void StopStream()
+        {
+            lock (_streamLock)
+            {
+                _streamCts?.Cancel();
+            }
+        }
+
         /// <summary>
         /// Formats a result object into a readable string representation.
         /// Provides special formatting for DateTime (yyyy-MM-dd HH:mm:ss.fff), DateTimeOffset (with timezone),
@@ -1194,10 +1385,6 @@ namespace Ihc.App
             // Handle TimeSpan
             if (result is TimeSpan ts)
                 return ts.ToString();
-
-            // Handle Guid
-            if (result is Guid guid)
-                return guid.ToString();
 
             // Handle byte arrays specially
             if (result is byte[] byteArray)

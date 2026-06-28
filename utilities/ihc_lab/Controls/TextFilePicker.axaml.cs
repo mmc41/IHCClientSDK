@@ -77,6 +77,23 @@ public partial class TextFilePicker : UserControl, TextFile
         set => textEncoding = value ?? throw new ArgumentNullException(nameof(value));
     }
 
+    /// <summary>
+    /// Optional canonical file extension (without leading dot, e.g. "vis") used to default the upload dialog's
+    /// file-type filter to that type and to name the upload button after it (e.g. "Upload *.vis File"). Null/empty
+    /// keeps the generic all-files behaviour and the generic "Upload Text File" caption.
+    /// </summary>
+    public string? FileTypeExtension
+    {
+        get => fileTypeExtension;
+        set
+        {
+            fileTypeExtension = value;
+            UpdateUploadButtonCaption();
+        }
+    }
+
+    private string? fileTypeExtension;
+
     public TextFilePicker()
     {
         InitializeComponent();
@@ -86,7 +103,23 @@ public partial class TextFilePicker : UserControl, TextFile
     {
         base.OnAttachedToVisualTree(e);
         fileStatusLabel = this.FindControl<TextBlock>("FileStatusLabel");
+        UpdateUploadButtonCaption();
         UpdateStatusLabel();
+    }
+
+    /// <summary>
+    /// Names the upload button after the picked file's type so it reads "Upload *.vis File" rather than the generic
+    /// "Upload Text File" when a canonical extension is known. Mirrors the open dialog's title and the byte-status
+    /// label so all three describe the same type. Safe to call before the control is attached.
+    /// </summary>
+    private void UpdateUploadButtonCaption()
+    {
+        var uploadButton = this.FindControl<Button>("UploadButton");
+        if (uploadButton == null)
+            return;
+
+        var extensions = string.IsNullOrWhiteSpace(fileTypeExtension) ? null : new[] { fileTypeExtension };
+        uploadButton.Content = UploadFilePickerOptions.BuildUploadButtonCaption(extensions, "Text");
     }
 
     private async void OnUploadButtonClick(object? sender, RoutedEventArgs e)
@@ -106,12 +139,11 @@ public partial class TextFilePicker : UserControl, TextFile
                 return;
             }
 
-            // Configure file picker options
-            var filePickerOptions = new FilePickerOpenOptions
-            {
-                Title = "Select Text File to Upload",
-                AllowMultiple = false
-            };
+            // Configure file picker options. When a canonical extension is known (e.g. *.vis for an IHC project),
+            // default the dialog to it - while still allowing all files - and reflect it in the title, rather than
+            // showing every file with a generic "text file" prompt.
+            var extensions = FileTypeExtension is null ? null : new[] { FileTypeExtension };
+            var filePickerOptions = UploadFilePickerOptions.Build(extensions, "Text");
 
             // Open file picker
             var files = await topLevel.StorageProvider.OpenFilePickerAsync(filePickerOptions);
@@ -152,6 +184,7 @@ public partial class TextFilePicker : UserControl, TextFile
             return;
         }
 
-        fileStatusLabel.Text = $"{fileName} ({textData.Length} characters)";
+        // Report size in bytes (encoded length) to match BinaryFilePicker, rather than character count.
+        fileStatusLabel.Text = $"{fileName} ({textEncoding.GetByteCount(textData)} bytes)";
     }
 }

@@ -125,6 +125,19 @@ namespace Ihc {
 
             return result;
         }
+
+        /// <summary>
+        /// Returns a copy of this metadata bound to a different service instance.
+        /// The (per-type) operation shape - name, return type, parameters, kind, MethodInfo, description -
+        /// is reused unchanged; only the service instance that <see cref="Invoke"/> targets is replaced.
+        /// Used to re-bind cached, instance-independent metadata to a live service instance.
+        /// </summary>
+        /// <param name="newService">The service instance to bind to.</param>
+        /// <returns>A new ServiceOperationMetadata identical except for the bound service.</returns>
+        public ServiceOperationMetadata WithService(IIHCApiService newService)
+        {
+            return new ServiceOperationMetadata(newService, Name, ReturnType, Parameters, Kind, MethodInfo, Description);
+        }
     }
 
     /// <summary>
@@ -196,10 +209,18 @@ namespace Ihc {
 
             Type serviceType = ReflectionUtil.GetServiceType(service);
 
-            activity?.SetParameters((nameof(service), serviceType.Name));
+            activity?.SetParameters((nameof(service), serviceType.Name)); // Interface name: for human-readable telemetry only.
             activity?.SetTag("cachedResult", true); // Assume cached by default
 
-            var retv = _cache.GetOrAdd(serviceType, type =>
+            // Key the cache by the CONCRETE implementation type, not the interface. The cached operation shapes hold
+            // MethodInfo taken from the concrete type's interface map (ReflectionUtil.GetMethods returns the concrete
+            // TargetMethods); such a MethodInfo only invokes correctly on an instance of that same concrete type. Two
+            // implementations of one interface - e.g. a FakeItEasy proxy in a test and the real service after the
+            // GUI's endpoint is switched - must therefore NOT share an entry, or WithService would rebind one type's
+            // shape onto the other's instance and MethodInfo.Invoke would throw "object does not match target type".
+            Type cacheKey = service.GetType();
+
+            var cached = _cache.GetOrAdd(cacheKey, _ =>
             {
                 activity?.SetTag("cachedResult", false); // Override if not cached.
 
@@ -221,11 +242,19 @@ namespace Ihc {
                     if (IsMethodFromExcludedInterface(method))
                         continue;
 
-                    operations.Add(CreateOperationInfo(service, method));
+                    // Cache an instance-less shape (service: null) so the static cache never pins the first
+                    // service instance (or its object graph) for the process lifetime; every returned operation is
+                    // rebound to the live instance below via WithService, so the cached shape needs no instance.
+                    operations.Add(CreateOperationInfo(null!, method));
                 }
 
                 return operations.AsReadOnly();
             });
+
+            // The cache is keyed by service *type* and stores an instance-less operation shape (service: null,
+            // see above). Bind every cached operation to the live `service` so Invoke() has a concrete instance
+            // to target - the caller's, never a stale (possibly disposed, or differently-configured in tests) one.
+            var retv = cached.Select(op => op.WithService(service)).ToList().AsReadOnly();
 
             activity?.SetReturnValue(retv);
 
@@ -298,6 +327,14 @@ namespace Ihc {
                 return Array.Empty<FieldMetaData>();
             }
 
+            // For generic collections (IReadOnlyList<T>, IList<T>, List<T>, ...), emit the element type just
+            // like an array, so a collection control strategy can find the element FieldMetaData. This must run
+            // before the class/record branch below, otherwise List<T> would be expanded into its own properties.
+            if (TryGetCollectionElementType(parameterType, out var collectionElementType))
+            {
+                return new[] { new FieldMetaData(name: string.Empty, type: collectionElementType, subtypes: [], description: "", attributeProvider: null) };
+            }
+
             // For classes/records, return properties
             if (parameterType.IsClass || parameterType.IsValueType)
             {
@@ -309,6 +346,41 @@ namespace Ihc {
 
             // Default: return empty array
             return Array.Empty<FieldMetaData>();
+        }
+
+        /// <summary>
+        /// Determines the element type of a generic collection type (one implementing <c>IEnumerable&lt;T&gt;</c>),
+        /// e.g. <c>IReadOnlyList&lt;int&gt;</c> -&gt; <c>int</c>. Arrays and <see cref="string"/> are excluded
+        /// (arrays are handled by the dedicated array branch; string is a supported simple type). Exposed to in-repo
+        /// tooling (e.g. the Lab's GUI control strategies, via <c>InternalsVisibleTo</c>) that needs the same
+        /// collection-vs-element decision as the metadata layer, so the predicate is defined once - kept
+        /// <c>internal</c> to avoid widening the shipped SDK's public surface.
+        /// </summary>
+        internal static bool TryGetCollectionElementType(Type type, out Type elementType)
+        {
+            elementType = typeof(object);
+
+            if (type.IsArray || type == typeof(string))
+                return false;
+
+            // The type may itself be IEnumerable<T> (e.g. the parameter is declared as IEnumerable<T>) ...
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+            {
+                elementType = type.GetGenericArguments()[0];
+                return true;
+            }
+
+            // ... or it implements IEnumerable<T> (IReadOnlyList<T>, IList<T>, List<T>, IReadOnlySet<T>, ...).
+            var enumerableInterface = Array.Find(type.GetInterfaces(),
+                i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+
+            if (enumerableInterface != null)
+            {
+                elementType = enumerableInterface.GetGenericArguments()[0];
+                return true;
+            }
+
+            return false;
         }
 
         private static ServiceOperationKind DetermineOperationKind(Type returnType)

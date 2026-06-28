@@ -57,6 +57,23 @@ public partial class BinaryFilePicker : UserControl, BinaryFile
         FileChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    /// Optional canonical file extensions (without leading dot, e.g. "icw"/"icz") used to default the upload
+    /// dialog's file-type filter and to name the upload button after them (e.g. "Upload *.icw/*.icz File").
+    /// Null/empty keeps the generic all-files behaviour and the generic "Upload Binary File" caption.
+    /// </summary>
+    public string[]? FileTypeExtensions
+    {
+        get => fileTypeExtensions;
+        set
+        {
+            fileTypeExtensions = value;
+            UpdateUploadButtonCaption();
+        }
+    }
+
+    private string[]? fileTypeExtensions;
+
     public BinaryFilePicker()
     {
         InitializeComponent();
@@ -66,7 +83,22 @@ public partial class BinaryFilePicker : UserControl, BinaryFile
     {
         base.OnAttachedToVisualTree(e);
         fileStatusLabel = this.FindControl<TextBlock>("FileStatusLabel");
+        UpdateUploadButtonCaption();
         UpdateStatusLabel();
+    }
+
+    /// <summary>
+    /// Names the upload button after the picked file's type so it reads "Upload *.icw/*.icz File" rather than the
+    /// generic "Upload Binary File" when canonical extensions are known. Mirrors the open dialog's title and the
+    /// byte-status label so all three describe the same type. Safe to call before the control is attached.
+    /// </summary>
+    private void UpdateUploadButtonCaption()
+    {
+        var uploadButton = this.FindControl<Button>("UploadButton");
+        if (uploadButton == null)
+            return;
+
+        uploadButton.Content = UploadFilePickerOptions.BuildUploadButtonCaption(fileTypeExtensions, "Binary");
     }
 
     private async void OnUploadButtonClick(object? sender, RoutedEventArgs e)
@@ -86,12 +118,10 @@ public partial class BinaryFilePicker : UserControl, BinaryFile
                 return;
             }
 
-            // Configure file picker options
-            var filePickerOptions = new FilePickerOpenOptions
-            {
-                Title = "Select Binary File to Upload",
-                AllowMultiple = false
-            };
+            // Configure file picker options. When canonical extensions are known (e.g. *.icw/*.icz for a scene
+            // project), default the dialog to them - while still allowing all files - and reflect them in the
+            // title, rather than showing every file with a generic prompt.
+            var filePickerOptions = UploadFilePickerOptions.Build(FileTypeExtensions, "Binary");
 
             // Open file picker
             var files = await topLevel.StorageProvider.OpenFilePickerAsync(filePickerOptions);

@@ -80,6 +80,21 @@ public class ParameterControlRegistry
     }
 
     /// <summary>
+    /// Gets the first strategy that can handle the specified field, or null when none can. Unlike
+    /// <see cref="GetStrategy"/> this does not throw, so callers (e.g. the operation filter) can decide
+    /// renderability without exception handling.
+    /// </summary>
+    /// <param name="field">The field metadata to find a strategy for.</param>
+    /// <returns>The first matching strategy, or null when no strategy can handle the field.</returns>
+    public IParameterControlStrategy? TryGetStrategy(FieldMetaData field)
+    {
+        if (field == null)
+            return null;
+
+        return _strategies.FirstOrDefault(s => s.CanHandle(field));
+    }
+
+    /// <summary>
     /// Gets the count of registered strategies.
     /// </summary>
     public int StrategyCount => _strategies.Count;
@@ -106,6 +121,7 @@ public class ParameterControlRegistry
         registry.Register(new Strategies.ResourceValueParameterStrategy());
         registry.Register(new Strategies.EnumParameterStrategy());
         registry.Register(new Strategies.DateTimeParameterStrategy());
+        registry.Register(new Strategies.TimeSpanParameterStrategy());
         registry.Register(new Strategies.ArrayParameterStrategy());
 
         // Catch-all (must be registered last)

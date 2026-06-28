@@ -42,7 +42,6 @@ namespace Ihc {
 
      /// <summary>
      /// High level model of an IHC WS resource value without soap distractions.
-     /// TODO: Support missing types: PhoneNumber, SceneDimmer, SceneRelay, WSSceneShutter
      /// </summary>
     public record ResourceValue {
         /// <summary>
@@ -64,7 +63,15 @@ namespace Ihc {
             /// <summary>Timer value type.</summary>
             TIMER,
             /// <summary>Weekday value type.</summary>
-            WEEKDAY
+            WEEKDAY,
+            /// <summary>Phone number value type.</summary>
+            PhoneNumber,
+            /// <summary>Scene dimmer value type (dimmer percentage + delay/ramp times).</summary>
+            SceneDimmer,
+            /// <summary>Scene relay value type (relay state + delay time).</summary>
+            SceneRelay,
+            /// <summary>Scene shutter value type (shutter up/down + delay time).</summary>
+            SceneShutter
         };
 
         /// <summary>
@@ -122,6 +129,46 @@ namespace Ihc {
             /// </summary>
             public EnumValue EnumValue { get; set; }
 
+            /// <summary>
+            /// Phone number (when ValueKind is PhoneNumber).
+            /// </summary>
+            public string PhoneNumberValue { get; set; }
+
+            /// <summary>
+            /// Dimmer percentage 0-100 (when ValueKind is SceneDimmer).
+            /// </summary>
+            public int? DimmerPercentage { get; set; }
+
+            /// <summary>
+            /// Dimmer delay time in milliseconds (when ValueKind is SceneDimmer).
+            /// </summary>
+            public int? DimmerDelayTime { get; set; }
+
+            /// <summary>
+            /// Dimmer ramp time in milliseconds (when ValueKind is SceneDimmer).
+            /// </summary>
+            public int? DimmerRampTime { get; set; }
+
+            /// <summary>
+            /// Relay delay time in milliseconds (when ValueKind is SceneRelay).
+            /// </summary>
+            public int? RelayDelayTime { get; set; }
+
+            /// <summary>
+            /// Relay on/off state (when ValueKind is SceneRelay).
+            /// </summary>
+            public bool? RelayValue { get; set; }
+
+            /// <summary>
+            /// Shutter position - true = up (when ValueKind is SceneShutter).
+            /// </summary>
+            public bool? ShutterPositionIsUp { get; set; }
+
+            /// <summary>
+            /// Shutter delay time in milliseconds (when ValueKind is SceneShutter).
+            /// </summary>
+            public int? ShutterDelayTime { get; set; }
+
             public override String ToString() {
                 StringBuilder buf = new StringBuilder();
 
@@ -131,30 +178,32 @@ namespace Ihc {
                 // Raw print out of any values, regardless of kind
                 // so even invalid combinations show up:
 
-                if (BoolValue.HasValue) {
-                    buf.AppendFormat(", BoolValue={0}", BoolValue.Value);
-                }
-                if (IntValue.HasValue) {
-                    buf.AppendFormat(", IntValue={0}", IntValue.Value);
-                }
-                if (DoubleValue.HasValue) {
-                    buf.AppendFormat(", DoubleValue={0}", DoubleValue.Value);
-                }
-                if (DateValue.HasValue) {
-                    buf.AppendFormat(", DateValue={0}", DateValue.Value);
-                } 
-                if (TimeValue.HasValue) {
-                    buf.AppendFormat(", TimeValue={0}", TimeValue.Value);
-                } 
-                if (TimerValue.HasValue) {
-                    buf.AppendFormat(", TimerValue={0}", TimerValue.Value);
-                }
-                if (WeekdayValue.HasValue) {
-                    buf.AppendFormat(", WeekdayValue={0}", WeekdayValue.Value);
-                } 
+                AppendIfPresent(buf, nameof(BoolValue), BoolValue);
+                AppendIfPresent(buf, nameof(IntValue), IntValue);
+                AppendIfPresent(buf, nameof(DoubleValue), DoubleValue);
+                AppendIfPresent(buf, nameof(DateValue), DateValue);
+                AppendIfPresent(buf, nameof(TimeValue), TimeValue);
+                AppendIfPresent(buf, nameof(TimerValue), TimerValue);
+                AppendIfPresent(buf, nameof(WeekdayValue), WeekdayValue);
+                AppendIfPresent(buf, nameof(PhoneNumberValue), PhoneNumberValue);
+                AppendIfPresent(buf, nameof(DimmerPercentage), DimmerPercentage);
+                AppendIfPresent(buf, nameof(DimmerDelayTime), DimmerDelayTime);
+                AppendIfPresent(buf, nameof(DimmerRampTime), DimmerRampTime);
+                AppendIfPresent(buf, nameof(RelayDelayTime), RelayDelayTime);
+                AppendIfPresent(buf, nameof(RelayValue), RelayValue);
+                AppendIfPresent(buf, nameof(ShutterPositionIsUp), ShutterPositionIsUp);
+                AppendIfPresent(buf, nameof(ShutterDelayTime), ShutterDelayTime);
                 buf.Append("}");
 
-                return buf.ToString(); 
+                return buf.ToString();
+            }
+
+            // Appends ", name=value" for any present value. Nullable value types box to null when empty, so this
+            // one helper covers both Nullable<T> fields and reference-typed fields (e.g. PhoneNumberValue).
+            private static void AppendIfPresent(StringBuilder buf, string name, object value) {
+                if (value != null) {
+                    buf.AppendFormat(", {0}={1}", name, value);
+                }
             }
         };
 

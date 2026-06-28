@@ -24,6 +24,23 @@ public partial class LoginDialog : Window
     }
 
     /// <summary>
+    /// Friendly display names for the <see cref="Application"/> login identifiers. The enum values are the SOAP
+    /// wire identifiers and must not be renamed, so the human-readable text lives here instead.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<Application, string> ApplicationDisplayNames = new Dictionary<Application, string>
+    {
+        [Application.openapi] = "Open API",
+        [Application.administrator] = "Administrator",
+        [Application.treeview] = "Project View",
+        [Application.sceneview] = "Scene View",
+        [Application.scenedesign] = "Scene Design",
+        [Application.ihcvisual] = "IHC Visual",
+    };
+
+    private static string DisplayNameFor(Application app)
+        => ApplicationDisplayNames.TryGetValue(app, out var name) ? name : app.ToString();
+
+    /// <summary>
     /// Parameterless constructor for design-time support.
     /// </summary>
     public LoginDialog() : this(new IhcSettings())
@@ -41,7 +58,7 @@ public partial class LoginDialog : Window
 
         // Populate application items from enum
         _applicationItems = Enum.GetValues<Application>()
-            .Select(app => new ApplicationItem(app.ToString(), app))
+            .Select(app => new ApplicationItem(DisplayNameFor(app), app))
             .ToList();
 
         InitializeComponent();
@@ -82,6 +99,8 @@ public partial class LoginDialog : Window
         catch (Exception ex)
         {
             activity?.SetError(ex);
+            ValidationMessageTextBlock.Text = "⚠ Could not load existing settings - please re-enter.";
+            ValidationMessageTextBlock.IsVisible = true;
             logger.LogError(ex, "Error loading configuration");
         }
     }
@@ -94,28 +113,28 @@ public partial class LoginDialog : Window
         // Validate required fields
         if (string.IsNullOrWhiteSpace(EndpointTextBox.Text))
         {
-            ValidationMessageTextBlock.Text = "Endpoint is required.";
+            ValidationMessageTextBlock.Text = "⚠ Endpoint is required.";
             ValidationMessageTextBlock.IsVisible = true;
             return false;
         }
 
         if (string.IsNullOrWhiteSpace(UserNameTextBox.Text))
         {
-            ValidationMessageTextBlock.Text = "UserName is required.";
+            ValidationMessageTextBlock.Text = "⚠ Username is required.";
             ValidationMessageTextBlock.IsVisible = true;
             return false;
         }
 
         if (string.IsNullOrWhiteSpace(PasswordTextBox.Text))
         {
-            ValidationMessageTextBlock.Text = "Password is required.";
+            ValidationMessageTextBlock.Text = "⚠ Password is required.";
             ValidationMessageTextBlock.IsVisible = true;
             return false;
         }
 
         if (ApplicationComboBox.SelectedItem == null)
         {
-            ValidationMessageTextBlock.Text = "Application is required.";
+            ValidationMessageTextBlock.Text = "⚠ Application is required.";
             ValidationMessageTextBlock.IsVisible = true;
             return false;
         }
@@ -195,7 +214,7 @@ public partial class LoginDialog : Window
         catch (Exception ex)
         {
             activity?.SetError(ex);
-            ValidationMessageTextBlock.Text = $"Error saving configuration: {ex.Message}";
+            ValidationMessageTextBlock.Text = $"⚠ Error saving configuration: {ex.Message}";
             ValidationMessageTextBlock.IsVisible = true;
             logger.LogError(ex, "Error in OK button click handler");
         }
