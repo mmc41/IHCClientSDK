@@ -5,7 +5,7 @@ namespace Ihc.Projects
     /// <summary>
     /// A function-block type auto-discovered from a <c>FunctionBlocks\*.ifb</c> catalog file under the
     /// configured IHC Visual install dir. The <see cref="Body"/> is the parsed <c>functionblock</c>
-    /// subtree (with placeholder ids) that the insert transform deep-copies into a project (plan §3.7).
+    /// subtree (with placeholder ids) that the insert transform deep-copies into a project.
     /// </summary>
     /// <param name="MasterType">The catalog key, e.g. <c>1.1.01</c> (the <c>master_type</c> attribute).</param>
     /// <param name="MasterVersion">The variant letter, e.g. <c>e</c> (the <c>master_version</c> attribute).</param>

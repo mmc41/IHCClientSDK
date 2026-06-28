@@ -11,8 +11,8 @@ namespace Ihc.Projects
     /// resources the same way.
     /// </summary>
     /// <remarks>
-    /// Stage 1: full method signatures, stub bodies. Most programs arrive from the catalog (plan
-    /// §3.7); this surface exists for the future "author your own logic" path.
+    /// Stage 1: full method signatures, stub bodies. Most programs arrive from the catalog;
+    /// this surface exists for the future "author your own logic" path.
     /// </remarks>
     public sealed class ProgramBuilder
     {

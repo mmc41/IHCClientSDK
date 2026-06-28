@@ -22,11 +22,12 @@ namespace Ihc.Projects.Tests
         private static string ProjectDataPath =>
             Path.Combine(AppContext.BaseDirectory, "testdata", "Project1.vis");
 
-        private static ProjectAppService NewService(TimeProvider? clock = null) =>
+        private static ProjectAppService NewService(IControllerService controller, TimeProvider? clock = null) =>
             new ProjectAppService(
                 TestSetup.Settings,
                 A.Fake<ICatalog>(),
-                clock ?? new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)));
+                clock ?? new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)),
+                controller);
 
         [Test, Explicit("Activates in Stage 2 once Load is implemented")]
         public async Task DownloadFrom_ParsesControllerPayload_PreservesHeaderIds()
@@ -35,7 +36,7 @@ namespace Ihc.Projects.Tests
             var controller = A.Fake<IControllerService>();
             A.CallTo(() => controller.GetProject()).Returns(new ProjectFile("Project1.ihc", xml));
 
-            Project project = await NewService().DownloadFrom(controller);
+            Project project = await NewService(controller).DownloadFrom();
 
             Assert.Multiple(() =>
             {
@@ -49,8 +50,6 @@ namespace Ihc.Projects.Tests
         public async Task UploadTo_PreserveExistingMetadata_StoresBytewiseIdenticalPayload()
         {
             byte[] original = File.ReadAllBytes(ProjectDataPath);
-            var app = NewService();
-            Project project = await app.Load(ProjectDataPath);
 
             ProjectFile stored = null!;
             var controller = A.Fake<IControllerService>();
@@ -58,7 +57,10 @@ namespace Ihc.Projects.Tests
                 .Invokes((ProjectFile f) => stored = f)
                 .Returns(true);
 
-            bool ok = await app.UploadTo(controller, project, ProjectSaveOptions.PreserveExistingMetadata);
+            var app = NewService(controller);
+            Project project = await app.Load(ProjectDataPath);
+
+            bool ok = await app.UploadTo(project, ProjectSaveOptions.PreserveExistingMetadata);
 
             Assert.That(ok, Is.True);
             Assert.That(ProjectFile.Encoding.GetBytes(stored.Data), Is.EqualTo(original));
@@ -68,8 +70,6 @@ namespace Ihc.Projects.Tests
         public async Task UploadTo_DefaultOptions_RestampsId2_PreservesId1AndLastUniqueId()
         {
             var clock = new FakeTimeProvider(new DateTimeOffset(2030, 1, 2, 3, 4, 5, TimeSpan.Zero));
-            var app = NewService(clock);
-            Project original = await app.Load(ProjectDataPath);
 
             ProjectFile stored = null!;
             var controller = A.Fake<IControllerService>();
@@ -77,7 +77,10 @@ namespace Ihc.Projects.Tests
                 .Invokes((ProjectFile f) => stored = f)
                 .Returns(true);
 
-            await app.UploadTo(controller, original, ProjectSaveOptions.Default);
+            var app = NewService(controller, clock);
+            Project original = await app.Load(ProjectDataPath);
+
+            await app.UploadTo(original, ProjectSaveOptions.Default);
             Project reparsed = await app.Load(new MemoryStream(ProjectFile.Encoding.GetBytes(stored.Data)));
 
             Assert.Multiple(() =>

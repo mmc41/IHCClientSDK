@@ -5,7 +5,7 @@ namespace Ihc.Projects
     /// <summary>
     /// A product type auto-discovered from a <c>Products\*.def</c> catalog file under the configured
     /// IHC Visual install dir. The <see cref="Body"/> is the parsed component subtree (with
-    /// placeholder ids) that the insert transform deep-copies into a project (plan §3.7).
+    /// placeholder ids) that the insert transform deep-copies into a project.
     /// </summary>
     /// <param name="ProductIdentifier">The opaque <c>product_identifier</c> token the product is looked up by, e.g. <c>_0x2101</c>.</param>
     /// <param name="DisplayName">The display name shown in the IHC Visual library/tree.</param>

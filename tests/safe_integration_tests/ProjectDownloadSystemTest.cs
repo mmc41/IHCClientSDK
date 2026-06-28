@@ -62,18 +62,18 @@ namespace Ihc.Tests
         [Test, Explicit("MANUAL + STATE-CHANGING: re-uploads the project to a DEV controller and needs the Stage-2 Load/Save engine. Gates the edit-and-reupload path only.")]
         public async Task EditReupload_PreservesHeaderIds_Manual()
         {
-            var app = new ProjectAppService(Setup.settings);
+            var app = new ProjectAppService(Setup.settings, controllerService);
 
-            Project before = await app.DownloadFrom(controllerService);
+            Project before = await app.DownloadFrom();
             string id1 = before.Id1;
             string id2 = before.Id2;
             string lastUniqueId = before.LastUniqueId;
 
             // Byte-exact re-upload (no metadata re-stamp) — writes the project back to the controller's SD card.
-            bool stored = await app.UploadTo(controllerService, before, ProjectSaveOptions.PreserveExistingMetadata);
+            bool stored = await app.UploadTo(before, ProjectSaveOptions.PreserveExistingMetadata);
             Assert.That(stored, Is.True);
 
-            Project after = await app.DownloadFrom(controllerService);
+            Project after = await app.DownloadFrom();
             Assert.Multiple(() =>
             {
                 Assert.That(after.Id1, Is.EqualTo(id1), "id1 preserved across controller store/retrieve");

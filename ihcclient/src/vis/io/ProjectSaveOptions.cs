@@ -10,7 +10,7 @@ namespace Ihc.Projects
     public sealed record ProjectSaveOptions
     {
         /// <summary>When true, write timestamps/ids exactly as supplied instead of re-stamping.</summary>
-        public bool PreserveMetadata { get; init; }
+        public bool WriteMetadataVerbatim { get; init; }
 
         /// <summary>When true (path saves only), rename any existing file to <c>.BAK</c> before writing.</summary>
         public bool CreateBackup { get; init; }
@@ -19,9 +19,9 @@ namespace Ihc.Projects
         public static ProjectSaveOptions Default { get; } = new();
 
         /// <summary>A byte-preserving save that writes supplied metadata verbatim.</summary>
-        public static ProjectSaveOptions PreserveExistingMetadata { get; } = new() { PreserveMetadata = true };
+        public static ProjectSaveOptions PreserveExistingMetadata { get; } = new() { WriteMetadataVerbatim = true };
 
         public override string ToString() =>
-            $"ProjectSaveOptions(PreserveMetadata={PreserveMetadata}, CreateBackup={CreateBackup})";
+            $"ProjectSaveOptions(WriteMetadataVerbatim={WriteMetadataVerbatim}, CreateBackup={CreateBackup})";
     }
 }
