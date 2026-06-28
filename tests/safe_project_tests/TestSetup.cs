@@ -1,13 +1,11 @@
 using System;
-using System.IO;
-using System.Reflection;
 using Microsoft.Extensions.Configuration;
 using Ihc;
 
 // Disable parallel test execution for the assembly (matches the other test suites).
 [assembly: NonParallelizable]
 
-namespace Ihc.Vis.Tests
+namespace Ihc.Projects.Tests
 {
     /// <summary>
     /// Loads optional IHC settings before any test runs. A clean checkout has no ihcsettings.json, so
@@ -23,11 +21,8 @@ namespace Ihc.Vis.Tests
         [OneTimeSetUp]
         public void RunBeforeAnyTests()
         {
-            string location = Assembly.GetEntryAssembly()?.Location ?? AppContext.BaseDirectory;
-            string basePath = Path.GetDirectoryName(location) ?? AppContext.BaseDirectory;
-
             IConfigurationRoot config = new ConfigurationBuilder()
-                .SetBasePath(basePath)
+                .SetBasePath(AppContext.BaseDirectory)
                 .AddJsonFile("ihcsettings.json", optional: true)
                 .Build();
 

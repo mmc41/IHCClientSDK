@@ -1,5 +1,5 @@
 #nullable enable
-namespace Ihc.Vis.Io
+namespace Ihc.Projects
 {
     /// <summary>
     /// Options controlling how a project is serialized. The default mimics IHC Visual (re-stamp
@@ -7,7 +7,7 @@ namespace Ihc.Vis.Io
     /// <see cref="PreserveExistingMetadata"/> writes the supplied metadata verbatim for byte-exact
     /// round-trip tests and import/export.
     /// </summary>
-    public sealed record VisSaveOptions
+    public sealed record ProjectSaveOptions
     {
         /// <summary>When true, write timestamps/ids exactly as supplied instead of re-stamping.</summary>
         public bool PreserveMetadata { get; init; }
@@ -16,9 +16,12 @@ namespace Ihc.Vis.Io
         public bool CreateBackup { get; init; }
 
         /// <summary>The default, vendor-like save (re-stamp metadata, no backup).</summary>
-        public static VisSaveOptions Default { get; } = new();
+        public static ProjectSaveOptions Default { get; } = new();
 
         /// <summary>A byte-preserving save that writes supplied metadata verbatim.</summary>
-        public static VisSaveOptions PreserveExistingMetadata { get; } = new() { PreserveMetadata = true };
+        public static ProjectSaveOptions PreserveExistingMetadata { get; } = new() { PreserveMetadata = true };
+
+        public override string ToString() =>
+            $"ProjectSaveOptions(PreserveMetadata={PreserveMetadata}, CreateBackup={CreateBackup})";
     }
 }

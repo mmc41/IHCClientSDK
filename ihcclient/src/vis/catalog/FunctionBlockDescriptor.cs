@@ -1,7 +1,6 @@
 #nullable enable
-using Ihc.Vis.Model;
 
-namespace Ihc.Vis.Catalog
+namespace Ihc.Projects
 {
     /// <summary>
     /// A function-block type auto-discovered from a <c>FunctionBlocks\*.ifb</c> catalog file under the
@@ -23,5 +22,9 @@ namespace Ihc.Vis.Catalog
         string MasterName,
         string DisplayName,
         string CategoryPath,
-        VisElement Body);
+        ProjectElement Body)
+    {
+        public override string ToString() =>
+            $"FunctionBlockDescriptor(MasterType={MasterType}, MasterVersion={MasterVersion}, MasterName={MasterName}, DisplayName={DisplayName}, CategoryPath={CategoryPath}, Body={Body})";
+    }
 }

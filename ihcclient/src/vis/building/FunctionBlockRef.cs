@@ -1,7 +1,7 @@
 #nullable enable
 using System;
 
-namespace Ihc.Vis.Building
+namespace Ihc.Projects
 {
     /// <summary>
     /// A live handle to a function-block instance in the edit session. The block's internals (programs,

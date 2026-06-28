@@ -2,10 +2,10 @@
 using System;
 using System.Globalization;
 
-namespace Ihc.Vis.Model
+namespace Ihc.Projects
 {
     /// <summary>Shared rendering for the <c>.vis</c> <c>_0x</c> + lowercase-hex token form (leading zeros stripped).</summary>
-    internal static class VisToken
+    internal static class HexToken
     {
         public static string Format(long value) => "_0x" + value.ToString("x", CultureInfo.InvariantCulture);
     }
@@ -26,7 +26,7 @@ namespace Ihc.Vis.Model
         public long Value => ((long)Counter << 8) | (uint)(TypeCode & 0xFF);
 
         /// <summary>Renders the id as a <c>_0x</c> + lowercase-hex token with leading zeros stripped.</summary>
-        public string ToToken() => VisToken.Format(Value);
+        public string ToToken() => HexToken.Format(Value);
 
         /// <inheritdoc/>
         public override string ToString() => ToToken();
@@ -45,7 +45,7 @@ namespace Ihc.Vis.Model
             ((long)Day << 24) | ((long)Hour << 16) | ((long)Minute << 8) | (uint)(Second & 0xFF);
 
         /// <summary>Renders the stamp as a <c>_0x</c> + lowercase-hex token with leading zeros stripped.</summary>
-        public string ToToken() => VisToken.Format(Value);
+        public string ToToken() => HexToken.Format(Value);
 
         /// <summary>Builds a stamp from the day/hour/minute/second components of a point in time.</summary>
         public static PackedStamp FromDateTime(DateTimeOffset moment) =>

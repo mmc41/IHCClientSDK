@@ -1,8 +1,7 @@
 #nullable enable
 using System;
-using Ihc.Vis.Catalog;
 
-namespace Ihc.Vis.Building
+namespace Ihc.Projects
 {
     /// <summary>
     /// A live handle to a single <c>group</c> (locality/room) in the edit session. Adds catalog

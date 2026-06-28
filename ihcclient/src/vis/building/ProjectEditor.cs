@@ -1,11 +1,10 @@
 #nullable enable
 using System;
-using Ihc.Vis.Model;
 
-namespace Ihc.Vis.Building
+namespace Ihc.Projects
 {
     /// <summary>
-    /// The mutable edit session over an immutable <see cref="VisProject"/> — the authoring (write) surface
+    /// The mutable edit session over an immutable <see cref="Project"/> — the authoring (write) surface
     /// a GUI drives. Open it with <c>project.Edit()</c>, mutate through live handles (<see cref="Group"/> →
     /// products / function blocks / resources; <see cref="Link"/>/<see cref="Unlink"/>; the <c>Remove*</c>
     /// methods), then call <see cref="ToProject"/> to commit a fresh immutable snapshot to save. Loaded
@@ -14,11 +13,11 @@ namespace Ihc.Vis.Building
     /// <remarks>
     /// Mutation is deliberate, not the default: a loaded project stays a frozen, byte-faithful image until
     /// <c>Edit()</c> opens a session, so an untouched load round-trips exactly. Read/browse from the generic
-    /// <see cref="VisProject"/>/<c>VisElement</c> model, not these handles. Stage 1: signatures only.
+    /// <see cref="Project"/>/<see cref="ProjectElement"/> model, not these handles. Stage 1: signatures only.
     /// </remarks>
-    public sealed class VisProjectEditor
+    public sealed class ProjectEditor
     {
-        internal VisProjectEditor()
+        internal ProjectEditor()
         {
         }
 
@@ -29,7 +28,7 @@ namespace Ihc.Vis.Building
         /// Removes a locality (room) and everything in it (and any links to/from its resources). Retired
         /// <c>_0x</c> ids are not reused (plan §3.4); returns <c>this</c> for optional chaining.
         /// </summary>
-        public VisProjectEditor RemoveGroup(GroupRef group) => throw new NotImplementedException();
+        public ProjectEditor RemoveGroup(GroupRef group) => throw new NotImplementedException();
 
         /// <summary>
         /// Wires a reciprocal follow-link between two live resources, writing both halves in a single call.
@@ -38,7 +37,7 @@ namespace Ihc.Vis.Building
         /// <c>link_to_resource</c>. Works on freshly added resources and on ones looked up from a loaded
         /// project; returns <c>this</c> for optional chaining.
         /// </summary>
-        public VisProjectEditor Link(ResourceRef from, ResourceRef to) => throw new NotImplementedException();
+        public ProjectEditor Link(ResourceRef from, ResourceRef to) => throw new NotImplementedException();
 
         /// <summary>
         /// Removes the reciprocal follow-link between two live resources — the inverse of <see cref="Link"/>,
@@ -46,25 +45,25 @@ namespace Ihc.Vis.Building
         /// <c>link_from_resource</c> and <c>link_to_resource</c> halves in a single call. Returns
         /// <c>this</c> for optional chaining.
         /// </summary>
-        public VisProjectEditor Unlink(ResourceRef from, ResourceRef to) => throw new NotImplementedException();
+        public ProjectEditor Unlink(ResourceRef from, ResourceRef to) => throw new NotImplementedException();
 
         /// <summary>
         /// Produces the immutable project snapshot, validating it; existing ids are preserved and
         /// pending ids are allocated in document order.
         /// </summary>
-        public VisProject ToProject() => throw new NotImplementedException();
+        public Project ToProject() => throw new NotImplementedException();
     }
 
     /// <summary>
-    /// Authoring entry points layered over <see cref="VisProject"/>.
+    /// Authoring entry points layered over <see cref="Project"/>.
     /// </summary>
-    public static class VisProjectEditingExtensions
+    public static class ProjectEditingExtensions
     {
         /// <summary>
         /// Opens a mutable edit session over a project (just loaded or created) — the deliberate
         /// read-to-write boundary. Usage: <c>project.Edit()</c> → mutate via handles →
-        /// <see cref="VisProjectEditor.ToProject"/> → save.
+        /// <see cref="ProjectEditor.ToProject"/> → save.
         /// </summary>
-        public static VisProjectEditor Edit(this VisProject project) => throw new NotImplementedException();
+        public static ProjectEditor Edit(this Project project) => throw new NotImplementedException();
     }
 }
