@@ -178,54 +178,32 @@ namespace Ihc {
                 // Raw print out of any values, regardless of kind
                 // so even invalid combinations show up:
 
-                if (BoolValue.HasValue) {
-                    buf.AppendFormat(", BoolValue={0}", BoolValue.Value);
-                }
-                if (IntValue.HasValue) {
-                    buf.AppendFormat(", IntValue={0}", IntValue.Value);
-                }
-                if (DoubleValue.HasValue) {
-                    buf.AppendFormat(", DoubleValue={0}", DoubleValue.Value);
-                }
-                if (DateValue.HasValue) {
-                    buf.AppendFormat(", DateValue={0}", DateValue.Value);
-                } 
-                if (TimeValue.HasValue) {
-                    buf.AppendFormat(", TimeValue={0}", TimeValue.Value);
-                } 
-                if (TimerValue.HasValue) {
-                    buf.AppendFormat(", TimerValue={0}", TimerValue.Value);
-                }
-                if (WeekdayValue.HasValue) {
-                    buf.AppendFormat(", WeekdayValue={0}", WeekdayValue.Value);
-                }
-                if (PhoneNumberValue != null) {
-                    buf.AppendFormat(", PhoneNumberValue={0}", PhoneNumberValue);
-                }
-                if (DimmerPercentage.HasValue) {
-                    buf.AppendFormat(", DimmerPercentage={0}", DimmerPercentage.Value);
-                }
-                if (DimmerDelayTime.HasValue) {
-                    buf.AppendFormat(", DimmerDelayTime={0}", DimmerDelayTime.Value);
-                }
-                if (DimmerRampTime.HasValue) {
-                    buf.AppendFormat(", DimmerRampTime={0}", DimmerRampTime.Value);
-                }
-                if (RelayDelayTime.HasValue) {
-                    buf.AppendFormat(", RelayDelayTime={0}", RelayDelayTime.Value);
-                }
-                if (RelayValue.HasValue) {
-                    buf.AppendFormat(", RelayValue={0}", RelayValue.Value);
-                }
-                if (ShutterPositionIsUp.HasValue) {
-                    buf.AppendFormat(", ShutterPositionIsUp={0}", ShutterPositionIsUp.Value);
-                }
-                if (ShutterDelayTime.HasValue) {
-                    buf.AppendFormat(", ShutterDelayTime={0}", ShutterDelayTime.Value);
-                }
+                AppendIfPresent(buf, nameof(BoolValue), BoolValue);
+                AppendIfPresent(buf, nameof(IntValue), IntValue);
+                AppendIfPresent(buf, nameof(DoubleValue), DoubleValue);
+                AppendIfPresent(buf, nameof(DateValue), DateValue);
+                AppendIfPresent(buf, nameof(TimeValue), TimeValue);
+                AppendIfPresent(buf, nameof(TimerValue), TimerValue);
+                AppendIfPresent(buf, nameof(WeekdayValue), WeekdayValue);
+                AppendIfPresent(buf, nameof(PhoneNumberValue), PhoneNumberValue);
+                AppendIfPresent(buf, nameof(DimmerPercentage), DimmerPercentage);
+                AppendIfPresent(buf, nameof(DimmerDelayTime), DimmerDelayTime);
+                AppendIfPresent(buf, nameof(DimmerRampTime), DimmerRampTime);
+                AppendIfPresent(buf, nameof(RelayDelayTime), RelayDelayTime);
+                AppendIfPresent(buf, nameof(RelayValue), RelayValue);
+                AppendIfPresent(buf, nameof(ShutterPositionIsUp), ShutterPositionIsUp);
+                AppendIfPresent(buf, nameof(ShutterDelayTime), ShutterDelayTime);
                 buf.Append("}");
 
                 return buf.ToString();
+            }
+
+            // Appends ", name=value" for any present value. Nullable value types box to null when empty, so this
+            // one helper covers both Nullable<T> fields and reference-typed fields (e.g. PhoneNumberValue).
+            private static void AppendIfPresent(StringBuilder buf, string name, object value) {
+                if (value != null) {
+                    buf.AppendFormat(", {0}={1}", name, value);
+                }
             }
         };
 
