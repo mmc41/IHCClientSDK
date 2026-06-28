@@ -1,7 +1,7 @@
 {
     "comment" : "Example of how your ihcsettings.json file can look like. You need this user supplied file to run examples and tests",
     "encryption": {
-      "comment": "The setting reflect encryption status of passwords within this file. The value should only be modified by ihc_settings_encrypt tool. Uses IHC_ENCRYPT_PASSPHRASE environment variable"
+      "comment": "The setting reflect encryption status of passwords within this file. The value should only be modified by ihc_settings_encrypt tool. Uses IHC_ENCRYPT_PASSPHRASE environment variable",
       "isEncrypted": false
     },
     "ihcclient": {
@@ -12,7 +12,8 @@
         "application" : "administrator",
         "logSensitiveData": false,
         "asyncContinueOnCapturedContext": false,
-        "allowDangerousInternTestCalls": false
+        "allowDangerousInternTestCalls": false,
+        "ihcVisualInstallDir": "C:\\Program Files (x86)\\LK IHC Control\\IHC Visual"
     },
     "Logging": {
         "comment" : "Optional section. Not used by SDK but used for some utilities",

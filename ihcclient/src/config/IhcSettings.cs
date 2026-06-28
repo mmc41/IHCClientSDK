@@ -38,6 +38,7 @@ namespace Ihc
             LogSensitiveData = false;
             AsyncContinueOnCapturedContext = false;
             AllowDangerousInternTestCalls = false;
+            IhcVisualInstallDir = string.Empty;
         }
 
         /// <summary>
@@ -75,6 +76,13 @@ namespace Ihc
         /// Controls if potentially dangerous internal IHC test operations may be falled (default false).
         /// </summary>
         public bool AllowDangerousInternTestCalls { get; set; }
+
+        /// <summary>
+        /// Filesystem path to the installed IHC Visual application folder, used by the project-edit
+        /// service to auto-discover products (Products\*.def) and function blocks (FunctionBlocks\*.ifb)
+        /// and to read File→New templates (Data\*). Binds from the "ihcVisualInstallDir" key (optional value).
+        /// </summary>
+        public string IhcVisualInstallDir { get; set; }
 
         /// <summary>
         /// Validates if the IhcSettings contains the minimum required settings.

@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NUnit" Version="4.4.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="5.1.0" />
+    <PackageReference Include="NUnit.Analyzers" Version="4.10.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="CompareNETObjects" Version="4.84.0" />
+    <PackageReference Include="coverlet.collector" Version="6.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="NUnit.Framework" />
+    <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="testdata\*.vis" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="CopyConfigFiles" AfterTargets="AfterBuild">
+    <!-- NB: Settings file is required for running/testing but allow build without the file to support compilation in a DevOps pipeline -->
+    <Copy SourceFiles="..\..\ihcsettings.json" DestinationFolder="$(OutDir)" Condition="Exists('..\..\ihcsettings.json')" />
+  </Target>
+  <Target Name="DeleteConfigFiles" AfterTargets="Clean">
+    <!-- Delete ihcsettings.json from output directory during clean -->
+    <Delete Files="$(OutDir)ihcsettings.json" Condition="Exists('$(OutDir)ihcsettings.json')" />
+  </Target>
+
+</Project>

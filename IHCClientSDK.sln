@@ -35,6 +35,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihc_info", "utilities\ihc_i
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihc_settings_encrypt", "utilities\ihc_settings_encrypt\ihc_settings_encrypt.csproj", "{F1E22840-D6BE-4D0B-B333-6FE38F237090}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "safe_project_tests", "tests\safe_project_tests\safe_project_tests.csproj", "{8E3201F8-C9BB-4360-8769-7E6D99D7C393}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -201,6 +203,18 @@ Global
 		{F1E22840-D6BE-4D0B-B333-6FE38F237090}.Release|x64.Build.0 = Release|Any CPU
 		{F1E22840-D6BE-4D0B-B333-6FE38F237090}.Release|x86.ActiveCfg = Release|Any CPU
 		{F1E22840-D6BE-4D0B-B333-6FE38F237090}.Release|x86.Build.0 = Release|Any CPU
+		{8E3201F8-C9BB-4360-8769-7E6D99D7C393}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E3201F8-C9BB-4360-8769-7E6D99D7C393}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E3201F8-C9BB-4360-8769-7E6D99D7C393}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{8E3201F8-C9BB-4360-8769-7E6D99D7C393}.Debug|x64.Build.0 = Debug|Any CPU
+		{8E3201F8-C9BB-4360-8769-7E6D99D7C393}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{8E3201F8-C9BB-4360-8769-7E6D99D7C393}.Debug|x86.Build.0 = Debug|Any CPU
+		{8E3201F8-C9BB-4360-8769-7E6D99D7C393}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E3201F8-C9BB-4360-8769-7E6D99D7C393}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8E3201F8-C9BB-4360-8769-7E6D99D7C393}.Release|x64.ActiveCfg = Release|Any CPU
+		{8E3201F8-C9BB-4360-8769-7E6D99D7C393}.Release|x64.Build.0 = Release|Any CPU
+		{8E3201F8-C9BB-4360-8769-7E6D99D7C393}.Release|x86.ActiveCfg = Release|Any CPU
+		{8E3201F8-C9BB-4360-8769-7E6D99D7C393}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -218,5 +232,6 @@ Global
 		{BBC4F206-CE46-4EEE-9803-1C59B481F604} = {DF572EAA-2BC4-7083-A1C9-E138B4BE775E}
 		{F124DDA3-5496-46AC-ADFE-FF86431C314C} = {DF572EAA-2BC4-7083-A1C9-E138B4BE775E}
 		{F1E22840-D6BE-4D0B-B333-6FE38F237090} = {DF572EAA-2BC4-7083-A1C9-E138B4BE775E}
+		{8E3201F8-C9BB-4360-8769-7E6D99D7C393} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal
