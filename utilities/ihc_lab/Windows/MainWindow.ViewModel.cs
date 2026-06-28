@@ -277,7 +277,11 @@ namespace IhcLab
         public bool IsErrorVisible
         {
             get => _isErrorVisible;
-            set => SetProperty(ref _isErrorVisible, value);
+            set
+            {
+                if (SetProperty(ref _isErrorVisible, value))
+                    OnPropertyChanged(nameof(IsStatusVisible));
+            }
         }
 
         /// <summary>
@@ -286,8 +290,19 @@ namespace IhcLab
         public bool IsWarningVisible
         {
             get => _isWarningVisible;
-            set => SetProperty(ref _isWarningVisible, value);
+            set
+            {
+                if (SetProperty(ref _isWarningVisible, value))
+                    OnPropertyChanged(nameof(IsStatusVisible));
+            }
         }
+
+        /// <summary>
+        /// Gets whether the status section has anything to show (an error or a warning). The Status panel binds its
+        /// visibility to this so the whole panel collapses when there is neither an error nor a warning. (The Result
+        /// panel above it stays visible and instead shows a placeholder when it has no output.)
+        /// </summary>
+        public bool IsStatusVisible => _isErrorVisible || _isWarningVisible;
 
         /// <summary>
         /// Gets or sets the selected service index. Bound bidirectionally to ServicesComboBox.SelectedIndex.
@@ -460,16 +475,7 @@ namespace IhcLab
         /// <param name="text">The error message text.</param>
         /// <param name="ex">Optional exception to include in the message.</param>
         public void SetError(string text, Exception? ex = null)
-        {
-            string txt = text ?? string.Empty;
-            if (ex != null)
-                txt = txt + ": " + ex.Source + " : " + ex.Message;
-
-            ErrorWarningText = txt;
-            IsErrorVisible = true;
-            IsWarningVisible = false;
-            logger.LogError(message: text, exception: ex);
-        }
+            => SetStatus(text, ex, isError: true);
 
         /// <summary>
         /// Sets a warning message and shows the warning heading.
@@ -477,15 +483,27 @@ namespace IhcLab
         /// <param name="text">The warning message text.</param>
         /// <param name="ex">Optional exception to include in the message.</param>
         public void SetWarning(string text, Exception? ex = null)
+            => SetStatus(text, ex, isError: false);
+
+        /// <summary>
+        /// Shared body for <see cref="SetError"/> and <see cref="SetWarning"/>: composes the displayed message,
+        /// toggles the error/warning headings, and logs at the matching level. The two public methods differ only
+        /// in <paramref name="isError"/>, so the composition lives here once.
+        /// </summary>
+        private void SetStatus(string text, Exception? ex, bool isError)
         {
             string txt = text ?? string.Empty;
             if (ex != null)
-                txt = txt + ": " + ex.Source + " : " + ex.Message;
+                txt = txt + ": " + ex.Message;
 
             ErrorWarningText = txt;
-            IsErrorVisible = false;
-            IsWarningVisible = true;
-            logger.LogWarning(message: text, exception: ex);
+            IsErrorVisible = isError;
+            IsWarningVisible = !isError;
+
+            if (isError)
+                logger.LogError(message: text, exception: ex);
+            else
+                logger.LogWarning(message: text, exception: ex);
         }
 
         /// <summary>

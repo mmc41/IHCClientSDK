@@ -152,6 +152,7 @@ public partial class TextFilePicker : UserControl, TextFile
             return;
         }
 
-        fileStatusLabel.Text = $"{fileName} ({textData.Length} characters)";
+        // Report size in bytes (encoded length) to match BinaryFilePicker, rather than character count.
+        fileStatusLabel.Text = $"{fileName} ({textEncoding.GetByteCount(textData)} bytes)";
     }
 }

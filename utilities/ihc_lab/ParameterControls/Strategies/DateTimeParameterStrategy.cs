@@ -1,12 +1,15 @@
 using System;
+using System.Linq;
 using Avalonia.Controls;
+using Avalonia.Layout;
 using Ihc;
 
 namespace IhcLab.ParameterControls.Strategies;
 
 /// <summary>
-/// Strategy for handling DateTime and DateTimeOffset parameters.
-/// Creates a DatePicker control for date selection.
+/// Strategy for handling DateTime and DateTimeOffset parameters (including their nullable form). Renders a
+/// <see cref="DatePicker"/> and a <see cref="TimePicker"/> side by side so the full timestamp is captured - the
+/// time-of-day is no longer silently dropped to midnight.
 /// </summary>
 public class DateTimeParameterStrategy : ParameterControlStrategyBase
 {
@@ -20,87 +23,115 @@ public class DateTimeParameterStrategy : ParameterControlStrategyBase
     }
 
     /// <summary>
-    /// Creates a DatePicker control for date selection. A nullable date starts empty (unset = null, D3).
+    /// Creates a date + time picker pair. A nullable value starts empty (unset = null, D3); a non-nullable one
+    /// starts at "now".
     /// </summary>
     public override Control CreateControl(FieldMetaData field, string controlName)
     {
         EnsureCanHandle(field);
 
+        bool nullable = IsNullableValueType(field.Type);
+
         var datePicker = new DatePicker
         {
-            Name = controlName,
             MinWidth = 200,
-            SelectedDate = IsNullableValueType(field.Type) ? (DateTimeOffset?)null : DateTimeOffset.Now
+            SelectedDate = nullable ? (DateTimeOffset?)null : DateTimeOffset.Now
         };
 
-        ApplyDescriptionTooltip(datePicker, field);
+        var timePicker = new TimePicker
+        {
+            ClockIdentifier = "24HourClock",
+            SelectedTime = nullable ? (TimeSpan?)null : DateTimeOffset.Now.TimeOfDay
+        };
 
-        return datePicker;
+        var panel = new StackPanel
+        {
+            Name = controlName,
+            Orientation = Orientation.Horizontal,
+            Spacing = 10,
+            Children = { datePicker, timePicker }
+        };
+
+        ApplyDescriptionTooltip(panel, field);
+
+        return panel;
     }
 
     /// <summary>
-    /// Subscribes to the DatePicker's SelectedDateChanged event.
+    /// Subscribes to both pickers' change events so editing either the date or the time raises the handler.
     /// </summary>
     public override void SubscribeToValueChanged(Control control, EventHandler handler)
     {
-        if (control is DatePicker datePicker)
-            datePicker.SelectedDateChanged += (s, e) => handler(datePicker, EventArgs.Empty);
+        if (control is not StackPanel panel)
+            return;
+
+        // Both pickers are leaf editors; the shared helper owns the picker -> change-event mapping. The panel is
+        // always the sender so the consumer resolves the parameter index from its Name (decision D9).
+        foreach (var child in panel.Children.OfType<Control>())
+            SubscribeLeafChange(child, (s, e) => handler(panel, EventArgs.Empty));
     }
 
     /// <summary>
-    /// Extracts the date value from a DatePicker control.
+    /// Extracts the value by composing the picked date and time-of-day. An unset date extracts as null for a
+    /// nullable parameter (D3), or "now" otherwise.
     /// </summary>
     public override object? ExtractValue(Control control, FieldMetaData field)
     {
-        var datePicker = RequireControl<DatePicker>(control);
+        var panel = RequireControl<StackPanel>(control);
         var underlying = UnwrapNullable(field.Type);
+        var datePicker = DatePickerOf(panel);
 
-        if (datePicker.SelectedDate == null)
+        if (datePicker?.SelectedDate == null)
         {
             if (IsNullableValueType(field.Type))
                 return null; // empty nullable date = null (D3)
-            return underlying == typeof(DateTime) ? DateTime.Now : DateTimeOffset.Now;
+            return underlying == typeof(DateTime) ? (object)DateTime.Now : DateTimeOffset.Now;
         }
 
-        var selectedDate = datePicker.SelectedDate.Value;
+        var date = datePicker.SelectedDate.Value;
+        var time = TimePickerOf(panel)?.SelectedTime ?? TimeSpan.Zero;
+        // Compose the date (offset preserved) at midnight plus the picked time-of-day.
+        var composed = new DateTimeOffset(date.Year, date.Month, date.Day, 0, 0, 0, date.Offset).Add(time);
 
-        // Convert to appropriate type (a boxed DateTime/DateTimeOffset is assignable to its nullable parameter).
-        // Separate returns (not a ?: ) so the DateTime is not implicitly widened to DateTimeOffset by the ternary.
+        // Separate returns (not a ?:) so the DateTime is not implicitly widened to DateTimeOffset by the ternary.
         if (underlying == typeof(DateTime))
-            return selectedDate.DateTime;
-        return selectedDate;
+            return composed.DateTime;
+        return composed;
     }
 
     /// <summary>
-    /// Sets a date value into a DatePicker control. A null value restores the empty (unset) state for a nullable
-    /// date, or "now" for a non-nullable one.
+    /// Sets a value into both pickers. A null OR unparseable value restores the empty (unset) state for a nullable
+    /// parameter (empty = null, D3) or "now" for a non-nullable one, consistent with the value==null branch and
+    /// <see cref="ExtractValue"/>.
     /// </summary>
     public override void SetValue(Control control, object? value, FieldMetaData field)
     {
-        var datePicker = RequireControl<DatePicker>(control);
+        var panel = RequireControl<StackPanel>(control);
+        var datePicker = DatePickerOf(panel);
+        var timePicker = TimePickerOf(panel);
 
-        if (value == null)
+        DateTimeOffset? dto = value switch
         {
-            datePicker.SelectedDate = IsNullableValueType(field.Type) ? (DateTimeOffset?)null : DateTimeOffset.Now;
+            null => null,
+            DateTime dt => new DateTimeOffset(dt),
+            DateTimeOffset off => off,
+            _ => DateTime.TryParse(value.ToString(), out var parsed) ? new DateTimeOffset(parsed) : (DateTimeOffset?)null
+        };
+
+        if (dto == null)
+        {
+            // Null/unparseable: honour the empty=null convention (D3) for a nullable field rather than forcing "now".
+            bool nullable = IsNullableValueType(field.Type);
+            if (datePicker != null) datePicker.SelectedDate = nullable ? (DateTimeOffset?)null : DateTimeOffset.Now;
+            if (timePicker != null) timePicker.SelectedTime = nullable ? (TimeSpan?)null : DateTimeOffset.Now.TimeOfDay;
             return;
         }
 
-        // Convert value to DateTimeOffset
-        if (value is DateTime dt)
-        {
-            datePicker.SelectedDate = new DateTimeOffset(dt);
-        }
-        else if (value is DateTimeOffset dto)
-        {
-            datePicker.SelectedDate = dto;
-        }
-        else if (DateTime.TryParse(value.ToString(), out var parsedDate))
-        {
-            datePicker.SelectedDate = new DateTimeOffset(parsedDate);
-        }
-        else
-        {
-            datePicker.SelectedDate = IsNullableValueType(field.Type) ? (DateTimeOffset?)null : DateTimeOffset.Now;
-        }
+        if (datePicker != null) datePicker.SelectedDate = dto.Value;
+        if (timePicker != null) timePicker.SelectedTime = dto.Value.TimeOfDay;
     }
+
+    private static DatePicker? DatePickerOf(StackPanel panel) => panel.Children.OfType<DatePicker>().FirstOrDefault();
+
+    private static TimePicker? TimePickerOf(StackPanel panel) => panel.Children.OfType<TimePicker>().FirstOrDefault();
 }

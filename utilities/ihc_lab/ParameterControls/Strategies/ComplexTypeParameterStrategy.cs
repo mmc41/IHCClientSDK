@@ -1,9 +1,7 @@
 using System;
 using System.Reflection;
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
-using Avalonia.Media;
 using Ihc;
 
 namespace IhcLab.ParameterControls.Strategies;
@@ -60,22 +58,6 @@ public class ComplexTypeParameterStrategy : ParameterControlStrategyBase
             // Get strategy for this sub-field
             var subStrategy = ParameterControlRegistry.Instance.GetStrategy(subField);
 
-            // Add label for the sub-field
-            var label = new TextBlock
-            {
-                Text = subField.Name + ":",
-                Margin = new Thickness(0, 0, 5, 0),
-                FontWeight = FontWeight.SemiBold,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-
-            if (!string.IsNullOrWhiteSpace(subField.Description))
-            {
-                ToolTip.SetTip(label, $"Type: {subField.Type.Name}: {subField.Description}");
-            }
-
-            stackPanel.Children.Add(label);
-
             // Create control for sub-field
             var subControl = subStrategy.CreateControl(subField, subControlName);
 
@@ -86,7 +68,14 @@ public class ComplexTypeParameterStrategy : ParameterControlStrategyBase
                 Strategy = subStrategy
             };
 
-            stackPanel.Children.Add(subControl);
+            // Build the "label : editor" pair via the shared helper so the legend styling and the description-only
+            // tooltip rule live in exactly one place. An auto-width label (NaN) keeps the inline horizontal layout;
+            // FindControlByName recurses, so the editor is still resolved by name one level deeper.
+            stackPanel.Children.Add(OperationSupport.LabeledRow(
+                subField.Name + ":", subControl,
+                labelWidth: double.NaN,
+                labelAlignment: VerticalAlignment.Center,
+                tooltip: subField.Description));
         }
 
         return stackPanel;

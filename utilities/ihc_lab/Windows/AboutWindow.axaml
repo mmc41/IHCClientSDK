@@ -24,7 +24,7 @@
         <!-- Project Name -->
         <TextBlock Grid.Row="0"
                    Text="IHC Lab"
-                   FontSize="24"
+                   FontSize="{StaticResource TitleFontSize}"
                    FontWeight="Bold"
                    HorizontalAlignment="Center"/>
 
@@ -34,7 +34,7 @@
                     HorizontalAlignment="Center">
             <TextBlock Text="GitHub: " VerticalAlignment="Center"/>
             <TextBlock Name="RepoLink"
-                       Foreground="Blue"
+                       Foreground="{StaticResource LinkBrush}"
                        TextDecorations="Underline"
                        Cursor="Hand"
                        PointerPressed="OnRepoLinkClick"
@@ -43,15 +43,15 @@
 
         <!-- Author -->
         <TextBlock Name="RepoAuthors" Grid.Row="4"
-                   FontSize="14"
+                   FontSize="{StaticResource SubheadingFontSize}"
                    HorizontalAlignment="Center"/>
 
         <!-- Description -->
         <TextBlock Name="AppDescription" Grid.Row="6"
-                   FontSize="12"
+                   FontSize="{StaticResource BodyFontSize}"
                    HorizontalAlignment="Center"
                    TextWrapping="Wrap"
-                   Foreground="#666666"/>
+                   Foreground="{StaticResource SecondaryTextBrush}"/>
 
         <!-- Version Information -->
         <StackPanel Grid.Row="7"
@@ -59,21 +59,22 @@
                     HorizontalAlignment="Center"
                     Margin="0,10,0,0">
             <TextBlock Name="AppVersionText"
-                       FontSize="11"
+                       FontSize="{StaticResource CaptionFontSize}"
                        HorizontalAlignment="Center"
-                       Foreground="#888888"/>
+                       Foreground="{StaticResource TertiaryTextBrush}"/>
             <TextBlock Name="SdkVersionText"
-                       FontSize="11"
+                       FontSize="{StaticResource CaptionFontSize}"
                        HorizontalAlignment="Center"
-                       Foreground="#888888"
+                       Foreground="{StaticResource TertiaryTextBrush}"
                        Margin="0,2,0,0"/>
         </StackPanel>
 
         <!-- Close Button -->
         <Button Grid.Row="8"
                 Content="Close"
-                Width="80"
+                Width="{StaticResource DialogButtonWidth}"
                 HorizontalAlignment="Center"
+                IsCancel="True"
                 Click="OnCloseClick"/>
     </Grid>
 </Window>

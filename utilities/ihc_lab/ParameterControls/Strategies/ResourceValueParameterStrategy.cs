@@ -1,7 +1,5 @@
 using System;
-using System.Globalization;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Ihc;
@@ -16,10 +14,6 @@ namespace IhcLab.ParameterControls.Strategies;
 /// </summary>
 public class ResourceValueParameterStrategy : ParameterControlStrategyBase
 {
-    // Associates the active parameter-changed handler with a ResourceValue main panel, so payload controls
-    // rebuilt on kind change route their edits back to it (same pattern as ArrayParameterStrategy).
-    private static readonly ConditionalWeakTable<Control, EventHandler> changeHandlers = new();
-
     private enum PayloadKind { Int, Long, Double, Bool, String, Date, Time }
 
     private sealed record PayloadField(string Name, PayloadKind Kind);
@@ -69,7 +63,7 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
             Minimum = 0,
             Maximum = int.MaxValue
         };
-        mainPanel.Children.Add(LabeledRow("Resource ID", resourceIdUpDown));
+        mainPanel.Children.Add(OperationSupport.LabeledRow("Resource ID", resourceIdUpDown, labelAlignment: VerticalAlignment.Center));
 
         var valueKindDropDown = new ComboBox
         {
@@ -78,7 +72,7 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
             ItemsSource = Enum.GetNames(typeof(ResourceValue.ValueKind)),
             SelectedIndex = 0
         };
-        mainPanel.Children.Add(LabeledRow("Value Kind", valueKindDropDown));
+        mainPanel.Children.Add(OperationSupport.LabeledRow("Value Kind", valueKindDropDown, labelAlignment: VerticalAlignment.Center));
 
         var payloadHost = new StackPanel
         {
@@ -96,11 +90,11 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
         valueKindDropDown.SelectionChanged += (s, e) =>
         {
             RebuildPayload(payloadHost, SelectedKind(valueKindDropDown));
-            NotifyChanged(mainPanel);
+            RaiseContainerChanged(mainPanel);
         };
 
         // ResourceID edits also change the parameter.
-        resourceIdUpDown.ValueChanged += (s, e) => NotifyChanged(mainPanel);
+        resourceIdUpDown.ValueChanged += (s, e) => RaiseContainerChanged(mainPanel);
 
         ApplyDescriptionTooltip(mainPanel, field);
 
@@ -111,10 +105,7 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
     /// Registers the parameter-changed handler; edits to ResourceID, ValueKind and payload controls route to it.
     /// </summary>
     public override void SubscribeToValueChanged(Control control, EventHandler handler)
-    {
-        var mainPanel = RequireControl<StackPanel>(control);
-        changeHandlers.AddOrUpdate(mainPanel, handler);
-    }
+        => RegisterContainerSubscription(control, handler);
 
     /// <summary>
     /// Extracts a ResourceValue (ResourceID + the union payload for the selected ValueKind) from the controls.
@@ -210,17 +201,20 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
                 PayloadKind.Bool => new CheckBox { IsThreeState = false, IsChecked = false },
                 PayloadKind.String => new TextBox { Width = 180 },
                 PayloadKind.Date => new DatePicker { SelectedDate = DateTimeOffset.Now },
-                PayloadKind.Time => new TextBox { Width = 120, Watermark = "hh:mm:ss", Text = "00:00:00" },
+                PayloadKind.Time => ZeroDurationInput(),
                 PayloadKind.Double => new NumericUpDown { Width = 160, FormatString = "F2", Increment = 0.1m, Minimum = -999999999m, Maximum = 999999999m, Value = 0m },
                 PayloadKind.Long => new NumericUpDown { Width = 160, FormatString = "F0", Increment = 1m, Minimum = long.MinValue, Maximum = long.MaxValue, Value = 0m },
                 _ => new NumericUpDown { Width = 160, FormatString = "F0", Increment = 1m, Minimum = int.MinValue, Maximum = int.MaxValue, Value = 0m }
             };
             editor.Name = $"{payloadHost.Name}.{pf.Name}";
 
+            // Editing a payload control re-extracts the whole ResourceValue parameter (two-way sync). The
+            // editor-type -> change-event mapping lives once in the shared base helper (SubscribeLeafChange).
             var mainPanel = MainPanelOf(payloadHost);
-            WirePayloadEditor(editor, pf.Kind, mainPanel);
+            if (mainPanel != null)
+                SubscribeLeafChange(editor, (s, e) => RaiseContainerChanged(mainPanel));
 
-            payloadHost.Children.Add(LabeledRow(pf.Name, editor));
+            payloadHost.Children.Add(OperationSupport.LabeledRow(DisplayNameOf(pf.Name), editor, labelAlignment: VerticalAlignment.Center));
         }
 
         // Track the kind the payload was built for so a same-kind restore can reuse these editors (see SetValue).
@@ -296,37 +290,37 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
         }
     }
 
-    // ---- Wiring --------------------------------------------------------------------------------------------
-
-    private static void WirePayloadEditor(Control editor, PayloadKind kind, StackPanel? mainPanel)
-    {
-        if (mainPanel == null)
-            return;
-
-        switch (editor)
-        {
-            case NumericUpDown n: n.ValueChanged += (s, e) => NotifyChanged(mainPanel); break;
-            case CheckBox c: c.IsCheckedChanged += (s, e) => NotifyChanged(mainPanel); break;
-            case TextBox t: t.TextChanged += (s, e) => NotifyChanged(mainPanel); break;
-            case DatePicker d: d.SelectedDateChanged += (s, e) => NotifyChanged(mainPanel); break;
-        }
-    }
-
-    private static void NotifyChanged(StackPanel mainPanel)
-    {
-        if (changeHandlers.TryGetValue(mainPanel, out var handler))
-            handler(mainPanel, EventArgs.Empty);
-    }
-
     // ---- Helpers -------------------------------------------------------------------------------------------
 
-    private static StackPanel LabeledRow(string label, Control editor)
+    /// <summary>
+    /// Builds a zero-seeded <see cref="DurationInput"/> for a TIME payload. The duration is seeded through the
+    /// control's own API (matching <c>TimeSpanParameterStrategy</c>) so the rendered "hh:mm:ss" format stays owned
+    /// by <see cref="DurationInput"/> instead of being duplicated as a literal here.
+    /// </summary>
+    private static DurationInput ZeroDurationInput()
     {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        row.Children.Add(new TextBlock { Text = label, MinWidth = 130, VerticalAlignment = VerticalAlignment.Center });
-        row.Children.Add(editor);
-        return row;
+        var input = new DurationInput();
+        input.SetValue(TimeSpan.Zero);
+        return input;
     }
+
+    /// <summary>
+    /// Maps a raw SOAP/UnionValue payload field name to a friendly label. The raw name stays the editor's control
+    /// name (used for lookup); only the visible label is humanised.
+    /// </summary>
+    private static string DisplayNameOf(string rawName) => rawName switch
+    {
+        "value" => "Value",
+        "number" => "Number",
+        "definitionTypeID" => "Definition Type ID",
+        "enumValueID" => "Enum Value ID",
+        "dimmerPercentage" => "Dimmer %",
+        "delayTime" => "Delay Time",
+        "rampTime" => "Ramp Time",
+        "relayValue" => "Relay Value",
+        "shutterPositionIsUp" => "Position Is Up",
+        _ => rawName
+    };
 
     private static ResourceValue.ValueKind SelectedKind(ComboBox? combo)
     {
@@ -355,17 +349,9 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
         return null;
     }
 
+    // Payload editors are always added inside a LabeledRow, so the shared one-level lookup finds them by name.
     private static Control? FindPayload(StackPanel payloadHost, string fieldName)
-    {
-        string target = $"{payloadHost.Name}.{fieldName}";
-        foreach (var row in payloadHost.Children.OfType<Panel>())
-        {
-            var hit = row.Children.OfType<Control>().FirstOrDefault(c => c.Name == target);
-            if (hit != null)
-                return hit;
-        }
-        return null;
-    }
+        => FindNamed<Control>(payloadHost, $"{payloadHost.Name}.{fieldName}");
 
     private static int GetInt(StackPanel host, string name) => (int)((FindPayload(host, name) as NumericUpDown)?.Value ?? 0m);
     private static long GetLong(StackPanel host, string name) => (long)((FindPayload(host, name) as NumericUpDown)?.Value ?? 0m);
@@ -374,11 +360,9 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
     private static string GetString(StackPanel host, string name) => (FindPayload(host, name) as TextBox)?.Text ?? string.Empty;
     private static DateTimeOffset GetDate(StackPanel host, string name) => (FindPayload(host, name) as DatePicker)?.SelectedDate ?? DateTimeOffset.Now;
 
+    // Invalid text throws (via DurationInput) instead of silently coercing to zero, matching TimeSpanParameterStrategy.
     private static TimeSpan GetTime(StackPanel host, string name)
-    {
-        var text = (FindPayload(host, name) as TextBox)?.Text;
-        return TimeSpan.TryParse(text, CultureInfo.InvariantCulture, out var ts) ? ts : TimeSpan.Zero;
-    }
+        => (FindPayload(host, name) as DurationInput)?.GetValueOrThrow() ?? TimeSpan.Zero;
 
     private static void SetNum(StackPanel host, string name, decimal value)
     {
@@ -400,17 +384,11 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
         if (FindPayload(host, name) is DatePicker d) d.SelectedDate = value;
     }
 
+    // DurationInput.SetValue keeps the caret stable during the per-keystroke round-trip restore (it skips reformatting
+    // a partial or already-equal entry).
     private static void SetTime(StackPanel host, string name, TimeSpan value)
     {
-        if (FindPayload(host, name) is not TextBox t)
-            return;
-
-        // The round-trip restore fires on every keystroke. Leave the text alone while the user is mid-edit - i.e.
-        // when it does not parse yet (a partial entry) or already parses to this value - so we never reformat
-        // "1:2:3" to "01:02:03" and move the caret. Only push when restoring a genuinely different, valid value.
-        if (!TimeSpan.TryParse(t.Text, CultureInfo.InvariantCulture, out var current) || current == value)
-            return;
-
-        t.Text = value.ToString("c");
+        if (FindPayload(host, name) is DurationInput d)
+            d.SetValue(value);
     }
 }

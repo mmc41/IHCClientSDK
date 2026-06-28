@@ -72,6 +72,18 @@ namespace Ihc.Tests
 
         [AvaloniaTest]
         [CaptureScreenshotOnFailure]
+        public void Bool_NullableBool_CheckBoxHasNoInnerCaption()
+        {
+            // FOUND-08: the outer LabeledRow already labels the field, so the checkbox carries no duplicate caption.
+            var strategy = new BoolParameterStrategy();
+            var field = new FieldMetaData("enabled", typeof(bool?), [], "");
+            var control = strategy.CreateControl(field, "0");
+
+            Assert.That(((CheckBox)control).Content, Is.EqualTo(string.Empty));
+        }
+
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
         public void Bool_NullableBool_ValueRoundTripsAndBackToNull()
         {
             var strategy = new BoolParameterStrategy();

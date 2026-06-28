@@ -5,6 +5,7 @@ using Avalonia.Headless.NUnit;
 using Avalonia.LogicalTree;
 using NUnit.Framework;
 using Ihc;
+using IhcLab;
 using IhcLab.ParameterControls.Strategies;
 
 namespace Ihc.Tests
@@ -84,12 +85,42 @@ namespace Ihc.Tests
             SelectKind(control, ResourceValue.ValueKind.INT);
             Assert.That(control.GetLogicalDescendants().OfType<NumericUpDown>().Any(c => c.Name == "0.Payload.value"), Is.True);
 
-            // Act - switch to TIME (an hh:mm:ss text box)
+            // Act - switch to TIME (an hh:mm:ss duration input)
             SelectKind(control, ResourceValue.ValueKind.TIME);
 
-            // Assert - the numeric payload is gone, replaced by a text box
+            // Assert - the numeric payload is gone, replaced by a DurationInput
             Assert.That(control.GetLogicalDescendants().OfType<NumericUpDown>().Any(c => c.Name == "0.Payload.value"), Is.False);
-            Assert.That(control.GetLogicalDescendants().OfType<TextBox>().Any(c => c.Name == "0.Payload.value"), Is.True);
+            Assert.That(control.GetLogicalDescendants().OfType<DurationInput>().Any(c => c.Name == "0.Payload.value"), Is.True);
+        }
+
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
+        public void ExtractValue_TimeKind_ValidText_BuildsTimeUnion()
+        {
+            // Arrange
+            var control = strategy.CreateControl(Field, "0");
+            SelectKind(control, ResourceValue.ValueKind.TIME);
+            Find<DurationInput>(control, "0.Payload.value").Text = "01:30:00";
+
+            // Act
+            var rv = strategy.ExtractValue(control, Field) as ResourceValue;
+
+            // Assert
+            Assert.That(rv!.Value.ValueKind, Is.EqualTo(ResourceValue.ValueKind.TIME));
+            Assert.That(rv!.Value.TimeValue, Is.EqualTo(new TimeSpan(1, 30, 0)));
+        }
+
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
+        public void ExtractValue_TimeKind_InvalidText_ThrowsInsteadOfCoercingToZero()
+        {
+            // Arrange - a mistyped TIME must be rejected, not silently sent as 00:00:00 (FOUND-02).
+            var control = strategy.CreateControl(Field, "0");
+            SelectKind(control, ResourceValue.ValueKind.TIME);
+            Find<DurationInput>(control, "0.Payload.value").Text = "not-a-time";
+
+            // Act & Assert
+            Assert.Throws<FormatException>(() => strategy.ExtractValue(control, Field));
         }
 
         [AvaloniaTest]

@@ -46,10 +46,6 @@ public class FileParameterStrategy : ParameterControlStrategyBase
                 TextEncoding = encoding,
                 MinWidth = 150
             };
-
-            ToolTip.SetTip(filePicker, !string.IsNullOrWhiteSpace(field.Description)
-                ? field.Description
-                : "Upload text file");
         }
         else if (typeof(BinaryFile).IsAssignableFrom(field.Type))
         {
@@ -59,16 +55,15 @@ public class FileParameterStrategy : ParameterControlStrategyBase
                 Name = controlName,
                 MinWidth = 150
             };
-
-            ToolTip.SetTip(filePicker, !string.IsNullOrWhiteSpace(field.Description)
-                ? field.Description
-                : "Upload binary file");
         }
         else
         {
             throw new NotSupportedException(
                 $"File type '{field.Type.FullName}' must implement BinaryFile or TextFile interface");
         }
+
+        // Show the description as a tooltip only when one exists, matching every other control's behaviour.
+        ApplyDescriptionTooltip(filePicker, field);
 
         return filePicker;
     }

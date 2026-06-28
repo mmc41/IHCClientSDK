@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -26,12 +25,6 @@ namespace IhcLab.ParameterControls.Strategies;
 /// </remarks>
 public class ArrayParameterStrategy : ParameterControlStrategyBase
 {
-    // Associates the active parameter-changed handler with a specific array main-panel instance. Element/Add/
-    // Remove wiring always routes through NotifyChanged, which looks the handler up here - so wiring done at
-    // element-creation time works regardless of whether SubscribeToValueChanged has run yet. Weak keys avoid
-    // leaking controls and keep multiple array parameters independent.
-    private static readonly ConditionalWeakTable<Control, EventHandler> changeHandlers = new();
-
     // Monotonic id for element control names so they never collide after a remove-then-add. Names are internal;
     // extract/restore address elements positionally (not by name lookup), so this only keeps names unique. The
     // registry is used only on the Avalonia UI thread, so a plain increment is sufficient.
@@ -46,7 +39,7 @@ public class ArrayParameterStrategy : ParameterControlStrategyBase
         // would throw. A collection/array field the one-level metadata expansion left with no element sub-field
         // (e.g. a collection PROPERTY of a complex record) is therefore NOT claimed here, so the operation is
         // filtered rather than crashing at selection (US-A7 - filter, don't crash).
-        return (field.Type.IsArray || IsGenericCollection(field.Type)) && field.SubTypes.Length > 0;
+        return (field.Type.IsArray || ServiceMetadata.TryGetCollectionElementType(field.Type, out _)) && field.SubTypes.Length > 0;
     }
 
     /// <summary>
@@ -114,7 +107,7 @@ public class ArrayParameterStrategy : ParameterControlStrategyBase
         {
             AddArrayItem(mainPanel, itemsPanel, elementField, controlName);
             UpdateItemCount(label, itemsPanel, field.Name);
-            NotifyChanged(mainPanel);
+            RaiseContainerChanged(mainPanel);
         };
 
         ApplyDescriptionTooltip(mainPanel, field);
@@ -124,15 +117,12 @@ public class ArrayParameterStrategy : ParameterControlStrategyBase
 
     /// <summary>
     /// Registers the parameter-changed handler for this array control. The actual edit signals (Add, each
-    /// Remove, each element's own value change) are wired to <see cref="NotifyChanged"/> at element-creation
+    /// Remove, each element's own value change) are wired to <see cref="RaiseContainerChanged"/> at element-creation
     /// time and route back to this handler; restore (<see cref="SetValue"/>) wires after setting values so it
     /// does not echo. The main panel is always passed as the sender (decision D9).
     /// </summary>
     public override void SubscribeToValueChanged(Control control, EventHandler handler)
-    {
-        var mainPanel = RequireControl<StackPanel>(control);
-        changeHandlers.AddOrUpdate(mainPanel, handler);
-    }
+        => RegisterContainerSubscription(control, handler);
 
     /// <summary>
     /// Extracts array values from all item controls.
@@ -236,34 +226,10 @@ public class ArrayParameterStrategy : ParameterControlStrategyBase
             // Set the value BEFORE wiring (in AddItemControl) so the restore does not raise a spurious change.
             elementStrategy.SetValue(elementControl, items[i], elementField);
 
-            AddItemControl(mainPanel, itemsPanel, elementControl, elementStrategy, mainPanel.Name ?? string.Empty, i);
+            AddItemControl(mainPanel, itemsPanel, elementControl, elementStrategy, i);
         }
 
         UpdateItemCount(label, itemsPanel, field.Name);
-    }
-
-    /// <summary>
-    /// Returns true for a non-array, non-string generic collection type (one implementing IEnumerable&lt;T&gt;).
-    /// </summary>
-    private static bool IsGenericCollection(Type type)
-    {
-        if (type.IsArray || type == typeof(string))
-            return false;
-
-        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>))
-            return true;
-
-        return type.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
-    }
-
-    /// <summary>
-    /// Raises the parameter-changed handler registered for this array (if any), always with the main panel as
-    /// the sender so the consumer resolves the parameter index from the main panel's Name (decision D9).
-    /// </summary>
-    private static void NotifyChanged(StackPanel mainPanel)
-    {
-        if (changeHandlers.TryGetValue(mainPanel, out var handler))
-            handler(mainPanel, EventArgs.Empty);
     }
 
     /// <summary>
@@ -275,7 +241,7 @@ public class ArrayParameterStrategy : ParameterControlStrategyBase
 
         int index = itemsPanel.Children.Count;
         var elementControl = elementStrategy.CreateControl(elementField, NextItemControlName(arrayControlName));
-        AddItemControl(mainPanel, itemsPanel, elementControl, elementStrategy, arrayControlName, index);
+        AddItemControl(mainPanel, itemsPanel, elementControl, elementStrategy, index);
     }
 
     /// <summary>
@@ -294,9 +260,9 @@ public class ArrayParameterStrategy : ParameterControlStrategyBase
 
     /// <summary>
     /// Creates a container with the element control and a Remove button, and wires both the element's own
-    /// value-changed event and the Remove click to re-extract the whole parameter via <see cref="NotifyChanged"/>.
+    /// value-changed event and the Remove click to re-extract the whole parameter via <see cref="RaiseContainerChanged"/>.
     /// </summary>
-    private static void AddItemControl(StackPanel mainPanel, StackPanel itemsPanel, Control elementControl, IParameterControlStrategy elementStrategy, string arrayControlName, int index)
+    private static void AddItemControl(StackPanel mainPanel, StackPanel itemsPanel, Control elementControl, IParameterControlStrategy elementStrategy, int index)
     {
         var itemContainer = new StackPanel
         {
@@ -325,7 +291,7 @@ public class ArrayParameterStrategy : ParameterControlStrategyBase
 
         // Editing this element re-extracts the whole array parameter (two-way sync). Wired here - after the
         // caller has set any initial value - so a service-driven restore does not echo back as a user edit.
-        elementStrategy.SubscribeToValueChanged(elementControl, (sender, e) => NotifyChanged(mainPanel));
+        elementStrategy.SubscribeToValueChanged(elementControl, (sender, e) => RaiseContainerChanged(mainPanel));
 
         // Wire up Remove button
         removeButton.Click += (sender, e) =>
@@ -339,7 +305,7 @@ public class ArrayParameterStrategy : ParameterControlStrategyBase
             UpdateItemCount(HeaderLabel(mainPanel), itemsPanel, HeaderFieldName(mainPanel));
 
             // Removing an element changes the parameter value.
-            NotifyChanged(mainPanel);
+            RaiseContainerChanged(mainPanel);
         };
     }
 

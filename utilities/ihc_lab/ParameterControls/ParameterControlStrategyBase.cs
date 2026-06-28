@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using Avalonia.Controls;
 using Ihc;
 
@@ -26,6 +27,61 @@ public abstract class ParameterControlStrategyBase : IParameterControlStrategy
     public virtual void SubscribeToValueChanged(Control control, EventHandler handler)
     {
         // Intentionally a no-op for container/leafless strategies; see method summary.
+    }
+
+    // Routing table shared by container strategies (array/collection, ResourceValue) whose child controls are
+    // (re)built AFTER SubscribeToValueChanged has run: each child raises the parameter-changed handler indirectly
+    // via RaiseContainerChanged, which looks it up here by the container's main panel - so wiring done at child-
+    // creation time works regardless of whether SubscribeToValueChanged has run yet. Weak keys avoid leaking
+    // controls and keep multiple container parameters independent; keying by control instance makes one shared
+    // table safe across strategy types. Used only on the Avalonia UI thread.
+    private static readonly ConditionalWeakTable<Control, EventHandler> containerChangeHandlers = new();
+
+    /// <summary>
+    /// Registers the parameter-changed <paramref name="handler"/> against a container's main panel so child
+    /// controls (re)built later route their edits back to it via <see cref="RaiseContainerChanged"/>. Container
+    /// strategies call this from their <see cref="SubscribeToValueChanged"/> override.
+    /// </summary>
+    protected static void RegisterContainerChangeHandler(Control mainPanel, EventHandler handler)
+        => containerChangeHandlers.AddOrUpdate(mainPanel, handler);
+
+    /// <summary>
+    /// Raises the parameter-changed handler registered for <paramref name="mainPanel"/> (if any), always with the
+    /// main panel as the sender so the consumer resolves the parameter index from its Name (decision D9).
+    /// </summary>
+    protected static void RaiseContainerChanged(Control mainPanel)
+    {
+        if (containerChangeHandlers.TryGetValue(mainPanel, out var handler))
+            handler(mainPanel, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Shared <see cref="SubscribeToValueChanged"/> body for container strategies (array/collection,
+    /// ResourceValue): the container's main <see cref="StackPanel"/> is the single sync unit, so the handler is
+    /// registered against it and child controls (re)built later route their edits back via
+    /// <see cref="RaiseContainerChanged"/>. Casts with the standard control-type guard.
+    /// </summary>
+    protected static void RegisterContainerSubscription(Control control, EventHandler handler)
+        => RegisterContainerChangeHandler(RequireControl<StackPanel>(control), handler);
+
+    /// <summary>
+    /// Wires the native "value changed" event of a single leaf editor control to <paramref name="onChanged"/>,
+    /// passing the control as the sender. This is the one place the editor-type -&gt; change-event mapping lives,
+    /// shared by the leaf strategies' <see cref="SubscribeToValueChanged"/> overrides and the ResourceValue payload
+    /// editor, so a renamed event or a new editor kind is edited here only (decision D9 keeps the sender choice
+    /// with the caller via the <paramref name="onChanged"/> lambda). Unrecognised control types are ignored.
+    /// </summary>
+    protected static void SubscribeLeafChange(Control control, EventHandler onChanged)
+    {
+        switch (control)
+        {
+            case NumericUpDown n: n.ValueChanged += (s, e) => onChanged(control, EventArgs.Empty); break;
+            case CheckBox c: c.IsCheckedChanged += (s, e) => onChanged(control, EventArgs.Empty); break;
+            case DurationInput d: d.ValueChanged += (s, e) => onChanged(control, EventArgs.Empty); break;
+            case TextBox t: t.TextChanged += (s, e) => onChanged(control, EventArgs.Empty); break;
+            case DatePicker dp: dp.SelectedDateChanged += (s, e) => onChanged(control, EventArgs.Empty); break;
+            case TimePicker tp: tp.SelectedTimeChanged += (s, e) => onChanged(control, EventArgs.Empty); break;
+        }
     }
 
     /// <inheritdoc/>

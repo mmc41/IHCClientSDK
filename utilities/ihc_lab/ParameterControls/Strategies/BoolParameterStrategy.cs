@@ -33,7 +33,8 @@ public class BoolParameterStrategy : ParameterControlStrategyBase
             var checkBox = new CheckBox
             {
                 Name = controlName,
-                Content = string.IsNullOrWhiteSpace(field.Name) ? "value" : field.Name,
+                // No inner caption: the outer LabeledRow already labels the field, as for every other strategy.
+                Content = string.Empty,
                 IsThreeState = true,
                 IsChecked = null // indeterminate = null (unset)
             };
@@ -82,9 +83,11 @@ public class BoolParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override void SubscribeToValueChanged(Control control, EventHandler handler)
     {
-        if (control is CheckBox checkBox)
+        if (control is CheckBox)
         {
-            checkBox.IsCheckedChanged += (s, e) => handler(checkBox, EventArgs.Empty);
+            // The three-state CheckBox is a leaf editor; the shared helper owns the CheckBox -> IsCheckedChanged
+            // mapping (sender = the checkbox itself).
+            SubscribeLeafChange(control, handler);
             return;
         }
 

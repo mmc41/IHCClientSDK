@@ -344,9 +344,12 @@ namespace Ihc {
         /// <summary>
         /// Determines the element type of a generic collection type (one implementing <c>IEnumerable&lt;T&gt;</c>),
         /// e.g. <c>IReadOnlyList&lt;int&gt;</c> -&gt; <c>int</c>. Arrays and <see cref="string"/> are excluded
-        /// (arrays are handled by the dedicated array branch; string is a supported simple type).
+        /// (arrays are handled by the dedicated array branch; string is a supported simple type). Exposed to in-repo
+        /// tooling (e.g. the Lab's GUI control strategies, via <c>InternalsVisibleTo</c>) that needs the same
+        /// collection-vs-element decision as the metadata layer, so the predicate is defined once - kept
+        /// <c>internal</c> to avoid widening the shipped SDK's public surface.
         /// </summary>
-        private static bool TryGetCollectionElementType(Type type, out Type elementType)
+        internal static bool TryGetCollectionElementType(Type type, out Type elementType)
         {
             elementType = typeof(object);
 

@@ -2,6 +2,8 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Ihc;
 using Microsoft.Extensions.Logging;
@@ -126,8 +128,6 @@ public class IhcSetup
 /// </summary>
 public class IhcFakeSetup
 {
-    private static T CreateEmptyFake<T>() where T : class => A.Fake<T>();
-
     public static IAuthenticationService SetupAuthenticationService(IhcSettings settings)
     {
         var service = A.Fake<IAuthenticationService>();
@@ -178,17 +178,7 @@ public class IhcFakeSetup
             Free = 4_500_000_000
         }));
 
-        A.CallTo(() => service.GetProjectInfo()).Returns(Task.FromResult(new ProjectInfo()
-        {
-            CustomerName = "Mock Customer",
-            InstallerName = "Mock Installer",
-            ProjectNumber = "12345",
-            VisualMajorVersion = 4,
-            VisualMinorVersion = 0,
-            ProjectMajorRevision = 1,
-            ProjectMinorRevision = 2,
-            Lastmodified = new DateTimeOffset(2025, 10, 4, 17, 6, 0, TimeSpan.Zero)
-        }));
+        A.CallTo(() => service.GetProjectInfo()).Returns(Task.FromResult(MockProjectInfo()));
 
         A.CallTo(() => service.GetProject()).Returns(Task.FromResult(new Ihc.ProjectFile("project-mock.vis",
             """
@@ -367,28 +357,290 @@ public class IhcFakeSetup
     {
         var service = A.Fake<IResourceInteractionService>();
 
+        // A small, realistic set of resource values reused across the read operations below so the Lab shows
+        // representative data (not empty/default fakes) when a human explores the GUI or a smoke test runs.
+        IReadOnlyList<ResourceValue> sampleValues = new List<ResourceValue>
+        {
+            new ResourceValue { ResourceID = 1001, TypeString = "dataline_input", IsValueRuntime = true,
+                Value = new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.BOOL, BoolValue = true } },
+            new ResourceValue { ResourceID = 1002, TypeString = "dataline_output", IsValueRuntime = true,
+                Value = new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.INT, IntValue = 42 } },
+            new ResourceValue { ResourceID = 1003, TypeString = "temperature", IsValueRuntime = true,
+                Value = new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.DOUBLE, DoubleValue = 21.5 } },
+        };
+
+        // The same resources as initial (not runtime) values, so the plural initial-value reads stay consistent
+        // with the singular GetInitialValue mock (which reports IsValueRuntime = false).
+        IReadOnlyList<ResourceValue> initialSampleValues = sampleValues
+            .Select(v => new ResourceValue { ResourceID = v.ResourceID, TypeString = v.TypeString, IsValueRuntime = false, Value = v.Value })
+            .ToList();
+
         // Accept resource value writes from the Lab's ResourceValue union editor (single + collection).
         A.CallTo(() => service.SetResourceValue(A<ResourceValue>._)).Returns(Task.FromResult(true));
         A.CallTo(() => service.SetResourceValues(A<IReadOnlyList<ResourceValue>>._)).Returns(Task.FromResult(true));
 
+        // Runtime / initial value reads (single + collection). Echo the requested id so the result is distinct.
+        A.CallTo(() => service.GetRuntimeValue(A<int>._)).ReturnsLazily((int id) => Task.FromResult(
+            new ResourceValue { ResourceID = id, TypeString = "dataline_output", IsValueRuntime = true,
+                Value = new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.BOOL, BoolValue = true } }));
+        A.CallTo(() => service.GetRuntimeValues(A<IReadOnlyList<int>>._)).Returns(Task.FromResult(sampleValues));
+        A.CallTo(() => service.GetInitialValue(A<int>._)).ReturnsLazily((int id) => Task.FromResult(
+            new ResourceValue { ResourceID = id, TypeString = "dataline_output", IsValueRuntime = false,
+                Value = new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.BOOL, BoolValue = false } }));
+        A.CallTo(() => service.GetInitialValues(A<IReadOnlyList<int>>._)).Returns(Task.FromResult(initialSampleValues));
+
+        // Notification enable/disable.
+        A.CallTo(() => service.EnableInitialValueNotifications(A<IReadOnlyList<int>>._)).Returns(Task.FromResult(initialSampleValues));
+        A.CallTo(() => service.EnableRuntimeValueNotifications(A<IReadOnlyList<int>>._)).Returns(Task.FromResult(sampleValues));
+        A.CallTo(() => service.DisableInitialValueNotifactions(A<IReadOnlyList<int>>._)).Returns(Task.FromResult(true));
+        A.CallTo(() => service.DisableRuntimeValueNotifactions(A<IReadOnlyList<int>>._)).Returns(Task.FromResult(true));
+
+        // Dataline catalogues.
+        A.CallTo(() => service.GetAllDatalineInputs()).Returns(Task.FromResult<IReadOnlyList<DatalineResource>>(new List<DatalineResource>
+        {
+            new DatalineResource { DatalineNumber = 1, ResourceID = 1001 },
+            new DatalineResource { DatalineNumber = 2, ResourceID = 1004 },
+        }));
+        A.CallTo(() => service.GetAllDatalineOutputs()).Returns(Task.FromResult<IReadOnlyList<DatalineResource>>(new List<DatalineResource>
+        {
+            new DatalineResource { DatalineNumber = 1, ResourceID = 1002 },
+            new DatalineResource { DatalineNumber = 2, ResourceID = 1005 },
+        }));
+        A.CallTo(() => service.GetExtraDatalineInputs()).Returns(Task.FromResult<IReadOnlyList<DatalineResource>>(new List<DatalineResource>()));
+        A.CallTo(() => service.GetExtraDatalineOutputs()).Returns(Task.FromResult<IReadOnlyList<DatalineResource>>(new List<DatalineResource>()));
+
+        // Resource type + enumerator definitions.
+        A.CallTo(() => service.GetResourceType(A<int>._)).Returns(Task.FromResult("dataline_output"));
+        A.CallTo(() => service.GetEnumeratorDefinitions()).Returns(Task.FromResult<IReadOnlyList<EnumDefinition>>(new List<EnumDefinition>
+        {
+            new EnumDefinition { EnumeratorDefinitionID = 10, Values = new[]
+            {
+                new EnumValue { DefinitionTypeID = 10, EnumValueID = 1, EnumName = "Off" },
+                new EnumValue { DefinitionTypeID = 10, EnumValueID = 2, EnumName = "On" },
+            }},
+        }));
+
+        // Logged data history for a resource.
+        A.CallTo(() => service.GetLoggedData(A<int>._)).ReturnsLazily((int id) => Task.FromResult<IReadOnlyList<LoggedData>>(new List<LoggedData>
+        {
+            new LoggedData { Id = id, Value = "21.5", Timestamp = new DateTimeOffset(2025, 10, 4, 17, 0, 0, TimeSpan.Zero) },
+            new LoggedData { Id = id, Value = "22.0", Timestamp = new DateTimeOffset(2025, 10, 4, 18, 0, 0, TimeSpan.Zero) },
+        }));
+
+        // Scene resource lookups.
+        A.CallTo(() => service.GetSceneGroupResourceIdAndPositions(A<int>._)).Returns(Task.FromResult<IReadOnlyList<SceneResourceIdAndLocation>>(new List<SceneResourceIdAndLocation>
+        {
+            new SceneResourceIdAndLocation { SceneResourceId = 2001, ScenePositionSeenFromFunctionBlock = "FB1", ScenePositionSeenFromProduct = "Living room" },
+        }));
+        A.CallTo(() => service.GetScenePositionsForSceneValueResource(A<int>._)).ReturnsLazily((int id) => Task.FromResult(
+            new SceneResourceIdAndLocation { SceneResourceId = id, ScenePositionSeenFromFunctionBlock = "FB1", ScenePositionSeenFromProduct = "Living room" }));
+
+        // Blocking poll for value changes (non-streaming).
+        A.CallTo(() => service.WaitForResourceValueChanges(A<int>._)).Returns(Task.FromResult(sampleValues));
+
+        // Yield a live change-stream for desk demos (TC-3 of the demonstration test plan): without a
+        // controller GetResourceValueChanges has nothing to poll, so emit a synthetic ResourceValue
+        // roughly once per second until StopStream cancels. This lets the Start/Stop streaming GUI be
+        // exercised in the mocked environment.
+        A.CallTo(() => service.GetResourceValueChanges(A<IReadOnlyList<int>>._, A<CancellationToken>._, A<int>._))
+            .ReturnsLazily((IReadOnlyList<int> resourceIds, CancellationToken ct, int timeout) =>
+                DemoResourceValueChangeStream(resourceIds, ct));
+
         return service;
     }
 
+    /// <summary>
+    /// A demo change-stream for the mocked environment: yields a fresh <see cref="ResourceValue"/> about
+    /// once per second - cycling through the requested resource IDs and incrementing the value so each
+    /// arrival is visibly distinct - until the token is cancelled by StopStream. Mirrors the real
+    /// long-poll's "append as values change" behaviour without a controller. <see cref="Task.Delay(TimeSpan,
+    /// CancellationToken)"/> observes the token, so cancellation ends the stream promptly (StartStream
+    /// treats the resulting OperationCanceledException as a normal end).
+    /// </summary>
+    private static async IAsyncEnumerable<ResourceValue> DemoResourceValueChangeStream(
+        IReadOnlyList<int> resourceIds,
+        [EnumeratorCancellation] CancellationToken ct)
+    {
+        int[] ids = resourceIds != null && resourceIds.Count > 0 ? resourceIds.ToArray() : new[] { 1 };
+        int counter = 0;
+        while (!ct.IsCancellationRequested)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(1), ct);
+            int id = ids[counter % ids.Length];
+            yield return new ResourceValue
+            {
+                ResourceID = id,
+                Value = new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.INT, IntValue = counter }
+            };
+            counter++;
+        }
+    }
+
     public static IConfigurationService SetupConfigurationService(IhcSettings settings)
-        => CreateEmptyFake<IConfigurationService>();
+    {
+        var service = A.Fake<IConfigurationService>();
+
+        // Realistic system info so "Save Result to File…" (TC-1 step 4) writes a representative
+        // SystemInfo(...) text instead of an empty-fake dummy with all-default fields.
+        A.CallTo(() => service.GetSystemInfo()).Returns(Task.FromResult(new SystemInfo
+        {
+            Uptime = 86_400_000, // 1 day in ms
+            Realtimeclock = new DateTimeOffset(2025, 10, 4, 17, 6, 0, TimeSpan.Zero),
+            SerialNumber = "MOCK-0001",
+            ProductionDate = "2024-01-15",
+            Brand = "Mock Brand",
+            Version = "4.0.0",
+            HWRevision = "1",
+            SWDate = new DateTimeOffset(2024, 9, 1, 0, 0, 0, TimeSpan.Zero),
+            DatalineVersion = "2.0",
+            RFModuleSoftwareVersion = "1.5",
+            RFModuleSerialNumber = "RF-0001",
+            ApplicationIsWithoutViewer = true,
+            SmsModemSoftwareVersion = "1.0",
+            LedDimmerSoftwareVersion = "1.0"
+        }));
+
+        // User log.
+        A.CallTo(() => service.GetUserLog(A<string>._)).Returns(Task.FromResult<IReadOnlyList<string>>(new List<string>
+        {
+            "2025-10-04 17:00 User admin logged in",
+            "2025-10-04 17:05 Project stored",
+        }));
+
+        // Network / DNS / WLAN.
+        A.CallTo(() => service.GetNetworkSettings()).Returns(Task.FromResult(new NetworkSettings
+        {
+            IpAddress = "192.168.1.10", Netmask = "255.255.255.0", Gateway = "192.168.1.1", HttpPort = 80, HttpsPort = 443
+        }));
+        A.CallTo(() => service.GetDNSServers()).Returns(Task.FromResult(new DNSServers { PrimaryDNS = "8.8.8.8", SecondaryDNS = "8.8.4.4" }));
+        A.CallTo(() => service.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings
+        {
+            Enabled = true, Ssid = "HomeNetwork", Key = "secret", SecurityType = "WPA2", EncryptionType = "AES",
+            IpAddress = "192.168.1.11", Netmask = "255.255.255.0", Gateway = "192.168.1.1"
+        }));
+        A.CallTo(() => service.GetWLanInterface()).Returns(Task.FromResult(new WLanInterface { Connected = true, Name = "wlan0", Ssid = "HomeNetwork", Quality = "Good" }));
+        A.CallTo(() => service.GetWLanScan()).Returns(Task.FromResult<IReadOnlyList<WLanCell>>(new List<WLanCell>
+        {
+            new WLanCell { Ssid = "HomeNetwork", HasEncryption = true, SecurityType = "WPA2", EncryptionType = "AES" },
+            new WLanCell { Ssid = "GuestNetwork", HasEncryption = false, SecurityType = "", EncryptionType = "" },
+        }));
+
+        // SMTP / email.
+        A.CallTo(() => service.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings
+        {
+            Hostname = "smtp.mock.com", Hostport = 587, Username = "alert@mock.com", Password = "secret",
+            Ssl = true, SendLowBatteryNotification = true, SendLowBatteryNotificationRecipient = "admin@mock.com"
+        }));
+        A.CallTo(() => service.TestSendMessage(A<string>._, A<string>._, A<string>._)).Returns(Task.FromResult(true));
+        A.CallTo(() => service.GetEmailControlEnabled()).Returns(Task.FromResult(true));
+        A.CallTo(() => service.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings
+        {
+            ServerIpAddress = "pop.mock.com", ServerPortNumber = 995, Pop3Username = "ctrl",
+            Pop3Password = "secret", EmailAddress = "control@mock.com", PollInterval = 5,
+            RemoveEmailsAfterUsage = true, Ssl = true
+        }));
+
+        // Web access control.
+        A.CallTo(() => service.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl
+        {
+            UsbLoginRequired = false, AdministratorUsb = true, AdministratorInternal = true, AdministratorExternal = false,
+            OpenapiInternal = true, OpenapiUsed = true
+        }));
+
+        // Void ops (ClearUserLog, DelayedReboot, SetNetworkSettings, SetDNSServers, SetWLanSettings,
+        // SetSMTPSettings, TestSettingsNow, SetEmailControlEnabled, SetEmailControlSettings,
+        // SetWebAccessControl, SetServerLanguage) return a completed Task by default via FakeItEasy.
+        return service;
+    }
 
     public static IOpenAPIService SetupOpenAPIService(IhcSettings settings)
-        => CreateEmptyFake<IOpenAPIService>();
+    {
+        var service = A.Fake<IOpenAPIService>();
+
+        IReadOnlyList<ResourceValue> sampleValues = new List<ResourceValue>
+        {
+            new ResourceValue { ResourceID = 1002, TypeString = "dataline_output", IsValueRuntime = true,
+                Value = new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.BOOL, BoolValue = true } },
+        };
+
+        A.CallTo(() => service.GetFWVersion()).Returns(Task.FromResult(new FWVersion { MajorVersion = 4, MinorVersion = 0, BuildVersion = 1284 }));
+        A.CallTo(() => service.GetAPIVersion()).Returns(Task.FromResult("4.0.0"));
+        A.CallTo(() => service.GetUptime()).Returns(Task.FromResult(TimeSpan.FromHours(36)));
+        A.CallTo(() => service.GetTime()).Returns(Task.FromResult(new DateTimeOffset(2025, 10, 4, 17, 6, 0, TimeSpan.Zero)));
+        A.CallTo(() => service.IsIHCProjectAvailable()).Returns(Task.FromResult(true));
+        A.CallTo(() => service.GetDatalineInputIDs()).Returns(Task.FromResult<IReadOnlyList<int>>(new List<int> { 1001, 1004 }));
+        A.CallTo(() => service.GetDatalineOutputIDs()).Returns(Task.FromResult<IReadOnlyList<int>>(new List<int> { 1002, 1005 }));
+        A.CallTo(() => service.GetValues(A<IReadOnlyList<int>>._)).Returns(Task.FromResult(sampleValues));
+        A.CallTo(() => service.SetValues(A<IReadOnlyList<ResourceValue>>._)).Returns(Task.FromResult(true));
+        A.CallTo(() => service.WaitForEvents(A<int>._)).Returns(Task.FromResult(new EventPackage
+        {
+            ResourceValueEvents = sampleValues.ToArray(),
+            ControllerExecutionRunning = true,
+            SubscriptionAmount = sampleValues.Count
+        }));
+        A.CallTo(() => service.GetProjectInfo()).Returns(Task.FromResult(MockProjectInfo()));
+        A.CallTo(() => service.GetIHCProjectNumberOfSegments()).Returns(Task.FromResult(1));
+        A.CallTo(() => service.GetIHCProjectSegmentationSize()).Returns(Task.FromResult(1_048_576));
+        A.CallTo(() => service.GetIHCProjectSegment(A<int>._, A<int>._, A<int>._)).Returns(Task.FromResult(
+            new ProjectSegment { Data = System.Text.Encoding.UTF8.GetBytes("<?xml version=\"1.0\"?>") }));
+        A.CallTo(() => service.GetSceneProjectInfo()).Returns(Task.FromResult(MockSceneProjectInfo()));
+        A.CallTo(() => service.GetSceneProjectSegmentationSize()).Returns(Task.FromResult(1_048_576));
+        A.CallTo(() => service.GetSceneProjectSegment(A<int>._)).Returns(Task.FromResult(new SceneProjectSegment { Data = new byte[] { 0x01, 0x02, 0x03, 0x04 } }));
+
+        // Live demo change-stream (mirrors ResourceInteractionService's stream for the Start/Stop GUI).
+        A.CallTo(() => service.GetResourceValueChanges(A<IReadOnlyList<int>>._, A<CancellationToken>._, A<int>._))
+            .ReturnsLazily((IReadOnlyList<int> resourceIds, CancellationToken ct, int timeout) =>
+                DemoResourceValueChangeStream(resourceIds, ct));
+
+        // Void ops (Authenticate x2, DoReboot, Ping, EnableSubscription, DisableSubscription) return a
+        // completed Task by default via FakeItEasy.
+        return service;
+    }
 
     public static INotificationManagerService SetupNotificationManagerService(IhcSettings settings)
-        => CreateEmptyFake<INotificationManagerService>();
+    {
+        var service = A.Fake<INotificationManagerService>();
+
+        A.CallTo(() => service.GetMessages()).Returns(Task.FromResult<IReadOnlyList<NotificationMessage>>(new List<NotificationMessage>
+        {
+            new NotificationMessage { Date = new DateTimeOffset(2025, 10, 4, 9, 0, 0, TimeSpan.Zero),
+                NotificationType = "email", Recipient = "user@mock.com", Sender = "system@ihc.local",
+                Subject = "System Alert", Body = "Temperature threshold exceeded.", Delivered = true },
+            new NotificationMessage { Date = new DateTimeOffset(2025, 10, 4, 10, 30, 0, TimeSpan.Zero),
+                NotificationType = "sms", Recipient = "+4512345678", Sender = "system@ihc.local",
+                Subject = "Door opened", Body = "Front door was opened.", Delivered = false },
+        }));
+
+        // ClearMessages() is a void op - FakeItEasy returns a completed Task by default.
+        return service;
+    }
 
     public static IMessageControlLogService SetupMessageControlLogService(IhcSettings settings)
-        => CreateEmptyFake<IMessageControlLogService>();
+    {
+        var service = A.Fake<IMessageControlLogService>();
+
+        A.CallTo(() => service.GetEvents()).Returns(Task.FromResult<IReadOnlyList<LogEventEntry>>(new List<LogEventEntry>
+        {
+            new LogEventEntry { Date = new DateTimeOffset(2025, 10, 4, 8, 15, 0, TimeSpan.Zero),
+                ControlType = "email", LogEntryType = 1, SenderAddress = "ctrl@mock.com",
+                SenderAddressDescription = "Email control handler", TriggerString = "lights_on",
+                AuthenticationTypeAsString = "Internal", ActionTypeAsString = "Activate" },
+        }));
+
+        // EmptyLog() is a void op - FakeItEasy returns a completed Task by default.
+        return service;
+    }
 
     public static IModuleService SetupModuleService(IhcSettings settings)
     {
         var service = A.Fake<IModuleService>();
+
+        A.CallTo(() => service.GetSceneProjectInfo()).Returns(Task.FromResult(MockSceneProjectInfo()));
+        A.CallTo(() => service.GetSceneProjectSegmentationSize()).Returns(Task.FromResult(1_048_576));
+        A.CallTo(() => service.GetSceneProject(A<string>._)).ReturnsLazily((string name) =>
+            Task.FromResult(new SceneProject(string.IsNullOrEmpty(name) ? "mock.icw" : name, new byte[] { 0x01, 0x02, 0x03, 0x04 })));
+        A.CallTo(() => service.GetSceneProjectSegment(A<string>._, A<int>._)).ReturnsLazily((string name, int segment) =>
+            Task.FromResult(new SceneProject(string.IsNullOrEmpty(name) ? "mock.icw" : name, new byte[] { 0x01, 0x02 })));
 
         // Accept a stored scene project picked via the Lab's file picker (StoreSceneProject /
         // StoreSceneProjectSegment take a SceneProject : BinaryFile). Report success when bytes were supplied.
@@ -396,17 +648,76 @@ public class IhcFakeSetup
         A.CallTo(() => service.StoreSceneProjectSegment(A<SceneProject>._, A<bool>._, A<bool>._))
             .ReturnsLazily((SceneProject project, bool isFirst, bool isLast) => Task.FromResult(project?.Data != null));
 
+        // ClearAll() is a void op - FakeItEasy returns a completed Task by default.
         return service;
     }
 
     public static ITimeManagerService SetupTimeManagerService(IhcSettings settings)
-        => CreateEmptyFake<ITimeManagerService>();
+    {
+        var service = A.Fake<ITimeManagerService>();
+
+        A.CallTo(() => service.GetCurrentLocalTime()).Returns(Task.FromResult(new DateTimeOffset(2025, 10, 4, 19, 6, 0, TimeSpan.FromHours(2))));
+        A.CallTo(() => service.GetUptime()).Returns(Task.FromResult(TimeSpan.FromHours(36)));
+        A.CallTo(() => service.GetSettings()).Returns(Task.FromResult(new TimeManagerSettings
+        {
+            SynchroniseTimeAgainstServer = true, UseDST = true, GmtOffsetInHours = 1,
+            ServerName = "time.nist.gov", SyncIntervalInHours = 24,
+            TimeAndDateInUTC = new DateTimeOffset(2025, 10, 4, 17, 6, 0, TimeSpan.Zero),
+            OnlineCalendarUpdateOnline = true, OnlineCalendarCountry = "DK", OnlineCalendarValidUntil = 2026
+        }));
+        A.CallTo(() => service.SetSettings(A<TimeManagerSettings>._)).Returns(Task.FromResult(true));
+        A.CallTo(() => service.GetTimeFromServer()).Returns(Task.FromResult(new TimeServerConnectionResult
+        {
+            ConnectionWasSuccessful = true,
+            DateFromServer = new DateTimeOffset(2025, 10, 4, 17, 6, 0, TimeSpan.Zero),
+            ConnectionFailedDueToUnknownHost = false, ConnectionFailedDueToOtherErrors = false
+        }));
+
+        return service;
+    }
 
     public static IAirlinkManagementService SetupAirlinkManagementService(IhcSettings settings)
-        => CreateEmptyFake<IAirlinkManagementService>();
+    {
+        var service = A.Fake<IAirlinkManagementService>();
+
+        var device = new RFDevice { BatteryLevel = 85, SignalStrength = 18, DeviceType = 201, SerialNumber = 5678901234L, Version = 2, Detected = true };
+
+        A.CallTo(() => service.EnterRFConfiguration()).Returns(Task.FromResult(true));
+        A.CallTo(() => service.ExitRFConfiguration()).Returns(Task.FromResult(true));
+        A.CallTo(() => service.EnterRFTest()).Returns(Task.FromResult(true));
+        A.CallTo(() => service.ExitRFTest()).Returns(Task.FromResult(true));
+        A.CallTo(() => service.TestRFActuatorWithSerialNumber(A<long>._)).Returns(Task.FromResult(true));
+        A.CallTo(() => service.GetDevicesRunningOutOfBattery()).Returns(Task.FromResult<IReadOnlyList<int>>(new List<int> { 2001 }));
+        A.CallTo(() => service.WaitForDeviceDetected(A<int>._)).Returns(Task.FromResult(device));
+        A.CallTo(() => service.WaitForDeviceTestResult(A<int>._)).Returns(Task.FromResult(device));
+        A.CallTo(() => service.GetDetectedDeviceList()).Returns(Task.FromResult<IReadOnlyList<RFDevice>>(new List<RFDevice> { device }));
+        A.CallTo(() => service.GetBatteryLevel(A<int>._)).Returns(Task.FromResult(85));
+
+        return service;
+    }
 
     public static IInternalTestService SetupInternalTestService(IhcSettings settings)
-        => CreateEmptyFake<IInternalTestService>();
+    {
+        var service = A.Fake<IInternalTestService>();
+
+        A.CallTo(() => service.GetAirlinkVersion()).Returns(Task.FromResult("AL-1.2.3"));
+        A.CallTo(() => service.GetIOBoardVersion()).Returns(Task.FromResult("IO-2.0.1"));
+        A.CallTo(() => service.GetWiserBoardVersion()).Returns(Task.FromResult("WB-3.1.0"));
+        A.CallTo(() => service.GetWiserBoardMACAddress()).Returns(Task.FromResult("00:1A:2B:3C:4D:5E"));
+        A.CallTo(() => service.GetWiserBoardHWVersion()).Returns(Task.FromResult("HW-1"));
+        A.CallTo(() => service.GetWiserBoardSerialNumber()).Returns(Task.FromResult("WSN-0001"));
+        A.CallTo(() => service.GetTimeAndDate()).Returns(Task.FromResult(new DateTimeOffset(2025, 10, 4, 17, 6, 0, TimeSpan.Zero)));
+        A.CallTo(() => service.BurnIO()).Returns(Task.FromResult(true));
+        A.CallTo(() => service.TestSdCard()).Returns(Task.FromResult(true));
+        A.CallTo(() => service.TestIOBoard()).Returns(Task.FromResult(true));
+        A.CallTo(() => service.ReadUsbHost()).Returns(Task.FromResult(true));
+        A.CallTo(() => service.SendRS485Data(A<string>._)).Returns(Task.FromResult(true));
+        A.CallTo(() => service.ReadRS485Data(A<string>._)).Returns(Task.FromResult(true));
+
+        // Void ops (SendAirlinkPacket, ProductionTestPassed, SetTimeAndDate, and all LED Turn* ops) return a
+        // completed Task by default via FakeItEasy.
+        return service;
+    }
 
     public static ISmsModemService SetupSmsModemService(IhcSettings settings)
     {
@@ -430,7 +741,36 @@ public class IhcFakeSetup
                 SendLEDDimmerErrorNotification = false
             }));
 
+        A.CallTo(() => service.GetSmsModemStatus()).Returns(Task.FromResult(new SmsModemStatus
+        {
+            AntennaCoverage = "24", MobileOperator = "Telia", ModemStatus = "Ready", MobileNumber = "+4540123456"
+        }));
+        A.CallTo(() => service.GetSmsModemInfo()).Returns(Task.FromResult(new SmsModemInfo
+        {
+            FirmwareVersion = "1.10.45", GSMChipVersion = "SIM800H", HardwareRevision = "v2.1",
+            ProductionDate = "2024-01-15", Detected = true, SerialNumber = "SN12345678", IMEINumber = "354856070135231"
+        }));
+
+        // ResetSmsModem() is a void op - FakeItEasy returns a completed Task by default.
         return service;
     }
+
+    // Canonical mock fixtures shared by the services that expose the same data, so the literal is defined once
+    // (the ControllerService and OpenAPIService project info; the OpenAPIService and ModuleService scene info).
+
+    private static ProjectInfo MockProjectInfo() => new ProjectInfo
+    {
+        CustomerName = "Mock Customer", InstallerName = "Mock Installer", ProjectNumber = "12345",
+        VisualMajorVersion = 4, VisualMinorVersion = 0, ProjectMajorRevision = 1, ProjectMinorRevision = 2,
+        Lastmodified = new DateTimeOffset(2025, 10, 4, 17, 6, 0, TimeSpan.Zero)
+    };
+
+    private static SceneProjectInfo MockSceneProjectInfo() => new SceneProjectInfo
+    {
+        Name = "Mock Scene", Size = 4096, Filepath = "scenes/mock.icw", Remote = false, Version = "1.0",
+        Created = new DateTimeOffset(2025, 9, 1, 0, 0, 0, TimeSpan.Zero),
+        LastModified = new DateTimeOffset(2025, 10, 4, 17, 6, 0, TimeSpan.Zero),
+        Description = "Mock scene project", Crc = 0x1A2B3C4D
+    };
 }
     

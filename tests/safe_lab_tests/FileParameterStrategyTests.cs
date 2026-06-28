@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using NUnit.Framework;
 using Ihc;
@@ -44,6 +45,25 @@ namespace Ihc.Tests
 
             Assert.That(control, Is.InstanceOf<BinaryFilePicker>());
             Assert.That(control.Name, Is.EqualTo("TestControl"));
+        }
+
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
+        public void CreateControl_NoDescription_HasNoTooltip()
+        {
+            // FOUND-09: file pickers use the shared tooltip rule - no tooltip when there is no description.
+            var field = new FieldMetaData(
+                "project",
+                typeof(SceneProject),
+                [
+                    new FieldMetaData("Data", typeof(byte[]), [], ""),
+                    new FieldMetaData("Filename", typeof(string), [], "")
+                ],
+                "");
+
+            var control = strategy.CreateControl(field, "TestControl");
+
+            Assert.That(ToolTip.GetTip(control), Is.Null);
         }
 
         [AvaloniaTest]

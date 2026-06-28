@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using NUnit.Framework;
 using Ihc;
+using IhcLab;
 using IhcLab.ParameterControls.Strategies;
 
 namespace Ihc.Tests
@@ -20,11 +21,14 @@ namespace Ihc.Tests
         [SetUp]
         public void SetUp() => strategy = new TimeSpanParameterStrategy();
 
+        // The strategy now renders a DurationInput whose Content is the StackPanel holding the text box + error label.
+        private static StackPanel Inner(Control control) => (StackPanel)((DurationInput)control).Content!;
+
         private static TextBox InputBox(Control control) =>
-            ((StackPanel)control).Children.OfType<TextBox>().First();
+            Inner(control).Children.OfType<TextBox>().First();
 
         private static TextBlock ErrorBlock(Control control) =>
-            ((StackPanel)control).Children.OfType<TextBlock>().First();
+            Inner(control).Children.OfType<TextBlock>().First();
 
         [Test]
         public void CanHandle_TimeSpan_ReturnsTrue()

@@ -172,7 +172,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             activity?.SetError(ex);
-            viewModel?.SetError(nameof(MainWindow) + " constructor error", ex);
+            viewModel?.SetError("Application startup error", ex);
             RunButton.IsEnabled = false;
         }
     }
@@ -202,7 +202,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             activity?.SetError(ex);
-            viewModel?.SetError(nameof(Start) + " error", ex);
+            viewModel?.SetError("Startup error", ex);
         }
 
         return this;
@@ -219,7 +219,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            HandleOperationError(activity, "LoginDialog", ex);
+            HandleOperationError(activity, "Login setup", ex);
         }
     }
       
@@ -260,7 +260,6 @@ public partial class MainWindow : Window
         using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow) + "." + nameof(LoginUpdated), ActivityKind.Internal);
 
         ihcDomain?.UpdateSetup();
-        this.Title = "IHC Lab : Endpoint set to " + ihcDomain?.IhcSettings.Endpoint ?? "(no endpoint set)";
 
         if (ihcDomain != null)
         {
@@ -282,11 +281,14 @@ public partial class MainWindow : Window
                 }
 
                 activity?.SetTag("labappservice.configured.service_count", labAppService.Services.Length);
+
+                // Report the new endpoint in the title only once configuration has actually succeeded.
+                this.Title = "IHC Lab : Endpoint set to " + (ihcDomain.IhcSettings.Endpoint ?? "(no endpoint set)");
             }
             catch (Exception ex)
             {
                 activity?.SetError(ex);
-                // ViewModel will handle clearing collections on failure
+                viewModel?.SetError("Service configuration failed - check endpoint and credentials", ex);
             }
         }
 
@@ -324,6 +326,10 @@ public partial class MainWindow : Window
                 return;
             }
 
+            // Disable RUN for the duration of a normal (non-streaming) execute so it cannot be double-clicked. The
+            // streaming branch above returns first, leaving its button enabled to act as STOP.
+            RunButton.IsEnabled = false;
+
             activity?.SetParameters(
                 (nameof(sender), sender),
                 (nameof(e), e)
@@ -359,10 +365,11 @@ public partial class MainWindow : Window
             await SetOutput(operationResult.DisplayResult, operationResult.ReturnType);
         } catch (Exception ex)
         {
-           HandleOperationError(activity, nameof(RunButtonClickHandler), ex);
+           HandleOperationError(activity, "Run operation", ex);
         } finally
         {
             this.Cursor = Cursor.Default;
+            RunButton.IsEnabled = true;
         }
     }
 
@@ -377,6 +384,7 @@ public partial class MainWindow : Window
 
         isStreaming = true;
         RunButton.Content = "STOP";
+        ToolTip.SetTip(RunButton, "Click to stop streaming");
         this.Cursor = Cursor.Default; // streaming is long-running, not a brief wait
         viewModel?.SetOutput("(streaming - click STOP to end)\n", typeof(string));
 
@@ -394,19 +402,24 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            HandleOperationError(null, nameof(RunStreamingOperation), ex);
+            HandleOperationError(null, "Streaming operation", ex);
         }
         finally
         {
             isStreaming = false;
             RunButton.Content = "RUN";
+            ToolTip.SetTip(RunButton, "Execute IHC operation");
         }
     }
 
     // Cap the retained streaming output so an indefinite long-poll (e.g. GetResourceValueChanges) cannot grow the
-    // bound text without bound. Keeps roughly the most recent MaxStreamOutputChars characters, trimming whole
-    // oldest lines and marking the cut so the truncation is visible (not silent).
+    // bound text without bound. When the cap is exceeded the buffer is trimmed (at a whole-line boundary) back to
+    // StreamRetainChars and the cut is marked so the truncation is visible (not silent). Trimming a chunk rather
+    // than a single oldest line matters because, once saturated, this runs on every streamed item: a per-item
+    // single-line trim would rescan and recopy the whole buffer for each item (O(items x buffer)), whereas
+    // trimming back to StreamRetainChars amortises that cost over the many items it takes to refill the headroom.
     private const int MaxStreamOutputChars = 100_000;
+    private const int StreamRetainChars = 75_000;
     private const string StreamTrimMarker = "... (older output trimmed) ...\n";
 
     private static string AppendStreamLine(string current, string line)
@@ -415,7 +428,7 @@ public partial class MainWindow : Window
         if (text.Length <= MaxStreamOutputChars)
             return text;
 
-        int cut = text.Length - MaxStreamOutputChars;
+        int cut = text.Length - StreamRetainChars;
         int newlineIndex = text.IndexOf('\n', cut);
         string tail = newlineIndex >= 0 ? text.Substring(newlineIndex + 1) : text.Substring(cut);
         return StreamTrimMarker + tail;
@@ -538,7 +551,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            HandleOperationError(activity, "AboutMenu", ex);
+            HandleOperationError(activity, "About dialog", ex);
         }
     }
 

@@ -69,10 +69,7 @@ public class NumericParameterStrategy : ParameterControlStrategyBase
     /// Subscribes to the NumericUpDown's ValueChanged event.
     /// </summary>
     public override void SubscribeToValueChanged(Control control, EventHandler handler)
-    {
-        if (control is NumericUpDown numericUpDown)
-            numericUpDown.ValueChanged += (s, e) => handler(numericUpDown, EventArgs.Empty);
-    }
+        => SubscribeLeafChange(control, handler);
 
     /// <summary>
     /// Extracts the numeric value from a NumericUpDown control.
