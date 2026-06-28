@@ -61,6 +61,21 @@ namespace Ihc.Tests
             Assert.That(picker.FileTypeExtensions, Is.EqualTo(new[] { "icw", "icz" }));
         }
 
+        /// <summary>
+        /// StoreSceneProject upload: the upload button names the concrete file type ("Upload *.icw/*.icz File")
+        /// instead of the misleading generic "Upload Binary File", so the user can see what the picker accepts.
+        /// </summary>
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
+        public void CreateControl_SceneProject_UploadButtonNamesIcwIczExtensions()
+        {
+            var control = strategy.CreateControl(SceneProjectField(), "TestControl");
+
+            var uploadButton = control.FindControl<Button>("UploadButton");
+            Assert.That(uploadButton, Is.Not.Null, "BinaryFilePicker must expose its UploadButton");
+            Assert.That(uploadButton!.Content, Is.EqualTo("Upload *.icw/*.icz File"));
+        }
+
         private static FieldMetaData ProjectFileField() => new FieldMetaData(
             "project",
             typeof(ProjectFile),
@@ -84,6 +99,22 @@ namespace Ihc.Tests
             var picker = (TextFilePicker)control;
             Assert.That(picker.TextEncoding, Is.EqualTo(ProjectFile.Encoding), "project upload must read as ISO-8859-1");
             Assert.That(picker.FileTypeExtension, Is.EqualTo("vis"), "project upload dialog must default to *.vis");
+        }
+
+        /// <summary>
+        /// StoreProject upload: the upload button names the concrete project file type ("Upload *.vis File")
+        /// instead of the misleading generic "Upload Text File", so the user can see they are uploading a .vis
+        /// project file rather than any text file.
+        /// </summary>
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
+        public void CreateControl_ProjectFile_UploadButtonNamesVisExtension()
+        {
+            var control = strategy.CreateControl(ProjectFileField(), "TestControl");
+
+            var uploadButton = control.FindControl<Button>("UploadButton");
+            Assert.That(uploadButton, Is.Not.Null, "TextFilePicker must expose its UploadButton");
+            Assert.That(uploadButton!.Content, Is.EqualTo("Upload *.vis File"));
         }
 
         [AvaloniaTest]

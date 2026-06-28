@@ -79,9 +79,20 @@ public partial class TextFilePicker : UserControl, TextFile
 
     /// <summary>
     /// Optional canonical file extension (without leading dot, e.g. "vis") used to default the upload dialog's
-    /// file-type filter to that type. Null/empty keeps the generic all-files behaviour.
+    /// file-type filter to that type and to name the upload button after it (e.g. "Upload *.vis File"). Null/empty
+    /// keeps the generic all-files behaviour and the generic "Upload Text File" caption.
     /// </summary>
-    public string? FileTypeExtension { get; set; }
+    public string? FileTypeExtension
+    {
+        get => fileTypeExtension;
+        set
+        {
+            fileTypeExtension = value;
+            UpdateUploadButtonCaption();
+        }
+    }
+
+    private string? fileTypeExtension;
 
     public TextFilePicker()
     {
@@ -92,7 +103,23 @@ public partial class TextFilePicker : UserControl, TextFile
     {
         base.OnAttachedToVisualTree(e);
         fileStatusLabel = this.FindControl<TextBlock>("FileStatusLabel");
+        UpdateUploadButtonCaption();
         UpdateStatusLabel();
+    }
+
+    /// <summary>
+    /// Names the upload button after the picked file's type so it reads "Upload *.vis File" rather than the generic
+    /// "Upload Text File" when a canonical extension is known. Mirrors the open dialog's title and the byte-status
+    /// label so all three describe the same type. Safe to call before the control is attached.
+    /// </summary>
+    private void UpdateUploadButtonCaption()
+    {
+        var uploadButton = this.FindControl<Button>("UploadButton");
+        if (uploadButton == null)
+            return;
+
+        var extensions = string.IsNullOrWhiteSpace(fileTypeExtension) ? null : new[] { fileTypeExtension };
+        uploadButton.Content = UploadFilePickerOptions.BuildUploadButtonCaption(extensions, "Text");
     }
 
     private async void OnUploadButtonClick(object? sender, RoutedEventArgs e)

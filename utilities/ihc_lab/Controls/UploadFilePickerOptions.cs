@@ -21,10 +21,7 @@ internal static class UploadFilePickerOptions
     /// <param name="fallbackNoun">Noun used in the generic title when no extension applies (e.g. "Binary", "Text").</param>
     public static FilePickerOpenOptions Build(IEnumerable<string>? extensions, string fallbackNoun)
     {
-        var patterns = (extensions ?? Array.Empty<string>())
-            .Where(e => !string.IsNullOrWhiteSpace(e))
-            .Select(e => $"*.{e.Trim()}")
-            .ToArray();
+        var patterns = NormalizePatterns(extensions);
 
         if (patterns.Length == 0)
             return new FilePickerOpenOptions
@@ -44,5 +41,28 @@ internal static class UploadFilePickerOptions
                 FilePickerFileTypes.All
             }
         };
+    }
+
+    /// <summary>
+    /// Builds the upload button's caption for a picker accepting the given canonical extensions, mirroring the
+    /// dialog title: it names the concrete type when one or more extensions are known (e.g. "Upload *.vis File" or
+    /// "Upload *.icw/*.icz File") and otherwise falls back to a generic "Upload {fallbackNoun} File". This keeps the
+    /// button honest about what the picker accepts instead of always claiming a generic "Text"/"Binary" file.
+    /// </summary>
+    /// <param name="extensions">Canonical extensions without leading dot (or null/empty for the generic caption).</param>
+    /// <param name="fallbackNoun">Noun used in the generic caption when no extension applies (e.g. "Binary", "Text").</param>
+    public static string BuildUploadButtonCaption(IEnumerable<string>? extensions, string fallbackNoun)
+    {
+        var patterns = NormalizePatterns(extensions);
+        string descriptor = patterns.Length == 0 ? fallbackNoun : string.Join("/", patterns);
+        return $"Upload {descriptor} File";
+    }
+
+    private static string[] NormalizePatterns(IEnumerable<string>? extensions)
+    {
+        return (extensions ?? Array.Empty<string>())
+            .Where(e => !string.IsNullOrWhiteSpace(e))
+            .Select(e => $"*.{e.Trim()}")
+            .ToArray();
     }
 }

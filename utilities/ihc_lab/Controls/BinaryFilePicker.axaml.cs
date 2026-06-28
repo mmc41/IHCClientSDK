@@ -59,9 +59,20 @@ public partial class BinaryFilePicker : UserControl, BinaryFile
 
     /// <summary>
     /// Optional canonical file extensions (without leading dot, e.g. "icw"/"icz") used to default the upload
-    /// dialog's file-type filter. Null/empty keeps the generic all-files behaviour.
+    /// dialog's file-type filter and to name the upload button after them (e.g. "Upload *.icw/*.icz File").
+    /// Null/empty keeps the generic all-files behaviour and the generic "Upload Binary File" caption.
     /// </summary>
-    public string[]? FileTypeExtensions { get; set; }
+    public string[]? FileTypeExtensions
+    {
+        get => fileTypeExtensions;
+        set
+        {
+            fileTypeExtensions = value;
+            UpdateUploadButtonCaption();
+        }
+    }
+
+    private string[]? fileTypeExtensions;
 
     public BinaryFilePicker()
     {
@@ -72,7 +83,22 @@ public partial class BinaryFilePicker : UserControl, BinaryFile
     {
         base.OnAttachedToVisualTree(e);
         fileStatusLabel = this.FindControl<TextBlock>("FileStatusLabel");
+        UpdateUploadButtonCaption();
         UpdateStatusLabel();
+    }
+
+    /// <summary>
+    /// Names the upload button after the picked file's type so it reads "Upload *.icw/*.icz File" rather than the
+    /// generic "Upload Binary File" when canonical extensions are known. Mirrors the open dialog's title and the
+    /// byte-status label so all three describe the same type. Safe to call before the control is attached.
+    /// </summary>
+    private void UpdateUploadButtonCaption()
+    {
+        var uploadButton = this.FindControl<Button>("UploadButton");
+        if (uploadButton == null)
+            return;
+
+        uploadButton.Content = UploadFilePickerOptions.BuildUploadButtonCaption(fileTypeExtensions, "Binary");
     }
 
     private async void OnUploadButtonClick(object? sender, RoutedEventArgs e)
