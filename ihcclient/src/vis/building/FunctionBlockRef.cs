@@ -117,6 +117,18 @@ namespace Ihc.Projects
             return new ResourceRef(name, id);
         }
 
+        /// <summary>
+        /// Opens a <see cref="ProgramBuilder"/> over this block's single <c>program_simple</c> to author its logic by
+        /// hand — the entry for an empty ("Tom blok") block, whose <c>fb.def</c> skeleton provides exactly one empty
+        /// program. Throws if the block has no or several programs (a multi-program catalog block; address one of
+        /// those by id via <see cref="ProjectEditor.Program"/>).
+        /// </summary>
+        public ProgramBuilder Program()
+        {
+            ElementId programsId = editor.RequireChildId(Id, "programs");
+            return editor.Program(editor.RequireSoleChildId(programsId, "program_simple"));
+        }
+
         // Pin (I/O) resource types are container-bound: they may live only under inputs/outputs, never under a
         // value-variable container (settings/internalsettings). Value types may live under any container. §6.3.1.
         private static readonly HashSet<string> PinTypes = new(StringComparer.Ordinal)

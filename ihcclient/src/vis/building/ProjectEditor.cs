@@ -86,6 +86,23 @@ namespace Ihc.Projects
         }
 
         /// <summary>
+        /// Opens a <see cref="ProgramBuilder"/> over an existing <c>program_simple</c> (addressed by id) to author its
+        /// events and nested logic by hand — the id-addressed program-authoring entry a GUI drives after selecting a
+        /// program node. The target must be a <c>program_simple</c> owning the <c>events</c>/<c>actions</c> containers
+        /// an empty function block's <c>fb.def</c> skeleton provides.
+        /// </summary>
+        public ProgramBuilder Program(ElementId programSimpleId)
+        {
+            ProjectElement program = Require(programSimpleId);
+            if (program.Tag != "program_simple")
+            {
+                throw new InvalidOperationException(
+                    $"Element {programSimpleId.ToToken()} is a <{program.Tag}>, not a <program_simple>.");
+            }
+            return new ProgramBuilder(this, programSimpleId);
+        }
+
+        /// <summary>
         /// Resolves an id to a generic <see cref="ElementRef"/> handle — the id-addressed, write-side counterpart
         /// of <see cref="Project.FindById"/> and the foundation of a GUI selection model. Unlike the name-addressed
         /// <see cref="Group"/>/<see cref="GroupRef.Product"/>/<see cref="GroupRef.FunctionBlock"/> lookups it
@@ -500,6 +517,41 @@ namespace Ihc.Projects
 
         internal void SetAttributeById(ElementId id, string name, string value) =>
             Mutate(id, e => SetAttribute(e, name, value));
+
+        // ----- generic child authoring (called by ProgramBuilder) -----
+
+        /// <summary>
+        /// Allocates a fresh id for <paramref name="tag"/> off the project counter, builds the element with that id
+        /// plus <paramref name="attrs"/>, appends it as the last child of <paramref name="parentId"/>, and returns the
+        /// new id. The un-upserted counterpart of <see cref="UpsertResourceChild"/> — programs legitimately hold
+        /// repeated same-named leaves (two "%P = ON" actions), so every call adds a distinct node.
+        /// </summary>
+        internal ElementId AllocateChild(ElementId parentId, string tag, params (string Name, string Value)[] attrs)
+        {
+            ElementId id = allocator.Allocate(TypeCodeFor(tag));
+            AppendChild(parentId, SimpleElement(tag, id, attrs));
+            return id;
+        }
+
+        /// <summary>Returns the id of the parent's first child with the given tag, or throws when absent.</summary>
+        internal ElementId RequireChildId(ElementId parentId, string childTag) =>
+            Require(parentId).FindChild(childTag)?.Id
+            ?? throw new InvalidOperationException($"Element {parentId.ToToken()} has no <{childTag}> child.");
+
+        /// <summary>Returns the id of the parent's single child with the given tag, or throws unless there is exactly one.</summary>
+        internal ElementId RequireSoleChildId(ElementId parentId, string childTag)
+        {
+            ProjectElement parent = Require(parentId);
+            ImmutableArray<ProjectElement> matches = parent.Children.IsDefaultOrEmpty
+                ? ImmutableArray<ProjectElement>.Empty
+                : parent.Children.Where(c => c.Tag == childTag).ToImmutableArray();
+            if (matches.Length != 1)
+            {
+                throw new InvalidOperationException(
+                    $"Element {parentId.ToToken()} has {matches.Length} <{childTag}> children; expected exactly one.");
+            }
+            return matches[0].Id ?? throw new InvalidOperationException($"The <{childTag}> child has no id.");
+        }
 
         // ----- tree machinery -----
 
