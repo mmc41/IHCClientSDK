@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect id="banner" x="5" y="3" width="14" height="5" rx="1"/>
+  <line id="stem" x1="12" y1="8" x2="12" y2="12"/>
+  <polygon id="node" points="12 12 16.5 16.5 12 21 7.5 16.5"/>
+</svg>

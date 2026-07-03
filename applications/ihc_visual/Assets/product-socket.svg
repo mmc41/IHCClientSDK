@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <line id="prong-left" x1="10" y1="3" x2="10" y2="6"/>
+  <line id="prong-right" x1="14" y1="3" x2="14" y2="6"/>
+  <rect id="body" x="6" y="6" width="12" height="7" rx="2"/>
+  <path id="cord" d="M12 13 v4 a3 3 0 0 0 3 3"/>
+</svg>

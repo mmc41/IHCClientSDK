@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <polyline id="letter-f" points="16 6 8 6 8 18"/>
+  <line id="mid-bar" x1="8" y1="12" x2="14" y2="12"/>
+  <circle id="dot" cx="17" cy="17" r="1" fill="currentColor" stroke="none"/>
+</svg>

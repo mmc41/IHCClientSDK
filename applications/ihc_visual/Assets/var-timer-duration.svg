@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <circle id="body" cx="12" cy="14" r="7"/>
+  <line id="stem" x1="12" y1="7" x2="12" y2="4"/>
+  <line id="button" x1="10" y1="4" x2="14" y2="4"/>
+  <line id="lug-left" x1="6.5" y1="8.5" x2="5" y2="7"/>
+  <line id="lug-right" x1="17.5" y1="8.5" x2="19" y2="7"/>
+  <line id="hand" x1="12" y1="14" x2="15" y2="11"/>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <rect id="page" x="4" y="5" width="16" height="16" rx="2"/>
+  <line id="header" x1="4" y1="9" x2="20" y2="9"/>
+  <line id="tab-1" x1="9" y1="3" x2="9" y2="6"/>
+  <line id="tab-2" x1="15" y1="3" x2="15" y2="6"/>
+  <line id="row" x1="8" y1="15" x2="16" y2="15"/>
+</svg>

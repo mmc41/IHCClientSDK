@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <line id="cord" x1="12" y1="3" x2="12" y2="7"/>
+  <polygon id="shade" points="9,7 15,7 18,15 6,15"/>
+  <line id="glow" x1="9" y1="18" x2="15" y2="18"/>
+</svg>

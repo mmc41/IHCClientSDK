@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <circle id="glass" cx="12" cy="9" r="5.5"/>
+  <line id="neck-left" x1="9.5" y1="13.5" x2="9.5" y2="16"/>
+  <line id="neck-right" x1="14.5" y1="13.5" x2="14.5" y2="16"/>
+  <line id="base-1" x1="9.5" y1="17" x2="14.5" y2="17"/>
+  <line id="base-2" x1="10.5" y1="20" x2="13.5" y2="20"/>
+</svg>

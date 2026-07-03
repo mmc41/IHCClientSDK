@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <polyline id="connector" points="4 3 4 6 6.5 6"/>
+  <rect id="banner" x="6.5" y="4" width="11" height="4" rx="1"/>
+  <line id="stem" x1="12" y1="8" x2="12" y2="12"/>
+  <polygon id="node" points="12 12 16 16 12 20 8 16"/>
+</svg>

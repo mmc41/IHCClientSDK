@@ -86,5 +86,194 @@ namespace Ihc.Projects.Tests
                 Assert.That(resourceEnum.GetAttribute("inivalue"), Is.EqualTo(hoistedDef.Children[0].GetAttribute("id")), "inivalue rewired to hoisted value");
             });
         }
+
+        // R-enum (B3): a catalog component may embed an enum_definition that DUPLICATES one already in the project
+        // (a seed global or a prior insert's hoist). IHC Visual allocates the duplicate's def+value ids in document
+        // order but immediately DISCARDS them — advancing the counter (a permanent hole) — and rewires every
+        // referencing resource_enum to the pre-existing definition. Match key: typeid when present (& non-zero),
+        // else name. Value mapping inside a matched def: by typeid when present, else by name. The three tests below
+        // pin the two dedup branches (typeid / name) plus the no-match guard; case (d) — value mapping by typeid vs
+        // name — is asserted within (a) and (b) respectively.
+
+        // (a) product2125 shape: a NAMELESS enum carrying typeid _0x16 dedups against the seed "Logning" (typeid
+        // _0x16). Burns def+value ids, rewires the resource_enum to the seed def and (by value typeid) the seed value.
+        [Test]
+        public void Insert_ProductEnumMatchingSeedByTypeid_BurnsIdsAndRewiresToSeed()
+        {
+            ProjectElement seed = SeededEnumDefinitions(
+                Def("_0x4747", typeid: "_0x16", name: "Logning",
+                    Val("_0x4848", typeid: "_0x41", name: "Off"),
+                    Val("_0x4948", typeid: "_0x42", name: "Kun ændringer")));
+
+            ProjectElement body = Node("product_dataline", "_0x01",
+                new[] { ("product_identifier", "_0x2125"), ("name", "Temperatur sensor med logning") },
+                new[]
+                {
+                    // nameless, typeid'd embedded enum with a single value (the product2125.def shape)
+                    Node("enum_definition", "_0x50", new[] { ("typeid", "_0x16") }, new[]
+                    {
+                        Node("enum_value", "_0x51", new[] { ("typeid", "_0x42"), ("name", "Kun ændringer") }, System.Array.Empty<ProjectElement>()),
+                    }),
+                    Node("settings", "_0x60", new[] { ("name", "Indstillinger") }, new[]
+                    {
+                        Node("resource_enum", "_0x61", new[] { ("name", "Log"), ("typedef", "_0x50"), ("inivalue", "_0x51") }, System.Array.Empty<ProjectElement>()),
+                    }),
+                });
+
+            var allocator = new IdAllocator(0x80);
+            InsertResult result = InsertTransform.Insert(body, allocator, seed, ProjectSchemaView.RegistryOnly);
+            ProjectElement resourceEnum = result.InsertedRoot.FindChild("settings")!.FindChild("resource_enum")!;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.EnumDefinitions.Children, Has.Length.EqualTo(1), "no new def — embedded enum dedup'd to the seed");
+                // counter: product_dataline 0x81, [burn def 0x82, burn value 0x83], settings 0x84, resource_enum 0x85
+                Assert.That(allocator.Counter, Is.EqualTo(0x85), "def+value ids burned (0x82,0x83) leaving a permanent hole");
+                Assert.That(resourceEnum.GetAttribute("typedef"), Is.EqualTo("_0x4747"), "typedef rewired to the seed def");
+                Assert.That(resourceEnum.GetAttribute("inivalue"), Is.EqualTo("_0x4948"), "inivalue rewired to seed value by typeid _0x42");
+            });
+        }
+
+        // (b) PIR shape: a NAMED enum with no typeid dedups by name against an existing project def. Burns def+values,
+        // rewires the resource_enum to the existing def and (by value name) the existing value.
+        [Test]
+        public void Insert_FunctionBlockEnumMatchingExistingByName_BurnsIdsAndRewiresToExisting()
+        {
+            ProjectElement seed = SeededEnumDefinitions(
+                Def("_0x4047", typeid: null, name: "PIR funktion",
+                    Val("_0x4148", typeid: null, name: "Fra"),
+                    Val("_0x4248", typeid: null, name: "Til")));
+
+            ProjectElement body = Node("functionblock", "_0x01",
+                new[] { ("name", "Block"), ("master_type", "1.4.02") },
+                new[]
+                {
+                    Node("enum_definition", "_0x10", new[] { ("name", "PIR funktion") }, new[]
+                    {
+                        Node("enum_value", "_0x11", new[] { ("name", "Fra") }, System.Array.Empty<ProjectElement>()),
+                        Node("enum_value", "_0x12", new[] { ("name", "Til") }, System.Array.Empty<ProjectElement>()),
+                    }),
+                    Node("settings", "_0x20", new[] { ("name", "S") }, new[]
+                    {
+                        Node("resource_enum", "_0x21", new[] { ("name", "T"), ("typedef", "_0x10"), ("inivalue", "_0x12") }, System.Array.Empty<ProjectElement>()),
+                    }),
+                });
+
+            var allocator = new IdAllocator(0x50);
+            InsertResult result = InsertTransform.Insert(body, allocator, seed, ProjectSchemaView.RegistryOnly);
+            ProjectElement resourceEnum = result.InsertedRoot.FindChild("settings")!.FindChild("resource_enum")!;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.EnumDefinitions.Children, Has.Length.EqualTo(1), "no new def — user enum dedup'd by name");
+                // counter: functionblock 0x51, [burn def 0x52, values 0x53,0x54], settings 0x55, resource_enum 0x56
+                Assert.That(allocator.Counter, Is.EqualTo(0x56), "def+2 values burned (0x52,0x53,0x54) leaving a permanent hole");
+                Assert.That(resourceEnum.GetAttribute("typedef"), Is.EqualTo("_0x4047"), "typedef rewired to the existing def by name");
+                Assert.That(resourceEnum.GetAttribute("inivalue"), Is.EqualTo("_0x4248"), "inivalue rewired to existing value 'Til' by name");
+            });
+        }
+
+        // (c) no-match guard: a user enum whose name matches nothing in a NON-empty container must still hoist fresh
+        // (no over-dedup). Ids identical to today's hoist-fresh path. Stays green pre- and post-implementation.
+        [Test]
+        public void Insert_EnumWithNoNameOrTypeidMatch_HoistsFreshAlongsideExisting()
+        {
+            ProjectElement seed = SeededEnumDefinitions(
+                Def("_0x4047", typeid: null, name: "Persienne tilstand",
+                    Val("_0x4148", typeid: null, name: "Oppe")));
+
+            ProjectElement body = Node("functionblock", "_0x01",
+                new[] { ("name", "Block") },
+                new[]
+                {
+                    Node("enum_definition", "_0x10", new[] { ("name", "Helt andet") }, new[]
+                    {
+                        Node("enum_value", "_0x11", new[] { ("name", "X") }, System.Array.Empty<ProjectElement>()),
+                    }),
+                    Node("settings", "_0x20", new[] { ("name", "S") }, new[]
+                    {
+                        Node("resource_enum", "_0x21", new[] { ("typedef", "_0x10"), ("inivalue", "_0x11") }, System.Array.Empty<ProjectElement>()),
+                    }),
+                });
+
+            var allocator = new IdAllocator(0x50);
+            InsertResult result = InsertTransform.Insert(body, allocator, seed, ProjectSchemaView.RegistryOnly);
+            ProjectElement hoisted = result.EnumDefinitions.Children[1];
+            ProjectElement resourceEnum = result.InsertedRoot.FindChild("settings")!.FindChild("resource_enum")!;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.EnumDefinitions.Children, Has.Length.EqualTo(2), "unmatched enum hoisted alongside the existing one");
+                Assert.That(resourceEnum.GetAttribute("typedef"), Is.EqualTo(hoisted.GetAttribute("id")), "typedef rewired to the freshly hoisted def");
+                Assert.That(hoisted.GetAttribute("name"), Is.EqualTo("Helt andet"));
+            });
+        }
+
+        // On catalog insert IHC Visual stamps a per-resource-type GUI icon on every resource (resource_input -> _0x36,
+        // resource_output -> _0x39, ...). Function-block .ifb templates bake these in, but product .def templates omit
+        // them (icon defaults to _0x0), so the insert path must stamp them for byte-fidelity. Types with no canonical
+        // icon (e.g. resource_temperature) keep the default _0x0 (elided). Table verified conflict-free across every oracle.
+        [Test]
+        public void Insert_StampsCanonicalResourceIcons_ForProductTemplateResources()
+        {
+            ProjectElement body = Node("product_dataline", "_0x01",
+                new[] { ("product_identifier", "_0x2125"), ("name", "Temp") },
+                new[]
+                {
+                    Node("resource_temperature", "_0x02", new[] { ("name", "Rumtemperatur") }, System.Array.Empty<ProjectElement>()),
+                    Node("resource_input", "_0x03", new[] { ("name", "Alarm") }, System.Array.Empty<ProjectElement>()),
+                });
+
+            var allocator = new IdAllocator(0x50);
+            InsertResult result = InsertTransform.Insert(body, allocator, EmptyEnumDefinitions(), ProjectSchemaView.RegistryOnly);
+            ProjectElement input = result.InsertedRoot.FindChild("resource_input")!;
+            ProjectElement temp = result.InsertedRoot.FindChild("resource_temperature")!;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(input.GetAttribute("icon"), Is.EqualTo("_0x36"), "resource_input gets its canonical icon stamped on insert");
+                Assert.That(temp.GetAttribute("icon"), Is.Null.Or.EqualTo("_0x0"), "resource_temperature has no canonical icon (default _0x0, elided)");
+            });
+        }
+
+        // On insert IHC Visual reconciles a catalog template's numeric precision with the PROJECT's: resource_light's
+        // project inivalue default is "0" (integer) so a catalog value "500.00" is re-emitted as "500", while
+        // resource_temperature's default "0.00" keeps 2 decimals so "20.00" is preserved. (B3 step06 / product2139.)
+        [Test]
+        public void Insert_NormalizesNumericAttr_ToProjectDefaultPrecision()
+        {
+            ProjectElement body = Node("product_dataline", "_0x01",
+                new[] { ("product_identifier", "_0x2139"), ("name", "Lux") },
+                new[]
+                {
+                    Node("resource_light", "_0x02", new[] { ("name", "Lys"), ("inivalue", "500.00") }, System.Array.Empty<ProjectElement>()),
+                    Node("resource_temperature", "_0x03", new[] { ("name", "Temp"), ("inivalue", "20.00") }, System.Array.Empty<ProjectElement>()),
+                });
+
+            var allocator = new IdAllocator(0x50);
+            InsertResult result = InsertTransform.Insert(body, allocator, EmptyEnumDefinitions(), ProjectSchemaView.RegistryOnly);
+            ProjectElement light = result.InsertedRoot.FindChild("resource_light")!;
+            ProjectElement temp = result.InsertedRoot.FindChild("resource_temperature")!;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(light.GetAttribute("inivalue"), Is.EqualTo("500"), "resource_light inivalue reformatted to project precision (0 decimals)");
+                Assert.That(temp.GetAttribute("inivalue"), Is.EqualTo("20.00"), "resource_temperature inivalue keeps project precision (2 decimals)");
+            });
+        }
+
+        private static ProjectElement SeededEnumDefinitions(params ProjectElement[] defs) =>
+            new("enum_definitions", new ElementId(0x30, 0x46),
+                ImmutableArray.Create(("id", "_0x3046")), defs.ToImmutableArray());
+
+        private static ProjectElement Def(string id, string? typeid, string name, params ProjectElement[] values) =>
+            Node("enum_definition", id,
+                typeid is null ? new[] { ("name", name) } : new[] { ("name", name), ("typeid", typeid) },
+                values);
+
+        private static ProjectElement Val(string id, string? typeid, string name) =>
+            Node("enum_value", id,
+                typeid is null ? new[] { ("name", name) } : new[] { ("name", name), ("typeid", typeid) },
+                System.Array.Empty<ProjectElement>());
     }
 }

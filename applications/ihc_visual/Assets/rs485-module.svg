@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect id="module" x="4" y="5" width="16" height="14" rx="2"/>
+  <line id="t1" x1="8" y1="8" x2="8" y2="10.5"/>
+  <line id="t2" x1="12" y1="8" x2="12" y2="10.5"/>
+  <line id="t3" x1="16" y1="8" x2="16" y2="10.5"/>
+  <line id="b1" x1="8" y1="13.5" x2="8" y2="16"/>
+  <line id="b2" x1="12" y1="13.5" x2="12" y2="16"/>
+  <line id="b3" x1="16" y1="13.5" x2="16" y2="16"/>
+</svg>

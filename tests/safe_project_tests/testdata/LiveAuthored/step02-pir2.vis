@@ -1,0 +1,1204 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE utcs_project [
+   <!ELEMENT utcs_project ANY>
+   <!ATTLIST utcs_project version_major CDATA #REQUIRED
+                  version_minor CDATA #REQUIRED
+                  id1 CDATA #REQUIRED
+                  id2 CDATA #REQUIRED
+                  icon CDATA "_0x0"
+                  last_unique_id CDATA #REQUIRED>
+   <!ELEMENT modified ANY>
+   <!ATTLIST modified year CDATA #REQUIRED
+                  month CDATA #REQUIRED
+                  day CDATA #REQUIRED
+                  hour CDATA #REQUIRED
+                  minute CDATA #REQUIRED>
+   <!ELEMENT customer_info ANY>
+   <!ATTLIST customer_info name CDATA ""
+                  address CDATA ""
+                  city CDATA ""
+                  zipcode CDATA ""
+                  country CDATA ""
+                  phone CDATA ""
+                  mobilephone CDATA ""
+                  email CDATA ""
+                  udf CDATA "">
+   <!ELEMENT installer_info ANY>
+   <!ATTLIST installer_info name CDATA ""
+                  address CDATA ""
+                  city CDATA ""
+                  zipcode CDATA ""
+                  country CDATA ""
+                  phone CDATA ""
+                  mobilephone CDATA ""
+                  email CDATA ""
+                  udf CDATA "">
+   <!ELEMENT project_info ANY>
+   <!ATTLIST project_info programmer CDATA ""
+                  number CDATA ""
+                  drawing CDATA ""
+                  type CDATA ""
+                  description CDATA ""
+                  udf CDATA "">
+   <!ELEMENT enum_definitions ANY>
+   <!ATTLIST enum_definitions id ID #REQUIRED
+                  name CDATA ""
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT enum_definition ANY>
+   <!ATTLIST enum_definition id ID #REQUIRED
+                  typeid CDATA "_0x0"
+                  name CDATA ""
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT enum_value ANY>
+   <!ATTLIST enum_value id ID #REQUIRED
+                  typeid CDATA "_0x0"
+                  name CDATA ""
+                  note CDATA ""
+                  index CDATA "0"
+                  udf CDATA "">
+   <!ELEMENT groups ANY>
+   <!ATTLIST groups id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT group ANY>
+   <!ATTLIST group id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT functionblock ANY>
+   <!ATTLIST functionblock id ID #REQUIRED
+                  name CDATA ""
+                  master_schneider_electric (yes | no) "no"
+                  master_type CDATA ""
+                  master_version CDATA ""
+                  master_name CDATA ""
+                  master_programmer CDATA ""
+                  master_date_year CDATA "0"
+                  master_date_month CDATA "0"
+                  master_date_day CDATA "0"
+                  locked (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  helpfile CDATA ""
+                  udf CDATA "">
+   <!ELEMENT inputs ANY>
+   <!ATTLIST inputs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_input ANY>
+   <!ATTLIST resource_input id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT outputs ANY>
+   <!ATTLIST outputs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_output ANY>
+   <!ATTLIST resource_output id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_scene ANY>
+   <!ATTLIST resource_scene id ID #REQUIRED
+                  name CDATA ""
+                  note CDATA ""
+                  icon CDATA "_0x89"
+                  hide_dialog (yes | no) "no"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT settings ANY>
+   <!ATTLIST settings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_timer ANY>
+   <!ATTLIST resource_timer id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  hour CDATA #REQUIRED
+                  minute CDATA #REQUIRED
+                  second CDATA #REQUIRED
+                  millisecond CDATA #REQUIRED
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_enum ANY>
+   <!ATTLIST resource_enum id ID #REQUIRED
+                  name CDATA ""
+                  typedef IDREF #REQUIRED
+                  inivalue IDREF #REQUIRED
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT internalsettings ANY>
+   <!ATTLIST internalsettings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT programs ANY>
+   <!ATTLIST programs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT program_simple ANY>
+   <!ATTLIST program_simple id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT events ANY>
+   <!ATTLIST events id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT event ANY>
+   <!ATTLIST event id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT actions ANY>
+   <!ATTLIST actions id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  type CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT program_sub ANY>
+   <!ATTLIST program_sub id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT conditions ANY>
+   <!ATTLIST conditions id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  type (and | or) "and"
+                  udf CDATA "">
+   <!ELEMENT condition ANY>
+   <!ATTLIST condition id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT action ANY>
+   <!ATTLIST action id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT documentation_modules ANY>
+   <!ATTLIST documentation_modules id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT dataline_input_modules ANY>
+   <!ATTLIST dataline_input_modules id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT dataline_output_modules ANY>
+   <!ATTLIST dataline_output_modules id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+]>
+<utcs_project version_major="4" version_minor="0" id1="_0x3101b23" id2="_0x3101c22" last_unique_id="_0x2da">
+   <modified year="2026" month="7" day="3" hour="16" minute="28"/>
+   <customer_info/>
+   <installer_info name="Morten" country="Danmark"/>
+   <project_info programmer="Morten Christensen"/>
+   <enum_definitions id="_0x3046" name="Enumerator definitioner">
+      <enum_definition id="_0x4147" typeid="_0x10" name="Persienne tilstand">
+         <enum_value id="_0x4248" typeid="_0x11" name="Ukendt"/>
+         <enum_value id="_0x4348" typeid="_0x12" name="Oppe" index="1"/>
+         <enum_value id="_0x4448" typeid="_0x13" name="Nede" index="2"/>
+         <enum_value id="_0x4548" typeid="_0x14" name="Kører op" index="3"/>
+         <enum_value id="_0x4648" typeid="_0x15" name="Kører ned" index="4"/>
+      </enum_definition>
+      <enum_definition id="_0x4747" typeid="_0x16" name="Logning">
+         <enum_value id="_0x4848" typeid="_0x17" name="Off"/>
+         <enum_value id="_0x4948" typeid="_0x18" name="Kun ændringer" index="1"/>
+         <enum_value id="_0x4a48" typeid="_0x19" name="Hver Time" index="2"/>
+         <enum_value id="_0x4b48" typeid="_0x20" name="Dagligt" index="3"/>
+         <enum_value id="_0x4c48" typeid="_0x21" name="Ugentligt" index="4"/>
+         <enum_value id="_0x4d48" typeid="_0x22" name="Månedligt" index="5"/>
+      </enum_definition>
+      <enum_definition id="_0x5247" name="Manuel tænding">
+         <enum_value id="_0x5348" name="Starter efterløb"/>
+         <enum_value id="_0x5448" name="Spærrer efterløb" index="1"/>
+      </enum_definition>
+      <enum_definition id="_0x5547" name="PIR funktion">
+         <enum_value id="_0x5648" name="Tænder lys"/>
+         <enum_value id="_0x5748" name="Kun efterløb" index="1"/>
+      </enum_definition>
+      <enum_definition id="_0x5847" name="PIR funktion nat">
+         <enum_value id="_0x5948" name="Kun efterløb" index="1"/>
+         <enum_value id="_0x5a48" name="Tænder lys"/>
+      </enum_definition>
+   </enum_definitions>
+   <groups id="_0x2031" name="Lokaliteter" icon="_0x15" note="Gruppering af produkter og funktionsblokke">
+      <group id="_0x2132" name="Stue" icon="_0x15">
+         <functionblock id="_0x5128" name="1.4.02.a. PIR styring " master_schneider_electric="yes" master_type="1.4.02" master_version="a" master_name="PIR styring " master_programmer="Schneider Electric&#xD;&#xA;Copyrights © 2016" master_date_year="2017" master_date_month="9" master_date_day="14" locked="yes" icon="_0xe" note="1.4.02.a. PIR styring &#xD;&#xA;&#xD;&#xA;Anvendelse:&#xD;&#xA;Til simpel styring af IHC Wireless produkter og relæer ifm. PIR og manuel betjening.&#xD;&#xA;&#xD;&#xA;For at se den fulde beskrivelse marker denne linje og tryk &quot;F1&quot;.&#xD;&#xA;Bemærk: Dette virker kun hvis blokken er rød-markeret.">
+            <inputs id="_0x5b23" name="Input" icon="_0x4" note="Variablene i denne gruppering er input til funktionsblokken">
+               <resource_input id="_0x5c11" name="PIR" icon="_0x36" note="Forbindes til tilstedeværelses indikering fra PIR sensor.&#xD;&#xA;Virkemåde defineres under indstillinger:&#xD;&#xA; &quot;# PIR funktion&quot;&#xD;&#xA; &quot;# PIR funktion nat&quot;&#xD;&#xA;(Udfyldes af installatøren)"/>
+               <resource_input id="_0x5d11" name="Skumring" icon="_0x36" note="Forbindes fra skumringssensor eller luxsensor ifm. funktionsblok 1.1.12&#xD;&#xA;Alternativt via ur funktionsblok.&#xD;&#xA;(Udfyldes af installatøren)&#xD;&#xA;&#xD;&#xA;&#xD;&#xA;" inivalue="on"/>
+               <resource_input id="_0x5e11" name="Tilbagemelding" icon="_0x36" note="Opret link mellem produktets &quot;Udgang&quot; og &quot;Tilbagemelding&quot;.&#xD;&#xA;Ved tilbagemelding begrænses genkald af IHC Wireless produkter ifm. PIR aktivitet."/>
+               <resource_input id="_0x5f11" name="Natdrift" icon="_0x36" note="Anvendes som begrænsning for PIR funktion om natten.&#xD;&#xA;(Udfyldes af installatøren)"/>
+               <resource_input id="_0x6011" name="Kip" icon="_0x36" note="Kipper udgang og scenarier&#xD;&#xA;(Udfyldes af installatøren)"/>
+               <resource_input id="_0x6111" name="Tænd" icon="_0x36" note="Tænder udgang og scenarie &#xD;&#xA;(Udfyldes af installatøren)"/>
+               <resource_input id="_0x6211" name="Sluk" icon="_0x36" note="Slukker udgang og scenarie.&#xD;&#xA;(Udfyldes af installatøren)&#xD;&#xA;"/>
+               <resource_input id="_0x6311" name="Spærring" icon="_0x36" note="Når denne indgang er on, vil al automatik være spærret. Dette giver mulighed for total spærring i både tændt og slukket tilstand.&#xD;&#xA;(Udfyldes af installatøren)&#xD;&#xA;"/>
+            </inputs>
+            <outputs id="_0x6424" name="Output" icon="_0x14" note="Variablene i denne gruppering er output fra funktionsblokken">
+               <resource_output id="_0x6512" name="Udgang" icon="_0x39" note="Forbindes til relæ hvis scenariefunktion ikke benyttes.&#xD;&#xA;"/>
+               <resource_output id="_0x6612" name="ON puls" icon="_0x39" note="Giver kort puls ved tænding.&#xD;&#xA;Anvendes til styring af andre blokke."/>
+               <resource_output id="_0x6712" name="OFF puls" icon="_0x39" note="Giver kort puls ved slukning.&#xD;&#xA;Anvendes til styring af andre blokke."/>
+               <resource_output id="_0x6812" name="Manuelt betjent" icon="_0x39" note="Visning af overstyring af PIR. &#xD;&#xA;Kan benyttes til diode eller Viewer.&#xD;&#xA;Ifm. manuel sluk vil udgang blinke (default 15 sek.) som kvittéring for spærring af PIR."/>
+               <resource_scene id="_0x694a" name="Scenarie tænd" note="Forbindes til relæ og/eller IHC Wireless lysdæmper."/>
+               <resource_scene id="_0x6a4a" name="Scenarie sluk" note="Forbindes til relæ og/eller IHC Wireless lysdæmper."/>
+            </outputs>
+            <settings id="_0x6b25" name="Indstillinger" icon="_0xd" note="Variablene i denne gruppering er indstillinger til funktionsblokken">
+               <resource_timer id="_0x6c10" name="Efterløb" backup="yes" icon="_0x43" note="Her indstilles efterløbstiden.&#xD;&#xA;" hour="0" minute="3" second="0" millisecond="0"/>
+               <resource_enum id="_0x6d0f" name="PIR funktion" typedef="_0x5547" inivalue="_0x5648" backup="yes" icon="_0x22" note="Her er det muligt, at vælge hvilken funktion PIR&apos;en skal have dag/aften.&#xD;&#xA;Vælg mellem:&#xD;&#xA;&#xD;&#xA;&quot;Tænder lys&quot;&#xD;&#xA;&quot;Kun efterløb&quot;&#xD;&#xA;"/>
+               <resource_enum id="_0x6e0f" name="PIR funktion nat" typedef="_0x5847" inivalue="_0x5948" backup="yes" icon="_0x22" note="Her er det muligt, at vælge hvilken funktion PIR&apos;en skal have om natten.&#xD;&#xA;Natdrift indgangen skal benyttes for at opnå funktion.&#xD;&#xA;&#xD;&#xA;Vælg mellem:&#xD;&#xA;&#xD;&#xA;&quot;Tænder lys&quot;&#xD;&#xA;&quot;Kun efterløb&quot;&#xD;&#xA;"/>
+               <resource_enum id="_0x6f0f" name="Manuel tænding" typedef="_0x5247" inivalue="_0x5348" icon="_0x22" note="Her er det muligt, at vælge funktion på manuel tænding.&#xD;&#xA;&#xD;&#xA;Vælg mellem:&#xD;&#xA;&#xD;&#xA;Ved &quot;Starter efterløb&quot; vil lys slukke på efterløb efter sidste påvirking af PIR eller tryk.&#xD;&#xA;Ved &quot;Spærrer efterløb&quot; vil lys ikke slukke ved skumringsfrafald når manuel betjening er aktiv."/>
+            </settings>
+            <internalsettings id="_0x7029" name="Interne variable" icon="_0x13" note="Variablene i denne gruppe er private variable til funktionsblokken">
+               <resource_timer id="_0x7110" name="Blokkering efter manuel sluk" icon="_0x43" hour="0" minute="0" second="15" millisecond="0"/>
+               <resource_timer id="_0x7210" name="Puls" icon="_0x43" hour="0" minute="0" second="0" millisecond="250"/>
+               <resource_timer id="_0x7310" name="Kvittér med blink efter manuel sluk" icon="_0x43" hour="0" minute="0" second="1" millisecond="0"/>
+            </internalsettings>
+            <programs id="_0x7426" name="Programmer" icon="_0x19" note="Gruppering af funktionblokkens programmer">
+               <program_simple id="_0x751e" name="PIR" icon="_0x7">
+                  <events id="_0x7664" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x77c8" name="%P bliver ændret" icon="_0xc" note="Start program når %P skifter værdi" link1="_0x5c11" method="_0x96"/>
+                     <event id="_0x78c8" name="%P -&gt; 0" icon="_0xc" note="Start program når %P skifter til 0" link1="_0x7110" method="_0xa"/>
+                     <event id="_0x79c8" name="%P bliver ændret" icon="_0xc" note="Start program når %P skifter værdi" link1="_0x5d11" method="_0x96"/>
+                     <event id="_0x7ac8" name="%P bliver ændret" icon="_0xc" note="Start program når %P skifter værdi" link1="_0x5f11" method="_0x96"/>
+                     <event id="_0x7bc8" name="%P -&gt; OFF" icon="_0xc" note="Start program når %P skifter til OFF" link1="_0x6311" method="_0x14"/>
+                  </events>
+                  <actions id="_0x7c66" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <program_sub id="_0x7d1f" name="Under program" icon="_0x7">
+                        <conditions id="_0x7e65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                           <condition id="_0x7fc9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x5c11" method="_0xa"/>
+                           <condition id="_0x80c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x5d11" method="_0xa"/>
+                           <condition id="_0x81c9" name="%P stoppet" icon="_0x1a" note="Betingelse at %P er stoppet" link1="_0x7110" method="_0xdc"/>
+                           <condition id="_0x82c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6311" method="_0x14"/>
+                           <conditions id="_0x8365" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test" type="or">
+                              <condition id="_0x84c9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x6f0f" link2="_0x850f" method="_0x1e">
+                                 <resource_enum id="_0x850f" name="Enumerator" typedef="_0x5247" inivalue="_0x5348" icon="_0x22"/>
+                              </condition>
+                              <condition id="_0x86c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6812" method="_0x14"/>
+                              <condition id="_0x87c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6512" method="_0x14"/>
+                           </conditions>
+                        </conditions>
+                        <actions id="_0x8866" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                           <program_sub id="_0x891f" name="Tænd" icon="_0x7">
+                              <conditions id="_0x8a65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <conditions id="_0x8b65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test" type="or">
+                                    <conditions id="_0x8c65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                       <condition id="_0x8dc9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x6d0f" link2="_0x8e0f" method="_0x1e">
+                                          <resource_enum id="_0x8e0f" name="Enumerator" typedef="_0x5547" inivalue="_0x5648" icon="_0x22"/>
+                                       </condition>
+                                       <condition id="_0x8fc9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x5f11" method="_0x14"/>
+                                    </conditions>
+                                    <conditions id="_0x9065" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                       <condition id="_0x91c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x5f11" method="_0xa"/>
+                                       <condition id="_0x92c9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x6e0f" link2="_0x930f" method="_0x1e">
+                                          <resource_enum id="_0x930f" name="Enumerator" typedef="_0x5847" inivalue="_0x5a48" icon="_0x22"/>
+                                       </condition>
+                                    </conditions>
+                                 </conditions>
+                                 <conditions id="_0x9465" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test" type="or">
+                                    <condition id="_0x95c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6512" method="_0x14"/>
+                                    <condition id="_0x96c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x5e11" method="_0x14"/>
+                                 </conditions>
+                              </conditions>
+                              <actions id="_0x9766" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0x98ca" name="Fremkald %P" icon="_0x9" note="Aktiver scenarie" link1="_0x694a" method="_0xa"/>
+                                 <action id="_0x99ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x6512" method="_0xa"/>
+                                 <action id="_0x9aca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x6612" method="_0xa"/>
+                                 <action id="_0x9bca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x7210" method="_0xbe"/>
+                              </actions>
+                              <actions id="_0x9c66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                           </program_sub>
+                           <action id="_0x9dca" name="Stands tælling på %P" icon="_0x9" note="Standser evt. igangværende optælling eller nedtælling på %P" link1="_0x6c10" method="_0xdc"/>
+                           <action id="_0x9eca" name="%P = Initialværdi" icon="_0x9" note="Sætter %P til dens initialværdi" link1="_0x6c10" method="_0x19"/>
+                        </actions>
+                        <actions id="_0x9f66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske">
+                           <program_sub id="_0xa01f" name="Efterløb start" icon="_0x7">
+                              <conditions id="_0xa165" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <condition id="_0xa2c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x6512" method="_0xa"/>
+                                 <condition id="_0xa3c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x5d11" method="_0xa"/>
+                                 <condition id="_0xa4c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6011" method="_0x14"/>
+                                 <condition id="_0xa5c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6111" method="_0x14"/>
+                                 <condition id="_0xa6c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6311" method="_0x14"/>
+                                 <conditions id="_0xa765" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test" type="or">
+                                    <condition id="_0xa8c9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x6f0f" link2="_0xa90f" method="_0x1e">
+                                       <resource_enum id="_0xa90f" name="Enumerator" typedef="_0x5247" inivalue="_0x5348" icon="_0x22"/>
+                                    </condition>
+                                    <condition id="_0xaac9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6812" method="_0x14"/>
+                                 </conditions>
+                              </conditions>
+                              <actions id="_0xab66" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0xacca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x6c10" method="_0xbe"/>
+                              </actions>
+                              <actions id="_0xad66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                           </program_sub>
+                           <program_sub id="_0xae1f" name="Efterløb start" icon="_0x7">
+                              <conditions id="_0xaf65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <condition id="_0xb0c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x5d11" method="_0x14"/>
+                                 <condition id="_0xb1c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x6512" method="_0xa"/>
+                                 <condition id="_0xb2c9" name="%P stoppet" icon="_0x1a" note="Betingelse at %P er stoppet" link1="_0x6c10" method="_0xdc"/>
+                                 <condition id="_0xb3c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6311" method="_0x14"/>
+                                 <conditions id="_0xb465" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test" type="or">
+                                    <condition id="_0xb5c9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x6f0f" link2="_0xb60f" method="_0x1e">
+                                       <resource_enum id="_0xb60f" name="Enumerator" typedef="_0x5247" inivalue="_0x5348" icon="_0x22"/>
+                                    </condition>
+                                    <condition id="_0xb7c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6812" method="_0x14"/>
+                                 </conditions>
+                              </conditions>
+                              <actions id="_0xb866" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0xb9ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x6c10" method="_0xbe"/>
+                              </actions>
+                              <actions id="_0xba66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                           </program_sub>
+                        </actions>
+                     </program_sub>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0xbb1e" name="Efterløb sluk" icon="_0x7">
+                  <events id="_0xbc64" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0xbdc8" name="%P -&gt; 0" icon="_0xc" note="Start program når %P skifter til 0" link1="_0x6c10" method="_0xa"/>
+                  </events>
+                  <actions id="_0xbe66" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <action id="_0xbfca" name="Fremkald %P" icon="_0x9" note="Aktiver scenarie" link1="_0x6a4a" method="_0xa"/>
+                     <action id="_0xc0ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x6512" method="_0x14"/>
+                     <action id="_0xc1ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x6712" method="_0xa"/>
+                     <action id="_0xc2ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x7210" method="_0xbe"/>
+                     <action id="_0xc3ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x6812" method="_0x14"/>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0xc41e" name="Tilbagemelding" icon="_0x7">
+                  <events id="_0xc564" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0xc6c8" name="%P bliver ændret" icon="_0xc" note="Start program når %P skifter værdi" link1="_0x5e11" method="_0x96"/>
+                  </events>
+                  <actions id="_0xc766" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <program_sub id="_0xc81f" name="Under program" icon="_0x7">
+                        <conditions id="_0xc965" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                           <condition id="_0xcac9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x5e11" method="_0xa"/>
+                        </conditions>
+                        <actions id="_0xcb66" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                           <program_sub id="_0xcc1f" name="ON" icon="_0x7">
+                              <conditions id="_0xcd65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <condition id="_0xcec9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6512" method="_0x14"/>
+                              </conditions>
+                              <actions id="_0xcf66" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0xd0ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x6512" method="_0xa"/>
+                              </actions>
+                              <actions id="_0xd166" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                           </program_sub>
+                           <program_sub id="_0xd21f" name="Aktiver nedtælling" icon="_0x7">
+                              <conditions id="_0xd365" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <condition id="_0xd4c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6311" method="_0x14"/>
+                                 <condition id="_0xd5c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x5c11" method="_0x14"/>
+                                 <condition id="_0xd6c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6812" method="_0x14"/>
+                              </conditions>
+                              <actions id="_0xd766" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0xd8ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x6c10" method="_0xbe"/>
+                              </actions>
+                              <actions id="_0xd966" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                           </program_sub>
+                        </actions>
+                        <actions id="_0xda66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske">
+                           <action id="_0xdbca" name="Stands tælling på %P" icon="_0x9" note="Standser evt. igangværende optælling eller nedtælling på %P" link1="_0x6c10" method="_0xdc"/>
+                           <action id="_0xdcca" name="%P = Initialværdi" icon="_0x9" note="Sætter %P til dens initialværdi" link1="_0x6c10" method="_0x19"/>
+                           <program_sub id="_0xdd1f" name="OFF" icon="_0x7">
+                              <conditions id="_0xde65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <condition id="_0xdfc9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x6512" method="_0xa"/>
+                              </conditions>
+                              <actions id="_0xe066" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0xe1ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x6512" method="_0x14"/>
+                                 <action id="_0xe2ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x6812" method="_0x14"/>
+                              </actions>
+                              <actions id="_0xe366" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                           </program_sub>
+                        </actions>
+                     </program_sub>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0xe41e" name="Kip" icon="_0x7">
+                  <events id="_0xe564" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0xe6c8" name="%P bliver ændret" icon="_0xc" note="Start program når %P skifter værdi" link1="_0x6011" method="_0x96"/>
+                  </events>
+                  <actions id="_0xe766" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <program_sub id="_0xe81f" name="Under program" icon="_0x7">
+                        <conditions id="_0xe965" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                           <condition id="_0xeac9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x6011" method="_0xa"/>
+                        </conditions>
+                        <actions id="_0xeb66" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                           <program_sub id="_0xec1f" name="Tænd eller sluk" icon="_0x7">
+                              <conditions id="_0xed65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <condition id="_0xeec9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6512" method="_0x14"/>
+                              </conditions>
+                              <actions id="_0xef66" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0xf0ca" name="Fremkald %P" icon="_0x9" note="Aktiver scenarie" link1="_0x694a" method="_0xa"/>
+                                 <action id="_0xf1ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x6512" method="_0xa"/>
+                                 <action id="_0xf2ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x6612" method="_0xa"/>
+                                 <action id="_0xf3ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x7210" method="_0xbe"/>
+                                 <action id="_0xf4ca" name="Stands tælling på %P" icon="_0x9" note="Standser evt. igangværende optælling eller nedtælling på %P" link1="_0x6c10" method="_0xdc"/>
+                                 <action id="_0xf5ca" name="%P = Initialværdi" icon="_0x9" note="Sætter %P til dens initialværdi" link1="_0x6c10" method="_0x19"/>
+                                 <action id="_0xf6ca" name="Stands tælling på %P" icon="_0x9" note="Standser evt. igangværende optælling eller nedtælling på %P" link1="_0x7110" method="_0xdc"/>
+                                 <action id="_0xf7ca" name="%P = Initialværdi" icon="_0x9" note="Sætter %P til dens initialværdi" link1="_0x7110" method="_0x19"/>
+                                 <program_sub id="_0xf81f" name="Under program" icon="_0x7">
+                                    <conditions id="_0xf965" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                       <condition id="_0xfac9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x6f0f" link2="_0xfb0f" method="_0x1e">
+                                          <resource_enum id="_0xfb0f" name="Enumerator" typedef="_0x5247" inivalue="_0x5448" icon="_0x22"/>
+                                       </condition>
+                                    </conditions>
+                                    <actions id="_0xfc66" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                       <action id="_0xfdca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x6812" method="_0xa"/>
+                                    </actions>
+                                    <actions id="_0xfe66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske">
+                                       <action id="_0xffca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x6812" method="_0x14"/>
+                                    </actions>
+                                 </program_sub>
+                                 <action id="_0x100ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x6812" method="_0xa"/>
+                              </actions>
+                              <actions id="_0x10166" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske">
+                                 <program_sub id="_0x1021f" name="Blokkering af PIR efter sluk" icon="_0x7">
+                                    <conditions id="_0x10365" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test" type="or">
+                                       <conditions id="_0x10465" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                          <condition id="_0x105c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x5f11" method="_0x14"/>
+                                          <condition id="_0x106c9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x6d0f" link2="_0x1070f" method="_0x1e">
+                                             <resource_enum id="_0x1070f" name="Enumerator" typedef="_0x5547" inivalue="_0x5648" icon="_0x22"/>
+                                          </condition>
+                                       </conditions>
+                                       <conditions id="_0x10865" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                          <condition id="_0x109c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x5f11" method="_0xa"/>
+                                          <condition id="_0x10ac9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x6e0f" link2="_0x10b0f" method="_0x1e">
+                                             <resource_enum id="_0x10b0f" name="Enumerator" typedef="_0x5847" inivalue="_0x5a48" icon="_0x22"/>
+                                          </condition>
+                                       </conditions>
+                                    </conditions>
+                                    <actions id="_0x10c66" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                       <program_sub id="_0x10d1f" name="Start blokkering" icon="_0x7">
+                                          <conditions id="_0x10e65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                             <condition id="_0x10fc9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6311" method="_0x14"/>
+                                          </conditions>
+                                          <actions id="_0x11066" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                             <action id="_0x111ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x7110" method="_0xbe"/>
+                                          </actions>
+                                          <actions id="_0x11266" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                                       </program_sub>
+                                    </actions>
+                                    <actions id="_0x11366" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                                 </program_sub>
+                                 <action id="_0x114ca" name="Fremkald %P" icon="_0x9" note="Aktiver scenarie" link1="_0x6a4a" method="_0xa"/>
+                                 <action id="_0x115ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x6512" method="_0x14"/>
+                                 <action id="_0x116ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x6712" method="_0xa"/>
+                                 <action id="_0x117ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x7210" method="_0xbe"/>
+                                 <action id="_0x118ca" name="Stands tælling på %P" icon="_0x9" note="Standser evt. igangværende optælling eller nedtælling på %P" link1="_0x6c10" method="_0xdc"/>
+                                 <action id="_0x119ca" name="%P = Initialværdi" icon="_0x9" note="Sætter %P til dens initialværdi" link1="_0x6c10" method="_0x19"/>
+                                 <action id="_0x11aca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x6812" method="_0x14"/>
+                                 <action id="_0x11bca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x7310" method="_0xbe"/>
+                              </actions>
+                           </program_sub>
+                        </actions>
+                        <actions id="_0x11c66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske">
+                           <program_sub id="_0x11d1f" name="Efterløb start" icon="_0x7">
+                              <conditions id="_0x11e65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <condition id="_0x11fc9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6311" method="_0x14"/>
+                                 <condition id="_0x120c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x5c11" method="_0x14"/>
+                                 <condition id="_0x121c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x6512" method="_0xa"/>
+                                 <condition id="_0x122c9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x6f0f" link2="_0x1230f" method="_0x1e">
+                                    <resource_enum id="_0x1230f" name="Enumerator" typedef="_0x5247" inivalue="_0x5348" icon="_0x22"/>
+                                 </condition>
+                              </conditions>
+                              <actions id="_0x12466" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0x125ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x6c10" method="_0xbe"/>
+                              </actions>
+                              <actions id="_0x12666" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                           </program_sub>
+                        </actions>
+                     </program_sub>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0x1271e" name="Tænd" icon="_0x7">
+                  <events id="_0x12864" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x129c8" name="%P bliver ændret" icon="_0xc" note="Start program når %P skifter værdi" link1="_0x6111" method="_0x96"/>
+                  </events>
+                  <actions id="_0x12a66" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <program_sub id="_0x12b1f" name="Tænd" icon="_0x7">
+                        <conditions id="_0x12c65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                           <condition id="_0x12dc9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x6111" method="_0xa"/>
+                        </conditions>
+                        <actions id="_0x12e66" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                           <action id="_0x12fca" name="Fremkald %P" icon="_0x9" note="Aktiver scenarie" link1="_0x694a" method="_0xa"/>
+                           <action id="_0x130ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x6512" method="_0xa"/>
+                           <action id="_0x131ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x6612" method="_0xa"/>
+                           <action id="_0x132ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x7210" method="_0xbe"/>
+                           <action id="_0x133ca" name="Stands tælling på %P" icon="_0x9" note="Standser evt. igangværende optælling eller nedtælling på %P" link1="_0x6c10" method="_0xdc"/>
+                           <action id="_0x134ca" name="%P = Initialværdi" icon="_0x9" note="Sætter %P til dens initialværdi" link1="_0x6c10" method="_0x19"/>
+                           <action id="_0x135ca" name="Stands tælling på %P" icon="_0x9" note="Standser evt. igangværende optælling eller nedtælling på %P" link1="_0x7110" method="_0xdc"/>
+                           <action id="_0x136ca" name="%P = Initialværdi" icon="_0x9" note="Sætter %P til dens initialværdi" link1="_0x7110" method="_0x19"/>
+                           <program_sub id="_0x1371f" name="Under program" icon="_0x7">
+                              <conditions id="_0x13865" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <condition id="_0x139c9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x6f0f" link2="_0x13a0f" method="_0x1e">
+                                    <resource_enum id="_0x13a0f" name="Enumerator" typedef="_0x5247" inivalue="_0x5448" icon="_0x22"/>
+                                 </condition>
+                              </conditions>
+                              <actions id="_0x13b66" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0x13cca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x6812" method="_0xa"/>
+                              </actions>
+                              <actions id="_0x13d66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske">
+                                 <action id="_0x13eca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x6812" method="_0x14"/>
+                              </actions>
+                           </program_sub>
+                           <action id="_0x13fca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x6812" method="_0xa"/>
+                        </actions>
+                        <actions id="_0x14066" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                     </program_sub>
+                     <program_sub id="_0x1411f" name="Efterløb start" icon="_0x7">
+                        <conditions id="_0x14265" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                           <condition id="_0x143c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6111" method="_0x14"/>
+                           <condition id="_0x144c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x5c11" method="_0x14"/>
+                           <condition id="_0x145c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6311" method="_0x14"/>
+                           <condition id="_0x146c9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x6f0f" link2="_0x1470f" method="_0x1e">
+                              <resource_enum id="_0x1470f" name="Enumerator" typedef="_0x5247" inivalue="_0x5348" icon="_0x22"/>
+                           </condition>
+                        </conditions>
+                        <actions id="_0x14866" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                           <action id="_0x149ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x6c10" method="_0xbe"/>
+                        </actions>
+                        <actions id="_0x14a66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                     </program_sub>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0x14b1e" name="Sluk" icon="_0x7">
+                  <events id="_0x14c64" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x14dc8" name="%P bliver ændret" icon="_0xc" note="Start program når %P skifter værdi" link1="_0x6211" method="_0x96"/>
+                  </events>
+                  <actions id="_0x14e66" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <action id="_0x14fca" name="Stands tælling på %P" icon="_0x9" note="Standser evt. igangværende optælling eller nedtælling på %P" link1="_0x6c10" method="_0xdc"/>
+                     <action id="_0x150ca" name="%P = Initialværdi" icon="_0x9" note="Sætter %P til dens initialværdi" link1="_0x6c10" method="_0x19"/>
+                     <program_sub id="_0x1511f" name="Sluk" icon="_0x7">
+                        <conditions id="_0x15265" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                           <condition id="_0x153c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x6211" method="_0xa"/>
+                        </conditions>
+                        <actions id="_0x15466" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                           <action id="_0x155ca" name="Fremkald %P" icon="_0x9" note="Aktiver scenarie" link1="_0x6a4a" method="_0xa"/>
+                           <action id="_0x156ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x6512" method="_0x14"/>
+                           <action id="_0x157ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x6712" method="_0xa"/>
+                           <action id="_0x158ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x7210" method="_0xbe"/>
+                           <action id="_0x159ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x6812" method="_0x14"/>
+                           <program_sub id="_0x15a1f" name="Blokkering af PIR efter sluk" icon="_0x7">
+                              <conditions id="_0x15b65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test" type="or">
+                                 <conditions id="_0x15c65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                    <condition id="_0x15dc9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x5f11" method="_0x14"/>
+                                    <condition id="_0x15ec9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x6d0f" link2="_0x15f0f" method="_0x1e">
+                                       <resource_enum id="_0x15f0f" name="Enumerator" typedef="_0x5547" inivalue="_0x5648" icon="_0x22"/>
+                                    </condition>
+                                 </conditions>
+                                 <conditions id="_0x16065" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                    <condition id="_0x161c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x5f11" method="_0xa"/>
+                                    <condition id="_0x162c9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x6e0f" link2="_0x1630f" method="_0x1e">
+                                       <resource_enum id="_0x1630f" name="Enumerator" typedef="_0x5847" inivalue="_0x5a48" icon="_0x22"/>
+                                    </condition>
+                                 </conditions>
+                              </conditions>
+                              <actions id="_0x16466" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <program_sub id="_0x1651f" name="Start blokkering" icon="_0x7">
+                                    <conditions id="_0x16665" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                       <condition id="_0x167c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6311" method="_0x14"/>
+                                    </conditions>
+                                    <actions id="_0x16866" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                       <action id="_0x169ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x7110" method="_0xbe"/>
+                                       <action id="_0x16aca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x7310" method="_0xbe"/>
+                                       <action id="_0x16bca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x6812" method="_0xa"/>
+                                    </actions>
+                                    <actions id="_0x16c66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                                 </program_sub>
+                              </actions>
+                              <actions id="_0x16d66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                           </program_sub>
+                        </actions>
+                        <actions id="_0x16e66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                     </program_sub>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0x16f1e" name="Udgang for puls" icon="_0x7">
+                  <events id="_0x17064" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x171c8" name="%P -&gt; 0" icon="_0xc" note="Start program når %P skifter til 0" link1="_0x7210" method="_0xa"/>
+                  </events>
+                  <actions id="_0x17266" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <action id="_0x173ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x6612" method="_0x14"/>
+                     <action id="_0x174ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x6712" method="_0x14"/>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0x1751e" name="Spærring on" icon="_0x7">
+                  <events id="_0x17664" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x177c8" name="%P -&gt; ON" icon="_0xc" note="Start program når %P skifter til ON" link1="_0x6311" method="_0xa"/>
+                  </events>
+                  <actions id="_0x17866" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <action id="_0x179ca" name="Stands tælling på %P" icon="_0x9" note="Standser evt. igangværende optælling eller nedtælling på %P" link1="_0x6c10" method="_0xdc"/>
+                     <action id="_0x17aca" name="%P = Initialværdi" icon="_0x9" note="Sætter %P til dens initialværdi" link1="_0x6c10" method="_0x19"/>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0x17b1e" name="Automatisk frakobling af spærring" icon="_0x7">
+                  <events id="_0x17c64" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x17dc8" name="%P -&gt; OFF" icon="_0xc" note="Start program når %P skifter til OFF" link1="_0x5d11" method="_0x14"/>
+                  </events>
+                  <actions id="_0x17e66" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <action id="_0x17fca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x6311" method="_0x14"/>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0x1801e" name="Manuel sluk blinker med diode" icon="_0x7">
+                  <events id="_0x18164" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x182c8" name="%P -&gt; 0" icon="_0xc" note="Start program når %P skifter til 0" link1="_0x7310" method="_0xa"/>
+                  </events>
+                  <actions id="_0x18366" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <program_sub id="_0x1841f" name="Under program" icon="_0x7">
+                        <conditions id="_0x18565" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                           <condition id="_0x186c9" name="%P tæller ned" icon="_0x1a" note="Betingelse at %P er aktiveret til at tælle ned" link1="_0x7110" method="_0xd2"/>
+                        </conditions>
+                        <actions id="_0x18766" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                           <action id="_0x188ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x7310" method="_0xbe"/>
+                           <program_sub id="_0x1891f" name="Under program" icon="_0x7">
+                              <conditions id="_0x18a65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <condition id="_0x18bc9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x6812" method="_0x14"/>
+                              </conditions>
+                              <actions id="_0x18c66" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0x18dca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x6812" method="_0xa"/>
+                              </actions>
+                              <actions id="_0x18e66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske">
+                                 <action id="_0x18fca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x6812" method="_0x14"/>
+                              </actions>
+                           </program_sub>
+                        </actions>
+                        <actions id="_0x19066" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                     </program_sub>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0x1911e" name="Afstilling manuel betjening" icon="_0x7">
+                  <events id="_0x19264" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x193c8" name="%P -&gt; 0" icon="_0xc" note="Start program når %P skifter til 0" link1="_0x7110" method="_0xa"/>
+                  </events>
+                  <actions id="_0x19466" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <action id="_0x195ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x6812" method="_0x14"/>
+                  </actions>
+               </program_simple>
+            </programs>
+         </functionblock>
+      </group>
+      <group id="_0x2232" name="Entré" icon="_0x15">
+         <functionblock id="_0x19628" name="1.4.02.a. PIR styring " master_schneider_electric="yes" master_type="1.4.02" master_version="a" master_name="PIR styring " master_programmer="Schneider Electric&#xD;&#xA;Copyrights © 2016" master_date_year="2017" master_date_month="9" master_date_day="14" locked="yes" icon="_0xe" note="1.4.02.a. PIR styring &#xD;&#xA;&#xD;&#xA;Anvendelse:&#xD;&#xA;Til simpel styring af IHC Wireless produkter og relæer ifm. PIR og manuel betjening.&#xD;&#xA;&#xD;&#xA;For at se den fulde beskrivelse marker denne linje og tryk &quot;F1&quot;.&#xD;&#xA;Bemærk: Dette virker kun hvis blokken er rød-markeret.">
+            <inputs id="_0x1a023" name="Input" icon="_0x4" note="Variablene i denne gruppering er input til funktionsblokken">
+               <resource_input id="_0x1a111" name="PIR" icon="_0x36" note="Forbindes til tilstedeværelses indikering fra PIR sensor.&#xD;&#xA;Virkemåde defineres under indstillinger:&#xD;&#xA; &quot;# PIR funktion&quot;&#xD;&#xA; &quot;# PIR funktion nat&quot;&#xD;&#xA;(Udfyldes af installatøren)"/>
+               <resource_input id="_0x1a211" name="Skumring" icon="_0x36" note="Forbindes fra skumringssensor eller luxsensor ifm. funktionsblok 1.1.12&#xD;&#xA;Alternativt via ur funktionsblok.&#xD;&#xA;(Udfyldes af installatøren)&#xD;&#xA;&#xD;&#xA;&#xD;&#xA;" inivalue="on"/>
+               <resource_input id="_0x1a311" name="Tilbagemelding" icon="_0x36" note="Opret link mellem produktets &quot;Udgang&quot; og &quot;Tilbagemelding&quot;.&#xD;&#xA;Ved tilbagemelding begrænses genkald af IHC Wireless produkter ifm. PIR aktivitet."/>
+               <resource_input id="_0x1a411" name="Natdrift" icon="_0x36" note="Anvendes som begrænsning for PIR funktion om natten.&#xD;&#xA;(Udfyldes af installatøren)"/>
+               <resource_input id="_0x1a511" name="Kip" icon="_0x36" note="Kipper udgang og scenarier&#xD;&#xA;(Udfyldes af installatøren)"/>
+               <resource_input id="_0x1a611" name="Tænd" icon="_0x36" note="Tænder udgang og scenarie &#xD;&#xA;(Udfyldes af installatøren)"/>
+               <resource_input id="_0x1a711" name="Sluk" icon="_0x36" note="Slukker udgang og scenarie.&#xD;&#xA;(Udfyldes af installatøren)&#xD;&#xA;"/>
+               <resource_input id="_0x1a811" name="Spærring" icon="_0x36" note="Når denne indgang er on, vil al automatik være spærret. Dette giver mulighed for total spærring i både tændt og slukket tilstand.&#xD;&#xA;(Udfyldes af installatøren)&#xD;&#xA;"/>
+            </inputs>
+            <outputs id="_0x1a924" name="Output" icon="_0x14" note="Variablene i denne gruppering er output fra funktionsblokken">
+               <resource_output id="_0x1aa12" name="Udgang" icon="_0x39" note="Forbindes til relæ hvis scenariefunktion ikke benyttes.&#xD;&#xA;"/>
+               <resource_output id="_0x1ab12" name="ON puls" icon="_0x39" note="Giver kort puls ved tænding.&#xD;&#xA;Anvendes til styring af andre blokke."/>
+               <resource_output id="_0x1ac12" name="OFF puls" icon="_0x39" note="Giver kort puls ved slukning.&#xD;&#xA;Anvendes til styring af andre blokke."/>
+               <resource_output id="_0x1ad12" name="Manuelt betjent" icon="_0x39" note="Visning af overstyring af PIR. &#xD;&#xA;Kan benyttes til diode eller Viewer.&#xD;&#xA;Ifm. manuel sluk vil udgang blinke (default 15 sek.) som kvittéring for spærring af PIR."/>
+               <resource_scene id="_0x1ae4a" name="Scenarie tænd" note="Forbindes til relæ og/eller IHC Wireless lysdæmper."/>
+               <resource_scene id="_0x1af4a" name="Scenarie sluk" note="Forbindes til relæ og/eller IHC Wireless lysdæmper."/>
+            </outputs>
+            <settings id="_0x1b025" name="Indstillinger" icon="_0xd" note="Variablene i denne gruppering er indstillinger til funktionsblokken">
+               <resource_timer id="_0x1b110" name="Efterløb" backup="yes" icon="_0x43" note="Her indstilles efterløbstiden.&#xD;&#xA;" hour="0" minute="3" second="0" millisecond="0"/>
+               <resource_enum id="_0x1b20f" name="PIR funktion" typedef="_0x5547" inivalue="_0x5648" backup="yes" icon="_0x22" note="Her er det muligt, at vælge hvilken funktion PIR&apos;en skal have dag/aften.&#xD;&#xA;Vælg mellem:&#xD;&#xA;&#xD;&#xA;&quot;Tænder lys&quot;&#xD;&#xA;&quot;Kun efterløb&quot;&#xD;&#xA;"/>
+               <resource_enum id="_0x1b30f" name="PIR funktion nat" typedef="_0x5847" inivalue="_0x5948" backup="yes" icon="_0x22" note="Her er det muligt, at vælge hvilken funktion PIR&apos;en skal have om natten.&#xD;&#xA;Natdrift indgangen skal benyttes for at opnå funktion.&#xD;&#xA;&#xD;&#xA;Vælg mellem:&#xD;&#xA;&#xD;&#xA;&quot;Tænder lys&quot;&#xD;&#xA;&quot;Kun efterløb&quot;&#xD;&#xA;"/>
+               <resource_enum id="_0x1b40f" name="Manuel tænding" typedef="_0x5247" inivalue="_0x5348" icon="_0x22" note="Her er det muligt, at vælge funktion på manuel tænding.&#xD;&#xA;&#xD;&#xA;Vælg mellem:&#xD;&#xA;&#xD;&#xA;Ved &quot;Starter efterløb&quot; vil lys slukke på efterløb efter sidste påvirking af PIR eller tryk.&#xD;&#xA;Ved &quot;Spærrer efterløb&quot; vil lys ikke slukke ved skumringsfrafald når manuel betjening er aktiv."/>
+            </settings>
+            <internalsettings id="_0x1b529" name="Interne variable" icon="_0x13" note="Variablene i denne gruppe er private variable til funktionsblokken">
+               <resource_timer id="_0x1b610" name="Blokkering efter manuel sluk" icon="_0x43" hour="0" minute="0" second="15" millisecond="0"/>
+               <resource_timer id="_0x1b710" name="Puls" icon="_0x43" hour="0" minute="0" second="0" millisecond="250"/>
+               <resource_timer id="_0x1b810" name="Kvittér med blink efter manuel sluk" icon="_0x43" hour="0" minute="0" second="1" millisecond="0"/>
+            </internalsettings>
+            <programs id="_0x1b926" name="Programmer" icon="_0x19" note="Gruppering af funktionblokkens programmer">
+               <program_simple id="_0x1ba1e" name="PIR" icon="_0x7">
+                  <events id="_0x1bb64" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x1bcc8" name="%P bliver ændret" icon="_0xc" note="Start program når %P skifter værdi" link1="_0x1a111" method="_0x96"/>
+                     <event id="_0x1bdc8" name="%P -&gt; 0" icon="_0xc" note="Start program når %P skifter til 0" link1="_0x1b610" method="_0xa"/>
+                     <event id="_0x1bec8" name="%P bliver ændret" icon="_0xc" note="Start program når %P skifter værdi" link1="_0x1a211" method="_0x96"/>
+                     <event id="_0x1bfc8" name="%P bliver ændret" icon="_0xc" note="Start program når %P skifter værdi" link1="_0x1a411" method="_0x96"/>
+                     <event id="_0x1c0c8" name="%P -&gt; OFF" icon="_0xc" note="Start program når %P skifter til OFF" link1="_0x1a811" method="_0x14"/>
+                  </events>
+                  <actions id="_0x1c166" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <program_sub id="_0x1c21f" name="Under program" icon="_0x7">
+                        <conditions id="_0x1c365" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                           <condition id="_0x1c4c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x1a111" method="_0xa"/>
+                           <condition id="_0x1c5c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x1a211" method="_0xa"/>
+                           <condition id="_0x1c6c9" name="%P stoppet" icon="_0x1a" note="Betingelse at %P er stoppet" link1="_0x1b610" method="_0xdc"/>
+                           <condition id="_0x1c7c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1a811" method="_0x14"/>
+                           <conditions id="_0x1c865" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test" type="or">
+                              <condition id="_0x1c9c9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x1b40f" link2="_0x1ca0f" method="_0x1e">
+                                 <resource_enum id="_0x1ca0f" name="Enumerator" typedef="_0x5247" inivalue="_0x5348" icon="_0x22"/>
+                              </condition>
+                              <condition id="_0x1cbc9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1ad12" method="_0x14"/>
+                              <condition id="_0x1ccc9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1aa12" method="_0x14"/>
+                           </conditions>
+                        </conditions>
+                        <actions id="_0x1cd66" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                           <program_sub id="_0x1ce1f" name="Tænd" icon="_0x7">
+                              <conditions id="_0x1cf65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <conditions id="_0x1d065" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test" type="or">
+                                    <conditions id="_0x1d165" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                       <condition id="_0x1d2c9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x1b20f" link2="_0x1d30f" method="_0x1e">
+                                          <resource_enum id="_0x1d30f" name="Enumerator" typedef="_0x5547" inivalue="_0x5648" icon="_0x22"/>
+                                       </condition>
+                                       <condition id="_0x1d4c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1a411" method="_0x14"/>
+                                    </conditions>
+                                    <conditions id="_0x1d565" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                       <condition id="_0x1d6c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x1a411" method="_0xa"/>
+                                       <condition id="_0x1d7c9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x1b30f" link2="_0x1d80f" method="_0x1e">
+                                          <resource_enum id="_0x1d80f" name="Enumerator" typedef="_0x5847" inivalue="_0x5a48" icon="_0x22"/>
+                                       </condition>
+                                    </conditions>
+                                 </conditions>
+                                 <conditions id="_0x1d965" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test" type="or">
+                                    <condition id="_0x1dac9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1aa12" method="_0x14"/>
+                                    <condition id="_0x1dbc9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1a311" method="_0x14"/>
+                                 </conditions>
+                              </conditions>
+                              <actions id="_0x1dc66" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0x1ddca" name="Fremkald %P" icon="_0x9" note="Aktiver scenarie" link1="_0x1ae4a" method="_0xa"/>
+                                 <action id="_0x1deca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x1aa12" method="_0xa"/>
+                                 <action id="_0x1dfca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x1ab12" method="_0xa"/>
+                                 <action id="_0x1e0ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x1b710" method="_0xbe"/>
+                              </actions>
+                              <actions id="_0x1e166" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                           </program_sub>
+                           <action id="_0x1e2ca" name="Stands tælling på %P" icon="_0x9" note="Standser evt. igangværende optælling eller nedtælling på %P" link1="_0x1b110" method="_0xdc"/>
+                           <action id="_0x1e3ca" name="%P = Initialværdi" icon="_0x9" note="Sætter %P til dens initialværdi" link1="_0x1b110" method="_0x19"/>
+                        </actions>
+                        <actions id="_0x1e466" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske">
+                           <program_sub id="_0x1e51f" name="Efterløb start" icon="_0x7">
+                              <conditions id="_0x1e665" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <condition id="_0x1e7c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x1aa12" method="_0xa"/>
+                                 <condition id="_0x1e8c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x1a211" method="_0xa"/>
+                                 <condition id="_0x1e9c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1a511" method="_0x14"/>
+                                 <condition id="_0x1eac9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1a611" method="_0x14"/>
+                                 <condition id="_0x1ebc9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1a811" method="_0x14"/>
+                                 <conditions id="_0x1ec65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test" type="or">
+                                    <condition id="_0x1edc9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x1b40f" link2="_0x1ee0f" method="_0x1e">
+                                       <resource_enum id="_0x1ee0f" name="Enumerator" typedef="_0x5247" inivalue="_0x5348" icon="_0x22"/>
+                                    </condition>
+                                    <condition id="_0x1efc9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1ad12" method="_0x14"/>
+                                 </conditions>
+                              </conditions>
+                              <actions id="_0x1f066" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0x1f1ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x1b110" method="_0xbe"/>
+                              </actions>
+                              <actions id="_0x1f266" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                           </program_sub>
+                           <program_sub id="_0x1f31f" name="Efterløb start" icon="_0x7">
+                              <conditions id="_0x1f465" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <condition id="_0x1f5c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1a211" method="_0x14"/>
+                                 <condition id="_0x1f6c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x1aa12" method="_0xa"/>
+                                 <condition id="_0x1f7c9" name="%P stoppet" icon="_0x1a" note="Betingelse at %P er stoppet" link1="_0x1b110" method="_0xdc"/>
+                                 <condition id="_0x1f8c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1a811" method="_0x14"/>
+                                 <conditions id="_0x1f965" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test" type="or">
+                                    <condition id="_0x1fac9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x1b40f" link2="_0x1fb0f" method="_0x1e">
+                                       <resource_enum id="_0x1fb0f" name="Enumerator" typedef="_0x5247" inivalue="_0x5348" icon="_0x22"/>
+                                    </condition>
+                                    <condition id="_0x1fcc9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1ad12" method="_0x14"/>
+                                 </conditions>
+                              </conditions>
+                              <actions id="_0x1fd66" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0x1feca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x1b110" method="_0xbe"/>
+                              </actions>
+                              <actions id="_0x1ff66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                           </program_sub>
+                        </actions>
+                     </program_sub>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0x2001e" name="Efterløb sluk" icon="_0x7">
+                  <events id="_0x20164" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x202c8" name="%P -&gt; 0" icon="_0xc" note="Start program når %P skifter til 0" link1="_0x1b110" method="_0xa"/>
+                  </events>
+                  <actions id="_0x20366" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <action id="_0x204ca" name="Fremkald %P" icon="_0x9" note="Aktiver scenarie" link1="_0x1af4a" method="_0xa"/>
+                     <action id="_0x205ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x1aa12" method="_0x14"/>
+                     <action id="_0x206ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x1ac12" method="_0xa"/>
+                     <action id="_0x207ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x1b710" method="_0xbe"/>
+                     <action id="_0x208ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x1ad12" method="_0x14"/>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0x2091e" name="Tilbagemelding" icon="_0x7">
+                  <events id="_0x20a64" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x20bc8" name="%P bliver ændret" icon="_0xc" note="Start program når %P skifter værdi" link1="_0x1a311" method="_0x96"/>
+                  </events>
+                  <actions id="_0x20c66" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <program_sub id="_0x20d1f" name="Under program" icon="_0x7">
+                        <conditions id="_0x20e65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                           <condition id="_0x20fc9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x1a311" method="_0xa"/>
+                        </conditions>
+                        <actions id="_0x21066" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                           <program_sub id="_0x2111f" name="ON" icon="_0x7">
+                              <conditions id="_0x21265" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <condition id="_0x213c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1aa12" method="_0x14"/>
+                              </conditions>
+                              <actions id="_0x21466" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0x215ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x1aa12" method="_0xa"/>
+                              </actions>
+                              <actions id="_0x21666" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                           </program_sub>
+                           <program_sub id="_0x2171f" name="Aktiver nedtælling" icon="_0x7">
+                              <conditions id="_0x21865" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <condition id="_0x219c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1a811" method="_0x14"/>
+                                 <condition id="_0x21ac9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1a111" method="_0x14"/>
+                                 <condition id="_0x21bc9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1ad12" method="_0x14"/>
+                              </conditions>
+                              <actions id="_0x21c66" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0x21dca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x1b110" method="_0xbe"/>
+                              </actions>
+                              <actions id="_0x21e66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                           </program_sub>
+                        </actions>
+                        <actions id="_0x21f66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske">
+                           <action id="_0x220ca" name="Stands tælling på %P" icon="_0x9" note="Standser evt. igangværende optælling eller nedtælling på %P" link1="_0x1b110" method="_0xdc"/>
+                           <action id="_0x221ca" name="%P = Initialværdi" icon="_0x9" note="Sætter %P til dens initialværdi" link1="_0x1b110" method="_0x19"/>
+                           <program_sub id="_0x2221f" name="OFF" icon="_0x7">
+                              <conditions id="_0x22365" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <condition id="_0x224c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x1aa12" method="_0xa"/>
+                              </conditions>
+                              <actions id="_0x22566" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0x226ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x1aa12" method="_0x14"/>
+                                 <action id="_0x227ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x1ad12" method="_0x14"/>
+                              </actions>
+                              <actions id="_0x22866" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                           </program_sub>
+                        </actions>
+                     </program_sub>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0x2291e" name="Kip" icon="_0x7">
+                  <events id="_0x22a64" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x22bc8" name="%P bliver ændret" icon="_0xc" note="Start program når %P skifter værdi" link1="_0x1a511" method="_0x96"/>
+                  </events>
+                  <actions id="_0x22c66" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <program_sub id="_0x22d1f" name="Under program" icon="_0x7">
+                        <conditions id="_0x22e65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                           <condition id="_0x22fc9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x1a511" method="_0xa"/>
+                        </conditions>
+                        <actions id="_0x23066" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                           <program_sub id="_0x2311f" name="Tænd eller sluk" icon="_0x7">
+                              <conditions id="_0x23265" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <condition id="_0x233c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1aa12" method="_0x14"/>
+                              </conditions>
+                              <actions id="_0x23466" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0x235ca" name="Fremkald %P" icon="_0x9" note="Aktiver scenarie" link1="_0x1ae4a" method="_0xa"/>
+                                 <action id="_0x236ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x1aa12" method="_0xa"/>
+                                 <action id="_0x237ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x1ab12" method="_0xa"/>
+                                 <action id="_0x238ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x1b710" method="_0xbe"/>
+                                 <action id="_0x239ca" name="Stands tælling på %P" icon="_0x9" note="Standser evt. igangværende optælling eller nedtælling på %P" link1="_0x1b110" method="_0xdc"/>
+                                 <action id="_0x23aca" name="%P = Initialværdi" icon="_0x9" note="Sætter %P til dens initialværdi" link1="_0x1b110" method="_0x19"/>
+                                 <action id="_0x23bca" name="Stands tælling på %P" icon="_0x9" note="Standser evt. igangværende optælling eller nedtælling på %P" link1="_0x1b610" method="_0xdc"/>
+                                 <action id="_0x23cca" name="%P = Initialværdi" icon="_0x9" note="Sætter %P til dens initialværdi" link1="_0x1b610" method="_0x19"/>
+                                 <program_sub id="_0x23d1f" name="Under program" icon="_0x7">
+                                    <conditions id="_0x23e65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                       <condition id="_0x23fc9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x1b40f" link2="_0x2400f" method="_0x1e">
+                                          <resource_enum id="_0x2400f" name="Enumerator" typedef="_0x5247" inivalue="_0x5448" icon="_0x22"/>
+                                       </condition>
+                                    </conditions>
+                                    <actions id="_0x24166" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                       <action id="_0x242ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x1ad12" method="_0xa"/>
+                                    </actions>
+                                    <actions id="_0x24366" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske">
+                                       <action id="_0x244ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x1ad12" method="_0x14"/>
+                                    </actions>
+                                 </program_sub>
+                                 <action id="_0x245ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x1ad12" method="_0xa"/>
+                              </actions>
+                              <actions id="_0x24666" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske">
+                                 <program_sub id="_0x2471f" name="Blokkering af PIR efter sluk" icon="_0x7">
+                                    <conditions id="_0x24865" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test" type="or">
+                                       <conditions id="_0x24965" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                          <condition id="_0x24ac9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1a411" method="_0x14"/>
+                                          <condition id="_0x24bc9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x1b20f" link2="_0x24c0f" method="_0x1e">
+                                             <resource_enum id="_0x24c0f" name="Enumerator" typedef="_0x5547" inivalue="_0x5648" icon="_0x22"/>
+                                          </condition>
+                                       </conditions>
+                                       <conditions id="_0x24d65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                          <condition id="_0x24ec9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x1a411" method="_0xa"/>
+                                          <condition id="_0x24fc9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x1b30f" link2="_0x2500f" method="_0x1e">
+                                             <resource_enum id="_0x2500f" name="Enumerator" typedef="_0x5847" inivalue="_0x5a48" icon="_0x22"/>
+                                          </condition>
+                                       </conditions>
+                                    </conditions>
+                                    <actions id="_0x25166" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                       <program_sub id="_0x2521f" name="Start blokkering" icon="_0x7">
+                                          <conditions id="_0x25365" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                             <condition id="_0x254c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1a811" method="_0x14"/>
+                                          </conditions>
+                                          <actions id="_0x25566" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                             <action id="_0x256ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x1b610" method="_0xbe"/>
+                                          </actions>
+                                          <actions id="_0x25766" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                                       </program_sub>
+                                    </actions>
+                                    <actions id="_0x25866" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                                 </program_sub>
+                                 <action id="_0x259ca" name="Fremkald %P" icon="_0x9" note="Aktiver scenarie" link1="_0x1af4a" method="_0xa"/>
+                                 <action id="_0x25aca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x1aa12" method="_0x14"/>
+                                 <action id="_0x25bca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x1ac12" method="_0xa"/>
+                                 <action id="_0x25cca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x1b710" method="_0xbe"/>
+                                 <action id="_0x25dca" name="Stands tælling på %P" icon="_0x9" note="Standser evt. igangværende optælling eller nedtælling på %P" link1="_0x1b110" method="_0xdc"/>
+                                 <action id="_0x25eca" name="%P = Initialværdi" icon="_0x9" note="Sætter %P til dens initialværdi" link1="_0x1b110" method="_0x19"/>
+                                 <action id="_0x25fca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x1ad12" method="_0x14"/>
+                                 <action id="_0x260ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x1b810" method="_0xbe"/>
+                              </actions>
+                           </program_sub>
+                        </actions>
+                        <actions id="_0x26166" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske">
+                           <program_sub id="_0x2621f" name="Efterløb start" icon="_0x7">
+                              <conditions id="_0x26365" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <condition id="_0x264c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1a811" method="_0x14"/>
+                                 <condition id="_0x265c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1a111" method="_0x14"/>
+                                 <condition id="_0x266c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x1aa12" method="_0xa"/>
+                                 <condition id="_0x267c9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x1b40f" link2="_0x2680f" method="_0x1e">
+                                    <resource_enum id="_0x2680f" name="Enumerator" typedef="_0x5247" inivalue="_0x5348" icon="_0x22"/>
+                                 </condition>
+                              </conditions>
+                              <actions id="_0x26966" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0x26aca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x1b110" method="_0xbe"/>
+                              </actions>
+                              <actions id="_0x26b66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                           </program_sub>
+                        </actions>
+                     </program_sub>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0x26c1e" name="Tænd" icon="_0x7">
+                  <events id="_0x26d64" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x26ec8" name="%P bliver ændret" icon="_0xc" note="Start program når %P skifter værdi" link1="_0x1a611" method="_0x96"/>
+                  </events>
+                  <actions id="_0x26f66" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <program_sub id="_0x2701f" name="Tænd" icon="_0x7">
+                        <conditions id="_0x27165" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                           <condition id="_0x272c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x1a611" method="_0xa"/>
+                        </conditions>
+                        <actions id="_0x27366" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                           <action id="_0x274ca" name="Fremkald %P" icon="_0x9" note="Aktiver scenarie" link1="_0x1ae4a" method="_0xa"/>
+                           <action id="_0x275ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x1aa12" method="_0xa"/>
+                           <action id="_0x276ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x1ab12" method="_0xa"/>
+                           <action id="_0x277ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x1b710" method="_0xbe"/>
+                           <action id="_0x278ca" name="Stands tælling på %P" icon="_0x9" note="Standser evt. igangværende optælling eller nedtælling på %P" link1="_0x1b110" method="_0xdc"/>
+                           <action id="_0x279ca" name="%P = Initialværdi" icon="_0x9" note="Sætter %P til dens initialværdi" link1="_0x1b110" method="_0x19"/>
+                           <action id="_0x27aca" name="Stands tælling på %P" icon="_0x9" note="Standser evt. igangværende optælling eller nedtælling på %P" link1="_0x1b610" method="_0xdc"/>
+                           <action id="_0x27bca" name="%P = Initialværdi" icon="_0x9" note="Sætter %P til dens initialværdi" link1="_0x1b610" method="_0x19"/>
+                           <program_sub id="_0x27c1f" name="Under program" icon="_0x7">
+                              <conditions id="_0x27d65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <condition id="_0x27ec9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x1b40f" link2="_0x27f0f" method="_0x1e">
+                                    <resource_enum id="_0x27f0f" name="Enumerator" typedef="_0x5247" inivalue="_0x5448" icon="_0x22"/>
+                                 </condition>
+                              </conditions>
+                              <actions id="_0x28066" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0x281ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x1ad12" method="_0xa"/>
+                              </actions>
+                              <actions id="_0x28266" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske">
+                                 <action id="_0x283ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x1ad12" method="_0x14"/>
+                              </actions>
+                           </program_sub>
+                           <action id="_0x284ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x1ad12" method="_0xa"/>
+                        </actions>
+                        <actions id="_0x28566" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                     </program_sub>
+                     <program_sub id="_0x2861f" name="Efterløb start" icon="_0x7">
+                        <conditions id="_0x28765" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                           <condition id="_0x288c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1a611" method="_0x14"/>
+                           <condition id="_0x289c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1a111" method="_0x14"/>
+                           <condition id="_0x28ac9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1a811" method="_0x14"/>
+                           <condition id="_0x28bc9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x1b40f" link2="_0x28c0f" method="_0x1e">
+                              <resource_enum id="_0x28c0f" name="Enumerator" typedef="_0x5247" inivalue="_0x5348" icon="_0x22"/>
+                           </condition>
+                        </conditions>
+                        <actions id="_0x28d66" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                           <action id="_0x28eca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x1b110" method="_0xbe"/>
+                        </actions>
+                        <actions id="_0x28f66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                     </program_sub>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0x2901e" name="Sluk" icon="_0x7">
+                  <events id="_0x29164" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x292c8" name="%P bliver ændret" icon="_0xc" note="Start program når %P skifter værdi" link1="_0x1a711" method="_0x96"/>
+                  </events>
+                  <actions id="_0x29366" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <action id="_0x294ca" name="Stands tælling på %P" icon="_0x9" note="Standser evt. igangværende optælling eller nedtælling på %P" link1="_0x1b110" method="_0xdc"/>
+                     <action id="_0x295ca" name="%P = Initialværdi" icon="_0x9" note="Sætter %P til dens initialværdi" link1="_0x1b110" method="_0x19"/>
+                     <program_sub id="_0x2961f" name="Sluk" icon="_0x7">
+                        <conditions id="_0x29765" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                           <condition id="_0x298c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x1a711" method="_0xa"/>
+                        </conditions>
+                        <actions id="_0x29966" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                           <action id="_0x29aca" name="Fremkald %P" icon="_0x9" note="Aktiver scenarie" link1="_0x1af4a" method="_0xa"/>
+                           <action id="_0x29bca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x1aa12" method="_0x14"/>
+                           <action id="_0x29cca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x1ac12" method="_0xa"/>
+                           <action id="_0x29dca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x1b710" method="_0xbe"/>
+                           <action id="_0x29eca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x1ad12" method="_0x14"/>
+                           <program_sub id="_0x29f1f" name="Blokkering af PIR efter sluk" icon="_0x7">
+                              <conditions id="_0x2a065" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test" type="or">
+                                 <conditions id="_0x2a165" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                    <condition id="_0x2a2c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1a411" method="_0x14"/>
+                                    <condition id="_0x2a3c9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x1b20f" link2="_0x2a40f" method="_0x1e">
+                                       <resource_enum id="_0x2a40f" name="Enumerator" typedef="_0x5547" inivalue="_0x5648" icon="_0x22"/>
+                                    </condition>
+                                 </conditions>
+                                 <conditions id="_0x2a565" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                    <condition id="_0x2a6c9" name="%P = ON" icon="_0x1a" note="Betingelse at %P er ON" link1="_0x1a411" method="_0xa"/>
+                                    <condition id="_0x2a7c9" name="%P = %S" icon="_0x1a" note="Betingelse at %P er samme som %S" link1="_0x1b30f" link2="_0x2a80f" method="_0x1e">
+                                       <resource_enum id="_0x2a80f" name="Enumerator" typedef="_0x5847" inivalue="_0x5a48" icon="_0x22"/>
+                                    </condition>
+                                 </conditions>
+                              </conditions>
+                              <actions id="_0x2a966" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <program_sub id="_0x2aa1f" name="Start blokkering" icon="_0x7">
+                                    <conditions id="_0x2ab65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                       <condition id="_0x2acc9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1a811" method="_0x14"/>
+                                    </conditions>
+                                    <actions id="_0x2ad66" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                       <action id="_0x2aeca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x1b610" method="_0xbe"/>
+                                       <action id="_0x2afca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x1b810" method="_0xbe"/>
+                                       <action id="_0x2b0ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x1ad12" method="_0xa"/>
+                                    </actions>
+                                    <actions id="_0x2b166" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                                 </program_sub>
+                              </actions>
+                              <actions id="_0x2b266" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                           </program_sub>
+                        </actions>
+                        <actions id="_0x2b366" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                     </program_sub>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0x2b41e" name="Udgang for puls" icon="_0x7">
+                  <events id="_0x2b564" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x2b6c8" name="%P -&gt; 0" icon="_0xc" note="Start program når %P skifter til 0" link1="_0x1b710" method="_0xa"/>
+                  </events>
+                  <actions id="_0x2b766" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <action id="_0x2b8ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x1ab12" method="_0x14"/>
+                     <action id="_0x2b9ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x1ac12" method="_0x14"/>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0x2ba1e" name="Spærring on" icon="_0x7">
+                  <events id="_0x2bb64" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x2bcc8" name="%P -&gt; ON" icon="_0xc" note="Start program når %P skifter til ON" link1="_0x1a811" method="_0xa"/>
+                  </events>
+                  <actions id="_0x2bd66" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <action id="_0x2beca" name="Stands tælling på %P" icon="_0x9" note="Standser evt. igangværende optælling eller nedtælling på %P" link1="_0x1b110" method="_0xdc"/>
+                     <action id="_0x2bfca" name="%P = Initialværdi" icon="_0x9" note="Sætter %P til dens initialværdi" link1="_0x1b110" method="_0x19"/>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0x2c01e" name="Automatisk frakobling af spærring" icon="_0x7">
+                  <events id="_0x2c164" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x2c2c8" name="%P -&gt; OFF" icon="_0xc" note="Start program når %P skifter til OFF" link1="_0x1a211" method="_0x14"/>
+                  </events>
+                  <actions id="_0x2c366" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <action id="_0x2c4ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x1a811" method="_0x14"/>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0x2c51e" name="Manuel sluk blinker med diode" icon="_0x7">
+                  <events id="_0x2c664" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x2c7c8" name="%P -&gt; 0" icon="_0xc" note="Start program når %P skifter til 0" link1="_0x1b810" method="_0xa"/>
+                  </events>
+                  <actions id="_0x2c866" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <program_sub id="_0x2c91f" name="Under program" icon="_0x7">
+                        <conditions id="_0x2ca65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                           <condition id="_0x2cbc9" name="%P tæller ned" icon="_0x1a" note="Betingelse at %P er aktiveret til at tælle ned" link1="_0x1b610" method="_0xd2"/>
+                        </conditions>
+                        <actions id="_0x2cc66" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                           <action id="_0x2cdca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x1b810" method="_0xbe"/>
+                           <program_sub id="_0x2ce1f" name="Under program" icon="_0x7">
+                              <conditions id="_0x2cf65" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                                 <condition id="_0x2d0c9" name="%P = OFF" icon="_0x1a" note="Betingelse at %P er OFF" link1="_0x1ad12" method="_0x14"/>
+                              </conditions>
+                              <actions id="_0x2d166" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1">
+                                 <action id="_0x2d2ca" name="%P = ON" icon="_0x9" note="Sætter %P til ON" link1="_0x1ad12" method="_0xa"/>
+                              </actions>
+                              <actions id="_0x2d366" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske">
+                                 <action id="_0x2d4ca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x1ad12" method="_0x14"/>
+                              </actions>
+                           </program_sub>
+                        </actions>
+                        <actions id="_0x2d566" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                     </program_sub>
+                  </actions>
+               </program_simple>
+               <program_simple id="_0x2d61e" name="Afstilling manuel betjening" icon="_0x7">
+                  <events id="_0x2d764" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x2d8c8" name="%P -&gt; 0" icon="_0xc" note="Start program når %P skifter til 0" link1="_0x1b610" method="_0xa"/>
+                  </events>
+                  <actions id="_0x2d966" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <action id="_0x2daca" name="%P = OFF" icon="_0x9" note="Sætter %P til OFF" link1="_0x1ad12" method="_0x14"/>
+                  </actions>
+               </program_simple>
+            </programs>
+         </functionblock>
+      </group>
+      <group id="_0x2332" name="Køkken" icon="_0x15"/>
+      <group id="_0x2432" name="Soveværelse" icon="_0x15"/>
+      <group id="_0x2532" name="Værelse" icon="_0x15"/>
+      <group id="_0x2632" name="Bad" icon="_0x15"/>
+      <group id="_0x2732" name="Bryggers" icon="_0x15"/>
+      <group id="_0x2832" name="Garage" icon="_0x15"/>
+      <group id="_0x2932" name="Kælder" icon="_0x15"/>
+      <group id="_0x2a32" name="Udendørs" icon="_0x15"/>
+   </groups>
+   <documentation_modules id="_0x4e34">
+      <dataline_input_modules id="_0x4f35"/>
+      <dataline_output_modules id="_0x5036"/>
+   </documentation_modules>
+</utcs_project>

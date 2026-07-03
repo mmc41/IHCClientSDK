@@ -55,5 +55,23 @@ namespace Ihc.Projects.Tests
                 Assert.That(kip.DisplayName, Does.Contain("Kip tænd sluk"));
             });
         }
+
+        // M3 / 3.3 — user-saved library blocks (e.g. AutoProof) carry no master_type, so they are unreachable via
+        // FunctionBlock(masterType) and must be found by name (BL-E3 / project2 inserts AutoProof).
+        [Test]
+        public void FunctionBlockByName_FindsUserSavedAutoProof_WithNoMasterType()
+        {
+            CatalogDiscovery catalog = RequireCatalog();
+
+            FunctionBlockDescriptor autoProof = catalog.FunctionBlockByName("AutoProof");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(autoProof.DisplayName, Is.EqualTo("AutoProof"));
+                Assert.That(autoProof.MasterType, Is.Empty, "user-saved block has no master_type — only a name lookup finds it");
+                Assert.That(autoProof.Body.Tag, Is.EqualTo("functionblock"), "descriptor body loaded");
+                Assert.That(autoProof.Body.GetAttribute("locked"), Is.EqualTo("yes"));
+            });
+        }
     }
 }

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <circle id="disc" cx="12" cy="12" r="3.5"/>
+  <line id="ray-n" x1="12" y1="2" x2="12" y2="5"/>
+  <line id="ray-s" x1="12" y1="19" x2="12" y2="22"/>
+  <line id="ray-e" x1="22" y1="12" x2="19" y2="12"/>
+  <line id="ray-w" x1="2" y1="12" x2="5" y2="12"/>
+  <line id="ray-ne" x1="19.1" y1="4.9" x2="17" y2="7"/>
+  <line id="ray-nw" x1="4.9" y1="4.9" x2="7" y2="7"/>
+  <line id="ray-se" x1="19.1" y1="19.1" x2="17" y2="17"/>
+  <line id="ray-sw" x1="4.9" y1="19.1" x2="7" y2="17"/>
+</svg>

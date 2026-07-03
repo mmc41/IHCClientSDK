@@ -22,6 +22,12 @@ namespace Ihc.Projects
         /// <summary>Looks a function block up by its <c>master_type</c> key (e.g. <c>1.1.01</c>).</summary>
         FunctionBlockDescriptor FunctionBlock(string masterType);
 
+        /// <summary>
+        /// Looks a function block up by its display name — for user-saved library blocks (e.g. <c>AutoProof</c>) that
+        /// carry no <c>master_type</c> and so cannot be found via <see cref="FunctionBlock"/>.
+        /// </summary>
+        FunctionBlockDescriptor FunctionBlockByName(string name);
+
         /// <summary>All discovered products.</summary>
         IReadOnlyList<ProductDescriptor> Products { get; }
 
@@ -62,6 +68,7 @@ namespace Ihc.Projects
         private readonly ImmutableArray<FunctionBlockDescriptor> functionBlocks;
         private readonly FrozenDictionaryLike<ProductDescriptor> productsByIdentifier;
         private readonly FrozenDictionaryLike<FunctionBlockDescriptor> functionBlocksByType;
+        private readonly FrozenDictionaryLike<FunctionBlockDescriptor> functionBlocksByName;
 
         private CatalogDiscovery(
             ImmutableArray<ProductDescriptor> products,
@@ -79,6 +86,8 @@ namespace Ihc.Projects
                 products, p => p.ProductIdentifier);
             functionBlocksByType = new FrozenDictionaryLike<FunctionBlockDescriptor>(
                 functionBlocks, f => f.MasterType);
+            functionBlocksByName = new FrozenDictionaryLike<FunctionBlockDescriptor>(
+                functionBlocks, f => f.DisplayName);
         }
 
         /// <summary>Builds a catalog by scanning the given IHC Visual install directory (results are cached).</summary>
@@ -173,6 +182,11 @@ namespace Ihc.Projects
         public FunctionBlockDescriptor FunctionBlock(string masterType) =>
             functionBlocksByType.Get(masterType)
             ?? throw new KeyNotFoundException($"No function block with master_type '{masterType}' in the catalog.");
+
+        /// <inheritdoc/>
+        public FunctionBlockDescriptor FunctionBlockByName(string name) =>
+            functionBlocksByName.Get(name)
+            ?? throw new KeyNotFoundException($"No function block named '{name}' in the catalog.");
 
         /// <inheritdoc/>
         public IReadOnlyList<ProductDescriptor> Products => products;

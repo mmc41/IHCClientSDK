@@ -86,14 +86,14 @@ namespace Ihc.Projects
         /// <c>id1</c>/<c>id2</c>/<c>modified</c> are stamped from the clock at creation time; a later
         /// <c>Save</c> re-stamps <c>id2</c>.
         /// </summary>
-        public Project CreateNew(ProjectDetails details)
+        public Project CreateNew(ProjectDetails details, SeedIdLayout seedLayout = SeedIdLayout.EnumsFirst)
         {
             ArgumentNullException.ThrowIfNull(details);
             using (var activity = StartActivity(nameof(CreateNew)))
             {
                 try
                 {
-                    Project project = NewProjectBuilder.Build(catalog.Value, details, timeProvider.GetLocalNow());
+                    Project project = NewProjectBuilder.Build(catalog.Value, details, timeProvider.GetLocalNow(), seedLayout);
                     activity?.SetReturnValue(project);
                     return project;
                 }

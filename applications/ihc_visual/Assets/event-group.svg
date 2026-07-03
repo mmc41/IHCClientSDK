@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect id="shadow-bar" x="11.5" y="6.5" width="3" height="9" rx="1.5" fill="currentColor" stroke="none"/>
+  <circle id="shadow-dot" cx="13" cy="20" r="1.8" fill="currentColor" stroke="none"/>
+  <rect id="bar" x="9" y="4" width="3" height="9" rx="1.5" fill="currentColor" stroke="none"/>
+  <circle id="dot" cx="10.5" cy="17.5" r="1.8" fill="currentColor" stroke="none"/>
+</svg>

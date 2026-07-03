@@ -17,7 +17,8 @@ namespace Ihc.Projects
     /// </summary>
     internal static class NewProjectBuilder
     {
-        public static Project Build(ICatalog catalog, ProjectDetails details, DateTimeOffset creationTime)
+        public static Project Build(ICatalog catalog, ProjectDetails details, DateTimeOffset creationTime,
+            SeedIdLayout seedLayout = SeedIdLayout.EnumsFirst)
         {
             ArgumentNullException.ThrowIfNull(catalog);
             ArgumentNullException.ThrowIfNull(details);
@@ -25,10 +26,21 @@ namespace Ihc.Projects
             ProjectElement skeleton = catalog.NewProjectSkeleton;
             var allocator = new IdAllocator(SeedFromSkeleton(skeleton));
 
-            // Allocation order is document order: the two enum definitions (+ their values) first (0x41–0x4d),
-            // then the documentation-module skeleton (0x4e–0x50) — matching the vendor's empty file.
-            ProjectElement enumDefinitions = BuildEnumDefinitions(skeleton, catalog.BuiltInEnumerators, allocator);
-            ProjectElement documentationModules = BuildDocumentationModules(allocator);
+            // The seed sub-order varies by IHC Visual build (anomaly A-1): EnumsFirst (Project0/Project1) allocates
+            // the two built-in enums (+values) first (0x41–0x4d) then the documentation modules (0x4e–0x50);
+            // ModulesFirst (project2) reverses the allocation. Document emission order is identical either way.
+            ProjectElement enumDefinitions;
+            ProjectElement documentationModules;
+            if (seedLayout == SeedIdLayout.ModulesFirst)
+            {
+                documentationModules = BuildDocumentationModules(allocator);
+                enumDefinitions = BuildEnumDefinitions(skeleton, catalog.BuiltInEnumerators, allocator);
+            }
+            else
+            {
+                enumDefinitions = BuildEnumDefinitions(skeleton, catalog.BuiltInEnumerators, allocator);
+                documentationModules = BuildDocumentationModules(allocator);
+            }
             ProjectElement groups = RequireChild(skeleton, "groups");
 
             string stamp = PackedStamp.FromDateTime(creationTime).ToToken();   // id1 == id2 at creation; Save re-stamps id2

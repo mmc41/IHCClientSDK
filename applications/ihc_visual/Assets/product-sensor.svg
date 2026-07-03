@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <polyline id="letter-a" points="3,12 4.6,4.5 6.2,12"/>
+  <line id="letter-a-bar" x1="3.7" y1="8.8" x2="5.5" y2="8.8"/>
+  <path id="letter-u" d="M7.7 4.5 V9.5 a1.6 1.6 0 0 0 3.2 0 V4.5"/>
+  <path id="letter-t" d="M12.4 4.5 H15.6 M14 4.5 V12"/>
+  <ellipse id="letter-o" cx="18.8" cy="8.25" rx="1.7" ry="3.75"/>
+  <line id="rail" x1="5" y1="15.5" x2="19" y2="15.5"/>
+  <circle id="terminal-left" cx="9" cy="18.5" r="1" fill="currentColor" stroke="none"/>
+  <circle id="terminal-right" cx="15" cy="18.5" r="1" fill="currentColor" stroke="none"/>
+</svg>
