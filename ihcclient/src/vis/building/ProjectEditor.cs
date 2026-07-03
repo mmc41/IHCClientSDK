@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Linq;
 
 namespace Ihc.Projects
@@ -49,6 +50,39 @@ namespace Ihc.Projects
             ArgumentNullException.ThrowIfNull(name);
             ElementId id = FindGroupByName(name) ?? SeedGroup(name);
             return new GroupRef(this, id);
+        }
+
+        /// <summary>
+        /// Authors a new project-global enum definition — as IHC Visual does when a user creates an enum "on first
+        /// use" (e.g. project2's "NyTypeForThisProject"): allocates the definition id then one id per value in
+        /// document order (R1), stamps each value with its 0-based <c>index</c>, appends the definition (with its
+        /// values) to the project's <c>enum_definitions</c> container, and returns a handle for wiring
+        /// <c>resource_enum</c> references. Passing no values authors an empty definition (e.g. project3's "TestEnum").
+        /// </summary>
+        public EnumDefinitionRef AddEnumDefinition(string name, params string[] values)
+        {
+            ArgumentNullException.ThrowIfNull(name);
+            ArgumentNullException.ThrowIfNull(values);
+
+            ElementId defId = allocator.Allocate(TypeCodeFor("enum_definition"));
+            var valueElements = ImmutableArray.CreateBuilder<ProjectElement>(values.Length);
+            var valueRefs = ImmutableArray.CreateBuilder<(string, ElementId)>(values.Length);
+            for (int i = 0; i < values.Length; i++)
+            {
+                ElementId valueId = allocator.Allocate(TypeCodeFor("enum_value"));
+                valueElements.Add(SimpleElement("enum_value", valueId,
+                    ("name", values[i]), ("index", i.ToString(CultureInfo.InvariantCulture))));
+                valueRefs.Add((values[i], valueId));
+            }
+            ProjectElement def = SimpleElement("enum_definition", defId, ("name", name))
+                with { Children = valueElements.ToImmutable() };
+
+            ProjectElement container = root.FindChild(EnumDefinitionsTag)
+                ?? throw new InvalidOperationException("The project has no enum_definitions container.");
+            root = ReplaceChildByTag(root, EnumDefinitionsTag,
+                container with { Children = AppendTo(container.Children, def) });
+
+            return new EnumDefinitionRef(defId, valueRefs.ToImmutable());
         }
 
         /// <summary>
