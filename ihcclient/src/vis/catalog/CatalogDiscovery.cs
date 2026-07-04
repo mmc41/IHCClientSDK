@@ -62,8 +62,6 @@ namespace Ihc.Projects
     /// </summary>
     public sealed class CatalogDiscovery : ICatalog
     {
-        private static readonly Regex MenuPrefix = new(@"^\d+#", RegexOptions.Compiled);
-
         private readonly ImmutableArray<ProductDescriptor> products;
         private readonly ImmutableArray<FunctionBlockDescriptor> functionBlocks;
         private readonly FrozenDictionaryLike<ProductDescriptor> productsByIdentifier;
@@ -153,7 +151,7 @@ namespace Ihc.Projects
         {
             byte[] bytes = File.ReadAllBytes(fbDefPath);
             ProjectElement body = ReadCatalogFile(fbDefPath, bytes);
-            string name = StripMenuPrefix(body.GetAttribute("name") ?? "Tom blok");
+            string name = MenuPrefix.Strip(body.GetAttribute("name") ?? "Tom blok");
             return new FunctionBlockDescriptor(string.Empty, string.Empty, name, name, string.Empty, body)
             {
                 InlineDtdBlocks = InlineDtd.Capture(bytes),
@@ -169,7 +167,7 @@ namespace Ihc.Projects
                 byte[] bytes = File.ReadAllBytes(path);
                 ProjectElement body = ReadCatalogFile(path, bytes);
                 string identifier = body.GetAttribute("product_identifier") ?? string.Empty;
-                string displayName = StripMenuPrefix(body.GetAttribute("name") ?? string.Empty);
+                string displayName = MenuPrefix.Strip(body.GetAttribute("name") ?? string.Empty);
                 builder.Add(new ProductDescriptor(identifier, displayName, RelativeDir(productsDir, path), body)
                 {
                     InlineDtdBlocks = InlineDtd.Capture(bytes),
@@ -205,8 +203,6 @@ namespace Ihc.Projects
 
         private static string RelativeDir(string root, string filePath) =>
             Path.GetDirectoryName(Path.GetRelativePath(root, filePath)) ?? string.Empty;
-
-        private static string StripMenuPrefix(string name) => MenuPrefix.Replace(name, string.Empty);
 
         /// <inheritdoc/>
         public ProductDescriptor Product(string productIdentifier) =>

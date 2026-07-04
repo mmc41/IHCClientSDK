@@ -80,6 +80,48 @@ cascade + monotone-id / no-dangling-link handling (C) — and as a diff fixture 
 region maps to exactly one recorded action (Action 0 / A / B / C / metadata). A second independent run of
 A/B/C is byte-identical to this file modulo `id2`+`modified` (deterministic authoring).
 
+### project3-KompleksWired-copied.vis (239 KB, 2,522 lines) — derived copy/paste oracle
+Authentic IHC Visual output **derived from `project3-KompleksWired.vis`** by three recorded clipboard
+copy→paste actions in one session (single save); the actions are fully specified below (session notes in
+`tmp/cporacle/FINDINGS.md`). Its purpose is the **copy/paste byte-fidelity** gate for
+`ProjectEditor.CopySubtree`: the SDK loads the *original*, replays Action 0 + these copy actions through
+`CopySubtree`, saves with the clock pinned to this file's stamp `id2="_0x40f391d"` /
+`modified 2026-07-04 15:57`, and asserts byte-identity. `id1` is unchanged (`_0x1d0e2923`);
+`last_unique_id` rises `_0x56c → _0x590`. The same load-time **Action 0** as the `-mutated` oracle applies
+first: a bare save re-hoists the two catalog (`[read only]`, `typeid`) enums `Persienne tilstand`/`Logning`
+to the bottom of the enum block with fresh ids `_0x56d..0x579` and rewrites their 4 `resource_enum` refs —
+reproduce it before any copy allocates (the SDK's passive load preserves the original's low enum ids).
+Every pasted subtree keeps the source name **verbatim** (no "Kopi af…" rename) and preserves the catalog
+`product_identifier`. The three copies (in allocation order):
+- **A — from-side external-link drop.** Copied `LK FUGA Tryk 2 tast` (`_0x5153`, TV1 path `0/0`, owner of
+  all three `link_from_resource` follow-link ends) → pasted into empty group **`Lokalitet`** (`_0x56c32`).
+  Both `dataline_input`s are copied but their 3 `link_from_resource` children are **dropped** (inputs
+  emitted self-closing) — the vendor's from-side policy equals SDK `LinkCopyPolicy.DropExternal`. Allocated
+  3 ids: `_0x57a53` (product) + `_0x57b5a`/`_0x57c5a` (the two inputs); the dropped links consume no ids.
+- **B — internal `scene_resource` remap.** Copied `Lampeudtag` (`_0x5453`, TV1 path `0/1`, carries
+  `<scenes scene_resource="_0x555b"/>` pointing at its own `dataline_output _0x555b`) → pasted into empty
+  group **`Udendørs`** (`_0x2a32`). Allocated 3 ids: `_0x57d53` (product) + `_0x57e5b` (output) + `_0x57f49`
+  (scenes); the copy's `scene_resource` is **remapped to the new internal output** `_0x57e5b` (not left
+  pointing at the source), proving the internal-IDREF remap through the copy's old→new map.
+- **C — shared-enum reuse + non-count id allocation.** Copied `Temperatur sensor med logning` (`_0x5e53`,
+  TV1 path `2/0`, two `resource_enum` rows referencing the shared `Logning` enum) → pasted into group
+  **`Lokalitet`** (`_0x56c32`, appended after A). The pasted `resource_enum` rows point at the
+  **re-hoisted shared** `Logning` def `_0x57347` / value `_0x57448` (`typedef`/`inivalue`) with **no new
+  enum id allocated** — the enum is reused, not duplicated. Id allocation is **not** one-per-serialized
+  element: the vendor lays down the product `_0x58053`, **burns 7 ids** `_0x581..0x587` (catalog-template
+  resource slots not serialized in this instance), then the 9 present children `_0x588..0x590` — a
+  deterministic gap the SDK replay must reproduce. `last_unique_id` ends `_0x590`.
+
+Designed for: copy/paste byte-fidelity of `CopySubtree` on a large existing project — from-side
+`DropExternal` (A), `scene_resource` internal-IDREF remap (B), shared-enum reuse + non-count id allocation
+with a burned-slot gap (C) — and as a diff fixture where each changed byte region maps to exactly one
+action (Action 0 / A / B / C / metadata). Every hunk of `project3-KompleksWired.vis` → this file is
+explained, and a second independent A/B/C run is byte-identical modulo `id2`+`modified` (deterministic).
+**Not covered here:** the to-side `DropExternal` + deep internal-remap branch (a copied **function block**,
+e.g. AND `_0x47028`) — IHC Visual `03.04.72.03` would not persist a pasted function block through the
+driver (paste silently no-ops in memory), so that branch has no vendor oracle in this file; see
+`tmp/cporacle/FINDINGS.md` and `tmp/newgaps.md` Gap 2.
+
 ## Authentic oracles (`LiveAuthored/`)
 
 Minimal single-purpose projects captured live in IHC Visual during experiment B3, each isolating

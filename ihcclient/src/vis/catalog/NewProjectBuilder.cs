@@ -82,7 +82,7 @@ namespace Ihc.Projects
             string containerName = skeletonEnums.GetAttribute("name") ?? "Enumerator definitioner";
 
             var definitions = ImmutableArray.CreateBuilder<ProjectElement>();
-            foreach (ProjectElement def in Children(template))
+            foreach (ProjectElement def in template.ChildrenOrEmpty())
             {
                 if (def.Tag != "enum_definition")
                 {
@@ -90,7 +90,7 @@ namespace Ihc.Projects
                 }
                 string defId = allocator.Allocate(TypeCode.RequireForTag("enum_definition")).ToToken();
                 var values = ImmutableArray.CreateBuilder<ProjectElement>();
-                foreach (ProjectElement value in Children(def))
+                foreach (ProjectElement value in def.ChildrenOrEmpty())
                 {
                     if (value.Tag != "enum_value")
                     {
@@ -173,9 +173,6 @@ namespace Ihc.Projects
                 }
             }
         }
-
-        private static IEnumerable<ProjectElement> Children(ProjectElement element) =>
-            element.Children.IsDefaultOrEmpty ? NoChildren : element.Children;
 
         private static ProjectElement RequireChild(ProjectElement parent, string tag) =>
             parent.FindChild(tag) ?? throw new InvalidOperationException(

@@ -102,7 +102,7 @@ namespace Ihc.Projects
             reader.MoveToContent();
             string tag = reader.LocalName;
             ImmutableArray<(string, string)> attrs = ReadAttributes(reader);
-            string? idToken = GetAttr(attrs, "id");
+            string? idToken = ProjectElement.GetAttribute(attrs, "id");
             ElementId? id = idToken is not null && ElementId.TryParse(idToken, out ElementId parsed) ? parsed : null;
 
             if (reader.IsEmptyElement)
@@ -151,18 +151,6 @@ namespace Ihc.Projects
             }
             reader.MoveToElement();
             return attrs.ToImmutable();
-        }
-
-        private static string? GetAttr(ImmutableArray<(string Name, string Value)> attrs, string name)
-        {
-            foreach ((string Name, string Value) a in attrs)
-            {
-                if (a.Name == name)
-                {
-                    return a.Value;
-                }
-            }
-            return null;
         }
     }
 }

@@ -246,11 +246,6 @@ namespace Ihc {
 
         private readonly Ihc.Soap.Controller.ControllerService impl;
 
-        // Strict Latin-1 for the controller wire: every .vis/.ihc is ISO-8859-1, and the default replacement
-        // fallback would silently gzip any out-of-repertoire character as '?' into controller EPROM.
-        private static readonly Encoding Latin1Strict = Encoding.GetEncoding(ProjectFile.EncodingName,
-            EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
-
         /// <summary>
         /// Create an ControllerService instance for access to the IHC API related to the controller itself.
         /// </summary>
@@ -336,7 +331,7 @@ namespace Ihc {
                 // Explicit scope ensures GZipStream is fully flushed and disposed before ToArray()
                 using (Stream outStream = new System.IO.Compression.GZipStream(mscompressed, System.IO.Compression.CompressionMode.Compress))
                 {
-                    using (StreamWriter writer = new StreamWriter(outStream, Latin1Strict, bufferSize: 10*1024, leaveOpen: true))
+                    using (StreamWriter writer = new StreamWriter(outStream, ProjectFile.StrictEncoding, bufferSize: 10*1024, leaveOpen: true))
                     {
                         await writer.WriteAsync(data).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                         await writer.FlushAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
@@ -760,7 +755,7 @@ namespace Ihc {
                     // abort mid-change-mode or (with a replacement fallback) be silently stored as '?'.
                     try
                     {
-                        Latin1Strict.GetBytes(project.Data);
+                        ProjectFile.StrictEncoding.GetBytes(project.Data);
                     }
                     catch (EncoderFallbackException ex)
                     {

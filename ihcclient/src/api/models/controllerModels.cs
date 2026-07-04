@@ -166,6 +166,14 @@ namespace Ihc
         public static System.Text.Encoding Encoding { get; } = System.Text.Encoding.GetEncoding(EncodingName);
 
         /// <summary>
+        /// Strict ISO-8859-1: throws on any text outside the Latin-1 repertoire instead of substituting '?'. The
+        /// single source of truth for the byte-exact <c>.vis</c>/<c>.ihc</c> wire — used by the serializer and the
+        /// controller upload path so an out-of-repertoire character fails loudly rather than silently corrupting the file.
+        /// </summary>
+        public static System.Text.Encoding StrictEncoding { get; } = System.Text.Encoding.GetEncoding(
+            EncodingName, System.Text.EncoderFallback.ExceptionFallback, System.Text.DecoderFallback.ExceptionFallback);
+
+        /// <summary>
         /// Canonical file extension (without leading dot) for an IHC project file. Single source of truth used by
         /// the Lab to suggest *.vis when saving a project result and to default the upload dialog to *.vis.
         /// </summary>

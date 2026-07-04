@@ -31,9 +31,6 @@ namespace Ihc.Projects
         /// <summary>A reference to another element's id (DTD type <c>IDREF</c>): remapped on insert.</summary>
         IdRef,
 
-        /// <summary>A plain unpadded decimal integer (machine-generated, e.g. <c>year</c>/<c>index</c>).</summary>
-        Decimal,
-
         /// <summary>Opaque verbatim text — user strings, enumerated tokens, and all non-id <c>_0x</c> tokens.</summary>
         Text,
     }

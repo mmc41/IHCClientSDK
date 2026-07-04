@@ -20,7 +20,7 @@ namespace Ihc.Projects
             }
             foreach ((string name, string _) in element.Attrs)
             {
-                if (!HasAttribute(schema, name))
+                if (schema.FindAttr(name) is null)
                 {
                     throw new InvalidOperationException(
                         $"Element '{element.Tag}'{Locate(element)} carries attribute '{name}' that is not declared " +
@@ -42,18 +42,6 @@ namespace Ihc.Projects
             {
                 GuardTreeNoUnknownAttributes(child, view);
             }
-        }
-
-        internal static bool HasAttribute(ElementSchema schema, string name)
-        {
-            foreach (AttrSchema attr in schema.Attrs)
-            {
-                if (attr.Name == name)
-                {
-                    return true;
-                }
-            }
-            return false;
         }
 
         private static string Locate(ProjectElement element) =>

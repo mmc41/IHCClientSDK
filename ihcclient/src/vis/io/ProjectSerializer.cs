@@ -22,9 +22,6 @@ namespace Ihc.Projects
         private const string DoctypeClose = "]>";
         private const int MaxIndentDepth = 20;   // the vendor's indent cache holds depths 0..20; deeper → column 0
 
-        private static readonly Encoding Latin1Strict =
-            Encoding.GetEncoding("ISO-8859-1", EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
-
         // Precomputed indent strings for depths 0..MaxIndentDepth (3 spaces per level), so the per-element save
         // path reuses them instead of allocating a fresh string on every element.
         private static readonly string[] IndentCache = BuildIndentCache();
@@ -55,7 +52,7 @@ namespace Ihc.Projects
         {
             try
             {
-                return Latin1Strict.GetBytes(text);
+                return ProjectFile.StrictEncoding.GetBytes(text);
             }
             catch (EncoderFallbackException ex)
             {

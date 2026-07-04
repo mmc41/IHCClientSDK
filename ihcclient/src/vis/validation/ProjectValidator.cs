@@ -152,7 +152,7 @@ namespace Ihc.Projects
                     findings.Error("attr-latin1", element,
                         $"attribute '{name}' on '{element.Tag}' has non-ISO-8859-1 text");
                 }
-                AttrSchema? attr = FindAttr(schema, name);
+                AttrSchema? attr = schema.FindAttr(name);
                 if (attr is null)
                 {
                     findings.Error("attr-undeclared", element,
@@ -269,7 +269,7 @@ namespace Ihc.Projects
                         // Locality applies to the programming references only; `link` (follow-link halves),
                         // `typedef`/`inivalue` (project-level enum registry) etc. are legitimately non-local.
                         if (FbLocalRefAttrs.Contains(name)
-                            && FindAttr(schema, name) is { Render: AttrRender.IdRef }
+                            && schema.FindAttr(name) is { Render: AttrRender.IdRef }
                             && idTokens.Contains(value) && !localIds.Contains(value))
                         {
                             findings.Error("fb-local-ref", element,
@@ -561,18 +561,6 @@ namespace Ihc.Projects
         }
 
         // ----- helpers -----
-
-        private static AttrSchema? FindAttr(ElementSchema schema, string attrName)
-        {
-            foreach (AttrSchema attr in schema.Attrs)
-            {
-                if (attr.Name == attrName)
-                {
-                    return attr;
-                }
-            }
-            return null;
-        }
 
         private static bool IsLatin1(string value)
         {

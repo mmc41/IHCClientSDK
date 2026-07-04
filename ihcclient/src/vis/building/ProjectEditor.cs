@@ -222,7 +222,7 @@ namespace Ihc.Projects
                 {
                     foreach ((string name, string value) in element.Attrs)
                     {
-                        if (IsIdRefAttr(schema, name) && ElementId.TryParse(value, out ElementId target)
+                        if (schema.IsIdRef(name) && ElementId.TryParse(value, out ElementId target)
                             && deletedIds.Contains(target))
                         {
                             hits.Add($"<{element.Tag}> {(element.Id is { } eid ? eid.ToToken() : "?")} {name}='{value}'");
@@ -239,18 +239,6 @@ namespace Ihc.Projects
             }
             Walk(tree);
             return hits;
-        }
-
-        private static bool IsIdRefAttr(ElementSchema schema, string name)
-        {
-            foreach (AttrSchema attr in schema.Attrs)
-            {
-                if (attr.Name == name)
-                {
-                    return attr.Render == AttrRender.IdRef;
-                }
-            }
-            return false;
         }
 
         /// <summary>
@@ -312,13 +300,13 @@ namespace Ihc.Projects
         /// </summary>
         private static (ElementId FromHalf, ElementId ToHalf)? FindReciprocalPair(ProjectElement fromEl, ProjectElement toEl)
         {
-            foreach (ProjectElement half in ChildrenOf(fromEl))
+            foreach (ProjectElement half in fromEl.ChildrenOrEmpty())
             {
                 if (half.Tag != "link_from_resource" || half.Id is not { } fromHalfId)
                 {
                     continue;
                 }
-                foreach (ProjectElement partner in ChildrenOf(toEl))
+                foreach (ProjectElement partner in toEl.ChildrenOrEmpty())
                 {
                     if (partner.Tag == "link_to_resource" && partner.Id is { } toHalfId
                         && half.GetAttribute("link") == partner.GetAttribute("id")
@@ -330,9 +318,6 @@ namespace Ihc.Projects
             }
             return null;
         }
-
-        private static IEnumerable<ProjectElement> ChildrenOf(ProjectElement element) =>
-            element.Children.IsDefaultOrEmpty ? Enumerable.Empty<ProjectElement>() : element.Children;
 
         /// <summary>
         /// Clones an existing in-project subtree (the clipboard copy/paste) under a new parent: deep-copies it
@@ -692,20 +677,20 @@ namespace Ihc.Projects
                 && (tags.Length == 0 || tags.Contains(e.Tag)))?.Id;
         }
 
-        internal void SetAttributeById(ElementId id, string name, string value)
-        {
-            ProjectElement element = Require(id);
-            ElementSchema? schema = SchemaView.TryGet(element.Tag);
-            if (schema is not null && !SchemaGuards.HasAttribute(schema, name))
+        internal void SetAttributeById(ElementId id, string name, string value) =>
+            Mutate(id, element =>
             {
-                // Reject at the write, with the target named — the alternative is a commit-time throw far
-                // from the mutation that caused it (canonicalization refuses undeclared attributes).
-                throw new ArgumentException(
-                    $"Attribute '{name}' is not declared for <{element.Tag}> (id {id.ToToken()}); " +
-                    "the .vis grammar would reject it on save.", nameof(name));
-            }
-            root = ReplaceById(root, id, e => e.WithAttribute(name, value));
-        }
+                ElementSchema? schema = SchemaView.TryGet(element.Tag);
+                if (schema is not null && schema.FindAttr(name) is null)
+                {
+                    // Reject at the write, with the target named — the alternative is a commit-time throw far
+                    // from the mutation that caused it (canonicalization refuses undeclared attributes).
+                    throw new ArgumentException(
+                        $"Attribute '{name}' is not declared for <{element.Tag}> (id {id.ToToken()}); " +
+                        "the .vis grammar would reject it on save.", nameof(name));
+                }
+                return element.WithAttribute(name, value);
+            });
 
         /// <summary>
         /// Resolves a live resource handle to its id, requiring both that the handle carries an id and that the
@@ -846,8 +831,14 @@ namespace Ihc.Projects
 
         private void Mutate(ElementId id, Func<ProjectElement, ProjectElement> map)
         {
-            Require(id);   // fail fast: mutating an absent id must never silently no-op (stale-handle corruption)
-            root = ReplaceById(root, id, map);
+            // One traversal that both finds and replaces the target; an absent id must never silently no-op
+            // (stale-handle corruption), so a miss throws exactly as the old fail-fast Require pre-check did.
+            ProjectElement updated = ReplaceById(root, id, map, out bool found);
+            if (!found)
+            {
+                throw new InvalidOperationException($"No element with id {id.ToToken()} in the edit session.");
+            }
+            root = updated;
         }
 
         private static ProjectElement? FindById(ProjectElement element, ElementId id)
@@ -892,21 +883,30 @@ namespace Ihc.Projects
             return null;
         }
 
-        private static ProjectElement ReplaceById(ProjectElement element, ElementId id, Func<ProjectElement, ProjectElement> map)
+        private static ProjectElement ReplaceById(ProjectElement element, ElementId id,
+            Func<ProjectElement, ProjectElement> map, out bool found)
         {
             if (element.Id == id)
             {
+                found = true;
                 return map(element);
             }
             if (element.Children.IsDefaultOrEmpty)
             {
+                found = false;
                 return element;
             }
             bool changed = false;
+            found = false;
             var builder = ImmutableArray.CreateBuilder<ProjectElement>(element.Children.Length);
             foreach (ProjectElement child in element.Children)
             {
-                ProjectElement replaced = ReplaceById(child, id, map);
+                if (found)
+                {
+                    builder.Add(child);   // ids are unique — once the target is replaced, the remaining siblings copy verbatim
+                    continue;
+                }
+                ProjectElement replaced = ReplaceById(child, id, map, out found);
                 changed |= !ReferenceEquals(replaced, child);
                 builder.Add(replaced);
             }

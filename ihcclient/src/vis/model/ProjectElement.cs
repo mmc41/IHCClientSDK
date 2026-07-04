@@ -25,8 +25,28 @@ namespace Ihc.Projects
         ImmutableArray<ProjectElement> Children)
     {
         /// <summary>Returns the logical value of the named attribute, or <c>null</c> when absent.</summary>
-        public string? GetAttribute(string name) =>
-            Attrs.IsDefaultOrEmpty ? null : Attrs.FirstOrDefault(a => a.Name == name).Value;
+        public string? GetAttribute(string name) => GetAttribute(Attrs, name);
+
+        /// <summary>
+        /// Returns the logical value of the named attribute from a raw attribute bag, or <c>null</c> when absent.
+        /// The allocation-free scan the instance <see cref="GetAttribute(string)"/> and the readers/insert transform
+        /// share — those hold a bag before an element is built, so they cannot use the instance form.
+        /// </summary>
+        internal static string? GetAttribute(ImmutableArray<(string Name, string Value)> attrs, string name)
+        {
+            if (attrs.IsDefaultOrEmpty)
+            {
+                return null;
+            }
+            foreach ((string Name, string Value) attr in attrs)
+            {
+                if (attr.Name == name)
+                {
+                    return attr.Value;
+                }
+            }
+            return null;
+        }
 
         /// <summary>
         /// Returns a copy with the named attribute set: the existing entry is replaced in place (registry order
@@ -47,8 +67,25 @@ namespace Ihc.Projects
         }
 
         /// <summary>Returns the first direct child with the given tag, or <c>null</c> when none.</summary>
-        public ProjectElement? FindChild(string tag) =>
-            Children.IsDefaultOrEmpty ? null : Children.FirstOrDefault(c => c.Tag == tag);
+        public ProjectElement? FindChild(string tag)
+        {
+            foreach (ProjectElement child in ChildrenOrEmpty())
+            {
+                if (child.Tag == tag)
+                {
+                    return child;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>The children in document order, or an empty array when this element has none — the null-safe form of <see cref="Children"/>.</summary>
+        public ImmutableArray<ProjectElement> ChildrenOrEmpty() =>
+            Children.IsDefaultOrEmpty ? ImmutableArray<ProjectElement>.Empty : Children;
+
+        /// <summary>The attribute bag in registry order, or an empty array when this element has none — the null-safe form of <see cref="Attrs"/>.</summary>
+        public ImmutableArray<(string Name, string Value)> AttrsOrEmpty() =>
+            Attrs.IsDefaultOrEmpty ? ImmutableArray<(string, string)>.Empty : Attrs;
 
         /// <summary>
         /// Every element below this one in document order (depth-first, pre-order), excluding this element itself.
@@ -60,6 +97,28 @@ namespace Ihc.Projects
             var acc = new List<ProjectElement>();
             Collect(this, acc);
             return acc;
+        }
+
+        /// <summary>
+        /// The first element in this subtree — this element or any descendant, pre-order — that satisfies
+        /// <paramref name="match"/>, or <c>null</c> when none does. Short-circuits on the first hit without
+        /// materializing the subtree, so an id-addressed lookup resolves in one early-exit walk.
+        /// </summary>
+        public ProjectElement? FindDescendantOrSelf(Func<ProjectElement, bool> match)
+        {
+            if (match(this))
+            {
+                return this;
+            }
+            foreach (ProjectElement child in ChildrenOrEmpty())
+            {
+                ProjectElement? found = child.FindDescendantOrSelf(match);
+                if (found is not null)
+                {
+                    return found;
+                }
+            }
+            return null;
         }
 
         private static void Collect(ProjectElement element, List<ProjectElement> acc)

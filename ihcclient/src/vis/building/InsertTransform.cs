@@ -30,7 +30,6 @@ namespace Ihc.Projects
     /// </summary>
     internal static class InsertTransform
     {
-        private static readonly Regex MenuPrefix = new(@"^\d+#", RegexOptions.Compiled);
         private static readonly Regex LeadingZeroToken = new(@"^_0x0+[0-9a-fA-F]+$", RegexOptions.Compiled);
 
         // The vendor's null reference token, stamped on a #REQUIRED attribute the catalog .def left empty
@@ -170,7 +169,7 @@ namespace Ihc.Projects
             bool KeyMatches(ProjectElement def) => def.Tag == "enum_definition"
                 && (byTypeid ? def.GetAttribute("typeid") == typeid : name is not null && def.GetAttribute("name") == name);
 
-            foreach (ProjectElement candidate in Children(enumDefinitions).Concat(hoisted))
+            foreach (ProjectElement candidate in enumDefinitions.ChildrenOrEmpty().Concat(hoisted))
             {
                 if (KeyMatches(candidate) && AllValuesMap(stub, candidate))
                 {
@@ -183,7 +182,7 @@ namespace Ihc.Projects
         /// <summary>True when every <c>enum_value</c> in the stub resolves to a value in <paramref name="candidate"/> (by typeid else name).</summary>
         private static bool AllValuesMap(ProjectElement stub, ProjectElement candidate)
         {
-            foreach (ProjectElement value in Children(stub))
+            foreach (ProjectElement value in stub.ChildrenOrEmpty())
             {
                 if (value.Tag == "enum_value" && MatchValue(candidate, value) is null)
                 {
@@ -208,7 +207,7 @@ namespace Ihc.Projects
             {
                 idMap[stubId] = existingId;
             }
-            foreach (ProjectElement value in Children(stub))
+            foreach (ProjectElement value in stub.ChildrenOrEmpty())
             {
                 if (value.Tag != "enum_value")
                 {
@@ -235,7 +234,7 @@ namespace Ihc.Projects
             }
 
             var values = ImmutableArray.CreateBuilder<ProjectElement>();
-            foreach (ProjectElement value in Children(stub))
+            foreach (ProjectElement value in stub.ChildrenOrEmpty())
             {
                 if (value.Tag != "enum_value")
                 {
@@ -247,9 +246,9 @@ namespace Ihc.Projects
                 {
                     idMap[oldValueId] = valueId.ToToken();
                 }
-                values.Add(value with { Id = valueId, Attrs = SetAttribute(Attrs(value), "id", valueId.ToToken()) });
+                values.Add(value with { Id = valueId, Attrs = SetAttribute(value.AttrsOrEmpty(), "id", valueId.ToToken()) });
             }
-            hoisted.Add(stub with { Id = defId, Attrs = SetAttribute(Attrs(stub), "id", defId.ToToken()), Children = values.ToImmutable() });
+            hoisted.Add(stub with { Id = defId, Attrs = SetAttribute(stub.AttrsOrEmpty(), "id", defId.ToToken()), Children = values.ToImmutable() });
         }
 
         /// <summary>Finds the value inside <paramref name="existingDef"/> that the stub value maps to: by typeid when present, else by name.</summary>
@@ -264,18 +263,15 @@ namespace Ihc.Projects
             return name is null ? null : FindValueByName(existingDef, name);
         }
 
-        private static IEnumerable<ProjectElement> Children(ProjectElement element) =>
-            element.Children.IsDefaultOrEmpty ? Enumerable.Empty<ProjectElement>() : element.Children;
-
         private static ProjectElement RemapIdRefs(ProjectElement element, Dictionary<string, string> idMap, ProjectSchemaView view)
         {
             ElementSchema? schema = view.TryGet(element.Tag);
-            ImmutableArray<(string Name, string Value)> attrs = Attrs(element);
+            ImmutableArray<(string Name, string Value)> attrs = element.AttrsOrEmpty();
             if (schema is not null && !attrs.IsDefaultOrEmpty)
             {
                 for (int i = 0; i < attrs.Length; i++)
                 {
-                    if (IsIdRef(schema, attrs[i].Name) && idMap.TryGetValue(attrs[i].Value, out string? mapped))
+                    if (schema.IsIdRef(attrs[i].Name) && idMap.TryGetValue(attrs[i].Value, out string? mapped))
                     {
                         attrs = attrs.SetItem(i, (attrs[i].Name, mapped));
                     }
@@ -289,18 +285,6 @@ namespace Ihc.Projects
             return element with { Attrs = attrs, Children = children };
         }
 
-        private static bool IsIdRef(ElementSchema schema, string attrName)
-        {
-            foreach (AttrSchema attr in schema.Attrs)
-            {
-                if (attr.Name == attrName)
-                {
-                    return attr.Render == AttrRender.IdRef;
-                }
-            }
-            return false;
-        }
-
         /// <summary>
         /// Reconciles a freshly-inserted subtree's numeric attribute precision with the project's: for each attribute
         /// whose project DTD default is a fixed-point decimal, the value is re-emitted with that default's number of
@@ -312,7 +296,7 @@ namespace Ihc.Projects
         private static ProjectElement NormalizeNumerics(ProjectElement element, ProjectSchemaView view)
         {
             ElementSchema? schema = view.TryGet(element.Tag);
-            ImmutableArray<(string Name, string Value)> attrs = Attrs(element);
+            ImmutableArray<(string Name, string Value)> attrs = element.AttrsOrEmpty();
             if (schema is not null && !attrs.IsDefaultOrEmpty)
             {
                 for (int i = 0; i < attrs.Length; i++)
@@ -341,7 +325,7 @@ namespace Ihc.Projects
         /// </summary>
         private static ProjectElement NormalizeTokens(ProjectElement element)
         {
-            ImmutableArray<(string Name, string Value)> attrs = Attrs(element);
+            ImmutableArray<(string Name, string Value)> attrs = element.AttrsOrEmpty();
             for (int i = 0; i < attrs.Length; i++)
             {
                 if (LeadingZeroToken.IsMatch(attrs[i].Value))
@@ -367,7 +351,7 @@ namespace Ihc.Projects
         private static ProjectElement NormalizeEnums(ProjectElement element, ProjectSchemaView view)
         {
             ElementSchema? schema = view.TryGet(element.Tag);
-            ImmutableArray<(string Name, string Value)> attrs = Attrs(element);
+            ImmutableArray<(string Name, string Value)> attrs = element.AttrsOrEmpty();
             if (schema is not null && !attrs.IsDefaultOrEmpty)
             {
                 for (int i = 0; i < attrs.Length; i++)
@@ -390,25 +374,18 @@ namespace Ihc.Projects
         private static bool TryCanonicalizeEnum(ElementSchema schema, string attrName, string value, out string canonical)
         {
             canonical = value;
-            foreach (AttrSchema attr in schema.Attrs)
+            AttrSchema? attr = schema.FindAttr(attrName);
+            if (attr is null || attr.EnumValues.IsDefaultOrEmpty || attr.EnumValues.Contains(value))
             {
-                if (attr.Name != attrName)
+                return false;   // undeclared, not an enumerated attribute, or already an exact token
+            }
+            foreach (string token in attr.EnumValues)
+            {
+                if (token.Replace("-", string.Empty) == value.Replace("-", string.Empty))
                 {
-                    continue;
+                    canonical = token;
+                    return true;
                 }
-                if (attr.EnumValues.IsDefaultOrEmpty || attr.EnumValues.Contains(value))
-                {
-                    return false;   // not an enumerated attribute, or already an exact token
-                }
-                foreach (string token in attr.EnumValues)
-                {
-                    if (token.Replace("-", string.Empty) == value.Replace("-", string.Empty))
-                    {
-                        canonical = token;
-                        return true;
-                    }
-                }
-                return false;
             }
             return false;
         }
@@ -428,22 +405,15 @@ namespace Ihc.Projects
         {
             reformatted = value;
             const NumberStyles style = NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint;
-            foreach (AttrSchema attr in schema.Attrs)
+            AttrSchema? attr = schema.FindAttr(attrName);
+            if (attr is null || attr.Kind != AttrKind.Defaulted
+                || !TryFixedPointPlaces(attr.Default, out int places)
+                || !decimal.TryParse(value, style, CultureInfo.InvariantCulture, out decimal number))
             {
-                if (attr.Name != attrName)
-                {
-                    continue;
-                }
-                if (attr.Kind != AttrKind.Defaulted
-                    || !TryFixedPointPlaces(attr.Default, out int places)
-                    || !decimal.TryParse(value, style, CultureInfo.InvariantCulture, out decimal number))
-                {
-                    return false;   // not a fixed-point numeric attribute, or a non-numeric value — leave verbatim
-                }
-                reformatted = number.ToString("F" + places.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
-                return reformatted != value;
+                return false;   // undeclared, not a fixed-point numeric attribute, or a non-numeric value — leave verbatim
             }
-            return false;
+            reformatted = number.ToString("F" + places.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
+            return reformatted != value;
         }
 
         /// <summary>True when the DTD default is a plain fixed-point decimal; yields its number of decimal places.</summary>
@@ -478,7 +448,7 @@ namespace Ihc.Projects
 
         private static ProjectElement? FindValueByName(ProjectElement def, string name)
         {
-            foreach (ProjectElement value in Children(def))
+            foreach (ProjectElement value in def.ChildrenOrEmpty())
             {
                 if (value.Tag == "enum_value" && value.GetAttribute("name") == name)
                 {
@@ -509,24 +479,12 @@ namespace Ihc.Projects
             foreach (AttrSchema attr in schema.Attrs)
             {
                 if (attr.Kind == AttrKind.Required && attr.Render != AttrRender.Id
-                    && string.IsNullOrEmpty(GetAttribute(attrs, attr.Name)))
+                    && string.IsNullOrEmpty(ProjectElement.GetAttribute(attrs, attr.Name)))
                 {
                     attrs = SetAttribute(attrs, attr.Name, NullToken);
                 }
             }
             return attrs;
-        }
-
-        private static string? GetAttribute(ImmutableArray<(string Name, string Value)> attrs, string name)
-        {
-            foreach ((string Name, string Value) attr in attrs)
-            {
-                if (attr.Name == name)
-                {
-                    return attr.Value;
-                }
-            }
-            return null;
         }
 
         private static ImmutableArray<(string, string)> StripMenuPrefixFromName(ImmutableArray<(string Name, string Value)> attrs)
@@ -535,15 +493,12 @@ namespace Ihc.Projects
             {
                 if (attrs[i].Name == "name")
                 {
-                    string stripped = MenuPrefix.Replace(attrs[i].Value, string.Empty);
+                    string stripped = MenuPrefix.Strip(attrs[i].Value);
                     return stripped == attrs[i].Value ? attrs : attrs.SetItem(i, ("name", stripped));
                 }
             }
             return attrs;
         }
-
-        private static ImmutableArray<(string, string)> Attrs(ProjectElement element) =>
-            element.Attrs.IsDefaultOrEmpty ? ImmutableArray<(string, string)>.Empty : element.Attrs;
 
         private static ImmutableArray<(string, string)> SetAttribute(ImmutableArray<(string Name, string Value)> attrs, string name, string value)
         {

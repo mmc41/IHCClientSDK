@@ -134,8 +134,7 @@ namespace Ihc.Projects
         /// all descendants), or <c>null</c> when no element carries that id. This is the id-addressable read
         /// primitive a GUI selection model resolves against — unambiguous even where several elements share a name.
         /// </summary>
-        public ProjectElement? FindById(ElementId id) =>
-            Root.Id == id ? Root : Root.Descendants().FirstOrDefault(e => e.Id == id);
+        public ProjectElement? FindById(ElementId id) => Root.FindDescendantOrSelf(e => e.Id == id);
 
         /// <summary>
         /// Returns the immediate parent of the element carrying the given id, or <c>null</c> when the id is the
@@ -143,8 +142,7 @@ namespace Ihc.Projects
         /// navigation is resolved here against the tree (the read side of link navigation and far-end paths).
         /// </summary>
         public ProjectElement? FindParent(ElementId id) =>
-            new[] { Root }.Concat(Root.Descendants())
-                .FirstOrDefault(e => !e.Children.IsDefaultOrEmpty && e.Children.Any(c => c.Id == id));
+            Root.FindDescendantOrSelf(e => e.ChildrenOrEmpty().Any(c => c.Id == id));
 
         /// <summary>The <c>group</c> localities declared under <c>groups</c>.</summary>
         public IReadOnlyList<ProjectElement> Groups =>

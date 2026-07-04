@@ -93,7 +93,7 @@ namespace Ihc.Projects
             {
                 foreach ((string name, string value) in element.Attrs)
                 {
-                    if (IsIdRef(schema, name) && ElementId.TryParse(value, out ElementId reference)
+                    if (schema.IsIdRef(name) && ElementId.TryParse(value, out ElementId reference)
                         && reference.Counter > max)
                     {
                         max = reference.Counter;
@@ -112,18 +112,6 @@ namespace Ihc.Projects
                 }
             }
             return max;
-        }
-
-        private static bool IsIdRef(ElementSchema schema, string attrName)
-        {
-            foreach (AttrSchema attr in schema.Attrs)
-            {
-                if (attr.Name == attrName)
-                {
-                    return attr.Render == AttrRender.IdRef;
-                }
-            }
-            return false;
         }
     }
 }

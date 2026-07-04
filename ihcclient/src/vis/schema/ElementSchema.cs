@@ -15,5 +15,22 @@ namespace Ihc.Projects
         string Tag,
         int? Code,
         string CanonicalDtdBlock,
-        ImmutableArray<AttrSchema> Attrs);
+        ImmutableArray<AttrSchema> Attrs)
+    {
+        /// <summary>The declared schema for the named attribute, or <c>null</c> when this element type does not declare it.</summary>
+        public AttrSchema? FindAttr(string name)
+        {
+            foreach (AttrSchema attr in Attrs)
+            {
+                if (attr.Name == name)
+                {
+                    return attr;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>True when the named attribute is declared as an IDREF — i.e. it participates in id allocation and remapping.</summary>
+        public bool IsIdRef(string name) => FindAttr(name)?.Render == AttrRender.IdRef;
+    }
 }
