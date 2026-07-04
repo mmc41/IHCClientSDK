@@ -222,8 +222,12 @@ namespace Ihc.Projects
             }
         }
 
-        /// <summary>Hoists a fresh copy of the stub (def + values) with allocated ids, appended to the project container.</summary>
-        private static void HoistFresh(ProjectElement stub, IdAllocator allocator,
+        /// <summary>
+        /// Hoists a fresh copy of the stub (def + values) with allocated ids, appended to <paramref name="hoisted"/>.
+        /// Also reused by <see cref="ProjectEditor.NormalizeCatalogEnums"/> to reproduce the vendor's load-time
+        /// re-hoist of the built-in catalog enums (same allocation order: def then values, document order).
+        /// </summary>
+        internal static void HoistFresh(ProjectElement stub, IdAllocator allocator,
             Dictionary<string, string> idMap, List<ProjectElement> hoisted)
         {
             string? stubId = stub.GetAttribute("id");
@@ -263,7 +267,12 @@ namespace Ihc.Projects
             return name is null ? null : FindValueByName(existingDef, name);
         }
 
-        private static ProjectElement RemapIdRefs(ProjectElement element, Dictionary<string, string> idMap, ProjectSchemaView view)
+        /// <summary>
+        /// Rewrites every schema-declared IDREF attribute through the old→new <paramref name="idMap"/> (never by
+        /// attribute name), recursing into children. Reused by <see cref="ProjectEditor.NormalizeCatalogEnums"/> to
+        /// repoint <c>resource_enum</c> references at the re-hoisted catalog enums.
+        /// </summary>
+        internal static ProjectElement RemapIdRefs(ProjectElement element, Dictionary<string, string> idMap, ProjectSchemaView view)
         {
             ElementSchema? schema = view.TryGet(element.Tag);
             ImmutableArray<(string Name, string Value)> attrs = element.AttrsOrEmpty();

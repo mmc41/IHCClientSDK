@@ -108,9 +108,13 @@ Every pasted subtree keeps the source name **verbatim** (no "Kopi af…" rename)
   **`Lokalitet`** (`_0x56c32`, appended after A). The pasted `resource_enum` rows point at the
   **re-hoisted shared** `Logning` def `_0x57347` / value `_0x57448` (`typedef`/`inivalue`) with **no new
   enum id allocated** — the enum is reused, not duplicated. Id allocation is **not** one-per-serialized
-  element: the vendor lays down the product `_0x58053`, **burns 7 ids** `_0x581..0x587` (catalog-template
-  resource slots not serialized in this instance), then the 9 present children `_0x588..0x590` — a
-  deterministic gap the SDK replay must reproduce. `last_unique_id` ends `_0x590`.
+  element: the vendor lays down the product `_0x58053`, **burns 7 ids** `_0x581..0x587`, then the 9 present
+  children `_0x588..0x590` — a deterministic gap the SDK replay must reproduce. The burn is the referenced
+  `Logning` enum's **footprint** (def + 6 values = 7): a catalog product's `.def` body carries that enum as
+  its first child, so a paste re-materializes it and the insert pipeline allocates-then-discards its def+value
+  ids (they dedup against the shared enum) — verified against `product2125.def` (which has a 1-value enum
+  stub, so a catalog *insert* burns 2, while a *copy* clones the project's fully-materialized 6-value enum,
+  hence 7). Copies A and B reference no enum and burn 0. `last_unique_id` ends `_0x590`.
 
 Designed for: copy/paste byte-fidelity of `CopySubtree` on a large existing project — from-side
 `DropExternal` (A), `scene_resource` internal-IDREF remap (B), shared-enum reuse + non-count id allocation
@@ -121,6 +125,49 @@ explained, and a second independent A/B/C run is byte-identical modulo `id2`+`mo
 e.g. AND `_0x47028`) — IHC Visual `03.04.72.03` would not persist a pasted function block through the
 driver (paste silently no-ops in memory), so that branch has no vendor oracle in this file; see
 `tmp/cporacle/FINDINGS.md` and `tmp/newgaps.md` Gap 2.
+
+### project3-KompleksWired-enumvalues.vis (237 KB, 2,505 lines) — derived enum-with-values oracle
+Authentic IHC Visual output **derived from `project3-KompleksWired.vis`** by one recorded enum-with-values
+authoring action in a single session (single save); session notes in `tmp/cporacle3/FINDINGS.md`. Because the
+`ihcvisual` driver has **no value-add verb** (only `enum.createType`/`listTypes`/`listValues`, all valueless),
+the enum was authored directly in the live **"Enumerator typer og værdier"** dialog (command 24588) via Win32
+messaging (`Ny`-type button 360 → name Edit 377 → OK; then per value `Ny`-value button 361 → Edit 377 → OK; then
+dialog OK 1) — so **the vendor app itself allocated every id and wrote every byte** (verbatim vendor output, never
+hand-edited). Its purpose is the **enum-with-values authoring byte-fidelity** gate *in a mutation context*: the SDK
+loads the *original*, replays Action 0 + `ProjectEditor.AddEnumDefinition("ValueOracleEnum","Alpha","Beta","Gamma")`,
+saves with the clock pinned to this file's stamp `id2="_0x4120a2f"` / `modified 2026-07-04 18:10`, and asserts
+byte-identity. `id1` is unchanged (`_0x1d0e2923`); `last_unique_id` rises `_0x56c → _0x57d`. The same load-time
+**Action 0** as the `-mutated`/`-copied` oracles applies first: a bare save re-hoists the two catalog (`[read only]`,
+`typeid`) enums `Persienne tilstand`/`Logning` to the bottom of the enum block with fresh ids `_0x56d..0x579` and
+rewrites their 4 `resource_enum` refs — reproduce it before the enum allocates (the SDK's passive load preserves the
+original's low enum ids). The single authoring action:
+- **E — new enum with values.** Authored enum **`ValueOracleEnum`** with three values `Alpha`, `Beta`, `Gamma`,
+  appended at the **very end** of `enum_definitions` (after the re-hoisted catalog enums), **standalone** (not
+  referenced by any resource):
+  ```xml
+  <enum_definition id="_0x57a47" name="ValueOracleEnum">
+     <enum_value id="_0x57b48" name="Alpha"/>
+     <enum_value id="_0x57c48" name="Beta" index="1"/>
+     <enum_value id="_0x57d48" name="Gamma" index="2"/>
+  </enum_definition>
+  ```
+  **Vendor's answer to the open question** (does the vendor stamp value-ids/`index` differently *after* Action 0 than
+  from scratch?): **no — it is byte-identical to the from-scratch reference** `NyTypeForThisProject` (project2,
+  BL-E3). Ids are **contiguous, def-first, in value order** — def `_0x57a47`, then `_0x57b48`/`_0x57c48`/`_0x57d48`
+  — with **no id burn** (a bare-empty-enum probe `ProbeEmpty` in this same session took exactly the def id `_0x57a47`,
+  and the three values simply continue from `_0x57b`). **No `typeid`** on the def or any value; `index` is **0-based
+  with index-0 elided** (first value `Alpha` has no `index`, then `index="1"`, `index="2"`). Because
+  `enum_definition`/`enum_value` are already in project3's inline DTD, this action introduces **no DTD change**.
+  `last_unique_id` ends `_0x57d`.
+
+Designed for: enum-with-values authoring byte-fidelity — value-id allocation + `index` stamping + block placement
+**in a mutation context** (after the Action-0 re-hoist) — closing the value-id/`index` hole the `-mutated` oracle's
+empty Action B left open. Also a diff fixture where every changed byte region maps to exactly one cause (Action 0 /
+Action E / metadata): the SDK loads + validates it clean (`IsValid=True`, 0 errors/warnings), DTD-conforms against
+its own inline DTD, and **passively round-trips it byte-identically** — it is in the `ProjectByteFidelityTests` and
+`DtdConformanceTests` batteries alongside `-copied`/`-mutated`. The *replay* test (Action 0 +
+`AddEnumDefinition` → byte-identity, install-gated) is the follow-up; since the vendor block is contiguous with no
+burn, the SDK's single-shot `AddEnumDefinition` reproduces it directly.
 
 ## Authentic oracles (`LiveAuthored/`)
 

@@ -26,12 +26,13 @@ namespace Ihc.Projects.Tests
     /// <b>Confidence boundary (not oversold).</b> These prove the pipeline preserves byte-fidelity through real
     /// mutations and that inverses are exact — they do <em>not</em> prove that newly-authored content matches the
     /// vendor byte-for-byte (exact id <em>values</em>, freshly generated DTD blocks, enum-hoist placement). That is
-    /// the complementary, install-gated mutated-oracle replay track, whose vendor "after" oracle is already committed
-    /// (<c>testdata/project3-KompleksWired-mutated.vis</c> + its replay spec
-    /// <c>testdata/project3-KompleksWired-mutated.actions.md</c>); only the replay test itself is missing there.
-    /// Likewise T5 gates that copy-then-delete is inverse-exact, not that <see cref="ProjectEditor.CopySubtree"/>
-    /// matches what IHC Visual's clipboard paste would write (no vendor copy-paste oracle exists) — copy is an
-    /// SDK-defined operation here, not a vendor-parity one. All tests run without an installed catalog.
+    /// the complementary mutated-oracle replay track, whose vendor "after" oracle is already committed
+    /// (<c>testdata/project3-KompleksWired-mutated.vis</c>, replay spec inline in
+    /// <c>testdata/testdataoverview.md</c>); only that replay test is still missing. Likewise T5 gates that
+    /// copy-then-delete is inverse-exact; the vendor-parity of <see cref="ProjectEditor.CopySubtree"/> itself — that
+    /// it byte-reproduces what IHC Visual's clipboard paste writes — is now gated by
+    /// <c>CopyPasteReplayByteFidelityTests</c> against the committed <c>project3-KompleksWired-copied.vis</c> oracle.
+    /// All tests run without an installed catalog.
     /// </para>
     /// </summary>
     public class AuthoringByteInvarianceTests

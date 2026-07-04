@@ -121,6 +121,49 @@ namespace Ihc.Projects
         }
 
         /// <summary>
+        /// Reproduces IHC Visual's one-time, load-time normalization of the built-in catalog enums (the
+        /// <c>typeid</c>-bearing "[read only]" definitions, e.g. project3's "Persienne tilstand"/"Logning"): moves
+        /// them to the bottom of <c>enum_definitions</c>, renumbers each — definition then values, in document order —
+        /// to fresh ids off the project counter, and rewrites every <c>resource_enum</c> reference
+        /// (<c>typedef</c>/<c>inivalue</c>) to the new ids. <c>typeid</c>/<c>name</c>/<c>index</c> are preserved.
+        /// The SDK's <em>passive</em> load deliberately keeps the original low enum ids (byte round-trip fidelity), so
+        /// this is <b>not</b> automatic; authoring flows that must match the vendor's post-load byte layout call it
+        /// <b>once</b>, right after <see cref="ProjectEditingExtensions.Edit"/> and before any insert/copy. Returns
+        /// <c>this</c> for chaining; a project with no catalog enums is left untouched.
+        /// </summary>
+        public ProjectEditor NormalizeCatalogEnums()
+        {
+            ProjectElement container = root.FindChild(EnumDefinitionsTag)
+                ?? throw new InvalidOperationException("The project has no enum_definitions container.");
+
+            var catalogEnums = container.ChildrenOrEmpty()
+                .Where(c => c.Tag == "enum_definition"
+                    && c.GetAttribute("typeid") is { } typeid && typeid != "_0x0")
+                .ToList();
+            if (catalogEnums.Count == 0)
+            {
+                return this;   // no built-in catalog enums to re-hoist (idempotent for such a project)
+            }
+
+            var idMap = new Dictionary<string, string>(StringComparer.Ordinal);
+            var reHoisted = new List<ProjectElement>();
+            foreach (ProjectElement catalogEnum in catalogEnums)
+            {
+                // Same primitive the catalog-insert path uses: allocate def id then value ids in document order.
+                InsertTransform.HoistFresh(catalogEnum, allocator, idMap, reHoisted);
+            }
+
+            var movedIds = catalogEnums.Select(e => e.GetAttribute("id")!).ToHashSet(StringComparer.Ordinal);
+            IEnumerable<ProjectElement> kept = container.ChildrenOrEmpty()
+                .Where(c => !(c.GetAttribute("id") is { } id && movedIds.Contains(id)));
+            ProjectElement normalized = container with { Children = kept.Concat(reHoisted).ToImmutableArray() };
+
+            root = ReplaceChildByTag(root, EnumDefinitionsTag, normalized);
+            root = InsertTransform.RemapIdRefs(root, idMap, SchemaView);   // repoint resource_enum refs tree-wide
+            return this;
+        }
+
+        /// <summary>
         /// Opens a <see cref="ProgramBuilder"/> over an existing <c>program_simple</c> (addressed by id) to author its
         /// events and nested logic by hand — the id-addressed program-authoring entry a GUI drives after selecting a
         /// program node. The target must be a <c>program_simple</c> owning the <c>events</c>/<c>actions</c> containers
@@ -332,12 +375,52 @@ namespace Ihc.Projects
         {
             ProjectElement source = Require(sourceId);
             Require(targetParentId);                      // fail fast if the paste target does not exist
-            ElementId copyRootId = InsertComponent(targetParentId, source, ImmutableDictionary<string, string>.Empty);
-            if (policy == LinkCopyPolicy.DropExternal)
+            // Drop external follow-link halves BEFORE the clone allocates ids: the vendor's paste consumes no id for
+            // a dropped half, so removing them afterwards (copy-then-prune) would leave a phantom id burn. Internal
+            // halves (both ends inside the copy) stay and are remapped by InsertTransform.
+            ProjectElement body = policy == LinkCopyPolicy.DropExternal ? DropExternalLinkHalves(source) : source;
+            // A catalog product's .def body carries its enum as its first child, so a vendor paste allocates (and
+            // discards) that enum's def+value ids between the product id and its first serialized child — the
+            // "enum-footprint" id burn. The in-project instance dropped that stub on its original insert;
+            // reconstruct it from the project's shared enum so the existing enum-dedup path
+            // (HoistOrResolveEnum → BurnAndMapToExisting) reproduces the burn. Function blocks / bare resources
+            // carry no product_identifier and are copied one-id-per-element, unchanged.
+            if (body.GetAttribute("product_identifier") is not null)
             {
-                DropExternalLinkHalves(copyRootId);
+                body = PrependReferencedEnumStubs(body);
             }
-            return copyRootId;
+            return InsertComponent(targetParentId, body, ImmutableDictionary<string, string>.Empty);
+        }
+
+        /// <summary>
+        /// Prepends, as the copied body's first children, a clone of each distinct project enum a
+        /// <c>resource_enum</c> in <paramref name="source"/> references (by <c>typedef</c>, in first-appearance
+        /// order) — mirroring the enum a catalog product's <c>.def</c> body carries first. The insert pipeline then
+        /// allocates-and-discards each stub's def+value ids (they dedup against that same project enum), reproducing
+        /// IHC Visual's enum-footprint id burn on a product paste; the reused shared enum keeps its id. Returns
+        /// <paramref name="source"/> unchanged when it references no enum. Only the single-<c>typeid</c>-enum product
+        /// copy is oracle-verified (the vendor driver cannot persist a pasted function block).
+        /// </summary>
+        private ProjectElement PrependReferencedEnumStubs(ProjectElement source)
+        {
+            ProjectElement? container = root.FindChild(EnumDefinitionsTag);
+            if (container is null)
+            {
+                return source;
+            }
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var stubs = new List<ProjectElement>();
+            foreach (ProjectElement element in new[] { source }.Concat(source.Descendants()))
+            {
+                if (element.GetAttribute("typedef") is { } typedef && typedef != "_0x0" && seen.Add(typedef)
+                    && container.ChildrenOrEmpty().FirstOrDefault(d => d.GetAttribute("id") == typedef) is { } def)
+                {
+                    stubs.Add(def);
+                }
+            }
+            return stubs.Count == 0
+                ? source
+                : source with { Children = stubs.Concat(source.ChildrenOrEmpty()).ToImmutableArray() };
         }
 
         /// <summary>
@@ -371,17 +454,24 @@ namespace Ihc.Projects
                 return parent with { Children = children.Insert(at, child) };
             });
 
-        private void DropExternalLinkHalves(ElementId copyRootId)
+        /// <summary>
+        /// Returns a copy of <paramref name="source"/> with every follow-link half whose reciprocal partner lies
+        /// outside the subtree removed — applied to the source body <b>before</b> the clone allocates ids, so a
+        /// dropped half consumes no id (matching the vendor paste). Internal halves are left for
+        /// <see cref="InsertTransform"/> to deep-copy and remap.
+        /// </summary>
+        private static ProjectElement DropExternalLinkHalves(ProjectElement source)
         {
-            ProjectElement copy = Require(copyRootId);
-            var copyIds = new HashSet<ElementId>();
-            CollectIds(copy, copyIds);
+            var insideIds = new HashSet<ElementId>();
+            CollectIds(source, insideIds);
             var external = new List<ElementId>();
-            CollectExternalLinkHalves(copy, copyIds, external);
+            CollectExternalLinkHalves(source, insideIds, external);
+            ProjectElement pruned = source;
             foreach (ElementId halfId in external)
             {
-                root = RemoveById(root, halfId);          // structural removal only; the source's own links stay intact
+                pruned = RemoveById(pruned, halfId);
             }
+            return pruned;
         }
 
         // ----- placement legality (read; right-click "insert…" menus and gray-out) -----

@@ -36,6 +36,8 @@ namespace Ihc.Projects.Tests
         [TestCase("project2-CustomBlock.vis")]
         [TestCase("project3-KompleksWired.vis")]
         [TestCase("project3-KompleksWired-mutated.vis")]
+        [TestCase("project3-KompleksWired-copied.vis")]
+        [TestCase("project3-KompleksWired-enumvalues.vis")]
         [TestCase("LiveAuthored/step02-pir2.vis")]
         [TestCase("LiveAuthored/step06-luxtemp.vis")]
         public async Task SerializedOutput_ValidatesAgainstItsOwnInlineDtd(string oracle)

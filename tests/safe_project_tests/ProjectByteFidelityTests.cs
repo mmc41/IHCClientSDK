@@ -10,9 +10,12 @@ namespace Ihc.Projects.Tests
     /// metadata preserved must be <strong>byte-for-byte</strong> what IHC Visual wrote. Covers the full authentic
     /// vendor corpus — <c>Project0-Tomt.vis</c> (empty baseline), <c>Project1-SimpelWired.vis</c> (wired products +
     /// FB programs + links), <c>project2-CustomBlock.vis</c> (custom/locked function blocks + <c>resource_holiday</c>)
-    /// and <c>project3-KompleksWired.vis</c> (airlink + RS-485 + scenes + empty <c>Tom blok</c> blocks) — through both
-    /// the pure <see cref="ProjectSerializer"/> and the <see cref="ProjectAppService"/> save path. A separate test
-    /// pins the clock and verifies the default (vendor-like) save re-stamps only <c>id2</c>/<c>modified</c>.
+    /// and <c>project3-KompleksWired.vis</c> (airlink + RS-485 + scenes + empty <c>Tom blok</c> blocks) — plus the two
+    /// derived oracles <c>project3-KompleksWired-copied.vis</c> and <c>-mutated.vis</c>, which exercise the vendor's
+    /// post-edit structures (dropped-link self-closing inputs, remapped scenes, reused enums, and the burned-id gaps
+    /// from enum re-hoist / copy) — through both the pure <see cref="ProjectSerializer"/> and the
+    /// <see cref="ProjectAppService"/> save path. A separate test pins the clock and verifies the default (vendor-like)
+    /// save re-stamps only <c>id2</c>/<c>modified</c>.
     /// </summary>
     public class ProjectByteFidelityTests
     {
@@ -28,6 +31,9 @@ namespace Ihc.Projects.Tests
         [TestCase("Project1-SimpelWired.vis")]
         [TestCase("project2-CustomBlock.vis")]
         [TestCase("project3-KompleksWired.vis")]
+        [TestCase("project3-KompleksWired-copied.vis")]
+        [TestCase("project3-KompleksWired-mutated.vis")]
+        [TestCase("project3-KompleksWired-enumvalues.vis")]
         public void Serialize_RoundTrip_IsByteIdentical(string file)
         {
             byte[] original = TestData.ReadBytes(file);
@@ -41,6 +47,9 @@ namespace Ihc.Projects.Tests
         [TestCase("Project1-SimpelWired.vis")]
         [TestCase("project2-CustomBlock.vis")]
         [TestCase("project3-KompleksWired.vis")]
+        [TestCase("project3-KompleksWired-copied.vis")]
+        [TestCase("project3-KompleksWired-mutated.vis")]
+        [TestCase("project3-KompleksWired-enumvalues.vis")]
         public async Task Save_PreserveExistingMetadata_IsByteIdentical(string file)
         {
             byte[] original = TestData.ReadBytes(file);
