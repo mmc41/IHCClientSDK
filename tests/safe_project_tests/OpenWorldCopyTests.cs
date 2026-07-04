@@ -58,5 +58,25 @@ namespace Ihc.Projects.Tests
                                              ProjectSchemaView.For(project.InlineDtdBlocks)),
                 Throws.InvalidOperationException.With.Message.Contains("custom_widget"));
         }
+
+        [Test]
+        public async Task SchemaView_TracksInlineDtdBlocks_WhenCopiedWithDifferentBlocks()
+        {
+            // Reviewer scenario: a loaded project's SchemaView is warmed, then the record is copied via `with`
+            // to *different* InlineDtdBlocks. A schema view memoized before the copy must not survive it — a
+            // stale view resolves grammar against the discarded blocks, and the serializer would then emit the
+            // wrong DTD/defaults for the blocks the copy actually carries.
+            Project loaded = await LoadFixture();
+
+            // custom_widget is declared only by the file's own inline DTD; the static registry never declares it.
+            Assert.That(loaded.SchemaView.TryGet("custom_widget"), Is.Not.Null,
+                "baseline: the loaded project resolves its file-declared type from its captured blocks");
+            _ = loaded.SchemaView; // warm the memoized view against the file's blocks
+
+            Project stripped = loaded with { InlineDtdBlocks = ImmutableDictionary<string, string>.Empty };
+
+            Assert.That(stripped.SchemaView.TryGet("custom_widget"), Is.Null,
+                "a copy with empty blocks must not keep resolving a type only the discarded blocks declared");
+        }
     }
 }

@@ -51,8 +51,8 @@ resolution, move-subtree, insert-legality and FB shape-validation fixtures.
 
 ### project3-KompleksWired-mutated.vis (239 KB, 2,544 lines) — derived mutation oracle
 Authentic IHC Visual output **derived from `project3-KompleksWired.vis`** by applying three recorded
-editing actions in one session (single save). Full provenance and the exact replay spec live in
-`project3-KompleksWired-mutated.actions.md`. Its purpose is the **authoring-pipeline byte-fidelity**
+editing actions in one session (single save); the actions are fully specified below (session notes in
+`tmp/mutoracle/FINDINGS.md`). Its purpose is the **authoring-pipeline byte-fidelity**
 gate: the SDK loads the *original*, replays these actions through the public builder API (clock pinned
 to this file's stamp `id2="_0x40c1836"` / `modified 2026-07-04 12:24`), and asserts byte-identity.
 `id1` is unchanged (`_0x1d0e2923`); `last_unique_id` rises `_0x56c → _0x59e`. Note a load-time

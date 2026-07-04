@@ -27,14 +27,20 @@ namespace Ihc.Projects
                 ? ImmutableArray<string>.Empty
                 : Findings.Where(f => f.Severity == ValidationSeverity.Warning).Select(f => f.Message).ToImmutableArray();
 
-        /// <summary>Structural (value) equality, comparing the <see cref="Errors"/> contents by value.</summary>
+        /// <summary>
+        /// Structural (value) equality over the full outcome — <see cref="IsValid"/>, the <see cref="Errors"/>
+        /// list and the <see cref="Findings"/> list — each compared by content. Including <see cref="Findings"/>
+        /// keeps a warnings-only result (valid, no errors, but carrying warning findings) distinct from
+        /// <see cref="Success"/>, so a change in warnings is never hidden by equality-based diffing.
+        /// </summary>
         public bool Equals(ProjectValidationResult? other) =>
             other is not null
             && IsValid == other.IsValid
-            && ImmutableArrayValue.Equal(Errors, other.Errors);
+            && ImmutableArrayValue.Equal(Errors, other.Errors)
+            && ImmutableArrayValue.Equal(Findings, other.Findings);
 
         public override int GetHashCode() =>
-            HashCode.Combine(IsValid, ImmutableArrayValue.Hash(Errors));
+            HashCode.Combine(IsValid, ImmutableArrayValue.Hash(Errors), ImmutableArrayValue.Hash(Findings));
 
         public override string ToString() =>
             $"ProjectValidationResult(IsValid={IsValid}, Errors=string[{(Errors.IsDefaultOrEmpty ? 0 : Errors.Length)}], " +

@@ -63,5 +63,42 @@ namespace Ihc.Projects.Tests
                 Assert.That(ProjectValidationResult.Success, Is.EqualTo(new ProjectValidationResult(true, ImmutableArray<string>.Empty)));
             });
         }
+
+        [Test]
+        public void ProjectValidationResult_WarningsOnly_IsNotEqualToSuccess()
+        {
+            ProjectValidationResult warningsOnly = new ProjectValidationResult(true, ImmutableArray<string>.Empty)
+            {
+                Findings = ImmutableArray.Create(
+                    new ProjectValidationFinding(ValidationSeverity.Warning, "vendor-tolerated", null, "a warning")),
+            };
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(warningsOnly.IsValid, Is.True, "warnings alone leave the project valid");
+                Assert.That(warningsOnly, Is.Not.EqualTo(ProjectValidationResult.Success),
+                    "a result carrying a warning must not compare equal to the clean Success result");
+            });
+        }
+
+        [Test]
+        public void ProjectValidationResult_SameFindings_AreEqualWithMatchingHash()
+        {
+            static ProjectValidationResult WithWarning() =>
+                new ProjectValidationResult(true, ImmutableArray<string>.Empty)
+                {
+                    Findings = ImmutableArray.Create(
+                        new ProjectValidationFinding(ValidationSeverity.Warning, "rule-x", "_0x1", "w")),
+                };
+
+            ProjectValidationResult a = WithWarning();
+            ProjectValidationResult b = WithWarning();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(a, Is.EqualTo(b));
+                Assert.That(a.GetHashCode(), Is.EqualTo(b.GetHashCode()));
+            });
+        }
     }
 }

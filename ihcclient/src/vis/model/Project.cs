@@ -41,13 +41,28 @@ namespace Ihc.Projects
         /// <inheritdoc/>
         public override int GetHashCode() => Root.GetHashCode();
 
-        // Memoized: depends only on the immutable InlineDtdBlocks, so the record copy-constructor may carry it
-        // across `with` mutations of Root. ProjectReader builds it eagerly so a malformed captured DTD block
-        // fails at load with file context instead of at the first save.
+        // Memoized, keyed on the InlineDtdBlocks reference it was built from. The record copy-constructor carries
+        // both fields verbatim across `with`, so guarding on that reference keeps the cache across a
+        // `with { Root = ... }` (blocks unchanged → reuse) yet rebuilds after a `with { InlineDtdBlocks = ... }`
+        // (blocks replaced → the carried view no longer matches its source, which would otherwise emit the wrong
+        // DTD). ProjectReader warms it eagerly so a malformed captured DTD block fails at load with file context
+        // instead of at the first save.
         private ProjectSchemaView? schemaView;
+        private ImmutableDictionary<string, string>? schemaViewSource;
 
         /// <summary>The schema resolver for this project: its captured inline-DTD blocks first, registry fallback.</summary>
-        internal ProjectSchemaView SchemaView => schemaView ??= ProjectSchemaView.For(InlineDtdBlocks);
+        internal ProjectSchemaView SchemaView
+        {
+            get
+            {
+                if (schemaView is null || !ReferenceEquals(schemaViewSource, InlineDtdBlocks))
+                {
+                    schemaViewSource = InlineDtdBlocks;
+                    schemaView = ProjectSchemaView.For(InlineDtdBlocks);
+                }
+                return schemaView;
+            }
+        }
 
         /// <summary>
         /// The <c>version_major.version_minor</c> of the project format (4.0 for every known file), or
