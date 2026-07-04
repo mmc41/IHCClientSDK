@@ -33,16 +33,9 @@ namespace Ihc.Projects
         private static readonly Regex MenuPrefix = new(@"^\d+#", RegexOptions.Compiled);
         private static readonly Regex LeadingZeroToken = new(@"^_0x0+[0-9a-fA-F]+$", RegexOptions.Compiled);
 
-        // Per-element-type null-token attributes IHC Visual stamps on catalog insert that the component .def leaves at
-        // its own (empty) DTD default: the attribute is #REQUIRED in the project DTD but "" in the .def, so a fresh
-        // (unassigned) insert gets the null token "_0x0" — e.g. an airlink product's serialnumber and an RS-485 LED
-        // dimmer channel's channel_id. Insert-only (these element types have no hand-authoring path), so kept here
-        // rather than in the shared ResourceMaterialization.
-        private static readonly Dictionary<string, (string Name, string Value)> InsertStamps = new(StringComparer.Ordinal)
-        {
-            ["product_airlink"] = ("serialnumber", "_0x0"),
-            ["rs485_led_dimmer_channel"] = ("channel_id", "_0x0"),
-        };
+        // The vendor's null reference token, stamped on a #REQUIRED attribute the catalog .def left empty
+        // (see StampRequiredNullTokens).
+        private const string NullToken = "_0x0";
 
         public static InsertResult Insert(ProjectElement catalogBody, IdAllocator allocator,
             ProjectElement enumDefinitions, ProjectSchemaView view)
@@ -56,7 +49,7 @@ namespace Ihc.Projects
             var hoisted = new List<ProjectElement>();
 
             // Pass 1: document-order id allocation + enum hoist/resolve (populates idMap, strips enum children).
-            ProjectElement reassigned = Reassign(catalogBody, allocator, idMap, enumDefinitions, hoisted, isRoot: true);
+            ProjectElement reassigned = Reassign(catalogBody, allocator, idMap, enumDefinitions, hoisted, view, isRoot: true);
 
             // Pass 2: rewrite IDREF attributes through the old→new map (schema-driven, never by attribute name).
             ProjectElement remapped = RemapIdRefs(reassigned, idMap, view);
@@ -85,7 +78,8 @@ namespace Ihc.Projects
         }
 
         private static ProjectElement Reassign(ProjectElement element, IdAllocator allocator,
-            Dictionary<string, string> idMap, ProjectElement enumDefinitions, List<ProjectElement> hoisted, bool isRoot)
+            Dictionary<string, string> idMap, ProjectElement enumDefinitions, List<ProjectElement> hoisted,
+            ProjectSchemaView view, bool isRoot)
         {
             string? oldId = element.GetAttribute("id");
             int? typeCode = TypeCode.ForTag(element.Tag);
@@ -112,10 +106,7 @@ namespace Ihc.Projects
                 attrs = SetAttribute(attrs, "icon", canonicalIcon);   // vendor stamps the per-resource-type GUI icon on insert
             }
 
-            if (InsertStamps.TryGetValue(element.Tag, out (string Name, string Value) stamp))
-            {
-                attrs = SetAttribute(attrs, stamp.Name, stamp.Value);   // e.g. airlink serialnumber → null token "_0x0"
-            }
+            attrs = StampRequiredNullTokens(attrs, element.Tag, view);   // #REQUIRED-yet-empty → null token "_0x0"
 
             var children = ImmutableArray.CreateBuilder<ProjectElement>();
             if (!element.Children.IsDefaultOrEmpty)
@@ -128,7 +119,7 @@ namespace Ihc.Projects
                     }
                     else
                     {
-                        children.Add(Reassign(child, allocator, idMap, enumDefinitions, hoisted, isRoot: false));
+                        children.Add(Reassign(child, allocator, idMap, enumDefinitions, hoisted, view, isRoot: false));
                     }
                 }
             }
@@ -480,6 +471,47 @@ namespace Ihc.Projects
                 if (value.Tag == "enum_value" && value.GetAttribute("name") == name)
                 {
                     return value;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Materializes the vendor's null token <c>"_0x0"</c> on every attribute the <em>project</em> schema declares
+        /// <c>#REQUIRED</c> that the catalog <c>.def</c> left empty or absent — i.e. the <c>.def</c>'s own DTD defaulted
+        /// it to <c>""</c> while the project DTD requires it (spec ch. 09 §9.3.7 cross-DTD reconciliation). Observed on
+        /// an airlink product's <c>serialnumber</c> and an RS-485 LED-dimmer channel's <c>channel_id</c>; a <c>#REQUIRED</c>
+        /// attribute the <c>.def</c> actually fills (a product_identifier, device_type, an rs485 <c>channel</c> number,
+        /// a date's <c>year/month/day</c>) is non-empty and untouched. Schema-derived (against <paramref name="view"/>,
+        /// so it also covers a custom component resolved from the file's own inline DTD) rather than a per-type table;
+        /// the element's own <c>id</c> is excluded — it is already allocated.
+        /// </summary>
+        private static ImmutableArray<(string, string)> StampRequiredNullTokens(
+            ImmutableArray<(string Name, string Value)> attrs, string tag, ProjectSchemaView view)
+        {
+            ElementSchema? schema = view.TryGet(tag);
+            if (schema is null)
+            {
+                return attrs;
+            }
+            foreach (AttrSchema attr in schema.Attrs)
+            {
+                if (attr.Kind == AttrKind.Required && attr.Render != AttrRender.Id
+                    && string.IsNullOrEmpty(GetAttribute(attrs, attr.Name)))
+                {
+                    attrs = SetAttribute(attrs, attr.Name, NullToken);
+                }
+            }
+            return attrs;
+        }
+
+        private static string? GetAttribute(ImmutableArray<(string Name, string Value)> attrs, string name)
+        {
+            foreach ((string Name, string Value) attr in attrs)
+            {
+                if (attr.Name == name)
+                {
+                    return attr.Value;
                 }
             }
             return null;

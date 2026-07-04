@@ -105,6 +105,27 @@ namespace Ihc.Projects.Tests
         }
 
         [Test]
+        public void Insert_StampsEmptyRequiredTokens_ButPreservesFilledSiblings()
+        {
+            // The schema-derived null-token rule (no per-type table): an rs485 LED-dimmer channel's channel_id is
+            // #REQUIRED in the project DTD but left empty by the .def, so it is stamped "_0x0"; the sibling channel is
+            // #REQUIRED AND filled by the .def ("_0x1"), so it is preserved verbatim. The discriminator is emptiness,
+            // not the attribute name — so any future #REQUIRED-yet-empty token attribute is handled the same way.
+            ProjectElement body = Node("rs485_led_dimmer_channel", "_0x01",
+                new[] { ("product_identifier", "_0x4409"), ("name", "Kanal 1"), ("channel", "_0x1"), ("channel_id", "") },
+                System.Array.Empty<ProjectElement>());
+
+            var allocator = new IdAllocator(0x50);
+            InsertResult result = InsertTransform.Insert(body, allocator, EmptyEnumDefinitions(), ProjectSchemaView.RegistryOnly);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.InsertedRoot.GetAttribute("channel_id"), Is.EqualTo("_0x0"), "empty #REQUIRED channel_id stamped with the null token");
+                Assert.That(result.InsertedRoot.GetAttribute("channel"), Is.EqualTo("_0x1"), "filled #REQUIRED channel preserved verbatim");
+            });
+        }
+
+        [Test]
         public void Insert_HoistsUserEnum_AndRewritesResourceEnumReferences()
         {
             // A function-block-like body carrying a user enum (no typeid) referenced by a resource_enum.

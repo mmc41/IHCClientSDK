@@ -47,6 +47,9 @@ namespace Ihc.Projects
         /// <summary>The schema for the given element tag, or <c>null</c> when the type is not in the registry.</summary>
         public static ElementSchema? TryGet(string tag) => ByTag.TryGetValue(tag, out ElementSchema? schema) ? schema : null;
 
+        /// <summary>Every registered element schema — used by coverage guards to enumerate declared element types.</summary>
+        internal static IEnumerable<ElementSchema> AllSchemas => ByTag.Values;
+
         /// <summary>The schema for the given element tag; throws a coverage error when the type is unknown.</summary>
         public static ElementSchema Get(string tag) =>
             TryGet(tag) ?? throw new InvalidOperationException(

@@ -51,6 +51,27 @@ namespace Ihc.Projects
             ["resource_timertime"] = new[] { ("hour", "0"), ("minute", "0"), ("second", "0"), ("millisecond", "0") },
         };
 
+        /// <summary>
+        /// Icon-bearing element types (their schema declares an <c>icon</c> attribute) confirmed to use their
+        /// DTD-default icon as-is, so they need no <see cref="Icons"/> override: the structural/container nodes whose
+        /// default is <c>_0x0</c>, plus <c>resource_scene</c> whose DTD default <c>_0x89</c> is itself the vendor icon.
+        /// Together with <see cref="Icons"/> this partitions every icon-bearing registry type; the
+        /// <c>ResourceIconCoverageTests</c> guard fails when a newly declared icon-bearing type is in neither set,
+        /// forcing an explicit decision instead of a silent <c>_0x0</c> fall-through (review suggestion #2).
+        /// </summary>
+        internal static readonly IReadOnlySet<string> KnownDefaultIconTags = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "utcs_project", "groups", "group", "product_dataline", "link_from_resource", "link_to_resource",
+            "functionblock", "inputs", "outputs", "resource_scene", "settings", "internalsettings", "programs",
+            "program_simple", "events", "event", "actions", "program_sub", "conditions", "condition", "action",
+            "documentation_modules", "dataline_input_modules", "dataline_output_modules", "case_action",
+            "dimmer_settings", "event_power", "product_airlink", "product_rs485_led_dimmer", "product_rs485_sms_modem",
+            "program_case", "rs485_led_dimmer_channel", "s0_device", "shutter_settings", "sms_modem_settings",
+        };
+
+        /// <summary>The element tags carrying a non-default GUI icon override (the keys of the <see cref="Icons"/> table).</summary>
+        internal static IReadOnlyCollection<string> IconOverrideTags => Icons.Keys;
+
         /// <summary>The canonical GUI icon for a resource type, or null when the type has none (effective <c>_0x0</c>).</summary>
         public static string? Icon(string tag) => Icons.TryGetValue(tag, out string? icon) ? icon : null;
 
