@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using FakeItEasy;
 using Microsoft.Extensions.Time.Testing;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// The save/upload postcondition (<see cref="ProjectSaveOptions.VerifyRoundTrip"/>): the just-serialized

@@ -1,7 +1,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// BL-11 — validator rule for the function-block five-container invariant (spec ch. 06 §6.3): every

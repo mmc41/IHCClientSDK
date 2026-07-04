@@ -1,7 +1,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// <see cref="ProjectEditor.Unlink"/> must remove exactly the reciprocal pair between the two resources and

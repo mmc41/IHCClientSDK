@@ -3,18 +3,20 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace Ihc.Projects
+using Ihc.Vis.Projects;
+using Ihc.Vis.Model;
+namespace Ihc.Vis.Validation
 {
     /// <summary>
     /// Debug-tier interior observation points: the cheap core invariants every edit session guarantees —
     /// unique id tokens/counters and <c>last_unique_id</c> at or above the highest counter — asserted at the
     /// session-commit boundary, so a corrupting bug is blamed at the mutation batch that introduced it rather
     /// than surfacing as a validation error long after. Reciprocity of link/scene halves is deliberately NOT a
-    /// session invariant (<see cref="LinkCopyPolicy.KeepExternal"/> legitimately produces one-sided halves for
+    /// session invariant (<see cref="Ihc.Vis.Editing.LinkCopyPolicy.KeepExternal"/> legitimately produces one-sided halves for
     /// the validator to flag), and nothing asserts on the passive load→save path: the open-world contract keeps
     /// quirky-but-loadable files byte-exact round-trippable. The always-on guards live where consequences are
     /// irreversible (<c>Edit()</c> entry, <c>UploadTo</c>, the opt-in
-    /// <see cref="ProjectSaveOptions.ValidateBeforeSave"/>/<see cref="ProjectSaveOptions.VerifyRoundTrip"/>).
+    /// <see cref="Ihc.Vis.Io.ProjectSaveOptions.ValidateBeforeSave"/>/<see cref="Ihc.Vis.Io.ProjectSaveOptions.VerifyRoundTrip"/>).
     /// All checks are pure reads over the immutable tree.
     /// </summary>
     internal static class ProjectContracts

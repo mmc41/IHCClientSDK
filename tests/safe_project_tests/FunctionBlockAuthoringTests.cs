@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using Microsoft.Extensions.Time.Testing;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// BL-6 — from-scratch empty function block ("Tom blok"). <see cref="GroupRef.AddEmptyFunctionBlock"/> scaffolds

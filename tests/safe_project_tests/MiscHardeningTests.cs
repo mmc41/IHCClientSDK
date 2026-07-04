@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Small hardening guarantees: <see cref="Project.Modified"/> honors its null-on-malformed contract for

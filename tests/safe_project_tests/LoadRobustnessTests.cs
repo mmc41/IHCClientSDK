@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Input that is not a loadable <c>.vis</c>/<c>.ihc</c> project must fail <see cref="ProjectAppService.Load(Stream)"/>

@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
-using Ihc.Projects;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Unit tests for the project-wide id allocator: pre-increment, type-suffix packing, and high-water-mark

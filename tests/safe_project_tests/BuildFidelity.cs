@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// BL-E0 — the shared harness for the from-scratch authoring byte-fidelity track (BL-E1…E4): build a project

@@ -1,7 +1,7 @@
 #nullable enable
 using System;
 
-namespace Ihc.Projects
+namespace Ihc.Vis.Io
 {
     /// <summary>
     /// Thrown by <see cref="ProjectAppService.Load(System.IO.Stream)"/>/<see cref="ProjectReader"/> when the

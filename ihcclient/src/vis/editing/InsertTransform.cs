@@ -6,7 +6,12 @@ using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace Ihc.Projects
+using Ihc.Vis.Io;
+using Ihc.Vis.Model;
+using Ihc.Vis.Schema;
+using Ihc.Vis.Catalog;
+using TypeCode = Ihc.Vis.Schema.TypeCode;
+namespace Ihc.Vis.Editing
 {
     /// <summary>
     /// The result of inserting a catalog component into a project: the deep-copied, re-id'd subtree to place under

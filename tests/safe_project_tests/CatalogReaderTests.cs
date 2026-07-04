@@ -1,8 +1,7 @@
 using System.IO;
 using System.Text;
-using Ihc.Projects;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Deterministic (no install dir) tests for <see cref="CatalogReader"/>: it must materialize the file's own

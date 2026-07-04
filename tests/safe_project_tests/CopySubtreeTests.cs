@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// BL-4 — id-addressed clipboard clone (<see cref="ProjectEditor.CopySubtree"/> / <see cref="GroupRef.PasteInto"/>).

@@ -1,7 +1,8 @@
 #nullable enable
 using System;
 
-namespace Ihc.Projects
+using Ihc.Vis.Model;
+namespace Ihc.Vis.Schema
 {
     /// <summary>
     /// The shared undeclared-attribute guard. Serialization, edit-session open and edit-session commit all reject

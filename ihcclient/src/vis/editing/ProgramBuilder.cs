@@ -2,7 +2,8 @@
 using System;
 using System.Collections.Generic;
 
-namespace Ihc.Projects
+using Ihc.Vis.Model;
+namespace Ihc.Vis.Editing
 {
     /// <summary>
     /// Nested fluent builder for authoring a custom program directly into a function block's <c>program_simple</c> —

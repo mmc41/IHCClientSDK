@@ -1,7 +1,7 @@
 using System.IO;
 using System.Linq;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Phase-3 gate (a), install-dir-gated: every discovered <c>.def</c>/<c>.ifb</c> parses, and the catalog
@@ -43,8 +43,8 @@ namespace Ihc.Projects.Tests
         {
             CatalogDiscovery catalog = RequireCatalog();
 
-            ProductDescriptor fuga = catalog.Product("_0x2101");
-            FunctionBlockDescriptor kip = catalog.FunctionBlock("1.1.01");
+            ProductDefinition fuga = catalog.Product("_0x2101");
+            FunctionBlockDefinition kip = catalog.FunctionBlock("1.1.01");
 
             Assert.Multiple(() =>
             {
@@ -63,7 +63,7 @@ namespace Ihc.Projects.Tests
         {
             CatalogDiscovery catalog = RequireCatalog();
 
-            FunctionBlockDescriptor autoProof = catalog.FunctionBlockByName("AutoProof");
+            FunctionBlockDefinition autoProof = catalog.FunctionBlockByName("AutoProof");
 
             Assert.Multiple(() =>
             {

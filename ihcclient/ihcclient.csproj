@@ -23,7 +23,7 @@
          byte-exact serializer reproduces IHC Visual's inline DTD without recomputing any DTD text. -->
     <None Remove="src\vis\schema\CanonicalDtdBlocks.dtd" />
     <EmbeddedResource Include="src\vis\schema\CanonicalDtdBlocks.dtd">
-      <LogicalName>Ihc.Projects.CanonicalDtdBlocks.dtd</LogicalName>
+      <LogicalName>Ihc.Vis.CanonicalDtdBlocks.dtd</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>

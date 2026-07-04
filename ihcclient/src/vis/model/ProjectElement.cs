@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
-namespace Ihc.Projects
+namespace Ihc.Vis.Model
 {
     /// <summary>
     /// The single, generic, immutable node every <c>.vis</c> element uses: a <see cref="Tag"/>, an

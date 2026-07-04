@@ -1,8 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
-using Ihc.Projects;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Coverage guard for the per-resource-type GUI icon table (review suggestion #2). Every element type whose schema

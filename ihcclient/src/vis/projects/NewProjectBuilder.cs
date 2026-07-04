@@ -5,7 +5,12 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.IO;
 
-namespace Ihc.Projects
+using Ihc.Vis.Catalog;
+using Ihc.Vis.Io;
+using Ihc.Vis.Model;
+using Ihc.Vis.Schema;
+using TypeCode = Ihc.Vis.Schema.TypeCode;
+namespace Ihc.Vis.Projects
 {
     /// <summary>
     /// Builds a fresh v4 <see cref="Project"/> from the catalog File→New templates, reproducing what IHC Visual

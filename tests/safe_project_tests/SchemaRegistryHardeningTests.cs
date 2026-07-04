@@ -2,7 +2,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// The inline-DTD block parser must produce defaults exactly as a conforming XML reader computes logical

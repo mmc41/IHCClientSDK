@@ -1,7 +1,7 @@
 #nullable enable
 using System.Text.RegularExpressions;
 
-namespace Ihc.Projects
+namespace Ihc.Vis.Catalog
 {
     /// <summary>
     /// Strips the vendor's <c>NN#</c> menu-ordering prefix that catalog display names carry (e.g. <c>12#Stikkontakt</c>

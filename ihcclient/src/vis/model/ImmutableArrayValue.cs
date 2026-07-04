@@ -3,7 +3,7 @@ using System;
 using System.Collections.Immutable;
 using System.Linq;
 
-namespace Ihc.Projects
+namespace Ihc.Vis.Model
 {
     /// <summary>
     /// Structural (value) equality and hashing for the <see cref="ImmutableArray{T}"/> members of the project

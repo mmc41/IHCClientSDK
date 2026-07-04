@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using FakeItEasy;
 using Microsoft.Extensions.Time.Testing;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Open-world round-trip: a project containing element types and attributes the SDK registry does <em>not</em>

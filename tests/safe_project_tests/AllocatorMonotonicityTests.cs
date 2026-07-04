@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// M2 / R4 — the monotone-allocator regression net. The project id counter is a permanent high-water mark:

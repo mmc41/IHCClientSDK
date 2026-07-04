@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// The spec ch. 10 §10.5 checklist rules added on top of the original validator: programming-reference

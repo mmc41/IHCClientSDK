@@ -1,12 +1,12 @@
 #nullable enable
-namespace Ihc.Projects
+namespace Ihc.Vis.Projects
 {
     /// <summary>
     /// The metadata supplied when creating a new project — the write path for the fields exposed read-only
     /// on <see cref="Project"/> (<see cref="Project.Programmer"/>, <see cref="Project.InstallerName"/>,
     /// <see cref="Project.InstallerCountry"/>). Named <c>ProjectDetails</c> rather than <c>ProjectInfo</c> so
     /// it never clashes with the controller-side <see cref="Ihc.ProjectInfo"/> (a different concept: a cheap
-    /// controller-reported summary), even when a caller imports both <c>Ihc</c> and <c>Ihc.Projects</c>.
+    /// controller-reported summary), even when a caller imports both <c>Ihc</c> and <c>Ihc.Vis.Projects</c>.
     /// </summary>
     /// <remarks>
     /// Stage-1 deliberate limitation: this exposes only the fields populated in the testdata. The wider

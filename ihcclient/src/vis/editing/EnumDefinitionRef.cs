@@ -3,7 +3,8 @@ using System;
 using System.Collections.Immutable;
 using System.Linq;
 
-namespace Ihc.Projects
+using Ihc.Vis.Model;
+namespace Ihc.Vis.Editing
 {
     /// <summary>
     /// A handle to a project-global enum definition authored via <see cref="ProjectEditor.AddEnumDefinition"/>.

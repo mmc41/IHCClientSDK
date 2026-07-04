@@ -8,7 +8,7 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 
-namespace Ihc.Projects
+namespace Ihc.Vis.Schema
 {
     /// <summary>
     /// The SDK's built-in <c>.vis</c> wire grammar: one <see cref="ElementSchema"/> per element type, each built from
@@ -22,7 +22,7 @@ namespace Ihc.Projects
     /// <para>
     /// Completeness is impossible: IHC Visual lets installers author custom products/function blocks, and any real
     /// file can use element types the SDK has never seen. So <strong>round-trip (load/edit/save) is open-world</strong>
-    /// — it sources each type's grammar from the file's <em>own</em> inline DTD (<see cref="Project.InlineDtdBlocks"/>
+    /// — it sources each type's grammar from the file's <em>own</em> inline DTD (<see cref="Ihc.Vis.Projects.Project.InlineDtdBlocks"/>
     /// via <see cref="ProjectSchemaView"/>), and consults this registry only as the fallback for types the file does
     /// not carry. The registry's size is therefore invisible to round-trip and to new-project output (the emitter
     /// writes a block only for the types actually present, not the whole registry).
@@ -40,7 +40,7 @@ namespace Ihc.Projects
     /// </remarks>
     internal static class ProjectSchemaRegistry
     {
-        private const string ResourceName = "Ihc.Projects.CanonicalDtdBlocks.dtd";
+        private const string ResourceName = "Ihc.Vis.CanonicalDtdBlocks.dtd";
         private const string ElementMarker = "<!ELEMENT ";   // matched anywhere on a line — vendor .def/.ifb DTDs indent with tabs or start at column 0
 
         // Declared before ByTag: static initializers run in declaration order and Build() parses blocks.

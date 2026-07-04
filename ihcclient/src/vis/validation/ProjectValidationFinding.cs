@@ -1,5 +1,5 @@
 #nullable enable
-namespace Ihc.Projects
+namespace Ihc.Vis.Validation
 {
     /// <summary>How severe a validation finding is for persisting the project.</summary>
     public enum ValidationSeverity

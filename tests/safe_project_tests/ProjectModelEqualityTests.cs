@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
-using Ihc.Projects;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Verifies that the project model records (built on <see cref="ImmutableArray{T}"/>) compare by value, not by

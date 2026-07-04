@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// BL-9 — link navigation (the F4 "jump to linked" and "Link fra…" far-end path). A follow-link is a reciprocal

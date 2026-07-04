@@ -1,7 +1,7 @@
 #nullable enable
 using System;
 
-namespace Ihc.Projects
+namespace Ihc.Vis.Schema
 {
     /// <summary>
     /// Thrown when a <c>&lt;!ELEMENT&gt;/&lt;!ATTLIST&gt;</c> DTD block cannot be parsed into an

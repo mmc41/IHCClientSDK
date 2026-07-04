@@ -5,7 +5,9 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Linq;
 
-namespace Ihc.Projects
+using Ihc.Vis.Model;
+using Ihc.Vis.Schema;
+namespace Ihc.Vis.Projects
 {
     /// <summary>
     /// A thin typed view over the <c>utcs_project</c> root <see cref="ProjectElement"/>: it adds authoring

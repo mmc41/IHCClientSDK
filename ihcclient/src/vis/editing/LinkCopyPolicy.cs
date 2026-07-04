@@ -1,6 +1,6 @@
 #nullable enable
 
-namespace Ihc.Projects
+namespace Ihc.Vis.Editing
 {
     /// <summary>
     /// How <see cref="ProjectEditor.CopySubtree"/> treats a copied follow-link half (<c>link_from_resource</c>/

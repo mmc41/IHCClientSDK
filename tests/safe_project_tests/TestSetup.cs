@@ -5,7 +5,7 @@ using Ihc;
 // Disable parallel test execution for the assembly (matches the other test suites).
 [assembly: NonParallelizable]
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Loads optional IHC settings before any test runs. A clean checkout has no ihcsettings.json, so

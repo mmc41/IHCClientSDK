@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// M3 / 3.4 — <see cref="ProjectEditor.AddEnumDefinition"/>: authoring a project-global user enum (definition +
@@ -70,6 +70,56 @@ namespace Ihc.Projects.Tests
                 Assert.That(added.GetAttribute("name"), Is.EqualTo("TestEnum æøå"));
                 Assert.That(added.Children, Is.Empty, "no values");
                 Assert.That(after.LastUniqueId, Is.EqualTo(Token(seed + 1)), "only the def id allocated");
+            });
+        }
+
+        // Vendor byte oracles exist only at N=0 (project3 TestEnum) and N=3 (project2 NyTypeForThisProject);
+        // N in {1,2,5} generalize the SDK stamping RULE (0-based index, index-0 elided, def-first contiguous)
+        // as SDK-consistency, not vendor parity. N=1 = the elision lower edge (sole value has NO index);
+        // N=2 = the i=0(absent)->i=1(present) transition; N=5 = a "many" interior representative.
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(5)]
+        public async Task AddEnumDefinition_ValueCount_StampsZeroBasedIndex_AllocatesContiguously(int n)
+        {
+            Project project = await Load();
+            long seed = HexCounter(project.LastUniqueId);
+            string[] values = Enumerable.Range(0, n).Select(i => "V" + i).ToArray();
+
+            ProjectEditor editor = project.Edit();
+            editor.AddEnumDefinition("BvaEnum", values);
+            ProjectElement def = editor.ToProject().Child("enum_definitions")!.Children.Last();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(def.Id!.Value.Counter, Is.EqualTo(seed + 1), "def first");
+                Assert.That(def.Children.Select(v => v.Id!.Value.Counter),
+                    Is.EqualTo(Enumerable.Range(0, n).Select(i => seed + 2 + i)), "values contiguous after the def");
+                Assert.That(def.Children[0].GetAttribute("index"), Is.Null, "index 0 elided (DTD default)");
+                Assert.That(def.Children.Skip(1).Select(v => v.GetAttribute("index")),
+                    Is.EqualTo(Enumerable.Range(1, n - 1).Select(i => i.ToString(CultureInfo.InvariantCulture))),
+                    "index i present for i>=1");
+            });
+        }
+
+        [Test]
+        public async Task AddEnumDefinition_TwiceInOneSession_AllocatesContiguousMonotoneBlocks_InCallOrder()
+        {
+            Project project = await Load();
+            long seed = HexCounter(project.LastUniqueId);
+            ProjectEditor editor = project.Edit();
+            editor.AddEnumDefinition("First", "A", "B");        // def seed+1; values seed+2, seed+3
+            editor.AddEnumDefinition("Second", "C", "D", "E");  // def seed+4; values seed+5..seed+7
+            var defs = editor.ToProject().Child("enum_definitions")!.Children;
+            ProjectElement first = defs[^2], second = defs[^1];
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(second.GetAttribute("name"), Is.EqualTo("Second"), "appended in call order");
+                Assert.That(first.Id!.Value.Counter, Is.EqualTo(seed + 1));
+                Assert.That(second.Id!.Value.Counter, Is.EqualTo(seed + 4), "no reuse / overlap between blocks");
+                Assert.That(second.Children.Select(v => v.Id!.Value.Counter),
+                    Is.EqualTo(new[] { seed + 5, seed + 6, seed + 7 }));
             });
         }
     }

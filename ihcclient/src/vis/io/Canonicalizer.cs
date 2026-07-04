@@ -2,7 +2,9 @@
 using System.Collections.Immutable;
 using System.Linq;
 
-namespace Ihc.Projects
+using Ihc.Vis.Model;
+using Ihc.Vis.Schema;
+namespace Ihc.Vis.Io
 {
     /// <summary>
     /// Reduces a node subtree to its <b>canonical in-memory form</b> against the project schema registry: each
@@ -15,7 +17,7 @@ namespace Ihc.Projects
     /// re-load structurally equal: the .vis reader stores only the physically-present attributes in document
     /// (= ATTLIST) order, so a canonicalized tree matches what a save+reload yields. It is the single place the
     /// cross-DTD default materialization of the insert transform (spec ch. 09 §9.3.7) actually happens — once a
-    /// catalog element's <em>effective</em> values are in its bag (via <see cref="CatalogReader"/>'s DTD defaults),
+    /// catalog element's <em>effective</em> values are in its bag (via <see cref="Ihc.Vis.Catalog.CatalogReader"/>'s DTD defaults),
     /// canonicalizing against the project schema writes those that differ from the project default and omits the rest.
     /// </remarks>
     /// <summary>

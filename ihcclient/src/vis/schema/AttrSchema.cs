@@ -1,7 +1,7 @@
 #nullable enable
 using System.Collections.Immutable;
 
-namespace Ihc.Projects
+namespace Ihc.Vis.Schema
 {
     /// <summary>How an attribute's presence/default is declared in the DTD ATTLIST.</summary>
     internal enum AttrKind

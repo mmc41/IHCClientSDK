@@ -5,13 +5,14 @@ using System.IO;
 using System.Text;
 using System.Xml;
 
-namespace Ihc.Projects
+using Ihc.Vis.Model;
+namespace Ihc.Vis.Catalog
 {
     /// <summary>
     /// Reads a vendor component/template file (<c>Products\*.def</c>, <c>FunctionBlocks\*.ifb</c>,
     /// <c>Data\NewDoc.idf</c>, <c>Data\EnumeratorDefinitions.def</c>) into the generic <see cref="ProjectElement"/>
     /// node model, <b>applying the file's own internal-DTD ATTLIST defaults</b>. This is the crucial difference
-    /// from <see cref="ProjectReader"/> (which ignores the DTD): catalog instances routinely omit attributes such
+    /// from <see cref="Ihc.Vis.Io.ProjectReader"/> (which ignores the DTD): catalog instances routinely omit attributes such
     /// as <c>locked="yes"</c>/<c>backup="yes"</c> and rely on the file's DTD default, and the insert transform
     /// needs those <em>effective</em> values to decide cross-DTD materialization (spec ch. 09 §9.3.7).
     /// </summary>

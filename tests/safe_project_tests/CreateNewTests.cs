@@ -3,7 +3,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Time.Testing;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// The CREATE byte-identity gate (install-dir-gated, spec ch. 10 §10.7): <see cref="ProjectAppService.CreateNew"/>

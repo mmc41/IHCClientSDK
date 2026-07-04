@@ -6,7 +6,13 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 
-namespace Ihc.Projects
+using Ihc.Vis.Io;
+using Ihc.Vis.Model;
+using Ihc.Vis.Projects;
+using Ihc.Vis.Schema;
+using Ihc.Vis.Validation;
+using TypeCode = Ihc.Vis.Schema.TypeCode;
+namespace Ihc.Vis.Editing
 {
     /// <summary>
     /// The mutable edit session over an immutable <see cref="Project"/> — the authoring (write) surface a GUI

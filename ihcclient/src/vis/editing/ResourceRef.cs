@@ -1,6 +1,7 @@
 #nullable enable
 
-namespace Ihc.Projects
+using Ihc.Vis.Model;
+namespace Ihc.Vis.Editing
 {
     /// <summary>
     /// A live handle to a resource (a product input/output or a function-block input/output) in the

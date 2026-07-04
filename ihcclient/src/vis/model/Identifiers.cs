@@ -2,7 +2,7 @@
 using System;
 using System.Globalization;
 
-namespace Ihc.Projects
+namespace Ihc.Vis.Model
 {
     /// <summary>Shared rendering/parsing for the <c>.vis</c> <c>_0x</c> + lowercase-hex token form (leading zeros stripped).</summary>
     internal static class HexToken

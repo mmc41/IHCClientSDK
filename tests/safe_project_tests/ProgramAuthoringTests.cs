@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// M3 / 3.5 — <see cref="ProgramBuilder"/>: authoring a custom program the way IHC Visual does when a user

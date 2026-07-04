@@ -1,5 +1,5 @@
 #nullable enable
-namespace Ihc.Projects
+namespace Ihc.Vis.Io
 {
     /// <summary>
     /// Options controlling how a project is serialized. The default mimics IHC Visual (re-stamp
@@ -17,7 +17,7 @@ namespace Ihc.Projects
 
         /// <summary>
         /// When true, run the pre-serialize validation checklist before writing and throw
-        /// <see cref="ProjectValidationException"/> on errors (warnings never block). Off by default so any
+        /// <see cref="Ihc.Vis.Validation.ProjectValidationException"/> on errors (warnings never block). Off by default so any
         /// loadable open-world file keeps re-saving verbatim; controller uploads validate independently
         /// (<see cref="ProjectAppService.UploadTo"/>).
         /// </summary>

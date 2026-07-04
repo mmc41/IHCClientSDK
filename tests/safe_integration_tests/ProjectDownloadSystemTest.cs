@@ -3,7 +3,9 @@ using System;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 using Ihc;
-using Ihc.Projects;
+using Ihc.Vis;
+using Ihc.Vis.Projects;
+using Ihc.Vis.Io;
 
 namespace Ihc.Tests
 {

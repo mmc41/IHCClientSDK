@@ -3,7 +3,9 @@ using System;
 using System.Collections.Immutable;
 using System.Globalization;
 
-namespace Ihc.Projects
+using Ihc.Vis.Model;
+using Ihc.Vis.Projects;
+namespace Ihc.Vis.Io
 {
     /// <summary>
     /// Applies a vendor-like save stamp to a project: rewrites the root <c>id2</c> and the <c>modified</c> element

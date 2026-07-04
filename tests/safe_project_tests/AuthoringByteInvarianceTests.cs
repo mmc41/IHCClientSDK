@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// The authoring/builder byte-invariance gate on <c>project3-KompleksWired.vis</c> — the largest, most exotic
@@ -252,6 +252,28 @@ namespace Ihc.Projects.Tests
 
             AssertIdenticalExceptLastUniqueId(original, await Save(after), project.LastUniqueId!, after.LastUniqueId!,
                 1, "T9 add-resource-then-delete");
+        }
+
+        // ---- T10: author an enum (def + 3 values), then delete it ----
+
+        // Never NormalizeCatalogEnums() here: Action 0 is an irreversible byte mutation (renumbers/moves the catalog
+        // enums, repoints 4 refs) that deleting the authored enum cannot undo — so inverse-exactness must live on the
+        // un-normalized project3. AddEnumDefinition appends regardless of normalization; the def is unreferenced, so
+        // DeleteById cascades only its own 3 value children and trips no dangling-ref guard. N = 1 def + 3 values.
+        [Test]
+        public async Task T10_AddEnumWithValuesThenDelete_IsIdenticalExceptPinnedLastUniqueId()
+        {
+            byte[] original = TestData.ReadBytes(Oracle);
+            Project project = await LoadOracle();
+
+            ProjectEditor editor = project.Edit();
+            EnumDefinitionRef def = editor.AddEnumDefinition("InverseProbe", "Alpha", "Beta", "Gamma");
+            ElementId.TryParse(def.Typedef, out ElementId defId);   // def.Typedef == defId.ToToken()
+            editor.DeleteById(defId);                                // removes the def + its 3 value children
+            Project after = editor.ToProject();
+
+            AssertIdenticalExceptLastUniqueId(original, await Save(after), project.LastUniqueId!, after.LastUniqueId!,
+                1 + 3, "T10 add-enum-with-values-then-delete");
         }
 
         // ----- helpers -----

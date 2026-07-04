@@ -3,7 +3,8 @@ using System;
 using System.Collections.Immutable;
 using System.Text;
 
-namespace Ihc.Projects
+using Ihc.Vis.Schema;
+namespace Ihc.Vis.Io
 {
     /// <summary>
     /// Captures a <c>.vis</c>/<c>.def</c>/<c>.ifb</c> file's inline DTD as per-type canonical blocks

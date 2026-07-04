@@ -1,6 +1,7 @@
 #nullable enable
 
-namespace Ihc.Projects
+using Ihc.Vis.Model;
+namespace Ihc.Vis.Editing
 {
     /// <summary>
     /// One follow-link row owned by a resource — a <c>link_from_resource</c> or <c>link_to_resource</c> child.

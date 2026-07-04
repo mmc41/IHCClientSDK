@@ -3,7 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Ihc.Projects
+using Ihc.Vis.Model;
+using Ihc.Vis.Projects;
+using Ihc.Vis.Schema;
+namespace Ihc.Vis.Io
 {
     /// <summary>
     /// The pure, low-level byte-exact <c>.vis</c> serializer: writes a <see cref="Project"/> to its on-disk bytes

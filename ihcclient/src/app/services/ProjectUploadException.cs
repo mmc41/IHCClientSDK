@@ -1,7 +1,7 @@
 #nullable enable
 using System;
 
-namespace Ihc.Projects
+namespace Ihc.Vis
 {
     /// <summary>
     /// Thrown when the controller declines to store an uploaded project (the SOAP operation returned

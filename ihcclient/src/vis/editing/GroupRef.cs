@@ -2,7 +2,11 @@
 using System;
 using System.Globalization;
 
-namespace Ihc.Projects
+using Ihc.Vis.FunctionBlocks;
+using Ihc.Vis.Model;
+using Ihc.Vis.Products;
+using Ihc.Vis.Catalog;
+namespace Ihc.Vis.Editing
 {
     /// <summary>
     /// A live handle to a single <c>group</c> (locality/room) in the edit session. Adds catalog products and
@@ -40,10 +44,10 @@ namespace Ihc.Projects
         /// <summary>
         /// Deep-copies the given catalog product into this room and returns its live handle for instance-level editing.
         /// </summary>
-        public ProductRef AddProduct(ProductDescriptor descriptor)
+        public ProductRef AddProduct(ProductDefinition definition)
         {
-            ArgumentNullException.ThrowIfNull(descriptor);
-            ElementId productId = editor.InsertComponent(Id, descriptor.Body, descriptor.InlineDtdBlocks);
+            ArgumentNullException.ThrowIfNull(definition);
+            ElementId productId = editor.InsertComponent(Id, definition.Body, definition.InlineDtdBlocks);
             return new ProductRef(editor, productId);
         }
 
@@ -51,10 +55,10 @@ namespace Ihc.Projects
         /// Deep-copies the given catalog function block (including its catalog internals: programs, resources,
         /// settings) into this room and returns its live handle.
         /// </summary>
-        public FunctionBlockRef AddFunctionBlock(FunctionBlockDescriptor descriptor)
+        public FunctionBlockRef AddFunctionBlock(FunctionBlockDefinition definition)
         {
-            ArgumentNullException.ThrowIfNull(descriptor);
-            ElementId blockId = editor.InsertComponent(Id, descriptor.Body, descriptor.InlineDtdBlocks);
+            ArgumentNullException.ThrowIfNull(definition);
+            ElementId blockId = editor.InsertComponent(Id, definition.Body, definition.InlineDtdBlocks);
             return new FunctionBlockRef(editor, blockId);
         }
 
@@ -66,7 +70,7 @@ namespace Ihc.Projects
         /// (<c>master_date_year</c>/<c>_month</c>/<c>_day</c>), matching what IHC Visual writes for an authored block.
         /// Returns the block's live handle for adding pins/variables.
         /// </summary>
-        public FunctionBlockRef AddEmptyFunctionBlock(FunctionBlockDescriptor template, DateOnly created,
+        public FunctionBlockRef AddEmptyFunctionBlock(FunctionBlockDefinition template, DateOnly created,
             string name = "Tom blok")
         {
             ArgumentNullException.ThrowIfNull(template);

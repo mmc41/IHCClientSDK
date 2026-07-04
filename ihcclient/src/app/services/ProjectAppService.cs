@@ -7,7 +7,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using Ihc.App;
 
-namespace Ihc.Projects
+using Ihc.Vis.Catalog;
+using Ihc.Vis.FunctionBlocks;
+using Ihc.Vis.Io;
+using Ihc.Vis.Model;
+using Ihc.Vis.Products;
+using Ihc.Vis.Projects;
+using Ihc.Vis.Validation;
+namespace Ihc.Vis
 {
     /// <summary>
     /// High-level, tech-agnostic backend for loading, saving, creating and editing IHC project files as pure
@@ -429,13 +436,13 @@ namespace Ihc.Projects
         }
 
         /// <summary>The products available for insertion, discovered from the install dir.</summary>
-        public IReadOnlyList<ProductDescriptor> GetAvailableProducts()
+        public IReadOnlyList<ProductDefinition> GetAvailableProducts()
         {
             using (var activity = StartActivity(nameof(GetAvailableProducts)))
             {
                 try
                 {
-                    IReadOnlyList<ProductDescriptor> result = catalog.Value.Products;
+                    IReadOnlyList<ProductDefinition> result = catalog.Value.Products;
                     activity?.SetReturnValue(result.Count);
                     return result;
                 }
@@ -448,13 +455,13 @@ namespace Ihc.Projects
         }
 
         /// <summary>The function blocks available for insertion, discovered from the install dir.</summary>
-        public IReadOnlyList<FunctionBlockDescriptor> GetAvailableFunctionBlocks()
+        public IReadOnlyList<FunctionBlockDefinition> GetAvailableFunctionBlocks()
         {
             using (var activity = StartActivity(nameof(GetAvailableFunctionBlocks)))
             {
                 try
                 {
-                    IReadOnlyList<FunctionBlockDescriptor> result = catalog.Value.FunctionBlocks;
+                    IReadOnlyList<FunctionBlockDefinition> result = catalog.Value.FunctionBlocks;
                     activity?.SetReturnValue(result.Count);
                     return result;
                 }

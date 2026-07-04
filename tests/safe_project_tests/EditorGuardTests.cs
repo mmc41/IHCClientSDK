@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Editor mutations must fail loudly instead of silently corrupting: a delete that would leave dangling
@@ -174,7 +174,7 @@ namespace Ihc.Projects.Tests
         {
             Project project = await Load("Project1-SimpelWired.vis");
             ProjectEditor editor = project.Edit();
-            var notATemplate = new FunctionBlockDescriptor("1.1.01", "e", "Kip", "1.1.01.e. Kip", "Cat",
+            var notATemplate = new FunctionBlockDefinition("1.1.01", "e", "Kip", "1.1.01.e. Kip", "Cat",
                 new ProjectElement("functionblock", null,
                     ImmutableArray<(string, string)>.Empty, ImmutableArray<ProjectElement>.Empty));
 

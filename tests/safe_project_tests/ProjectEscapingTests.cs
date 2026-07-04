@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using System.IO;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Locks the attribute escaping contract (spec ch. 01 §6, rule S10): all five XML specials and an embedded

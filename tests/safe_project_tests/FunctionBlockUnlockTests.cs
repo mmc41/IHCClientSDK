@@ -1,7 +1,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// BL-8 — <see cref="FunctionBlockRef.Unlock"/>, the inverse of <see cref="FunctionBlockRef.Locked"/> (US-020

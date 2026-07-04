@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// BL-5 — id-preserving reparent (<see cref="ProjectEditor.MoveSubtree"/>): relocate an existing subtree to a

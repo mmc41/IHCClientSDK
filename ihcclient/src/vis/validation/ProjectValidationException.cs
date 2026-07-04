@@ -2,7 +2,7 @@
 using System;
 using System.Linq;
 
-namespace Ihc.Projects
+namespace Ihc.Vis.Validation
 {
     /// <summary>
     /// Thrown when a project fails the pre-persist validation checklist (e.g. before a controller upload).

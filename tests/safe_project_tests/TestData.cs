@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Text;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Helpers for the byte-fidelity tests: reads the raw testdata bytes and asserts byte-array equality with a

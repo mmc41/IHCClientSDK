@@ -1,7 +1,7 @@
 #nullable enable
 using System.Collections.Immutable;
 
-namespace Ihc.Projects
+namespace Ihc.Vis.Schema
 {
     /// <summary>
     /// The complete wire-format facts for one element type: its <see cref="Tag"/>, type-code byte

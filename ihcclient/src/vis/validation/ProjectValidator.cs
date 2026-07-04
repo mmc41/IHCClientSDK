@@ -4,7 +4,12 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
-namespace Ihc.Projects
+using Ihc.Vis.Model;
+using Ihc.Vis.Projects;
+using Ihc.Vis.Schema;
+using Ihc.Vis.Io;
+using TypeCode = Ihc.Vis.Schema.TypeCode;
+namespace Ihc.Vis.Validation
 {
     /// <summary>
     /// The pre-serialize validation checklist (spec ch. 10 §10.5): id well-formedness / token and counter

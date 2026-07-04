@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// M3 / 3.6 — intra-container reorder via <see cref="ProjectEditor.MoveSubtree"/>: the tool that lets the V4

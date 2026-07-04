@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Xml;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Differential known-answer oracle: the SDK model's values for an authentic file must agree with an

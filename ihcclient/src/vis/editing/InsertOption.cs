@@ -1,6 +1,6 @@
 #nullable enable
 
-namespace Ihc.Projects
+namespace Ihc.Vis.Editing
 {
     /// <summary>
     /// One item type legal to insert under a selected node, for a right-click "insert…" menu:

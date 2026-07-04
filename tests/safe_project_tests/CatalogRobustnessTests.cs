@@ -3,7 +3,7 @@ using System.Text;
 using FakeItEasy;
 using Microsoft.Extensions.Time.Testing;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Catalog discovery/parsing must fail with the offending path (never a context-free crash or a silently

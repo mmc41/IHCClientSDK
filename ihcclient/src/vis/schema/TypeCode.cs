@@ -3,7 +3,7 @@ using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
 
-namespace Ihc.Projects
+namespace Ihc.Vis.Schema
 {
     /// <summary>
     /// The element type-code byte: the low byte of every element <c>id</c>, where

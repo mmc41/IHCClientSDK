@@ -2,7 +2,8 @@
 using System;
 using System.Collections.Generic;
 
-namespace Ihc.Projects
+using Ihc.Vis.Editing;
+namespace Ihc.Vis.Schema
 {
     /// <summary>
     /// The context-sensitive containment model behind <see cref="ProjectEditor.CanInsert"/>/

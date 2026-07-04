@@ -3,7 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Ihc.Projects
+using Ihc.Vis.Model;
+namespace Ihc.Vis.Editing
 {
     /// <summary>
     /// A live handle to a function-block instance in the edit session. The block's internals (programs, resources,

@@ -2,7 +2,10 @@
 using System;
 using System.IO;
 
-namespace Ihc.Projects
+using Ihc.Vis.Model;
+using Ihc.Vis.Projects;
+using Ihc.Vis.Schema;
+namespace Ihc.Vis.Io
 {
     /// <summary>
     /// The project-wide id allocator: a single monotonic counter from which every new element draws a fresh

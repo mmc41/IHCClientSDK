@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using FakeItEasy;
 using Microsoft.Extensions.Time.Testing;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// The Stage-2 byte-identity gate: a project loaded from a vendor <c>.vis</c> file and re-serialized with its

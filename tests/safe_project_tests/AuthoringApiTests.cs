@@ -1,16 +1,15 @@
 using System;
 using System.Threading.Tasks;
-using Ihc.Projects;
 using Microsoft.Extensions.Time.Testing;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Stage 1 authoring-API preview. Shows, in real C#, exactly how a future GUI/console caller drives
     /// the mutable edit session — both building a project from scratch (<see cref="BuildProject1_FromCode_ShowsAuthoringApi"/>)
     /// and editing a loaded one (<see cref="EditLoadedProject_AddLink_ShowsRoundTripEntry"/>). Element
     /// identity is the real <c>_0x</c> id (preserved on load, allocated on add), so loading and re-saving
-    /// a project never changes existing ids. A single <c>using Ihc.Projects;</c> covers the whole authoring
+    /// a project never changes existing ids. A single <c>using Ihc.Vis;</c> covers the whole authoring
     /// surface. Both tests are <c>[Explicit]</c>: the solution builds and they are present but never run (they
     /// exercise stub handles/services); their only purpose is to let the user approve the authoring surface.
     /// </summary>

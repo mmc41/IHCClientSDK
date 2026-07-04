@@ -1,7 +1,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// M4 / 4.2 — editing a seed room's identity (rename + note). project3 renames the default "Stue" to

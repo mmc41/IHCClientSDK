@@ -2,7 +2,9 @@
 using System;
 using System.Collections.Generic;
 
-namespace Ihc.Projects
+using Ihc.Vis.Model;
+using Ihc.Vis.Schema;
+namespace Ihc.Vis.Editing
 {
     /// <summary>
     /// A live, generic, id-addressed handle to any element in the edit session — the foundation of a GUI

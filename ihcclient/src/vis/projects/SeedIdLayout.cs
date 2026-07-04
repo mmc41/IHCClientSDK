@@ -1,5 +1,5 @@
 #nullable enable
-namespace Ihc.Projects
+namespace Ihc.Vis.Projects
 {
     /// <summary>
     /// Which id-allocation sub-order a File→New seed uses for the two built-in enums versus the three

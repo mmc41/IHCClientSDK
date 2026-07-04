@@ -3,7 +3,8 @@ using System;
 using System.Collections.Immutable;
 using System.Linq;
 
-namespace Ihc.Projects
+using Ihc.Vis.Model;
+namespace Ihc.Vis.Validation
 {
     /// <summary>
     /// The outcome of validating a project against the pre-serialize checklist (id uniqueness, IDREF

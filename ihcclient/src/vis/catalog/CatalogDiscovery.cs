@@ -6,54 +6,12 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace Ihc.Projects
+using Ihc.Vis.FunctionBlocks;
+using Ihc.Vis.Model;
+using Ihc.Vis.Products;
+using Ihc.Vis.Io;
+namespace Ihc.Vis.Catalog
 {
-    /// <summary>
-    /// The catalog of products and function blocks available for insertion, plus the File→New templates. Modelled
-    /// as an interface so the editor/service can be driven by a fake catalog in tests (matching the SDK's
-    /// interface-injection convention) without a real IHC Visual install on disk. <see cref="CatalogDiscovery"/>
-    /// is the install-dir-backed implementation.
-    /// </summary>
-    public interface ICatalog
-    {
-        /// <summary>Looks a product up by its opaque <c>product_identifier</c> token (e.g. <c>_0x2101</c>).</summary>
-        ProductDescriptor Product(string productIdentifier);
-
-        /// <summary>Looks a function block up by its <c>master_type</c> key (e.g. <c>1.1.01</c>).</summary>
-        FunctionBlockDescriptor FunctionBlock(string masterType);
-
-        /// <summary>
-        /// Looks a function block up by its display name — for user-saved library blocks (e.g. <c>AutoProof</c>) that
-        /// carry no <c>master_type</c> and so cannot be found via <see cref="FunctionBlock"/>.
-        /// </summary>
-        FunctionBlockDescriptor FunctionBlockByName(string name);
-
-        /// <summary>All discovered products.</summary>
-        IReadOnlyList<ProductDescriptor> Products { get; }
-
-        /// <summary>All discovered function blocks.</summary>
-        IReadOnlyList<FunctionBlockDescriptor> FunctionBlocks { get; }
-
-        /// <summary>
-        /// The parsed <c>Data\NewDoc.idf</c> File→New skeleton (legacy v1 format, DTD defaults applied) — the
-        /// source of the ten default rooms and the fixed template ids used by <see cref="ProjectAppService.CreateNew"/>.
-        /// </summary>
-        ProjectElement NewProjectSkeleton { get; }
-
-        /// <summary>
-        /// The parsed <c>Data\EnumeratorDefinitions.def</c> — the two built-in enums (Persienne tilstand, Logning)
-        /// seeded into every new project, matched by <c>typeid</c>.
-        /// </summary>
-        ProjectElement BuiltInEnumerators { get; }
-
-        /// <summary>
-        /// The empty function-block ("Tom blok") template parsed from <c>Data\fb.def</c> — the five containers in
-        /// fixed order plus one empty <c>program_simple(events, actions)</c> and vendor icon <c>_0xf</c>. Deep-copied
-        /// by <see cref="GroupRef.AddEmptyFunctionBlock"/> to scaffold a from-scratch block (spec ch. 09 §9.4.4).
-        /// </summary>
-        FunctionBlockDescriptor EmptyFunctionBlockTemplate { get; }
-    }
-
     /// <summary>
     /// Auto-discovers the products and function blocks installed with IHC Visual by scanning
     /// <c>Products\**\*.def</c> (~100) and <c>FunctionBlocks\**\*.ifb</c> (~73) under the configured install dir,
@@ -62,29 +20,29 @@ namespace Ihc.Projects
     /// </summary>
     public sealed class CatalogDiscovery : ICatalog
     {
-        private readonly ImmutableArray<ProductDescriptor> products;
-        private readonly ImmutableArray<FunctionBlockDescriptor> functionBlocks;
-        private readonly FrozenDictionaryLike<ProductDescriptor> productsByIdentifier;
-        private readonly FrozenDictionaryLike<FunctionBlockDescriptor> functionBlocksByType;
-        private readonly FrozenDictionaryLike<FunctionBlockDescriptor> functionBlocksByName;
+        private readonly ImmutableArray<ProductDefinition> products;
+        private readonly ImmutableArray<FunctionBlockDefinition> functionBlocks;
+        private readonly FrozenDictionaryLike<ProductDefinition> productsByIdentifier;
+        private readonly FrozenDictionaryLike<FunctionBlockDefinition> functionBlocksByType;
+        private readonly FrozenDictionaryLike<FunctionBlockDefinition> functionBlocksByName;
 
         private CatalogDiscovery(
-            ImmutableArray<ProductDescriptor> products,
-            ImmutableArray<FunctionBlockDescriptor> functionBlocks,
+            ImmutableArray<ProductDefinition> products,
+            ImmutableArray<FunctionBlockDefinition> functionBlocks,
             ProjectElement newProjectSkeleton,
             ProjectElement builtInEnumerators,
-            FunctionBlockDescriptor emptyFunctionBlockTemplate)
+            FunctionBlockDefinition emptyFunctionBlockTemplate)
         {
             this.products = products;
             this.functionBlocks = functionBlocks;
             NewProjectSkeleton = newProjectSkeleton;
             BuiltInEnumerators = builtInEnumerators;
             EmptyFunctionBlockTemplate = emptyFunctionBlockTemplate;
-            productsByIdentifier = new FrozenDictionaryLike<ProductDescriptor>(
+            productsByIdentifier = new FrozenDictionaryLike<ProductDefinition>(
                 products, p => p.ProductIdentifier);
-            functionBlocksByType = new FrozenDictionaryLike<FunctionBlockDescriptor>(
+            functionBlocksByType = new FrozenDictionaryLike<FunctionBlockDefinition>(
                 functionBlocks, f => f.MasterType);
-            functionBlocksByName = new FrozenDictionaryLike<FunctionBlockDescriptor>(
+            functionBlocksByName = new FrozenDictionaryLike<FunctionBlockDefinition>(
                 functionBlocks, f => f.DisplayName);
         }
 
@@ -112,11 +70,11 @@ namespace Ihc.Projects
                 }
             }
 
-            ImmutableArray<ProductDescriptor> products = DiscoverProducts(productsDir);
-            ImmutableArray<FunctionBlockDescriptor> functionBlocks = DiscoverFunctionBlocks(functionBlocksDir);
+            ImmutableArray<ProductDefinition> products = DiscoverProducts(productsDir);
+            ImmutableArray<FunctionBlockDefinition> functionBlocks = DiscoverFunctionBlocks(functionBlocksDir);
             ProjectElement skeleton = ReadCatalogFile(Path.Combine(dataDir, "NewDoc.idf"));
             ProjectElement enums = ReadCatalogFile(Path.Combine(dataDir, "EnumeratorDefinitions.def"));
-            FunctionBlockDescriptor emptyTemplate = ReadEmptyFunctionBlockTemplate(Path.Combine(dataDir, "fb.def"));
+            FunctionBlockDefinition emptyTemplate = ReadEmptyFunctionBlockTemplate(Path.Combine(dataDir, "fb.def"));
             return new CatalogDiscovery(products, functionBlocks, skeleton, enums, emptyTemplate);
         }
 
@@ -147,28 +105,28 @@ namespace Ihc.Projects
             }
         }
 
-        private static FunctionBlockDescriptor ReadEmptyFunctionBlockTemplate(string fbDefPath)
+        private static FunctionBlockDefinition ReadEmptyFunctionBlockTemplate(string fbDefPath)
         {
             byte[] bytes = File.ReadAllBytes(fbDefPath);
             ProjectElement body = ReadCatalogFile(fbDefPath, bytes);
             string name = MenuPrefix.Strip(body.GetAttribute("name") ?? "Tom blok");
-            return new FunctionBlockDescriptor(string.Empty, string.Empty, name, name, string.Empty, body)
+            return new FunctionBlockDefinition(string.Empty, string.Empty, name, name, string.Empty, body)
             {
                 InlineDtdBlocks = InlineDtd.Capture(bytes),
                 IsEmptyTemplate = true,
             };
         }
 
-        private static ImmutableArray<ProductDescriptor> DiscoverProducts(string productsDir)
+        private static ImmutableArray<ProductDefinition> DiscoverProducts(string productsDir)
         {
-            var builder = ImmutableArray.CreateBuilder<ProductDescriptor>();
+            var builder = ImmutableArray.CreateBuilder<ProductDefinition>();
             foreach (string path in EnumerateFilesSorted(productsDir, "*.def"))
             {
                 byte[] bytes = File.ReadAllBytes(path);
                 ProjectElement body = ReadCatalogFile(path, bytes);
                 string identifier = body.GetAttribute("product_identifier") ?? string.Empty;
                 string displayName = MenuPrefix.Strip(body.GetAttribute("name") ?? string.Empty);
-                builder.Add(new ProductDescriptor(identifier, displayName, RelativeDir(productsDir, path), body)
+                builder.Add(new ProductDefinition(identifier, displayName, RelativeDir(productsDir, path), body)
                 {
                     InlineDtdBlocks = InlineDtd.Capture(bytes),
                 });
@@ -176,9 +134,9 @@ namespace Ihc.Projects
             return builder.ToImmutable();
         }
 
-        private static ImmutableArray<FunctionBlockDescriptor> DiscoverFunctionBlocks(string functionBlocksDir)
+        private static ImmutableArray<FunctionBlockDefinition> DiscoverFunctionBlocks(string functionBlocksDir)
         {
-            var builder = ImmutableArray.CreateBuilder<FunctionBlockDescriptor>();
+            var builder = ImmutableArray.CreateBuilder<FunctionBlockDefinition>();
             foreach (string path in EnumerateFilesSorted(functionBlocksDir, "*.ifb"))
             {
                 byte[] bytes = File.ReadAllBytes(path);
@@ -187,7 +145,7 @@ namespace Ihc.Projects
                 string masterVersion = body.GetAttribute("master_version") ?? string.Empty;
                 string masterName = body.GetAttribute("master_name") ?? string.Empty;
                 string displayName = body.GetAttribute("name") ?? masterName;
-                builder.Add(new FunctionBlockDescriptor(
+                builder.Add(new FunctionBlockDefinition(
                     masterType, masterVersion, masterName, displayName, RelativeDir(functionBlocksDir, path), body)
                 {
                     InlineDtdBlocks = InlineDtd.Capture(bytes),
@@ -205,25 +163,25 @@ namespace Ihc.Projects
             Path.GetDirectoryName(Path.GetRelativePath(root, filePath)) ?? string.Empty;
 
         /// <inheritdoc/>
-        public ProductDescriptor Product(string productIdentifier) =>
+        public ProductDefinition Product(string productIdentifier) =>
             productsByIdentifier.Get(productIdentifier)
             ?? throw new KeyNotFoundException($"No product with product_identifier '{productIdentifier}' in the catalog.");
 
         /// <inheritdoc/>
-        public FunctionBlockDescriptor FunctionBlock(string masterType) =>
+        public FunctionBlockDefinition FunctionBlock(string masterType) =>
             functionBlocksByType.Get(masterType)
             ?? throw new KeyNotFoundException($"No function block with master_type '{masterType}' in the catalog.");
 
         /// <inheritdoc/>
-        public FunctionBlockDescriptor FunctionBlockByName(string name) =>
+        public FunctionBlockDefinition FunctionBlockByName(string name) =>
             functionBlocksByName.Get(name)
             ?? throw new KeyNotFoundException($"No function block named '{name}' in the catalog.");
 
         /// <inheritdoc/>
-        public IReadOnlyList<ProductDescriptor> Products => products;
+        public IReadOnlyList<ProductDefinition> Products => products;
 
         /// <inheritdoc/>
-        public IReadOnlyList<FunctionBlockDescriptor> FunctionBlocks => functionBlocks;
+        public IReadOnlyList<FunctionBlockDefinition> FunctionBlocks => functionBlocks;
 
         /// <inheritdoc/>
         public ProjectElement NewProjectSkeleton { get; }
@@ -232,7 +190,7 @@ namespace Ihc.Projects
         public ProjectElement BuiltInEnumerators { get; }
 
         /// <inheritdoc/>
-        public FunctionBlockDescriptor EmptyFunctionBlockTemplate { get; }
+        public FunctionBlockDefinition EmptyFunctionBlockTemplate { get; }
 
         /// <summary>
         /// A tiny last-wins lookup over a descriptor list (catalog keys are not globally unique — favorites

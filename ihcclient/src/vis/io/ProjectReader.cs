@@ -6,7 +6,10 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
 
-namespace Ihc.Projects
+using Ihc.Vis.Model;
+using Ihc.Vis.Projects;
+using Ihc.Vis.Schema;
+namespace Ihc.Vis.Io
 {
     /// <summary>
     /// Parses a <c>.vis</c>/<c>.ihc</c> byte stream into the generic <see cref="Project"/> node model. Reads the

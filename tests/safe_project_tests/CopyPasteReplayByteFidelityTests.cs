@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// The copy/paste byte-fidelity gate for <see cref="ProjectEditor.CopySubtree"/> against the authentic vendor

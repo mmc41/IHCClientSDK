@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Tests for the pre-serialize validator: a real vendor file validates clean, and the checklist catches a

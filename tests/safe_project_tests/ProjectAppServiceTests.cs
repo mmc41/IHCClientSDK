@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using FakeItEasy;
 using Microsoft.Extensions.Time.Testing;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Application-service-level contracts on <see cref="ProjectAppService"/> that the format-engine tests do not
@@ -35,12 +35,12 @@ namespace Ihc.Projects.Tests
         {
             var products = new[]
             {
-                new ProductDescriptor("_0x2101", "LK FUGA Tryk 2 tast", "Cat", EmptyBody("product_dataline")),
-                new ProductDescriptor("_0x2202", "Lampeudtag", "Cat", EmptyBody("product_dataline")),
+                new ProductDefinition("_0x2101", "LK FUGA Tryk 2 tast", "Cat", EmptyBody("product_dataline")),
+                new ProductDefinition("_0x2202", "Lampeudtag", "Cat", EmptyBody("product_dataline")),
             };
             var functionBlocks = new[]
             {
-                new FunctionBlockDescriptor("1.1.01", "e", "Kip tænd sluk", "1.1.01.e. Kip tænd sluk", "Cat", EmptyBody("functionblock")),
+                new FunctionBlockDefinition("1.1.01", "e", "Kip tænd sluk", "1.1.01.e. Kip tænd sluk", "Cat", EmptyBody("functionblock")),
             };
             var catalog = A.Fake<ICatalog>();
             A.CallTo(() => catalog.Products).Returns(products);

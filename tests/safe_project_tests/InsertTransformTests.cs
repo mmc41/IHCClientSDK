@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
-using Ihc.Projects;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Deterministic (no install dir) tests for the catalog→project insert transform: fresh sequential ids with

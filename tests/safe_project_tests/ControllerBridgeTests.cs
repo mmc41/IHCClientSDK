@@ -1,9 +1,8 @@
 using System.Collections.Immutable;
 using FakeItEasy;
-using Ihc.Projects;
 using Microsoft.Extensions.Time.Testing;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Unit tests for the controller↔file bridge on <see cref="ProjectAppService"/>

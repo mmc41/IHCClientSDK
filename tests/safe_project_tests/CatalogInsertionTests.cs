@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Install-dir-gated: <strong>every</strong> discovered product/function-block descriptor inserts one-at-a-time
@@ -75,11 +75,11 @@ namespace Ihc.Projects.Tests
                 }
             }
 
-            foreach (ProductDescriptor product in catalog.Products)
+            foreach (ProductDefinition product in catalog.Products)
             {
                 InsertOne(product.DisplayName, room => room.AddProduct(product));
             }
-            foreach (FunctionBlockDescriptor block in catalog.FunctionBlocks)
+            foreach (FunctionBlockDefinition block in catalog.FunctionBlocks)
             {
                 InsertOne(block.DisplayName, room => room.AddFunctionBlock(block));
             }

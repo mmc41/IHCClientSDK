@@ -166,8 +166,9 @@ empty Action B left open. Also a diff fixture where every changed byte region ma
 Action E / metadata): the SDK loads + validates it clean (`IsValid=True`, 0 errors/warnings), DTD-conforms against
 its own inline DTD, and **passively round-trips it byte-identically** — it is in the `ProjectByteFidelityTests` and
 `DtdConformanceTests` batteries alongside `-copied`/`-mutated`. The *replay* test (Action 0 +
-`AddEnumDefinition` → byte-identity, install-gated) is the follow-up; since the vendor block is contiguous with no
-burn, the SDK's single-shot `AddEnumDefinition` reproduces it directly.
+`AddEnumDefinition` → byte-identity) is **unconditional (catalog-free)** — both verbs use only the allocator +
+inline DTD, so it runs on a clean checkout with no install dir; delivered by `EnumValuesReplayByteFidelityTests`.
+Since the vendor block is contiguous with no burn, the SDK's single-shot `AddEnumDefinition` reproduces it directly.
 
 ## Authentic oracles (`LiveAuthored/`)
 

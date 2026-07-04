@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Mutating through a stale handle (an id no longer in the session) must throw — never silently no-op.

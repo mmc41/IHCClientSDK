@@ -3,7 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 
-namespace Ihc.Projects
+using Ihc.Vis.Projects;
+namespace Ihc.Vis.Schema
 {
     /// <summary>
     /// The per-operation schema resolver: looks up an <see cref="ElementSchema"/> for an element tag, preferring

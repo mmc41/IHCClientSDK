@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Ihc.Projects
+namespace Ihc.Vis.Editing
 {
     /// <summary>
     /// The per-resource-type presentation attributes IHC Visual stamps on a resource the moment it is created: the

@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 
-namespace Ihc.Projects.Tests
+namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Id tokens beyond the 32-bit packed range (24-bit counter + 8-bit type code, spec ch. 02) must be

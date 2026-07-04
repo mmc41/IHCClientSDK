@@ -2,7 +2,8 @@
 using System;
 using System.Collections.Generic;
 
-namespace Ihc.Projects
+using Ihc.Vis.Schema;
+namespace Ihc.Vis.Editing
 {
     /// <summary>How an attribute must be supplied — the GUI-facing projection of the DTD ATTLIST default kind.</summary>
     public enum AttrRequirement
