@@ -199,7 +199,7 @@ namespace Ihc.Projects
         private static void BurnAndMapToExisting(ProjectElement stub, ProjectElement existing,
             IdAllocator allocator, Dictionary<string, string> idMap)
         {
-            allocator.Allocate(TypeCodeFor("enum_definition"));   // burn the def id (discarded — not emitted)
+            allocator.Allocate(TypeCode.RequireForTag("enum_definition"));   // burn the def id (discarded — not emitted)
             string? stubId = stub.GetAttribute("id");
             if (stubId is not null && existing.GetAttribute("id") is { } existingId)
             {
@@ -211,7 +211,7 @@ namespace Ihc.Projects
                 {
                     continue;
                 }
-                allocator.Allocate(TypeCodeFor("enum_value"));    // burn each value id (discarded)
+                allocator.Allocate(TypeCode.RequireForTag("enum_value"));    // burn each value id (discarded)
                 string? stubValueId = value.GetAttribute("id");
                 if (stubValueId is not null && MatchValue(existing, value)?.GetAttribute("id") is { } matchId)
                 {
@@ -225,7 +225,7 @@ namespace Ihc.Projects
             Dictionary<string, string> idMap, List<ProjectElement> hoisted)
         {
             string? stubId = stub.GetAttribute("id");
-            ElementId defId = allocator.Allocate(TypeCodeFor("enum_definition"));
+            ElementId defId = allocator.Allocate(TypeCode.RequireForTag("enum_definition"));
             if (stubId is not null)
             {
                 idMap[stubId] = defId.ToToken();
@@ -239,7 +239,7 @@ namespace Ihc.Projects
                     continue;
                 }
                 string? oldValueId = value.GetAttribute("id");
-                ElementId valueId = allocator.Allocate(TypeCodeFor("enum_value"));
+                ElementId valueId = allocator.Allocate(TypeCode.RequireForTag("enum_value"));
                 if (oldValueId is not null)
                 {
                     idMap[oldValueId] = valueId.ToToken();
@@ -457,22 +457,6 @@ namespace Ihc.Projects
             return true;
         }
 
-        private static ProjectElement? FindEnumByTypeid(ProjectElement enumDefinitions, string typeid)
-        {
-            if (enumDefinitions.Children.IsDefaultOrEmpty)
-            {
-                return null;
-            }
-            foreach (ProjectElement def in enumDefinitions.Children)
-            {
-                if (def.Tag == "enum_definition" && def.GetAttribute("typeid") == typeid)
-                {
-                    return def;
-                }
-            }
-            return null;
-        }
-
         private static ProjectElement? FindValueByTypeid(ProjectElement def, string typeid)
         {
             if (def.Children.IsDefaultOrEmpty)
@@ -534,8 +518,5 @@ namespace Ihc.Projects
             ImmutableArray<ProjectElement> baseArray = existing.IsDefaultOrEmpty ? ImmutableArray<ProjectElement>.Empty : existing;
             return baseArray.AddRange(added);
         }
-
-        private static int TypeCodeFor(string tag) => TypeCode.ForTag(tag)
-            ?? throw new InvalidOperationException($"No type code registered for '{tag}'.");
     }
 }

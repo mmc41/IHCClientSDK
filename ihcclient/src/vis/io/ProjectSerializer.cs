@@ -25,6 +25,20 @@ namespace Ihc.Projects
         private static readonly Encoding Latin1Strict =
             Encoding.GetEncoding("ISO-8859-1", EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
 
+        // Precomputed indent strings for depths 0..MaxIndentDepth (3 spaces per level), so the per-element save
+        // path reuses them instead of allocating a fresh string on every element.
+        private static readonly string[] IndentCache = BuildIndentCache();
+
+        private static string[] BuildIndentCache()
+        {
+            var cache = new string[MaxIndentDepth + 1];
+            for (int depth = 0; depth <= MaxIndentDepth; depth++)
+            {
+                cache[depth] = new string(' ', 3 * depth);
+            }
+            return cache;
+        }
+
         /// <summary>Serializes a project to its <c>.vis</c> byte representation, verbatim.</summary>
         public static byte[] Serialize(Project project)
         {
@@ -173,10 +187,7 @@ namespace Ihc.Projects
             }
         }
 
-        private static string Indent(int depth)
-        {
-            int effective = depth <= MaxIndentDepth ? depth : 0; // depth ≥ 21 mis-emits at column 0 (vendor bug)
-            return effective == 0 ? string.Empty : new string(' ', 3 * effective);
-        }
+        private static string Indent(int depth) =>
+            IndentCache[depth <= MaxIndentDepth ? depth : 0]; // depth ≥ 21 mis-emits at column 0 (vendor bug)
     }
 }

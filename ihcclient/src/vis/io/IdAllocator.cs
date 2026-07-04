@@ -1,6 +1,5 @@
 #nullable enable
 using System;
-using System.Globalization;
 
 namespace Ihc.Projects
 {
@@ -47,21 +46,9 @@ namespace Ihc.Projects
         public static IdAllocator ForProject(Project project)
         {
             ArgumentNullException.ThrowIfNull(project);
-            long fromAttribute = ParseHex(project.LastUniqueId);
+            long fromAttribute = HexToken.ParseValueOrDefault(project.LastUniqueId);
             long fromTree = MaxCounterPresent(project.Root);
             return new IdAllocator(Math.Max(fromAttribute, fromTree));
-        }
-
-        private static long ParseHex(string? lastUniqueId)
-        {
-            if (lastUniqueId is not null
-                && lastUniqueId.StartsWith("_0x", StringComparison.Ordinal)
-                && long.TryParse(lastUniqueId.AsSpan(3), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out long value)
-                && value >= 0)
-            {
-                return value;
-            }
-            return 0;
         }
 
         private static long MaxCounterPresent(ProjectElement element)

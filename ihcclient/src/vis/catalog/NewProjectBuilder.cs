@@ -89,7 +89,7 @@ namespace Ihc.Projects
                 {
                     continue;
                 }
-                string defId = allocator.Allocate(TypeCodeFor("enum_definition")).ToToken();
+                string defId = allocator.Allocate(TypeCode.RequireForTag("enum_definition")).ToToken();
                 var values = ImmutableArray.CreateBuilder<ProjectElement>();
                 foreach (ProjectElement value in Children(def))
                 {
@@ -97,7 +97,7 @@ namespace Ihc.Projects
                     {
                         continue;
                     }
-                    string valueId = allocator.Allocate(TypeCodeFor("enum_value")).ToToken();
+                    string valueId = allocator.Allocate(TypeCode.RequireForTag("enum_value")).ToToken();
                     values.Add(Node("enum_value", valueId, CopyAttrs(value, "typeid", "name", "index"), NoChildren));
                 }
                 definitions.Add(Node("enum_definition", defId, CopyAttrs(def, "typeid", "name", "note"), values));
@@ -107,9 +107,9 @@ namespace Ihc.Projects
 
         private static ProjectElement BuildDocumentationModules(IdAllocator allocator)
         {
-            string modulesId = allocator.Allocate(TypeCodeFor("documentation_modules")).ToToken();
-            string inputsId = allocator.Allocate(TypeCodeFor("dataline_input_modules")).ToToken();
-            string outputsId = allocator.Allocate(TypeCodeFor("dataline_output_modules")).ToToken();
+            string modulesId = allocator.Allocate(TypeCode.RequireForTag("documentation_modules")).ToToken();
+            string inputsId = allocator.Allocate(TypeCode.RequireForTag("dataline_input_modules")).ToToken();
+            string outputsId = allocator.Allocate(TypeCode.RequireForTag("dataline_output_modules")).ToToken();
             return Node("documentation_modules", modulesId, NoAttrs, new[]
             {
                 Node("dataline_input_modules", inputsId, NoAttrs, NoChildren),
@@ -173,9 +173,6 @@ namespace Ihc.Projects
         private static ProjectElement RequireChild(ProjectElement parent, string tag) =>
             parent.FindChild(tag) ?? throw new InvalidOperationException(
                 $"The File→New template is missing the required '{tag}' element.");
-
-        private static int TypeCodeFor(string tag) => TypeCode.ForTag(tag)
-            ?? throw new InvalidOperationException($"No type code registered for '{tag}'.");
 
         private static string Dec(int value) => value.ToString(CultureInfo.InvariantCulture);
     }

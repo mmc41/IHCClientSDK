@@ -28,6 +28,24 @@ namespace Ihc.Projects
         public string? GetAttribute(string name) =>
             Attrs.IsDefaultOrEmpty ? null : Attrs.FirstOrDefault(a => a.Name == name).Value;
 
+        /// <summary>
+        /// Returns a copy with the named attribute set: the existing entry is replaced in place (registry order
+        /// preserved) or, when absent, appended at the end.
+        /// </summary>
+        public ProjectElement WithAttribute(string name, string value)
+        {
+            ImmutableArray<(string Name, string Value)> attrs =
+                Attrs.IsDefaultOrEmpty ? ImmutableArray<(string, string)>.Empty : Attrs;
+            for (int i = 0; i < attrs.Length; i++)
+            {
+                if (attrs[i].Name == name)
+                {
+                    return this with { Attrs = attrs.SetItem(i, (name, value)) };
+                }
+            }
+            return this with { Attrs = attrs.Add((name, value)) };
+        }
+
         /// <summary>Returns the first direct child with the given tag, or <c>null</c> when none.</summary>
         public ProjectElement? FindChild(string tag) =>
             Children.IsDefaultOrEmpty ? null : Children.FirstOrDefault(c => c.Tag == tag);

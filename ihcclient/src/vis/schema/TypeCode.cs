@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
 
@@ -127,5 +128,9 @@ namespace Ihc.Projects
 
         /// <summary>The type-code byte for the tag, or <c>null</c> for id-less elements / unknown tags.</summary>
         public static int? ForTag(string tag) => ByTag.TryGetValue(tag, out int code) ? code : null;
+
+        /// <summary>The type-code byte for the tag; throws when the tag has no registered code (the id-allocation contract).</summary>
+        public static int RequireForTag(string tag) => ForTag(tag)
+            ?? throw new InvalidOperationException($"No type code registered for '{tag}'.");
     }
 }

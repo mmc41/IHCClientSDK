@@ -4,10 +4,23 @@ using System.Globalization;
 
 namespace Ihc.Projects
 {
-    /// <summary>Shared rendering for the <c>.vis</c> <c>_0x</c> + lowercase-hex token form (leading zeros stripped).</summary>
+    /// <summary>Shared rendering/parsing for the <c>.vis</c> <c>_0x</c> + lowercase-hex token form (leading zeros stripped).</summary>
     internal static class HexToken
     {
         public static string Format(long value) => "_0x" + value.ToString("x", CultureInfo.InvariantCulture);
+
+        /// <summary>
+        /// Parses a <c>_0x</c>+hex token to its raw numeric value, returning <paramref name="fallback"/> for a
+        /// null, malformed, or negative token. Unlike <see cref="ElementId.TryParse"/> this keeps the packed value
+        /// whole (no counter/type-code split) — used for scalar tokens such as <c>last_unique_id</c>.
+        /// </summary>
+        public static long ParseValueOrDefault(string? token, long fallback = 0) =>
+            token is not null
+            && token.StartsWith("_0x", StringComparison.Ordinal)
+            && long.TryParse(token.AsSpan(3), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out long value)
+            && value >= 0
+                ? value
+                : fallback;
     }
 
     /// <summary>

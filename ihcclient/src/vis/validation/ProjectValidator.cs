@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Globalization;
 
 namespace Ihc.Projects
 {
@@ -67,7 +66,7 @@ namespace Ihc.Projects
 
             ValidateLinkBijection(elements, errors);
 
-            long lastUniqueId = ParseHex(project.LastUniqueId);
+            long lastUniqueId = HexToken.ParseValueOrDefault(project.LastUniqueId);
             if (lastUniqueId < maxCounter)
             {
                 errors.Add($"last_unique_id (0x{lastUniqueId:x}) is below the highest counter present (0x{maxCounter:x})");
@@ -245,13 +244,6 @@ namespace Ihc.Projects
             }
             return true;
         }
-
-        private static long ParseHex(string? token) =>
-            token is not null
-            && token.StartsWith("_0x", StringComparison.Ordinal)
-            && long.TryParse(token.AsSpan(3), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out long value)
-                ? value
-                : 0;
 
         private static void Collect(ProjectElement element, List<ProjectElement> into)
         {

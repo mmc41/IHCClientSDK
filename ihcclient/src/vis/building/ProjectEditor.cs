@@ -30,6 +30,7 @@ namespace Ihc.Projects
         private ProjectElement root;
         private readonly IdAllocator allocator;
         private ImmutableDictionary<string, string> inlineDtdBlocks;   // grows as unregistered inserted types are adopted
+        private ProjectSchemaView? schemaView;   // memoized view over inlineDtdBlocks; invalidated when they change
 
         internal ProjectEditor(Project project)
         {
@@ -41,8 +42,11 @@ namespace Ihc.Projects
 
         internal IdAllocator Allocator => allocator;
 
-        /// <summary>The schema resolver for this session (the file's own inline DTD first, registry fallback).</summary>
-        internal ProjectSchemaView SchemaView => ProjectSchemaView.For(inlineDtdBlocks);
+        /// <summary>
+        /// The schema resolver for this session (the file's own inline DTD first, registry fallback), memoized so
+        /// the interactive attribute-edit path does not re-parse every inline DTD block on each access.
+        /// </summary>
+        internal ProjectSchemaView SchemaView => schemaView ??= ProjectSchemaView.For(inlineDtdBlocks);
 
         /// <summary>Gets the named locality (room), seeding it if necessary, and returns its live handle.</summary>
         public GroupRef Group(string name)
@@ -64,12 +68,12 @@ namespace Ihc.Projects
             ArgumentNullException.ThrowIfNull(name);
             ArgumentNullException.ThrowIfNull(values);
 
-            ElementId defId = allocator.Allocate(TypeCodeFor("enum_definition"));
+            ElementId defId = allocator.Allocate(TypeCode.RequireForTag("enum_definition"));
             var valueElements = ImmutableArray.CreateBuilder<ProjectElement>(values.Length);
             var valueRefs = ImmutableArray.CreateBuilder<(string, ElementId)>(values.Length);
             for (int i = 0; i < values.Length; i++)
             {
-                ElementId valueId = allocator.Allocate(TypeCodeFor("enum_value"));
+                ElementId valueId = allocator.Allocate(TypeCode.RequireForTag("enum_value"));
                 valueElements.Add(SimpleElement("enum_value", valueId,
                     ("name", values[i]), ("index", i.ToString(CultureInfo.InvariantCulture))));
                 valueRefs.Add((values[i], valueId));
@@ -168,8 +172,8 @@ namespace Ihc.Projects
             ElementId fromId = RequireId(from);
             ElementId toId = RequireId(to);
 
-            ElementId linkFromId = allocator.Allocate(TypeCodeFor("link_from_resource"));   // from-half allocated first
-            ElementId linkToId = allocator.Allocate(TypeCodeFor("link_to_resource"));
+            ElementId linkFromId = allocator.Allocate(TypeCode.RequireForTag("link_from_resource"));   // from-half allocated first
+            ElementId linkToId = allocator.Allocate(TypeCode.RequireForTag("link_to_resource"));
 
             ProjectElement linkFrom = SimpleElement("link_from_resource", linkFromId,
                 ("name", FollowLinkName), ("icon", "_0x47"), ("link", linkToId.ToToken()));
@@ -400,9 +404,8 @@ namespace Ihc.Projects
         /// </summary>
         public Project ToProject()
         {
-            ProjectElement withCounter = SetAttribute(root, "last_unique_id", allocator.LastUniqueIdToken);
-            ProjectSchemaView view = ProjectSchemaView.For(inlineDtdBlocks);
-            return new Project(Canonicalizer.Canonicalize(withCounter, view)) { InlineDtdBlocks = inlineDtdBlocks };
+            ProjectElement withCounter = root.WithAttribute("last_unique_id", allocator.LastUniqueIdToken);
+            return new Project(Canonicalizer.Canonicalize(withCounter, SchemaView)) { InlineDtdBlocks = inlineDtdBlocks };
         }
 
         // ----- insert (called by GroupRef) -----
@@ -413,8 +416,7 @@ namespace Ihc.Projects
             MergeNonRegistryBlocks(catalogBody, descriptorBlocks);
             ProjectElement enumDefinitions = root.FindChild(EnumDefinitionsTag)
                 ?? throw new InvalidOperationException("The project has no enum_definitions container.");
-            InsertResult result = InsertTransform.Insert(catalogBody, allocator, enumDefinitions,
-                ProjectSchemaView.For(inlineDtdBlocks));
+            InsertResult result = InsertTransform.Insert(catalogBody, allocator, enumDefinitions, SchemaView);
             root = ReplaceChildByTag(root, EnumDefinitionsTag, result.EnumDefinitions);
             AppendChild(groupId, result.InsertedRoot);
             return result.InsertedRoot.Id
@@ -451,6 +453,7 @@ namespace Ihc.Projects
             }
             Walk(body);
             inlineDtdBlocks = builder.ToImmutable();
+            schemaView = null;   // inline DTD changed → drop the memoized view so the next access reparses
         }
 
         // ----- resource builders (called by ProductRef) -----
@@ -483,7 +486,7 @@ namespace Ihc.Projects
         internal ResourceRef AddResourceChild(ElementId parentId, string tag, string name,
             IReadOnlyList<(string Name, string Value)> attrs)
         {
-            ElementId id = allocator.Allocate(TypeCodeFor(tag));
+            ElementId id = allocator.Allocate(TypeCode.RequireForTag(tag));
             ProjectElement resource = ApplyAttributes(SimpleElement(tag, id, ("name", name)),
                 ResourceMaterialization.NewResourceDefaults(tag));
             resource = ApplyAttributes(resource, attrs);
@@ -505,7 +508,7 @@ namespace Ihc.Projects
             {
                 return;   // nothing to bind scenes to
             }
-            ElementId id = allocator.Allocate(TypeCodeFor("scenes"));
+            ElementId id = allocator.Allocate(TypeCode.RequireForTag("scenes"));
             ProjectElement scenes = SimpleElement("scenes", id,
                 ("name", "Scenarier"), ("scene_resource", outputId.ToToken()));
             AppendChild(productId, scenes);
@@ -532,7 +535,7 @@ namespace Ihc.Projects
         }
 
         internal void SetAttributeById(ElementId id, string name, string value) =>
-            Mutate(id, e => SetAttribute(e, name, value));
+            Mutate(id, e => e.WithAttribute(name, value));
 
         // ----- generic child authoring (called by ProgramBuilder) -----
 
@@ -544,7 +547,7 @@ namespace Ihc.Projects
         /// </summary>
         internal ElementId AllocateChild(ElementId parentId, string tag, params (string Name, string Value)[] attrs)
         {
-            ElementId id = allocator.Allocate(TypeCodeFor(tag));
+            ElementId id = allocator.Allocate(TypeCode.RequireForTag(tag));
             AppendChild(parentId, SimpleElement(tag, id, attrs));
             return id;
         }
@@ -638,7 +641,7 @@ namespace Ihc.Projects
         {
             ProjectElement groups = root.FindChild(GroupsTag)
                 ?? throw new InvalidOperationException("The project has no groups container.");
-            ElementId id = allocator.Allocate(TypeCodeFor("group"));
+            ElementId id = allocator.Allocate(TypeCode.RequireForTag("group"));
             ProjectElement group = SimpleElement("group", id, ("name", name), ("icon", "_0x15"));
             root = ReplaceChildByTag(root, GroupsTag, groups with { Children = AppendTo(groups.Children, group) });
             return id;
@@ -782,23 +785,9 @@ namespace Ihc.Projects
             ProjectElement result = element;
             foreach ((string name, string value) in attrs)
             {
-                result = SetAttribute(result, name, value);
+                result = result.WithAttribute(name, value);
             }
             return result;
-        }
-
-        private static ProjectElement SetAttribute(ProjectElement element, string name, string value)
-        {
-            ImmutableArray<(string Name, string Value)> attrs =
-                element.Attrs.IsDefaultOrEmpty ? ImmutableArray<(string, string)>.Empty : element.Attrs;
-            for (int i = 0; i < attrs.Length; i++)
-            {
-                if (attrs[i].Name == name)
-                {
-                    return element with { Attrs = attrs.SetItem(i, (name, value)) };
-                }
-            }
-            return element with { Attrs = attrs.Add((name, value)) };
         }
 
         private static ProjectElement SimpleElement(string tag, ElementId id, params (string Name, string Value)[] attrs)
@@ -814,9 +803,6 @@ namespace Ihc.Projects
 
         private static ElementId RequireId(ResourceRef resource) => resource.Id
             ?? throw new InvalidOperationException($"Resource '{resource.Name}' has no allocated id; it cannot be linked.");
-
-        private static int TypeCodeFor(string tag) => TypeCode.ForTag(tag)
-            ?? throw new InvalidOperationException($"No type code registered for '{tag}'.");
     }
 
     /// <summary>
