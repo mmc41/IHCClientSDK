@@ -48,10 +48,10 @@ namespace Ihc.Projects
             sb.Append(XmlDeclaration).Append(Crlf);
             AppendDtd(sb, project.Root, view);
             AppendElement(sb, project.Root, depth: 0, view);
-            return Encode(sb.ToString());
+            return Encode(sb.ToString(), project.Root);
         }
 
-        private static byte[] Encode(string text)
+        private static byte[] Encode(string text, ProjectElement root)
         {
             try
             {
@@ -60,9 +60,41 @@ namespace Ihc.Projects
             catch (EncoderFallbackException ex)
             {
                 throw new InvalidOperationException(
-                    "The project contains text outside the ISO-8859-1 (Latin-1) repertoire (e.g. '€' or an emoji), " +
-                    "which the .vis format cannot represent. Restrict all text to Latin-1.", ex);
+                    "The project contains text outside the ISO-8859-1 (Latin-1) repertoire, which the .vis format " +
+                    $"cannot represent.{LocateNonLatin1(root)} Restrict all text to Latin-1.", ex);
             }
+        }
+
+        // One bad character in a 200 KB project is a needle in a haystack — name the first offender.
+        private static string LocateNonLatin1(ProjectElement element)
+        {
+            if (!element.Attrs.IsDefaultOrEmpty)
+            {
+                foreach ((string name, string value) in element.Attrs)
+                {
+                    foreach (char c in value)
+                    {
+                        if (c > 0xFF)
+                        {
+                            string id = element.Id is { } eid ? $" (id {eid.ToToken()})" : string.Empty;
+                            return $" First offender: attribute '{name}' on <{element.Tag}>{id} containing " +
+                                   $"'{c}' (U+{(int)c:X4}).";
+                        }
+                    }
+                }
+            }
+            if (!element.Children.IsDefaultOrEmpty)
+            {
+                foreach (ProjectElement child in element.Children)
+                {
+                    string found = LocateNonLatin1(child);
+                    if (found.Length > 0)
+                    {
+                        return found;
+                    }
+                }
+            }
+            return string.Empty;
         }
 
         private static void AppendDtd(StringBuilder sb, ProjectElement root, ProjectSchemaView view)
@@ -122,12 +154,21 @@ namespace Ihc.Projects
 
         private static void AppendAttributes(StringBuilder sb, ProjectElement element, ElementSchema schema)
         {
-            GuardNoUnknownAttributes(element, schema);
+            SchemaGuards.GuardNoUnknownAttributes(element, schema);
             foreach (AttrSchema attr in schema.Attrs)
             {
                 string? value = element.GetAttribute(attr.Name);
                 if (value is null)
                 {
+                    if (attr.Kind == AttrKind.Required)
+                    {
+                        // Writing without it would violate the DTD this very file declares inline — IHC Visual
+                        // (a validating consumer) then refuses the file after the original was already replaced.
+                        throw new InvalidOperationException(
+                            $"Element '{element.Tag}' is missing #REQUIRED attribute '{attr.Name}' declared by its " +
+                            $"DTD block; run {nameof(ProjectAppService)}.{nameof(ProjectAppService.Validate)} to " +
+                            "list every problem before saving.");
+                    }
                     continue; // omitted #IMPLIED, or an omitted defaulted attribute
                 }
                 if (attr.Kind == AttrKind.Defaulted && value == attr.Default)
@@ -138,35 +179,6 @@ namespace Ihc.Projects
                 AppendEscaped(sb, value);
                 sb.Append('"');
             }
-        }
-
-        private static void GuardNoUnknownAttributes(ProjectElement element, ElementSchema schema)
-        {
-            if (element.Attrs.IsDefaultOrEmpty)
-            {
-                return;
-            }
-            foreach ((string Name, string Value) attr in element.Attrs)
-            {
-                if (!SchemaHasAttribute(schema, attr.Name))
-                {
-                    throw new InvalidOperationException(
-                        $"Element '{element.Tag}' carries attribute '{attr.Name}' that is not declared in its " +
-                        $"canonical DTD block. The schema registry must cover every attribute a project uses.");
-                }
-            }
-        }
-
-        private static bool SchemaHasAttribute(ElementSchema schema, string name)
-        {
-            foreach (AttrSchema attr in schema.Attrs)
-            {
-                if (attr.Name == name)
-                {
-                    return true;
-                }
-            }
-            return false;
         }
 
         private static void AppendEscaped(StringBuilder sb, string value)
@@ -182,7 +194,17 @@ namespace Ihc.Projects
                     case '\'': sb.Append("&apos;"); break;
                     case '\r': sb.Append("&#xD;"); break;
                     case '\n': sb.Append("&#xA;"); break;
-                    default: sb.Append(c); break;
+                    case '\t': sb.Append("&#x9;"); break;   // a raw tab silently becomes a space on re-read (§3.3.3)
+                    default:
+                        if (c < 0x20)
+                        {
+                            // XML 1.0 forbids these outright — written raw, the file opens in no parser.
+                            throw new InvalidOperationException(
+                                $"Attribute value contains control character U+{(int)c:X4}, which XML cannot " +
+                                "represent; remove it from the offending text.");
+                        }
+                        sb.Append(c);
+                        break;
                 }
             }
         }

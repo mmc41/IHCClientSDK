@@ -20,8 +20,15 @@ namespace Ihc.Projects
             ArgumentNullException.ThrowIfNull(bytes);
             string text = Encoding.Latin1.GetString(bytes);
             int doctype = text.IndexOf("<!DOCTYPE", StringComparison.Ordinal);
+            // The '[' must open before the DOCTYPE's own '>' — otherwise this is a subset-less DOCTYPE
+            // (e.g. SYSTEM) and an unbounded search would scan the document body for stray brackets.
+            int doctypeEnd = doctype >= 0 ? text.IndexOf('>', doctype) : -1;
             int open = doctype >= 0 ? text.IndexOf('[', doctype) : -1;
-            int close = open >= 0 ? text.IndexOf("]>", open, StringComparison.Ordinal) : -1;
+            if (open < 0 || (doctypeEnd >= 0 && open > doctypeEnd))
+            {
+                return ImmutableDictionary<string, string>.Empty;
+            }
+            int close = text.IndexOf("]>", open, StringComparison.Ordinal);
             if (close < 0)
             {
                 return ImmutableDictionary<string, string>.Empty;

@@ -41,9 +41,27 @@ namespace Ihc.Projects
         /// <inheritdoc/>
         public override int GetHashCode() => Root.GetHashCode();
 
-        /// <summary>The <c>version_major.version_minor</c> of the project format (always 4.0 for v1).</summary>
-        public string Version =>
-            $"{Root.GetAttribute("version_major") ?? "4"}.{Root.GetAttribute("version_minor") ?? "0"}";
+        // Memoized: depends only on the immutable InlineDtdBlocks, so the record copy-constructor may carry it
+        // across `with` mutations of Root. ProjectReader builds it eagerly so a malformed captured DTD block
+        // fails at load with file context instead of at the first save.
+        private ProjectSchemaView? schemaView;
+
+        /// <summary>The schema resolver for this project: its captured inline-DTD blocks first, registry fallback.</summary>
+        internal ProjectSchemaView SchemaView => schemaView ??= ProjectSchemaView.For(InlineDtdBlocks);
+
+        /// <summary>
+        /// The <c>version_major.version_minor</c> of the project format (4.0 for every known file), or
+        /// <c>null</c> when the root does not declare both attributes — never a fabricated default.
+        /// </summary>
+        public string? Version
+        {
+            get
+            {
+                string? major = Root.GetAttribute("version_major");
+                string? minor = Root.GetAttribute("version_minor");
+                return major is null || minor is null ? null : $"{major}.{minor}";
+            }
+        }
 
         /// <summary>The project creation stamp <c>id1</c> (constant for the project's life).</summary>
         public string? Id1 => Root.GetAttribute("id1");
@@ -81,8 +99,11 @@ namespace Ihc.Projects
                     && int.TryParse(m.GetAttribute("day"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int day)
                     && int.TryParse(m.GetAttribute("hour"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hour)
                     && int.TryParse(m.GetAttribute("minute"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int minute)
+                    && year is >= 1 and <= 9999 && month is >= 1 and <= 12
+                    && day >= 1 && day <= DateTime.DaysInMonth(year, month)
+                    && hour is >= 0 and <= 23 && minute is >= 0 and <= 59
                     ? new DateTimeOffset(new DateTime(year, month, day, hour, minute, 0, DateTimeKind.Local))
-                    : null;
+                    : null;   // null on malformed — the documented contract, incl. out-of-range date parts
             }
         }
 

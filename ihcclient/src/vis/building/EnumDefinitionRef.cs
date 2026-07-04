@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Immutable;
+using System.Linq;
 
 namespace Ihc.Projects
 {
@@ -11,10 +12,12 @@ namespace Ihc.Projects
     /// </summary>
     public sealed class EnumDefinitionRef
     {
+        private readonly string name;
         private readonly ImmutableArray<(string Name, ElementId Id)> values;
 
-        internal EnumDefinitionRef(ElementId id, ImmutableArray<(string Name, ElementId Id)> values)
+        internal EnumDefinitionRef(string name, ElementId id, ImmutableArray<(string Name, ElementId Id)> values)
         {
+            this.name = name;
             Id = id;
             this.values = values;
         }
@@ -34,7 +37,9 @@ namespace Ihc.Projects
                     return value.Id.ToToken();
                 }
             }
-            throw new InvalidOperationException($"This enum definition has no value named '{valueName}'.");
+            throw new InvalidOperationException(
+                $"Enum definition '{name}' has no value named '{valueName}'; available values: " +
+                $"({string.Join(" | ", values.Select(v => v.Name))}).");
         }
     }
 }

@@ -103,24 +103,61 @@ namespace Ihc.Projects
             string productsDir = Path.Combine(installDir, "Products");
             string functionBlocksDir = Path.Combine(installDir, "FunctionBlocks");
             string dataDir = Path.Combine(installDir, "Data");
+            foreach ((string dir, string name) in new[] { (productsDir, "Products"), (functionBlocksDir, "FunctionBlocks"), (dataDir, "Data") })
+            {
+                if (!Directory.Exists(dir))
+                {
+                    throw new DirectoryNotFoundException(
+                        $"IHC Visual install dir '{installDir}' has no '{name}' subdirectory ('{dir}'); the " +
+                        "configured path does not point at a complete installation. A silently empty catalog " +
+                        "would misreport every product as unsupported.");
+                }
+            }
 
             ImmutableArray<ProductDescriptor> products = DiscoverProducts(productsDir);
             ImmutableArray<FunctionBlockDescriptor> functionBlocks = DiscoverFunctionBlocks(functionBlocksDir);
-            ProjectElement skeleton = CatalogReader.ReadFile(Path.Combine(dataDir, "NewDoc.idf"));
-            ProjectElement enums = CatalogReader.ReadFile(Path.Combine(dataDir, "EnumeratorDefinitions.def"));
+            ProjectElement skeleton = ReadCatalogFile(Path.Combine(dataDir, "NewDoc.idf"));
+            ProjectElement enums = ReadCatalogFile(Path.Combine(dataDir, "EnumeratorDefinitions.def"));
             FunctionBlockDescriptor emptyTemplate = ReadEmptyFunctionBlockTemplate(Path.Combine(dataDir, "fb.def"));
             return new CatalogDiscovery(products, functionBlocks, skeleton, enums, emptyTemplate);
+        }
+
+        // One malformed vendor file must abort discovery with the offending PATH in the message — the raw
+        // XmlException/IOException names neither the file nor that a catalog scan was in progress.
+        private static ProjectElement ReadCatalogFile(string path)
+        {
+            try
+            {
+                return CatalogReader.ReadFile(path);
+            }
+            catch (Exception ex) when (ex is System.Xml.XmlException or IOException or UnauthorizedAccessException)
+            {
+                throw new InvalidDataException($"Failed to parse IHC Visual catalog file '{path}': {ex.Message}", ex);
+            }
+        }
+
+        private static ProjectElement ReadCatalogFile(string path, byte[] bytes)
+        {
+            try
+            {
+                using var ms = new MemoryStream(bytes);
+                return CatalogReader.Read(ms);
+            }
+            catch (System.Xml.XmlException ex)
+            {
+                throw new InvalidDataException($"Failed to parse IHC Visual catalog file '{path}': {ex.Message}", ex);
+            }
         }
 
         private static FunctionBlockDescriptor ReadEmptyFunctionBlockTemplate(string fbDefPath)
         {
             byte[] bytes = File.ReadAllBytes(fbDefPath);
-            using var ms = new MemoryStream(bytes);
-            ProjectElement body = CatalogReader.Read(ms);
+            ProjectElement body = ReadCatalogFile(fbDefPath, bytes);
             string name = StripMenuPrefix(body.GetAttribute("name") ?? "Tom blok");
             return new FunctionBlockDescriptor(string.Empty, string.Empty, name, name, string.Empty, body)
             {
                 InlineDtdBlocks = InlineDtd.Capture(bytes),
+                IsEmptyTemplate = true,
             };
         }
 
@@ -130,8 +167,7 @@ namespace Ihc.Projects
             foreach (string path in EnumerateFilesSorted(productsDir, "*.def"))
             {
                 byte[] bytes = File.ReadAllBytes(path);
-                using var ms = new MemoryStream(bytes);
-                ProjectElement body = CatalogReader.Read(ms);
+                ProjectElement body = ReadCatalogFile(path, bytes);
                 string identifier = body.GetAttribute("product_identifier") ?? string.Empty;
                 string displayName = StripMenuPrefix(body.GetAttribute("name") ?? string.Empty);
                 builder.Add(new ProductDescriptor(identifier, displayName, RelativeDir(productsDir, path), body)
@@ -148,8 +184,7 @@ namespace Ihc.Projects
             foreach (string path in EnumerateFilesSorted(functionBlocksDir, "*.ifb"))
             {
                 byte[] bytes = File.ReadAllBytes(path);
-                using var ms = new MemoryStream(bytes);
-                ProjectElement body = CatalogReader.Read(ms);
+                ProjectElement body = ReadCatalogFile(path, bytes);
                 string masterType = body.GetAttribute("master_type") ?? string.Empty;
                 string masterVersion = body.GetAttribute("master_version") ?? string.Empty;
                 string masterName = body.GetAttribute("master_name") ?? string.Empty;
@@ -216,7 +251,12 @@ namespace Ihc.Projects
                 map = new Dictionary<string, T>(StringComparer.Ordinal);
                 foreach (T item in items)
                 {
-                    map[keySelector(item)] = item;
+                    string key = keySelector(item);
+                    if (key.Length == 0)
+                    {
+                        continue;   // keyless descriptors (user-saved blocks without master_type) are not addressable here
+                    }
+                    map[key] = item;
                 }
             }
 

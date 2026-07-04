@@ -24,11 +24,11 @@ namespace Ihc.Projects
 
         private ProjectSchemaView(ImmutableDictionary<string, ElementSchema> captured) => this.captured = captured;
 
-        /// <summary>Builds a view over a project's captured inline-DTD blocks, with the static registry as fallback.</summary>
+        /// <summary>The project's schema view (memoized on the project; built eagerly at load).</summary>
         public static ProjectSchemaView For(Project project)
         {
             ArgumentNullException.ThrowIfNull(project);
-            return For(project.InlineDtdBlocks);
+            return project.SchemaView;
         }
 
         /// <summary>Builds a view over captured inline-DTD blocks (tag → verbatim block); registry fallback.</summary>

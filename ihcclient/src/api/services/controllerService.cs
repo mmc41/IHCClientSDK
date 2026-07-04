@@ -4,6 +4,8 @@ using System.Linq;
 using Ihc.Soap.Controller;
 using System.IO;
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
+using System.Text;
 
 namespace Ihc {
     /// <summary>
@@ -242,7 +244,12 @@ namespace Ihc {
             }
         }
 
-        private readonly SoapImpl impl;
+        private readonly Ihc.Soap.Controller.ControllerService impl;
+
+        // Strict Latin-1 for the controller wire: every .vis/.ihc is ISO-8859-1, and the default replacement
+        // fallback would silently gzip any out-of-repertoire character as '?' into controller EPROM.
+        private static readonly Encoding Latin1Strict = Encoding.GetEncoding(ProjectFile.EncodingName,
+            EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
 
         /// <summary>
         /// Create an ControllerService instance for access to the IHC API related to the controller itself.
@@ -253,6 +260,14 @@ namespace Ihc {
         {
             this.authService = authService;
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
+        }
+
+        /// <summary>Test seam: inject a fake SOAP layer (used by unit tests only).</summary>
+        internal ControllerService(IAuthenticationService authService, Ihc.Soap.Controller.ControllerService impl)
+            : base(authService.IhcSettings)
+        {
+            this.authService = authService;
+            this.impl = impl;
         }
 
         private SDInfo mapSDCardData(WSSdCardData e)
@@ -308,7 +323,7 @@ namespace Ihc {
         {
             using (MemoryStream mscompressed = new MemoryStream(fileData))
             using (Stream inStream = new System.IO.Compression.GZipStream(mscompressed, System.IO.Compression.CompressionMode.Decompress))
-            using (StreamReader reader = new StreamReader(inStream, ProjectFile.Encoding))
+            using (StreamReader reader = new StreamReader(inStream, ProjectFile.Encoding, detectEncodingFromByteOrderMarks: false))
             {
                 return await reader.ReadToEndAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             }
@@ -321,7 +336,7 @@ namespace Ihc {
                 // Explicit scope ensures GZipStream is fully flushed and disposed before ToArray()
                 using (Stream outStream = new System.IO.Compression.GZipStream(mscompressed, System.IO.Compression.CompressionMode.Compress))
                 {
-                    using (StreamWriter writer = new StreamWriter(outStream, ProjectFile.Encoding, bufferSize: 10*1024, leaveOpen: true))
+                    using (StreamWriter writer = new StreamWriter(outStream, Latin1Strict, bufferSize: 10*1024, leaveOpen: true))
                     {
                         await writer.WriteAsync(data).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                         await writer.FlushAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
@@ -675,7 +690,8 @@ namespace Ihc {
                     var result = await impl.getIHCProjectAsync(new inputMessageName3() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = await mapProjectFile(result.getIHCProject1).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
-                    activity?.SetReturnValue(retv);
+                    // Metadata only — the full project XML does not belong in telemetry tags.
+                    activity?.SetReturnValue(retv == null ? null : $"{retv.Filename} ({retv.Data?.Length ?? 0} chars)");
                     return retv;
                 }
                 catch (Exception ex)
@@ -732,11 +748,27 @@ namespace Ihc {
             {
                 try
                 {
+                    // Metadata only — the full project XML does not belong in telemetry tags.
                     activity?.SetParameters(
-                        (nameof(project), project)
+                        ("project.filename", project?.Filename),
+                        ("project.data.length", project?.Data?.Length ?? 0)
                     );
 
                     ValidationHelper.ValidateDataAnnotations(project, nameof(project));
+
+                    // Fail before entering change mode: an out-of-repertoire character would otherwise either
+                    // abort mid-change-mode or (with a replacement fallback) be silently stored as '?'.
+                    try
+                    {
+                        Latin1Strict.GetBytes(project.Data);
+                    }
+                    catch (EncoderFallbackException ex)
+                    {
+                        throw new InvalidOperationException(
+                            $"Project '{project.Filename}' contains character U+{(int)ex.CharUnknown:X4} at index {ex.Index}, " +
+                            "outside the ISO-8859-1 repertoire required by the IHC controller. Load the file with " +
+                            $"ISO-8859-1 ({nameof(ProjectFile)}.{nameof(ProjectFile.Encoding)}), not UTF-8.", ex);
+                    }
 
                     // First perform some safty checks similar to what the IHC Visual App does:
                     bool controllerReady = (await GetControllerState().ConfigureAwait(settings.AsyncContinueOnCapturedContext)) == ControllerState.Ready;
@@ -752,7 +784,10 @@ namespace Ihc {
                     bool projectAvailable = await IsIHCProjectAvailable().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     activity?.SetTag("progress.projectAvailable", projectAvailable);
                     if (!projectAvailable)
-                        throw new InvalidOperationException("Controller has no project available");
+                        throw new InvalidOperationException(
+                            "Controller reports no existing project (IsIHCProjectAvailable=false). Storing onto an " +
+                            "empty controller is unsupported by this SDK because the firmware behavior is unverified; " +
+                            "restore a project via IHC Visual first.");
 
                     bool inChange = await EnterProjectChangeMode().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     activity?.SetTag("progress.inChange.in", inChange);
@@ -764,7 +799,8 @@ namespace Ihc {
                     if (state != ControllerState.Initialize)
                         throw new InvalidOperationException("Controller state did not enter init state to prepare for project change");
 
-                    outputMessageName4 result;
+                    outputMessageName4 result = null;
+                    Exception primary = null;
                     try
                     {
                         // Call the actual store project operation
@@ -781,18 +817,30 @@ namespace Ihc {
                             throw new InvalidOperationException("Controller state does not remain in init state after project change");
 
                     }
-                    finally
+                    catch (Exception storeEx)
+                    {
+                        // Do not throw yet: the change-mode cleanup below must run first, and a cleanup failure
+                        // must never replace this root cause (an exception leaving a finally block would).
+                        primary = storeEx;
+                    }
+                    try
                     {
                         inChange = await ExitProjectChangeMode().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                        activity?.SetTag("progress.inChange.out", inChange);                           
-                        if (!inChange)
+                        activity?.SetTag("progress.inChange.out", inChange);
+                        if (!inChange && primary == null)
                             throw new InvalidOperationException("Controller could not exit change mode after project change");
 
                         state = await WaitForControllerStateChange(ControllerState.Ready, 10).ConfigureAwait(settings.AsyncContinueOnCapturedContext); // TODO: Retry x times.
-                        activity?.SetTag("progress.state.out", state);  
-                        if (state != ControllerState.Ready)
-                            throw new InvalidOperationException("Controller state did not enter init state to prepare for project change");
+                        activity?.SetTag("progress.state.out", state);
+                        if (state != ControllerState.Ready && primary == null)
+                            throw new InvalidOperationException($"Controller did not return to {nameof(ControllerState.Ready)} state after project change (observed state: {state})");
                     }
+                    catch (Exception cleanupEx) when (primary != null)
+                    {
+                        activity?.SetTag("cleanup.error", cleanupEx.ToString());
+                    }
+                    if (primary != null)
+                        ExceptionDispatchInfo.Capture(primary).Throw();
 
                     await Task.Delay(100).ConfigureAwait(settings.AsyncContinueOnCapturedContext); // Wait a little to let controller settle.
 

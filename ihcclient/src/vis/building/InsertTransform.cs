@@ -52,6 +52,10 @@ namespace Ihc.Projects
             ProjectElement reassigned = Reassign(catalogBody, allocator, idMap, enumDefinitions, hoisted, view, isRoot: true);
 
             // Pass 2: rewrite IDREF attributes through the old→new map (schema-driven, never by attribute name).
+            // No post-hoc "no idMap key remains" assertion is possible here: a freshly allocated token can
+            // legitimately equal an unrelated pre-insert id (counters overlap catalog seed ranges), so the
+            // guarantee lives structurally in Reassign (every id maps or throws) + RemapIdRefs (every mapped
+            // IdRef rewrites).
             ProjectElement remapped = RemapIdRefs(reassigned, idMap, view);
 
             // Pass 3: reconcile catalog numeric precision with the project's (e.g. a light's "500.00" → "500").
@@ -67,8 +71,8 @@ namespace Ihc.Projects
             // now-canonical value can match the project default and drop out.
             ProjectElement enumsCanonical = NormalizeEnums(tokenized, view);
 
-            // Cross-DTD default materialization + drop editor-only attributes + ATTLIST order.
-            ProjectElement inserted = Canonicalizer.Canonicalize(enumsCanonical, view);
+            // Cross-DTD default materialization + drop editor-only attributes (helpid/access/…) + ATTLIST order.
+            ProjectElement inserted = Canonicalizer.Canonicalize(enumsCanonical, view, UndeclaredAttributePolicy.Drop);
 
             ProjectElement updatedEnums = hoisted.Count == 0
                 ? enumDefinitions
@@ -82,14 +86,22 @@ namespace Ihc.Projects
             ProjectSchemaView view, bool isRoot)
         {
             string? oldId = element.GetAttribute("id");
-            int? typeCode = TypeCode.ForTag(element.Tag);
             ElementId? newId = element.Id;
             ImmutableArray<(string, string)> attrs = element.Attrs.IsDefaultOrEmpty
                 ? ImmutableArray<(string, string)>.Empty
                 : element.Attrs;
 
-            if (oldId is not null && typeCode is { } code)
+            if (oldId is not null)
             {
+                // Every id-bearing element gets a fresh id — including open-world tags the registry does not
+                // know, whose type-code suffix is recovered from the source token (keeping the source id
+                // verbatim would mint a duplicate id on copy/insert, spec ch. 02 §2.2).
+                int code = TypeCode.ForTag(element.Tag)
+                    ?? (ElementId.TryParse(oldId, out ElementId parsed)
+                        ? parsed.TypeCode
+                        : throw new InvalidOperationException(
+                            $"Cannot insert/copy element <{element.Tag}>: no type code is registered for the tag " +
+                            $"and its id '{oldId}' is not a parseable _0x token, so a fresh id cannot be allocated."));
                 ElementId allocated = allocator.Allocate(code);
                 idMap[oldId] = allocated.ToToken();
                 newId = allocated;

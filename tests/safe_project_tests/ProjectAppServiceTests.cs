@@ -150,5 +150,91 @@ namespace Ihc.Projects.Tests
                 File.Delete(backup);
             }
         }
+
+        // ----- Save(path) is atomic: a failed save must never destroy the existing file -----
+
+        [Test]
+        public async Task SaveToPath_BakExtensionTargetWithCreateBackup_Throws_AndLeavesTheFileIntact()
+        {
+            // Restoring from a backup is a real workflow: the user loads Huset.BAK, fixes something, and saves it
+            // back. Path.ChangeExtension("Huset.BAK", ".BAK") self-collides, so the old delete-then-move sequence
+            // deleted the very file being saved. This must instead fail up front with the file untouched.
+            var app = new ProjectAppService(Settings);
+            byte[] original = TestData.ReadBytes("Project1-SimpelWired.vis");
+            Project project = LoadProject1(app);
+
+            string path = Path.Combine(Path.GetTempPath(), "ihc-projapp-" + Guid.NewGuid().ToString("N") + ".BAK");
+            try
+            {
+                File.WriteAllBytes(path, original);
+                var withBackup = new ProjectSaveOptions { WriteMetadataVerbatim = true, CreateBackup = true };
+
+                Assert.That(async () => await app.Save(project, path, withBackup), Throws.InstanceOf<IOException>());
+                Assert.That(File.ReadAllBytes(path), Is.EqualTo(original), "the save target survives the failed save");
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        [Test]
+        public async Task SaveToPath_LockedTarget_LeavesOriginalIntact_AndNoTempResidue()
+        {
+            var app = new ProjectAppService(Settings);
+            byte[] original = TestData.ReadBytes("Project1-SimpelWired.vis");
+            Project project = LoadProject1(app);
+
+            string dir = Path.Combine(Path.GetTempPath(), "ihc-projapp-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            string path = Path.Combine(dir, "locked.vis");
+            try
+            {
+                File.WriteAllBytes(path, original);
+                using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+                {
+                    Assert.That(async () => await app.Save(project, path, ProjectSaveOptions.PreserveExistingMetadata),
+                        Throws.InstanceOf<IOException>());
+                }
+
+                Assert.Multiple(() =>
+                {
+                    Assert.That(File.ReadAllBytes(path), Is.EqualTo(original),
+                        "a failed save never truncates the existing file");
+                    Assert.That(Directory.GetFiles(dir), Has.Length.EqualTo(1),
+                        "the failed save leaves no temp-file litter");
+                });
+            }
+            finally
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+        }
+
+        [Test]
+        public async Task SaveToPath_Success_LeavesNoTempResidue()
+        {
+            var app = new ProjectAppService(Settings);
+            byte[] original = TestData.ReadBytes("Project1-SimpelWired.vis");
+            Project project = LoadProject1(app);
+
+            string dir = Path.Combine(Path.GetTempPath(), "ihc-projapp-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            string path = Path.Combine(dir, "fresh.vis");
+            try
+            {
+                await app.Save(project, path, ProjectSaveOptions.PreserveExistingMetadata);
+
+                Assert.Multiple(() =>
+                {
+                    Assert.That(File.ReadAllBytes(path), Is.EqualTo(original), "the save landed byte-identical");
+                    Assert.That(Directory.GetFiles(dir), Has.Length.EqualTo(1), "no temp-file litter after success");
+                });
+            }
+            finally
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+        }
     }
 }

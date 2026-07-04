@@ -1,18 +1,31 @@
 #nullable enable
 using System;
 using System.Collections.Immutable;
+using System.Linq;
 
 namespace Ihc.Projects
 {
     /// <summary>
     /// The outcome of validating a project against the pre-serialize checklist (id uniqueness, IDREF
     /// resolution, reciprocal link/scene bijection, function-block child sequence, Latin-1
-    /// encodability, ...).
+    /// encodability, ...). <see cref="Errors"/> keeps the flat message list; <see cref="Findings"/> carries
+    /// the structured form (severity, rule id, locator) a GUI filters and navigates by. <see cref="IsValid"/>
+    /// means no <see cref="ValidationSeverity.Error"/> findings — warnings alone leave a project valid.
     /// </summary>
     public sealed record ProjectValidationResult(bool IsValid, ImmutableArray<string> Errors)
     {
         /// <summary>A clean result with no errors.</summary>
         public static ProjectValidationResult Success { get; } = new(true, ImmutableArray<string>.Empty);
+
+        /// <summary>Every finding (errors and warnings), in document-scan order.</summary>
+        public ImmutableArray<ProjectValidationFinding> Findings { get; init; } =
+            ImmutableArray<ProjectValidationFinding>.Empty;
+
+        /// <summary>The warning messages (vendor-tolerated deviations; never block a save/upload).</summary>
+        public ImmutableArray<string> Warnings =>
+            Findings.IsDefaultOrEmpty
+                ? ImmutableArray<string>.Empty
+                : Findings.Where(f => f.Severity == ValidationSeverity.Warning).Select(f => f.Message).ToImmutableArray();
 
         /// <summary>Structural (value) equality, comparing the <see cref="Errors"/> contents by value.</summary>
         public bool Equals(ProjectValidationResult? other) =>
@@ -24,6 +37,7 @@ namespace Ihc.Projects
             HashCode.Combine(IsValid, ImmutableArrayValue.Hash(Errors));
 
         public override string ToString() =>
-            $"ProjectValidationResult(IsValid={IsValid}, Errors=string[{(Errors.IsDefaultOrEmpty ? 0 : Errors.Length)}])";
+            $"ProjectValidationResult(IsValid={IsValid}, Errors=string[{(Errors.IsDefaultOrEmpty ? 0 : Errors.Length)}], " +
+            $"Findings=ProjectValidationFinding[{(Findings.IsDefaultOrEmpty ? 0 : Findings.Length)}])";
     }
 }

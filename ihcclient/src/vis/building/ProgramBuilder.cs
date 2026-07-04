@@ -50,6 +50,7 @@ namespace Ihc.Projects
             ArgumentNullException.ThrowIfNull(name);
             ArgumentNullException.ThrowIfNull(link1);
             ArgumentNullException.ThrowIfNull(method);
+            ProgramGrammar.RequireLiveOperands(editor, link1, link2);
             editor.AllocateChild(eventsId, "event",
                 ProgramGrammar.WiredAttrs(name, ProgramGrammar.EventIcon, note, link1, link2, method));
             return this;
@@ -101,6 +102,7 @@ namespace Ihc.Projects
             ArgumentNullException.ThrowIfNull(name);
             ArgumentNullException.ThrowIfNull(link1);
             ArgumentNullException.ThrowIfNull(method);
+            ProgramGrammar.RequireLiveOperands(editor, link1, link2);
             ElementId id = editor.AllocateChild(conditionsId, "condition",
                 ProgramGrammar.WiredAttrs(name, ProgramGrammar.ConditionIcon, note, link1, link2, method));
             return new ConditionRef(editor, id);
@@ -131,6 +133,7 @@ namespace Ihc.Projects
             ArgumentNullException.ThrowIfNull(name);
             ArgumentNullException.ThrowIfNull(link1);
             ArgumentNullException.ThrowIfNull(method);
+            ProgramGrammar.RequireLiveOperands(editor, link1, link2);
             editor.AllocateChild(actionsId, "action",
                 ProgramGrammar.WiredAttrs(name, ProgramGrammar.ActionIcon, note, link1, link2, method));
             return this;
@@ -248,5 +251,18 @@ namespace Ihc.Projects
         private static string RequireId(ResourceRef resource, string paramName) =>
             (resource.Id ?? throw new ArgumentException(
                 $"Resource '{resource.Name}' has no allocated id; it cannot be wired into a program.", paramName)).ToToken();
+
+        /// <summary>
+        /// Requires the wired operands to still exist in the session — wiring a stale handle would persist a
+        /// program leaf whose <c>link1</c>/<c>link2</c> points at nothing.
+        /// </summary>
+        public static void RequireLiveOperands(ProjectEditor editor, ResourceRef link1, ResourceRef? link2)
+        {
+            editor.RequireLive(link1);
+            if (link2 is not null)
+            {
+                editor.RequireLive(link2);
+            }
+        }
     }
 }

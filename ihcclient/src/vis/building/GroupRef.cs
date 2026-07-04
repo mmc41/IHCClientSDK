@@ -71,6 +71,14 @@ namespace Ihc.Projects
         {
             ArgumentNullException.ThrowIfNull(template);
             ArgumentNullException.ThrowIfNull(name);
+            if (!template.IsEmptyTemplate)
+            {
+                throw new ArgumentException(
+                    $"'{template.DisplayName}' is a full catalog block, not the empty 'Tom blok' template — " +
+                    $"renaming and re-dating it would forge its identity. Use {nameof(AddFunctionBlock)} for " +
+                    $"catalog blocks, or pass {nameof(ICatalog)}.{nameof(ICatalog.EmptyFunctionBlockTemplate)}.",
+                    nameof(template));
+            }
             ElementId blockId = editor.InsertComponent(Id, template.Body, template.InlineDtdBlocks);
             editor.SetAttributeById(blockId, "name", name);
             editor.SetAttributeById(blockId, "master_date_year", created.Year.ToString(CultureInfo.InvariantCulture));
@@ -87,20 +95,31 @@ namespace Ihc.Projects
         public ElementRef PasteInto(ElementId sourceId, LinkCopyPolicy policy = LinkCopyPolicy.DropExternal)
         {
             ElementId copyId = editor.CopySubtree(sourceId, Id, policy);
-            editor.TryResolve(copyId, out ElementRef? handle);
-            return handle!;
+            if (!editor.TryResolve(copyId, out ElementRef? handle))
+            {
+                throw new InvalidOperationException(
+                    $"Paste of {sourceId.ToToken()} produced no live element: the copied subtree was a bare " +
+                    $"follow-link half whose partner lies outside the copy, so {nameof(LinkCopyPolicy)}." +
+                    $"{nameof(LinkCopyPolicy.DropExternal)} removed the entire copy. Copy the owning resource instead.");
+            }
+            return handle;
         }
 
         /// <summary>
-        /// Looks up an existing product in this room by name (for editing a loaded project), returning its live handle.
+        /// Looks up an existing product in this room by name (for editing a loaded project) — any product family
+        /// (<c>product_dataline</c>, <c>product_airlink</c>, rs485 variants, <c>s0_device</c>, …) — returning its
+        /// live handle. Note the dataline-specific I/O methods on <see cref="ProductRef"/> reject other families.
         /// </summary>
         public ProductRef Product(string name)
         {
             ArgumentNullException.ThrowIfNull(name);
-            ElementId id = editor.FindChildIdByName(Id, "product_dataline", name)
+            ElementId id = editor.FindChildIdByName(Id, IsProductFamilyTag, name)
                 ?? throw new InvalidOperationException($"No product named '{name}' in this room.");
             return new ProductRef(editor, id);
         }
+
+        private static bool IsProductFamilyTag(string tag) =>
+            tag == "s0_device" || tag.StartsWith("product_", StringComparison.Ordinal);
 
         /// <summary>
         /// Looks up an existing function block in this room by name (for editing a loaded project), returning its

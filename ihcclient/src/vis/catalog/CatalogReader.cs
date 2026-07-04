@@ -48,12 +48,53 @@ namespace Ihc.Projects
                 CloseInput = false,
             };
             // Decode the bytes ourselves: .NET's XmlReader trusts the declared ISO-8859-1 over a UTF-8 BOM, which
-            // mojibakes the Products\*.def files. A StreamReader with BOM detection picks UTF-8 when the BOM is
-            // present and falls back to Latin-1 (the .ifb/.idf encoding) otherwise; handing a TextReader to
-            // XmlReader makes it use that decoding and ignore the (often wrong) declared encoding.
-            using var textReader = new StreamReader(stream, Encoding.Latin1, detectEncodingFromByteOrderMarks: true, leaveOpen: true);
+            // mojibakes the Products\*.def files. A BOM wins (the spec's documented trap, ch. 09 §9.3.2); with no
+            // BOM a declared non-Latin-1 encoding is honored (a UTF-8-without-BOM file would otherwise silently
+            // mojibake its names into every project it is inserted into); otherwise Latin-1 (.ifb/.idf).
+            byte[] bytes = ReadAllBytes(stream);
+            using var textReader = new StreamReader(new MemoryStream(bytes, writable: false), SniffEncoding(bytes),
+                                                    detectEncodingFromByteOrderMarks: true);
             using XmlReader reader = XmlReader.Create(textReader, settings);
             return ReadElement(reader);
+        }
+
+        private static byte[] ReadAllBytes(Stream stream)
+        {
+            if (stream is MemoryStream memory)
+            {
+                return memory.ToArray();
+            }
+            using var buffer = new MemoryStream();
+            stream.CopyTo(buffer);
+            return buffer.ToArray();
+        }
+
+        private static Encoding SniffEncoding(byte[] bytes)
+        {
+            if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+            {
+                return Encoding.UTF8;   // redundant with the StreamReader's own BOM detection, but explicit
+            }
+            string head = Encoding.Latin1.GetString(bytes, 0, Math.Min(bytes.Length, 200));
+            int declarationEnd = head.IndexOf("?>", StringComparison.Ordinal);
+            if (head.StartsWith("<?xml", StringComparison.Ordinal) && declarationEnd > 0)
+            {
+                System.Text.RegularExpressions.Match declared = System.Text.RegularExpressions.Regex.Match(
+                    head.Substring(0, declarationEnd), "encoding=[\"']([^\"']+)[\"']");
+                if (declared.Success
+                    && !declared.Groups[1].Value.Equals("ISO-8859-1", StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        return Encoding.GetEncoding(declared.Groups[1].Value);
+                    }
+                    catch (ArgumentException)
+                    {
+                        // unknown name → fall through to Latin-1 (total: every byte decodes)
+                    }
+                }
+            }
+            return Encoding.Latin1;
         }
 
         private static ProjectElement ReadElement(XmlReader reader)

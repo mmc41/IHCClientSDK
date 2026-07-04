@@ -2,6 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Ihc.App;
 
@@ -43,7 +45,10 @@ namespace Ihc.Projects
         /// </summary>
         public ProjectAppService(IhcSettings settings, IControllerService? controller = null)
             : this(settings,
-                   new Lazy<ICatalog>(() => CatalogDiscovery.FromInstallDir(settings.IhcVisualInstallDir)),
+                   // PublicationOnly never caches a factory exception: a transient IO failure (or a not-yet-mounted
+                   // install dir) must not permanently poison CreateNew/GetAvailable* on this instance.
+                   new Lazy<ICatalog>(() => CatalogDiscovery.FromInstallDir(settings.IhcVisualInstallDir),
+                                      LazyThreadSafetyMode.PublicationOnly),
                    TimeProvider.System,
                    controller)
         {
@@ -154,6 +159,10 @@ namespace Ihc.Projects
         /// Saves a project to a file path. A <c>null</c> <paramref name="options"/> is treated as
         /// <see cref="ProjectSaveOptions.Default"/> (vendor-like re-stamping); pass
         /// <see cref="ProjectSaveOptions.PreserveExistingMetadata"/> for byte-exact round-trips.
+        /// The write is atomic: bytes land in a same-directory temp file first and are swapped in with
+        /// <see cref="File.Replace(string, string, string?)"/>, so a failed or interrupted save never
+        /// truncates or destroys the existing file (and the previous content becomes <c>.BAK</c> in the
+        /// same swap when <see cref="ProjectSaveOptions.CreateBackup"/> is set).
         /// </summary>
         public async Task Save(Project project, string path, ProjectSaveOptions? options = null)
         {
@@ -165,15 +174,7 @@ namespace Ihc.Projects
                 try
                 {
                     byte[] bytes = SerializeForSave(project, effective);
-                    if (effective.CreateBackup && File.Exists(path))
-                    {
-                        string backup = Path.ChangeExtension(path, ".BAK");
-                        File.Delete(backup);           // overwrite any existing .BAK
-                        File.Move(path, backup);       // vendor convention: previous content becomes .BAK
-                    }
-                    await using var file = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None,
-                                                          bufferSize: 4096, useAsync: true);
-                    await file.WriteAsync(bytes).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    await WriteAtomically(path, bytes, effective).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     activity?.SetReturnValue(bytes.Length);
                 }
                 catch (Exception ex)
@@ -181,6 +182,50 @@ namespace Ihc.Projects
                     activity?.SetError(ex);
                     throw;
                 }
+            }
+        }
+
+        private async Task WriteAtomically(string path, byte[] bytes, ProjectSaveOptions options)
+        {
+            string fullPath = Path.GetFullPath(path);
+            string? backup = options.CreateBackup ? Path.ChangeExtension(fullPath, ".BAK") : null;
+            if (backup is not null && string.Equals(Path.GetFullPath(backup), fullPath,
+                    OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+            {
+                throw new IOException(
+                    $"Cannot create a .BAK backup for '{path}': the target itself has the .BAK extension; " +
+                    $"save under a different name or disable {nameof(ProjectSaveOptions.CreateBackup)}.");
+            }
+            string directory = Path.GetDirectoryName(fullPath)
+                ?? throw new IOException($"'{path}' has no containing directory.");
+            // Same directory ⇒ same volume, which File.Replace/File.Move need for an atomic rename.
+            string temp = Path.Combine(directory, Path.GetRandomFileName());
+            try
+            {
+                await using (var file = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None,
+                                                       bufferSize: 4096, useAsync: true))
+                {
+                    await file.WriteAsync(bytes).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    file.Flush(flushToDisk: true);   // durable before the swap: a crash must leave old or new, never neither
+                }
+                if (File.Exists(fullPath))
+                {
+                    File.Replace(temp, fullPath, backup, ignoreMetadataErrors: true);
+                }
+                else
+                {
+                    File.Move(temp, fullPath);
+                }
+            }
+            catch
+            {
+                try
+                {
+                    File.Delete(temp);
+                }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+                throw;
             }
         }
 
@@ -216,10 +261,80 @@ namespace Ihc.Projects
         /// </summary>
         private byte[] SerializeForSave(Project project, ProjectSaveOptions options)
         {
+            if (options.ValidateBeforeSave)
+            {
+                ProjectValidationResult validation = ProjectValidator.Validate(project);
+                if (!validation.IsValid)
+                {
+                    throw new ProjectValidationException(validation);
+                }
+            }
             Project toWrite = options.WriteMetadataVerbatim
                 ? project
                 : MetadataStamper.Restamp(project, timeProvider.GetLocalNow());
-            return ProjectSerializer.Serialize(toWrite);
+            byte[] bytes = ProjectSerializer.Serialize(toWrite);
+            if (options.VerifyRoundTrip)
+            {
+                Project reparsed = ProjectReader.Read(new MemoryStream(bytes));
+                if (!reparsed.Equals(toWrite))
+                {
+                    throw new InvalidOperationException(
+                        "Serialize/re-parse mismatch: the written bytes do not reproduce the in-memory project" +
+                        FirstDivergence(toWrite.Root, reparsed.Root, path: "utcs_project") +
+                        " — the model holds state the .vis format cannot represent (e.g. an attribute value " +
+                        "equal to its DTD default, which omit-if-default drops).");
+                }
+            }
+            return bytes;
+        }
+
+        private static string FirstDivergence(ProjectElement expected, ProjectElement actual, string path)
+        {
+            if (expected.Tag != actual.Tag)
+            {
+                return $" (first divergence at {path}: element <{expected.Tag}> re-read as <{actual.Tag}>)";
+            }
+            var actualAttrs = new Dictionary<string, string>(StringComparer.Ordinal);
+            if (!actual.Attrs.IsDefaultOrEmpty)
+            {
+                foreach ((string name, string value) in actual.Attrs)
+                {
+                    actualAttrs[name] = value;
+                }
+            }
+            if (!expected.Attrs.IsDefaultOrEmpty)
+            {
+                foreach ((string name, string value) in expected.Attrs)
+                {
+                    if (!actualAttrs.Remove(name, out string? reread))
+                    {
+                        return $" (first divergence at {path}/<{expected.Tag}>: attribute '{name}'='{value}' is absent after re-parse)";
+                    }
+                    if (reread != value)
+                    {
+                        return $" (first divergence at {path}/<{expected.Tag}>: attribute '{name}' expected '{value}', re-read '{reread}')";
+                    }
+                }
+            }
+            if (actualAttrs.Count > 0)
+            {
+                string extra = actualAttrs.Keys.First();
+                return $" (first divergence at {path}/<{expected.Tag}>: attribute '{extra}' appears only after re-parse)";
+            }
+            int expectedCount = expected.Children.IsDefaultOrEmpty ? 0 : expected.Children.Length;
+            int actualCount = actual.Children.IsDefaultOrEmpty ? 0 : actual.Children.Length;
+            if (expectedCount != actualCount)
+            {
+                return $" (first divergence at {path}/<{expected.Tag}>: {expectedCount} children re-read as {actualCount})";
+            }
+            for (int i = 0; i < expectedCount; i++)
+            {
+                if (!expected.Children[i].Equals(actual.Children[i]))
+                {
+                    return FirstDivergence(expected.Children[i], actual.Children[i], $"{path}/<{expected.Tag}>[{i}]");
+                }
+            }
+            return string.Empty;
         }
 
         /// <summary>
@@ -237,6 +352,13 @@ namespace Ihc.Projects
                 try
                 {
                     ProjectFile file = await controller.GetProject().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    if (file?.Data is null)
+                    {
+                        throw new InvalidOperationException(
+                            "The controller returned no project — it likely has none stored. Check " +
+                            $"{nameof(IControllerService)}.{nameof(IControllerService.IsIHCProjectAvailable)}() " +
+                            $"before calling {nameof(DownloadFrom)}.");
+                    }
                     using MemoryStream ms = new MemoryStream(ProjectFile.Encoding.GetBytes(file.Data));
                     Project project = await Load(ms).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     activity?.SetReturnValue(project);
@@ -255,13 +377,16 @@ namespace Ihc.Projects
         /// like a vendor save by default; pass <see cref="ProjectSaveOptions.PreserveExistingMetadata"/> for a
         /// byte-exact re-upload. Reuses <see cref="Save(Project, Stream, ProjectSaveOptions)"/> and
         /// <see cref="IControllerService.StoreProject"/> (which handles gzip + the controller change-mode
-        /// transitions). Requires a controller-injecting constructor; throws
-        /// <see cref="InvalidOperationException"/> on a file-only service. Does not reboot — call
-        /// <c>IConfigurationService.DelayedReboot</c> separately if the controller should apply the new project
-        /// immediately.
+        /// transitions). The project is validated first by default — the controller is the one sink with no
+        /// <c>.BAK</c> to roll back to — throwing <see cref="ProjectValidationException"/> with the full result;
+        /// pass <paramref name="validate"/> <c>false</c> to re-upload a foreign file with deviations the vendor
+        /// tooling tolerates. A controller that declines the store surfaces as <see cref="ProjectUploadException"/>.
+        /// Requires a controller-injecting constructor; throws <see cref="InvalidOperationException"/> on a
+        /// file-only service. Does not reboot — call <c>IConfigurationService.DelayedReboot</c> separately if the
+        /// controller should apply the new project immediately.
         /// </summary>
         public async Task<bool> UploadTo(Project project, ProjectSaveOptions? options = null,
-                                         string? filename = null)
+                                         string? filename = null, bool validate = true)
         {
             ArgumentNullException.ThrowIfNull(project);
             IControllerService controller = RequireController();
@@ -269,11 +394,29 @@ namespace Ihc.Projects
             {
                 try
                 {
+                    if (validate)
+                    {
+                        ProjectValidationResult validation = ProjectValidator.Validate(project);
+                        if (!validation.IsValid)
+                        {
+                            throw new ProjectValidationException(validation);
+                        }
+                    }
+                    // Always verify the write on this path: controller EPROM has no .BAK to roll back to, and
+                    // the re-parse comparison is cheap next to the gzip + network cost already being paid.
+                    ProjectSaveOptions effective = (options ?? ProjectSaveOptions.Default) with { VerifyRoundTrip = true };
                     using MemoryStream ms = new MemoryStream();
-                    await Save(project, ms, options).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    await Save(project, ms, effective).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     ProjectFile file = new ProjectFile(filename ?? DefaultProjectFilename,
                                                        ProjectFile.Encoding.GetString(ms.ToArray()));
                     bool stored = await controller.StoreProject(file).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    if (!stored)
+                    {
+                        throw new ProjectUploadException(
+                            $"The controller declined {nameof(IControllerService.StoreProject)} after entering change " +
+                            $"mode; its project state is uncertain — verify with " +
+                            $"{nameof(IControllerService)}.{nameof(IControllerService.GetProjectInfo)} before retrying.");
+                    }
                     activity?.SetReturnValue(stored);
                     return stored;
                 }
@@ -286,10 +429,42 @@ namespace Ihc.Projects
         }
 
         /// <summary>The products available for insertion, discovered from the install dir.</summary>
-        public IReadOnlyList<ProductDescriptor> GetAvailableProducts() => catalog.Value.Products;
+        public IReadOnlyList<ProductDescriptor> GetAvailableProducts()
+        {
+            using (var activity = StartActivity(nameof(GetAvailableProducts)))
+            {
+                try
+                {
+                    IReadOnlyList<ProductDescriptor> result = catalog.Value.Products;
+                    activity?.SetReturnValue(result.Count);
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
 
         /// <summary>The function blocks available for insertion, discovered from the install dir.</summary>
-        public IReadOnlyList<FunctionBlockDescriptor> GetAvailableFunctionBlocks() => catalog.Value.FunctionBlocks;
+        public IReadOnlyList<FunctionBlockDescriptor> GetAvailableFunctionBlocks()
+        {
+            using (var activity = StartActivity(nameof(GetAvailableFunctionBlocks)))
+            {
+                try
+                {
+                    IReadOnlyList<FunctionBlockDescriptor> result = catalog.Value.FunctionBlocks;
+                    activity?.SetReturnValue(result.Count);
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
 
         // To edit a project, call the project.Edit() extension on a loaded/created Project — there is no
         // service-level Edit, to keep a single mutation entry point.

@@ -38,6 +38,37 @@ namespace Ihc.Projects
             root = project.Root;
             inlineDtdBlocks = project.InlineDtdBlocks;   // carry the file's captured DTD so open-world edits round-trip
             allocator = IdAllocator.ForProject(project);
+            // An attribute the grammar does not declare would fail the save; failing here — before the user
+            // invests edits — beats a commit-time crash, and beats the silent drop canonicalization once did.
+            SchemaGuards.GuardTreeNoUnknownAttributes(root, SchemaView);
+            GuardNoDuplicateIdTokens(root);
+        }
+
+        /// <summary>
+        /// Editing addresses elements by id, so a document with duplicate id tokens (loadable for inspection,
+        /// but every id-addressed lookup resolves first-match) is not editable until repaired.
+        /// </summary>
+        private static void GuardNoDuplicateIdTokens(ProjectElement root)
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            void Walk(ProjectElement element)
+            {
+                if (element.GetAttribute("id") is { } token && !seen.Add(token))
+                {
+                    throw new InvalidOperationException(
+                        $"Cannot edit: several elements share the id token '{token}', so id-addressed editing " +
+                        "would silently target the wrong element. Repair the duplicate ids first " +
+                        $"({nameof(ProjectAppService)}.{nameof(ProjectAppService.Validate)} lists them).");
+                }
+                if (!element.Children.IsDefaultOrEmpty)
+                {
+                    foreach (ProjectElement child in element.Children)
+                    {
+                        Walk(child);
+                    }
+                }
+            }
+            Walk(root);
         }
 
         internal IdAllocator Allocator => allocator;
@@ -86,7 +117,7 @@ namespace Ihc.Projects
             root = ReplaceChildByTag(root, EnumDefinitionsTag,
                 container with { Children = AppendTo(container.Children, def) });
 
-            return new EnumDefinitionRef(defId, valueRefs.ToImmutable());
+            return new EnumDefinitionRef(name, defId, valueRefs.ToImmutable());
         }
 
         /// <summary>
@@ -139,8 +170,12 @@ namespace Ihc.Projects
         /// Deletes the element with the given id and its whole subtree, cascading the reciprocal follow-link halves
         /// that live <b>outside</b> the subtree and point into it — so deleting a wired product, function block,
         /// resource or locality keeps the <c>link_from_resource</c>/<c>link_to_resource</c> bijection intact and the
-        /// project saveable. Retired <c>_0x</c> ids are not reused; a no-op when the id is absent. This is the
-        /// id-addressed generic delete that backs every <c>Remove*</c> handle. Returns <c>this</c> for chaining.
+        /// project saveable. A cascade partner is removed only when it really is a link half pointing back into the
+        /// deleted subtree (a foreign file's stray <c>link</c> IDREF must never delete an unrelated element). When
+        /// any other schema-declared IDREF (a program's <c>link1</c>/<c>link2</c>, a <c>scenes</c> binding, an
+        /// enum's <c>typedef</c>/<c>inivalue</c>) still points into the deleted set, the delete throws <em>before</em>
+        /// committing — the session never holds a dangling reference. Retired <c>_0x</c> ids are not reused; a
+        /// no-op when the id is absent. Returns <c>this</c> for chaining.
         /// </summary>
         public ProjectEditor DeleteById(ElementId id)
         {
@@ -149,14 +184,73 @@ namespace Ihc.Projects
             {
                 return this;                             // absent id → nothing to delete
             }
+            var deletedIds = new HashSet<ElementId>();
+            CollectIds(subtree, deletedIds);
             var partnerIds = new List<ElementId>();
-            CollectLinkPartners(subtree, partnerIds);    // (a) partner ids of every link half inside the subtree
-            root = RemoveById(root, id);                 // (d) remove the subtree (its own link halves go with it)
+            CollectLinkPartners(subtree, partnerIds);    // partner ids of every link half inside the subtree
+
+            ProjectElement candidate = RemoveById(root, id);
             foreach (ElementId partnerId in partnerIds)
             {
-                root = RemoveById(root, partnerId);      // (b) remove each external reciprocal half (no-op if internal)
+                if (FindById(candidate, partnerId) is { } partner
+                    && ReciprocalHalfTags.Contains(partner.Tag)
+                    && ElementId.TryParse(partner.GetAttribute("link"), out ElementId back)
+                    && deletedIds.Contains(back))
+                {
+                    candidate = RemoveById(candidate, partnerId);
+                    deletedIds.Add(partnerId);
+                }
             }
+            List<string> dangling = FindDanglingReferences(candidate, deletedIds);
+            if (dangling.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Deleting {id.ToToken()} would leave dangling references: {string.Join("; ", dangling)}. " +
+                    "Delete or rewire the referring elements first.");
+            }
+            root = candidate;
             return this;
+        }
+
+        private List<string> FindDanglingReferences(ProjectElement tree, HashSet<ElementId> deletedIds)
+        {
+            var hits = new List<string>();
+            void Walk(ProjectElement element)
+            {
+                ElementSchema? schema = SchemaView.TryGet(element.Tag);
+                if (schema is not null && !element.Attrs.IsDefaultOrEmpty)
+                {
+                    foreach ((string name, string value) in element.Attrs)
+                    {
+                        if (IsIdRefAttr(schema, name) && ElementId.TryParse(value, out ElementId target)
+                            && deletedIds.Contains(target))
+                        {
+                            hits.Add($"<{element.Tag}> {(element.Id is { } eid ? eid.ToToken() : "?")} {name}='{value}'");
+                        }
+                    }
+                }
+                if (!element.Children.IsDefaultOrEmpty)
+                {
+                    foreach (ProjectElement child in element.Children)
+                    {
+                        Walk(child);
+                    }
+                }
+            }
+            Walk(tree);
+            return hits;
+        }
+
+        private static bool IsIdRefAttr(ElementSchema schema, string name)
+        {
+            foreach (AttrSchema attr in schema.Attrs)
+            {
+                if (attr.Name == name)
+                {
+                    return attr.Render == AttrRender.IdRef;
+                }
+            }
+            return false;
         }
 
         /// <summary>
@@ -171,6 +265,8 @@ namespace Ihc.Projects
             ArgumentNullException.ThrowIfNull(to);
             ElementId fromId = RequireId(from);
             ElementId toId = RequireId(to);
+            Require(fromId);   // both ends must exist before any id is allocated or a half appended:
+            Require(toId);     // a stale handle must fail here, not half-write a link
 
             ElementId linkFromId = allocator.Allocate(TypeCode.RequireForTag("link_from_resource"));   // from-half allocated first
             ElementId linkToId = allocator.Allocate(TypeCode.RequireForTag("link_to_resource"));
@@ -187,16 +283,56 @@ namespace Ihc.Projects
 
         /// <summary>
         /// Removes the reciprocal follow-link between two live resources — the inverse of <see cref="Link"/> with
-        /// the same orientation — deleting both halves. Returns <c>this</c> for optional chaining.
+        /// the same orientation — deleting exactly the two halves of that pair. Throws when the resources are not
+        /// follow-linked in this orientation (nothing is mutated then), so a stale or mistaken unlink can never
+        /// silently delete other links. Returns <c>this</c> for optional chaining.
         /// </summary>
         public ProjectEditor Unlink(ResourceRef from, ResourceRef to)
         {
             ArgumentNullException.ThrowIfNull(from);
             ArgumentNullException.ThrowIfNull(to);
-            RemoveLinkHalf(RequireId(from), "link_from_resource", RequireId(to), "link_to_resource");
-            RemoveLinkHalf(RequireId(to), "link_to_resource", RequireId(from), "link_from_resource");
+            ProjectElement fromEl = Require(RequireId(from));
+            ProjectElement toEl = Require(RequireId(to));
+
+            if (FindReciprocalPair(fromEl, toEl) is not { } pair)
+            {
+                throw new InvalidOperationException(
+                    $"Resources '{from.Name}' and '{to.Name}' are not follow-linked in this orientation; nothing to unlink.");
+            }
+            root = RemoveById(root, pair.FromHalf);
+            root = RemoveById(root, pair.ToHalf);
             return this;
         }
+
+        /// <summary>
+        /// The first mutually-reciprocal follow-link pair between the two resources (the from-half on the source,
+        /// the to-half on the sink, each pointing at the other), or <c>null</c> when no such pair exists. Matching
+        /// is by exact reciprocity — never "first half of the tag" — so multi-link owners and shared sinks resolve
+        /// to the requested pair only.
+        /// </summary>
+        private static (ElementId FromHalf, ElementId ToHalf)? FindReciprocalPair(ProjectElement fromEl, ProjectElement toEl)
+        {
+            foreach (ProjectElement half in ChildrenOf(fromEl))
+            {
+                if (half.Tag != "link_from_resource" || half.Id is not { } fromHalfId)
+                {
+                    continue;
+                }
+                foreach (ProjectElement partner in ChildrenOf(toEl))
+                {
+                    if (partner.Tag == "link_to_resource" && partner.Id is { } toHalfId
+                        && half.GetAttribute("link") == partner.GetAttribute("id")
+                        && partner.GetAttribute("link") == half.GetAttribute("id"))
+                    {
+                        return (fromHalfId, toHalfId);
+                    }
+                }
+            }
+            return null;
+        }
+
+        private static IEnumerable<ProjectElement> ChildrenOf(ProjectElement element) =>
+            element.Children.IsDefaultOrEmpty ? Enumerable.Empty<ProjectElement>() : element.Children;
 
         /// <summary>
         /// Clones an existing in-project subtree (the clipboard copy/paste) under a new parent: deep-copies it
@@ -405,7 +541,15 @@ namespace Ihc.Projects
         public Project ToProject()
         {
             ProjectElement withCounter = root.WithAttribute("last_unique_id", allocator.LastUniqueIdToken);
-            return new Project(Canonicalizer.Canonicalize(withCounter, SchemaView)) { InlineDtdBlocks = inlineDtdBlocks };
+            // Throw (not Drop): a session tree can only hold undeclared attributes through an internal bug —
+            // inserted subtrees are pre-canonicalized and the loaded tree was guarded at open — and silently
+            // dropping one here would be data loss the plain serializer refuses.
+            var committed = new Project(Canonicalizer.Canonicalize(withCounter, SchemaView, UndeclaredAttributePolicy.Throw))
+            {
+                InlineDtdBlocks = inlineDtdBlocks,
+            };
+            ProjectContracts.AssertCore(committed, "edit-commit");
+            return committed;
         }
 
         // ----- insert (called by GroupRef) -----
@@ -417,10 +561,15 @@ namespace Ihc.Projects
             ProjectElement enumDefinitions = root.FindChild(EnumDefinitionsTag)
                 ?? throw new InvalidOperationException("The project has no enum_definitions container.");
             InsertResult result = InsertTransform.Insert(catalogBody, allocator, enumDefinitions, SchemaView);
+            // Validate before committing anything, so a failed insert leaves no half-mutated session
+            // (hoisted enums without their component, or an unaddressable inserted root).
+            ElementId insertedId = result.InsertedRoot.Id
+                ?? throw new InvalidOperationException(
+                    $"Inserted component root <{result.InsertedRoot.Tag}> has no id; the insert was aborted " +
+                    "before mutating the project.");
             root = ReplaceChildByTag(root, EnumDefinitionsTag, result.EnumDefinitions);
             AppendChild(groupId, result.InsertedRoot);
-            return result.InsertedRoot.Id
-                ?? throw new InvalidOperationException("Inserted component root has no id.");
+            return insertedId;
         }
 
         /// <summary>
@@ -466,8 +615,14 @@ namespace Ihc.Projects
                 ? null
                 : parent.Children.FirstOrDefault(c => c.Tag == tag && c.GetAttribute("name") == name);
 
-            if (existing is { Id: { } existingId })
+            if (existing is not null)
             {
+                if (existing.Id is not { } existingId)
+                {
+                    throw new InvalidOperationException(
+                        $"Cannot configure <{tag}> '{name}': its id token '{existing.GetAttribute("id")}' is not a " +
+                        "parseable _0x id, so the existing resource cannot be addressed for update.");
+                }
                 Mutate(existingId, e => ApplyAttributes(e, attrs));
                 return new ResourceRef(name, existingId);
             }
@@ -516,14 +671,17 @@ namespace Ihc.Projects
 
         // ----- lookups (called by handles) -----
 
-        internal ElementId? FindChildIdByName(ElementId parentId, string tag, string name)
+        internal ElementId? FindChildIdByName(ElementId parentId, string tag, string name) =>
+            FindChildIdByName(parentId, t => t == tag, name);
+
+        internal ElementId? FindChildIdByName(ElementId parentId, Func<string, bool> tagMatch, string name)
         {
             ProjectElement parent = Require(parentId);
             if (parent.Children.IsDefaultOrEmpty)
             {
                 return null;
             }
-            ProjectElement? match = parent.Children.FirstOrDefault(c => c.Tag == tag && c.GetAttribute("name") == name);
+            ProjectElement? match = parent.Children.FirstOrDefault(c => tagMatch(c.Tag) && c.GetAttribute("name") == name);
             return match?.Id;
         }
 
@@ -534,8 +692,33 @@ namespace Ihc.Projects
                 && (tags.Length == 0 || tags.Contains(e.Tag)))?.Id;
         }
 
-        internal void SetAttributeById(ElementId id, string name, string value) =>
-            Mutate(id, e => e.WithAttribute(name, value));
+        internal void SetAttributeById(ElementId id, string name, string value)
+        {
+            ProjectElement element = Require(id);
+            ElementSchema? schema = SchemaView.TryGet(element.Tag);
+            if (schema is not null && !SchemaGuards.HasAttribute(schema, name))
+            {
+                // Reject at the write, with the target named — the alternative is a commit-time throw far
+                // from the mutation that caused it (canonicalization refuses undeclared attributes).
+                throw new ArgumentException(
+                    $"Attribute '{name}' is not declared for <{element.Tag}> (id {id.ToToken()}); " +
+                    "the .vis grammar would reject it on save.", nameof(name));
+            }
+            root = ReplaceById(root, id, e => e.WithAttribute(name, value));
+        }
+
+        /// <summary>
+        /// Resolves a live resource handle to its id, requiring both that the handle carries an id and that the
+        /// element still exists in the session — wiring a stale handle into a program would persist a dangling
+        /// reference.
+        /// </summary>
+        internal ElementId RequireLive(ResourceRef resource)
+        {
+            ElementId id = resource.Id ?? throw new InvalidOperationException(
+                $"Resource '{resource.Name}' has no allocated id; it cannot be wired into a program.");
+            Require(id);
+            return id;
+        }
 
         // ----- generic child authoring (called by ProgramBuilder) -----
 
@@ -574,9 +757,17 @@ namespace Ihc.Projects
 
         // ----- tree machinery -----
 
+        // Follow-link halves and scene rows both pair reciprocally via their `link` IDREF (spec ch. 06 §6.4,
+        // ch. 08): deleting one side must cascade the other, and only elements of these types may be cascaded.
+        private static readonly HashSet<string> ReciprocalHalfTags = new(StringComparer.Ordinal)
+        {
+            "link_from_resource", "link_to_resource",
+            "scene_link", "scene_dimmer", "scene_relay", "scene_shutter",
+        };
+
         private static void CollectLinkPartners(ProjectElement element, List<ElementId> partners)
         {
-            if (element.Tag is "link_from_resource" or "link_to_resource"
+            if (ReciprocalHalfTags.Contains(element.Tag)
                 && ElementId.TryParse(element.GetAttribute("link"), out ElementId partner))
             {
                 partners.Add(partner);
@@ -655,27 +846,8 @@ namespace Ihc.Projects
 
         private void Mutate(ElementId id, Func<ProjectElement, ProjectElement> map)
         {
+            Require(id);   // fail fast: mutating an absent id must never silently no-op (stale-handle corruption)
             root = ReplaceById(root, id, map);
-        }
-
-        private void RemoveLinkHalf(ElementId ownerId, string halfTag, ElementId partnerId, string partnerTag)
-        {
-            ProjectElement partner = Require(partnerId);
-            string? partnerHalfId = partner.Children.IsDefaultOrEmpty
-                ? null
-                : partner.Children.FirstOrDefault(c => c.Tag == partnerTag)?.GetAttribute("id");
-
-            Mutate(ownerId, owner =>
-            {
-                if (owner.Children.IsDefaultOrEmpty)
-                {
-                    return owner;
-                }
-                ImmutableArray<ProjectElement> kept = owner.Children
-                    .Where(c => !(c.Tag == halfTag && (partnerHalfId is null || c.GetAttribute("link") == partnerHalfId)))
-                    .ToImmutableArray();
-                return owner with { Children = kept };
-            });
         }
 
         private static ProjectElement? FindById(ProjectElement element, ElementId id)

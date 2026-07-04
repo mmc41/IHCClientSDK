@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Globalization;
+using System.IO;
 
 namespace Ihc.Projects
 {
@@ -63,18 +64,16 @@ namespace Ihc.Projects
                     documentationModules,
                 });
 
-            return new Project(Canonicalizer.Canonicalize(root, ProjectSchemaView.RegistryOnly));
+            return new Project(Canonicalizer.Canonicalize(root, ProjectSchemaView.RegistryOnly,
+                                                          UndeclaredAttributePolicy.Drop));   // sheds the skeleton's legacy helpid
         }
 
-        private static long SeedFromSkeleton(ProjectElement skeleton)
-        {
-            string? lastUniqueId = skeleton.GetAttribute("last_unique_id");
-            return lastUniqueId is not null
-                && lastUniqueId.StartsWith("_0x", StringComparison.Ordinal)
-                && long.TryParse(lastUniqueId.AsSpan(3), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out long seed)
-                ? seed
-                : 0x40;
-        }
+        private static long SeedFromSkeleton(ProjectElement skeleton) =>
+            // The same high-water-mark rule IdAllocator.ForProject applies to loaded projects: never trust the
+            // template's last_unique_id alone — an edited/hand-built skeleton whose ids exceed it would make
+            // the very first allocations mint duplicates.
+            Math.Max(HexToken.ParseValueOrDefault(skeleton.GetAttribute("last_unique_id"), 0x40),
+                     IdAllocator.MaxCounterPresent(skeleton));
 
         private static ProjectElement BuildEnumDefinitions(ProjectElement skeleton, ProjectElement template, IdAllocator allocator)
         {
@@ -101,6 +100,14 @@ namespace Ihc.Projects
                     values.Add(Node("enum_value", valueId, CopyAttrs(value, "typeid", "name", "index"), NoChildren));
                 }
                 definitions.Add(Node("enum_definition", defId, CopyAttrs(def, "typeid", "name", "note"), values));
+            }
+            if (definitions.Count == 0)
+            {
+                throw new InvalidDataException(
+                    "Data\\EnumeratorDefinitions.def under the configured IHC Visual install dir supplied no " +
+                    "enum_definition elements — the installation is incomplete or the template was edited. " +
+                    "CreateNew cannot seed the built-in enums, and a half-seeded project would break every " +
+                    "catalog insert that references them.");
             }
             return Node("enum_definitions", containerId, new[] { ("name", containerName) }, definitions);
         }

@@ -33,6 +33,13 @@ namespace Ihc.Projects
         /// </summary>
         public ImmutableDictionary<string, string> InlineDtdBlocks { get; init; } = ImmutableDictionary<string, string>.Empty;
 
+        /// <summary>
+        /// True only for the catalog's empty "Tom blok" scaffold (<c>Data\fb.def</c>).
+        /// <see cref="GroupRef.AddEmptyFunctionBlock"/> requires it, so a full catalog block cannot be passed
+        /// as a "template" and silently have its identity forged by the rename/re-date that follows.
+        /// </summary>
+        public bool IsEmptyTemplate { get; init; }
+
         public override string ToString() =>
             $"FunctionBlockDescriptor(MasterType={MasterType}, MasterVersion={MasterVersion}, MasterName={MasterName}, DisplayName={DisplayName}, CategoryPath={CategoryPath}, Body={Body})";
     }

@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Ihc.Projects
 {
@@ -51,19 +52,44 @@ namespace Ihc.Projects
             return this;
         }
 
-        /// <summary>Overrides one named setting whose default came from the catalog; returns this.</summary>
+        /// <summary>
+        /// Overrides one named setting whose default came from the catalog; returns this. The lookup is scoped
+        /// to the block's two value-variable containers (<c>settings</c>, then <c>internalsettings</c>) — vendor
+        /// blocks reuse display names across sections, so a whole-block search could silently write onto an
+        /// input/output pin of the same name. A name present in both containers must be addressed by id instead.
+        /// </summary>
         public FunctionBlockRef Setting(string name, Func<SettingBuilder, SettingBuilder> configure)
         {
             ArgumentNullException.ThrowIfNull(name);
             ArgumentNullException.ThrowIfNull(configure);
-            ElementId settingId = editor.FindDescendantIdByName(Id, name)
-                ?? throw new InvalidOperationException($"No setting named '{name}' on this function block.");
+            ProjectElement block = editor.Require(Id);
+            ElementId? inSettings = SettingIn(block, "settings", name);
+            ElementId? inInternal = SettingIn(block, "internalsettings", name);
+            if (inSettings is { } ambiguous && inInternal is { } other)
+            {
+                throw new InvalidOperationException(
+                    $"Setting name '{name}' is ambiguous on this function block: settings has " +
+                    $"{ambiguous.ToToken()} and internalsettings has {other.ToToken()}; address it by id via " +
+                    $"{nameof(ProjectEditor.TryResolve)}.");
+            }
+            ElementId settingId = inSettings ?? inInternal
+                ?? throw new InvalidOperationException(
+                    $"No setting named '{name}' on this function block (searched the settings and " +
+                    "internalsettings containers).");
             SettingBuilder builder = configure(new SettingBuilder());
             foreach ((string attr, string value) in builder.Attributes)
             {
                 editor.SetAttributeById(settingId, attr, value);
             }
             return this;
+        }
+
+        private static ElementId? SettingIn(ProjectElement block, string container, string name)
+        {
+            ProjectElement? holder = block.FindChild(container);
+            return holder is null || holder.Children.IsDefaultOrEmpty
+                ? null
+                : holder.Children.FirstOrDefault(c => c.GetAttribute("name") == name)?.Id;
         }
 
         /// <summary>
@@ -157,6 +183,7 @@ namespace Ihc.Projects
         {
             ArgumentNullException.ThrowIfNull(tag);
             ArgumentNullException.ThrowIfNull(name);
+            RequireLegalForContainer(tag, container);
             ElementId containerId = editor.Require(Id).FindChild(container)?.Id
                 ?? throw new InvalidOperationException($"This function block has no <{container}> container.");
             // Hand-authored FB resources never upsert — each add is a distinct node (repeat names are legal, e.g.
@@ -176,6 +203,24 @@ namespace Ihc.Projects
                 throw new ArgumentException(
                     $"'{tag}' is a pin/block type; a function block's '{container}' container accepts value variables " +
                     $"only (pins belong in inputs/outputs). See spec ch. 06 §6.3.1.", nameof(tag));
+            }
+        }
+
+        // Pin types are container-bound in the other direction too (§6.3.1): an output pin under inputs (or an
+        // input pin under outputs) validates as an error and mis-renders in IHC Visual — reject it at the add.
+        private static void RequireLegalForContainer(string tag, string container)
+        {
+            bool illegal = container switch
+            {
+                "inputs" => tag is "resource_output" or "resource_scene" or "functionblock",
+                "outputs" => tag is "resource_input" or "functionblock",
+                _ => false,   // settings/internalsettings are vetted by RequireValueType
+            };
+            if (illegal)
+            {
+                throw new ArgumentException(
+                    $"'{tag}' may not live under a function block's '{container}' container (spec ch. 06 §6.3.1).",
+                    nameof(tag));
             }
         }
     }

@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Ihc.Projects
 {
@@ -56,6 +57,7 @@ namespace Ihc.Projects
         {
             ArgumentNullException.ThrowIfNull(name);
             ArgumentNullException.ThrowIfNull(configure);
+            RequireDatalineFamily(nameof(AddInput));
             InputBuilder builder = configure(new InputBuilder());
             return editor.UpsertResourceChild(Id, "dataline_input", name, builder.Attributes);
         }
@@ -68,6 +70,7 @@ namespace Ihc.Projects
         {
             ArgumentNullException.ThrowIfNull(name);
             ArgumentNullException.ThrowIfNull(configure);
+            RequireDatalineFamily(nameof(AddOutput));
             OutputBuilder builder = configure(new OutputBuilder());
             return editor.UpsertResourceChild(Id, "dataline_output", name, builder.Attributes);
         }
@@ -75,6 +78,7 @@ namespace Ihc.Projects
         /// <summary>Ensures a <c>scenes</c> container bound to this product's output exists; returns this.</summary>
         public ProductRef AddScenes()
         {
+            RequireDatalineFamily(nameof(AddScenes));   // scenes bind to a dataline_output; a silent no-op would lie
             editor.EnsureScenesBoundToFirstOutput(Id);
             return this;
         }
@@ -83,6 +87,7 @@ namespace Ihc.Projects
         public ResourceRef Input(string name)
         {
             ArgumentNullException.ThrowIfNull(name);
+            RequireDatalineFamily(nameof(Input));
             ElementId id = editor.FindChildIdByName(Id, "dataline_input", name)
                 ?? throw new InvalidOperationException($"No input named '{name}' on this product.");
             return new ResourceRef(name, id);
@@ -92,6 +97,7 @@ namespace Ihc.Projects
         public ResourceRef Output(string name)
         {
             ArgumentNullException.ThrowIfNull(name);
+            RequireDatalineFamily(nameof(Output));
             ElementId id = editor.FindChildIdByName(Id, "dataline_output", name)
                 ?? throw new InvalidOperationException($"No output named '{name}' on this product.");
             return new ResourceRef(name, id);
@@ -111,11 +117,23 @@ namespace Ihc.Projects
             editor.DeleteById(RequireId(output));
         }
 
-        /// <summary>Removes this product's <c>scenes</c> container by name.</summary>
+        /// <summary>
+        /// Removes this product's <c>scenes</c> container(s), matched by tag — the display name is ordinary
+        /// user-editable CDATA (and differs per catalog family, e.g. "Scenarier/regulering" on dimmers), so a
+        /// name match would silently no-op on renamed or non-default containers. Throws when the product has
+        /// no scenes container.
+        /// </summary>
         public void RemoveScenes()
         {
-            ElementId? scenes = editor.FindChildIdByName(Id, "scenes", "Scenarier");
-            if (scenes is { } id)
+            ProjectElement product = editor.Require(Id);
+            List<ElementId> ids = product.Children.IsDefaultOrEmpty
+                ? new List<ElementId>()
+                : product.Children.Where(c => c.Tag == "scenes" && c.Id is not null).Select(c => c.Id!.Value).ToList();
+            if (ids.Count == 0)
+            {
+                throw new InvalidOperationException($"Product {Id.ToToken()} has no scenes container.");
+            }
+            foreach (ElementId id in ids)
             {
                 editor.DeleteById(id);
             }
@@ -125,6 +143,18 @@ namespace Ihc.Projects
         {
             editor.SetAttributeById(Id, name, value);
             return this;
+        }
+
+        private void RequireDatalineFamily(string operation)
+        {
+            string family = editor.Require(Id).Tag;
+            if (family != "product_dataline")
+            {
+                throw new InvalidOperationException(
+                    $"<{family}> products carry no dataline I/O children; {operation} supports product_dataline " +
+                    $"only. Configure this product's family-specific pins (e.g. airlink_input) via " +
+                    $"{nameof(ProjectEditor.TryResolve)}/{nameof(ElementRef)}.");
+            }
         }
 
         private static ElementId RequireId(ResourceRef resource) => resource.Id

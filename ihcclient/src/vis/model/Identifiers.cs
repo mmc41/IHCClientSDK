@@ -10,17 +10,22 @@ namespace Ihc.Projects
         public static string Format(long value) => "_0x" + value.ToString("x", CultureInfo.InvariantCulture);
 
         /// <summary>
-        /// Parses a <c>_0x</c>+hex token to its raw numeric value, returning <paramref name="fallback"/> for a
-        /// null, malformed, or negative token. Unlike <see cref="ElementId.TryParse"/> this keeps the packed value
-        /// whole (no counter/type-code split) — used for scalar tokens such as <c>last_unique_id</c>.
+        /// Strictly parses a <c>_0x</c>+hex token to its raw numeric value; <c>false</c> for a null, malformed,
+        /// or negative token. Unlike <see cref="ElementId.TryParse"/> this keeps the packed value whole (no
+        /// counter/type-code split) — used for scalar tokens such as <c>last_unique_id</c>.
         /// </summary>
+        public static bool TryParseValue(string? token, out long value)
+        {
+            value = 0;
+            return token is not null
+                && token.StartsWith("_0x", StringComparison.Ordinal)
+                && long.TryParse(token.AsSpan(3), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value)
+                && value >= 0;
+        }
+
+        /// <summary>The lenient variant of <see cref="TryParseValue"/>: <paramref name="fallback"/> on failure.</summary>
         public static long ParseValueOrDefault(string? token, long fallback = 0) =>
-            token is not null
-            && token.StartsWith("_0x", StringComparison.Ordinal)
-            && long.TryParse(token.AsSpan(3), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out long value)
-            && value >= 0
-                ? value
-                : fallback;
+            TryParseValue(token, out long value) ? value : fallback;
     }
 
     /// <summary>
@@ -35,6 +40,14 @@ namespace Ihc.Projects
     /// </remarks>
     public readonly record struct ElementId(int Counter, int TypeCode)
     {
+        /// <summary>
+        /// The largest packed value a legal id can hold: 24-bit counter + 8-bit type code (spec ch. 02).
+        /// Larger hex tokens are rejected by <see cref="TryParse"/> — accepting them would truncate the
+        /// counter through the <c>int</c> cast, letting two distinct on-disk tokens alias to one
+        /// <see cref="ElementId"/> and misdirect every id-addressed edit and delete.
+        /// </summary>
+        internal const long MaxPackedValue = 0xFFFFFFFFL;
+
         /// <summary>The packed numeric value <c>(Counter &lt;&lt; 8) | (TypeCode &amp; 0xFF)</c>.</summary>
         public long Value => ((long)Counter << 8) | (uint)(TypeCode & 0xFF);
 
@@ -44,7 +57,8 @@ namespace Ihc.Projects
         /// <summary>
         /// Parses a <c>_0x</c> id token into its <c>(Counter, TypeCode)</c> split (<c>counter = value &gt;&gt; 8</c>,
         /// <c>typeCode = value &amp; 0xFF</c>). Returns <c>false</c> for a token that is not a well-formed
-        /// <c>_0x</c>+hex value (e.g. an opaque catalog token); such ids are still preserved verbatim in the model.
+        /// <c>_0x</c>+hex value in the legal packed range (e.g. an opaque catalog token, or a token beyond
+        /// <see cref="MaxPackedValue"/>); such ids are still preserved verbatim in the model.
         /// </summary>
         public static bool TryParse(string? token, out ElementId id)
         {
@@ -54,7 +68,7 @@ namespace Ihc.Projects
                 return false;
             }
             if (!long.TryParse(token.AsSpan(3), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out long value)
-                || value < 0)
+                || value < 0 || value > MaxPackedValue)
             {
                 return false;
             }
@@ -71,9 +85,31 @@ namespace Ihc.Projects
     /// <c>(Day &lt;&lt; 24) | (Hour &lt;&lt; 16) | (Minute &lt;&lt; 8) | Second</c> (spec ch. 02).
     /// <c>id1</c> is the project creation time (constant for the project's life); <c>id2</c> is the
     /// time of the current save and always agrees with the <c>modified</c> element to the minute.
+    /// Components are range-validated at construction — bit-or'ing an out-of-range part would mint a
+    /// token IHC Visual rejects.
     /// </summary>
-    public readonly record struct PackedStamp(int Day, int Hour, int Minute, int Second)
+    public readonly record struct PackedStamp
     {
+        public PackedStamp(int day, int hour, int minute, int second)
+        {
+            Day = day is >= 1 and <= 31 ? day
+                : throw new ArgumentOutOfRangeException(nameof(day), day, "day must be 1–31");
+            Hour = hour is >= 0 and <= 23 ? hour
+                : throw new ArgumentOutOfRangeException(nameof(hour), hour, "hour must be 0–23");
+            Minute = minute is >= 0 and <= 59 ? minute
+                : throw new ArgumentOutOfRangeException(nameof(minute), minute, "minute must be 0–59");
+            Second = second is >= 0 and <= 59 ? second
+                : throw new ArgumentOutOfRangeException(nameof(second), second, "second must be 0–59");
+        }
+
+        public int Day { get; }
+
+        public int Hour { get; }
+
+        public int Minute { get; }
+
+        public int Second { get; }
+
         /// <summary>The packed numeric value of the stamp.</summary>
         public long Value =>
             ((long)Day << 24) | ((long)Hour << 16) | ((long)Minute << 8) | (uint)(Second & 0xFF);

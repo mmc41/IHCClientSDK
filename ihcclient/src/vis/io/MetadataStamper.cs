@@ -16,6 +16,15 @@ namespace Ihc.Projects
         public static Project Restamp(Project project, DateTimeOffset localNow)
         {
             ProjectElement root = project.Root;
+            if (root.FindChild("modified") is null)
+            {
+                // Stamping id2 alone would break the documented id2/modified minute-agreement invariant —
+                // silently, since nothing re-checks it. Every vendor file and CreateNew output has the child.
+                throw new InvalidOperationException(
+                    "The project root has no <modified> element, so a vendor-like save cannot re-stamp id2 and " +
+                    $"modified together. Use {nameof(ProjectSaveOptions)}.{nameof(ProjectSaveOptions.PreserveExistingMetadata)} " +
+                    "to write such a project verbatim.");
+            }
             string id2 = PackedStamp.FromDateTime(localNow).ToToken();
             ProjectElement stampedRoot = root.WithAttribute("id2", id2);
             stampedRoot = MapChild(stampedRoot, "modified", m => SetModified(m, localNow));
