@@ -21,6 +21,22 @@ namespace Ihc.Projects
 
         internal ElementId Id { get; }
 
+        /// <summary>Renames this room in place (an attribute edit — allocates nothing, R3). Returns this for chaining.</summary>
+        public GroupRef Name(string name)
+        {
+            ArgumentNullException.ThrowIfNull(name);
+            editor.SetAttributeById(Id, "name", name);
+            return this;
+        }
+
+        /// <summary>Sets this room's note (appended after the existing attributes). Returns this for chaining.</summary>
+        public GroupRef Note(string note)
+        {
+            ArgumentNullException.ThrowIfNull(note);
+            editor.SetAttributeById(Id, "note", note);
+            return this;
+        }
+
         /// <summary>
         /// Deep-copies the given catalog product into this room and returns its live handle for instance-level editing.
         /// </summary>

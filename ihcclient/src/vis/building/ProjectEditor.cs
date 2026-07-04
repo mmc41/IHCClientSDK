@@ -469,8 +469,24 @@ namespace Ihc.Projects
                 return new ResourceRef(name, existingId);
             }
 
+            return AddResourceChild(parentId, tag, name, attrs);
+        }
+
+        /// <summary>
+        /// Adds a fresh resource of type <paramref name="tag"/> as the last child of <paramref name="parentId"/> —
+        /// always a NEW node (never upserted), so a hand-authored function block may legitimately hold repeat-named
+        /// resources (project2's two "Kommatal"/"Scenarie" outputs). Allocates its id off the project counter and
+        /// materializes the vendor's freshly-created presentation attributes (icon + <c>#REQUIRED</c> value initials)
+        /// before applying <paramref name="attrs"/>, so a caller override / an enum's <c>typedef</c>+<c>inivalue</c>
+        /// wins on any name collision. Returns the new resource's live handle.
+        /// </summary>
+        internal ResourceRef AddResourceChild(ElementId parentId, string tag, string name,
+            IReadOnlyList<(string Name, string Value)> attrs)
+        {
             ElementId id = allocator.Allocate(TypeCodeFor(tag));
-            ProjectElement resource = ApplyAttributes(SimpleElement(tag, id, ("name", name)), attrs);
+            ProjectElement resource = ApplyAttributes(SimpleElement(tag, id, ("name", name)),
+                ResourceMaterialization.NewResourceDefaults(tag));
+            resource = ApplyAttributes(resource, attrs);
             AppendChild(parentId, resource);
             return new ResourceRef(name, id);
         }

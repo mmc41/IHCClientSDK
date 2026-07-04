@@ -70,10 +70,27 @@ namespace Ihc.Projects
         /// Adds a new input pin (<c>resource_input</c>) under this block's <c>inputs</c> container and returns its
         /// live handle for linking. For an empty (US-019) or unlocked (US-020) block that has no catalog resources.
         /// </summary>
-        public ResourceRef AddInput(string name) => AddResource("inputs", "resource_input", name, configure: null);
+        public ResourceRef AddInput(string name) => AddInput("resource_input", name);
+
+        /// <summary>
+        /// Adds a new input of an explicit type <paramref name="tag"/> under this block's <c>inputs</c> container — a
+        /// custom block's inputs may be value types too (e.g. project2's enum/date inputs), not only
+        /// <c>resource_input</c> pins. The optional <paramref name="configure"/> callback sets type-specific attributes
+        /// (e.g. an enum's <c>typedef</c>/<c>inivalue</c>). Returns its live handle.
+        /// </summary>
+        public ResourceRef AddInput(string tag, string name, Action<ElementRef>? configure = null) =>
+            AddResource("inputs", tag, name, configure);
 
         /// <summary>Adds a new output pin (<c>resource_output</c>) under <c>outputs</c>; returns its live handle.</summary>
-        public ResourceRef AddOutput(string name) => AddResource("outputs", "resource_output", name, configure: null);
+        public ResourceRef AddOutput(string name) => AddOutput("resource_output", name);
+
+        /// <summary>
+        /// Adds a new output of an explicit type <paramref name="tag"/> under this block's <c>outputs</c> container
+        /// (value types and <c>resource_scene</c> outputs are legal there too). The optional
+        /// <paramref name="configure"/> callback sets type-specific attributes. Returns its live handle.
+        /// </summary>
+        public ResourceRef AddOutput(string tag, string name, Action<ElementRef>? configure = null) =>
+            AddResource("outputs", tag, name, configure);
 
         /// <summary>
         /// Adds a new value variable of type <paramref name="tag"/> (e.g. <c>resource_flag</c>, <c>resource_timer</c>,
@@ -142,7 +159,9 @@ namespace Ihc.Projects
             ArgumentNullException.ThrowIfNull(name);
             ElementId containerId = editor.Require(Id).FindChild(container)?.Id
                 ?? throw new InvalidOperationException($"This function block has no <{container}> container.");
-            ResourceRef resource = editor.UpsertResourceChild(containerId, tag, name, System.Array.Empty<(string, string)>());
+            // Hand-authored FB resources never upsert — each add is a distinct node (repeat names are legal, e.g.
+            // project2's two "Kommatal"/"Scenarie" outputs). Product I/O keeps upserting via UpsertResourceChild.
+            ResourceRef resource = editor.AddResourceChild(containerId, tag, name, System.Array.Empty<(string, string)>());
             if (configure is not null && resource.Id is { } id && editor.TryResolve(id, out ElementRef? handle))
             {
                 configure(handle);

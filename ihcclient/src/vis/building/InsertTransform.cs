@@ -31,27 +31,17 @@ namespace Ihc.Projects
     internal static class InsertTransform
     {
         private static readonly Regex MenuPrefix = new(@"^\d+#", RegexOptions.Compiled);
+        private static readonly Regex LeadingZeroToken = new(@"^_0x0+[0-9a-fA-F]+$", RegexOptions.Compiled);
 
-        /// <summary>
-        /// The per-resource-type GUI icon IHC Visual stamps on every resource when a component is inserted.
-        /// Function-block <c>.ifb</c> templates bake these in (so they survive the deep-copy), but product
-        /// <c>.def</c> templates omit them — their <c>icon</c> defaults to <c>_0x0</c> and IHC Visual assigns the
-        /// canonical icon on insert — so we must stamp them here for byte-fidelity. The table is derived from every
-        /// authentic oracle (each listed type maps to exactly one icon, verified conflict-free); resource types not
-        /// listed carry no canonical icon (effective <c>_0x0</c>, elided on save).
-        /// </summary>
-        private static readonly Dictionary<string, string> ResourceIcons = new(StringComparer.Ordinal)
+        // Per-element-type null-token attributes IHC Visual stamps on catalog insert that the component .def leaves at
+        // its own (empty) DTD default: the attribute is #REQUIRED in the project DTD but "" in the .def, so a fresh
+        // (unassigned) insert gets the null token "_0x0" — e.g. an airlink product's serialnumber and an RS-485 LED
+        // dimmer channel's channel_id. Insert-only (these element types have no hand-authoring path), so kept here
+        // rather than in the shared ResourceMaterialization.
+        private static readonly Dictionary<string, (string Name, string Value)> InsertStamps = new(StringComparer.Ordinal)
         {
-            ["resource_enum"] = "_0x22",
-            ["resource_input"] = "_0x36",
-            ["resource_output"] = "_0x39",
-            ["resource_timer"] = "_0x43",
-            ["resource_flag"] = "_0x33",
-            ["resource_time"] = "_0x2f",
-            ["resource_date"] = "_0x29",
-            ["resource_weekday"] = "_0x2c",
-            ["resource_timertime"] = "_0x4d",
-            ["resource_holiday"] = "_0x9b",
+            ["product_airlink"] = ("serialnumber", "_0x0"),
+            ["rs485_led_dimmer_channel"] = ("channel_id", "_0x0"),
         };
 
         public static InsertResult Insert(ProjectElement catalogBody, IdAllocator allocator,
@@ -74,8 +64,18 @@ namespace Ihc.Projects
             // Pass 3: reconcile catalog numeric precision with the project's (e.g. a light's "500.00" → "500").
             ProjectElement normalized = NormalizeNumerics(remapped, view);
 
+            // Pass 4: canonicalize opaque _0x hex tokens (strip leading zeros, e.g. an airlink template's
+            // device_type "_0x080a" → "_0x80a") — done before Canonicalize so DTD-default comparison sees the
+            // canonical form.
+            ProjectElement tokenized = NormalizeTokens(normalized);
+
+            // Pass 5: canonicalize enumerated tokens a template authored with a punctuation variant (e.g. an s0
+            // kWh's accessibility typo "readwrite" → the DTD token "read-write") — again before Canonicalize so the
+            // now-canonical value can match the project default and drop out.
+            ProjectElement enumsCanonical = NormalizeEnums(tokenized, view);
+
             // Cross-DTD default materialization + drop editor-only attributes + ATTLIST order.
-            ProjectElement inserted = Canonicalizer.Canonicalize(normalized, view);
+            ProjectElement inserted = Canonicalizer.Canonicalize(enumsCanonical, view);
 
             ProjectElement updatedEnums = hoisted.Count == 0
                 ? enumDefinitions
@@ -107,9 +107,14 @@ namespace Ihc.Projects
                 attrs = StripMenuPrefixFromName(attrs);
             }
 
-            if (ResourceIcons.TryGetValue(element.Tag, out string? canonicalIcon))
+            if (ResourceMaterialization.Icon(element.Tag) is { } canonicalIcon)
             {
                 attrs = SetAttribute(attrs, "icon", canonicalIcon);   // vendor stamps the per-resource-type GUI icon on insert
+            }
+
+            if (InsertStamps.TryGetValue(element.Tag, out (string Name, string Value) stamp))
+            {
+                attrs = SetAttribute(attrs, stamp.Name, stamp.Value);   // e.g. airlink serialnumber → null token "_0x0"
             }
 
             var children = ImmutableArray.CreateBuilder<ProjectElement>();
@@ -321,6 +326,99 @@ namespace Ihc.Projects
                 : element.Children.Select(c => NormalizeNumerics(c, view)).ToImmutableArray();
 
             return element with { Attrs = attrs, Children = children };
+        }
+
+        /// <summary>
+        /// Canonicalizes opaque <c>_0x</c> hex tokens in the inserted subtree by stripping leading zeros (e.g. an
+        /// airlink template's <c>device_type="_0x080a"</c> → <c>"_0x80a"</c>), matching how IHC Visual re-emits every
+        /// id/reference/device token in canonical minimal-width hex (the oracle carries no leading-zero token). Only
+        /// verbatim-copied external tokens are affected — reassigned ids and remapped IDREFs are already canonical —
+        /// and only in the inserted subtree, so loaded elements keep their on-disk form (round-trip fidelity),
+        /// consistent with <see cref="NormalizeNumerics"/>.
+        /// </summary>
+        private static ProjectElement NormalizeTokens(ProjectElement element)
+        {
+            ImmutableArray<(string Name, string Value)> attrs = Attrs(element);
+            for (int i = 0; i < attrs.Length; i++)
+            {
+                if (LeadingZeroToken.IsMatch(attrs[i].Value))
+                {
+                    attrs = attrs.SetItem(i, (attrs[i].Name, StripLeadingZeros(attrs[i].Value)));
+                }
+            }
+
+            ImmutableArray<ProjectElement> children = element.Children.IsDefaultOrEmpty
+                ? ImmutableArray<ProjectElement>.Empty
+                : element.Children.Select(NormalizeTokens).ToImmutableArray();
+
+            return element with { Attrs = attrs, Children = children };
+        }
+
+        /// <summary>
+        /// Canonicalizes an inserted subtree's enumerated attribute values to the exact DTD token when a template
+        /// authored a punctuation variant (e.g. product2315.def writes a kWh's <c>accessibility</c> as the typo
+        /// "readwrite" for the DTD token "read-write"). IHC Visual re-emits the canonical token, so — combined with
+        /// Canonicalize's default-elision — the value then matches the project default and drops out. Only the
+        /// inserted subtree is touched, so loaded elements keep their on-disk spelling (round-trip fidelity).
+        /// </summary>
+        private static ProjectElement NormalizeEnums(ProjectElement element, ProjectSchemaView view)
+        {
+            ElementSchema? schema = view.TryGet(element.Tag);
+            ImmutableArray<(string Name, string Value)> attrs = Attrs(element);
+            if (schema is not null && !attrs.IsDefaultOrEmpty)
+            {
+                for (int i = 0; i < attrs.Length; i++)
+                {
+                    if (TryCanonicalizeEnum(schema, attrs[i].Name, attrs[i].Value, out string canonical))
+                    {
+                        attrs = attrs.SetItem(i, (attrs[i].Name, canonical));
+                    }
+                }
+            }
+
+            ImmutableArray<ProjectElement> children = element.Children.IsDefaultOrEmpty
+                ? ImmutableArray<ProjectElement>.Empty
+                : element.Children.Select(c => NormalizeEnums(c, view)).ToImmutableArray();
+
+            return element with { Attrs = attrs, Children = children };
+        }
+
+        /// <summary>Maps a value that is not an exact enum token to the token it matches ignoring hyphens ("readwrite" → "read-write").</summary>
+        private static bool TryCanonicalizeEnum(ElementSchema schema, string attrName, string value, out string canonical)
+        {
+            canonical = value;
+            foreach (AttrSchema attr in schema.Attrs)
+            {
+                if (attr.Name != attrName)
+                {
+                    continue;
+                }
+                if (attr.EnumValues.IsDefaultOrEmpty || attr.EnumValues.Contains(value))
+                {
+                    return false;   // not an enumerated attribute, or already an exact token
+                }
+                foreach (string token in attr.EnumValues)
+                {
+                    if (token.Replace("-", string.Empty) == value.Replace("-", string.Empty))
+                    {
+                        canonical = token;
+                        return true;
+                    }
+                }
+                return false;
+            }
+            return false;
+        }
+
+        /// <summary>Strips leading zeros after the <c>_0x</c> prefix, keeping at least one hex digit (<c>_0x080a</c> → <c>_0x80a</c>).</summary>
+        private static string StripLeadingZeros(string token)
+        {
+            int i = 3;   // past "_0x"
+            while (i < token.Length - 1 && token[i] == '0')
+            {
+                i++;
+            }
+            return "_0x" + token.Substring(i);
         }
 
         private static bool TryNormalizeToDefaultPrecision(ElementSchema schema, string attrName, string value, out string reformatted)

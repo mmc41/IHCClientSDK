@@ -410,6 +410,46 @@
                   setting (yes | no) "no"
                   note-2 CDATA ""
                   udf CDATA "">
+   <!ELEMENT resource_holiday ANY>
+   <!ATTLIST resource_holiday id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_floating_point ANY>
+   <!ATTLIST resource_floating_point id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  note CDATA ""
+                  inivalue CDATA "0.00"
+                  accessibility (read | write | read-write) "read-write"
+                  setting (yes | no) "no"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT kW ANY>
+   <!ATTLIST kW id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  note CDATA ""
+                  inivalue CDATA "0.00"
+                  accessibility (read | write | read-write) "read-write"
+                  setting (yes | no) "no"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT Wh ANY>
+   <!ATTLIST Wh id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  note CDATA ""
+                  inivalue CDATA "0.00"
+                  accessibility (read | write | read-write) "read-write"
+                  setting (yes | no) "no"
+                  note-2 CDATA ""
+                  udf CDATA "">
    <!ELEMENT light_indication ANY>
    <!ATTLIST light_indication id ID #REQUIRED
                   name CDATA ""

@@ -73,13 +73,18 @@ namespace Ihc.Projects
             ["resource_counter"] = 0x0c,
             ["resource_time"] = 0x0d,
             ["resource_date"] = 0x0e,
+            ["resource_floating_point"] = 0x15,   // project2 ids _0xa615/_0xb915/_0x7615 (settings/outputs/internal "Kommatal")
             ["resource_light_level"] = 0x13,
             ["resource_temperature"] = 0x14,
             ["resource_light"] = 0x16,
             ["resource_timertime"] = 0x17,
+            ["resource_holiday"] = 0x20,           // project2 ids _0xa520/_0xb820/_0x7520 ("Helligdag")
             ["resource_humidity_level"] = 0x27,
+            // Energy units form a consecutive block kW/kWh/W/Wh = 0xce/0xcf/0xd0/0xd1 (project2 ids _0xa7ce…_0xb3d1)
+            ["kW"] = 0xce,
             ["kWh"] = 0xcf,
             ["W"] = 0xd0,
+            ["Wh"] = 0xd1,
             // program_case + its case branches; the power event; the indicator
             ["program_case"] = 0x21,
             ["light_indication"] = 0x1d,

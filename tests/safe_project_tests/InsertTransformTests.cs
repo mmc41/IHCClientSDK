@@ -55,6 +55,56 @@ namespace Ihc.Projects.Tests
         }
 
         [Test]
+        public void Insert_StripsLeadingZerosFromOpaqueTokens()
+        {
+            // Airlink/exotic .def templates author some opaque _0x tokens with a leading zero (e.g.
+            // device_type="_0x080a"); IHC Visual re-emits every _0x token in canonical minimal-width hex, so the
+            // insert transform strips the zeros (here on product_identifier, the same NormalizeTokens path).
+            ProjectElement body = Node("product_dataline", "_0x01",
+                new[] { ("product_identifier", "_0x02202"), ("name", "Lampeudtag"), ("icon", "_0x86") },
+                System.Array.Empty<ProjectElement>());
+
+            var allocator = new IdAllocator(0x50);
+            InsertResult result = InsertTransform.Insert(body, allocator, EmptyEnumDefinitions(), ProjectSchemaView.RegistryOnly);
+
+            Assert.That(result.InsertedRoot.GetAttribute("product_identifier"), Is.EqualTo("_0x2202"),
+                "opaque _0x tokens are canonicalized to minimal-width hex (leading zeros stripped) on insert");
+        }
+
+        [Test]
+        public void Insert_CanonicalizesEnumTokenPunctuation_ThenElidesAtDefault()
+        {
+            // product2315.def authors an s0 kWh's accessibility as the typo "readwrite"; the canonical DTD token is
+            // "read-write" (also the kWh project default), so the insert normalizes it and Canonicalize then elides it.
+            ProjectElement body = Node("kWh", "_0x06",
+                new[] { ("name", "Consumption"), ("accessibility", "readwrite") },
+                System.Array.Empty<ProjectElement>());
+
+            var allocator = new IdAllocator(0x50);
+            InsertResult result = InsertTransform.Insert(body, allocator, EmptyEnumDefinitions(), ProjectSchemaView.RegistryOnly);
+
+            Assert.That(result.InsertedRoot.GetAttribute("accessibility"), Is.Null,
+                "the typo'd 'readwrite' is canonicalized to the default token 'read-write' and elided on save");
+        }
+
+        [Test]
+        public void Insert_StampsNullSerialNumberOnAirlinkProduct()
+        {
+            // An airlink .def leaves serialnumber at its own DTD default ""; the attribute is #REQUIRED in the project
+            // DTD, so IHC Visual stamps the null token "_0x0" on every fresh (unpaired) airlink insert.
+            ProjectElement body = Node("product_airlink", "_0x01",
+                new[] { ("product_identifier", "_0x4306"), ("device_type", "_0x80a"), ("name", "Dimmer Universal"),
+                        ("serialnumber", ""), ("icon", "_0x86") },
+                System.Array.Empty<ProjectElement>());
+
+            var allocator = new IdAllocator(0x50);
+            InsertResult result = InsertTransform.Insert(body, allocator, EmptyEnumDefinitions(), ProjectSchemaView.RegistryOnly);
+
+            Assert.That(result.InsertedRoot.GetAttribute("serialnumber"), Is.EqualTo("_0x0"),
+                "airlink insert stamps the null serialnumber token");
+        }
+
+        [Test]
         public void Insert_HoistsUserEnum_AndRewritesResourceEnumReferences()
         {
             // A function-block-like body carrying a user enum (no typeid) referenced by a resource_enum.

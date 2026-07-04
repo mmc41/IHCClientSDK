@@ -30,13 +30,18 @@ namespace Ihc.Projects.Tests
         /// <paramref name="options"/>, and asserts the saved bytes equal <paramref name="oracle"/> byte-for-byte.
         /// </summary>
         public static async Task AssertByteIdentical(ProjectAppService app, string oracle, Func<Project> build,
-            ProjectSaveOptions options)
+            ProjectSaveOptions options, string? dumpActualToPath = null)
         {
             byte[] expected = TestData.ReadBytes(oracle);
             Project built = build();
             using var ms = new MemoryStream();
             await app.Save(built, ms, options);
-            TestData.AssertBytesIdentical(expected, ms.ToArray(), $"authored build → {oracle}");
+            byte[] actual = ms.ToArray();
+            if (dumpActualToPath is not null)
+            {
+                File.WriteAllBytes(dumpActualToPath, actual);   // diagnostic: feed to dump_alloc.ps1 for the alloc-map phase
+            }
+            TestData.AssertBytesIdentical(expected, actual, $"authored build → {oracle}");
         }
     }
 }
