@@ -16,7 +16,7 @@ namespace Ihc.Vis.Tests
     {
         private static IhcSettings Settings => TestSetup.Settings;
 
-        private static Task<Project> Load() => new ProjectAppService(Settings).Load("testdata/Project1-SimpelWired.vis");
+        private static Task<Project> Load() => new ProjectAppService(Settings).Load("testdata/projects/Project1-SimpelWired.vis");
 
         private static ElementId FirstProgram(Project p) =>
             p.Root.Descendants().First(e => e.Tag == "program_simple").Id!.Value;

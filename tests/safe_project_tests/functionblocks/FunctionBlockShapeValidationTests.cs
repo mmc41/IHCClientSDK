@@ -15,7 +15,7 @@ namespace Ihc.Vis.Tests
         private static IhcSettings Settings => TestSetup.Settings;
         private static ProjectAppService App => new(Settings);
 
-        private static Task<Project> Load(string file) => App.Load("testdata/" + file);
+        private static Task<Project> Load(string file) => App.Load("testdata/projects/" + file);
 
         private static ProjectElement TomBlok(Project project) =>
             project.Root.Descendants().First(e => e.Tag == "functionblock" && e.GetAttribute("name") == "Tom blok");

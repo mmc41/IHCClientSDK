@@ -60,7 +60,7 @@ namespace Ihc.Vis.Tests
         public async Task Validate_AuthenticVendorFile_HasNoErrors(string oracle)
         {
             var app = new ProjectAppService(Settings);
-            Project project = await app.Load("testdata/" + oracle);
+            Project project = await app.Load("testdata/projects/" + oracle);
 
             ProjectValidationResult result = app.Validate(project);
 

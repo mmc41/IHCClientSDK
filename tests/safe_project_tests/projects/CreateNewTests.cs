@@ -42,7 +42,7 @@ namespace Ihc.Vis.Tests
             using var ms = new MemoryStream();
             await app.Save(project, ms, ProjectSaveOptions.Default);
 
-            TestData.AssertBytesIdentical(TestData.ReadBytes("Project0-Tomt.vis"), ms.ToArray(), "CreateNew + default save");
+            TestData.AssertBytesIdentical(TestData.ReadBytes("projects/Project0-Tomt.vis"), ms.ToArray(), "CreateNew + default save");
         }
 
         [Test]

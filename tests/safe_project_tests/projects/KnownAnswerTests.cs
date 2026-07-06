@@ -27,7 +27,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task Project1_ModelValues_AgreeWithAnIndependentParser()
         {
-            byte[] bytes = TestData.ReadBytes("Project1-SimpelWired.vis");
+            byte[] bytes = TestData.ReadBytes("projects/Project1-SimpelWired.vis");
             Project project = await new ProjectAppService(Settings).Load(new MemoryStream(bytes));
             XmlDocument raw = LoadRaw(bytes);
             XmlElement root = raw.DocumentElement!;

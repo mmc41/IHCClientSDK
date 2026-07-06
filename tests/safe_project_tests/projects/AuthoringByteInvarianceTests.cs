@@ -27,7 +27,7 @@ namespace Ihc.Vis.Tests
     /// mutations and that inverses are exact — they do <em>not</em> prove that newly-authored content matches the
     /// vendor byte-for-byte (exact id <em>values</em>, freshly generated DTD blocks, enum-hoist placement). That is
     /// the complementary mutated-oracle replay track, whose vendor "after" oracle is already committed
-    /// (<c>testdata/project3-KompleksWired-mutated.vis</c>, replay spec inline in
+    /// (<c>testdata/projects/project3-KompleksWired-mutated.vis</c>, replay spec inline in
     /// <c>testdata/testdataoverview.md</c>); only that replay test is still missing. Likewise T5 gates that
     /// copy-then-delete is inverse-exact; the vendor-parity of <see cref="ProjectEditor.CopySubtree"/> itself — that
     /// it byte-reproduces what IHC Visual's clipboard paste writes — is now gated by
@@ -41,7 +41,7 @@ namespace Ihc.Vis.Tests
         private static IhcSettings Settings => TestSetup.Settings;
 
         private static Task<Project> LoadOracle() =>
-            new ProjectAppService(Settings).Load("testdata/" + Oracle);
+            new ProjectAppService(Settings).Load("testdata/projects/" + Oracle);
 
         private static async Task<byte[]> Save(Project project)
         {
@@ -56,7 +56,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task T1_NoOpEditorRoundTrip_IsByteIdentical()
         {
-            byte[] original = TestData.ReadBytes(Oracle);
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
             Project project = await LoadOracle();
 
             byte[] actual = await Save(project.Edit().ToProject());
@@ -73,7 +73,7 @@ namespace Ihc.Vis.Tests
         [TestCase("resource_enum")]
         public async Task T2a_SetThenRestoreName_AcrossExoticFamilies_IsByteIdentical(string tag)
         {
-            byte[] original = TestData.ReadBytes(Oracle);
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
             Project project = await LoadOracle();
             ProjectElement element = project.Root.Descendants().First(e => e.Tag == tag);
             string name = element.GetAttribute("name")!;
@@ -92,7 +92,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task T2b_OmitIfDefaultBoundary_S0Accessibility_ReOmitted_IsByteIdentical()
         {
-            byte[] original = TestData.ReadBytes(Oracle);
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
             Project project = await LoadOracle();
             ProjectElement kwh = project.Root.Descendants()
                 .First(e => e.Tag == "kWh" && e.GetAttribute("accessibility") is null);
@@ -112,7 +112,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task T3_MoveWiredComponentThereAndBack_IsByteIdentical()
         {
-            byte[] original = TestData.ReadBytes(Oracle);
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
             Project project = await LoadOracle();
             ProjectElement sourceRoom = project.Groups[0];                       // Stue: holds the wired FUGA
             ProjectElement moved = sourceRoom.Children.First(HasLinks);          // the follow-linked product
@@ -133,7 +133,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task T4_GroupRenameAndNoteCycle_IsByteIdentical()
         {
-            byte[] original = TestData.ReadBytes(Oracle);
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
             Project project = await LoadOracle();
             ProjectElement room = project.Groups[0];                            // "Stue & Køkken \"åben\"" + Latin-1 note
             string name = room.GetAttribute("name")!;
@@ -154,7 +154,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task T5_CopyThenDeleteTheCopy_IsIdenticalExceptPinnedLastUniqueId()
         {
-            byte[] original = TestData.ReadBytes(Oracle);
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
             Project project = await LoadOracle();
             // The s0 device is follow-link-free, enum-free and scenes-free, so copy-then-delete is a structural
             // inverse whose only residue is the counter. N = its id-bearing element count (every element gets a
@@ -177,7 +177,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task T6_LinkThenUnlink_IsIdenticalExceptPinnedLastUniqueId()
         {
-            byte[] original = TestData.ReadBytes(Oracle);
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
             Project project = await LoadOracle();
             string room = project.Groups[0].GetAttribute("name")!;             // read the diacritic room name from the model
 
@@ -198,7 +198,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task T7_ReorderThereAndBack_IsByteIdentical()
         {
-            byte[] original = TestData.ReadBytes(Oracle);
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
             Project project = await LoadOracle();
             ProjectElement room = project.Groups[0];
             ProjectElement child = room.Children.First(c => c.GetAttribute("name") == "Diode");
@@ -218,7 +218,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task T8_FunctionBlockUnlockRelockCycle_IsByteIdentical()
         {
-            byte[] original = TestData.ReadBytes(Oracle);
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
             Project project = await LoadOracle();
             ProjectElement locked = project.Root.Descendants()
                 .First(e => e.Tag == "functionblock" && e.GetAttribute("locked") == "yes");
@@ -238,7 +238,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task T9_AddResourceThenDelete_IsIdenticalExceptPinnedLastUniqueId()
         {
-            byte[] original = TestData.ReadBytes(Oracle);
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
             Project project = await LoadOracle();
             ProjectElement emptyBlock = project.Root.Descendants()
                 .First(e => e.Tag == "functionblock" && e.GetAttribute("name") == "Tom blok");
@@ -263,7 +263,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task T10_AddEnumWithValuesThenDelete_IsIdenticalExceptPinnedLastUniqueId()
         {
-            byte[] original = TestData.ReadBytes(Oracle);
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
             Project project = await LoadOracle();
 
             ProjectEditor editor = project.Edit();

@@ -13,7 +13,7 @@ namespace Ihc.Vis.Tests
     {
         private static Project Load(string file)
         {
-            using var ms = new MemoryStream(TestData.ReadBytes(file));
+            using var ms = new MemoryStream(TestData.ReadBytes("projects/" + file));
             return new ProjectAppService(TestSetup.Settings).Load(ms).GetAwaiter().GetResult();
         }
 

@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE functionblock[
+   <!ELEMENT functionblock ANY>
+   <!ATTLIST functionblock id ID #REQUIRED
+                  name CDATA ""
+                  master_schneider_electric (yes | no) "no"
+                  master_type CDATA ""
+                  master_version CDATA ""
+                  master_name CDATA ""
+                  master_programmer CDATA ""
+                  master_date_year CDATA "0"
+                  master_date_month CDATA "0"
+                  master_date_day CDATA "0"
+                  locked (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  helpfile CDATA ""
+                  udf CDATA "">
+   <!ELEMENT inputs ANY>
+   <!ATTLIST inputs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_input ANY>
+   <!ATTLIST resource_input id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT outputs ANY>
+   <!ATTLIST outputs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_output ANY>
+   <!ATTLIST resource_output id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT settings ANY>
+   <!ATTLIST settings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_date ANY>
+   <!ATTLIST resource_date id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  year CDATA #REQUIRED
+                  month CDATA #REQUIRED
+                  day CDATA #REQUIRED
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_flag ANY>
+   <!ATTLIST resource_flag id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT internalsettings ANY>
+   <!ATTLIST internalsettings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT programs ANY>
+   <!ATTLIST programs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT program_simple ANY>
+   <!ATTLIST program_simple id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT events ANY>
+   <!ATTLIST events id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT event_power ANY>
+   <!ATTLIST event_power id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  type (up | down) "up"
+                  udf CDATA "">
+   <!ELEMENT actions ANY>
+   <!ATTLIST actions id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  type CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT action ANY>
+   <!ATTLIST action id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT event ANY>
+   <!ATTLIST event id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT program_sub ANY>
+   <!ATTLIST program_sub id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT conditions ANY>
+   <!ATTLIST conditions id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  type (and | or) "and"
+                  udf CDATA "">
+   <!ELEMENT condition ANY>
+   <!ATTLIST condition id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+]>
+<functionblock id="_0x5128" name="9.3.01.a. Holiday schedule" master_type="9.3.01" master_version="a" master_name="Holiday schedule" master_programmer="Morten Christensen" master_date_year="2026" master_date_month="5" master_date_day="20" locked="yes" icon="_0xe" note="9.3.01.a. Holiday schedule&#xD;&#xA;&#xD;&#xA;Holder en udgang tændt i en defineret ferieperiode.">
+  <inputs id="_0x5223" name="Input" icon="_0x4" note="Indgange til ferieblokken">
+    <resource_input id="_0x5311" name="Aktivér" icon="_0x36" note="Slår ferieprogrammet til." />
+  </inputs>
+  <outputs id="_0x5424" name="Output" icon="_0x14" note="Udgange fra ferieblokken">
+    <resource_output id="_0x5512" name="Aktiv" icon="_0x39" note="Er tændt i ferieperioden." />
+  </outputs>
+  <settings id="_0x5625" name="Indstillinger" icon="_0xd" note="Indstillinger som brugeren kan ændre">
+    <resource_date id="_0x570e" name="Startdato" backup="yes" icon="_0x29" note="Ferieperiodens første dag." year="2026" month="6" day="1" />
+    <resource_date id="_0x580e" name="Stopdato" backup="yes" icon="_0x29" note="Ferieperiodens sidste dag." year="2026" month="8" day="31" />
+    <resource_flag id="_0x590a" name="Bemyndiget" icon="_0x33" note="Angiver om ferieprogrammet er tilladt." inivalue="on" />
+  </settings>
+  <internalsettings id="_0x5a29" name="Interne variable" icon="_0x13" note="Private variable til blokkens eget brug">
+    <resource_date id="_0x5b0e" name="Dags dato" icon="_0x29" note="Opdateres løbende af controlleren." year="2000" month="1" day="1" />
+  </internalsettings>
+  <programs id="_0x5c26" name="Programmer" icon="_0x19" note="Gruppering af blokkens programmer">
+    <program_simple id="_0x5d1e" name="Opstart" icon="_0x7">
+      <events id="_0x5e64" name="Hændelser" icon="_0xb" note="Hændelser der udløser programmet">
+        <event_power id="_0x5fc8" name="Opstart" icon="_0xc" note="Start programmet når controlleren tændes" />
+      </events>
+      <actions id="_0x6066" name="Kommandoer" icon="_0x8" note="Kommandoer der udføres når en hændelse indtræffer" type="_0x2">
+        <action id="_0x61ca" name="%P = OFF" icon="_0x9" note="Nulstiller udgangen ved opstart" link1="_0x5512" method="_0x14" />
+      </actions>
+    </program_simple>
+    <program_simple id="_0x621e" name="Kontrollér periode" icon="_0x7">
+      <events id="_0x6364" name="Hændelser" icon="_0xb" note="Hændelser der udløser programmet">
+        <event id="_0x64c8" name="%P -&gt; ON" icon="_0xc" note="Start når %P skifter til ON" link1="_0x5311" method="_0xa" />
+      </events>
+      <actions id="_0x6566" name="Kommandoer" icon="_0x8" note="Kommandoer der udføres når en hændelse indtræffer" type="_0x2">
+        <program_sub id="_0x661f" name="Under program" icon="_0x7">
+          <conditions id="_0x6765" name="Betingelser" icon="_0x16" note="Betingelser der testes logisk" type="or">
+            <condition id="_0x68c9" name="%P = ON" icon="_0x1a" note="Betingelse: programmet er bemyndiget" link1="_0x590a" method="_0xa" />
+            <condition id="_0x69c9" name="%P bliver ændret" icon="_0x1a" note="Betingelse: indgangen er ændret" link1="_0x5311" method="_0x96" />
+          </conditions>
+          <actions id="_0x6a66" name="Kommandoer ved betingelser sande" icon="_0x8" note="Kommandoer der udføres når betingelserne er opfyldt" type="_0x1">
+            <action id="_0x6bca" name="%P = ON" icon="_0x9" note="Tænder udgangen" link1="_0x5512" method="_0xa" />
+          </actions>
+          <actions id="_0x6c66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Kommandoer der udføres når betingelserne ikke er opfyldt">
+            <action id="_0x6dca" name="%P = OFF" icon="_0x9" note="Slukker udgangen" link1="_0x5512" method="_0x14" />
+          </actions>
+        </program_sub>
+      </actions>
+    </program_simple>
+  </programs>
+</functionblock>

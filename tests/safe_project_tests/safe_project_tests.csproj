@@ -27,6 +27,11 @@
 
   <ItemGroup>
     <None Include="testdata\**\*.vis" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Synthetic catalog oracle files (Products\*.def, FunctionBlocks\*.ifb) used to test the
+         code-authoring builders. Same copy rule as the .vis testdata so tests can read them from
+         the output dir; without this only *.vis is copied and the .def/.ifb oracles go missing. -->
+    <None Include="testdata\**\*.def" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="testdata\**\*.ifb" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <Target Name="CopyConfigFiles" AfterTargets="AfterBuild">

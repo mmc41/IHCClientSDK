@@ -23,9 +23,9 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task AddEnumWithValues_ReplaysProject3EnumValuesOracle_ByteIdentical()
         {
-            byte[] expected = TestData.ReadBytes(EnumValuesOracle);
+            byte[] expected = TestData.ReadBytes("projects/" + EnumValuesOracle);
             var app = new ProjectAppService(Settings);
-            Project original = await app.Load("testdata/" + Original);
+            Project original = await app.Load("testdata/projects/" + Original);
 
             ProjectEditor editor = original.Edit();
             editor.NormalizeCatalogEnums();                                        // Action 0: _0x56c -> _0x579
@@ -47,7 +47,7 @@ namespace Ihc.Vis.Tests
         public async Task AddedEnum_StandaloneUnreferenced_ValidatesClean()
         {
             var app = new ProjectAppService(Settings);
-            Project original = await app.Load("testdata/" + Original);
+            Project original = await app.Load("testdata/projects/" + Original);
 
             ProjectEditor editor = original.Edit();
             editor.NormalizeCatalogEnums();
@@ -66,7 +66,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task AddEnumDefinition_AfterNormalizeCatalogEnums_AllocatesContiguouslyNoBurn()
         {
-            Project original = await new ProjectAppService(Settings).Load("testdata/" + Original);
+            Project original = await new ProjectAppService(Settings).Load("testdata/projects/" + Original);
 
             ProjectEditor editor = original.Edit();
             editor.NormalizeCatalogEnums();

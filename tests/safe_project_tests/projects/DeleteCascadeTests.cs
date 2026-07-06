@@ -18,7 +18,7 @@ namespace Ihc.Vis.Tests
         private static IhcSettings Settings => TestSetup.Settings;
 
         private static Task<Project> LoadOracle() =>
-            new ProjectAppService(Settings).Load("testdata/" + Oracle);
+            new ProjectAppService(Settings).Load("testdata/projects/" + Oracle);
 
         private static ProjectElement Find(Project project, string tag, string name) =>
             project.Root.Descendants().First(e => e.Tag == tag && e.GetAttribute("name") == name);

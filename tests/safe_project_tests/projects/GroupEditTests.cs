@@ -15,7 +15,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task Group_RenameAndNote_SetsAttributes_AllocatesNothing()
         {
-            Project project = await new ProjectAppService(Settings).Load("testdata/Project0-Tomt.vis");
+            Project project = await new ProjectAppService(Settings).Load("testdata/projects/Project0-Tomt.vis");
             string highWater = project.LastUniqueId!;
             ProjectEditor editor = project.Edit();
 

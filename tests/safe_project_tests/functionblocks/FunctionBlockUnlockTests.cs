@@ -15,7 +15,7 @@ namespace Ihc.Vis.Tests
         private static IhcSettings Settings => TestSetup.Settings;
 
         private static Task<Project> LoadOracle() =>
-            new ProjectAppService(Settings).Load("testdata/" + Oracle);
+            new ProjectAppService(Settings).Load("testdata/projects/" + Oracle);
 
         private static FunctionBlockRef Block(ProjectEditor editor, Project project, string name)
         {

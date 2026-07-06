@@ -32,7 +32,7 @@ namespace Ihc.Vis.Tests
         public static async Task AssertByteIdentical(ProjectAppService app, string oracle, Func<Project> build,
             ProjectSaveOptions options, string? dumpActualToPath = null)
         {
-            byte[] expected = TestData.ReadBytes(oracle);
+            byte[] expected = TestData.ReadBytes("projects/" + oracle);
             Project built = build();
             using var ms = new MemoryStream();
             await app.Save(built, ms, options);

@@ -43,7 +43,7 @@ namespace Ihc.Vis.Tests
         public async Task SerializedOutput_ValidatesAgainstItsOwnInlineDtd(string oracle)
         {
             var app = new ProjectAppService(Settings);
-            Project project = await app.Load("testdata/" + oracle);
+            Project project = await app.Load("testdata/projects/" + oracle);
 
             byte[] bytes = ProjectSerializer.Serialize(project);
             IReadOnlyList<string> events = ValidateAgainstOwnDtd(bytes);

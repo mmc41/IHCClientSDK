@@ -22,13 +22,13 @@ namespace Ihc.Vis.Tests
         private static IhcSettings Settings => TestSetup.Settings;
 
         private static Task<Project> LoadOracle() =>
-            new ProjectAppService(Settings).Load("testdata/" + Oracle);
+            new ProjectAppService(Settings).Load("testdata/projects/" + Oracle);
 
         // Ground-truth element-id order read straight from the file bytes: a real element id is written as
         // " id=\"_0x...\"" (space-prefixed), which typeid/channel_id/last_unique_id never match.
         private static IReadOnlyList<string> FileIdOrder()
         {
-            string text = Encoding.Latin1.GetString(TestData.ReadBytes(Oracle));
+            string text = Encoding.Latin1.GetString(TestData.ReadBytes("projects/" + Oracle));
             return Regex.Matches(text, " id=\"(_0x[0-9a-f]+)\"")
                 .Select(m => m.Groups[1].Value)
                 .ToList();

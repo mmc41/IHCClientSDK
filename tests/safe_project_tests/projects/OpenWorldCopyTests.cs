@@ -16,7 +16,7 @@ namespace Ihc.Vis.Tests
         private static IhcSettings Settings => TestSetup.Settings;
 
         private static Task<Project> LoadFixture() =>
-            new ProjectAppService(Settings).Load("testdata/" + Fixture);
+            new ProjectAppService(Settings).Load("testdata/projects/" + Fixture);
 
         [Test]
         public async Task CopySubtree_UnregisteredElementType_AllocatesAFreshId()

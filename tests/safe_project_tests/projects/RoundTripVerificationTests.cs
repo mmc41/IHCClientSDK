@@ -38,7 +38,7 @@ namespace Ihc.Vis.Tests
         public async Task Save_WithVerifyRoundTrip_OnAnAuthenticFile_Succeeds()
         {
             var app = new ProjectAppService(Settings);
-            Project project = await app.Load("testdata/Project1-SimpelWired.vis");
+            Project project = await app.Load("testdata/projects/Project1-SimpelWired.vis");
             using var ms = new MemoryStream();
 
             var options = new ProjectSaveOptions { WriteMetadataVerbatim = true, VerifyRoundTrip = true };

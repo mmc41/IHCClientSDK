@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE s0_device [
+   <!ELEMENT s0_device ANY>
+   <!ATTLIST s0_device id ID #REQUIRED
+                  product_identifier CDATA #REQUIRED
+                  name CDATA ""
+                  locked (yes | no) "yes"
+                  enduser_report (yes | no) "no"
+                  icon CDATA ""
+                  note CDATA ""
+                  position CDATA ""
+                  documentation_tag CDATA ""
+                  cable_colour_plus CDATA ""
+                  cable_colour_minus CDATA "">
+   <!ELEMENT kWh ANY>
+   <!ATTLIST kWh id ID #REQUIRED
+                  name CDATA "kWh"
+                  note CDATA ""
+                  backup (yes | no) "no"
+                  inivalue CDATA "0"
+                  accessibility (read | write | read-write) "read">
+   <!ELEMENT W ANY>
+   <!ATTLIST W id ID #REQUIRED
+                  name CDATA "W"
+                  note CDATA ""
+                  backup (yes | no) "no"
+                  inivalue CDATA "0"
+                  accessibility (read | write | read-write) "read">
+   <!ELEMENT resource_date ANY>
+   <!ATTLIST resource_date id ID #REQUIRED
+                  name CDATA "Date"
+                  backup (yes | no) "no"
+                  icon CDATA "_0x29"
+                  note CDATA ""
+                  year CDATA #REQUIRED
+                  month CDATA #REQUIRED
+                  day CDATA #REQUIRED
+                  access (readonly | readwrite | writeonly) "readwrite">
+]>
+<s0_device id="_0x01" product_identifier="_0x9f07" name="Synthetic S0 Meter Product" note="Synthetic oracle - energy meter (måler)" icon="_0x99" ticks="100">
+  <W id="_0x02" name="Power now" />
+  <kWh id="_0x03" name="Energy total" accessibility="read-write" />
+  <resource_date id="_0x04" name="Billing date" year="2000" month="1" day="1" />
+</s0_device>

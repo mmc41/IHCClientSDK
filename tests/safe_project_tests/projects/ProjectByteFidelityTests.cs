@@ -36,7 +36,7 @@ namespace Ihc.Vis.Tests
         [TestCase("project3-KompleksWired-enumvalues.vis")]
         public void Serialize_RoundTrip_IsByteIdentical(string file)
         {
-            byte[] original = TestData.ReadBytes(file);
+            byte[] original = TestData.ReadBytes("projects/" + file);
 
             byte[] reserialized = ProjectSerializer.Serialize(Load(original));
 
@@ -52,7 +52,7 @@ namespace Ihc.Vis.Tests
         [TestCase("project3-KompleksWired-enumvalues.vis")]
         public async Task Save_PreserveExistingMetadata_IsByteIdentical(string file)
         {
-            byte[] original = TestData.ReadBytes(file);
+            byte[] original = TestData.ReadBytes("projects/" + file);
             Project project = Load(original);
             var app = new ProjectAppService(Settings);
 
@@ -65,7 +65,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task Save_Default_ReStampsId2AndModified_LeavesIdentityUntouched()
         {
-            byte[] original = TestData.ReadBytes("Project1-SimpelWired.vis");
+            byte[] original = TestData.ReadBytes("projects/Project1-SimpelWired.vis");
             Project before = Load(original);
 
             // Pin the save clock to the 28th, 09:07:53 → id2 packs day/hour/minute/second.

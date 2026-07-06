@@ -56,7 +56,7 @@ namespace Ihc.Vis.Tests
         public async Task LoadEditResave_NoEdits_PreservesProjectExactly()
         {
             var app = new ProjectAppService(Settings);
-            Project project = await app.Load("testdata/Project1-SimpelWired.vis");
+            Project project = await app.Load("testdata/projects/Project1-SimpelWired.vis");
 
             Project committed = project.Edit().ToProject();
 
@@ -67,7 +67,7 @@ namespace Ihc.Vis.Tests
         public async Task LoadEditResave_AddLink_PreservesEveryExistingId_AndAddsTwoHalves()
         {
             var app = new ProjectAppService(Settings);
-            Project project = await app.Load("testdata/Project1-SimpelWired.vis");
+            Project project = await app.Load("testdata/projects/Project1-SimpelWired.vis");
             HashSet<string> before = Ids(project.Root);
 
             ProjectEditor editor = project.Edit();

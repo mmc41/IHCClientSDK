@@ -16,7 +16,7 @@ namespace Ihc.Vis.Tests
         private const string Oracle = "Project1-SimpelWired.vis";
         private static IhcSettings Settings => TestSetup.Settings;
 
-        private static Task<Project> LoadOracle() => new ProjectAppService(Settings).Load("testdata/" + Oracle);
+        private static Task<Project> LoadOracle() => new ProjectAppService(Settings).Load("testdata/projects/" + Oracle);
 
         private static long HexCounter(string? lastUniqueId) =>
             long.Parse(lastUniqueId!.AsSpan(3), NumberStyles.HexNumber, CultureInfo.InvariantCulture);

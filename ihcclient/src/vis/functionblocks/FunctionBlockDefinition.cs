@@ -1,5 +1,8 @@
 #nullable enable
+using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 
 using Ihc.Vis.Model;
 namespace Ihc.Vis.FunctionBlocks
@@ -11,10 +14,11 @@ namespace Ihc.Vis.FunctionBlocks
     /// </summary>
     /// <remarks>
     /// This is the function-block-level <b>type definition</b> model. Today it is produced by catalog discovery
-    /// from an <c>.ifb</c> file; a future <c>FunctionBlockDefinitionBuilder</c> in this
-    /// <c>Ihc.Vis.FunctionBlocks</c> namespace will author one from code — the function-block-level peer of
-    /// <see cref="Ihc.Vis.Projects.NewProjectBuilder"/> — so the SDK no longer depends on the IHC Visual desktop
-    /// application for function-block definitions. Distinct from the edit-session instance handle
+    /// from an <c>.ifb</c> file; <see cref="FunctionBlockDefinitionBuilder"/> in this <c>Ihc.Vis.FunctionBlocks</c>
+    /// namespace — the function-block-level peer of <see cref="Ihc.Vis.Projects.NewProjectBuilder"/> — will
+    /// additionally author one from code (its surface is defined; the implementation lands in a later session), so
+    /// the SDK need not depend on the IHC Visual desktop application for function-block definitions. Distinct from
+    /// the edit-session instance handle
     /// <see cref="Ihc.Vis.Editing.FunctionBlockRef"/>, which manipulates a block already placed in a project.
     /// </remarks>
     /// <param name="MasterType">The catalog key, e.g. <c>1.1.01</c> (the <c>master_type</c> attribute).</param>
@@ -48,6 +52,36 @@ namespace Ihc.Vis.FunctionBlocks
         /// as a "template" and silently have its identity forged by the rename/re-date that follows.
         /// </summary>
         public bool IsEmptyTemplate { get; init; }
+
+        /// <summary>
+        /// Human-readable help metadata for this block and its pins — <b>programmatic-lookup only</b>, and deliberately
+        /// <b>not</b> part of the serialized <see cref="Body"/>: it is never written into a project <c>.vis</c> or a
+        /// function-block description <c>.ifb</c>. Defaults to <see cref="FunctionBlockDocumentation.Empty"/> (what
+        /// catalog discovery yields, since an <c>.ifb</c> carries no help text). Authored via
+        /// <see cref="FunctionBlockDefinitionBuilder.Documentation(string)"/> and its by-handle overload; see
+        /// <see cref="FunctionBlockDocumentation"/>.
+        /// </summary>
+        public FunctionBlockDocumentation Documentation { get; init; } = FunctionBlockDocumentation.Empty;
+
+        /// <summary>A decoded, read-only view of the block's <c>inputs</c> container children — for GUI preview
+        /// without walking <see cref="Body"/>. Computed on access; not part of record equality.</summary>
+        public IReadOnlyList<ResourceSummary> Inputs => Container("inputs");
+
+        /// <summary>A decoded, read-only view of the block's <c>outputs</c> container children.</summary>
+        public IReadOnlyList<ResourceSummary> Outputs => Container("outputs");
+
+        /// <summary>A decoded, read-only view of the block's <c>settings</c> (public value variables) children.</summary>
+        public IReadOnlyList<ResourceSummary> Settings => Container("settings");
+
+        /// <summary>A decoded, read-only view of the block's <c>internalsettings</c> (private value variables) children.</summary>
+        public IReadOnlyList<ResourceSummary> InternalVariables => Container("internalsettings");
+
+        private IReadOnlyList<ResourceSummary> Container(string container) =>
+            Body.FindChild(container) is { } holder
+                ? holder.ChildrenOrEmpty()
+                        .Select(c => new ResourceSummary(c.Tag, c.GetAttribute("name") ?? string.Empty, c.Id))
+                        .ToArray()
+                : Array.Empty<ResourceSummary>();
 
         public override string ToString() =>
             $"FunctionBlockDefinition(MasterType={MasterType}, MasterVersion={MasterVersion}, MasterName={MasterName}, DisplayName={DisplayName}, CategoryPath={CategoryPath}, Body={Body})";

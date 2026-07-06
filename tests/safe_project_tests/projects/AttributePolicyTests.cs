@@ -19,7 +19,7 @@ namespace Ihc.Vis.Tests
 
         private static Project Load(string name)
         {
-            using var ms = new MemoryStream(TestData.ReadBytes(name));
+            using var ms = new MemoryStream(TestData.ReadBytes("projects/" + name));
             return new ProjectAppService(Settings).Load(ms).GetAwaiter().GetResult();
         }
 

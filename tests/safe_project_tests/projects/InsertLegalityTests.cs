@@ -15,7 +15,7 @@ namespace Ihc.Vis.Tests
     {
         private static IhcSettings Settings => TestSetup.Settings;
 
-        private static Task<Project> Load(string file) => new ProjectAppService(Settings).Load("testdata/" + file);
+        private static Task<Project> Load(string file) => new ProjectAppService(Settings).Load("testdata/projects/" + file);
 
         // The structural parents the model constrains (others are permissive).
         private static readonly HashSet<string> ModeledParents = new()

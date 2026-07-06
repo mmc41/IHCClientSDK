@@ -16,7 +16,7 @@ namespace Ihc.Vis.Tests
         private static IhcSettings Settings => TestSetup.Settings;
 
         private static Task<Project> Load(string name) =>
-            new ProjectAppService(Settings).Load("testdata/" + name);
+            new ProjectAppService(Settings).Load("testdata/projects/" + name);
 
         private static ProjectElement Node(string tag, string? id, (string, string)[] attrs, params ProjectElement[] children)
         {

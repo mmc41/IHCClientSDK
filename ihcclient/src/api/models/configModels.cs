@@ -32,7 +32,7 @@ namespace Ihc {
         public string ProductionDate { get; init; }
 
         /// <summary>
-        /// Brand name of the controller (e.g., LK, Schneider Electric).
+        /// Brand name of the controller, as reported by the controller.
         /// </summary>
         public string Brand { get; init; }
 

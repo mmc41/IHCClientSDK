@@ -17,7 +17,7 @@ namespace Ihc.Vis.Tests
         public async Task AddEnumDefinition_ThenWireResourceEnum_InMutationContext_ValidatesAndRoundTrips()
         {
             var app = new ProjectAppService(Settings);
-            Project project = await app.Load("testdata/project3-KompleksWired.vis");
+            Project project = await app.Load("testdata/projects/project3-KompleksWired.vis");
             ProjectElement tomBlok = project.Root.Descendants()
                 .First(e => e.Tag == "functionblock" && e.GetAttribute("name") == "Tom blok");
             string room = project.FindParent(tomBlok.Id!.Value)!.GetAttribute("name")!;

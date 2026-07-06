@@ -66,7 +66,7 @@ namespace Ihc.Vis.Editing
         /// Scaffolds a from-scratch empty function block ("Tom blok") into this room from the catalog's
         /// <see cref="ICatalog.EmptyFunctionBlockTemplate"/> (<c>Data\fb.def</c>): the five mandatory containers in
         /// fixed order plus one empty <c>program_simple(events, actions)</c>, vendor icon <c>_0xf</c> and fresh ids.
-        /// The block carries no LK/Schneider master identity — only its <paramref name="created"/> date is stamped
+        /// The block carries no vendor/factory master identity — only its <paramref name="created"/> date is stamped
         /// (<c>master_date_year</c>/<c>_month</c>/<c>_day</c>), matching what IHC Visual writes for an authored block.
         /// Returns the block's live handle for adding pins/variables.
         /// </summary>

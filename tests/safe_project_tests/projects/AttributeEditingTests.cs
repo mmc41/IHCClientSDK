@@ -20,7 +20,7 @@ namespace Ihc.Vis.Tests
         private static IhcSettings Settings => TestSetup.Settings;
 
         private static Task<Project> LoadOracle() =>
-            new ProjectAppService(Settings).Load("testdata/" + Oracle);
+            new ProjectAppService(Settings).Load("testdata/projects/" + Oracle);
 
         private static ElementRef FirstProduct(ProjectEditor editor, Project project)
         {
@@ -146,7 +146,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task SetAttribute_SetThenRestore_RoundTripsByteIdentical()
         {
-            byte[] original = TestData.ReadBytes(Oracle);
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
             Project project = await LoadOracle();
             ProjectEditor editor = project.Edit();
             ElementRef product = FirstProduct(editor, project);

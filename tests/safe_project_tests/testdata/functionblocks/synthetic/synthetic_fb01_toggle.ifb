@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE functionblock[
+   <!ELEMENT functionblock ANY>
+   <!ATTLIST functionblock id ID #REQUIRED
+                  name CDATA ""
+                  master_schneider_electric (yes | no) "no"
+                  master_type CDATA ""
+                  master_version CDATA ""
+                  master_name CDATA ""
+                  master_programmer CDATA ""
+                  master_date_year CDATA "0"
+                  master_date_month CDATA "0"
+                  master_date_day CDATA "0"
+                  locked (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  helpfile CDATA ""
+                  udf CDATA "">
+   <!ELEMENT inputs ANY>
+   <!ATTLIST inputs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_input ANY>
+   <!ATTLIST resource_input id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT outputs ANY>
+   <!ATTLIST outputs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_output ANY>
+   <!ATTLIST resource_output id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT settings ANY>
+   <!ATTLIST settings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_timer ANY>
+   <!ATTLIST resource_timer id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  hour CDATA #REQUIRED
+                  minute CDATA #REQUIRED
+                  second CDATA #REQUIRED
+                  millisecond CDATA #REQUIRED
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT internalsettings ANY>
+   <!ATTLIST internalsettings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT programs ANY>
+   <!ATTLIST programs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT program_simple ANY>
+   <!ATTLIST program_simple id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT events ANY>
+   <!ATTLIST events id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT event ANY>
+   <!ATTLIST event id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT actions ANY>
+   <!ATTLIST actions id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  type CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT program_sub ANY>
+   <!ATTLIST program_sub id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT conditions ANY>
+   <!ATTLIST conditions id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  type (and | or) "and"
+                  udf CDATA "">
+   <!ELEMENT condition ANY>
+   <!ATTLIST condition id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT action ANY>
+   <!ATTLIST action id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+]>
+<functionblock id="_0x5128" name="9.1.01.a. Toggle lamp" master_schneider_electric="yes" master_type="9.1.01" master_version="a" master_name="Toggle lamp" master_programmer="Morten Christensen" master_date_year="2026" master_date_month="2" master_date_day="1" locked="yes" icon="_0xe" note="9.1.01.a. Toggle lamp&#xD;&#xA;&#xD;&#xA;Syntetisk demoblok til afprøvning. Tryk på %P for at tænde eller slukke udgangen.&#xD;&#xA;Markér linjen og tryk &quot;F1&quot; for at se en beskrivelse.">
+  <inputs id="_0x5223" name="Input" icon="_0x4" note="Variablene i denne gruppering er indgange til blokken">
+    <resource_input id="_0x5311" name="Tryk" icon="_0x36" note="Aktivér for at skifte udgangen.&#xD;&#xA;(Udfyldes af montøren)" />
+    <resource_input id="_0x5411" name="Tvangssluk" icon="_0x36" note="Tvinger udgangen slukket." />
+  </inputs>
+  <outputs id="_0x5524" name="Output" icon="_0x14" note="Variablene i denne gruppering er udgange fra blokken">
+    <resource_output id="_0x5612" name="Lampe" icon="_0x39" note="Tilsluttes en lampe eller stikkontakt." />
+    <resource_output id="_0x5712" name="ON puls" icon="_0x39" note="Kort puls når udgangen tændes." />
+  </outputs>
+  <settings id="_0x5825" name="Indstillinger" icon="_0xd" note="Indstillinger som brugeren kan ændre">
+    <resource_timer id="_0x5910" name="Sluktimer" icon="_0x43" hour="0" minute="5" second="0" millisecond="0" />
+  </settings>
+  <internalsettings id="_0x5a29" name="Interne variable" icon="_0x13" note="Private variable til blokkens eget brug">
+    <resource_timer id="_0x5b10" name="Afvisningstid" icon="_0x43" hour="0" minute="0" second="0" millisecond="200" />
+  </internalsettings>
+  <programs id="_0x5c26" name="Programmer" icon="_0x19" note="Gruppering af blokkens programmer">
+    <program_simple id="_0x5d1e" name="Skift" icon="_0x7">
+      <events id="_0x5e64" name="Hændelser" icon="_0xb" note="Hændelser der udløser programmet">
+        <event id="_0x5fc8" name="%P -&gt; ON" icon="_0xc" note="Start når %P skifter til ON" link1="_0x5311" method="_0xa" />
+      </events>
+      <actions id="_0x6066" name="Kommandoer" icon="_0x8" note="Kommandoer der udføres når en hændelse indtræffer" type="_0x2">
+        <program_sub id="_0x611f" name="Under program" icon="_0x7">
+          <conditions id="_0x6265" name="Betingelser" icon="_0x16" note="Betingelser der testes logisk">
+            <condition id="_0x63c9" name="%P = OFF" icon="_0x1a" note="Betingelse: %P er slukket" link1="_0x5612" method="_0x14" />
+          </conditions>
+          <actions id="_0x6466" name="Kommandoer ved betingelser sande" icon="_0x8" note="Kommandoer der udføres når betingelserne er opfyldt" type="_0x1">
+            <action id="_0x65ca" name="%P = ON" icon="_0x9" note="Tænder udgangen" link1="_0x5612" method="_0xa" />
+            <action id="_0x66ca" name="%P = ON" icon="_0x9" note="Afgiver ON-puls" link1="_0x5712" method="_0xa" />
+          </actions>
+          <actions id="_0x6766" name="Kommandoer ved betingelser falske" icon="_0x8" note="Kommandoer der udføres når betingelserne ikke er opfyldt">
+            <action id="_0x68ca" name="%P = OFF" icon="_0x9" note="Slukker udgangen" link1="_0x5612" method="_0x14" />
+            <action id="_0x69ca" name="%P = %S" icon="_0x9" note="Sætter %P lig med %S" link1="_0x5612" link2="_0x5712" method="_0x1e" />
+          </actions>
+        </program_sub>
+        <action id="_0x6aca" name="Aktivér nedtælling på %P" icon="_0x9" note="Starter sluktimeren" link1="_0x5910" method="_0xbe" />
+      </actions>
+    </program_simple>
+    <program_simple id="_0x6b1e" name="Tvangssluk" icon="_0x7">
+      <events id="_0x6c64" name="Hændelser" icon="_0xb" note="Hændelser der udløser programmet">
+        <event id="_0x6dc8" name="%P -&gt; ON" icon="_0xc" note="Start når %P skifter til ON" link1="_0x5411" method="_0xa" />
+      </events>
+      <actions id="_0x6e66" name="Kommandoer" icon="_0x8" note="Kommandoer der udføres når en hændelse indtræffer" type="_0x2">
+        <action id="_0x6fca" name="%P = OFF" icon="_0x9" note="Slukker udgangen" link1="_0x5612" method="_0x14" />
+      </actions>
+    </program_simple>
+  </programs>
+</functionblock>

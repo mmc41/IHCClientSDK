@@ -23,7 +23,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task NormalizeCatalogEnums_ReHoistsBuiltInCatalogEnums_ToBottomWithFreshIds()
         {
-            Project project = await new ProjectAppService(Settings).Load("testdata/" + Original);
+            Project project = await new ProjectAppService(Settings).Load("testdata/projects/" + Original);
 
             Project after = project.Edit().NormalizeCatalogEnums().ToProject();
 
@@ -59,7 +59,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task CopySubtree_ProductReferencingSharedEnum_BurnsEnumFootprint()
         {
-            Project project = await new ProjectAppService(Settings).Load("testdata/" + Original);
+            Project project = await new ProjectAppService(Settings).Load("testdata/projects/" + Original);
             ProjectEditor editor = project.Edit();
             editor.NormalizeCatalogEnums();                       // Logning → _0x57347 (+ 6 values)
             Project beforeCopy = editor.ToProject();
@@ -92,9 +92,9 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task Copy_ReplaysProject3CopyOracle_ByteIdentical()
         {
-            byte[] expected = TestData.ReadBytes(CopyOracle);
+            byte[] expected = TestData.ReadBytes("projects/" + CopyOracle);
             var app = new ProjectAppService(Settings);
-            Project original = await app.Load("testdata/" + Original);
+            Project original = await app.Load("testdata/projects/" + Original);
 
             ProjectEditor editor = original.Edit();
             editor.NormalizeCatalogEnums();                    // Action 0  (_0x56d.._0x579)

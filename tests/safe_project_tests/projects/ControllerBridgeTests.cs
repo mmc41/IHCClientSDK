@@ -14,13 +14,13 @@ namespace Ihc.Vis.Tests
     /// </summary>
     public class ControllerBridgeTests
     {
-        // Root header values of testdata/Project1-SimpelWired.vis.
+        // Root header values of testdata/projects/Project1-SimpelWired.vis.
         private const string Project1Id1 = "_0x1b0e3a1f";
         private const string Project1Id2 = "_0x1b0f051b";
         private const string Project1LastUniqueId = "_0x214";
 
         private static string ProjectDataPath =>
-            Path.Combine(AppContext.BaseDirectory, "testdata", "Project1-SimpelWired.vis");
+            Path.Combine(AppContext.BaseDirectory, "testdata", "projects", "Project1-SimpelWired.vis");
 
         private static ProjectAppService NewService(IControllerService controller, TimeProvider? clock = null) =>
             new ProjectAppService(

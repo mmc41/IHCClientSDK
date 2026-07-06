@@ -38,7 +38,7 @@ namespace Ihc.Vis.Tests
 
         private static Project LoadEmpty()
         {
-            using var ms = new MemoryStream(TestData.ReadBytes("Project0-Tomt.vis"));
+            using var ms = new MemoryStream(TestData.ReadBytes("projects/Project0-Tomt.vis"));
             return new ProjectAppService(TestSetup.Settings).Load(ms).GetAwaiter().GetResult();
         }
 
