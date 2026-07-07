@@ -66,7 +66,7 @@ namespace Ihc.Vis.CatalogCodegen
             ElementSchema? rootSchema = grammar.TryGet(body.Tag);
             foreach ((string name, string value) in body.AttrsOrEmpty())
             {
-                if (name is "id" or "product_identifier" or "name" || !ShouldEmit(rootSchema, body.Tag, name, value))
+                if (name is "id" or "product_identifier" or "name" || !LeanBake.ShouldEmit(rootSchema, body.Tag, name, value))
                 {
                     continue;
                 }
@@ -123,7 +123,7 @@ namespace Ihc.Vis.CatalogCodegen
             ElementSchema? schema = grammar.TryGet("scenes");
             foreach ((string name, string value) in scenes.AttrsOrEmpty())
             {
-                if (name is not ("id" or "name" or "scene_resource") && ShouldEmit(schema, "scenes", name, value))
+                if (name is not ("id" or "name" or "scene_resource") && LeanBake.ShouldEmit(schema, "scenes", name, value))
                 {
                     return false;   // a note or other non-default attribute AddScenes cannot carry
                 }
@@ -142,33 +142,6 @@ namespace Ihc.Vis.CatalogCodegen
                 }
             }
             return sceneResource == lastAddable;
-        }
-
-        // Whether to bake an attribute into the lean body. An attribute is safe to OMIT only when the canonicalizer
-        // would drop it under BOTH the source (.def catalog) grammar AND the project registry grammar — i.e. its value
-        // equals the declared default in each. This is the catalog-vs-project DTD-default bake (B1c): a value that
-        // equals the catalog default but differs from the registry default (e.g. a family's `locked`/`enduser_report`,
-        // `dimmer_setting_load_mode`) must still be baked, or on insert the registry default would silently override it
-        // and change the placed instance. Baking a value that equals the catalog default is harmless — it drops again
-        // under catalog-grammar canonicalization, so the self-verify against the .def stays green.
-        private static bool ShouldEmit(ElementSchema? catalogSchema, string tag, string name, string value)
-        {
-            if (!IsDroppableUnder(catalogSchema, name, value))
-            {
-                return true;   // #REQUIRED / #IMPLIED / undeclared / value ≠ catalog default
-            }
-            ElementSchema? registrySchema = ProjectSchemaView.RegistryOnly.TryGet(tag);
-            if (registrySchema is null)
-            {
-                return false;   // open-world tag: its captured inline-DTD block (== catalog grammar) governs on insert
-            }
-            return !IsDroppableUnder(registrySchema, name, value);   // bake when the registry default differs
-        }
-
-        private static bool IsDroppableUnder(ElementSchema? schema, string name, string value)
-        {
-            AttrSchema? attr = schema?.FindAttr(name);
-            return attr is not null && attr.Kind == AttrKind.Defaulted && value == attr.Default;
         }
 
         // ---- body-child dispatch ----
@@ -287,7 +260,7 @@ namespace Ihc.Vis.CatalogCodegen
             ElementSchema? schema = grammar.TryGet("scenes");
             foreach ((string name, string value) in scenes.AttrsOrEmpty())
             {
-                if (name is not ("id" or "name" or "scene_resource") && ShouldEmit(schema, "scenes", name, value))
+                if (name is not ("id" or "name" or "scene_resource") && LeanBake.ShouldEmit(schema, "scenes", name, value))
                 {
                     throw new DecompileNotSupportedException(
                         $"scenes carries a non-default '{name}' attribute AddScenes cannot express — needs RawChild (B1b).");
@@ -315,7 +288,7 @@ namespace Ihc.Vis.CatalogCodegen
             var config = ImmutableArray.CreateBuilder<ResourceCall>();
             foreach ((string attrName, string attrValue) in child.AttrsOrEmpty())
             {
-                if (attrName is "id" or "name" || !ShouldEmit(schema, child.Tag, attrName, attrValue))
+                if (attrName is "id" or "name" || !LeanBake.ShouldEmit(schema, child.Tag, attrName, attrValue))
                 {
                     continue;
                 }
@@ -397,7 +370,7 @@ namespace Ihc.Vis.CatalogCodegen
             var attrs = ImmutableArray.CreateBuilder<(string, string)>();
             foreach ((string name, string value) in element.AttrsOrEmpty())
             {
-                if (name == "id" || ShouldEmit(schema, element.Tag, name, value))
+                if (name == "id" || LeanBake.ShouldEmit(schema, element.Tag, name, value))
                 {
                     attrs.Add((name, value));
                 }

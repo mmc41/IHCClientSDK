@@ -11,21 +11,13 @@ namespace Ihc.Vis.Tests
     /// Phase-3 edit-session gates: building from scratch through the mutable session validates clean and re-loads
     /// structurally equal (gate c); loading→editing→re-saving preserves every existing <c>_0x</c> id (gate d, no
     /// install dir needed); and opening+committing a created project with no edits reproduces it (gate e). The
-    /// catalog-backed gates skip gracefully without an IHC Visual install.
+    /// catalog-backed gates run install-free against the SDK-embedded <see cref="BuiltInCatalog"/>.
     /// </summary>
     public class EditSessionTests
     {
         private static IhcSettings Settings => TestSetup.Settings;
 
-        private static ICatalog RequireCatalog()
-        {
-            string dir = Settings.IhcVisualInstallDir;
-            if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
-            {
-                Assert.Ignore($"No IHC Visual install dir configured ('{dir}'); skipping install-dir-gated test.");
-            }
-            return CatalogDiscovery.FromInstallDir(dir);
-        }
+        private static ICatalog RequireCatalog() => new BuiltInCatalog();
 
         private static FakeTimeProvider Clock() => new(new DateTimeOffset(2026, 6, 27, 16, 5, 51, TimeSpan.Zero));
 

@@ -41,6 +41,11 @@ namespace Ihc.Vis.CatalogCodegen
                 return RunSelfTest(options.SelfTestDir, options.Preview);
             }
 
+            if (options.SelfTestFbDir is not null)
+            {
+                return RunFbSelfTest(options.SelfTestFbDir, options.Preview);
+            }
+
             if (!TryResolveInstallDirs(options.InstallDir, out CatalogPaths paths, out string? dirError))
             {
                 Console.Error.WriteLine($"error: {dirError}");
@@ -49,7 +54,7 @@ namespace Ihc.Vis.CatalogCodegen
 
             if (options.OutDir is not null && !options.DryRun)
             {
-                return RunEmit(paths.ProductsDir, options.OutDir);
+                return RunEmit(paths, options.OutDir);
             }
             return Enumerate(paths, options);
         }
@@ -57,21 +62,32 @@ namespace Ihc.Vis.CatalogCodegen
         // Decompiles every product .def, self-verifies each, and (only if all pass) writes the committed
         // BuiltInCatalog.Products.g.cs. A single self-verify failure aborts the whole emit — a partial catalog is worse
         // than none. Reads only counts + failures into view; the generated body is never echoed.
-        private static int RunEmit(string productsDir, string outDir)
+        private static int RunEmit(CatalogPaths paths, string outDir)
         {
-            EmitReport report = ProductCatalogEmitter.Emit(productsDir, outDir);
-            Console.WriteLine($"emit: scanned {report.Scanned} product .def; {report.Emitted} recipes self-verified.");
-            foreach (string failure in report.Failures)
+            EmitReport products = ProductCatalogEmitter.Emit(paths.ProductsDir, outDir);
+            Console.WriteLine($"emit: scanned {products.Scanned} product .def; {products.Emitted} recipes self-verified.");
+            foreach (string failure in products.Failures)
             {
                 Console.WriteLine($"  {failure}");
             }
-            if (!report.Written)
+
+            EmitReport functionBlocks = FunctionBlockCatalogEmitter.Emit(paths.FunctionBlocksDir, outDir);
+            Console.WriteLine(
+                $"emit: scanned {functionBlocks.Scanned} function-block .ifb; {functionBlocks.Emitted} recipes self-verified.");
+            foreach (string failure in functionBlocks.Failures)
+            {
+                Console.WriteLine($"  {failure}");
+            }
+
+            if (!products.Written || !functionBlocks.Written)
             {
                 Console.Error.WriteLine(
-                    $"emit ABORTED — {report.Failures.Count} product(s) failed; nothing written.");
+                    $"emit ABORTED — {products.Failures.Count} product(s) + {functionBlocks.Failures.Count} block(s) failed; "
+                    + "nothing usable written.");
                 return 1;
             }
-            Console.WriteLine($"wrote {report.OutputPath}");
+            Console.WriteLine($"wrote {products.OutputPath}");
+            Console.WriteLine($"wrote {functionBlocks.OutputPath}");
             return 0;
         }
 
@@ -133,6 +149,65 @@ namespace Ihc.Vis.CatalogCodegen
             }
             Console.WriteLine();
             Console.WriteLine($"self-test summary: {pass} pass, {unsupported} unsupported, {fail} fail");
+            return fail == 0 ? 0 : 1;
+        }
+
+        // Decompiles every function-block .ifb under a directory, replays each recipe against the real builder and
+        // verifies it reproduces the source file (the same normalize/compare the oracle tests use). Constructs not yet
+        // reversed are reported UNSUPPORTED, not failures. Returns non-zero only when a supported recipe fails verify.
+        private static int RunFbSelfTest(string dir, bool preview)
+        {
+            if (!Directory.Exists(dir))
+            {
+                Console.Error.WriteLine($"error: self-test-fb dir '{dir}' does not exist.");
+                return 1;
+            }
+            IReadOnlyList<string> files = FilesSorted(dir, "*.ifb");
+            Console.WriteLine($"self-test-fb: {files.Count} function-block .ifb under {dir}");
+            int pass = 0, unsupported = 0, fail = 0;
+            foreach (string path in files)
+            {
+                string name = Path.GetFileName(path);
+                string categoryPath = Path.GetDirectoryName(Path.GetRelativePath(dir, path)) ?? string.Empty;
+                FunctionBlockSource source = CatalogSourceFile.ReadFunctionBlock(path, categoryPath);
+                FunctionBlockRecipe recipe;
+                try
+                {
+                    recipe = FunctionBlockDecompiler.Decompile(source.Definition, source.Blocks);
+                }
+                catch (DecompileNotSupportedException ex)
+                {
+                    unsupported++;
+                    Console.WriteLine($"  UNSUPPORTED  {name}  ({ex.Message})");
+                    continue;
+                }
+
+                VerifyResult result = FbSelfVerify.Verify(recipe, source);
+                if (result.Ok)
+                {
+                    pass++;
+                    Console.WriteLine($"  PASS         {name}  [{source.Definition.MasterType}]");
+                    if (preview)
+                    {
+                        Console.WriteLine();
+                        Console.WriteLine(recipe.RenderMethod("FunctionBlock_" + name.Replace('.', '_')));
+                    }
+                }
+                else
+                {
+                    fail++;
+                    Console.WriteLine($"  FAIL         {name}  ({result.Reason})");
+                    if (result.Expected is not null)
+                    {
+                        Console.WriteLine("   --- expected (oracle) ---");
+                        Console.WriteLine(result.Expected);
+                        Console.WriteLine("   --- actual (builder) ---");
+                        Console.WriteLine(result.Actual);
+                    }
+                }
+            }
+            Console.WriteLine();
+            Console.WriteLine($"self-test-fb summary: {pass} pass, {unsupported} unsupported, {fail} fail");
             return fail == 0 ? 0 : 1;
         }
 
@@ -226,12 +301,14 @@ namespace Ihc.Vis.CatalogCodegen
                 "\n" +
                 "usage: ihc_catalog_codegen --install-dir <dir> [--out <dir>] [--dry-run] [--help]\n" +
                 "       ihc_catalog_codegen --self-test <dir> [--preview]\n" +
+                "       ihc_catalog_codegen --self-test-fb <dir> [--preview]\n" +
                 "\n" +
                 "  --install-dir <dir>  Read-only IHC Visual install dir (contains Products\\, FunctionBlocks\\, Data\\).\n" +
                 "  --out <dir>          Output dir for generated *.g.cs (Phase B; ignored in this scaffold).\n" +
                 "  --dry-run            Enumerate and self-verify without writing (the only mode in this scaffold).\n" +
                 "  --self-test <dir>    Decompile every product .def under <dir> and verify each recipe reproduces its\n" +
                 "                       source file (points at a folder of .def files, e.g. the synthetic oracles).\n" +
+                "  --self-test-fb <dir> Decompile every function-block .ifb under <dir> and verify each recipe.\n" +
                 "  --preview            With --self-test, print the generated factory method for each passing product.\n" +
                 "  --help               Show this help.\n" +
                 "\n" +
@@ -240,6 +317,7 @@ namespace Ihc.Vis.CatalogCodegen
             public string? InstallDir { get; private init; }
             public string? OutDir { get; private init; }
             public string? SelfTestDir { get; private init; }
+            public string? SelfTestFbDir { get; private init; }
             public bool DryRun { get; private init; }
             public bool Preview { get; private init; }
             public bool ShowHelp { get; private init; }
@@ -254,6 +332,7 @@ namespace Ihc.Vis.CatalogCodegen
                 string? installDir = null;
                 string? outDir = null;
                 string? selfTestDir = null;
+                string? selfTestFbDir = null;
                 bool dryRun = false;
                 bool preview = false;
                 bool help = false;
@@ -291,6 +370,13 @@ namespace Ihc.Vis.CatalogCodegen
                                 return null;
                             }
                             break;
+                        case "--self-test-fb":
+                            if (!TryTakeValue(args, ref i, out selfTestFbDir))
+                            {
+                                error = "--self-test-fb requires a value.";
+                                return null;
+                            }
+                            break;
                         default:
                             error = $"unknown argument '{args[i]}'.";
                             return null;
@@ -301,6 +387,7 @@ namespace Ihc.Vis.CatalogCodegen
                     InstallDir = installDir,
                     OutDir = outDir,
                     SelfTestDir = selfTestDir,
+                    SelfTestFbDir = selfTestFbDir,
                     DryRun = dryRun,
                     Preview = preview,
                     ShowHelp = help,

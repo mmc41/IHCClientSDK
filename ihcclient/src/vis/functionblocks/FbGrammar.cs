@@ -76,6 +76,25 @@ namespace Ihc.Vis.FunctionBlocks
         public const string ActionIcon = "_0x9";
         public const string EnumOperandIcon = "_0x22";
 
+        // program_case / case_action: a switch on a variable (program_case@link) with per-value case_action branches
+        // (each embedding a bare resource_enum operand named by case_action@value) plus a trailing default actions
+        // container. Icons match the program_sub / actions glyphs; the default-branch name/note are the vendor strings.
+        public const string ProgramCaseIcon = "_0x7";
+        public const string CaseActionIcon = "_0x8";
+        public const string CaseActionName = "Case";
+        public const string DefaultCaseName = "Udføres når ingen case er lig case værdien";
+        public const string DefaultCaseNote = "Udføres når ingen case er lig case værdien";
+        public const string DefaultCaseType = "_0x1";
+
+        // The display name IHC Visual composes from a block's master identity: bare name for a keyless user block,
+        // "{type}. {name}" for a versionless stock block, else "{type}.{version}. {name}". The builder stamps this by
+        // default and the decompiler recomputes it to decide whether a .DisplayName(..) override is needed, so both must
+        // read from this one formula.
+        public static string ComposeDisplayName(string? masterType, string? masterVersion, string masterName) =>
+            string.IsNullOrEmpty(masterType) ? masterName
+            : string.IsNullOrEmpty(masterVersion) ? $"{masterType}. {masterName}"
+            : $"{masterType}.{masterVersion}. {masterName}";
+
         private static readonly ProjectElement[] NoChildren = Array.Empty<ProjectElement>();
 
         // The per-resource-type presentation attributes IHC Visual stamps on a freshly-authored resource: the canonical

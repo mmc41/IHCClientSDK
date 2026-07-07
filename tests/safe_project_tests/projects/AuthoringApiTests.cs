@@ -20,7 +20,7 @@ namespace Ihc.Vis.Tests
         [Test, Explicit("Stage 1: authoring-API preview against stubs; reconstructs Project1-SimpelWired.vis — not run")]
         public void BuildProject1_FromCode_ShowsAuthoringApi()
         {
-            var cat   = CatalogDiscovery.FromInstallDir(settings.IhcVisualInstallDir);
+            var cat   = new BuiltInCatalog();
             var clock = new FakeTimeProvider(new DateTimeOffset(2026, 6, 27, 14, 58, 31, TimeSpan.Zero)); // creation time → id1
             var app   = new ProjectAppService(settings, cat, clock);
 
@@ -96,7 +96,7 @@ namespace Ihc.Vis.Tests
         [Test, Explicit("Stage 1: authoring-API preview against stubs; load → edit → resave entry — not run")]
         public async Task EditLoadedProject_AddLink_ShowsRoundTripEntry()
         {
-            var cat   = CatalogDiscovery.FromInstallDir(settings.IhcVisualInstallDir);
+            var cat   = new BuiltInCatalog();
             var clock = new FakeTimeProvider(new DateTimeOffset(2026, 6, 28, 10, 0, 0, TimeSpan.Zero));
             var app   = new ProjectAppService(settings, cat, clock);
 

@@ -31,9 +31,10 @@ namespace Ihc.Vis
     /// <see cref="Validate"/> (the pre-serialize checklist), catalog discovery
     /// (<see cref="GetAvailableProducts"/>/<see cref="GetAvailableFunctionBlocks"/>), and the controller bridge
     /// (<see cref="DownloadFrom"/>/<see cref="UploadTo"/>, which rides the same <c>Load</c>/<c>Save</c> stream
-    /// overloads). Editing a loaded/created project starts via its <c>Edit()</c> extension. Catalog discovery is
-    /// lazy, so file and controller IO never require an IHC Visual install — only <see cref="CreateNew"/> and the
-    /// <c>GetAvailable*</c> methods force it.
+    /// overloads). Editing a loaded/created project starts via its <c>Edit()</c> extension. The catalog is the
+    /// SDK-embedded <see cref="BuiltInCatalog"/>, materialized lazily on first catalog use, so no operation —
+    /// file/controller IO, <see cref="CreateNew"/>, or the <c>GetAvailable*</c> methods — requires an IHC Visual
+    /// install at runtime.
     /// </remarks>
     public sealed class ProjectAppService : AppServiceBase
     {
@@ -46,17 +47,18 @@ namespace Ihc.Vis
 
         /// <summary>
         /// Creates a service from settings, with an optional <paramref name="controller"/> for the
-        /// download/upload bridge (omit it for file-only use). It builds its own <see cref="CatalogDiscovery"/>
-        /// from <see cref="IhcSettings.IhcVisualInstallDir"/> (lazily, on first catalog use, so file/controller
-        /// IO that needs no catalog never requires an IHC Visual install) and uses the system clock
-        /// (<see cref="TimeProvider.System"/>).
+        /// download/upload bridge (omit it for file-only use). Its catalog is the SDK-embedded
+        /// <see cref="BuiltInCatalog"/> (materialized lazily, on first catalog use), so it needs no IHC Visual
+        /// install at runtime — file/controller IO that needs no catalog never touches it, and
+        /// <see cref="CreateNew"/>/<c>GetAvailable*</c> resolve against the embedded catalog. It uses the system
+        /// clock (<see cref="TimeProvider.System"/>).
         /// </summary>
         public ProjectAppService(IhcSettings settings, IControllerService? controller = null)
             : this(settings,
-                   // PublicationOnly never caches a factory exception: a transient IO failure (or a not-yet-mounted
-                   // install dir) must not permanently poison CreateNew/GetAvailable* on this instance.
-                   new Lazy<ICatalog>(() => CatalogDiscovery.FromInstallDir(settings.IhcVisualInstallDir),
-                                      LazyThreadSafetyMode.PublicationOnly),
+                   // Lazy so the built-in catalog (~173 components) is not materialized until a catalog operation
+                   // (CreateNew/GetAvailable*/Import) runs — file/controller IO needs no catalog. PublicationOnly
+                   // never caches a factory exception.
+                   new Lazy<ICatalog>(() => new BuiltInCatalog(), LazyThreadSafetyMode.PublicationOnly),
                    TimeProvider.System,
                    controller)
         {

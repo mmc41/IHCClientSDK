@@ -78,9 +78,11 @@ namespace Ihc
         public bool AllowDangerousInternTestCalls { get; set; }
 
         /// <summary>
-        /// Filesystem path to the installed IHC Visual application folder, used by the project-edit
-        /// service to auto-discover products (Products\*.def) and function blocks (FunctionBlocks\*.ifb)
-        /// and to read File→New templates (Data\*). Binds from the "ihcVisualInstallDir" key (optional value).
+        /// Filesystem path to an installed IHC Visual application folder. The runtime project-edit service no
+        /// longer reads this — it ships the SDK-embedded <c>BuiltInCatalog</c> and needs no install. Retained only
+        /// as input to the dev-time catalog code generator (utilities/ihc_catalog_codegen), which scans
+        /// Products\*.def / FunctionBlocks\*.ifb / Data\* to regenerate the embedded catalog. Binds from the
+        /// "ihcVisualInstallDir" key (optional value).
         /// </summary>
         public string IhcVisualInstallDir { get; set; }
 

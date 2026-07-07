@@ -83,48 +83,6 @@ namespace Ihc.Vis.Tests
             }
         }
 
-        // ----- the lazy catalog recovers once the install dir appears -----
-
-        [Test]
-        public void GetAvailableProducts_TransientFailure_IsRetriedOnceTheInstallDirExists()
-        {
-            string dir = Path.Combine(Path.GetTempPath(), "ihc-cat-" + Guid.NewGuid().ToString("N"));
-            var app = new ProjectAppService(new IhcSettings { IhcVisualInstallDir = dir });
-            try
-            {
-                Assert.That(() => app.GetAvailableProducts(), Throws.TypeOf<DirectoryNotFoundException>(),
-                    "first call: the dir does not exist yet");
-
-                WriteMinimalInstallDir(dir);
-
-                Assert.That(app.GetAvailableProducts(), Is.Empty,
-                    "the first failure must not permanently poison the service instance");
-            }
-            finally
-            {
-                Directory.Delete(dir, recursive: true);
-            }
-        }
-
-        private static void WriteMinimalInstallDir(string dir)
-        {
-            Directory.CreateDirectory(Path.Combine(dir, "Products"));
-            Directory.CreateDirectory(Path.Combine(dir, "FunctionBlocks"));
-            Directory.CreateDirectory(Path.Combine(dir, "Data"));
-            const string prolog = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\r\n";
-            File.WriteAllText(Path.Combine(dir, "Data", "NewDoc.idf"),
-                prolog + "<utcs_project last_unique_id=\"_0x40\"><enum_definitions id=\"_0x3046\" name=\"E\"/>" +
-                "<groups id=\"_0x2031\" name=\"L\"/></utcs_project>",
-                Encoding.Latin1);
-            File.WriteAllText(Path.Combine(dir, "Data", "EnumeratorDefinitions.def"),
-                prolog + "<enumerator_definitions><enum_definition id=\"_0x147\" typeid=\"_0x10\" name=\"X\">" +
-                "<enum_value id=\"_0x248\" typeid=\"_0x11\" name=\"V\"/></enum_definition></enumerator_definitions>",
-                Encoding.Latin1);
-            File.WriteAllText(Path.Combine(dir, "Data", "fb.def"),
-                prolog + "<functionblock id=\"_0x129\" name=\"Tom blok\"/>",
-                Encoding.Latin1);
-        }
-
         // ----- File→New seeding -----
 
         private static ICatalog FakeCatalog(ProjectElement skeleton, ProjectElement enumTemplate)

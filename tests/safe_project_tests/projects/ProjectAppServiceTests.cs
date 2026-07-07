@@ -56,33 +56,27 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
-        public void GetAvailable_FromInstallDir_DiscoversTheRealCatalogThroughTheService()
+        public void GetAvailable_ThroughTheSettingsOnlyCtor_DiscoversTheEmbeddedCatalog()
         {
-            // The settings-only ctor builds its own lazy CatalogDiscovery from IhcVisualInstallDir; this proves
-            // that production wiring end-to-end (skips when no install dir is configured).
-            string dir = Settings.IhcVisualInstallDir;
-            if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
-            {
-                Assert.Ignore($"No IHC Visual install dir configured ('{dir}'); skipping install-dir-gated test.");
-            }
-
+            // The settings-only ctor wires the SDK-embedded BuiltInCatalog (no IhcVisualInstallDir read); this proves
+            // the production default resolves the full ~173-component catalog with no IHC Visual install present.
             var app = new ProjectAppService(Settings);
 
             Assert.Multiple(() =>
             {
                 Assert.That(app.GetAvailableProducts(), Has.Count.GreaterThanOrEqualTo(100));
                 Assert.That(app.GetAvailableProducts().Any(p => p.ProductIdentifier == "_0x2101"), Is.True,
-                    "LK FUGA Tryk 2 tast is discovered");
+                    "LK FUGA Tryk 2 tast is embedded");
                 Assert.That(app.GetAvailableFunctionBlocks(), Has.Count.GreaterThanOrEqualTo(72));
                 Assert.That(app.GetAvailableFunctionBlocks().Any(f => f.MasterType == "1.1.01"), Is.True,
-                    "Kip tænd sluk is discovered");
+                    "Kip tænd sluk is embedded");
             });
         }
 
-        // ----- the catalog is lazy: file IO must never require an IHC Visual install -----
+        // ----- neither file IO nor catalog discovery reads the install dir (retired at runtime) -----
 
         [Test]
-        public async Task FileIo_DoesNotForceCatalogDiscovery_EvenWithABogusInstallDir()
+        public async Task FileIoAndCatalog_NeedNoInstallDir_EvenWithABogusOne()
         {
             var settings = new IhcSettings { IhcVisualInstallDir = @"Z:\no\such\ihc-visual\dir" };
             var app = new ProjectAppService(settings);
@@ -94,9 +88,9 @@ namespace Ihc.Vis.Tests
             await app.Save(project, ms, ProjectSaveOptions.PreserveExistingMetadata);
             TestData.AssertBytesIdentical(original, ms.ToArray(), "file-only round-trip with bogus install dir");
 
-            // Forcing the catalog (GetAvailableProducts) is the only thing that hits the dir — and it fails loudly,
-            // confirming the round-trip above succeeded purely because discovery stayed lazy.
-            Assert.That(() => app.GetAvailableProducts(), Throws.TypeOf<DirectoryNotFoundException>());
+            // Forcing the catalog resolves the SDK-embedded BuiltInCatalog — the bogus install dir is never read,
+            // confirming the runtime has no IHC Visual install dependency.
+            Assert.That(app.GetAvailableProducts(), Has.Count.GreaterThanOrEqualTo(100));
         }
 
         // ----- the controller bridge requires a controller-injecting ctor -----

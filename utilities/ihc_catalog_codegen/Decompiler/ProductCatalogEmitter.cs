@@ -7,8 +7,9 @@ using System.Text;
 
 namespace Ihc.Vis.CatalogCodegen
 {
-    /// <summary>Outcome of a catalog emit: how many products were scanned/emitted, any per-file failures, and whether a
-    /// file was actually written (nothing is written unless every product self-verified).</summary>
+    /// <summary>Outcome of a catalog emit (products or function blocks): how many components were scanned/emitted, any
+    /// per-file failures, and whether a file was actually written (nothing is written unless every component
+    /// self-verified). Shared by <see cref="ProductCatalogEmitter"/> and <see cref="FunctionBlockCatalogEmitter"/>.</summary>
     internal sealed record EmitReport(int Scanned, int Emitted, IReadOnlyList<string> Failures, bool Written,
         string? OutputPath);
 

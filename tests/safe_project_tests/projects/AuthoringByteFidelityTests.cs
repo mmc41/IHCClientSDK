@@ -10,7 +10,7 @@ namespace Ihc.Vis.Tests
     /// The E2E authoring byte-fidelity track (E13) — reconstruct each authentic oracle from scratch through the
     /// public builder API and assert byte-identity via the <see cref="BuildFidelity"/> harness (BL-E0). BL-E1
     /// (Project0-Tomt via template <see cref="ProjectAppService.CreateNew"/>) is the reference pattern that
-    /// establishes the harness; the content builds (BL-E2…E4) follow. Install-dir gated.
+    /// establishes the harness; the content builds (BL-E2…E4) follow. Install-free (SDK-embedded catalog).
     /// </summary>
     public class AuthoringByteFidelityTests
     {
@@ -23,11 +23,11 @@ namespace Ihc.Vis.Tests
         // links (6 ids) right after the Kip block — before starting the Entré room — whereas the original test
         // created all links last, shifting every later element by −6. Placing the Kip links immediately after the
         // Kip block (output link first, matching the vendor's 193–198 order) closes the gap with zero engine changes.
-        // Install-dir gated via RequireCatalog.
+        // Install-free (SDK-embedded catalog via RequireCatalog).
         [Test]
         public async Task BL_E2_ReproducesProject1SimpelWired_FromFluentBuilders()
         {
-            ICatalog cat = BuildFidelity.RequireCatalog(Settings);
+            ICatalog cat = BuildFidelity.RequireCatalog();
             // Creation 27th 14:58:31 → id1 = _0x1b0e3a1f; the default save re-stamps at 15:05:27 → id2/modified.
             var clock = new FakeTimeProvider(new DateTimeOffset(2026, 6, 27, 14, 58, 31, TimeSpan.Zero));
             var app = new ProjectAppService(Settings, cat, clock);
@@ -97,11 +97,11 @@ namespace Ihc.Vis.Tests
         // permanent 9-id hole 407–415 (R-enum; tmp/experiments/out/B3/findings.md Part A). Live-authored in IHC
         // Visual 03.04.72.03 (B3 step02-pir2). Header stamps decode via PackedStamp (Day<<24|Hour<<16|Min<<8|Sec):
         // id1 _0x3101b23 → creation 3rd 16:27:35; id2 _0x3101c22 → save 3rd 16:28:34 (modified 16:28);
-        // last_unique_id _0x2da (730). Install-dir gated.
+        // last_unique_id _0x2da (730). Install-free (SDK-embedded catalog).
         [Test]
         public async Task EnumDedup_RepeatedPirInsert_MatchesLiveOracle_ByteIdentical()
         {
-            ICatalog cat = BuildFidelity.RequireCatalog(Settings);
+            ICatalog cat = BuildFidelity.RequireCatalog();
             var clock = new FakeTimeProvider(new DateTimeOffset(2026, 7, 3, 16, 27, 35, TimeSpan.Zero));
             var app = new ProjectAppService(Settings, cat, clock);
 
@@ -126,11 +126,11 @@ namespace Ihc.Vis.Tests
         // discarded, leaving one 2-id hole per insert (82/83, 94/95, 106/107) and every product resource_enum
         // pointing back at _0x4747 (R-enum; B3 findings Part B). Live-authored in IHC Visual 03.04.72.03
         // (B3 step06-luxtemp). id1 _0x3101e29 → creation 3rd 16:30:41; id2 _0x3102107 → save 3rd 16:33:07
-        // (modified 16:33); last_unique_id _0x73 (115). Install-dir gated.
+        // (modified 16:33); last_unique_id _0x73 (115). Install-free (SDK-embedded catalog).
         [Test]
         public async Task EnumDedup_LogningProducts_MatchesLiveOracle_ByteIdentical()
         {
-            ICatalog cat = BuildFidelity.RequireCatalog(Settings);
+            ICatalog cat = BuildFidelity.RequireCatalog();
             var clock = new FakeTimeProvider(new DateTimeOffset(2026, 7, 3, 16, 30, 41, TimeSpan.Zero));
             var app = new ProjectAppService(Settings, cat, clock);
 
@@ -156,7 +156,7 @@ namespace Ihc.Vis.Tests
         // program_sub/conditions/actions + a user enum). Built INCREMENTALLY as M3's surface lands: seed knob (3.2),
         // AutoProof name-lookup (3.3), AddEnumDefinition (3.4), ProgramBuilder (3.5), reorder/delete replay (3.6).
         // id1 _0x3071722 → creation 3rd 07:23:34; id2 _0x3072b2d → save 3rd 07:43:45 (modified 7:43);
-        // last_unique_id _0xf7 (247). Install-dir gated. See tmp/e3-divergence-log.md.
+        // last_unique_id _0xf7 (247). Install-free (SDK-embedded catalog). See tmp/e3-divergence-log.md.
         // The canonical 18-type value palette IHC Visual offers, in the fixed order it materializes them (blueprint
         // §PALETTE). Reused for the settings/internalsettings/inputs/outputs fills (each with its own head variations).
         private static readonly (string Tag, string Name)[] ValuePalette =
@@ -172,7 +172,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task BL_E3_ReproducesProject2CustomBlock_FromFluentBuilders()
         {
-            ICatalog cat = BuildFidelity.RequireCatalog(Settings);
+            ICatalog cat = BuildFidelity.RequireCatalog();
             var clock = new FakeTimeProvider(new DateTimeOffset(2026, 7, 3, 7, 23, 34, TimeSpan.Zero));
             var app = new ProjectAppService(Settings, cat, clock);
 
@@ -342,7 +342,7 @@ namespace Ihc.Vis.Tests
         // two "med logning" enum-dedup inserts, 6 catalog FBs (three carrying hoisted enums), a user global enum
         // "TestEnum" (0 values), three "Tom blok" empty FBs (one with 9 internal variables), 3 follow-links, and a
         // trailing new room "Lokalitet". id1 _0x1d0e2923 → creation 29th 14:41:35; id2 _0x1d143707 → save 29th
-        // 20:55:07 (modified 2026-06-29 20:55); last_unique_id _0x56c (1388). Install-dir gated. See tmp/e4-divergence-log.md.
+        // 20:55:07 (modified 2026-06-29 20:55); last_unique_id _0x56c (1388). Install-free (SDK-embedded catalog). See tmp/e4-divergence-log.md.
         // Drove to byte-identity (236,518 bytes) via the M4 first-divergence loop; gaps closed en route: NormalizeTokens
         // (airlink device_type "_0x080a"→"_0x80a"), the _0x4306 catalog-collision pick, InsertStamps (airlink
         // serialnumber + RS-485 channel_id null tokens "_0x0"), NormalizeEnums (s0 kWh accessibility typo
@@ -350,7 +350,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task BL_E4_ReproducesProject3KompleksWired_FromFluentBuilders()
         {
-            ICatalog cat = BuildFidelity.RequireCatalog(Settings);
+            ICatalog cat = BuildFidelity.RequireCatalog();
             var clock = new FakeTimeProvider(new DateTimeOffset(2026, 6, 29, 14, 41, 35, TimeSpan.Zero));
             var app = new ProjectAppService(Settings, cat, clock);
 
@@ -443,7 +443,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task BL_E0_Harness_ReproducesProject0Tomt_ViaCreateNew()
         {
-            ICatalog catalog = BuildFidelity.RequireCatalog(Settings);
+            ICatalog catalog = BuildFidelity.RequireCatalog();
             // Creation 27th 16:05:51 → id1; the default save advances 14s to 16:06:05 → id2/modified.
             var clock = new FakeTimeProvider(new DateTimeOffset(2026, 6, 27, 16, 5, 51, TimeSpan.Zero));
             var app = new ProjectAppService(Settings, catalog, clock);

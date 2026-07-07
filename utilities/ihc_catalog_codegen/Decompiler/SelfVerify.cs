@@ -1,13 +1,10 @@
 #nullable enable
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 
 using Ihc.Vis.Catalog;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
-using Ihc.Vis.Schema;
 
 namespace Ihc.Vis.CatalogCodegen
 {
@@ -53,7 +50,8 @@ namespace Ihc.Vis.CatalogCodegen
             // open-world blocks the product carries (a purely-registry view cannot canonicalize an open-world type).
             // This catches the catalog-vs-project DTD-default bake (B1c): an attribute that rides the .def default but
             // differs from the registry default must have been baked, or the placed instance would silently change.
-            ImmutableDictionary<string, string> nonRegistryBlocks = NonRegistryBlocks(source);
+            ImmutableDictionary<string, string> nonRegistryBlocks =
+                SelfVerifyShared.NonRegistryBlocks(source.Definition.Body, source.Blocks);
             ProjectElement expectedReg = DefinitionNormalizer.Normalize(source.Definition.Body, nonRegistryBlocks);
             ProjectElement actualReg = DefinitionNormalizer.Normalize(actual.Body, nonRegistryBlocks);
             if (!expectedReg.Equals(actualReg))
@@ -80,60 +78,11 @@ namespace Ihc.Vis.CatalogCodegen
             // (3) Open-world capture: the built product must carry an inline-DTD block for exactly the element types its
             // source uses that the registry does not declare — no more (registry-declared blocks are dead weight the
             // insert transform never merges), no fewer (a missing block makes the component unsaveable once inserted).
-            if (BlocksMismatch(actual.InlineDtdBlocks, nonRegistryBlocks) is { } reason)
+            if (SelfVerifyShared.BlocksMismatch(actual.InlineDtdBlocks, nonRegistryBlocks) is { } reason)
             {
                 return new VerifyResult(false, reason);
             }
             return VerifyResult.Pass;
-        }
-
-        // The source's inline-DTD blocks for element types that are (a) actually instantiated in the body and (b) not
-        // declared by the static registry — the open-world grammar that must ride along with the component (and that the
-        // insert transform merges into the project). A block DECLARED in the .def DTD but never used in the body is a
-        // vendor leftover (e.g. a mis-cased 'resource_Light' block above a body that uses registry 'resource_light') and
-        // is deliberately excluded — the component neither needs it nor carries it.
-        private static ImmutableDictionary<string, string> NonRegistryBlocks(ProductSource source)
-        {
-            var usedTags = new HashSet<string>(StringComparer.Ordinal);
-            CollectTags(source.Definition.Body, usedTags);
-            return source.Blocks
-                .Where(kv => usedTags.Contains(kv.Key) && ProjectSchemaRegistry.TryGet(kv.Key) is null)
-                .ToImmutableDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
-        }
-
-        private static void CollectTags(ProjectElement element, HashSet<string> tags)
-        {
-            tags.Add(element.Tag);
-            foreach (ProjectElement child in element.ChildrenOrEmpty())
-            {
-                CollectTags(child, tags);
-            }
-        }
-
-        // Compares the built product's inline-DTD blocks against the expected non-registry set (tag → verbatim block).
-        // Returns a one-line reason on mismatch, or null when they agree.
-        private static string? BlocksMismatch(ImmutableDictionary<string, string> actual,
-            ImmutableDictionary<string, string> expected)
-        {
-            foreach (string tag in expected.Keys)
-            {
-                if (!actual.TryGetValue(tag, out string? block))
-                {
-                    return $"inline-DTD block for open-world type '{tag}' not captured";
-                }
-                if (block != expected[tag])
-                {
-                    return $"inline-DTD block for '{tag}' differs from source";
-                }
-            }
-            foreach (string tag in actual.Keys)
-            {
-                if (!expected.ContainsKey(tag))
-                {
-                    return $"inline-DTD block '{tag}' captured but registry already declares it (dead weight)";
-                }
-            }
-            return null;
         }
     }
 }

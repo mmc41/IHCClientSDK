@@ -6,7 +6,8 @@ using System.Linq;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// Install-dir-gated: <strong>every</strong> discovered product/function-block descriptor inserts one-at-a-time
+    /// Install-free: <strong>every</strong> product/function-block descriptor in the SDK-embedded
+    /// <see cref="BuiltInCatalog"/> inserts one-at-a-time
     /// into a fresh project, saves, and re-loads structurally equal. Under the open-world model the static registry
     /// no longer needs to declare every catalog type — a type the registry does not contain is inserted using the
     /// grammar captured from its own catalog descriptor's inline DTD (merged into the project on insert), so the full
@@ -20,15 +21,7 @@ namespace Ihc.Vis.Tests
     {
         private static IhcSettings Settings => TestSetup.Settings;
 
-        private static ICatalog RequireCatalog()
-        {
-            string dir = Settings.IhcVisualInstallDir;
-            if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
-            {
-                Assert.Ignore($"No IHC Visual install dir configured ('{dir}'); skipping install-dir-gated test.");
-            }
-            return CatalogDiscovery.FromInstallDir(dir);
-        }
+        private static ICatalog RequireCatalog() => new BuiltInCatalog();
 
         [Test]
         public void EveryDiscoveredDescriptor_InsertsValidatesAndRoundTrips()

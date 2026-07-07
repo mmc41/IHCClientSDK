@@ -54,8 +54,16 @@ namespace Ihc.Vis.FunctionBlocks
         private readonly List<(string Name, string Value)> rootAttrs = new();
         private bool isEmptyTemplate;
         private string emptyIcon = "_0xf";
+        private string? inputsName;
+        private string? outputsName;
+        private string? settingsName;
+        private string? internalName;
+        private string? programsName;
         private string? inputsNote;
         private string? outputsNote;
+        private string? settingsNote;
+        private string? internalNote;
+        private string? programsNote;
         private readonly List<ProjectElement> inputs = new();
         private readonly List<ProjectElement> outputs = new();
         private readonly List<ProjectElement> settings = new();
@@ -190,6 +198,72 @@ namespace Ihc.Vis.FunctionBlocks
             return this;
         }
 
+        /// <summary>Overrides the <c>settings</c> container's <c>note</c> (defaults to
+        /// <see cref="FbGrammar.SettingsNote"/>). Vendor <c>.ifb</c> files use a different note dialect than the
+        /// synthetic default, so a code-authored recreation of a stock block sets it explicitly.</summary>
+        public FunctionBlockDefinitionBuilder SettingsNote(string note)
+        {
+            settingsNote = note;
+            return this;
+        }
+
+        /// <summary>Overrides the <c>internalsettings</c> container's <c>note</c> (defaults to
+        /// <see cref="FbGrammar.InternalNote"/>).</summary>
+        public FunctionBlockDefinitionBuilder InternalVariablesNote(string note)
+        {
+            internalNote = note;
+            return this;
+        }
+
+        /// <summary>Overrides the <c>programs</c> container's <c>note</c> (defaults to
+        /// <see cref="FbGrammar.ProgramsNote"/>).</summary>
+        public FunctionBlockDefinitionBuilder ProgramsNote(string note)
+        {
+            programsNote = note;
+            return this;
+        }
+
+        /// <summary>Overrides the <c>inputs</c> container's display <c>name</c> (defaults to
+        /// <see cref="FbGrammar.InputsName"/>). Vendor blocks use different labels per language/revision, so a
+        /// code-authored recreation of a stock block sets it when it differs.</summary>
+        public FunctionBlockDefinitionBuilder InputsName(string name)
+        {
+            inputsName = name;
+            return this;
+        }
+
+        /// <summary>Overrides the <c>outputs</c> container's display <c>name</c> (defaults to
+        /// <see cref="FbGrammar.OutputsName"/>).</summary>
+        public FunctionBlockDefinitionBuilder OutputsName(string name)
+        {
+            outputsName = name;
+            return this;
+        }
+
+        /// <summary>Overrides the <c>settings</c> container's display <c>name</c> (defaults to
+        /// <see cref="FbGrammar.SettingsName"/>).</summary>
+        public FunctionBlockDefinitionBuilder SettingsName(string name)
+        {
+            settingsName = name;
+            return this;
+        }
+
+        /// <summary>Overrides the <c>internalsettings</c> container's display <c>name</c> (defaults to
+        /// <see cref="FbGrammar.InternalName"/>).</summary>
+        public FunctionBlockDefinitionBuilder InternalVariablesName(string name)
+        {
+            internalName = name;
+            return this;
+        }
+
+        /// <summary>Overrides the <c>programs</c> container's display <c>name</c> (defaults to
+        /// <see cref="FbGrammar.ProgramsName"/>).</summary>
+        public FunctionBlockDefinitionBuilder ProgramsName(string name)
+        {
+            programsName = name;
+            return this;
+        }
+
         // ---- resources → containers (each returns a handle for program wiring) ----
 
         /// <summary>Adds a <c>resource_input</c> pin under <c>inputs</c>; returns its handle.</summary>
@@ -224,9 +298,14 @@ namespace Ihc.Vis.FunctionBlocks
         /// <c>AddValue</c>, then wire it by handle + human value name through the typed <c>Enum</c> / <c>AddEnumOperand</c>
         /// overloads, so a GUI works in value names ("Nat"/"Dag") rather than opaque typedef/inivalue tokens.
         /// </summary>
-        public FbEnumDefRef AddEnumDefinition(string name)
+        public FbEnumDefRef AddEnumDefinition(string name) => AddEnumDefinition(name, null);
+
+        /// <summary>Authors an <c>enum_definition</c> carrying the opaque <paramref name="typeid"/> token a built-in
+        /// enumerator embedded into a stock block keeps (e.g. the shared "Persienne tilstand" type <c>_0x10</c>);
+        /// pass <c>null</c> for a block-local enum with no shared type identity.</summary>
+        public FbEnumDefRef AddEnumDefinition(string name, string? typeid)
         {
-            var reference = new FbEnumDefRef(ids, ids.Allocate(TypeCode.RequireForTag("enum_definition")), name);
+            var reference = new FbEnumDefRef(ids, ids.Allocate(TypeCode.RequireForTag("enum_definition")), name, typeid);
             enumDefs.Add(reference);
             return reference;
         }
@@ -273,6 +352,17 @@ namespace Ihc.Vis.FunctionBlocks
             return this;
         }
 
+        /// <summary>Attaches documentation text to a resource identified by its display <paramref name="resourceName"/>
+        /// (the same key <see cref="FunctionBlockDocumentation.ForResource"/> looks it up by) — the name-keyed peer of
+        /// the by-handle overload, for a caller that has help text keyed by pin name (e.g. parsed from a help document)
+        /// rather than a live handle. Programmatic-lookup-only; never serialized. Returns this for chaining.</summary>
+        public FunctionBlockDefinitionBuilder Documentation(string resourceName, string documentation)
+        {
+            ArgumentNullException.ThrowIfNull(resourceName);
+            resourceDocs[resourceName] = documentation;
+            return this;
+        }
+
         // ---- escape hatches ----
 
         /// <summary>Splices a pre-built resource subtree into the named container (<c>inputs</c>/<c>outputs</c>/
@@ -311,11 +401,12 @@ namespace Ihc.Vis.FunctionBlocks
         public ProjectValidationResult Validate()
         {
             var findings = ImmutableArray.CreateBuilder<ProjectValidationFinding>();
-            if (!isEmptyTemplate && (string.IsNullOrEmpty(masterType)
-                || string.IsNullOrEmpty(masterVersion) || string.IsNullOrEmpty(masterName)))
+            if (!isEmptyTemplate && string.IsNullOrEmpty(masterName))
             {
                 findings.Add(new ProjectValidationFinding(ValidationSeverity.Error, "identity-missing", null,
-                    "The block needs a master_type, master_version and master_name (or AsEmptyTemplate for a Tom blok)."));
+                    "The block needs a master_name (or AsEmptyTemplate for a Tom blok). master_type/master_version are "
+                    + "optional — many stock blocks carry no version, and a keyless user block carries no type (it is "
+                    + "then addressable only by name)."));
             }
             foreach (FbProgramBuilder program in programs)
             {
@@ -356,24 +447,23 @@ namespace Ihc.Vis.FunctionBlocks
         }
 
         private string ComposedDisplayName =>
-            displayNameOverride
-            ?? (string.IsNullOrEmpty(masterType) ? masterName : $"{masterType}.{masterVersion}. {masterName}");
+            displayNameOverride ?? FbGrammar.ComposeDisplayName(masterType, masterVersion, masterName);
 
         private ProjectElement MaterializeBody()
         {
             var bodyChildren = new List<ProjectElement>();
             bodyChildren.AddRange(enumDefs.Select(e => e.Materialize()));
             bodyChildren.AddRange(rawBodyChildren);
-            bodyChildren.Add(FbGrammar.Container(ids, "inputs", FbGrammar.InputsName, FbGrammar.InputsIcon,
+            bodyChildren.Add(FbGrammar.Container(ids, "inputs", inputsName ?? FbGrammar.InputsName, FbGrammar.InputsIcon,
                 inputsNote ?? FbGrammar.InputsNoteDefault, inputs));
-            bodyChildren.Add(FbGrammar.Container(ids, "outputs", FbGrammar.OutputsName, FbGrammar.OutputsIcon,
+            bodyChildren.Add(FbGrammar.Container(ids, "outputs", outputsName ?? FbGrammar.OutputsName, FbGrammar.OutputsIcon,
                 outputsNote ?? FbGrammar.OutputsNoteDefault, outputs));
-            bodyChildren.Add(FbGrammar.Container(ids, "settings", FbGrammar.SettingsName, FbGrammar.SettingsIcon,
-                FbGrammar.SettingsNote, settings));
-            bodyChildren.Add(FbGrammar.Container(ids, "internalsettings", FbGrammar.InternalName, FbGrammar.InternalIcon,
-                FbGrammar.InternalNote, internalVars));
-            bodyChildren.Add(FbGrammar.Container(ids, "programs", FbGrammar.ProgramsName, FbGrammar.ProgramsIcon,
-                FbGrammar.ProgramsNote, programs.Select(p => p.Materialize()).ToArray()));
+            bodyChildren.Add(FbGrammar.Container(ids, "settings", settingsName ?? FbGrammar.SettingsName, FbGrammar.SettingsIcon,
+                settingsNote ?? FbGrammar.SettingsNote, settings));
+            bodyChildren.Add(FbGrammar.Container(ids, "internalsettings", internalName ?? FbGrammar.InternalName, FbGrammar.InternalIcon,
+                internalNote ?? FbGrammar.InternalNote, internalVars));
+            bodyChildren.Add(FbGrammar.Container(ids, "programs", programsName ?? FbGrammar.ProgramsName, FbGrammar.ProgramsIcon,
+                programsNote ?? FbGrammar.ProgramsNote, programs.Select(p => p.Materialize()).ToArray()));
 
             ProjectElement root = FbGrammar.Node("functionblock",
                 ids.Allocate(TypeCode.RequireForTag("functionblock")), NoAttrs, bodyChildren);
@@ -498,7 +588,7 @@ namespace Ihc.Vis.FunctionBlocks
 
     /// <summary>
     /// A definition-local handle to an <c>enum_definition</c> authored via
-    /// <see cref="FunctionBlockDefinitionBuilder.AddEnumDefinition"/> — the definition-layer peer of
+    /// <see cref="FunctionBlockDefinitionBuilder.AddEnumDefinition(string)"/> — the definition-layer peer of
     /// <see cref="Ihc.Vis.Editing.EnumDefinitionRef"/>. Carries the enum's placeholder typedef token and resolves a
     /// human value name to its <c>inivalue</c> token, so a GUI wires enum operands by name, not by opaque token.
     /// Values are added fluently with <see cref="AddValue(string)"/> rather than upfront as the Editing peer takes them
@@ -511,13 +601,15 @@ namespace Ihc.Vis.FunctionBlocks
         private readonly IdAllocator ids;
         private readonly ElementId defId;
         private readonly string name;
-        private readonly List<(string Name, ElementId Id, int Index)> values = new();
+        private readonly string? typeid;
+        private readonly List<(string Name, ElementId Id, int Index, string? Typeid)> values = new();
 
-        internal FbEnumDefRef(IdAllocator ids, ElementId defId, string name)
+        internal FbEnumDefRef(IdAllocator ids, ElementId defId, string name, string? typeid = null)
         {
             this.ids = ids;
             this.defId = defId;
             this.name = name;
+            this.typeid = typeid;
         }
 
         /// <summary>The enum's placeholder <c>typedef</c> token (remapped on insert), for raw interop.</summary>
@@ -529,16 +621,20 @@ namespace Ihc.Vis.FunctionBlocks
 
         /// <summary>Adds an <c>enum_value</c> with an explicit <paramref name="index"/> (for enums whose value order
         /// differs from their index order); returns this for chaining.</summary>
-        public FbEnumDefRef AddValue(string valueName, int index)
+        public FbEnumDefRef AddValue(string valueName, int index) => AddValue(valueName, index, null);
+
+        /// <summary>Adds an <c>enum_value</c> with an explicit <paramref name="index"/> and the opaque per-value
+        /// <paramref name="typeid"/> token a built-in enumerator's values carry (else <c>null</c>); returns this.</summary>
+        public FbEnumDefRef AddValue(string valueName, int index, string? typeid)
         {
-            values.Add((valueName, ids.Allocate(TypeCode.RequireForTag("enum_value")), index));
+            values.Add((valueName, ids.Allocate(TypeCode.RequireForTag("enum_value")), index, typeid));
             return this;
         }
 
         /// <summary>The <c>inivalue</c> token for a previously-added value name, for raw interop.</summary>
         public string InitialValue(string valueName)
         {
-            foreach ((string Name, ElementId Id, int Index) value in values)
+            foreach ((string Name, ElementId Id, int Index, string? Typeid) value in values)
             {
                 if (value.Name == valueName)
                 {
@@ -548,10 +644,28 @@ namespace Ihc.Vis.FunctionBlocks
             throw new ArgumentException($"Enum '{name}' has no value named '{valueName}'.", nameof(valueName));
         }
 
-        internal ProjectElement Materialize() =>
-            FbGrammar.Node("enum_definition", defId, new[] { ("name", name) },
-                values.Select(v => FbGrammar.Leaf("enum_value", v.Id,
-                    new[] { ("name", v.Name), ("index", v.Index.ToString(CultureInfo.InvariantCulture)) })));
+        internal ProjectElement Materialize()
+        {
+            var defAttrs = new List<(string, string)> { ("name", name) };
+            if (typeid is not null)
+            {
+                defAttrs.Insert(0, ("typeid", typeid));
+            }
+            return FbGrammar.Node("enum_definition", defId, defAttrs,
+                values.Select(v => FbGrammar.Leaf("enum_value", v.Id, ValueAttrs(v))));
+        }
+
+        private static IEnumerable<(string, string)> ValueAttrs((string Name, ElementId Id, int Index, string? Typeid) value)
+        {
+            var attrs = new List<(string, string)>();
+            if (value.Typeid is not null)
+            {
+                attrs.Add(("typeid", value.Typeid));
+            }
+            attrs.Add(("name", value.Name));
+            attrs.Add(("index", value.Index.ToString(CultureInfo.InvariantCulture)));
+            return attrs;
+        }
     }
 
     /// <summary>

@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using System.IO;
 
 using Ihc.Vis.Catalog;
+using Ihc.Vis.FunctionBlocks;
 using Ihc.Vis.Io;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
@@ -18,8 +19,17 @@ namespace Ihc.Vis.CatalogCodegen
     /// </summary>
     internal sealed record ProductSource(ProductDefinition Definition, ImmutableDictionary<string, string> Blocks);
 
-    /// <summary>Reads a <c>Products\*.def</c> into a <see cref="ProductSource"/>, reproducing <c>CatalogDiscovery</c>'s
-    /// per-file identity derivation (menu-prefix-stripped display name, captured inline DTD).</summary>
+    /// <summary>
+    /// A single function-block catalog file (<c>FunctionBlocks\*.ifb</c>) loaded as <c>CatalogDiscovery</c> loads it:
+    /// the parsed <see cref="FunctionBlockDefinition"/> plus its captured inline-DTD <see cref="Blocks"/>. Documentation
+    /// is attached separately (from the sibling <c>syn_en*.md</c>), so it does not ride on <see cref="Definition"/> here.
+    /// </summary>
+    internal sealed record FunctionBlockSource(FunctionBlockDefinition Definition,
+        ImmutableDictionary<string, string> Blocks);
+
+    /// <summary>Reads a <c>Products\*.def</c> or <c>FunctionBlocks\*.ifb</c> into its source record, reproducing
+    /// <c>CatalogDiscovery</c>'s per-file identity derivation (menu-prefix-stripped product display name / master
+    /// identity, captured inline DTD).</summary>
     internal static class CatalogSourceFile
     {
         public static ProductSource ReadProduct(string path, string categoryPath)
@@ -35,6 +45,14 @@ namespace Ihc.Vis.CatalogCodegen
                 InlineDtdBlocks = blocks,
             };
             return new ProductSource(definition, blocks);
+        }
+
+        public static FunctionBlockSource ReadFunctionBlock(string path, string categoryPath)
+        {
+            byte[] bytes = File.ReadAllBytes(path);
+            ImmutableDictionary<string, string> blocks = InlineDtd.Capture(bytes);
+            FunctionBlockDefinition definition = CatalogReader.BuildFunctionBlock(bytes, categoryPath, documentation: null);
+            return new FunctionBlockSource(definition, blocks);
         }
     }
 }
