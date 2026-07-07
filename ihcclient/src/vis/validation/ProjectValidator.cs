@@ -61,16 +61,7 @@ namespace Ihc.Vis.Validation
             ValidateRoot(project, maxCounter, findings);
             ValidateContainment(project.Root, grandParent: null, findings);
 
-            ImmutableArray<ProjectValidationFinding> all = findings.ToImmutable();
-            if (all.IsEmpty)
-            {
-                return ProjectValidationResult.Success;
-            }
-            ImmutableArray<string> errors = all
-                .Where(f => f.Severity == ValidationSeverity.Error)
-                .Select(f => f.Message)
-                .ToImmutableArray();
-            return new ProjectValidationResult(errors.IsEmpty, errors) { Findings = all };
+            return ProjectValidationResult.FromFindings(findings.ToImmutable());
         }
 
         // ----- ids -----

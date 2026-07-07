@@ -3,18 +3,18 @@ using System.Threading.Tasks;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// Stage-1 preview of the code-authoring <see cref="ProductDefinitionBuilder"/>. Shows, in real C#, how a caller
+    /// Showcase tests for the code-authoring <see cref="ProductDefinitionBuilder"/>. Show, in real C#, how a caller
     /// re-encodes a product entirely from code — no IHC Visual install dir and no catalog — producing the same
     /// <see cref="ProductDefinition"/> a <c>Products\*.def</c> discovery yields, and how that built definition drops
-    /// into the <b>existing</b> project builder (<c>GroupRef.AddProduct</c> → insert transform) unchanged. These tests
-    /// are <c>[Explicit]</c>: the solution builds and they are present but never run (they exercise the stub builder);
-    /// their only purpose is to let the user approve the authoring surface. (Mirrors <see cref="AuthoringApiTests"/>.)
+    /// into the <b>existing</b> project builder (<c>GroupRef.AddProduct</c> → insert transform) unchanged. The
+    /// per-oracle canonical-fidelity gate lives in <see cref="ProductBuilderOracleTests"/>; these assert the readable
+    /// scalar surface (identity, documentation) and the end-to-end insert. (Mirrors <see cref="AuthoringApiTests"/>.)
     /// </summary>
     public class ProductDefinitionBuilderTests
     {
         private IhcSettings settings => TestSetup.Settings;
 
-        [Test, Explicit("Stage 1: builder-API preview against stubs; authors a product from code — not run")]
+        [Test]
         public void AuthorPushButtonProduct_FromCode_ShowsProductBuilder()
         {
             // Author the product type template purely from code — the code peer of a Products\*.def descriptor.
@@ -49,7 +49,7 @@ namespace Ihc.Vis.Tests
             });
         }
 
-        [Test, Explicit("Stage 1: builder-API preview against stubs; inserts a code-authored product — not run")]
+        [Test]
         public async Task InsertAuthoredProduct_IntoLoadedProject_ShowsItWorksWithProjectBuilder()
         {
             // An output-bearing product with a scenes container (vendor default label via DefaultScenesName),
@@ -76,7 +76,7 @@ namespace Ihc.Vis.Tests
             Assert.That(built, Is.Not.Null);
         }
 
-        [Test, Explicit("Stage 1: builder-API preview against stubs; exercises the review-driven surface additions — not run")]
+        [Test]
         public void EditExistingType_NamedFamily_AndValidate_ShowSurfaceAdditions()
         {
             // Named factory for a non-dataline family (was reachable only via a magic-string Create before).

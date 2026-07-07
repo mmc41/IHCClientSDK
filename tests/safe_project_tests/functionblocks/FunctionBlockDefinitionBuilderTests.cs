@@ -4,19 +4,19 @@ using System.Threading.Tasks;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// Stage-1 preview of the code-authoring <see cref="FunctionBlockDefinitionBuilder"/>. Shows, in real C#, how a
+    /// Showcase tests for the code-authoring <see cref="FunctionBlockDefinitionBuilder"/>. Show, in real C#, how a
     /// caller authors a function block from code — master identity, the four resource containers plus the program graph
     /// with <c>link1</c>/<c>link2</c> wiring by handle — producing the same <see cref="FunctionBlockDefinition"/>
     /// a <c>FunctionBlocks\*.ifb</c> discovery yields, and how it drops into the <b>existing</b> project builder
-    /// (<c>GroupRef.AddFunctionBlock</c> → insert transform) unchanged. These tests are <c>[Explicit]</c>: the solution
-    /// builds and they are present but never run (they exercise the stub builder); their only purpose is to let the
-    /// user approve the authoring surface. (Mirrors <see cref="AuthoringApiTests"/>.)
+    /// (<c>GroupRef.AddFunctionBlock</c> → insert transform) unchanged. The per-oracle canonical-fidelity gate lives in
+    /// <see cref="FunctionBlockBuilderOracleTests"/>; these assert the readable scalar surface (identity, documentation)
+    /// and the end-to-end insert. (Mirrors <see cref="AuthoringApiTests"/>.)
     /// </summary>
     public class FunctionBlockDefinitionBuilderTests
     {
         private IhcSettings settings => TestSetup.Settings;
 
-        [Test, Explicit("Stage 1: builder-API preview against stubs; authors a function block from code — not run")]
+        [Test]
         public void AuthorToggleBlock_FromCode_ShowsFunctionBlockBuilder()
         {
             // Master identity — the code peer of a FunctionBlocks\*.ifb header. DisplayName defaults to the
@@ -70,7 +70,7 @@ namespace Ihc.Vis.Tests
             });
         }
 
-        [Test, Explicit("Stage 1: builder-API preview against stubs; inserts a code-authored block — not run")]
+        [Test]
         public async Task InsertAuthoredBlock_IntoLoadedProject_ShowsItWorksWithProjectBuilder()
         {
             FunctionBlockDefinition toggle = FunctionBlockDefinitionBuilder
@@ -89,7 +89,7 @@ namespace Ihc.Vis.Tests
             Assert.That(built, Is.Not.Null);
         }
 
-        [Test, Explicit("Stage 1: builder-API preview against stubs; exercises typed enum authoring + edit-existing — not run")]
+        [Test]
         public void AuthorEnumBlock_TypedEnum_AndReopen_ShowSurfaceAdditions()
         {
             FunctionBlockDefinitionBuilder builder = FunctionBlockDefinitionBuilder

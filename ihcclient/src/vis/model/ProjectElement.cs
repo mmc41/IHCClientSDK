@@ -24,6 +24,24 @@ namespace Ihc.Vis.Model
         ImmutableArray<(string Name, string Value)> Attrs,
         ImmutableArray<ProjectElement> Children)
     {
+        /// <summary>
+        /// Builds an element with the <c>id</c> token leading the attribute bag (when <paramref name="id"/> is
+        /// present), followed by <paramref name="attrs"/>. The shared authoring factory the builders and grammar
+        /// helpers use so the id-led-bag convention lives in one place; a later canonicalize pass fixes attribute
+        /// order and omits defaults.
+        /// </summary>
+        public static ProjectElement Create(string tag, ElementId? id,
+            IEnumerable<(string Name, string Value)> attrs, IEnumerable<ProjectElement> children)
+        {
+            var bag = ImmutableArray.CreateBuilder<(string, string)>();
+            if (id is { } value)
+            {
+                bag.Add(("id", value.ToToken()));
+            }
+            bag.AddRange(attrs);
+            return new ProjectElement(tag, id, bag.ToImmutable(), children.ToImmutableArray());
+        }
+
         /// <summary>Returns the logical value of the named attribute, or <c>null</c> when absent.</summary>
         public string? GetAttribute(string name) => GetAttribute(Attrs, name);
 

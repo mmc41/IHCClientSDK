@@ -1,10 +1,13 @@
 #nullable enable
 using System;
+using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 
 using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Schema;
+using TypeCode = Ihc.Vis.Schema.TypeCode;
 namespace Ihc.Vis.Io
 {
     /// <summary>
@@ -86,6 +89,24 @@ namespace Ihc.Vis.Io
                 }
             }
             return max;
+        }
+
+        /// <summary>
+        /// Returns a copy of <paramref name="element"/> in which every node lacking an id is minted a fresh one off
+        /// this allocator (keeping the type-code low byte), so a hand-built subtree spliced in via a builder's Raw*
+        /// escape hatch carries the type-code-suffixed ids the insert transform can re-mint. Nodes that already carry
+        /// an id keep it (a caller may have wired IDREFs at it).
+        /// </summary>
+        public ProjectElement MintMissingIds(ProjectElement element)
+        {
+            ElementId? id = element.Id ?? (TypeCode.ForTag(element.Tag) is { } code ? Allocate(code) : null);
+            ImmutableArray<ProjectElement> children = element.ChildrenOrEmpty().IsEmpty
+                ? ImmutableArray<ProjectElement>.Empty
+                : element.ChildrenOrEmpty().Select(MintMissingIds).ToImmutableArray();
+            ProjectElement rebuilt = element with { Id = id, Children = children };
+            return id is { } minted && element.GetAttribute("id") is null
+                ? rebuilt.WithAttribute("id", minted.ToToken())
+                : rebuilt;
         }
 
         private static long MaxReferencedCounter(ProjectElement element, ProjectSchemaView view)

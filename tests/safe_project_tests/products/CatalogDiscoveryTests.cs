@@ -12,7 +12,7 @@ namespace Ihc.Vis.Tests
     {
         private static IhcSettings Settings => TestSetup.Settings;
 
-        private static CatalogDiscovery RequireCatalog()
+        private static ICatalog RequireCatalog()
         {
             string dir = Settings.IhcVisualInstallDir;
             if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
@@ -26,7 +26,7 @@ namespace Ihc.Vis.Tests
         public void Discovery_ParsesEveryProductAndFunctionBlock()
         {
             // FromInstallDir parses every file eagerly; a parse failure would throw here. Assert the counts too.
-            CatalogDiscovery catalog = RequireCatalog();
+            ICatalog catalog = RequireCatalog();
 
             Assert.Multiple(() =>
             {
@@ -41,7 +41,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void Discovery_FindsTestProductsAndFunctionBlocks_ByLookupKey()
         {
-            CatalogDiscovery catalog = RequireCatalog();
+            ICatalog catalog = RequireCatalog();
 
             ProductDefinition fuga = catalog.Product("_0x2101");
             FunctionBlockDefinition kip = catalog.FunctionBlock("1.1.01");
@@ -61,7 +61,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void FunctionBlockByName_FindsUserSavedAutoProof_WithNoMasterType()
         {
-            CatalogDiscovery catalog = RequireCatalog();
+            ICatalog catalog = RequireCatalog();
 
             FunctionBlockDefinition autoProof = catalog.FunctionBlockByName("AutoProof");
 

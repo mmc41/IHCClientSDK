@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Linq;
 using Microsoft.Extensions.Time.Testing;
 
@@ -11,21 +10,15 @@ namespace Ihc.Vis.Tests
     /// plus one empty <c>program_simple(events, actions)</c>, with vendor icon <c>_0xf</c> and only the
     /// <c>master_date_*</c> attributes among <c>master_*</c> — sourced from the install dir's <c>Data\fb.def</c>
     /// template via <see cref="ICatalog.EmptyFunctionBlockTemplate"/>. Oracle: the three empty <c>Tom blok</c> blocks
-    /// in <c>project3-KompleksWired.vis</c> (lines 2253/2399/2423). Install-dir gated.
+    /// in <c>project3-KompleksWired.vis</c> (lines 2253/2399/2423). Install-free: driven by the code-authored
+    /// <see cref="BuiltInCatalog"/> template (whose fidelity vs the vendor <c>fb.def</c> is proved by
+    /// <see cref="BuiltInCatalogTemplateDifferentialTests"/>).
     /// </summary>
     public class FunctionBlockAuthoringTests
     {
         private static IhcSettings Settings => TestSetup.Settings;
 
-        private static ICatalog RequireCatalog()
-        {
-            string dir = Settings.IhcVisualInstallDir;
-            if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
-            {
-                Assert.Ignore($"No IHC Visual install dir configured ('{dir}'); skipping install-dir-gated test.");
-            }
-            return CatalogDiscovery.FromInstallDir(dir);
-        }
+        private static ICatalog RequireCatalog() => new BuiltInCatalog();
 
         private static FakeTimeProvider Clock() => new(new DateTimeOffset(2026, 6, 29, 12, 0, 0, TimeSpan.Zero));
 

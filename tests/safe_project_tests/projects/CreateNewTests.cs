@@ -6,29 +6,23 @@ using Microsoft.Extensions.Time.Testing;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// The CREATE byte-identity gate (install-dir-gated, spec ch. 10 §10.7): <see cref="ProjectAppService.CreateNew"/>
-    /// reads the installed <c>NewDoc.idf</c> + <c>EnumeratorDefinitions.def</c> templates and, with a pinned clock
-    /// and the testdata field values, reproduces <c>Project0-Tomt.vis</c> byte-for-byte after a default save re-stamps
-    /// <c>id2</c>/<c>modified</c>. Skips gracefully when no IHC Visual install is configured.
+    /// The CREATE byte-identity gate (install-free, spec ch. 10 §10.7): <see cref="ProjectAppService.CreateNew"/>
+    /// takes the code-authored <c>NewProjectSkeleton</c> + <c>BuiltInEnumerators</c> templates from
+    /// <see cref="BuiltInCatalog"/> (no IHC Visual install required) and, with a pinned clock and the testdata field
+    /// values, reproduces <c>Project0-Tomt.vis</c> byte-for-byte after a default save re-stamps <c>id2</c>/<c>modified</c>.
+    /// The install-dir differential in <see cref="BuiltInCatalogTemplateDifferentialTests"/> proves those templates
+    /// equal the vendor files; this suite proves they drive a byte-identical create.
     /// </summary>
     public class CreateNewTests
     {
         private static IhcSettings Settings => TestSetup.Settings;
 
-        private static ICatalog RequireCatalog()
-        {
-            string dir = Settings.IhcVisualInstallDir;
-            if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
-            {
-                Assert.Ignore($"No IHC Visual install dir configured ('{dir}'); skipping install-dir-gated test.");
-            }
-            return CatalogDiscovery.FromInstallDir(dir);
-        }
+        private static ICatalog Catalog() => new BuiltInCatalog();
 
         [Test]
         public async Task CreateNew_ThenDefaultSave_ReproducesProjectEmpty_ByteIdentical()
         {
-            ICatalog catalog = RequireCatalog();
+            ICatalog catalog = Catalog();
 
             // Creation: 27th 16:05:51 → id1 = id2 = _0x1b100533, modified minute 5.
             var clock = new FakeTimeProvider(new DateTimeOffset(2026, 6, 27, 16, 5, 51, TimeSpan.Zero));
@@ -48,7 +42,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void CreateNew_SeedsTenRooms_TwoBuiltInEnums_AndDocumentationModules()
         {
-            ICatalog catalog = RequireCatalog();
+            ICatalog catalog = Catalog();
             var clock = new FakeTimeProvider(new DateTimeOffset(2026, 6, 27, 16, 5, 51, TimeSpan.Zero));
             var app = new ProjectAppService(Settings, catalog, clock);
 
@@ -70,7 +64,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void CreateNew_ModulesFirstLayout_MatchesProject2SeedAllocation()
         {
-            ICatalog catalog = RequireCatalog();
+            ICatalog catalog = Catalog();
             var clock = new FakeTimeProvider(new DateTimeOffset(2026, 7, 3, 7, 23, 34, TimeSpan.Zero));
             var app = new ProjectAppService(Settings, catalog, clock);
 
@@ -95,7 +89,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void CreateNew_EnumsFirstLayout_IsTheDefault_EnumsBeforeModules()
         {
-            ICatalog catalog = RequireCatalog();
+            ICatalog catalog = Catalog();
             var clock = new FakeTimeProvider(new DateTimeOffset(2026, 6, 27, 16, 5, 51, TimeSpan.Zero));
             var app = new ProjectAppService(Settings, catalog, clock);
 

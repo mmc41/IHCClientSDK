@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -39,7 +40,7 @@ namespace Ihc.Vis
         private const string DefaultProjectFilename = "Project.ihc";
 
         private readonly IhcSettings settings;
-        private readonly Lazy<ICatalog> catalog;
+        private readonly Lazy<CompositeCatalog> catalog;
         private readonly TimeProvider timeProvider;
         private readonly IControllerService? controller;
 
@@ -74,13 +75,19 @@ namespace Ihc.Vis
         {
         }
 
-        private ProjectAppService(IhcSettings settings, Lazy<ICatalog> catalog, TimeProvider timeProvider,
+        private ProjectAppService(IhcSettings settings, Lazy<ICatalog> baseCatalog, TimeProvider timeProvider,
                                   IControllerService? controller)
         {
             ArgumentNullException.ThrowIfNull(settings);
             ArgumentNullException.ThrowIfNull(timeProvider);
             this.settings = settings;
-            this.catalog = catalog;
+            // Wrap the base catalog in a CompositeCatalog so runtime ImportCatalogFile/Directory can overlay extra
+            // components (imported-wins) on top of the built-ins; an already-composite base is reused as-is. Lazy, so
+            // the base is not materialized until a catalog operation (CreateNew/GetAvailable*/Import) runs — file and
+            // controller IO still need no IHC Visual install.
+            this.catalog = new Lazy<CompositeCatalog>(
+                () => baseCatalog.Value as CompositeCatalog ?? new CompositeCatalog(baseCatalog.Value),
+                LazyThreadSafetyMode.PublicationOnly);
             this.timeProvider = timeProvider;
             this.controller = controller;
         }
@@ -471,6 +478,114 @@ namespace Ihc.Vis
                     throw;
                 }
             }
+        }
+
+        /// <summary>
+        /// Imports one catalog component file at runtime so it resolves and inserts alongside the built-ins: a
+        /// <c>.ifb</c> is read as a function block, any other extension (<c>.def</c>) as a product, via the same
+        /// encoding/DTD-default/inline-DTD handling as install discovery
+        /// (<see cref="CatalogReader.ReadProduct(string, ProductDocumentation?)"/>). The imported component shadows a
+        /// built-in with the same key (imported-wins) and appears in <see cref="GetAvailableProducts"/> /
+        /// <see cref="GetAvailableFunctionBlocks"/>. Pass <paramref name="documentationProbe"/> (e.g.
+        /// <see cref="ReadSiblingDocumentation"/>) to attach help metadata from a sibling file; it maps the component
+        /// path to summary text (or null for none).
+        /// </summary>
+        public void ImportCatalogFile(string path, Func<string, string?>? documentationProbe = null)
+        {
+            ArgumentNullException.ThrowIfNull(path);
+            using (var activity = StartActivity(nameof(ImportCatalogFile)))
+            {
+                try
+                {
+                    ImportFile(path, documentationProbe);
+                    activity?.SetReturnValue(path);
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imports every product (<c>*.def</c>) and function-block (<c>*.ifb</c>) file found recursively under
+        /// <paramref name="directory"/> (ordinal-sorted, so import order — and thus last-wins among the imports — is
+        /// deterministic), returning the number imported. See <see cref="ImportCatalogFile"/> for per-file behavior and
+        /// the <paramref name="documentationProbe"/> hook.
+        /// </summary>
+        public int ImportCatalogDirectory(string directory, Func<string, string?>? documentationProbe = null)
+        {
+            ArgumentNullException.ThrowIfNull(directory);
+            using (var activity = StartActivity(nameof(ImportCatalogDirectory)))
+            {
+                try
+                {
+                    int count = 0;
+                    foreach (string path in EnumerateCatalogFiles(directory))
+                    {
+                        ImportFile(path, documentationProbe);
+                        count++;
+                    }
+                    activity?.SetReturnValue(count);
+                    return count;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
+        /// A ready-made <c>documentationProbe</c> for <see cref="ImportCatalogFile"/>/<see cref="ImportCatalogDirectory"/>:
+        /// reads a sibling <c>.syn_en</c> (else <c>.md</c>) help file next to the component and returns its full text
+        /// as the documentation summary — mirroring the vendor <c>FunctionBlocks\*.md</c> help documents — or null when
+        /// neither sibling exists. Opt in by passing this method as the probe argument.
+        /// </summary>
+        public static string? ReadSiblingDocumentation(string componentPath)
+        {
+            ArgumentNullException.ThrowIfNull(componentPath);
+            foreach (string extension in new[] { ".syn_en", ".md" })
+            {
+                string sibling = Path.ChangeExtension(componentPath, extension);
+                if (File.Exists(sibling))
+                {
+                    return File.ReadAllText(sibling);
+                }
+            }
+            return null;
+        }
+
+        private void ImportFile(string path, Func<string, string?>? documentationProbe)
+        {
+            string? summary = documentationProbe?.Invoke(path);
+            if (Path.GetExtension(path).Equals(".ifb", StringComparison.OrdinalIgnoreCase))
+            {
+                FunctionBlockDocumentation? documentation = summary is null
+                    ? null
+                    : new FunctionBlockDocumentation(summary, ImmutableDictionary<string, string>.Empty);
+                catalog.Value.Import(CatalogReader.ReadFunctionBlock(path, documentation));
+            }
+            else
+            {
+                ProductDocumentation? documentation = summary is null
+                    ? null
+                    : new ProductDocumentation(summary, ImmutableDictionary<string, string>.Empty);
+                catalog.Value.Import(CatalogReader.ReadProduct(path, documentation));
+            }
+        }
+
+        private static IEnumerable<string> EnumerateCatalogFiles(string directory)
+        {
+            if (!Directory.Exists(directory))
+            {
+                throw new DirectoryNotFoundException($"Catalog import directory '{directory}' does not exist.");
+            }
+            return Directory.EnumerateFiles(directory, "*.def", SearchOption.AllDirectories)
+                .Concat(Directory.EnumerateFiles(directory, "*.ifb", SearchOption.AllDirectories))
+                .OrderBy(p => p, StringComparer.Ordinal);
         }
 
         // To edit a project, call the project.Edit() extension on a loaded/created Project — there is no

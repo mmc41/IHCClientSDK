@@ -10,16 +10,16 @@ namespace Ihc.Vis.Catalog
     /// <summary>
     /// The catalog of products and function blocks available for insertion, plus the File→New templates. Modelled
     /// as an interface so the editor/service can be driven by a fake catalog in tests (matching the SDK's
-    /// interface-injection convention) without a real IHC Visual install on disk. <see cref="CatalogDiscovery"/>
-    /// is the install-dir-backed implementation.
+    /// interface-injection convention) without a real IHC Visual install on disk. <see cref="MaterializedCatalog"/>
+    /// is the concrete, source-agnostic implementation.
     /// </summary>
     /// <remarks>
     /// This interface is the catalog <b>provider seam</b>: it returns the level-owned definition models
     /// (<see cref="ProductDefinition"/>, <see cref="FunctionBlockDefinition"/>) without owning how they are
-    /// sourced. <see cref="CatalogDiscovery"/> sources them by scanning an IHC Visual install; a future
-    /// SDK-embedded <c>BuiltInCatalog</c> would be a second implementation of this same interface, letting the
-    /// SDK create and insert components without any desktop application present. Its home is this
-    /// <c>Ihc.Vis.Catalog</c> namespace, alongside <see cref="CatalogDiscovery"/>.
+    /// sourced. <see cref="CatalogDiscovery"/> materializes one by scanning an IHC Visual install; an SDK-embedded
+    /// <c>BuiltInCatalog</c> materializes one from code-authored builder invocations, letting the SDK create and
+    /// insert components without any desktop application present. Its home is this <c>Ihc.Vis.Catalog</c> namespace,
+    /// alongside <see cref="CatalogDiscovery"/> and <see cref="MaterializedCatalog"/>.
     /// </remarks>
     public interface ICatalog
     {

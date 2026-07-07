@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.IO;
 using System.Text;
 
@@ -58,6 +59,83 @@ namespace Ihc.Vis.Tests
             ProjectElement root = CatalogReader.Read(stream);
 
             Assert.That(root.GetAttribute("name"), Is.EqualTo("højre"));
+        }
+
+        // A .def with an inline DTD: instance omits locked (rides the DTD default), display name carries the vendor
+        // NN# menu prefix, and the DTD blocks must be captured for open-world insert.
+        private const string ProductDefXml =
+            "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\r\n" +
+            "<!DOCTYPE product_dataline[\r\n" +
+            "   <!ELEMENT product_dataline ANY>\r\n" +
+            "   <!ATTLIST product_dataline id ID #REQUIRED\r\n" +
+            "                  product_identifier CDATA #REQUIRED\r\n" +
+            "                  locked (yes | no) \"yes\"\r\n" +
+            "                  name CDATA \"\">\r\n" +
+            "   <!ELEMENT dataline_output ANY>\r\n" +
+            "   <!ATTLIST dataline_output id ID #REQUIRED>\r\n" +
+            "]>\r\n" +
+            "<product_dataline id=\"_0x01\" product_identifier=\"_0x2101\" name=\"12#Stikkontakt\">\r\n" +
+            "  <dataline_output id=\"_0x02\"/>\r\n" +
+            "</product_dataline>";
+
+        [Test]
+        public void ReadProduct_MapsIdentityDtdDefaultsAndInlineDtd()
+        {
+            using var stream = new MemoryStream(Encoding.Latin1.GetBytes(ProductDefXml));
+            ProductDefinition product = CatalogReader.ReadProduct(stream);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(product.ProductIdentifier, Is.EqualTo("_0x2101"), "product_identifier");
+                Assert.That(product.DisplayName, Is.EqualTo("Stikkontakt"), "NN# menu prefix stripped");
+                Assert.That(product.CategoryPath, Is.Empty, "standalone file has no catalog-tree category");
+                Assert.That(product.Body.GetAttribute("locked"), Is.EqualTo("yes"), "DTD default materialized in Body");
+                Assert.That(product.InlineDtdBlocks.ContainsKey("product_dataline"), Is.True, "inline DTD captured for open-world insert");
+                Assert.That(product.Documentation.IsEmpty, Is.True, "no documentation supplied → Empty");
+            });
+        }
+
+        [Test]
+        public void ReadProduct_AttachesSuppliedDocumentation()
+        {
+            var documentation = new ProductDocumentation("Overview help text", ImmutableDictionary<string, string>.Empty);
+            using var stream = new MemoryStream(Encoding.Latin1.GetBytes(ProductDefXml));
+
+            ProductDefinition product = CatalogReader.ReadProduct(stream, documentation);
+
+            Assert.That(product.Documentation.Summary, Is.EqualTo("Overview help text"));
+        }
+
+        [Test]
+        public void ReadFunctionBlock_MapsMasterFieldsAndInlineDtd()
+        {
+            // .ifb files are genuine ISO-8859-1; the block name carries Danish letters that must decode correctly.
+            const string xml =
+                "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\r\n" +
+                "<!DOCTYPE functionblock[\r\n" +
+                "   <!ELEMENT functionblock ANY>\r\n" +
+                "   <!ATTLIST functionblock id ID #REQUIRED\r\n" +
+                "                  master_type CDATA #IMPLIED\r\n" +
+                "                  master_version CDATA #IMPLIED\r\n" +
+                "                  master_name CDATA #IMPLIED\r\n" +
+                "                  name CDATA #IMPLIED>\r\n" +
+                "]>\r\n" +
+                "<functionblock id=\"_0x01\" master_type=\"1.1.01\" master_version=\"e\" " +
+                "master_name=\"Kip tænd sluk\" name=\"1.1.01.e. Kip tænd sluk\"/>";
+
+            using var stream = new MemoryStream(Encoding.Latin1.GetBytes(xml));
+            FunctionBlockDefinition block = CatalogReader.ReadFunctionBlock(stream);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(block.MasterType, Is.EqualTo("1.1.01"), "master_type");
+                Assert.That(block.MasterVersion, Is.EqualTo("e"), "master_version");
+                Assert.That(block.MasterName, Is.EqualTo("Kip tænd sluk"), "master_name (Latin-1 decoded)");
+                Assert.That(block.DisplayName, Is.EqualTo("1.1.01.e. Kip tænd sluk"), "name attribute verbatim, not menu-stripped");
+                Assert.That(block.CategoryPath, Is.Empty);
+                Assert.That(block.InlineDtdBlocks.ContainsKey("functionblock"), Is.True);
+                Assert.That(block.IsEmptyTemplate, Is.False, "a real block is not the empty template scaffold");
+            });
         }
     }
 }

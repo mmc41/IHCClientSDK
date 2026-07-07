@@ -18,6 +18,24 @@ namespace Ihc.Vis.Validation
         /// <summary>A clean result with no errors.</summary>
         public static ProjectValidationResult Success { get; } = new(true, ImmutableArray<string>.Empty);
 
+        /// <summary>
+        /// Builds a result from a finding list: <see cref="IsValid"/> is true when no finding is an
+        /// <see cref="ValidationSeverity.Error"/>, and <see cref="Errors"/> collects those error messages. An empty
+        /// finding list returns <see cref="Success"/>. The shared shaping every validation entry point uses.
+        /// </summary>
+        public static ProjectValidationResult FromFindings(ImmutableArray<ProjectValidationFinding> findings)
+        {
+            if (findings.IsDefaultOrEmpty)
+            {
+                return Success;
+            }
+            ImmutableArray<string> errors = findings
+                .Where(f => f.Severity == ValidationSeverity.Error)
+                .Select(f => f.Message)
+                .ToImmutableArray();
+            return new ProjectValidationResult(errors.IsEmpty, errors) { Findings = findings };
+        }
+
         /// <summary>Every finding (errors and warnings), in document-scan order.</summary>
         public ImmutableArray<ProjectValidationFinding> Findings { get; init; } =
             ImmutableArray<ProjectValidationFinding>.Empty;

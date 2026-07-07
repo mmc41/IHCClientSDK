@@ -1,8 +1,15 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Globalization;
+using System.Linq;
 
+using Ihc.Vis.Io;
 using Ihc.Vis.Model;
+using Ihc.Vis.Schema;
 using Ihc.Vis.Validation;
+using TypeCode = Ihc.Vis.Schema.TypeCode;
 namespace Ihc.Vis.FunctionBlocks
 {
     /// <summary>
@@ -32,19 +39,48 @@ namespace Ihc.Vis.FunctionBlocks
     /// <see cref="Build()"/> output to the app-service insert door (<c>project.Edit().Group(..).AddFunctionBlock(def)</c>
     /// via <see cref="Ihc.Vis.ProjectAppService"/>), which owns telemetry, IO and the single project-mutation entry
     /// point — the builder deliberately owns none of that.</para>
-    /// <para>Stage-1 design preview: every member throws <see cref="NotImplementedException"/>; the implementation
-    /// lands in a later session. The signatures exist so the authoring surface can be reviewed and shown to compile.</para>
     /// </remarks>
     public sealed class FunctionBlockDefinitionBuilder
     {
-        private FunctionBlockDefinitionBuilder(string masterType, string masterVersion, string masterName) =>
-            throw new NotImplementedException();
+        private static readonly (string Name, string Value)[] NoAttrs = Array.Empty<(string, string)>();
+        private static readonly ProjectElement[] NoChildren = Array.Empty<ProjectElement>();
+
+        private IdAllocator ids = new(0);
+        private readonly string masterType;
+        private readonly string masterVersion;
+        private readonly string masterName;
+        private string? displayNameOverride;
+        private string categoryPath = string.Empty;
+        private readonly List<(string Name, string Value)> rootAttrs = new();
+        private bool isEmptyTemplate;
+        private string emptyIcon = "_0xf";
+        private string? inputsNote;
+        private string? outputsNote;
+        private readonly List<ProjectElement> inputs = new();
+        private readonly List<ProjectElement> outputs = new();
+        private readonly List<ProjectElement> settings = new();
+        private readonly List<ProjectElement> internalVars = new();
+        private readonly List<FbEnumDefRef> enumDefs = new();
+        private readonly List<ProjectElement> rawBodyChildren = new();
+        private readonly List<FbProgramBuilder> programs = new();
+        private readonly ImmutableDictionary<string, string>.Builder inlineDtd =
+            ImmutableDictionary.CreateBuilder<string, string>(StringComparer.Ordinal);
+        private string? docSummary;
+        private readonly Dictionary<string, string> resourceDocs = new(StringComparer.Ordinal);
+        private ProjectElement? decodedBody;
+
+        private FunctionBlockDefinitionBuilder(string masterType, string masterVersion, string masterName)
+        {
+            this.masterType = masterType;
+            this.masterVersion = masterVersion;
+            this.masterName = masterName;
+        }
 
         /// <summary>Begins a function block keyed by <paramref name="masterType"/> (e.g. <c>1.1.01</c>),
         /// <paramref name="masterVersion"/> (e.g. <c>e</c>) and <paramref name="masterName"/> (e.g.
         /// <c>Kip tænd sluk</c>, reproduced verbatim incl. any vendor trailing space).</summary>
         public static FunctionBlockDefinitionBuilder Create(string masterType, string masterVersion, string masterName) =>
-            throw new NotImplementedException();
+            new(masterType, masterVersion, masterName);
 
         /// <summary>
         /// Seeds a builder from an already-authored or catalog-discovered <paramref name="existing"/> block, decoding
@@ -52,69 +88,135 @@ namespace Ihc.Vis.FunctionBlocks
         /// type and edit it" entry a GUI library editor needs. The returned builder is independent of
         /// <paramref name="existing"/> (which stays immutable).
         /// </summary>
-        public static FunctionBlockDefinitionBuilder From(FunctionBlockDefinition existing) =>
-            throw new NotImplementedException();
+        public static FunctionBlockDefinitionBuilder From(FunctionBlockDefinition existing)
+        {
+            ArgumentNullException.ThrowIfNull(existing);
+            var builder = new FunctionBlockDefinitionBuilder(existing.MasterType, existing.MasterVersion, existing.MasterName)
+            {
+                categoryPath = existing.CategoryPath,
+                displayNameOverride = existing.DisplayName,
+                isEmptyTemplate = existing.IsEmptyTemplate,
+                decodedBody = existing.Body,
+                ids = new IdAllocator(IdAllocator.MaxCounterPresent(existing.Body)),
+            };
+            foreach ((string name, string value) in existing.Body.AttrsOrEmpty())
+            {
+                if (name is "id" or "name" or "master_type" or "master_version" or "master_name")
+                {
+                    continue;
+                }
+                builder.rootAttrs.Add((name, value));
+            }
+            foreach (KeyValuePair<string, string> block in existing.InlineDtdBlocks)
+            {
+                builder.inlineDtd[block.Key] = block.Value;
+            }
+            builder.docSummary = existing.Documentation.Summary;
+            foreach (KeyValuePair<string, string> doc in existing.Documentation.Resources)
+            {
+                builder.resourceDocs[doc.Key] = doc.Value;
+            }
+            return builder;
+        }
 
         // ---- identity / master ----
 
         /// <summary>Overrides the composed display name (defaults to
         /// <c>"{MasterType}.{MasterVersion}. {MasterName}"</c>, e.g. <c>1.1.01.e. Kip tænd sluk</c>).</summary>
-        public FunctionBlockDefinitionBuilder DisplayName(string displayName) => throw new NotImplementedException();
+        public FunctionBlockDefinitionBuilder DisplayName(string displayName)
+        {
+            displayNameOverride = displayName;
+            return this;
+        }
 
         /// <summary>Sets the library category path the block is filed under.</summary>
-        public FunctionBlockDefinitionBuilder CategoryPath(string categoryPath) => throw new NotImplementedException();
+        public FunctionBlockDefinitionBuilder CategoryPath(string categoryPath)
+        {
+            this.categoryPath = categoryPath;
+            return this;
+        }
 
         /// <summary>Sets the <c>master_programmer</c> attribute.</summary>
-        public FunctionBlockDefinitionBuilder MasterProgrammer(string programmer) => throw new NotImplementedException();
+        public FunctionBlockDefinitionBuilder MasterProgrammer(string programmer) => SetRoot("master_programmer", programmer);
 
         /// <summary>Sets <c>master_date_year</c>/<c>_month</c>/<c>_day</c> from <paramref name="date"/>.</summary>
-        public FunctionBlockDefinitionBuilder MasterDate(DateOnly date) => throw new NotImplementedException();
+        public FunctionBlockDefinitionBuilder MasterDate(DateOnly date)
+        {
+            SetRoot("master_date_year", Dec(date.Year));
+            SetRoot("master_date_month", Dec(date.Month));
+            return SetRoot("master_date_day", Dec(date.Day));
+        }
 
-        /// <summary>Sets whether the block is a vendor/factory master — a manufacturer-shipped block, as opposed to a
-        /// user-created one.</summary>
-        public FunctionBlockDefinitionBuilder VendorMaster(bool vendor = true) => throw new NotImplementedException();
+        /// <summary>Sets whether the block is a vendor/factory master (<c>master_schneider_electric="yes"</c>) — a
+        /// manufacturer-shipped block, as opposed to a user-created one.</summary>
+        public FunctionBlockDefinitionBuilder VendorMaster(bool vendor = true) =>
+            SetRoot("master_schneider_electric", vendor ? "yes" : "no");
 
         /// <summary>Sets whether the block is locked (<c>locked="yes"</c>).</summary>
-        public FunctionBlockDefinitionBuilder Locked(bool locked = true) => throw new NotImplementedException();
+        public FunctionBlockDefinitionBuilder Locked(bool locked = true) => SetRoot("locked", locked ? "yes" : "no");
 
         /// <summary>Sets the block note.</summary>
-        public FunctionBlockDefinitionBuilder Note(string note) => throw new NotImplementedException();
+        public FunctionBlockDefinitionBuilder Note(string note) => SetRoot("note", note);
 
-        /// <summary>Bakes a raw block-level attribute verbatim (escape hatch).</summary>
-        public FunctionBlockDefinitionBuilder Attribute(string name, string value) => throw new NotImplementedException();
+        /// <summary>Bakes a raw block-level attribute verbatim (escape hatch, e.g. the block <c>icon</c>).</summary>
+        public FunctionBlockDefinitionBuilder Attribute(string name, string value) => SetRoot(name, value);
 
         /// <summary>Authors the empty "Tom blok" scaffold — the five containers plus one empty <c>program_simple</c>
         /// (<c>events</c>+<c>actions</c>) and the vendor icon — and flags
         /// <see cref="FunctionBlockDefinition.IsEmptyTemplate"/>. This is the code peer of <c>Data\fb.def</c>.</summary>
-        public FunctionBlockDefinitionBuilder AsEmptyTemplate(string iconToken = "_0xf") => throw new NotImplementedException();
+        public FunctionBlockDefinitionBuilder AsEmptyTemplate(string iconToken = "_0xf")
+        {
+            isEmptyTemplate = true;
+            emptyIcon = iconToken;
+            return this;
+        }
+
+        // ---- container note overrides (only inputs/outputs vary per block; the rest are fixed grammar) ----
+
+        /// <summary>Overrides the <c>inputs</c> container's <c>note</c> (defaults to
+        /// <see cref="FbGrammar.InputsNoteDefault"/>). The per-block help text a vendor <c>.ifb</c> gives the inputs
+        /// grouping.</summary>
+        public FunctionBlockDefinitionBuilder InputsNote(string note)
+        {
+            inputsNote = note;
+            return this;
+        }
+
+        /// <summary>Overrides the <c>outputs</c> container's <c>note</c> (defaults to
+        /// <see cref="FbGrammar.OutputsNoteDefault"/>).</summary>
+        public FunctionBlockDefinitionBuilder OutputsNote(string note)
+        {
+            outputsNote = note;
+            return this;
+        }
 
         // ---- resources → containers (each returns a handle for program wiring) ----
 
         /// <summary>Adds a <c>resource_input</c> pin under <c>inputs</c>; returns its handle.</summary>
-        public FbResourceHandle AddInput(string name) => throw new NotImplementedException();
+        public FbResourceHandle AddInput(string name) => AddResourceTo(inputs, "resource_input", name, null);
 
         /// <summary>Adds an input of an explicit type <paramref name="tag"/> under <c>inputs</c> (value types are legal
         /// there too); <paramref name="configure"/> sets type-specific attributes. Returns its handle.</summary>
         public FbResourceHandle AddInput(string tag, string name, Action<FbResourceDefBuilder>? configure = null) =>
-            throw new NotImplementedException();
+            AddResourceTo(inputs, tag, name, configure);
 
         /// <summary>Adds a <c>resource_output</c> pin under <c>outputs</c>; returns its handle.</summary>
-        public FbResourceHandle AddOutput(string name) => throw new NotImplementedException();
+        public FbResourceHandle AddOutput(string name) => AddResourceTo(outputs, "resource_output", name, null);
 
         /// <summary>Adds an output of an explicit type <paramref name="tag"/> under <c>outputs</c>;
         /// <paramref name="configure"/> sets type-specific attributes. Returns its handle.</summary>
         public FbResourceHandle AddOutput(string tag, string name, Action<FbResourceDefBuilder>? configure = null) =>
-            throw new NotImplementedException();
+            AddResourceTo(outputs, tag, name, configure);
 
         /// <summary>Adds a value variable of type <paramref name="tag"/> (e.g. <c>resource_timer</c>,
         /// <c>resource_enum</c>) under <c>settings</c>; <paramref name="configure"/> sets its value. Returns its handle.</summary>
         public FbResourceHandle AddSetting(string tag, string name, Action<FbResourceDefBuilder>? configure = null) =>
-            throw new NotImplementedException();
+            AddResourceTo(settings, tag, name, configure);
 
         /// <summary>Adds a private value variable of type <paramref name="tag"/> under <c>internalsettings</c>;
         /// <paramref name="configure"/> sets its value. Returns its handle.</summary>
         public FbResourceHandle AddInternalVariable(string tag, string name, Action<FbResourceDefBuilder>? configure = null) =>
-            throw new NotImplementedException();
+            AddResourceTo(internalVars, tag, name, configure);
 
         /// <summary>
         /// Authors an <c>enum_definition</c> embedded in the block body and returns a typed handle to it — the
@@ -122,11 +224,22 @@ namespace Ihc.Vis.FunctionBlocks
         /// <c>AddValue</c>, then wire it by handle + human value name through the typed <c>Enum</c> / <c>AddEnumOperand</c>
         /// overloads, so a GUI works in value names ("Nat"/"Dag") rather than opaque typedef/inivalue tokens.
         /// </summary>
-        public FbEnumDefRef AddEnumDefinition(string name) => throw new NotImplementedException();
+        public FbEnumDefRef AddEnumDefinition(string name)
+        {
+            var reference = new FbEnumDefRef(ids, ids.Allocate(TypeCode.RequireForTag("enum_definition")), name);
+            enumDefs.Add(reference);
+            return reference;
+        }
 
-        /// <summary>Opens the block's single <c>program_simple</c> for authoring (creating the
-        /// <c>programs</c>/<c>program_simple</c>/<c>events</c>/<c>actions</c> skeleton on first use).</summary>
-        public FbProgramBuilder Program() => throw new NotImplementedException();
+        /// <summary>Opens a <c>program_simple</c> for authoring under <c>programs</c>, named
+        /// <paramref name="name"/>. Callable more than once — each call appends another program (a block may carry
+        /// several).</summary>
+        public FbProgramBuilder Program(string name = "Program")
+        {
+            var program = new FbProgramBuilder(ids, name);
+            programs.Add(program);
+            return program;
+        }
 
         // ---- documentation (help metadata; programmatic-lookup only, never serialized) ----
 
@@ -139,7 +252,11 @@ namespace Ihc.Vis.FunctionBlocks
         /// function-block description <c>.ifb</c>. Contrast <see cref="Note"/>, which sets the serialized <c>note</c>
         /// attribute. Returns this for chaining.
         /// </summary>
-        public FunctionBlockDefinitionBuilder Documentation(string documentation) => throw new NotImplementedException();
+        public FunctionBlockDefinitionBuilder Documentation(string documentation)
+        {
+            docSummary = documentation;
+            return this;
+        }
 
         /// <summary>
         /// Attaches documentation text to one resource — the input/output/setting/variable identified by its
@@ -149,25 +266,41 @@ namespace Ihc.Vis.FunctionBlocks
         /// display name via <see cref="FunctionBlockDocumentation.ForResource"/>) and is never serialized into
         /// <see cref="FunctionBlockDefinition.Body"/> or an <c>.ifb</c>. Returns this for chaining.
         /// </summary>
-        public FunctionBlockDefinitionBuilder Documentation(FbResourceHandle resource, string documentation) =>
-            throw new NotImplementedException();
+        public FunctionBlockDefinitionBuilder Documentation(FbResourceHandle resource, string documentation)
+        {
+            ArgumentNullException.ThrowIfNull(resource);
+            resourceDocs[resource.Name] = documentation;
+            return this;
+        }
 
         // ---- escape hatches ----
 
         /// <summary>Splices a pre-built resource subtree into the named container (<c>inputs</c>/<c>outputs</c>/
         /// <c>settings</c>/<c>internalsettings</c>) — for exotic resource families. Returns this for chaining.</summary>
-        public FunctionBlockDefinitionBuilder RawResource(string container, ProjectElement resource) =>
-            throw new NotImplementedException();
+        public FunctionBlockDefinitionBuilder RawResource(string container, ProjectElement resource)
+        {
+            ArgumentNullException.ThrowIfNull(resource);
+            ContainerList(container).Add(ids.MintMissingIds(resource));
+            return this;
+        }
 
         /// <summary>Splices an arbitrary pre-built subtree at the function-block <c>Body</c> root — the body-level peer
         /// of <c>RawResource</c>, for elements that live directly under <c>functionblock</c> rather than in a resource
         /// container: an embedded <c>enum_definition</c>, or an additional <c>program_simple</c> under <c>programs</c>.
         /// Returns this for chaining.</summary>
-        public FunctionBlockDefinitionBuilder RawChild(ProjectElement child) => throw new NotImplementedException();
+        public FunctionBlockDefinitionBuilder RawChild(ProjectElement child)
+        {
+            ArgumentNullException.ThrowIfNull(child);
+            rawBodyChildren.Add(ids.MintMissingIds(child));
+            return this;
+        }
 
         /// <summary>Supplies a verbatim inline-DTD block for a genuinely non-registry element type (open-world).</summary>
-        public FunctionBlockDefinitionBuilder InlineDtdBlock(string tag, string verbatimBlock) =>
-            throw new NotImplementedException();
+        public FunctionBlockDefinitionBuilder InlineDtdBlock(string tag, string verbatimBlock)
+        {
+            inlineDtd[tag] = verbatimBlock;
+            return this;
+        }
 
         /// <summary>
         /// Checks the builder's current state against the locally-decidable authoring preconditions (identity present,
@@ -175,12 +308,172 @@ namespace Ihc.Vis.FunctionBlocks
         /// structured <see cref="ProjectValidationResult"/> a GUI filters and navigates by — the non-throwing path for
         /// live field-level validation as the user edits, phrased in authoring-call terms rather than placeholder ids.
         /// </summary>
-        public ProjectValidationResult Validate() => throw new NotImplementedException();
+        public ProjectValidationResult Validate()
+        {
+            var findings = ImmutableArray.CreateBuilder<ProjectValidationFinding>();
+            if (!isEmptyTemplate && (string.IsNullOrEmpty(masterType)
+                || string.IsNullOrEmpty(masterVersion) || string.IsNullOrEmpty(masterName)))
+            {
+                findings.Add(new ProjectValidationFinding(ValidationSeverity.Error, "identity-missing", null,
+                    "The block needs a master_type, master_version and master_name (or AsEmptyTemplate for a Tom blok)."));
+            }
+            foreach (FbProgramBuilder program in programs)
+            {
+                if (!program.HasEvents)
+                {
+                    findings.Add(new ProjectValidationFinding(ValidationSeverity.Warning, "program-empty", null,
+                        "A program has no events, so it will never run."));
+                }
+            }
+            return ProjectValidationResult.FromFindings(findings.ToImmutable());
+        }
 
         /// <summary>Materializes the deep <c>Body</c> (five containers in fixed order + program graph, placeholder ids)
         /// and returns the finished <see cref="FunctionBlockDefinition"/>. Throws <see cref="ProjectValidationException"/>
         /// when <see cref="Validate"/> would report an error — call <see cref="Validate"/> first for non-throwing UI feedback.</summary>
-        public FunctionBlockDefinition Build() => throw new NotImplementedException();
+        public FunctionBlockDefinition Build()
+        {
+            ProjectValidationResult validation = Validate();
+            if (!validation.IsValid)
+            {
+                throw new ProjectValidationException(validation);
+            }
+
+            // The materialized body is deliberately left un-canonicalized (raw placeholder ids + effective
+            // attributes), exactly as CatalogReader.Read yields an .ifb's parsed tree: the insert transform
+            // canonicalizes against the project on insert, and the oracle component tests canonicalize against the
+            // block's own grammar.
+            ProjectElement body = decodedBody is not null ? MaterializeDecoded()
+                : isEmptyTemplate ? MaterializeEmptyTemplate()
+                : MaterializeBody();
+
+            return new FunctionBlockDefinition(masterType, masterVersion, masterName, ComposedDisplayName, categoryPath, body)
+            {
+                InlineDtdBlocks = inlineDtd.ToImmutable(),
+                IsEmptyTemplate = isEmptyTemplate,
+                Documentation = BuildDocumentation(),
+            };
+        }
+
+        private string ComposedDisplayName =>
+            displayNameOverride
+            ?? (string.IsNullOrEmpty(masterType) ? masterName : $"{masterType}.{masterVersion}. {masterName}");
+
+        private ProjectElement MaterializeBody()
+        {
+            var bodyChildren = new List<ProjectElement>();
+            bodyChildren.AddRange(enumDefs.Select(e => e.Materialize()));
+            bodyChildren.AddRange(rawBodyChildren);
+            bodyChildren.Add(FbGrammar.Container(ids, "inputs", FbGrammar.InputsName, FbGrammar.InputsIcon,
+                inputsNote ?? FbGrammar.InputsNoteDefault, inputs));
+            bodyChildren.Add(FbGrammar.Container(ids, "outputs", FbGrammar.OutputsName, FbGrammar.OutputsIcon,
+                outputsNote ?? FbGrammar.OutputsNoteDefault, outputs));
+            bodyChildren.Add(FbGrammar.Container(ids, "settings", FbGrammar.SettingsName, FbGrammar.SettingsIcon,
+                FbGrammar.SettingsNote, settings));
+            bodyChildren.Add(FbGrammar.Container(ids, "internalsettings", FbGrammar.InternalName, FbGrammar.InternalIcon,
+                FbGrammar.InternalNote, internalVars));
+            bodyChildren.Add(FbGrammar.Container(ids, "programs", FbGrammar.ProgramsName, FbGrammar.ProgramsIcon,
+                FbGrammar.ProgramsNote, programs.Select(p => p.Materialize()).ToArray()));
+
+            ProjectElement root = FbGrammar.Node("functionblock",
+                ids.Allocate(TypeCode.RequireForTag("functionblock")), NoAttrs, bodyChildren);
+            return ApplyIdentityAndRootAttrs(root);
+        }
+
+        private ProjectElement MaterializeEmptyTemplate()
+        {
+            ProjectElement events = FbGrammar.Container(ids, "events", FbGrammar.EventsName, FbGrammar.EventsIcon,
+                FbGrammar.EventsNote, NoChildren);
+            ProjectElement actions = FbGrammar.Node("actions", ids.Allocate(TypeCode.RequireForTag("actions")),
+                new[]
+                {
+                    ("name", FbGrammar.RootActionsName), ("icon", FbGrammar.ActionsIcon),
+                    ("note", FbGrammar.RootActionsEmptyNote), ("type", FbGrammar.RootActionsType),
+                }, NoChildren);
+            ProjectElement programSimple = FbGrammar.Node("program_simple",
+                ids.Allocate(TypeCode.RequireForTag("program_simple")),
+                new[] { ("name", "Program"), ("icon", FbGrammar.ProgramSimpleIcon) },
+                new[] { events, actions });
+
+            var bodyChildren = new[]
+            {
+                FbGrammar.Container(ids, "inputs", FbGrammar.InputsName, FbGrammar.InputsIcon,
+                    inputsNote ?? FbGrammar.InputsNoteDefault, NoChildren),
+                FbGrammar.Container(ids, "outputs", FbGrammar.OutputsName, FbGrammar.OutputsIcon,
+                    outputsNote ?? FbGrammar.OutputsNoteDefault, NoChildren),
+                FbGrammar.Container(ids, "settings", FbGrammar.SettingsName, FbGrammar.SettingsIcon,
+                    FbGrammar.SettingsNote, NoChildren),
+                FbGrammar.Container(ids, "internalsettings", FbGrammar.InternalName, FbGrammar.InternalIcon,
+                    FbGrammar.InternalNote, NoChildren),
+                FbGrammar.Container(ids, "programs", FbGrammar.ProgramsName, FbGrammar.ProgramsIcon,
+                    FbGrammar.ProgramsNote, new[] { programSimple }),
+            };
+            return FbGrammar.Node("functionblock",
+                ids.Allocate(TypeCode.RequireForTag("functionblock")),
+                new[] { ("name", ComposedDisplayName), ("icon", emptyIcon) }, bodyChildren);
+        }
+
+        // Re-emits a body decoded via From(): the preserved children verbatim, with the current identity/root-attribute
+        // edits re-applied on top. Keeps a From(x).Build() round-trip faithful without re-parsing the program graph.
+        private ProjectElement MaterializeDecoded() => ApplyIdentityAndRootAttrs(decodedBody!);
+
+        // Re-applies the master identity and the accumulated root attributes onto a freshly-built or decoded root —
+        // the tail MaterializeBody and MaterializeDecoded share.
+        private ProjectElement ApplyIdentityAndRootAttrs(ProjectElement root)
+        {
+            root = root
+                .WithAttribute("name", ComposedDisplayName)
+                .WithAttribute("master_type", masterType)
+                .WithAttribute("master_version", masterVersion)
+                .WithAttribute("master_name", masterName);
+            foreach ((string name, string value) in rootAttrs)
+            {
+                root = root.WithAttribute(name, value);
+            }
+            return root;
+        }
+
+        private FbResourceHandle AddResourceTo(List<ProjectElement> container, string tag, string name,
+            Action<FbResourceDefBuilder>? configure)
+        {
+            var configurator = new FbResourceDefBuilder(tag);
+            configure?.Invoke(configurator);
+            ElementId id = ids.Allocate(TypeCode.RequireForTag(tag));
+            ProjectElement resource = FbGrammar.Node(tag, id, new[] { ("name", name) }, NoChildren);
+            foreach ((string attrName, string attrValue) in FbGrammar.NewResourceDefaults(tag))
+            {
+                resource = resource.WithAttribute(attrName, attrValue);
+            }
+            foreach ((string attrName, string attrValue) in configurator.Attributes)
+            {
+                resource = resource.WithAttribute(attrName, attrValue);
+            }
+            container.Add(resource);
+            return new FbResourceHandle(name, id);
+        }
+
+        private List<ProjectElement> ContainerList(string container) => container switch
+        {
+            "inputs" => inputs,
+            "outputs" => outputs,
+            "settings" => settings,
+            "internalsettings" => internalVars,
+            _ => throw new ArgumentException(
+                $"'{container}' is not a resource container (inputs/outputs/settings/internalsettings).", nameof(container)),
+        };
+
+        private FunctionBlockDefinitionBuilder SetRoot(string name, string value)
+        {
+            rootAttrs.Add((name, value));
+            return this;
+        }
+
+        private FunctionBlockDocumentation BuildDocumentation() =>
+            docSummary is null && resourceDocs.Count == 0
+                ? FunctionBlockDocumentation.Empty
+                : new FunctionBlockDocumentation(docSummary, resourceDocs.ToImmutableDictionary(StringComparer.Ordinal));
+
+        private static string Dec(int value) => value.ToString(CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -190,10 +483,14 @@ namespace Ihc.Vis.FunctionBlocks
     /// </summary>
     public sealed class FbResourceHandle
     {
-        internal FbResourceHandle(string name, ElementId placeholderId) => throw new NotImplementedException();
+        internal FbResourceHandle(string name, ElementId placeholderId)
+        {
+            Name = name;
+            PlaceholderId = placeholderId;
+        }
 
         /// <summary>The resource's display name.</summary>
-        public string Name { get; } = null!;
+        public string Name { get; }
 
         /// <summary>The body-local placeholder id the insert transform re-mints and remaps IDREFs through.</summary>
         internal ElementId PlaceholderId { get; }
@@ -204,23 +501,57 @@ namespace Ihc.Vis.FunctionBlocks
     /// <see cref="FunctionBlockDefinitionBuilder.AddEnumDefinition"/> — the definition-layer peer of
     /// <see cref="Ihc.Vis.Editing.EnumDefinitionRef"/>. Carries the enum's placeholder typedef token and resolves a
     /// human value name to its <c>inivalue</c> token, so a GUI wires enum operands by name, not by opaque token.
-    /// Values are added fluently with <see cref="AddValue"/> rather than upfront as the Editing peer takes them
+    /// Values are added fluently with <see cref="AddValue(string)"/> rather than upfront as the Editing peer takes them
     /// (<c>ProjectEditor.AddEnumDefinition(name, values)</c> allocates real value-ids in declaration order at that
     /// moment): definition-layer value-ids are throwaway placeholders the insert transform re-mints, so there is
     /// nothing to allocate atomically and the incremental form reads better for GUI authoring.
     /// </summary>
     public sealed class FbEnumDefRef
     {
-        internal FbEnumDefRef() => throw new NotImplementedException();
+        private readonly IdAllocator ids;
+        private readonly ElementId defId;
+        private readonly string name;
+        private readonly List<(string Name, ElementId Id, int Index)> values = new();
+
+        internal FbEnumDefRef(IdAllocator ids, ElementId defId, string name)
+        {
+            this.ids = ids;
+            this.defId = defId;
+            this.name = name;
+        }
 
         /// <summary>The enum's placeholder <c>typedef</c> token (remapped on insert), for raw interop.</summary>
-        public string Typedef => throw new NotImplementedException();
+        public string Typedef => defId.ToToken();
 
-        /// <summary>Adds an <c>enum_value</c> (in declaration order); returns this for chaining.</summary>
-        public FbEnumDefRef AddValue(string valueName) => throw new NotImplementedException();
+        /// <summary>Adds an <c>enum_value</c> whose <c>index</c> is its declaration order (0-based); returns this for
+        /// chaining.</summary>
+        public FbEnumDefRef AddValue(string valueName) => AddValue(valueName, values.Count);
+
+        /// <summary>Adds an <c>enum_value</c> with an explicit <paramref name="index"/> (for enums whose value order
+        /// differs from their index order); returns this for chaining.</summary>
+        public FbEnumDefRef AddValue(string valueName, int index)
+        {
+            values.Add((valueName, ids.Allocate(TypeCode.RequireForTag("enum_value")), index));
+            return this;
+        }
 
         /// <summary>The <c>inivalue</c> token for a previously-added value name, for raw interop.</summary>
-        public string InitialValue(string valueName) => throw new NotImplementedException();
+        public string InitialValue(string valueName)
+        {
+            foreach ((string Name, ElementId Id, int Index) value in values)
+            {
+                if (value.Name == valueName)
+                {
+                    return value.Id.ToToken();
+                }
+            }
+            throw new ArgumentException($"Enum '{name}' has no value named '{valueName}'.", nameof(valueName));
+        }
+
+        internal ProjectElement Materialize() =>
+            FbGrammar.Node("enum_definition", defId, new[] { ("name", name) },
+                values.Select(v => FbGrammar.Leaf("enum_value", v.Id,
+                    new[] { ("name", v.Name), ("index", v.Index.ToString(CultureInfo.InvariantCulture)) })));
     }
 
     /// <summary>
@@ -230,36 +561,72 @@ namespace Ihc.Vis.FunctionBlocks
     /// </summary>
     public sealed class FbResourceDefBuilder
     {
-        internal FbResourceDefBuilder(string tag) => throw new NotImplementedException();
+        private readonly List<(string Name, string Value)> attrs = new();
+
+        internal FbResourceDefBuilder(string tag)
+        {
+            // The tag is accepted for parity with the product configurator (and future per-type validation); the
+            // function-block value setters are family-agnostic, so it is not consulted today.
+            _ = tag;
+        }
+
+        internal IReadOnlyList<(string Name, string Value)> Attributes => attrs;
 
         /// <summary>Sets the resource note.</summary>
-        public FbResourceDefBuilder Note(string note) => throw new NotImplementedException();
+        public FbResourceDefBuilder Note(string note) => Set("note", note);
 
         /// <summary>Marks the resource value as backed-up (<c>backup="yes"</c>).</summary>
-        public FbResourceDefBuilder Backup(bool backup = true) => throw new NotImplementedException();
+        public FbResourceDefBuilder Backup(bool backup = true) => Set("backup", backup ? "yes" : "no");
 
         /// <summary>Overrides the GUI icon token.</summary>
-        public FbResourceDefBuilder Icon(string iconToken) => throw new NotImplementedException();
+        public FbResourceDefBuilder Icon(string iconToken) => Set("icon", iconToken);
 
         /// <summary>Sets the raw initial value (<c>inivalue</c>) — the general escape hatch for scalar settings.</summary>
-        public FbResourceDefBuilder Inivalue(string value) => throw new NotImplementedException();
+        public FbResourceDefBuilder Inivalue(string value) => Set("inivalue", value);
 
         /// <summary>For a <c>resource_enum</c>: wires the enum by a typed <see cref="FbEnumDefRef"/> handle and a human
         /// value name (tokens resolved internally) — the GUI-friendly form.</summary>
-        public FbResourceDefBuilder Enum(FbEnumDefRef definition, string valueName) => throw new NotImplementedException();
+        public FbResourceDefBuilder Enum(FbEnumDefRef definition, string valueName)
+        {
+            ArgumentNullException.ThrowIfNull(definition);
+            Set("typedef", definition.Typedef);
+            return Set("inivalue", definition.InitialValue(valueName));
+        }
 
         /// <summary>For a <c>resource_enum</c>: sets the enum-definition/value IDREF tokens directly (the raw escape
         /// hatch when referencing a pre-existing/catalog enum; remapped on insert when the enum is embedded in the body).</summary>
-        public FbResourceDefBuilder Enum(string typedefToken, string inivalueToken) => throw new NotImplementedException();
+        public FbResourceDefBuilder Enum(string typedefToken, string inivalueToken)
+        {
+            Set("typedef", typedefToken);
+            return Set("inivalue", inivalueToken);
+        }
 
         /// <summary>Sets a timer resource's <c>hour</c>/<c>minute</c>/<c>second</c>(/<c>millisecond</c>) value.</summary>
-        public FbResourceDefBuilder TimerHms(int hour, int minute, int second, int millisecond = 0) =>
-            throw new NotImplementedException();
+        public FbResourceDefBuilder TimerHms(int hour, int minute, int second, int millisecond = 0)
+        {
+            Set("hour", Dec(hour));
+            Set("minute", Dec(minute));
+            Set("second", Dec(second));
+            return Set("millisecond", Dec(millisecond));
+        }
 
         /// <summary>Sets a date resource's <c>year</c>/<c>month</c>/<c>day</c> value.</summary>
-        public FbResourceDefBuilder DateYmd(int year, int month, int day) => throw new NotImplementedException();
+        public FbResourceDefBuilder DateYmd(int year, int month, int day)
+        {
+            Set("year", Dec(year));
+            Set("month", Dec(month));
+            return Set("day", Dec(day));
+        }
 
         /// <summary>Bakes a raw attribute verbatim (escape hatch for type-specific attributes).</summary>
-        public FbResourceDefBuilder Attribute(string name, string value) => throw new NotImplementedException();
+        public FbResourceDefBuilder Attribute(string name, string value) => Set(name, value);
+
+        private FbResourceDefBuilder Set(string name, string value)
+        {
+            attrs.Add((name, value));
+            return this;
+        }
+
+        private static string Dec(int value) => value.ToString(CultureInfo.InvariantCulture);
     }
 }

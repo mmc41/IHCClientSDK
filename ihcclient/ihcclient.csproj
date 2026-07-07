@@ -17,6 +17,7 @@
     <InternalsVisibleTo Include="safe_unit_tests" />
     <InternalsVisibleTo Include="safe_project_tests" />
     <InternalsVisibleTo Include="ihc_lab" />
+    <InternalsVisibleTo Include="ihc_catalog_codegen" />
   </ItemGroup>
   <ItemGroup>
     <!-- Verbatim canonical .vis DTD blocks (the schema registry's single source of truth). Embedded so the

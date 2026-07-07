@@ -5,7 +5,10 @@ using System.IO;
 using System.Text;
 using System.Xml;
 
+using Ihc.Vis.FunctionBlocks;
+using Ihc.Vis.Io;
 using Ihc.Vis.Model;
+using Ihc.Vis.Products;
 namespace Ihc.Vis.Catalog
 {
     /// <summary>
@@ -26,18 +29,96 @@ namespace Ihc.Vis.Catalog
     /// hands <c>XmlReader</c> a <c>TextReader</c>. Attribute values are returned unescaped (logical), in the order
     /// the reader surfaces them.
     /// </remarks>
-    internal static class CatalogReader
+    public static class CatalogReader
     {
-        public static ProjectElement ReadFile(string path)
+        /// <summary>
+        /// Reads a product catalog file (<c>Products\*.def</c>) into a <see cref="ProductDefinition"/> — the public
+        /// file→instance entry point for importing a single product without an IHC Visual install scan. Applies the
+        /// same encoding sniffing, inline-DTD ATTLIST defaulting, and open-world <c>InlineDtdBlocks</c> capture that
+        /// <see cref="CatalogDiscovery"/> uses per file, so an imported product resolves and inserts identically to a
+        /// scanned one. <see cref="ProductDefinition.CategoryPath"/> is empty (a standalone file has no catalog-tree
+        /// category); pass <paramref name="documentation"/> to attach programmatic help metadata (the D3 doc-probe hook).
+        /// </summary>
+        public static ProductDefinition ReadProduct(string path, ProductDocumentation? documentation = null)
+        {
+            ArgumentNullException.ThrowIfNull(path);
+            return BuildProduct(File.ReadAllBytes(path), string.Empty, documentation);
+        }
+
+        /// <summary>Reads a product catalog file from a stream into a <see cref="ProductDefinition"/>; see
+        /// <see cref="ReadProduct(string, ProductDocumentation?)"/>.</summary>
+        public static ProductDefinition ReadProduct(Stream stream, ProductDocumentation? documentation = null)
+        {
+            ArgumentNullException.ThrowIfNull(stream);
+            return BuildProduct(ReadAllBytes(stream), string.Empty, documentation);
+        }
+
+        /// <summary>
+        /// Reads a function-block catalog file (<c>FunctionBlocks\*.ifb</c>) into a <see cref="FunctionBlockDefinition"/>
+        /// — the public file→instance entry point for importing a single block. Same encoding/DTD-default/InlineDtd
+        /// handling as <see cref="CatalogDiscovery"/>; <see cref="FunctionBlockDefinition.CategoryPath"/> is empty.
+        /// Pass <paramref name="documentation"/> to attach programmatic help metadata (the D3 doc-probe hook).
+        /// </summary>
+        public static FunctionBlockDefinition ReadFunctionBlock(string path, FunctionBlockDocumentation? documentation = null)
+        {
+            ArgumentNullException.ThrowIfNull(path);
+            return BuildFunctionBlock(File.ReadAllBytes(path), string.Empty, documentation);
+        }
+
+        /// <summary>Reads a function-block catalog file from a stream into a <see cref="FunctionBlockDefinition"/>; see
+        /// <see cref="ReadFunctionBlock(string, FunctionBlockDocumentation?)"/>.</summary>
+        public static FunctionBlockDefinition ReadFunctionBlock(Stream stream, FunctionBlockDocumentation? documentation = null)
+        {
+            ArgumentNullException.ThrowIfNull(stream);
+            return BuildFunctionBlock(ReadAllBytes(stream), string.Empty, documentation);
+        }
+
+        // The single product/function-block construction path, shared by the public single-file readers above and by
+        // CatalogDiscovery's install-dir scan (which supplies the tree-relative CategoryPath). Keeping identifier/
+        // display-name extraction + InlineDtd capture here means an imported instance is byte-for-byte the same shape
+        // as a scanned one.
+        internal static ProductDefinition BuildProduct(byte[] bytes, string categoryPath, ProductDocumentation? documentation)
+        {
+            ProjectElement body = Read(bytes);
+            string identifier = body.GetAttribute("product_identifier") ?? string.Empty;
+            string displayName = MenuPrefix.Strip(body.GetAttribute("name") ?? string.Empty);
+            var definition = new ProductDefinition(identifier, displayName, categoryPath, body)
+            {
+                InlineDtdBlocks = InlineDtd.Capture(bytes),
+            };
+            return documentation is null ? definition : definition with { Documentation = documentation };
+        }
+
+        internal static FunctionBlockDefinition BuildFunctionBlock(byte[] bytes, string categoryPath, FunctionBlockDocumentation? documentation)
+        {
+            ProjectElement body = Read(bytes);
+            string masterType = body.GetAttribute("master_type") ?? string.Empty;
+            string masterVersion = body.GetAttribute("master_version") ?? string.Empty;
+            string masterName = body.GetAttribute("master_name") ?? string.Empty;
+            string displayName = body.GetAttribute("name") ?? masterName;
+            var definition = new FunctionBlockDefinition(masterType, masterVersion, masterName, displayName, categoryPath, body)
+            {
+                InlineDtdBlocks = InlineDtd.Capture(bytes),
+            };
+            return documentation is null ? definition : definition with { Documentation = documentation };
+        }
+
+        internal static ProjectElement ReadFile(string path)
         {
             ArgumentNullException.ThrowIfNull(path);
             using FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
             return Read(stream);
         }
 
-        public static ProjectElement Read(Stream stream)
+        internal static ProjectElement Read(Stream stream)
         {
             ArgumentNullException.ThrowIfNull(stream);
+            return Read(ReadAllBytes(stream));
+        }
+
+        internal static ProjectElement Read(byte[] bytes)
+        {
+            ArgumentNullException.ThrowIfNull(bytes);
             var settings = new XmlReaderSettings
             {
                 DtdProcessing = DtdProcessing.Parse,   // process the inline DTD so ATTLIST defaults are materialized
@@ -52,7 +133,6 @@ namespace Ihc.Vis.Catalog
             // mojibakes the Products\*.def files. A BOM wins (the spec's documented trap, ch. 09 §9.3.2); with no
             // BOM a declared non-Latin-1 encoding is honored (a UTF-8-without-BOM file would otherwise silently
             // mojibake its names into every project it is inserted into); otherwise Latin-1 (.ifb/.idf).
-            byte[] bytes = ReadAllBytes(stream);
             using var textReader = new StreamReader(new MemoryStream(bytes, writable: false), SniffEncoding(bytes),
                                                     detectEncodingFromByteOrderMarks: true);
             using XmlReader reader = XmlReader.Create(textReader, settings);

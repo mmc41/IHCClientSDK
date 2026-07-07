@@ -20,7 +20,7 @@ namespace Ihc.Vis.Tests
     {
         private static IhcSettings Settings => TestSetup.Settings;
 
-        private static CatalogDiscovery RequireCatalog()
+        private static ICatalog RequireCatalog()
         {
             string dir = Settings.IhcVisualInstallDir;
             if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
@@ -33,7 +33,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void EveryDiscoveredDescriptor_InsertsValidatesAndRoundTrips()
         {
-            CatalogDiscovery catalog = RequireCatalog();
+            ICatalog catalog = RequireCatalog();
             var app = new ProjectAppService(Settings, catalog,
                 new Microsoft.Extensions.Time.Testing.FakeTimeProvider(new DateTimeOffset(2026, 6, 27, 16, 5, 51, TimeSpan.Zero)));
             Project blank = app.CreateNew(new ProjectDetails("P", "I", "DK"));

@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 using Ihc.Vis.FunctionBlocks;
 using Ihc.Vis.Model;
@@ -13,41 +12,17 @@ using Ihc.Vis.Io;
 namespace Ihc.Vis.Catalog
 {
     /// <summary>
-    /// Auto-discovers the products and function blocks installed with IHC Visual by scanning
-    /// <c>Products\**\*.def</c> (~100) and <c>FunctionBlocks\**\*.ifb</c> (~73) under the configured install dir,
-    /// and loads the <c>Data\</c> File→New templates. These catalog files are the source of truth for instance
-    /// specifics; a <c>.vis</c> is fully self-sufficient once a component has been inserted (spec ch. 09).
+    /// Materializes an <see cref="ICatalog"/> by auto-discovering the products and function blocks installed with
+    /// IHC Visual — scanning <c>Products\**\*.def</c> (~100) and <c>FunctionBlocks\**\*.ifb</c> (~73) under the
+    /// configured install dir — and loading the <c>Data\</c> File→New templates. These catalog files are the source
+    /// of truth for instance specifics; a <c>.vis</c> is fully self-sufficient once a component has been inserted
+    /// (spec ch. 09). The scan produces a <see cref="MaterializedCatalog"/>, the source-agnostic in-memory catalog
+    /// whose lookup semantics it shares with the SDK-embedded <c>BuiltInCatalog</c>.
     /// </summary>
-    public sealed class CatalogDiscovery : ICatalog
+    public static class CatalogDiscovery
     {
-        private readonly ImmutableArray<ProductDefinition> products;
-        private readonly ImmutableArray<FunctionBlockDefinition> functionBlocks;
-        private readonly FrozenDictionaryLike<ProductDefinition> productsByIdentifier;
-        private readonly FrozenDictionaryLike<FunctionBlockDefinition> functionBlocksByType;
-        private readonly FrozenDictionaryLike<FunctionBlockDefinition> functionBlocksByName;
-
-        private CatalogDiscovery(
-            ImmutableArray<ProductDefinition> products,
-            ImmutableArray<FunctionBlockDefinition> functionBlocks,
-            ProjectElement newProjectSkeleton,
-            ProjectElement builtInEnumerators,
-            FunctionBlockDefinition emptyFunctionBlockTemplate)
-        {
-            this.products = products;
-            this.functionBlocks = functionBlocks;
-            NewProjectSkeleton = newProjectSkeleton;
-            BuiltInEnumerators = builtInEnumerators;
-            EmptyFunctionBlockTemplate = emptyFunctionBlockTemplate;
-            productsByIdentifier = new FrozenDictionaryLike<ProductDefinition>(
-                products, p => p.ProductIdentifier);
-            functionBlocksByType = new FrozenDictionaryLike<FunctionBlockDefinition>(
-                functionBlocks, f => f.MasterType);
-            functionBlocksByName = new FrozenDictionaryLike<FunctionBlockDefinition>(
-                functionBlocks, f => f.DisplayName);
-        }
-
-        /// <summary>Builds a catalog by scanning the given IHC Visual install directory (results are cached).</summary>
-        public static CatalogDiscovery FromInstallDir(string installDir)
+        /// <summary>Builds a catalog by scanning the given IHC Visual install directory (parsed eagerly).</summary>
+        public static MaterializedCatalog FromInstallDir(string installDir)
         {
             if (string.IsNullOrWhiteSpace(installDir) || !Directory.Exists(installDir))
             {
@@ -75,16 +50,18 @@ namespace Ihc.Vis.Catalog
             ProjectElement skeleton = ReadCatalogFile(Path.Combine(dataDir, "NewDoc.idf"));
             ProjectElement enums = ReadCatalogFile(Path.Combine(dataDir, "EnumeratorDefinitions.def"));
             FunctionBlockDefinition emptyTemplate = ReadEmptyFunctionBlockTemplate(Path.Combine(dataDir, "fb.def"));
-            return new CatalogDiscovery(products, functionBlocks, skeleton, enums, emptyTemplate);
+            return new MaterializedCatalog(products, functionBlocks, skeleton, enums, emptyTemplate);
         }
 
         // One malformed vendor file must abort discovery with the offending PATH in the message — the raw
-        // XmlException/IOException names neither the file nor that a catalog scan was in progress.
-        private static ProjectElement ReadCatalogFile(string path)
+        // XmlException/IOException names neither the file nor that a catalog scan was in progress. The per-file
+        // instance construction lives in CatalogReader (the public file→instance reader); discovery only adds the
+        // tree-relative CategoryPath and this scan-context error wrapping.
+        private static T ParseCatalogFile<T>(string path, Func<T> parse)
         {
             try
             {
-                return CatalogReader.ReadFile(path);
+                return parse();
             }
             catch (Exception ex) when (ex is System.Xml.XmlException or IOException or UnauthorizedAccessException)
             {
@@ -92,23 +69,13 @@ namespace Ihc.Vis.Catalog
             }
         }
 
-        private static ProjectElement ReadCatalogFile(string path, byte[] bytes)
-        {
-            try
-            {
-                using var ms = new MemoryStream(bytes);
-                return CatalogReader.Read(ms);
-            }
-            catch (System.Xml.XmlException ex)
-            {
-                throw new InvalidDataException($"Failed to parse IHC Visual catalog file '{path}': {ex.Message}", ex);
-            }
-        }
+        private static ProjectElement ReadCatalogFile(string path) =>
+            ParseCatalogFile(path, () => CatalogReader.ReadFile(path));
 
         private static FunctionBlockDefinition ReadEmptyFunctionBlockTemplate(string fbDefPath)
         {
             byte[] bytes = File.ReadAllBytes(fbDefPath);
-            ProjectElement body = ReadCatalogFile(fbDefPath, bytes);
+            ProjectElement body = ParseCatalogFile(fbDefPath, () => CatalogReader.Read(bytes));
             string name = MenuPrefix.Strip(body.GetAttribute("name") ?? "Tom blok");
             return new FunctionBlockDefinition(string.Empty, string.Empty, name, name, string.Empty, body)
             {
@@ -123,13 +90,8 @@ namespace Ihc.Vis.Catalog
             foreach (string path in EnumerateFilesSorted(productsDir, "*.def"))
             {
                 byte[] bytes = File.ReadAllBytes(path);
-                ProjectElement body = ReadCatalogFile(path, bytes);
-                string identifier = body.GetAttribute("product_identifier") ?? string.Empty;
-                string displayName = MenuPrefix.Strip(body.GetAttribute("name") ?? string.Empty);
-                builder.Add(new ProductDefinition(identifier, displayName, RelativeDir(productsDir, path), body)
-                {
-                    InlineDtdBlocks = InlineDtd.Capture(bytes),
-                });
+                builder.Add(ParseCatalogFile(path,
+                    () => CatalogReader.BuildProduct(bytes, RelativeDir(productsDir, path), documentation: null)));
             }
             return builder.ToImmutable();
         }
@@ -140,16 +102,8 @@ namespace Ihc.Vis.Catalog
             foreach (string path in EnumerateFilesSorted(functionBlocksDir, "*.ifb"))
             {
                 byte[] bytes = File.ReadAllBytes(path);
-                ProjectElement body = ReadCatalogFile(path, bytes);
-                string masterType = body.GetAttribute("master_type") ?? string.Empty;
-                string masterVersion = body.GetAttribute("master_version") ?? string.Empty;
-                string masterName = body.GetAttribute("master_name") ?? string.Empty;
-                string displayName = body.GetAttribute("name") ?? masterName;
-                builder.Add(new FunctionBlockDefinition(
-                    masterType, masterVersion, masterName, displayName, RelativeDir(functionBlocksDir, path), body)
-                {
-                    InlineDtdBlocks = InlineDtd.Capture(bytes),
-                });
+                builder.Add(ParseCatalogFile(path,
+                    () => CatalogReader.BuildFunctionBlock(bytes, RelativeDir(functionBlocksDir, path), documentation: null)));
             }
             return builder.ToImmutable();
         }
@@ -161,60 +115,5 @@ namespace Ihc.Vis.Catalog
 
         private static string RelativeDir(string root, string filePath) =>
             Path.GetDirectoryName(Path.GetRelativePath(root, filePath)) ?? string.Empty;
-
-        /// <inheritdoc/>
-        public ProductDefinition Product(string productIdentifier) =>
-            productsByIdentifier.Get(productIdentifier)
-            ?? throw new KeyNotFoundException($"No product with product_identifier '{productIdentifier}' in the catalog.");
-
-        /// <inheritdoc/>
-        public FunctionBlockDefinition FunctionBlock(string masterType) =>
-            functionBlocksByType.Get(masterType)
-            ?? throw new KeyNotFoundException($"No function block with master_type '{masterType}' in the catalog.");
-
-        /// <inheritdoc/>
-        public FunctionBlockDefinition FunctionBlockByName(string name) =>
-            functionBlocksByName.Get(name)
-            ?? throw new KeyNotFoundException($"No function block named '{name}' in the catalog.");
-
-        /// <inheritdoc/>
-        public IReadOnlyList<ProductDefinition> Products => products;
-
-        /// <inheritdoc/>
-        public IReadOnlyList<FunctionBlockDefinition> FunctionBlocks => functionBlocks;
-
-        /// <inheritdoc/>
-        public ProjectElement NewProjectSkeleton { get; }
-
-        /// <inheritdoc/>
-        public ProjectElement BuiltInEnumerators { get; }
-
-        /// <inheritdoc/>
-        public FunctionBlockDefinition EmptyFunctionBlockTemplate { get; }
-
-        /// <summary>
-        /// A tiny last-wins lookup over a descriptor list (catalog keys are not globally unique — favorites
-        /// duplicate function blocks, and a few product_identifiers repeat across root element types, §9.3.3).
-        /// </summary>
-        private sealed class FrozenDictionaryLike<T>
-        {
-            private readonly Dictionary<string, T> map;
-
-            public FrozenDictionaryLike(ImmutableArray<T> items, Func<T, string> keySelector)
-            {
-                map = new Dictionary<string, T>(StringComparer.Ordinal);
-                foreach (T item in items)
-                {
-                    string key = keySelector(item);
-                    if (key.Length == 0)
-                    {
-                        continue;   // keyless descriptors (user-saved blocks without master_type) are not addressable here
-                    }
-                    map[key] = item;
-                }
-            }
-
-            public T? Get(string key) => map.TryGetValue(key, out T? value) ? value : default;
-        }
     }
 }
