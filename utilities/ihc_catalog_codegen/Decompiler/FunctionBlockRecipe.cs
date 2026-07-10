@@ -3,7 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
+using Ihc.Vis.Catalog;
 using Ihc.Vis.FunctionBlocks;
+using Ihc.Vis.Model;
 
 namespace Ihc.Vis.CatalogCodegen
 {
@@ -85,12 +87,32 @@ namespace Ihc.Vis.CatalogCodegen
         /// <summary>The body statements (resource/enum/program declarations and program-graph wiring).</summary>
         public List<FbStatement> Statements { get; } = new();
 
+        /// <summary>The source file's structured grammar (strict-parsed — the envelope guard) and text encoding,
+        /// baked onto the built definition so <c>CatalogFileWriter</c> reproduces the file and the insert transform
+        /// re-materializes the file's DTD defaults install-free. Set by the emitter from the source bytes.</summary>
+        public CatalogGrammar SourceGrammar { get; set; } = CatalogGrammar.Empty;
+
+        public CatalogTextEncoding SourceEncoding { get; set; } = CatalogTextEncoding.Latin1;
+
+        /// <summary>The source file's document-order id tokens, stamped onto the built body (D1). Set by the emitter.</summary>
+        public IReadOnlyList<string> SourceIdTokens { get; set; } = Array.Empty<string>();
+
+        /// <summary>Bakes the source file's fidelity data (strict-parsed grammar, text encoding, document-order id
+        /// tokens) onto the recipe, so <see cref="Build"/> reproduces the file byte-faithfully. Every verify path
+        /// (emit and self-test) must call this before <see cref="FbSelfVerify.Verify"/>.</summary>
+        public void BakeSourceFidelity(FunctionBlockSource source)
+        {
+            SourceGrammar = CatalogDtdParser.ParseStrict(CatalogDtdParser.CaptureHeadText(source.FileBytes));
+            SourceEncoding = source.Definition.SourceEncoding;
+            SourceIdTokens = CatalogIds.ExtractDocumentOrderIds(source.Definition.Body);
+        }
+
         /// <summary>Replays the plan against a fresh real builder and returns its <see cref="FunctionBlockDefinition"/> —
         /// the in-process block the generator normalizes against the source <c>.ifb</c> to gate emission.</summary>
         public FunctionBlockDefinition Build()
         {
             FunctionBlockDefinitionBuilder builder =
-                FunctionBlockDefinitionBuilder.Create(MasterType, MasterVersion, MasterName);
+                FunctionBlockDefinitionBuilder.Create(MasterType, MasterVersion, MasterName).SuppressResourceDefaults();
             foreach (FbHeadCall call in Head)
             {
                 call.Apply(builder);
@@ -100,12 +122,17 @@ namespace Ihc.Vis.CatalogCodegen
             {
                 statement.Apply(env);
             }
-            return builder.Build();
+            FunctionBlockDefinition definition = builder.Grammar(SourceGrammar).Build();
+            return definition with
+            {
+                SourceEncoding = SourceEncoding,
+                Body = CatalogIds.StampDocumentOrder(definition.Body, SourceIdTokens, SourceGrammar),
+            };
         }
 
-        /// <summary>Emits the plan as a committed statement-bodied factory
-        /// <c>private static FunctionBlockDefinition {methodName}() { var b = ...; ...; return b.Build(); }</c>.</summary>
-        public string RenderMethod(string methodName)
+        /// <summary>Emits the plan as a committed statement-bodied factory, its grammar carried as a single
+        /// reference (<paramref name="grammarRef"/>) into the interned grammar table.</summary>
+        public string RenderMethod(string methodName, string grammarRef)
         {
             var builder = new StringBuilder();
             builder.Append("        private static FunctionBlockDefinition ").Append(methodName).Append("()\n");
@@ -113,7 +140,8 @@ namespace Ihc.Vis.CatalogCodegen
             builder.Append("            var b = FunctionBlockDefinitionBuilder.Create(")
                 .Append(CSharpLiteral.Quote(MasterType)).Append(", ")
                 .Append(CSharpLiteral.Quote(MasterVersion)).Append(", ")
-                .Append(CSharpLiteral.Quote(MasterName)).Append(')');
+                .Append(CSharpLiteral.Quote(MasterName)).Append(')')
+                .Append("\n                .SuppressResourceDefaults()");
             if (Head.Count == 0)
             {
                 builder.Append(";\n");
@@ -131,9 +159,31 @@ namespace Ihc.Vis.CatalogCodegen
             {
                 builder.Append("            ").Append(statement.Render).Append('\n');
             }
-            builder.Append("            return b.Build();\n");
+            builder.Append("            var definition = b.Grammar(").Append(grammarRef).Append(").Build();\n");
+            builder.Append("            return definition with\n");
+            builder.Append("            {\n");
+            builder.Append("                SourceEncoding = CatalogTextEncoding.").Append(SourceEncoding).Append(",\n");
+            builder.Append("                Body = CatalogIds.StampDocumentOrder(definition.Body, ")
+                   .Append(RenderIdTokens()).Append(", ").Append(grammarRef).Append("),\n");
+            builder.Append("            };\n");
             builder.Append("        }\n");
             return builder.ToString();
+        }
+
+        private string RenderIdTokens()
+        {
+            if (SourceIdTokens.Count == 0)
+            {
+                return "System.Array.Empty<string>()";
+            }
+            var sb = new StringBuilder("new[] { ");
+            for (int i = 0; i < SourceIdTokens.Count; i++)
+            {
+                if (i > 0) { sb.Append(", "); }
+                sb.Append(CSharpLiteral.Quote(SourceIdTokens[i]));
+            }
+            sb.Append(" }");
+            return sb.ToString();
         }
     }
 }

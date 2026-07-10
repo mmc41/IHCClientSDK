@@ -49,7 +49,8 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(fuga.DisplayName, Is.EqualTo("LK FUGA Tryk 2 tast"), "NN# menu prefix stripped");
-                Assert.That(fuga.Body.GetAttribute("locked"), Is.EqualTo("yes"), "catalog DTD default materialized");
+                Assert.That(fuga.Body.GetAttribute("product_identifier"), Is.EqualTo("_0x2101"), "raw body carries the present identity attributes");
+                Assert.That(fuga.Body.GetAttribute("locked"), Is.Null, "catalog DTD defaults are no longer materialized on read (raw body)");
                 Assert.That(kip.MasterName, Is.EqualTo("Kip tænd sluk"));
                 Assert.That(kip.MasterVersion, Is.EqualTo("e"));
                 Assert.That(kip.DisplayName, Does.Contain("Kip tænd sluk"));

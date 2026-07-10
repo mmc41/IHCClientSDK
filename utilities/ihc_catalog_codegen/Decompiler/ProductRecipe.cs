@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
+using Ihc.Vis.Catalog;
+using Ihc.Vis.Model;
 using Ihc.Vis.Products;
 
 namespace Ihc.Vis.CatalogCodegen
@@ -79,6 +81,28 @@ namespace Ihc.Vis.CatalogCodegen
 
         public List<FluentCall> Calls { get; } = new();
 
+        /// <summary>The source file's structured grammar (strict-parsed — the envelope guard: any construct outside
+        /// the catalog grammar model fails generation loudly) and text encoding, baked onto the built definition so
+        /// <c>CatalogFileWriter</c> reproduces the file and the insert transform re-materializes the file's DTD
+        /// defaults install-free. Set by the emitter from the source bytes.</summary>
+        public CatalogGrammar SourceGrammar { get; set; } = CatalogGrammar.Empty;
+
+        public CatalogTextEncoding SourceEncoding { get; set; } = CatalogTextEncoding.Utf8Bom;
+
+        /// <summary>The source file's document-order id tokens, stamped onto the built body (D1) so it carries the
+        /// vendor file's exact ids instead of the builder's placeholder allocation. Set by the emitter.</summary>
+        public IReadOnlyList<string> SourceIdTokens { get; set; } = Array.Empty<string>();
+
+        /// <summary>Bakes the source file's fidelity data (strict-parsed grammar, text encoding, document-order id
+        /// tokens) onto the recipe, so <see cref="Build"/> reproduces the file byte-faithfully. Every verify path
+        /// (emit and self-test) must call this before <see cref="SelfVerify.Verify"/>.</summary>
+        public void BakeSourceFidelity(ProductSource source)
+        {
+            SourceGrammar = CatalogDtdParser.ParseStrict(CatalogDtdParser.CaptureHeadText(source.FileBytes));
+            SourceEncoding = source.Definition.SourceEncoding;
+            SourceIdTokens = CatalogIds.ExtractDocumentOrderIds(source.Definition.Body);
+        }
+
         /// <summary>Replays the recorded plan against a fresh real builder and returns its <see cref="Build"/> output —
         /// the in-process product the generator normalizes against the source <c>.def</c> to gate emission.</summary>
         public ProductDefinition Build()
@@ -88,22 +112,53 @@ namespace Ihc.Vis.CatalogCodegen
             {
                 call.Apply(builder);
             }
-            return builder.Build();
+            ProductDefinition definition = builder.Grammar(SourceGrammar).Build();
+            return definition with
+            {
+                SourceEncoding = SourceEncoding,
+                Body = CatalogIds.StampDocumentOrder(definition.Body, SourceIdTokens, SourceGrammar),
+            };
         }
 
-        /// <summary>Emits the plan as a committed <c>BuiltInCatalog</c> factory method
-        /// <c>private static ProductDefinition {methodName}() =&gt; ...Build();</c>.</summary>
-        public string RenderMethod(string methodName)
+        /// <summary>Emits the plan as a committed <c>BuiltInCatalog</c> factory method, its grammar carried as a
+        /// single reference (<paramref name="grammarRef"/>) into the interned grammar table.</summary>
+        public string RenderMethod(string methodName, string grammarRef)
         {
             var builder = new StringBuilder();
-            builder.Append("        private static ProductDefinition ").Append(methodName).Append("() =>\n");
-            builder.Append("            ").Append(RenderFactory()).Append('\n');
+            builder.Append("        private static ProductDefinition ").Append(methodName).Append("()\n");
+            builder.Append("        {\n");
+            builder.Append("            ProductDefinition definition =\n");
+            builder.Append("                ").Append(RenderFactory()).Append('\n');
             foreach (FluentCall call in Calls)
             {
-                builder.Append("                ").Append(call.Render).Append('\n');
+                builder.Append("                    ").Append(call.Render).Append('\n');
             }
-            builder.Append("                .Build();\n");
+            builder.Append("                    .Grammar(").Append(grammarRef).Append(")\n");
+            builder.Append("                    .Build();\n");
+            builder.Append("            return definition with\n");
+            builder.Append("            {\n");
+            builder.Append("                SourceEncoding = CatalogTextEncoding.").Append(SourceEncoding).Append(",\n");
+            builder.Append("                Body = CatalogIds.StampDocumentOrder(definition.Body, ")
+                   .Append(RenderIdTokens()).Append(", ").Append(grammarRef).Append("),\n");
+            builder.Append("            };\n");
+            builder.Append("        }\n");
             return builder.ToString();
+        }
+
+        private string RenderIdTokens()
+        {
+            if (SourceIdTokens.Count == 0)
+            {
+                return "System.Array.Empty<string>()";
+            }
+            var sb = new StringBuilder("new[] { ");
+            for (int i = 0; i < SourceIdTokens.Count; i++)
+            {
+                if (i > 0) { sb.Append(", "); }
+                sb.Append(CSharpLiteral.Quote(SourceIdTokens[i]));
+            }
+            sb.Append(" }");
+            return sb.ToString();
         }
 
         private ProductDefinitionBuilder CreateBuilder() =>

@@ -1,9 +1,9 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 
+using Ihc.Vis.Catalog;
 using Ihc.Vis.Model;
 namespace Ihc.Vis.FunctionBlocks
 {
@@ -39,12 +39,17 @@ namespace Ihc.Vis.FunctionBlocks
         ProjectElement Body)
     {
         /// <summary>
-        /// The block's own inline-DTD blocks (tag → verbatim block), captured from its <c>.ifb</c> file, so an
-        /// element type the static registry does not declare can still be inserted and saved (open-world): on insert
-        /// the non-registry blocks are merged into the project's <see cref="Ihc.Vis.Projects.Project.InlineDtdBlocks"/>. Empty when
-        /// the descriptor was hand-built without a source file.
+        /// The block's structured catalog grammar — prolog datum, DOCTYPE root and the ordered inline-DTD
+        /// declaration records (see <see cref="CatalogGrammar"/>). <see cref="Ihc.Vis.Catalog.CatalogFileWriter"/>
+        /// renders the file header from it; insert-time default materialization, IDREF re-stamping and open-world
+        /// hoisting read it through the schema view. <see cref="CatalogGrammar.Empty"/> when the block was authored
+        /// without any grammar (the writer then rejects it — such a definition has no on-disk form — while insert
+        /// still resolves against the registry).
         /// </summary>
-        public ImmutableDictionary<string, string> InlineDtdBlocks { get; init; } = ImmutableDictionary<string, string>.Empty;
+        public CatalogGrammar Grammar { get; init; } = CatalogGrammar.Empty;
+
+        /// <summary>The source file's on-disk text encoding, reproduced verbatim on write (see <see cref="CatalogTextEncoding"/>).</summary>
+        public CatalogTextEncoding SourceEncoding { get; init; } = CatalogTextEncoding.Latin1;
 
         /// <summary>
         /// True only for the catalog's empty "Tom blok" scaffold (<c>Data\fb.def</c>).

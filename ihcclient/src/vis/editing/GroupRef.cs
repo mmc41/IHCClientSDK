@@ -2,10 +2,10 @@
 using System;
 using System.Globalization;
 
+using Ihc.Vis.Catalog;
 using Ihc.Vis.FunctionBlocks;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
-using Ihc.Vis.Catalog;
 namespace Ihc.Vis.Editing
 {
     /// <summary>
@@ -47,7 +47,7 @@ namespace Ihc.Vis.Editing
         public ProductRef AddProduct(ProductDefinition definition)
         {
             ArgumentNullException.ThrowIfNull(definition);
-            ElementId productId = editor.InsertComponent(Id, definition.Body, definition.InlineDtdBlocks);
+            ElementId productId = editor.InsertComponent(Id, definition.Body, definition.Grammar);
             return new ProductRef(editor, productId);
         }
 
@@ -58,7 +58,7 @@ namespace Ihc.Vis.Editing
         public FunctionBlockRef AddFunctionBlock(FunctionBlockDefinition definition)
         {
             ArgumentNullException.ThrowIfNull(definition);
-            ElementId blockId = editor.InsertComponent(Id, definition.Body, definition.InlineDtdBlocks);
+            ElementId blockId = editor.InsertComponent(Id, definition.Body, definition.Grammar);
             return new FunctionBlockRef(editor, blockId);
         }
 
@@ -83,7 +83,7 @@ namespace Ihc.Vis.Editing
                     $"catalog blocks, or pass {nameof(ICatalog)}.{nameof(ICatalog.EmptyFunctionBlockTemplate)}.",
                     nameof(template));
             }
-            ElementId blockId = editor.InsertComponent(Id, template.Body, template.InlineDtdBlocks);
+            ElementId blockId = editor.InsertComponent(Id, template.Body, template.Grammar);
             editor.SetAttributeById(blockId, "name", name);
             editor.SetAttributeById(blockId, "master_date_year", created.Year.ToString(CultureInfo.InvariantCulture));
             editor.SetAttributeById(blockId, "master_date_month", created.Month.ToString(CultureInfo.InvariantCulture));

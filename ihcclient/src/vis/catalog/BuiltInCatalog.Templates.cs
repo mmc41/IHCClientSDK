@@ -23,14 +23,14 @@ namespace Ihc.Vis.Catalog
     /// <para><b>Verification.</b> An install-gated differential test asserts each of these equals its
     /// <c>FromInstallDir</c> peer; the install-free byte tests (<c>CreateNew</c> → <c>Project0-Tomt.vis</c>,
     /// <c>AddEmptyFunctionBlock</c> → project3 "Tom blok") are the shipping gate.</para>
-    /// <para><b>InlineDtdBlocks intentionally empty on the FB template.</b> Every <c>fb.def</c> element type
+    /// <para><b>Grammar intentionally Empty on the FB template.</b> Every <c>fb.def</c> element type
     /// (<c>functionblock, inputs, outputs, settings, internalsettings, programs, program_simple, events, actions</c>)
     /// is declared in the static schema registry (<c>CanonicalDtdBlocks.dtd</c>), so
     /// <c>ProjectEditor.MergeNonRegistryBlocks</c> never merges them and they never reach any saved bytes. Carrying a
-    /// verbatim copy of the vendor DTD would re-couple the SDK to vendor bytes for no functional effect, contrary to
-    /// the plan's registry-first principle. The <c>FromInstallDir</c> template still captures them (it captures every
-    /// file's DTD uniformly); that difference is dead data, so the differential test compares Body + identity, not
-    /// <c>InlineDtdBlocks</c>.</para>
+    /// reconstruction of the vendor DTD would re-couple the SDK to vendor grammar for no functional effect, contrary
+    /// to the plan's registry-first principle. The <c>FromInstallDir</c> template still parses its file's grammar (it
+    /// parses every file uniformly); that difference is dead data, so the differential test compares Body + identity,
+    /// not the grammar.</para>
     /// </remarks>
     public sealed partial class BuiltInCatalog
     {
@@ -132,7 +132,7 @@ namespace Ihc.Vis.Catalog
                 CategoryPath: "", Body: BuildEmptyFunctionBlockBody())
             {
                 IsEmptyTemplate = true,
-                // InlineDtdBlocks intentionally empty — see class remarks (all tags registry-declared).
+                // Grammar intentionally Empty — see class remarks (all tags registry-declared).
             };
 
         private static ProjectElement BuildEmptyFunctionBlockBody() =>

@@ -5,6 +5,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Linq;
 
+using Ihc.Vis.Catalog;
 using Ihc.Vis.Io;
 using Ihc.Vis.Model;
 using Ihc.Vis.Schema;
@@ -52,6 +53,7 @@ namespace Ihc.Vis.FunctionBlocks
         private string? displayNameOverride;
         private string categoryPath = string.Empty;
         private readonly List<(string Name, string Value)> rootAttrs = new();
+        private bool stampResourceDefaults = true;
         private bool isEmptyTemplate;
         private string emptyIcon = "_0xf";
         private string? inputsName;
@@ -71,8 +73,8 @@ namespace Ihc.Vis.FunctionBlocks
         private readonly List<FbEnumDefRef> enumDefs = new();
         private readonly List<ProjectElement> rawBodyChildren = new();
         private readonly List<FbProgramBuilder> programs = new();
-        private readonly ImmutableDictionary<string, string>.Builder inlineDtd =
-            ImmutableDictionary.CreateBuilder<string, string>(StringComparer.Ordinal);
+        private CatalogGrammar grammar = CatalogGrammarPresets.FunctionBlock;   // effective grammar (preset/From/assigned)
+        private CatalogTextEncoding? sourceEncoding;                            // From-carried physical encoding
         private string? docSummary;
         private readonly Dictionary<string, string> resourceDocs = new(StringComparer.Ordinal);
         private ProjectElement? decodedBody;
@@ -115,10 +117,11 @@ namespace Ihc.Vis.FunctionBlocks
                 }
                 builder.rootAttrs.Add((name, value));
             }
-            foreach (KeyValuePair<string, string> block in existing.InlineDtdBlocks)
-            {
-                builder.inlineDtd[block.Key] = block.Value;
-            }
+            // Carry the grammar (including a lenient-fallback verbatim head and its projection) and the physical
+            // encoding verbatim — without them the rebuilt definition would silently lose its on-disk form. Only
+            // an explicit .Grammar(...) replaces the carried grammar; .ExtendGrammar(...) starts from it.
+            builder.grammar = existing.Grammar;
+            builder.sourceEncoding = existing.SourceEncoding;
             builder.docSummary = existing.Documentation.Summary;
             foreach (KeyValuePair<string, string> doc in existing.Documentation.Resources)
             {
@@ -153,6 +156,16 @@ namespace Ihc.Vis.FunctionBlocks
             SetRoot("master_date_year", Dec(date.Year));
             SetRoot("master_date_month", Dec(date.Month));
             return SetRoot("master_date_day", Dec(date.Day));
+        }
+
+        // Authors from the RAW catalog body: suppresses the per-type resource default stamping (icon + #REQUIRED value
+        // initials) so a decompiled block reproduces its .ifb byte-for-byte — the decompiler supplies every attribute
+        // verbatim in file order, and the file's DTD defaults are re-materialized on insert. The code generator calls
+        // this; hand authors do not (they need the stamping, having no catalog template).
+        internal FunctionBlockDefinitionBuilder SuppressResourceDefaults()
+        {
+            stampResourceDefaults = false;
+            return this;
         }
 
         /// <summary>Sets whether the block is a vendor/factory master (<c>master_schneider_electric="yes"</c>) — a
@@ -385,10 +398,30 @@ namespace Ihc.Vis.FunctionBlocks
             return this;
         }
 
-        /// <summary>Supplies a verbatim inline-DTD block for a genuinely non-registry element type (open-world).</summary>
-        public FunctionBlockDefinitionBuilder InlineDtdBlock(string tag, string verbatimBlock)
+        /// <summary>
+        /// <b>Replaces</b> the effective grammar wholesale — the one canonical assignment used by generated catalog
+        /// code and for full replacement after <see cref="From"/>. To add or adjust a single declaration while
+        /// keeping the preset/carried grammar intact, use <see cref="ExtendGrammar"/> instead.
+        /// </summary>
+        public FunctionBlockDefinitionBuilder Grammar(CatalogGrammar grammar)
         {
-            inlineDtd[tag] = verbatimBlock;
+            ArgumentNullException.ThrowIfNull(grammar);
+            this.grammar = grammar;
+            return this;
+        }
+
+        /// <summary>
+        /// <b>Extends</b> the effective grammar (the block preset, a <see cref="From"/>-carried grammar, or a prior
+        /// assignment): the callback add-or-replaces whole per-tag declarations, leaving every other declaration,
+        /// default and IDREF classification intact — the near-minimal path for declaring one custom body type
+        /// (e.g. an open-world resource spliced via <see cref="RawResource"/>/<see cref="RawChild"/>).
+        /// </summary>
+        public FunctionBlockDefinitionBuilder ExtendGrammar(Action<CatalogGrammarBuilder> extend)
+        {
+            ArgumentNullException.ThrowIfNull(extend);
+            var builder = new CatalogGrammarBuilder(grammar);
+            extend(builder);
+            grammar = builder.Build();
             return this;
         }
 
@@ -416,7 +449,30 @@ namespace Ihc.Vis.FunctionBlocks
                         "A program has no events, so it will never run."));
                 }
             }
+            // The grammar↔body advisories (non-blocking warnings; skipped for an Empty grammar) — over the decoded
+            // body when editing an existing block, else a light preview (root + containers with the added resources
+            // + raw children) that leaves the id allocator untouched. Program-graph internals are omitted from the
+            // preview: their node types are covered by the block preset by construction, and materializing them
+            // here would burn allocator ids Build() needs.
+            findings.AddRange(CatalogGrammarAdvisor.Advise(decodedBody ?? AdvisoryPreviewBody(), grammar));
             return ProjectValidationResult.FromFindings(findings.ToImmutable());
+        }
+
+        private ProjectElement AdvisoryPreviewBody()
+        {
+            var previewChildren = new List<ProjectElement>();
+            void Container(string tag, List<ProjectElement> resources) =>
+                previewChildren.Add(ProjectElement.Create(tag, id: null,
+                    Array.Empty<(string, string)>(), resources));
+            Container("inputs", inputs);
+            Container("outputs", outputs);
+            Container("settings", settings);
+            Container("internalsettings", internalVars);
+            previewChildren.AddRange(rawBodyChildren);
+            return ProjectElement.Create("functionblock", id: null,
+                new[] { ("name", ComposedDisplayName), ("master_type", masterType),
+                        ("master_version", masterVersion), ("master_name", masterName) },
+                previewChildren);
         }
 
         /// <summary>Materializes the deep <c>Body</c> (five containers in fixed order + program graph, placeholder ids)
@@ -438,16 +494,48 @@ namespace Ihc.Vis.FunctionBlocks
                 : isEmptyTemplate ? MaterializeEmptyTemplate()
                 : MaterializeBody();
 
-            return new FunctionBlockDefinition(masterType, masterVersion, masterName, ComposedDisplayName, categoryPath, body)
+            // A catalog-decompiled block reproduces its raw .ifb, which never writes an empty note="" (unlike a
+            // product .def) — it rides the note CDATA "" default. The structural/program builders stamp a default
+            // (often empty) note on containers and program-graph nodes; strip those empty notes so the body matches
+            // the file byte-for-byte (the insert transform re-derives them from the block's DTD when needed).
+            if (!stampResourceDefaults)
             {
-                InlineDtdBlocks = inlineDtd.ToImmutable(),
+                body = DropEmptyDefaultAttrs(body);
+            }
+
+            var definition = new FunctionBlockDefinition(masterType, masterVersion, masterName, ComposedDisplayName, categoryPath, body)
+            {
+                Grammar = grammar,
                 IsEmptyTemplate = isEmptyTemplate,
                 Documentation = BuildDocumentation(),
             };
+            return sourceEncoding is { } encoding ? definition with { SourceEncoding = encoding } : definition;
         }
 
         private string ComposedDisplayName =>
             displayNameOverride ?? FbGrammar.ComposeDisplayName(masterType, masterVersion, masterName);
+
+        // Recursively removes empty note="" and name="" attributes: an .ifb rides those CDATA "" DTD defaults rather
+        // than writing them (verified: no vendor .ifb writes note="" or name="", unlike a product .def). Applied only
+        // for catalog-decompiled blocks, where the raw file body is the fidelity target; the structural/program
+        // builders stamp a default (often empty) note/name that this strips so the body matches the file.
+        private static ProjectElement DropEmptyDefaultAttrs(ProjectElement element)
+        {
+            var keptAttrs = ImmutableArray.CreateBuilder<(string, string)>();
+            foreach ((string name, string value) in element.AttrsOrEmpty())
+            {
+                if (!(value.Length == 0 && name is "note" or "name"))
+                {
+                    keptAttrs.Add((name, value));
+                }
+            }
+            var children = ImmutableArray.CreateBuilder<ProjectElement>();
+            foreach (ProjectElement child in element.ChildrenOrEmpty())
+            {
+                children.Add(DropEmptyDefaultAttrs(child));
+            }
+            return new ProjectElement(element.Tag, element.Id, keptAttrs.ToImmutable(), children.ToImmutable());
+        }
 
         private ProjectElement MaterializeBody()
         {
@@ -507,18 +595,69 @@ namespace Ihc.Vis.FunctionBlocks
         // edits re-applied on top. Keeps a From(x).Build() round-trip faithful without re-parsing the program graph.
         private ProjectElement MaterializeDecoded() => ApplyIdentityAndRootAttrs(decodedBody!);
 
+        // The functionblock root's attribute order is a fixed vendor sequence (verified constant across the catalog);
+        // authored components emit it in that canonical order regardless of which setter set which attribute, so the
+        // saved bytes match the vendor file. Attributes not in the sequence keep their first-set order at the end.
+        private static readonly string[] CanonicalRootOrder =
+        {
+            "name", "master_schneider_electric", "master_type", "master_version", "master_name", "master_programmer",
+            "master_date_year", "master_date_month", "master_date_day", "locked", "icon", "note", "helpid",
+        };
+
         // Re-applies the master identity and the accumulated root attributes onto a freshly-built or decoded root —
         // the tail MaterializeBody and MaterializeDecoded share.
         private ProjectElement ApplyIdentityAndRootAttrs(ProjectElement root)
         {
-            root = root
-                .WithAttribute("name", ComposedDisplayName)
-                .WithAttribute("master_type", masterType)
-                .WithAttribute("master_version", masterVersion)
-                .WithAttribute("master_name", masterName);
+            // Catalog-decompiled (SuppressResourceDefaults): the decompiler already added EVERY root attribute —
+            // name, master_*, locked, icon, note — to rootAttrs in the file's own order (which is not constant across
+            // the corpus, e.g. 1.2.07 writes master_name early), so emit them verbatim. Hand-authored blocks fall
+            // through to the canonical vendor ordering below.
+            if (!stampResourceDefaults)
+            {
+                foreach ((string name, string value) in rootAttrs)
+                {
+                    root = root.WithAttribute(name, value);
+                }
+                return root;
+            }
+
+            var values = new Dictionary<string, string>(StringComparer.Ordinal);
+            var firstSeen = new List<string>();
+            void Set(string name, string value)
+            {
+                if (!values.ContainsKey(name))
+                {
+                    firstSeen.Add(name);
+                }
+                values[name] = value;
+            }
+
+            Set("name", ComposedDisplayName);
+            // The master identity attributes are written only when non-empty — a user-saved block (AutoProof) has no
+            // master_type/version; a version-less block omits master_version.
+            if (masterType.Length > 0) { Set("master_type", masterType); }
+            if (masterVersion.Length > 0) { Set("master_version", masterVersion); }
+            if (masterName.Length > 0) { Set("master_name", masterName); }
             foreach ((string name, string value) in rootAttrs)
             {
-                root = root.WithAttribute(name, value);
+                Set(name, value);
+            }
+
+            var emitted = new HashSet<string>(StringComparer.Ordinal);
+            foreach (string name in CanonicalRootOrder)
+            {
+                if (values.TryGetValue(name, out string? value))
+                {
+                    root = root.WithAttribute(name, value);
+                    emitted.Add(name);
+                }
+            }
+            foreach (string name in firstSeen)
+            {
+                if (emitted.Add(name))
+                {
+                    root = root.WithAttribute(name, values[name]);
+                }
             }
             return root;
         }
@@ -530,9 +669,16 @@ namespace Ihc.Vis.FunctionBlocks
             configure?.Invoke(configurator);
             ElementId id = ids.Allocate(TypeCode.RequireForTag(tag));
             ProjectElement resource = FbGrammar.Node(tag, id, new[] { ("name", name) }, NoChildren);
-            foreach ((string attrName, string attrValue) in FbGrammar.NewResourceDefaults(tag))
+            // Hand-authored resources get the vendor's per-type presentation/value defaults (icon + #REQUIRED value
+            // initials) stamped, since there is no catalog template to supply them. A catalog-decompiled block
+            // (SuppressResourceDefaults) is authored from the RAW .ifb body instead — every attribute already arrives
+            // verbatim in file order from the decompiler, so stamping would inject them at the wrong position.
+            if (stampResourceDefaults)
             {
-                resource = resource.WithAttribute(attrName, attrValue);
+                foreach ((string attrName, string attrValue) in FbGrammar.NewResourceDefaults(tag))
+                {
+                    resource = resource.WithAttribute(attrName, attrValue);
+                }
             }
             foreach ((string attrName, string attrValue) in configurator.Attributes)
             {
@@ -663,7 +809,13 @@ namespace Ihc.Vis.FunctionBlocks
                 attrs.Add(("typeid", value.Typeid));
             }
             attrs.Add(("name", value.Name));
-            attrs.Add(("index", value.Index.ToString(CultureInfo.InvariantCulture)));
+            // index is a DTD default of 0 — the vendor omits it for the first (index-0) value and writes it only when
+            // non-zero; matching that keeps the raw catalog body byte-faithful (and a hand-authored 0 is dropped on
+            // insert either way).
+            if (value.Index != 0)
+            {
+                attrs.Add(("index", value.Index.ToString(CultureInfo.InvariantCulture)));
+            }
             return attrs;
         }
     }

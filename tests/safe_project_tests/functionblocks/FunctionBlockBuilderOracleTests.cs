@@ -51,8 +51,24 @@ namespace Ihc.Vis.Tests
             force.AddEvent("%P -> ON", forceOff, "_0xa", note: "Start når %P skifter til ON");
             force.AddAction("%P = OFF", lamp, "_0x14", note: "Slukker udgangen");
 
+            builder.Grammar(CatalogGrammar.Create(new[]
+            {
+                OracleGrammars.FbRoot, OracleGrammars.Container("inputs"), OracleGrammars.FbPin("resource_input"),
+                OracleGrammars.Container("outputs"), OracleGrammars.FbPin("resource_output"),
+                OracleGrammars.Container("settings"), OracleGrammars.ResourceTimerFb,
+                OracleGrammars.Container("internalsettings"), OracleGrammars.Container("programs"),
+                OracleGrammars.Container("program_simple"), OracleGrammars.Container("events"),
+                OracleGrammars.ProgramLeaf("event"), OracleGrammars.FbActions,
+                OracleGrammars.Container("program_sub"), OracleGrammars.FbConditions,
+                OracleGrammars.ProgramLeaf("condition"), OracleGrammars.ProgramLeaf("action"),
+            }));
             FunctionBlockDefinition block = builder.Build();
             SyntheticOracle.AssertMatchesOracle(block.Body, Dir + "synthetic_fb01_toggle.ifb");
+            SyntheticOracle.AssertWritesOracleBytes(block, Dir + "synthetic_fb01_toggle.ifb",
+                "_0x5128", "_0x5223", "_0x5311", "_0x5411", "_0x5524", "_0x5612", "_0x5712", "_0x5825", "_0x5910",
+                "_0x5a29", "_0x5b10", "_0x5c26", "_0x5d1e", "_0x5e64", "_0x5fc8", "_0x6066", "_0x611f", "_0x6265",
+                "_0x63c9", "_0x6466", "_0x65ca", "_0x66ca", "_0x6766", "_0x68ca", "_0x69ca", "_0x6aca", "_0x6b1e",
+                "_0x6c64", "_0x6dc8", "_0x6e66", "_0x6fca");
             Assert.Multiple(() =>
             {
                 Assert.That(block.MasterType, Is.EqualTo("9.1.01"));
@@ -92,7 +108,21 @@ namespace Ihc.Vis.Tests
             off.AddAction("%P = OFF", relay, "_0x14", note: "Slukker relæet");
             off.AddAction("Fremkald %P", sceneOff, "_0xa", note: "Fremkalder scenariet");
 
-            SyntheticOracle.AssertMatchesOracle(builder.Build().Body, Dir + "synthetic_fb02_scene.ifb");
+            builder.Grammar(CatalogGrammar.Create(new[]
+            {
+                OracleGrammars.FbRoot, OracleGrammars.Container("inputs"), OracleGrammars.FbPin("resource_input"),
+                OracleGrammars.Container("outputs"), OracleGrammars.FbPin("resource_output"),
+                OracleGrammars.ResourceSceneFb, OracleGrammars.Container("settings"), OracleGrammars.ResourceTimerFb,
+                OracleGrammars.Container("internalsettings"), OracleGrammars.Container("programs"),
+                OracleGrammars.Container("program_simple"), OracleGrammars.Container("events"),
+                OracleGrammars.ProgramLeaf("event"), OracleGrammars.FbActions, OracleGrammars.ProgramLeaf("action"),
+            }));
+            FunctionBlockDefinition block = builder.Build();
+            SyntheticOracle.AssertMatchesOracle(block.Body, Dir + "synthetic_fb02_scene.ifb");
+            SyntheticOracle.AssertWritesOracleBytes(block, Dir + "synthetic_fb02_scene.ifb",
+                "_0x5128", "_0x5223", "_0x5311", "_0x5424", "_0x5512", "_0x564a", "_0x574a", "_0x5825", "_0x5910",
+                "_0x5a29", "_0x5b26", "_0x5c1e", "_0x5d64", "_0x5ec8", "_0x5f66", "_0x60ca", "_0x61ca", "_0x621e",
+                "_0x6364", "_0x64c8", "_0x6566", "_0x66ca", "_0x67ca");
         }
 
         [Test]
@@ -127,7 +157,25 @@ namespace Ihc.Vis.Tests
             inner.WhenTrue.AddAction("Kip %P", udgang, "_0x23", note: "Skifter %P til modsat værdi");
             outer.WhenFalse.AddAction("%P = %S", udgang, "_0x1e", link2: indgang, note: "Sætter %P lig med %S");
 
-            SyntheticOracle.AssertMatchesOracle(builder.Build().Body, Dir + "synthetic_fb03_mode.ifb");
+            builder.Grammar(CatalogGrammar.Create(new[]
+            {
+                OracleGrammars.EnumDefinitionFb, OracleGrammars.EnumValueFb,
+                OracleGrammars.FbRoot, OracleGrammars.Container("inputs"), OracleGrammars.FbPin("resource_input"),
+                OracleGrammars.Container("outputs"), OracleGrammars.FbPin("resource_output"),
+                OracleGrammars.Container("settings"), OracleGrammars.ResourceEnumFb,
+                OracleGrammars.Container("internalsettings"), OracleGrammars.Container("programs"),
+                OracleGrammars.Container("program_simple"), OracleGrammars.Container("events"),
+                OracleGrammars.ProgramLeaf("event"), OracleGrammars.FbActions,
+                OracleGrammars.Container("program_sub"), OracleGrammars.FbConditions,
+                OracleGrammars.ProgramLeaf("condition"), OracleGrammars.ProgramLeaf("action"),
+            }));
+            FunctionBlockDefinition block = builder.Build();
+            SyntheticOracle.AssertMatchesOracle(block.Body, Dir + "synthetic_fb03_mode.ifb");
+            SyntheticOracle.AssertWritesOracleBytes(block, Dir + "synthetic_fb03_mode.ifb",
+                "_0x5128", "_0x5247", "_0x5348", "_0x5448", "_0x5523", "_0x5611", "_0x5724", "_0x5812", "_0x5925",
+                "_0x5a0f", "_0x5b29", "_0x5c26", "_0x5d1e", "_0x5e64", "_0x5fc8", "_0x6066", "_0x611f", "_0x6265",
+                "_0x63c9", "_0x640f", "_0x6566", "_0x661f", "_0x6765", "_0x68c9", "_0x6966", "_0x6aca", "_0x6b66",
+                "_0x6c66", "_0x6dca");
         }
 
         [Test]
@@ -164,7 +212,25 @@ namespace Ihc.Vis.Tests
             sub.WhenTrue.AddAction("%P = ON", aktiv, "_0xa", note: "Tænder udgangen");
             sub.WhenFalse.AddAction("%P = OFF", aktiv, "_0x14", note: "Slukker udgangen");
 
-            SyntheticOracle.AssertMatchesOracle(builder.Build().Body, Dir + "synthetic_fb04_holiday.ifb");
+            builder.Grammar(CatalogGrammar.Create(new[]
+            {
+                OracleGrammars.FbRoot, OracleGrammars.Container("inputs"), OracleGrammars.FbPin("resource_input"),
+                OracleGrammars.Container("outputs"), OracleGrammars.FbPin("resource_output"),
+                OracleGrammars.Container("settings"), OracleGrammars.ResourceDateFb,
+                OracleGrammars.ResourceFlagFb("off"), OracleGrammars.Container("internalsettings"),
+                OracleGrammars.Container("programs"), OracleGrammars.Container("program_simple"),
+                OracleGrammars.Container("events"), OracleGrammars.EventPower, OracleGrammars.FbActions,
+                OracleGrammars.ProgramLeaf("action"), OracleGrammars.ProgramLeaf("event"),
+                OracleGrammars.Container("program_sub"), OracleGrammars.FbConditions,
+                OracleGrammars.ProgramLeaf("condition"),
+            }));
+            FunctionBlockDefinition block = builder.Build();
+            SyntheticOracle.AssertMatchesOracle(block.Body, Dir + "synthetic_fb04_holiday.ifb");
+            SyntheticOracle.AssertWritesOracleBytes(block, Dir + "synthetic_fb04_holiday.ifb",
+                "_0x5128", "_0x5223", "_0x5311", "_0x5424", "_0x5512", "_0x5625", "_0x570e", "_0x580e", "_0x590a",
+                "_0x5a29", "_0x5b0e", "_0x5c26", "_0x5d1e", "_0x5e64", "_0x5fc8", "_0x6066", "_0x61ca", "_0x621e",
+                "_0x6364", "_0x64c8", "_0x6566", "_0x661f", "_0x6765", "_0x68c9", "_0x69c9", "_0x6a66", "_0x6bca",
+                "_0x6c66", "_0x6dca");
         }
 
         [Test]
@@ -172,10 +238,19 @@ namespace Ihc.Vis.Tests
         {
             FunctionBlockDefinition block = FunctionBlockDefinitionBuilder
                 .Create("", "", "Tomt demoblok")
+                .Grammar(CatalogGrammar.Create(new[]
+                {
+                    OracleGrammars.FbRoot, OracleGrammars.Container("inputs"), OracleGrammars.Container("outputs"),
+                    OracleGrammars.Container("settings"), OracleGrammars.Container("internalsettings"),
+                    OracleGrammars.Container("programs"), OracleGrammars.Container("program_simple"),
+                    OracleGrammars.Container("events"), OracleGrammars.FbActions,
+                }))
                 .AsEmptyTemplate("_0xf")
                 .Build();
 
             SyntheticOracle.AssertMatchesOracle(block.Body, Dir + "synthetic_fb05_empty.ifb");
+            SyntheticOracle.AssertWritesOracleBytes(block, Dir + "synthetic_fb05_empty.ifb",
+                "_0x5128", "_0x5223", "_0x5324", "_0x5425", "_0x5529", "_0x5626", "_0x571e", "_0x5864", "_0x5966");
             Assert.That(block.IsEmptyTemplate, Is.True);
         }
 
@@ -215,9 +290,109 @@ namespace Ihc.Vis.Tests
             sub.WhenTrue.AddAction("Tæl %P op", udloes, "_0xbf", note: "Tæller antal udløsninger");
             sub.WhenFalse.AddAction("%P = OFF", alarm, "_0x14", note: "Rydder alarmen");
 
+            builder.Grammar(CatalogGrammar.Create(new[]
+            {
+                OracleGrammars.FbRoot, OracleGrammars.Container("inputs"), OracleGrammars.FbPin("resource_input"),
+                OracleGrammars.ResourceTemperatureFb, OracleGrammars.Container("outputs"),
+                OracleGrammars.FbPin("resource_output"), OracleGrammars.Container("settings"),
+                OracleGrammars.ResourceCounterFb, OracleGrammars.ResourceWeekdayFb, OracleGrammars.ResourceIntegerFb,
+                OracleGrammars.Container("internalsettings"), OracleGrammars.ResourceTimeFb,
+                OracleGrammars.Container("programs"), OracleGrammars.Container("program_simple"),
+                OracleGrammars.Container("events"), OracleGrammars.ProgramLeaf("event"), OracleGrammars.FbActions,
+                OracleGrammars.Container("program_sub"), OracleGrammars.FbConditions,
+                OracleGrammars.ProgramLeaf("condition"), OracleGrammars.ProgramLeaf("action"),
+            }));
             FunctionBlockDefinition block = builder.Build();
             SyntheticOracle.AssertMatchesOracle(block.Body, Dir + "synthetic_fb06_sensor.ifb");
+            SyntheticOracle.AssertWritesOracleBytes(block, Dir + "synthetic_fb06_sensor.ifb",
+                "_0x5128", "_0x5223", "_0x5311", "_0x5414", "_0x5524", "_0x5612", "_0x5725", "_0x5814", "_0x590c",
+                "_0x5a09", "_0x5b0b", "_0x5c29", "_0x5d0d", "_0x5e26", "_0x5f1e", "_0x6064", "_0x61c8", "_0x6266",
+                "_0x631f", "_0x6465", "_0x65c9", "_0x6666", "_0x67ca", "_0x68ca", "_0x6966", "_0x6aca");
             Assert.That(block.DisplayName, Is.EqualTo("Sensorpanel (udvidet)"));
+        }
+
+        [Test]
+        public void Author_fb07_IrregularGrammar_MatchesOracle()
+        {
+            // The grammar-envelope oracle: outputs declared before inputs and per-file inivalue defaults of "on" —
+            // the definition's own grammar (not any preset) must drive both the header bytes and, later, the
+            // effective values of the lean body's omitted attributes.
+            FunctionBlockDefinitionBuilder builder = FunctionBlockDefinitionBuilder
+                .Create("9.1.07", "a", "Grammatik blok")
+                .VendorMaster()
+                .MasterProgrammer("Morten Christensen")
+                .MasterDate(new DateOnly(2026, 3, 1))
+                .Locked()
+                .Attribute("icon", "_0xe")
+                .Note("9.1.07.a. Grammatik blok\r\n\r\nSyntetisk demoblok med omrokeret DTD og ændrede standardværdier.")
+                .InputsNote("Variablene i denne gruppering er indgange til blokken")
+                .OutputsNote("Variablene i denne gruppering er udgange fra blokken");
+
+            FbResourceHandle start = builder.AddInput("resource_input", "Start",
+                i => i.Note("Standard er tændt i denne bloks grammatik"));
+            FbResourceHandle udgang = builder.AddOutput("resource_output", "Udgang", o => o.Note("Tilsluttes en lampe."));
+            builder.AddSetting("resource_flag", "Husk tilstand",
+                r => r.Note("Blokkens grammatik sætter standard til on"));
+
+            FbProgramBuilder skift = builder.Program("Skift");
+            skift.AddEvent("%P -> ON", start, "_0xa", note: "Start når %P skifter til ON");
+            skift.AddAction("%P = ON", udgang, "_0xa", note: "Tænder udgangen");
+
+            builder.Grammar(CatalogGrammar.Create(new[]
+            {
+                OracleGrammars.FbRoot, OracleGrammars.Container("outputs"), OracleGrammars.FbPin("resource_output"),
+                OracleGrammars.Container("inputs"), OracleGrammars.FbPin("resource_input", "on"),
+                OracleGrammars.Container("settings"), OracleGrammars.ResourceFlagFb("on"),
+                OracleGrammars.Container("internalsettings"), OracleGrammars.Container("programs"),
+                OracleGrammars.Container("program_simple"), OracleGrammars.Container("events"),
+                OracleGrammars.ProgramLeaf("event"), OracleGrammars.FbActions, OracleGrammars.ProgramLeaf("action"),
+            }));
+            FunctionBlockDefinition block = builder.Build();
+            SyntheticOracle.AssertMatchesOracle(block.Body, Dir + "synthetic_fb07_grammar.ifb");
+            SyntheticOracle.AssertWritesOracleBytes(block, Dir + "synthetic_fb07_grammar.ifb",
+                "_0x5128", "_0x5223", "_0x5311", "_0x5424", "_0x5512", "_0x5625", "_0x570a", "_0x5829", "_0x5926",
+                "_0x5a1e", "_0x5b64", "_0x5cc8", "_0x5d66", "_0x5eca");
+        }
+
+        [Test]
+        public void Author_fb08_FullSurface_MatchesOracle_AndPinsFunctionBlockPreset()
+        {
+            // Bare Create — no grammar call — so the written header IS the FunctionBlock preset's rendering, and
+            // the body exercises the whole closed-emitter program surface (power-up trigger, sub-program with
+            // conditions and branches, program_case with per-value case_actions and embedded resource_enum
+            // operands, top-level enum stubs, default-tag pins). Ids are the builder's natural allocation — the
+            // oracle was generated by this exact authoring, so no re-stamping is needed.
+            FunctionBlockDefinitionBuilder builder = FunctionBlockDefinitionBuilder.Create("9.1.08", "a", "Fuld flade")
+                .VendorMaster()
+                .MasterProgrammer("Morten Christensen")
+                .MasterDate(new DateOnly(2026, 3, 2))
+                .Locked()
+                .Attribute("icon", "_0xe")
+                .Note("9.1.08.a. Fuld flade\r\n\r\nSyntetisk demoblok der dækker hele program-fladen (case, power-up, enum).")
+                .InputsNote("Variablene i denne gruppering er indgange til blokken")
+                .OutputsNote("Variablene i denne gruppering er udgange fra blokken");
+
+            FbEnumDefRef mode = builder.AddEnumDefinition("Tilstand").AddValue("Fra").AddValue("Til", 1);
+            FbResourceHandle start = builder.AddInput("Start");
+            FbResourceHandle output = builder.AddOutput("Udgang");
+            FbResourceHandle selector = builder.AddSetting("resource_enum", "Tilstandsvalg",
+                r => r.Enum(mode, "Fra").Note("Vælger blokkens tilstand."));
+
+            FbProgramBuilder p = builder.Program("Skift");
+            p.AddPowerEvent("Opstart");
+            p.AddEvent("%P -> ON", start, "_0xa", note: "Start når %P skifter til ON");
+            FbSubProgramRef sub = p.AddSubProgram();
+            sub.AddCondition("%P = OFF", output, "_0x14", note: "Betingelse: %P er slukket");
+            sub.WhenTrue.AddAction("%P = ON", output, "_0xa", note: "Tænder udgangen");
+            sub.WhenFalse.AddAction("%P = OFF", output, "_0x14", note: "Slukker udgangen");
+            FbCaseRef sw = p.AddCase("Vælg tilstand", selector, note: "Skifter på tilstandsvalget");
+            sw.Case("Tilstand Fra", mode, "Fra").AddAction("%P = OFF", output, "_0x14");
+            sw.Case("Tilstand Til", mode, "Til").AddAction("%P = ON", output, "_0xa");
+            sw.Default().AddAction("%P = OFF", output, "_0x14");
+
+            FunctionBlockDefinition block = builder.Build();
+            SyntheticOracle.AssertMatchesOracle(block.Body, Dir + "synthetic_fb08_full.ifb");
+            SyntheticOracle.AssertWritesOracleBytes(block, Dir + "synthetic_fb08_full.ifb");
         }
 
         [Test]

@@ -42,11 +42,13 @@ namespace Ihc.Vis.Tests
                     Assert.That(actual.DisplayName, Is.EqualTo(expected.DisplayName), $"[{i}] display name");
                     Assert.That(actual.CategoryPath, Is.EqualTo(expected.CategoryPath), $"[{i}] category path");
                 });
+                // The structured grammar is value-comparable: the generated product must carry the exact grammar the
+                // install-dir parse yields (declarations, prolog datum, DOCTYPE root — the D1 primary model).
+                Assert.That(actual.Grammar, Is.EqualTo(expected.Grammar), $"[{i}] structured grammar");
                 // Canonicalize both against the source file's own inline-DTD grammar and compare structurally.
-                ImmutableDictionary<string, string> blocks = expected.InlineDtdBlocks;
                 AssertStructural(expected.ProductIdentifier,
-                    DefinitionNormalizer.Normalize(expected.Body, blocks),
-                    DefinitionNormalizer.Normalize(actual.Body, blocks));
+                    DefinitionNormalizer.Normalize(expected.Body, expected.Grammar),
+                    DefinitionNormalizer.Normalize(actual.Body, expected.Grammar));
             }
         }
 

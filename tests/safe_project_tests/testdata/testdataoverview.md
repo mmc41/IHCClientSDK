@@ -214,20 +214,23 @@ IHC Visual output.
 
 ## Synthetic Product oracles (`products/synthetic/`) — not authentic
 
-Eight hand-authored synthetic `.def` product files (not IHC Visual output). Like the `.ifb`
-FunctionBlock oracles below they are not byte-fidelity round-trip targets but **inputs** for the
-code-authoring builder surface — here `ProductDefinitionBuilder`. They are staged for validation **on use**:
-once the Stage-1 builder is implemented, each builder test will author a product from code and assert the
-result equals the `ProductDefinition` that *discovering the matching file* yields (`CatalogReader.ReadFile`
-materializing DTD defaults, plus the `CatalogDiscovery` wrapper — `product_identifier` key, `MenuPrefix`-stripped
-display name, `InlineDtd.Capture` blocks). No committed test reads them yet — the current
-`ProductDefinitionBuilderTests` are `[Explicit]` design-preview stubs. So each file is the shape oracle for one
-builder cluster; pick the one whose feature you need to cover.
+Thirteen hand-authored synthetic `.def` product files (not IHC Visual output) — the committed oracles for the
+code-authoring builder surface (`ProductDefinitionBuilder`) **and** for the catalog file format itself. Each
+is consumed by committed tests three ways: the W1 reader→writer byte gate (`CatalogFileWriterTests`), the
+grammar round-trip (`CatalogDtdParserTests` strict-parses every header and re-emits it equivalently), and a
+code-authored **byte** test (`ProductBuilderOracleTests`: the product is authored entirely from code — grammar
++ body + ids — and `CatalogFileWriter` must reproduce the file under the fidelity relation). The five files
+whose header is exactly a family grammar preset's rendering byte-pin that preset (`9f02` dataline, `9f04`
+airlink, `9f05` RS485 LED dimmer, `9f06` RS485 SMS modem, `9f07` S0); the grammar-envelope files (`9f09`–
+`9f13`) pin the corpus irregularity classes. Pick the file whose feature you need to cover.
 
 Format is byte-identical to a real vendor `.def`: UTF-8 **BOM** followed by a *lying*
 `<?xml … encoding="ISO-8859-1"?>` declaration over UTF-8 body bytes (`CatalogReader` trusts the BOM), **CRLF**
 throughout including a trailing CRLF, and a full internal DTD so omitted attributes (e.g. `locked="yes"`)
-materialize exactly as for a real file and `InlineDtd.Capture` records the per-type blocks. Files are **flat**
+materialize exactly as for a real file and `InlineDtd.Capture` records the per-type blocks. One deliberate
+exception: `synthetic_9f13_utf8nobom.def` is UTF-8 **without** BOM and truthfully declares `encoding="UTF-8"`
+— no vendor file has that shape, but it is a supported `CatalogTextEncoding` a user file can arrive in, so it
+pins the read/write/`From` path for the third encoding. Files are **flat**
 (no subfolders) and named `synthetic_9fNN_<role>.def` — the `synthetic_` prefix, the `_0x9fNN` index (not a
 real `productNNNN.def` code) and the plain functional role deliberately avoid any real product-family or brand
 term, so a filename can never be mistaken for a catalog product (the family each actually tests is in the
@@ -244,11 +247,17 @@ is a trivial setter tested directly, and the `NN#` menu prefix `MenuPrefix` stri
 | `synthetic_9f05_dimmer.def` | `product_rs485_led_dimmer` (0x58) | `Create(…)`, `Attribute("serialnumber")`+icon, `AddResource("resource_flag")`, deep `AddResource("rs485_led_dimmer_channel", Icon()+Attribute)` carrying a nested `RawChild` subtree (increase/decrease/dimming/light_indication/scenes/4×error_state/dimmer_settings > 6 leaves) |
 | `synthetic_9f06_modem.def` | `product_rs485_sms_modem` (0x56) | `Create(…)`+icon, `AddResource("sms_modem_settings", Icon())` with nested `RawChild(sms_modem_pincode)` and repeated `sms_modem_phonenumber` (`Attribute("address")`) |
 | `synthetic_9f07_meter.def` | `s0_device` (0x57) | `Create("s0_device", …)`, `Attribute("ticks")`+icon, `AddResource` for `W`/`kWh`/`resource_date`, `Attribute("accessibility","read-write")` on kWh, `resource_date` `#REQUIRED` year/month/day + s0 `access` enum default |
-| `synthetic_9f08_openworld.def` | `product_dataline` | **Open-world**: `RawChild` + `InlineDtdBlock("resource_soil_moisture", …)` for an element type in **neither** the type-code table nor the schema registry |
+| `synthetic_9f08_openworld.def` | `product_dataline` | **Open-world**: `RawChild` + a DTD declaration for an element type in **neither** the type-code table nor the schema registry |
+| `synthetic_9f09_logging.def` | `product_dataline` | **Grammar envelope — orphan ATTLIST** ("med logning" class, vendor `product2125` shape): tab-indented orphan `<!ATTLIST resource_enum …>` (registry tag) *and* an orphan `<!ATTLIST resource_sample_log …>` on an invented **non-registry** tag the body uses — its `inivalue "500.00"`/`interval "300"` defaults drive insert-time materialization, and hoisting it into a project exercises the synthesized-`<!ELEMENT tag ANY>` project-block rendering; embedded `enum_definition`/`enum_value` + `resource_enum` `typedef`/`inivalue` IDREFs |
+| `synthetic_9f10_superset.def` | `product_dataline` | **Grammar envelope — superset DTD**: declares `dataline_output`/`resource_temperature` the body never uses (81-file vendor class), body uses `resource_input` its own DTD never declares (7-file class), and `pulse_width (24 \| 48 \| none) "24"` pins **digit-leading NMTOKEN** enumeration tokens (legal per XML VC: Enumeration; no vendor instance) |
+| `synthetic_9f11_quirks.def` | `product_dataline` | **Grammar envelope — formatting quirks**: DOCTYPE space before `[` (12-file vendor class), tab-indented declarations with irregular continuation depths and a trailing-space line, and `&apos;` escaping apostrophes in body values (the `1.2.05.ifb` class) — the comparer's D3 `&apos;` ≡ `'` forgiveness is what lets this file round-trip |
+| `synthetic_9f12_caseskew.def` | `product_dataline` | **Grammar envelope — case skew** (vendor `product2136`/`2139` shape): DOCTYPE space before `[`, tab-indented ELEMENT-only `<!ELEMENT resource_Skew ANY>` beside an orphan `<!ATTLIST resource_skew …>` the body uses — the corpus's only case-insensitive tag-collision class; ordinal tag comparison is mandatory or the pair is unreproducible |
+| `synthetic_9f13_utf8nobom.def` | `product_dataline` | **Grammar envelope — UTF-8 without BOM**, truthful `encoding="UTF-8"` declaration (a non-default `DeclaredEncoding` datum), non-ASCII æøå values — pins the third `CatalogTextEncoding` and `From` fidelity |
 
 Together they cover all five family roots, both static factories (`Dataline(…)` and `Create(rootTag, …)`),
-and the install-attr / resource / escape-hatch (`Attribute`, `RawChild`, `InlineDtdBlock`) / discovery-wrapper
-surfaces, each on a UTF-8-BOM + ISO-8859-1 + Danish-letter + CRLF file. They are **one deliberately minimal
+and the install-attr / resource / escape-hatch (`Attribute`, `RawChild`, plus an `ExtendGrammar` declaration
+for open-world types) / discovery-wrapper surfaces, each on a UTF-8-BOM + ISO-8859-1 + Danish-letter + CRLF
+file (9f13 excepted, deliberately). They are **one deliberately minimal
 example per surface cluster**, not a representative sample of the corpus's breadth: reproducing that breadth
 and especially its malformed-but-real quirks (within-file duplicate element ids, the `loced="no"` misspelling
 of `locked`, `product_identifier`s repeated across files) is intentionally **out of scope** — a builder authors
@@ -257,16 +266,17 @@ over the real `.def` corpus, not to these builder oracles.
 
 ## Synthetic FunctionBlock oracles (`functionblocks/synthetic/`) — not authentic
 
-Six hand-authored synthetic `.ifb` FunctionBlock files (not IHC Visual output). Unlike the
-`.vis` oracles above they are not byte-fidelity targets but **inputs** for the code-authoring builder
-surface: each targets a distinct slice of `FunctionBlockDefinitionBuilder` / `ProductDefinitionBuilder`.
-They are staged for validation **on use** — to be parsed via `CatalogReader` and inserted into a `.vis`
-(there is no `.ifb` writer) — rather than by dedicated C# tests; no committed test reads them yet, and the
-future catalog builder-API test will be their first consumer. Format matches the majority vendor `.ifb`: ISO-8859-1, CRLF, no trailing newline, inline DTD
-sliced verbatim from `ihcclient/src/vis/schema/CanonicalDtdBlocks.dtd`, lean bodies (attributes equal to
-their DTD default are omitted), and throwaway placeholder ids (`id = (counter << 8) | typeCode`; the
-insert transform re-mints them, so only the type-code low byte and IDREF consistency matter). Files are
-named `synthetic_fbNN_<role>.ifb`, mirroring the sibling `products/synthetic/synthetic_9fNN_<role>.def`
+Eight synthetic `.ifb` FunctionBlock files (not IHC Visual output) — the committed oracles for
+`FunctionBlockDefinitionBuilder`/`FbProgramBuilder` and the `.ifb` file format. Each is consumed by committed
+tests three ways: the W1 reader→writer byte gate (`CatalogFileWriterTests`), the grammar round-trip
+(`CatalogDtdParserTests`), and a code-authored **byte** test (`FunctionBlockBuilderOracleTests`: the block is
+authored entirely from code — grammar + body + ids — and `CatalogFileWriter` must reproduce the file).
+`fb08` was generated by that exact authoring from a bare `Create(…)`, so it byte-pins the `FunctionBlock`
+grammar preset. Format matches the majority vendor `.ifb`: ISO-8859-1, CRLF, no trailing newline, lean bodies
+(attributes equal to their DTD default are omitted), and vendor-style suffixed ids
+(`id = (counter << 8) | typeCode`; the byte tests re-stamp the builder's placeholder allocation with each
+file's exact tokens, the same mechanism the generated catalog uses). Files are named
+`synthetic_fbNN_<role>.ifb`, mirroring the sibling `products/synthetic/synthetic_9fNN_<role>.def`
 convention — the `synthetic_` prefix and neutral functional role mark each as an invented oracle, never an
 authentic install file (`fbNN` is a throwaway index like the placeholder element ids, not a real block code).
 
@@ -280,6 +290,8 @@ Each file exercises one region of the builder — pick the one whose feature you
 | `synthetic_fb04_holiday.ifb` | `resource_date` settings (`DateYmd`+`Backup`) + internal date; `resource_flag` with non-default `Inivalue`; power-up trigger (`event_power`/`AddPowerEvent`); an `or` conditions list; multiple programs |
 | `synthetic_fb05_empty.ifb` | `AsEmptyTemplate` — five containers in fixed order + one empty `program_simple`, conventional container icons, block icon `_0xf`, no master identity |
 | `synthetic_fb06_sensor.ifb` | `DisplayName` override (block name ≠ composed `{type}.{ver}. {name}`); `AddInput` with a value-type tag; heterogeneous registry value families (with/without icon); `Inivalue` on float/weekday-enum/integer; `link2` to a value operand |
+| `synthetic_fb07_grammar.ifb` | **Grammar envelope — non-standard declaration order + per-file block variants**: `outputs`/`resource_output` declared before `inputs`/`resource_input`, and both `resource_input` and `resource_flag` declare `inivalue (on \| off) "on"` (≠ the registry/preset default `"off"`) — the body omits `inivalue`, so its *effective* value comes from this file's own grammar, proving per-file grammar beats any family preset |
+| `synthetic_fb08_full.ifb` | **Preset pin — full program surface**: generated by `CatalogFileWriter` from a bare `Create(…)` (no grammar work), so its header is exactly the `FunctionBlock` grammar preset's rendering and its ids the builder's natural allocation; body exercises `AddPowerEvent`, `AddSubProgram` (conditions + true/false branches), `AddCase` (`program_case` + per-value `case_action` with embedded `resource_enum` operands + default branch), top-level `AddEnumDefinition`/`AddValue`, and the default-tag `AddInput`/`AddOutput` pins — the byte test re-authors it identically, pinning the preset's CONTENT |
 
 Only the structural branch names (`Kommandoer ved betingelser sande`/`falske`) are reproduced verbatim —
 the committed `FbProgramBuilder` doc-comments pin them as the fixed grammar the builder emits; everything

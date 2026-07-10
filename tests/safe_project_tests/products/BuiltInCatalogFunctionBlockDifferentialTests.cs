@@ -48,10 +48,12 @@ namespace Ihc.Vis.Tests
                     Assert.That(actual.DisplayName, Is.EqualTo(expected.DisplayName), $"[{i}] display name");
                     Assert.That(actual.CategoryPath, Is.EqualTo(expected.CategoryPath), $"[{i}] category path");
                 });
-                ImmutableDictionary<string, string> blocks = expected.InlineDtdBlocks;
+                // The structured grammar is value-comparable: the generated block must carry the exact grammar the
+                // install-dir parse yields (declarations, prolog datum, DOCTYPE root — the D1 primary model).
+                Assert.That(actual.Grammar, Is.EqualTo(expected.Grammar), $"[{i}] structured grammar");
                 AssertStructural(expected.DisplayName,
-                    DefinitionNormalizer.Normalize(expected.Body, blocks),
-                    DefinitionNormalizer.Normalize(actual.Body, blocks));
+                    DefinitionNormalizer.Normalize(expected.Body, expected.Grammar),
+                    DefinitionNormalizer.Normalize(actual.Body, expected.Grammar));
             }
         }
 
@@ -131,10 +133,14 @@ namespace Ihc.Vis.Tests
         [Test]
         public void Documentation_MatchesFreshSynEnParse()
         {
-            string? dir = ResolveCompleteInstall();
-            if (dir is null)
+            // Doc-equality is corpus-only: the baked syn_en text comes from the repo corpus the catalog was
+            // generated from, and (unlike the version-stable bodies) help text differs across IHC Visual
+            // versions — a configured-install fallback would fail on wording, not on machinery.
+            string? root = FindRepoRoot(TestContext.CurrentContext.TestDirectory);
+            string? dir = root is null ? null : Path.Combine(root, "tmp", "orginstall", "LK IHC Control", "IHC Visual");
+            if (dir is null || !IsCompleteInstall(dir))
             {
-                Assert.Ignore("No complete IHC Visual install available; skipping install-gated doc-equality.");
+                Assert.Ignore("Repo corpus (tmp/orginstall) not present; skipping corpus-gated doc-equality.");
             }
             IReadOnlyList<string> files = Directory
                 .EnumerateFiles(Path.Combine(dir!, "FunctionBlocks"), "*.ifb", SearchOption.AllDirectories)

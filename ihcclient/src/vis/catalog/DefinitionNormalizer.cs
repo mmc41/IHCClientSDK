@@ -17,7 +17,8 @@ namespace Ihc.Vis.Catalog
     /// catalog file — the "a builder is a code-authored <see cref="CatalogReader"/>" contract. A raw
     /// <c>Build().Body == CatalogReader.Read(file)</c> cannot hold: the two use different placeholder id schemes (the
     /// <c>.def</c> files a plain counter, the <c>.ifb</c> files <c>(counter&lt;&lt;8)|typeCode</c>, the builder its own
-    /// allocator), and the reader materializes DTD-default attributes a lean body omits. So <see cref="Normalize"/>
+    /// allocator), and the reader materializes DTD-default attributes a lean body omits. So
+    /// <see cref="Normalize(ProjectElement, ImmutableDictionary{string, string})"/>
     /// canonicalizes against the source grammar (dropping its DTD-default attributes symmetrically), then renumbers
     /// every id in document order and remaps the schema-declared IDREFs through the same map. Two trees that carry the
     /// same structure, attributes and wiring then compare equal by <c>ProjectElement.Equals</c> regardless of
@@ -36,6 +37,15 @@ namespace Ihc.Vis.Catalog
         internal static ProjectElement Normalize(ProjectElement body, ImmutableDictionary<string, string> blocks)
         {
             ProjectSchemaView view = blocks.IsEmpty ? ProjectSchemaView.RegistryOnly : ProjectSchemaView.For(blocks);
+            ProjectElement canonical = Canonicalizer.Canonicalize(body, view, UndeclaredAttributePolicy.Drop);
+            return Renumber(canonical, view);
+        }
+
+        /// <summary>The same canonical reduction keyed on a definition's structured grammar (registry-only when the
+        /// grammar carries no declarations).</summary>
+        internal static ProjectElement Normalize(ProjectElement body, CatalogGrammar grammar)
+        {
+            ProjectSchemaView view = ProjectSchemaView.For(grammar);
             ProjectElement canonical = Canonicalizer.Canonicalize(body, view, UndeclaredAttributePolicy.Drop);
             return Renumber(canonical, view);
         }

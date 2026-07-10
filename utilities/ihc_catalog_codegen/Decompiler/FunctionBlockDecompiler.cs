@@ -63,6 +63,15 @@ namespace Ihc.Vis.CatalogCodegen
             FunctionBlockDocumentation? documentation = null)
         {
             ArgumentNullException.ThrowIfNull(def);
+            if (def.MasterName.Length == 0)
+            {
+                // A block with no master identity at all is the empty "Tom blok" template (the code peer of
+                // Data\fb.def, authored via AsEmptyTemplate) — a template, not a catalog component, so this stage
+                // does not reverse it. Every corpus .ifb carries at least a master_name (AutoProof is keyless but
+                // named); only template-shaped files (e.g. the synthetic empty oracle) reach here.
+                throw new DecompileNotSupportedException(
+                    "block has no master_name — an empty 'Tom blok' template, not a catalog component.");
+            }
             return new FunctionBlockDecompiler(def, blocks).Run(def, documentation);
         }
 
@@ -98,40 +107,32 @@ namespace Ihc.Vis.CatalogCodegen
 
         private void EmitHead(ProjectElement body, FunctionBlockDefinition def)
         {
-            string? year = null, month = null, day = null;
+            // The body is the RAW file root. Emit EVERY attribute the file wrote, in file order (the block runs
+            // .SuppressResourceDefaults(), so the builder keeps the emitted order verbatim rather than canonicalizing).
+            // master_type/version/name come from Create as the definition's identity fields, but are ALSO written as
+            // body attributes here (their file position is not constant across the corpus), as is name — the builder's
+            // composed default is only used for the DisplayName record field, set separately below.
             foreach ((string name, string value) in body.AttrsOrEmpty())
             {
                 switch (name)
                 {
-                    case "id" or "master_type" or "master_version" or "master_name" or "name":
+                    case "id":
                         break;
-                    case "master_schneider_electric" when value == "yes":
-                        Head(b => b.VendorMaster(), ".VendorMaster()");
+                    case "master_schneider_electric" when value is "yes" or "no":
+                        Head(b => b.VendorMaster(value == "yes"), value == "yes" ? ".VendorMaster()" : ".VendorMaster(false)");
                         break;
                     case "master_programmer":
                         Head(b => b.MasterProgrammer(value), $".MasterProgrammer({CSharpLiteral.Quote(value)})");
                         break;
-                    case "master_date_year":
-                        year = value;
+                    case "locked" when value is "yes" or "no":
+                        Head(b => b.Locked(value == "yes"), value == "yes" ? ".Locked()" : ".Locked(false)");
                         break;
-                    case "master_date_month":
-                        month = value;
-                        break;
-                    case "master_date_day":
-                        day = value;
-                        break;
-                    case "locked" when value == "yes":
-                        Head(b => b.Locked(), ".Locked()");
-                        break;
-                    case "note" when value.Length > 0:
+                    case "note":
                         Head(b => b.Note(value), $".Note({CSharpLiteral.Quote(value)})");
                         break;
                     default:
-                        if (ShouldEmit(body.Tag, name, value))
-                        {
-                            Head(b => b.Attribute(name, value),
-                                $".Attribute({CSharpLiteral.Quote(name)}, {CSharpLiteral.Quote(value)})");
-                        }
+                        Head(b => b.Attribute(name, value),
+                            $".Attribute({CSharpLiteral.Quote(name)}, {CSharpLiteral.Quote(value)})");
                         break;
                 }
             }
@@ -149,7 +150,6 @@ namespace Ihc.Vis.CatalogCodegen
                 Head(b => b.CategoryPath(categoryPath), $".CategoryPath({CSharpLiteral.Quote(categoryPath)})");
             }
 
-            EmitMasterDate(year, month, day);
             EmitContainerDecoration(body, "inputs",
                 FbGrammar.InputsName, "InputsName", (b, v) => b.InputsName(v),
                 FbGrammar.InputsNoteDefault, "InputsNote", (b, v) => b.InputsNote(v));
@@ -319,7 +319,7 @@ namespace Ihc.Vis.CatalogCodegen
                 resourceVarById[id] = varName;
             }
 
-            List<ResourceConfigItem> configs = BuildResourceConfig(resource, applyBuilderDefaults: true);
+            List<ResourceConfigItem> configs = BuildResourceConfig(resource, applyBuilderDefaults: false);
             string configRender = string.Concat(configs.Select(c => c.Render));
             string head = $"var {varName} = b.{addMethod}({CSharpLiteral.Quote(tag)}, {CSharpLiteral.Quote(name)}";
             string render = configs.Count == 0
@@ -356,18 +356,13 @@ namespace Ihc.Vis.CatalogCodegen
                 ? FbGrammar.NewResourceDefaults(resource.Tag)
                 : Array.Empty<(string, string)>();
 
-            // A resource_enum's typedef+inivalue are wired together through the enum handle (by value name), not emitted
-            // as raw tokens (the builder re-mints the enum's ids, so raw source tokens would not resolve).
-            if (resource.Tag == "resource_enum")
+            bool isEnum = resource.Tag == "resource_enum";
+            if (isEnum)
             {
-                string typedef = resource.GetAttribute("typedef")
+                _ = resource.GetAttribute("typedef")
                     ?? throw new DecompileNotSupportedException("resource_enum without typedef.");
-                string inivalue = resource.GetAttribute("inivalue")
+                _ = resource.GetAttribute("inivalue")
                     ?? throw new DecompileNotSupportedException("resource_enum without inivalue.");
-                (string enumVar, string valueName) = ResolveEnumReference(typedef, inivalue);
-                configs.Add(new ResourceConfigItem(
-                    (r, env) => r.Enum(env.Get<FbEnumDefRef>(enumVar), valueName),
-                    $".Enum({enumVar}, {CSharpLiteral.Quote(valueName)})"));
             }
 
             foreach ((string name, string value) in resource.AttrsOrEmpty())
@@ -376,17 +371,26 @@ namespace Ihc.Vis.CatalogCodegen
                 {
                     continue;
                 }
-                if (resource.Tag == "resource_enum" && name is "typedef" or "inivalue")
+                if (isEnum && name == "typedef")
                 {
-                    continue;   // handled by the Enum() call above
+                    // A resource_enum's typedef+inivalue are wired together through the enum handle (by value name),
+                    // not emitted as raw tokens (the builder re-mints the enum's ids, so raw source tokens would not
+                    // resolve). The Enum() call sits HERE, at the source typedef position, because the builder appends
+                    // typedef then inivalue at the call site — replayed attribute order must match the file (an icon
+                    // may legitimately precede the pair).
+                    (string enumVar, string valueName) = ResolveEnumReference(value, resource.GetAttribute("inivalue")!);
+                    configs.Add(new ResourceConfigItem(
+                        (r, env) => r.Enum(env.Get<FbEnumDefRef>(enumVar), valueName),
+                        $".Enum({enumVar}, {CSharpLiteral.Quote(valueName)})"));
+                    continue;
+                }
+                if (isEnum && name == "inivalue")
+                {
+                    continue;   // emitted together with typedef by the Enum() call above
                 }
                 if (defaults.Any(d => d.Name == name && d.Value == value))
                 {
                     continue;   // the builder's per-type defaults already produce this exact attribute
-                }
-                if (!ShouldEmit(resource.Tag, name, value))
-                {
-                    continue;   // droppable DTD default under both grammars
                 }
                 configs.Add(ResourceConfigCall(name, value));
             }

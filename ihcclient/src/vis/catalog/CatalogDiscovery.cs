@@ -8,7 +8,7 @@ using System.Linq;
 using Ihc.Vis.FunctionBlocks;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
-using Ihc.Vis.Io;
+using Ihc.Vis.Schema;
 namespace Ihc.Vis.Catalog
 {
     /// <summary>
@@ -69,17 +69,30 @@ namespace Ihc.Vis.Catalog
             }
         }
 
-        private static ProjectElement ReadCatalogFile(string path) =>
-            ParseCatalogFile(path, () => CatalogReader.ReadFile(path));
+        // A File→New template (NewDoc.idf / EnumeratorDefinitions.def / fb.def) is used to BUILD a project, not
+        // re-emitted as a catalog file, so — unlike a product/function-block descriptor, whose raw body the writer must
+        // reproduce — it carries the EFFECTIVE body: the file's own DTD ATTLIST defaults materialized. Those defaults
+        // become real values the saved project keeps (e.g. a group's icon default the .vis registry defaults
+        // differently), so materializing here reproduces what a fresh project contains and matches the hand-authored
+        // BuiltInCatalog templates.
+        private static ProjectElement ReadCatalogFile(string path)
+        {
+            byte[] bytes = File.ReadAllBytes(path);
+            ProjectElement raw = ParseCatalogFile(path, () => CatalogReader.Read(bytes));
+            return CatalogDefaults.Materialize(raw,
+                ProjectSchemaView.For(CatalogDtdParser.ParseLenient(CatalogDtdParser.CaptureHeadText(bytes))));
+        }
 
         private static FunctionBlockDefinition ReadEmptyFunctionBlockTemplate(string fbDefPath)
         {
             byte[] bytes = File.ReadAllBytes(fbDefPath);
-            ProjectElement body = ParseCatalogFile(fbDefPath, () => CatalogReader.Read(bytes));
+            CatalogGrammar grammar = CatalogDtdParser.ParseLenient(CatalogDtdParser.CaptureHeadText(bytes));
+            ProjectElement raw = ParseCatalogFile(fbDefPath, () => CatalogReader.Read(bytes));
+            ProjectElement body = CatalogDefaults.Materialize(raw, ProjectSchemaView.For(grammar));
             string name = MenuPrefix.Strip(body.GetAttribute("name") ?? "Tom blok");
             return new FunctionBlockDefinition(string.Empty, string.Empty, name, name, string.Empty, body)
             {
-                InlineDtdBlocks = InlineDtd.Capture(bytes),
+                Grammar = grammar,
                 IsEmptyTemplate = true,
             };
         }

@@ -187,7 +187,7 @@
     <resource_integer id="_0x5b0b" name="Tærskel" note="Heltalstærskel for gentagne alarmer." inivalue="10" />
   </settings>
   <internalsettings id="_0x5c29" name="Interne variable" icon="_0x13" note="Private variable til blokkens eget brug">
-    <resource_time id="_0x5d0d" name="Forsinkelse" icon="_0x2f" note="Forsinkelse før alarmen udløses." hour="0" minute="0" second="30" />
+    <resource_time id="_0x5d0d" name="Forsinkelse" icon="_0x2f" hour="0" minute="0" second="30" note="Forsinkelse før alarmen udløses." />
   </internalsettings>
   <programs id="_0x5e26" name="Programmer" icon="_0x19" note="Gruppering af blokkens programmer">
     <program_simple id="_0x5f1e" name="Overvågning" icon="_0x7">

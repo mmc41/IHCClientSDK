@@ -47,6 +47,24 @@ namespace Ihc.Vis.Schema
             return new ProjectSchemaView(builder.ToImmutable());
         }
 
+        /// <summary>Builds a view over a catalog component's structured grammar (registry fallback) — each
+        /// declaration projected directly via <see cref="ElementSchema.FromDeclaration"/>, no text round trip.
+        /// On a lenient-fallback grammar the declarations are the best-effort projection, so exotic user files
+        /// keep their insert semantics.</summary>
+        public static ProjectSchemaView For(Ihc.Vis.Model.CatalogGrammar? grammar)
+        {
+            if (grammar is null || grammar.Declarations.IsEmpty)
+            {
+                return RegistryOnly;
+            }
+            var builder = ImmutableDictionary.CreateBuilder<string, ElementSchema>(StringComparer.Ordinal);
+            foreach (Ihc.Vis.Model.GrammarDeclaration declaration in grammar.Declarations)
+            {
+                builder[declaration.Tag] = ElementSchema.FromDeclaration(declaration);
+            }
+            return new ProjectSchemaView(builder.ToImmutable());
+        }
+
         /// <summary>The schema for the tag — captured block first, then the static registry — or <c>null</c>.</summary>
         public ElementSchema? TryGet(string tag) =>
             captured.TryGetValue(tag, out ElementSchema? schema) ? schema : ProjectSchemaRegistry.TryGet(tag);

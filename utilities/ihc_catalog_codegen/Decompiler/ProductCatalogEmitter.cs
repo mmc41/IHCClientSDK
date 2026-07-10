@@ -5,35 +5,37 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
+using Ihc.Vis.Catalog;
+
 namespace Ihc.Vis.CatalogCodegen
 {
-    /// <summary>Outcome of a catalog emit (products or function blocks): how many components were scanned/emitted, any
-    /// per-file failures, and whether a file was actually written (nothing is written unless every component
-    /// self-verified). Shared by <see cref="ProductCatalogEmitter"/> and <see cref="FunctionBlockCatalogEmitter"/>.</summary>
-    internal sealed record EmitReport(int Scanned, int Emitted, IReadOnlyList<string> Failures, bool Written,
-        string? OutputPath);
+    /// <summary>Outcome of one catalog decompile sweep (products or function blocks): every source decompiled to a
+    /// self-verified recipe, or the per-file failures that must abort the whole emit (nothing is ever published
+    /// unless every component of BOTH sweeps verified). The file names ride along for grammar-table doc comments.</summary>
+    internal sealed record DecompileReport<TRecipe>(int Scanned,
+        IReadOnlyList<(string File, string Method, TRecipe Recipe)> Factories, IReadOnlyList<string> Failures);
 
     /// <summary>
-    /// Emits the committed <c>BuiltInCatalog.Products.g.cs</c> from the vendor product catalog. Each <c>.def</c> is
-    /// decompiled to a <see cref="ProductRecipe"/> and self-verified (<see cref="SelfVerify"/>) BEFORE anything is
-    /// written; if any product fails, nothing is emitted (the Decision Framework's "never commit a failing .g.cs").
-    /// Products are ordered exactly as <c>CatalogDiscovery</c> scans them (path-sorted, ordinal), so the generated
-    /// registration reproduces the install-dir last-wins semantics over duplicate <c>product_identifier</c>s; method
-    /// names are disambiguated for those duplicates. The output is deterministic — a re-run over an unchanged corpus
-    /// produces a byte-identical file.
+    /// Renders the committed <c>BuiltInCatalog.Products.g.cs</c> from the vendor product catalog. Each <c>.def</c>
+    /// is decompiled to a <see cref="ProductRecipe"/> and self-verified (<see cref="SelfVerify"/>); the coordinated
+    /// publish pipeline in <c>Program.RunEmit</c> renders and writes all three generated files only when every
+    /// component of both sweeps verified. Products are ordered exactly as <c>CatalogDiscovery</c> scans them
+    /// (path-sorted, ordinal), so the generated registration reproduces the install-dir last-wins semantics over
+    /// duplicate <c>product_identifier</c>s; method names are disambiguated for those duplicates. The output is
+    /// deterministic — a re-run over an unchanged corpus produces a byte-identical file.
     /// </summary>
     internal static class ProductCatalogEmitter
     {
         public const string FileName = "BuiltInCatalog.Products.g.cs";
 
-        public static EmitReport Emit(string productsDir, string outDir)
+        public static DecompileReport<ProductRecipe> Decompile(string productsDir)
         {
             IReadOnlyList<string> files = Directory
                 .EnumerateFiles(productsDir, "*.def", SearchOption.AllDirectories)
                 .OrderBy(p => p, StringComparer.Ordinal)
                 .ToArray();
 
-            var factories = new List<(string Method, ProductRecipe Recipe)>();
+            var factories = new List<(string File, string Method, ProductRecipe Recipe)>();
             var usedNames = new Dictionary<string, int>(StringComparer.Ordinal);
             var failures = new List<string>();
 
@@ -47,8 +49,9 @@ namespace Ihc.Vis.CatalogCodegen
                 {
                     recipe = ProductDecompiler.Decompile(
                         source.Definition.Body, source.Blocks, source.Definition.DisplayName, categoryPath);
+                    recipe.BakeSourceFidelity(source);   // strict grammar parse — throws on an out-of-envelope header
                 }
-                catch (DecompileNotSupportedException ex)
+                catch (Exception ex) when (ex is DecompileNotSupportedException or CatalogFormatException)
                 {
                     failures.Add($"{name}: UNSUPPORTED — {ex.Message}");
                     continue;
@@ -60,19 +63,9 @@ namespace Ihc.Vis.CatalogCodegen
                     failures.Add($"{name}: FAIL — {result.Reason}");
                     continue;
                 }
-                factories.Add((UniqueMethodName(usedNames, source.Definition.ProductIdentifier), recipe));
+                factories.Add((name, UniqueMethodName(usedNames, source.Definition.ProductIdentifier), recipe));
             }
-
-            if (failures.Count > 0)
-            {
-                return new EmitReport(files.Count, factories.Count, failures, Written: false, OutputPath: null);
-            }
-
-            Directory.CreateDirectory(outDir);
-            string outputPath = Path.Combine(outDir, FileName);
-            // UTF-8 without BOM, matching the repo's hand-authored .cs (Danish characters ride along as literal UTF-8).
-            File.WriteAllText(outputPath, RenderFile(factories), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-            return new EmitReport(files.Count, factories.Count, failures, Written: true, OutputPath: outputPath);
+            return new DecompileReport<ProductRecipe>(files.Count, factories, failures);
         }
 
         private static string UniqueMethodName(Dictionary<string, int> used, string productIdentifier)
@@ -92,13 +85,14 @@ namespace Ihc.Vis.CatalogCodegen
             return $"{baseName}_{count}";
         }
 
-        private static string RenderFile(IReadOnlyList<(string Method, ProductRecipe Recipe)> factories)
+        public static string RenderFile(IReadOnlyList<(string File, string Method, ProductRecipe Recipe)> factories,
+            GrammarTable grammars)
         {
             var builder = new StringBuilder();
             builder.Append(
                 "// <auto-generated>\n" +
                 "//     Generated by utilities/ihc_catalog_codegen from the IHC Visual product catalog (Products\\*.def).\n" +
-                "//     Do NOT edit by hand — re-run the generator to regenerate. See tmp/catalogplan-products.md.\n" +
+                "//     Do NOT edit by hand — re-run the generator to regenerate. See tmp/catalogdtd-plan.md.\n" +
                 "// </auto-generated>\n" +
                 "#nullable enable\n" +
                 "using System.Collections.Immutable;\n" +
@@ -114,30 +108,30 @@ namespace Ihc.Vis.CatalogCodegen
                 "        // install dir, so last-wins lookup over duplicate product_identifiers matches the install-dir path.\n" +
                 "        partial void RegisterProducts(ImmutableArray<ProductDefinition>.Builder products)\n" +
                 "        {\n");
-            foreach ((string method, _) in factories)
+            foreach ((_, string method, _) in factories)
             {
                 builder.Append("            products.Add(").Append(method).Append("());\n");
             }
             builder.Append("        }\n\n");
 
-            foreach ((string method, ProductRecipe recipe) in factories)
+            foreach ((_, string method, ProductRecipe recipe) in factories)
             {
-                builder.Append(recipe.RenderMethod(method)).Append('\n');
+                builder.Append(recipe.RenderMethod(method, grammars.RefFor(recipe.SourceGrammar))).Append('\n');
             }
 
             builder.Append(
-                "        // Builds a catalog subtree element carrying its source id token verbatim, so an IDREF inside the\n" +
-                "        // subtree still names its target. These placeholder ids are re-minted by the insert transform; only\n" +
-                "        // their internal consistency matters. Mirrors the ElRaw helper the product oracle tests use.\n" +
-                "        private static ProjectElement ElRaw(string tag, string idToken, (string, string)[] attrs,\n" +
-                "            params ProjectElement[] children)\n" +
+                "        // Builds a catalog subtree element from its verbatim attributes (id included at its file position, so\n" +
+                "        // a vendor element that writes id after another attribute round-trips byte-faithfully). The id token\n" +
+                "        // parses the ElementId; placeholder ids are re-minted in place by the insert transform / id stamping.\n" +
+                "        private static ProjectElement ElRaw(string tag, (string, string)[] attrs, params ProjectElement[] children)\n" +
                 "        {\n" +
-                "            ElementId? id = ElementId.TryParse(idToken, out ElementId parsed) ? parsed : null;\n" +
-                "            ImmutableArray<(string, string)>.Builder bag =\n" +
-                "                ImmutableArray.CreateBuilder<(string, string)>(attrs.Length + 1);\n" +
-                "            bag.Add((\"id\", idToken));\n" +
-                "            bag.AddRange(attrs);\n" +
-                "            return new ProjectElement(tag, id, bag.ToImmutable(), children.ToImmutableArray());\n" +
+                "            string? idToken = null;\n" +
+                "            foreach ((string name, string value) in attrs)\n" +
+                "            {\n" +
+                "                if (name == \"id\") { idToken = value; break; }\n" +
+                "            }\n" +
+                "            ElementId? id = idToken is not null && ElementId.TryParse(idToken, out ElementId parsed) ? parsed : null;\n" +
+                "            return new ProjectElement(tag, id, attrs.ToImmutableArray(), children.ToImmutableArray());\n" +
                 "        }\n" +
                 "    }\n" +
                 "}\n");

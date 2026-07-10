@@ -69,9 +69,20 @@ namespace Ihc.Vis.CatalogCodegen
                 return new VerifyResult(false, $"category path '{actual.CategoryPath}' != '{expected.CategoryPath}'");
             }
 
-            if (SelfVerifyShared.BlocksMismatch(actual.InlineDtdBlocks, nonRegistryBlocks) is { } reason)
+            // Structured grammar: strict parse (the recipe) must equal the lenient read (the definition) — value
+            // equality; replaces the old InlineDtdBlocks used∩non-registry subset check.
+            if (!actual.Grammar.Equals(expected.Grammar))
             {
-                return new VerifyResult(false, reason);
+                return new VerifyResult(false, "structured grammar mismatch (strict parse vs lenient read)");
+            }
+
+            // Byte fidelity: CatalogFileWriter-serializing the built block must reproduce the source .ifb under the
+            // fidelity relation of record — the same check the final acceptance ran (accptest.md §10), kept here so
+            // every regeneration re-proves it. The one vendor escaping inconsistency (1.2.05.ifb's &apos;) is
+            // handled by the relation itself (CatalogTextCompare, D3), not by a gate-local tolerance.
+            if (SelfVerifyShared.WrittenBytesMismatch(source.FileBytes, SelfVerifyShared.WriteBytes(actual)) is { } byteReason)
+            {
+                return new VerifyResult(false, byteReason);
             }
             return VerifyResult.Pass;
         }

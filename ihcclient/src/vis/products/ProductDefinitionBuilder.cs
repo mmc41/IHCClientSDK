@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 
+using Ihc.Vis.Catalog;
 using Ihc.Vis.Io;
 using Ihc.Vis.Model;
 using Ihc.Vis.Schema;
@@ -23,7 +24,7 @@ namespace Ihc.Vis.Products
     /// <remarks>
     /// The build produces exactly what catalog discovery yields from a <c>.def</c>: a shallow <c>product_*</c>
     /// <see cref="ProjectElement"/> <c>Body</c> (as <c>CatalogReader.Read</c> returns) plus, optionally, the
-    /// separately-captured <see cref="ProductDefinition.InlineDtdBlocks"/>. Because the downstream engine
+    /// structured <see cref="ProductDefinition.Grammar"/>. Because the downstream engine
     /// does the heavy lifting, the builder stays small — it only has to
     /// (1) mint placeholder ids that are unique within the body and carry the correct type-code low byte (the id
     /// counters are throwaway map keys the insert transform re-mints), and
@@ -32,9 +33,11 @@ namespace Ihc.Vis.Products
     /// Unlike the function-block builder, the product builder does <b>not</b> auto-stamp resource icons or
     /// <c>#REQUIRED</c> value initials: authentic <c>Products\*.def</c> files carry the canonical icon as the resource's
     /// own DTD default (so the vendor body omits it), which the reader materializes and the canonicalizer then drops —
-    /// a leanly-authored body reaches the same canonical form by emitting nothing. The inline-DTD stays empty for every
-    /// registry family. The escape hatches — <see cref="Attribute"/>, <see cref="AddResource"/>, <see cref="RawChild"/>,
-    /// <see cref="InlineDtdBlock"/> — cover exotic/open-world families so any product is authorable from code.
+    /// a leanly-authored body reaches the same canonical form by emitting nothing. Each named factory seeds its
+    /// family's standard grammar preset; <see cref="Grammar"/> replaces it wholesale and <see cref="ExtendGrammar"/>
+    /// add-or-replaces single declarations (body verbs never mutate the grammar). The escape hatches —
+    /// <see cref="Attribute"/>, <see cref="AddResource"/>, <see cref="RawChild"/> plus an
+    /// <see cref="ExtendGrammar"/> declaration — cover exotic/open-world families so any product is authorable from code.
     /// <para><b>Opaque tokens (address / icon / product-identifier):</b> these are per-family, fidelity-critical wire
     /// tokens taken verbatim. A GUI does not invent them — it enumerates the legal vocabulary from the catalog seam
     /// (<see cref="Ihc.Vis.Catalog.ICatalog"/>; the SDK-embedded <c>BuiltInCatalog</c> is the token source once it
@@ -64,38 +67,41 @@ namespace Ihc.Vis.Products
         private readonly List<ProjectElement> children = new();
         private ElementId? lastResourceId;
         private string? scenes;   // the scenes container's label when requested (null = no scenes)
-        private readonly ImmutableDictionary<string, string>.Builder inlineDtd =
-            ImmutableDictionary.CreateBuilder<string, string>(StringComparer.Ordinal);
+        private CatalogGrammar grammar;                 // the EFFECTIVE grammar: family preset / From-carried / assigned
+        private CatalogTextEncoding? sourceEncoding;    // From-carried physical encoding
         private string? docSummary;
         private readonly Dictionary<string, string> resourceDocs = new(StringComparer.Ordinal);
 
-        private ProductDefinitionBuilder(string rootTag, string productIdentifier, string displayName)
+        private ProductDefinitionBuilder(string rootTag, string productIdentifier, string displayName,
+            CatalogGrammar grammar)
         {
             this.rootTag = rootTag;
             this.productIdentifier = productIdentifier;
             this.displayName = displayName;
+            this.grammar = grammar;
         }
 
         /// <summary>Begins a dataline product (root <c>product_dataline</c>), keyed by its opaque
-        /// <c>product_identifier</c> token (e.g. <c>_0x2101</c>) and shown as <paramref name="displayName"/>.</summary>
+        /// <c>product_identifier</c> token (e.g. <c>_0x2101</c>) and shown as <paramref name="displayName"/>.
+        /// Seeds the family's standard grammar preset (see <see cref="Grammar"/>/<see cref="ExtendGrammar"/>).</summary>
         public static ProductDefinitionBuilder Dataline(string productIdentifier, string displayName) =>
-            new("product_dataline", productIdentifier, displayName);
+            new("product_dataline", productIdentifier, displayName, CatalogGrammarPresets.Dataline);
 
-        /// <summary>Begins an airlink (wireless) product (root <c>product_airlink</c>).</summary>
+        /// <summary>Begins an airlink (wireless) product (root <c>product_airlink</c>); seeds the airlink preset.</summary>
         public static ProductDefinitionBuilder Airlink(string productIdentifier, string displayName) =>
-            new("product_airlink", productIdentifier, displayName);
+            new("product_airlink", productIdentifier, displayName, CatalogGrammarPresets.Airlink);
 
-        /// <summary>Begins an RS485 LED-dimmer product (root <c>product_rs485_led_dimmer</c>).</summary>
+        /// <summary>Begins an RS485 LED-dimmer product (root <c>product_rs485_led_dimmer</c>); seeds the family preset.</summary>
         public static ProductDefinitionBuilder Rs485LedDimmer(string productIdentifier, string displayName) =>
-            new("product_rs485_led_dimmer", productIdentifier, displayName);
+            new("product_rs485_led_dimmer", productIdentifier, displayName, CatalogGrammarPresets.Rs485LedDimmer);
 
-        /// <summary>Begins an RS485 SMS-modem product (root <c>product_rs485_sms_modem</c>).</summary>
+        /// <summary>Begins an RS485 SMS-modem product (root <c>product_rs485_sms_modem</c>); seeds the family preset.</summary>
         public static ProductDefinitionBuilder Rs485SmsModem(string productIdentifier, string displayName) =>
-            new("product_rs485_sms_modem", productIdentifier, displayName);
+            new("product_rs485_sms_modem", productIdentifier, displayName, CatalogGrammarPresets.Rs485SmsModem);
 
-        /// <summary>Begins an S0 metering device (root <c>s0_device</c>).</summary>
+        /// <summary>Begins an S0 metering device (root <c>s0_device</c>); seeds the S0 preset.</summary>
         public static ProductDefinitionBuilder S0Device(string productIdentifier, string displayName) =>
-            new("s0_device", productIdentifier, displayName);
+            new("s0_device", productIdentifier, displayName, CatalogGrammarPresets.S0Device);
 
         /// <summary>
         /// Begins a product of an explicit family root tag — the open-world escape hatch for any product family not
@@ -106,7 +112,9 @@ namespace Ihc.Vis.Products
         public static ProductDefinitionBuilder Create(string rootTag, string productIdentifier, string displayName)
         {
             _ = TypeCode.RequireForTag(rootTag);   // reject an unknown family tag up front
-            return new ProductDefinitionBuilder(rootTag, productIdentifier, displayName);
+            // Open-world: no preset — the grammar stays Empty until .Grammar(...)/.ExtendGrammar(...). Build()
+            // remains legal (insert resolves against the registry), but writing to a catalog file is refused.
+            return new ProductDefinitionBuilder(rootTag, productIdentifier, displayName, CatalogGrammar.Empty);
         }
 
         /// <summary>
@@ -118,9 +126,13 @@ namespace Ihc.Vis.Products
         public static ProductDefinitionBuilder From(ProductDefinition existing)
         {
             ArgumentNullException.ThrowIfNull(existing);
-            var builder = new ProductDefinitionBuilder(existing.Body.Tag, existing.ProductIdentifier, existing.DisplayName)
+            // Carry the grammar (including a lenient-fallback verbatim head and its projection) verbatim — the
+            // effective grammar an explicit .Grammar(...) replaces and .ExtendGrammar(...) starts from.
+            var builder = new ProductDefinitionBuilder(existing.Body.Tag, existing.ProductIdentifier,
+                existing.DisplayName, existing.Grammar)
             {
                 categoryPath = existing.CategoryPath,
+                sourceEncoding = existing.SourceEncoding,
                 ids = new IdAllocator(IdAllocator.MaxCounterPresent(existing.Body)),
             };
             foreach ((string name, string value) in existing.Body.AttrsOrEmpty())
@@ -130,7 +142,7 @@ namespace Ihc.Vis.Products
                     case "id" or "product_identifier":
                         break;
                     case "name":
-                        builder.bodyName = value;
+                        builder.SetName(value);   // records name at its file position in the ordered root attributes
                         break;
                     default:
                         builder.rootAttrs.Add((name, value));
@@ -144,10 +156,6 @@ namespace Ihc.Vis.Products
                 {
                     builder.lastResourceId = id;
                 }
-            }
-            foreach (KeyValuePair<string, string> block in existing.InlineDtdBlocks)
-            {
-                builder.inlineDtd[block.Key] = block.Value;
             }
             builder.docSummary = existing.Documentation.Summary;
             foreach (KeyValuePair<string, string> doc in existing.Documentation.Resources)
@@ -179,9 +187,23 @@ namespace Ihc.Vis.Products
 
         /// <summary>Overrides the product body's <c>name</c> attribute — the placed instance's own label, which defaults
         /// to the display name. Distinct from <see cref="DisplayName"/>, the library/tree label.</summary>
-        public ProductDefinitionBuilder Name(string name)
+        public ProductDefinitionBuilder Name(string name) => SetName(name);
+
+        // Records the body name attribute at its authored position in the ordered root attribute list (so the emitted
+        // order matches the file — e.g. an airlink root writes device_type before name), updating in place if already
+        // present. Also tracked in bodyName for validation.
+        private ProductDefinitionBuilder SetName(string name)
         {
             bodyName = name;
+            for (int i = 0; i < rootAttrs.Count; i++)
+            {
+                if (rootAttrs[i].Name == "name")
+                {
+                    rootAttrs[i] = ("name", name);
+                    return this;
+                }
+            }
+            rootAttrs.Add(("name", name));
             return this;
         }
 
@@ -301,10 +323,30 @@ namespace Ihc.Vis.Products
             return this;
         }
 
-        /// <summary>Supplies a verbatim inline-DTD block for a genuinely non-registry element type (open-world).</summary>
-        public ProductDefinitionBuilder InlineDtdBlock(string tag, string verbatimBlock)
+        /// <summary>
+        /// <b>Replaces</b> the effective grammar wholesale — the one canonical assignment used by generated catalog
+        /// code and for full replacement after <see cref="From"/>. To add or adjust a single declaration while
+        /// keeping the preset/carried grammar intact, use <see cref="ExtendGrammar"/> instead.
+        /// </summary>
+        public ProductDefinitionBuilder Grammar(CatalogGrammar grammar)
         {
-            inlineDtd[tag] = verbatimBlock;
+            ArgumentNullException.ThrowIfNull(grammar);
+            this.grammar = grammar;
+            return this;
+        }
+
+        /// <summary>
+        /// <b>Extends</b> the effective grammar (the family preset, a <see cref="From"/>-carried grammar, or a
+        /// prior assignment): the callback add-or-replaces whole per-tag declarations, leaving every other
+        /// declaration, default and IDREF classification intact — the near-minimal path for declaring one custom
+        /// body type (e.g. an open-world resource spliced via <see cref="RawChild"/>).
+        /// </summary>
+        public ProductDefinitionBuilder ExtendGrammar(Action<CatalogGrammarBuilder> extend)
+        {
+            ArgumentNullException.ThrowIfNull(extend);
+            var builder = new CatalogGrammarBuilder(grammar);
+            extend(builder);
+            grammar = builder.Build();
             return this;
         }
 
@@ -337,7 +379,27 @@ namespace Ihc.Vis.Products
                         child.GetAttribute("name"), "A resource_enum has no typedef wired to an enum_definition."));
                 }
             }
+            // The grammar↔body advisories (non-blocking warnings; skipped for an Empty grammar) over a preview
+            // body assembled without touching the id allocator — Build() after Validate() must allocate the same ids.
+            findings.AddRange(CatalogGrammarAdvisor.Advise(ComposeRoot(rootId: null, AdvisoryChildren()), grammar));
             return ProjectValidationResult.FromFindings(findings.ToImmutable());
+        }
+
+        // The scenes stub mirrors what Build() will emit (name + scene_resource binding) without allocating its id.
+        private List<ProjectElement> AdvisoryChildren()
+        {
+            var childElements = new List<ProjectElement>(children);
+            if (scenes is { } scenesLabel)
+            {
+                ProjectElement scenesElement = ProjectElement.Create("scenes", id: null,
+                    new[] { ("name", scenesLabel) }, NoChildren);
+                if (lastResourceId is { } bound)
+                {
+                    scenesElement = scenesElement.WithAttribute("scene_resource", bound.ToToken());
+                }
+                childElements.Add(scenesElement);
+            }
+            return childElements;
         }
 
         /// <summary>Materializes the <c>Body</c> (placeholder ids + effective attribute values) and returns the
@@ -363,24 +425,42 @@ namespace Ihc.Vis.Products
                 childElements.Add(scenesElement);
             }
 
-            ElementId rootId = ids.Allocate(TypeCode.RequireForTag(rootTag));
-            ProjectElement root = ProjectElement.Create(rootTag, rootId, NoAttrs, childElements)
-                .WithAttribute("product_identifier", productIdentifier)
-                .WithAttribute("name", bodyName ?? displayName);
-            foreach ((string name, string value) in rootAttrs)
-            {
-                root = root.WithAttribute(name, value);
-            }
+            ProjectElement root = ComposeRoot(ids.Allocate(TypeCode.RequireForTag(rootTag)), childElements);
 
             // Return the raw body (placeholder ids + effective attributes), exactly as a CatalogReader.Read yields a
             // .def's parsed tree — deliberately NOT canonicalized: the .def's own DTD defaults (e.g. a product family's
             // locked="yes") differ from the project registry's, so canonicalizing here against the registry would drop
             // attributes the catalog grammar keeps. The insert transform canonicalizes against the project on insert.
-            return new ProductDefinition(productIdentifier, displayName, categoryPath, root)
+            var definition = new ProductDefinition(productIdentifier, displayName, categoryPath, root)
             {
-                InlineDtdBlocks = inlineDtd.ToImmutable(),
+                Grammar = grammar,
                 Documentation = BuildDocumentation(),
             };
+            return sourceEncoding is { } encoding ? definition with { SourceEncoding = encoding } : definition;
+        }
+
+        // Emits the root attributes in authored order — name rides at its recorded position (SetName) so families
+        // that interleave another attribute before it (an airlink root's device_type) stay file-faithful. A hand
+        // author who never set a name defaults to the display name, positioned right after product_identifier.
+        // Shared by Build() (allocated id) and the Validate() advisory preview (no id, allocator untouched).
+        private ProjectElement ComposeRoot(ElementId? rootId, IReadOnlyList<ProjectElement> childElements)
+        {
+            ProjectElement root = ProjectElement.Create(rootTag, rootId, NoAttrs, childElements)
+                .WithAttribute("product_identifier", productIdentifier);
+            bool hasName = false;
+            foreach ((string name, string _) in rootAttrs)
+            {
+                if (name == "name") { hasName = true; break; }
+            }
+            if (!hasName)
+            {
+                root = root.WithAttribute("name", displayName);
+            }
+            foreach ((string name, string value) in rootAttrs)
+            {
+                root = root.WithAttribute(name, value);
+            }
+            return root;
         }
 
         private ProductDefinitionBuilder SetRoot(string name, string value)

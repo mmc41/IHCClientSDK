@@ -6,6 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 
+using Ihc.Vis.Catalog;
 using Ihc.Vis.Io;
 using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
@@ -395,7 +396,7 @@ namespace Ihc.Vis.Editing
             {
                 body = PrependReferencedEnumStubs(body);
             }
-            return InsertComponent(targetParentId, body, ImmutableDictionary<string, string>.Empty);
+            return InsertComponent(targetParentId, body, CatalogGrammar.Empty);
         }
 
         /// <summary>
@@ -635,13 +636,16 @@ namespace Ihc.Vis.Editing
 
         // ----- insert (called by GroupRef) -----
 
-        internal ElementId InsertComponent(ElementId groupId, ProjectElement catalogBody,
-            ImmutableDictionary<string, string> descriptorBlocks)
+        internal ElementId InsertComponent(ElementId groupId, ProjectElement catalogBody, CatalogGrammar grammar)
         {
-            MergeNonRegistryBlocks(catalogBody, descriptorBlocks);
+            MergeNonRegistryBlocks(catalogBody, grammar);
             ProjectElement enumDefinitions = root.FindChild(EnumDefinitionsTag)
                 ?? throw new InvalidOperationException("The project has no enum_definitions container.");
-            InsertResult result = InsertTransform.Insert(catalogBody, allocator, enumDefinitions, SchemaView);
+            // The reader hands back the RAW catalog body (no DTD-defaulted attributes) so it re-emits
+            // byte-faithfully; re-materialize the component's effective values from its own grammar here, since the
+            // cross-DTD reconciliation below (InsertTransform → Canonicalizer) reads them (spec ch. 09 §9.3.7).
+            ProjectElement effectiveBody = CatalogDefaults.Materialize(catalogBody, ProjectSchemaView.For(grammar));
+            InsertResult result = InsertTransform.Insert(effectiveBody, allocator, enumDefinitions, SchemaView);
             // Validate before committing anything, so a failed insert leaves no half-mutated session
             // (hoisted enums without their component, or an unaddressable inserted root).
             ElementId insertedId = result.InsertedRoot.Id
@@ -654,13 +658,17 @@ namespace Ihc.Vis.Editing
         }
 
         /// <summary>
-        /// Adopts the descriptor's inline-DTD block for each inserted element type the static registry does not
-        /// declare, so an unregistered/custom component still serializes (open-world). Registry-known types keep
-        /// their curated registry block (nothing merged), so this is a no-op for the standard catalog.
+        /// Adopts a project-form DTD block for each inserted element type the static registry does not declare, so an
+        /// unregistered/custom component still serializes (open-world). The block text is rendered from the
+        /// component's structured grammar at this insert boundary — the only place a catalog declaration becomes
+        /// <c>.vis</c> block text — via the project rendering (an orphan ATTLIST gets its synthesized
+        /// <c>&lt;!ELEMENT tag ANY&gt;</c> line; a catalog-faithful orphan block would make the saved file
+        /// unloadable). Registry-known types keep their curated registry block (nothing merged), so this is a no-op
+        /// for the standard catalog.
         /// </summary>
-        private void MergeNonRegistryBlocks(ProjectElement body, ImmutableDictionary<string, string> descriptorBlocks)
+        private void MergeNonRegistryBlocks(ProjectElement body, CatalogGrammar grammar)
         {
-            if (descriptorBlocks is null || descriptorBlocks.IsEmpty)
+            if (grammar is null || grammar.Declarations.IsEmpty)
             {
                 return;
             }
@@ -669,9 +677,9 @@ namespace Ihc.Vis.Editing
             {
                 if (!builder.ContainsKey(e.Tag)
                     && ProjectSchemaRegistry.TryGet(e.Tag) is null
-                    && descriptorBlocks.TryGetValue(e.Tag, out string? block))
+                    && grammar.TryGetDeclaration(e.Tag) is { } declaration)
                 {
-                    builder[e.Tag] = block;
+                    builder[e.Tag] = CatalogDtdEmitter.RenderProjectBlock(declaration);
                 }
                 if (!e.Children.IsDefaultOrEmpty)
                 {

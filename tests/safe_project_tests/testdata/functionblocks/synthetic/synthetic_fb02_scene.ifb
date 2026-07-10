@@ -134,7 +134,7 @@
     <resource_scene id="_0x574a" name="Scenarie slukket" note="Fremkaldes når udgangen slukkes." note-2="Vises kun for avancerede brugere" />
   </outputs>
   <settings id="_0x5825" name="Indstillinger" icon="_0xd" note="Indstillinger som brugeren kan ændre">
-    <resource_timer id="_0x5910" name="Holdetid" backup="yes" icon="_0x43" hour="0" minute="2" second="30" millisecond="0" />
+    <resource_timer id="_0x5910" name="Holdetid" icon="_0x43" hour="0" minute="2" second="30" millisecond="0" backup="yes" />
   </settings>
   <internalsettings id="_0x5a29" name="Interne variable" icon="_0x13" note="Private variable til blokkens eget brug" />
   <programs id="_0x5b26" name="Programmer" icon="_0x19" note="Gruppering af blokkens programmer">

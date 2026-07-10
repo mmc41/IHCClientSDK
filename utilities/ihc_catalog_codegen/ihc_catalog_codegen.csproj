@@ -10,4 +10,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Syntax gate only (CSharpSyntaxTree.ParseText): rendered .g.cs must parse before it is published. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+  </ItemGroup>
 </Project>

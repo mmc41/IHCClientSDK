@@ -248,12 +248,13 @@ namespace Ihc.Vis.FunctionBlocks
             children.Add(MaterializeBranch(plan.Default));
             var attrs = new List<(string, string)>
             {
-                ("name", plan.Name), ("icon", FbGrammar.ProgramCaseIcon), ("link", plan.SwitchVariable.ToToken()),
+                ("name", plan.Name), ("icon", FbGrammar.ProgramCaseIcon),
             };
             if (plan.Note is { } note)
             {
-                attrs.Add(("note", note));
+                attrs.Add(("note", note));   // the vendor writes note before link on program_case
             }
+            attrs.Add(("link", plan.SwitchVariable.ToToken()));
             return FbGrammar.Node("program_case", caseId, attrs, children);
         }
 
@@ -263,12 +264,13 @@ namespace Ihc.Vis.FunctionBlocks
             var attrs = new List<(string, string)>
             {
                 ("name", ca.Name), ("icon", FbGrammar.CaseActionIcon),
-                ("variable", ca.Variable.ToToken()), ("value", ca.Operand.Id.ToToken()),
             };
             if (ca.Note is { } note)
             {
-                attrs.Add(("note", note));
+                attrs.Add(("note", note));   // the vendor writes note before variable/value on case_action
             }
+            attrs.Add(("variable", ca.Variable.ToToken()));
+            attrs.Add(("value", ca.Operand.Id.ToToken()));
             var children = new List<ProjectElement>
             {
                 FbGrammar.Leaf(ca.Operand.Tag, ca.Operand.Id, ca.Operand.Attrs),

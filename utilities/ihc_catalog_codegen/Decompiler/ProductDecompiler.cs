@@ -50,23 +50,19 @@ namespace Ihc.Vis.CatalogCodegen
                 ?? throw new DecompileNotSupportedException($"Product body '{body.Tag}' has no product_identifier.");
             var recipe = new ProductRecipe(body.Tag, productIdentifier, displayName);
 
-            // The placed instance's own name attribute defaults to the display name, so only override when the vendor's
-            // raw name (menu prefix included) differs from the stripped library name.
-            string rawName = body.GetAttribute("name") ?? displayName;
-            if (rawName != displayName)
-            {
-                recipe.Calls.Add(new FluentCall(b => b.Name(rawName), $".Name({CSharpLiteral.Quote(rawName)})"));
-            }
             if (categoryPath.Length > 0)
             {
                 recipe.Calls.Add(new FluentCall(b => b.CategoryPath(categoryPath),
                     $".CategoryPath({CSharpLiteral.Quote(categoryPath)})"));
             }
 
-            ElementSchema? rootSchema = grammar.TryGet(body.Tag);
+            // The body is the RAW file body (CatalogReader no longer materializes DTD defaults), so it already holds
+            // exactly the attributes the file wrote, in file order — emit every one (byte-faithful) except id and
+            // product_identifier the factory places. name is emitted here too (via .Name), at its file position, so a
+            // family that writes another attribute before it (an airlink root's device_type) stays file-faithful.
             foreach ((string name, string value) in body.AttrsOrEmpty())
             {
-                if (name is "id" or "product_identifier" or "name" || !LeanBake.ShouldEmit(rootSchema, body.Tag, name, value))
+                if (name is "id" or "product_identifier")
                 {
                     continue;
                 }
@@ -120,12 +116,11 @@ namespace Ihc.Vis.CatalogCodegen
                 return false;   // several scenes, or scenes is not the trailing child AddScenes would append it as
             }
             ProjectElement scenes = children[^1];
-            ElementSchema? schema = grammar.TryGet("scenes");
-            foreach ((string name, string value) in scenes.AttrsOrEmpty())
+            foreach ((string name, string _) in scenes.AttrsOrEmpty())
             {
-                if (name is not ("id" or "name" or "scene_resource") && LeanBake.ShouldEmit(schema, "scenes", name, value))
+                if (name is not ("id" or "name" or "scene_resource"))
                 {
-                    return false;   // a note or other non-default attribute AddScenes cannot carry
+                    return false;   // any other present attribute (even an empty note="") AddScenes cannot carry → RawChild
                 }
             }
             string? sceneResource = scenes.GetAttribute("scene_resource");
@@ -177,50 +172,15 @@ namespace Ihc.Vis.CatalogCodegen
             AppendRawChild(recipe, child, grammar, blocks, emittedDtdTags);
         }
 
-        // Emits a child verbatim as .RawChild(ElRaw(..)), preceded by an .InlineDtdBlock for each open-world element
-        // type in its subtree. Used both for the individual-container RawChild path and for the whole-body fallback;
-        // the fallback intentionally imposes no IDREF self-containment check (all sibling ids are verbatim too).
+        // Emits a child verbatim as .RawChild(ElRaw(..)). An open-world element type inside the subtree needs no
+        // separate grammar call: the definition's complete structured grammar (every declaration, open-world types
+        // included) is carried by the recipe's baked source grammar, which BakeSourceFidelity applies at Build().
+        // Used both for the individual-container RawChild path and for the whole-body fallback; the fallback
+        // intentionally imposes no IDREF self-containment check (all sibling ids are verbatim too).
         private static void AppendRawChild(ProductRecipe recipe, ProjectElement child, ProjectSchemaView grammar,
             ImmutableDictionary<string, string> blocks, HashSet<string> emittedDtdTags)
         {
-            // Any element type inside the subtree the registry does not declare is open-world: its grammar must ride
-            // along as a captured inline-DTD block, or it cannot be canonicalized/saved once inserted.
-            foreach (string tag in OpenWorldTags(child))
-            {
-                if (!emittedDtdTags.Add(tag))
-                {
-                    continue;
-                }
-                if (!blocks.TryGetValue(tag, out string? block))
-                {
-                    throw new DecompileNotSupportedException(
-                        $"open-world element '{tag}' has no inline-DTD block in its source file — cannot round-trip.");
-                }
-                recipe.Calls.Add(new FluentCall(b => b.InlineDtdBlock(tag, block),
-                    $".InlineDtdBlock({CSharpLiteral.Quote(tag)}, {CSharpLiteral.Quote(block)})"));
-            }
             recipe.Calls.Add(RawChildCall(child, grammar));
-        }
-
-        // The distinct element tags in a subtree (pre-order) the project registry does not declare — the ones whose
-        // grammar must be carried as an inline-DTD block.
-        private static IEnumerable<string> OpenWorldTags(ProjectElement element)
-        {
-            var seen = new HashSet<string>(StringComparer.Ordinal);
-            var ordered = new List<string>();
-            void Walk(ProjectElement node)
-            {
-                if (ProjectSchemaView.RegistryOnly.TryGet(node.Tag) is null && seen.Add(node.Tag))
-                {
-                    ordered.Add(node.Tag);
-                }
-                foreach (ProjectElement kid in node.ChildrenOrEmpty())
-                {
-                    Walk(kid);
-                }
-            }
-            Walk(element);
-            return ordered;
         }
 
         // ---- product-level setters ----
@@ -229,6 +189,8 @@ namespace Ihc.Vis.CatalogCodegen
         {
             switch (name)
             {
+                case "name":
+                    return new FluentCall(b => b.Name(value), $".Name({CSharpLiteral.Quote(value)})");
                 case "note":
                     return new FluentCall(b => b.Note(value), $".Note({CSharpLiteral.Quote(value)})");
                 case "position":
@@ -257,13 +219,12 @@ namespace Ihc.Vis.CatalogCodegen
 
         private static FluentCall ScenesCall(ProjectElement scenes, ProjectSchemaView grammar, string? lastResourceId)
         {
-            ElementSchema? schema = grammar.TryGet("scenes");
-            foreach ((string name, string value) in scenes.AttrsOrEmpty())
+            foreach ((string name, string _) in scenes.AttrsOrEmpty())
             {
-                if (name is not ("id" or "name" or "scene_resource") && LeanBake.ShouldEmit(schema, "scenes", name, value))
+                if (name is not ("id" or "name" or "scene_resource"))
                 {
                     throw new DecompileNotSupportedException(
-                        $"scenes carries a non-default '{name}' attribute AddScenes cannot express — needs RawChild (B1b).");
+                        $"scenes carries a '{name}' attribute AddScenes cannot express — needs RawChild (B1b).");
                 }
             }
             string? sceneResource = scenes.GetAttribute("scene_resource");
@@ -288,7 +249,7 @@ namespace Ihc.Vis.CatalogCodegen
             var config = ImmutableArray.CreateBuilder<ResourceCall>();
             foreach ((string attrName, string attrValue) in child.AttrsOrEmpty())
             {
-                if (attrName is "id" or "name" || !LeanBake.ShouldEmit(schema, child.Tag, attrName, attrValue))
+                if (attrName is "id" or "name")   // set by the AddInput/AddOutput/AddResource factory; the rest ride in file order
                 {
                     continue;
                 }
@@ -366,28 +327,22 @@ namespace Ihc.Vis.CatalogCodegen
 
         private static ProjectElement LeanSubtree(ProjectElement element, ProjectSchemaView grammar)
         {
-            ElementSchema? schema = grammar.TryGet(element.Tag);
-            var attrs = ImmutableArray.CreateBuilder<(string, string)>();
-            foreach ((string name, string value) in element.AttrsOrEmpty())
-            {
-                if (name == "id" || LeanBake.ShouldEmit(schema, element.Tag, name, value))
-                {
-                    attrs.Add((name, value));
-                }
-            }
+            // The raw subtree already holds exactly the file's attributes in file order — carry them all verbatim.
             ImmutableArray<ProjectElement> children = element.ChildrenOrEmpty()
                 .Select(c => LeanSubtree(c, grammar))
                 .ToImmutableArray();
-            return new ProjectElement(element.Tag, element.Id, attrs.ToImmutable(), children);
+            return new ProjectElement(element.Tag, element.Id, element.AttrsOrEmpty(), children);
         }
 
         // Renders a lean subtree as ElRaw("tag", "idToken", attrs, children...). Verbatim id tokens keep the subtree
         // self-consistent (an internal IDREF still names its target's token), so no id remapping is needed at all.
         private static string RenderSubtree(ProjectElement node, int childIndent)
         {
-            string idToken = node.GetAttribute("id") ?? string.Empty;
+            // The full attribute list (id included at its file position) is passed verbatim — a few vendor elements
+            // write id after another attribute (e.g. product4409's error-state resources put icon before id), and
+            // ElRaw must preserve that order for byte fidelity. StampDocumentOrder re-mints the id value in place.
             string attrs = RenderAttrs(node);
-            string head = $"ElRaw({CSharpLiteral.Quote(node.Tag)}, {CSharpLiteral.Quote(idToken)}, {attrs}";
+            string head = $"ElRaw({CSharpLiteral.Quote(node.Tag)}, {attrs}";
             ImmutableArray<ProjectElement> children = node.ChildrenOrEmpty();
             if (children.IsEmpty)
             {
@@ -406,7 +361,6 @@ namespace Ihc.Vis.CatalogCodegen
         private static string RenderAttrs(ProjectElement node)
         {
             IEnumerable<string> pairs = node.AttrsOrEmpty()
-                .Where(a => a.Name != "id")
                 .Select(a => $"({CSharpLiteral.Quote(a.Name)}, {CSharpLiteral.Quote(a.Value)})");
             string joined = string.Join(", ", pairs);
             return joined.Length == 0 ? "System.Array.Empty<(string, string)>()" : $"new[] {{ {joined} }}";

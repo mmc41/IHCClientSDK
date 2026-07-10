@@ -3,11 +3,11 @@ using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Text;
 
+using Ihc.Vis.Model;
 namespace Ihc.Vis.Schema
 {
     /// <summary>
@@ -361,66 +361,9 @@ namespace Ihc.Vis.Schema
                     $"Malformed ATTLIST for '{tag}': attribute '{attrName}' has an unterminated default value.");
             }
             pos = close + 1;
-            return XmlUnescape(s.Substring(open, close - open));
-        }
-
-        /// <summary>
-        /// Decodes the five predefined XML entities and numeric character references in a DTD default literal,
-        /// so <see cref="AttrSchema.Default"/> is comparable with the reader's <em>logical</em> attribute
-        /// values (omit-if-default would otherwise misfire on any default containing e.g. <c>&amp;amp;</c>).
-        /// An unrecognized <c>&amp;…;</c> sequence stays verbatim.
-        /// </summary>
-        private static string XmlUnescape(string s)
-        {
-            if (s.IndexOf('&') < 0)
-            {
-                return s;
-            }
-            var sb = new StringBuilder(s.Length);
-            for (int i = 0; i < s.Length; i++)
-            {
-                char c = s[i];
-                if (c != '&')
-                {
-                    sb.Append(c);
-                    continue;
-                }
-                int semi = s.IndexOf(';', i + 1);
-                string? decoded = semi < 0 ? null : s.Substring(i + 1, semi - i - 1) switch
-                {
-                    "amp" => "&",
-                    "lt" => "<",
-                    "gt" => ">",
-                    "quot" => "\"",
-                    "apos" => "'",
-                    string entity => DecodeCharRef(entity),
-                };
-                if (decoded is null)
-                {
-                    sb.Append(c);
-                }
-                else
-                {
-                    sb.Append(decoded);
-                    i = semi;
-                }
-            }
-            return sb.ToString();
-        }
-
-        private static string? DecodeCharRef(string entity)
-        {
-            if (entity.Length < 2 || entity[0] != '#')
-            {
-                return null;
-            }
-            bool hex = entity[1] is 'x' or 'X';
-            ReadOnlySpan<char> digits = entity.AsSpan(hex ? 2 : 1);
-            return int.TryParse(digits, hex ? NumberStyles.HexNumber : NumberStyles.Integer,
-                                CultureInfo.InvariantCulture, out int code)
-                && code is >= 0 and <= 0x10FFFF
-                    ? char.ConvertFromUtf32(code)
-                    : null;
+            // Decode entities/character references so AttrSchema.Default is comparable with the reader's LOGICAL
+            // attribute values (omit-if-default would otherwise misfire on any default containing e.g. &amp;).
+            return XmlText.Unescape(s.Substring(open, close - open));
         }
 
         private static string Excerpt(string block)

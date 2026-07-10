@@ -37,5 +37,55 @@ namespace Ihc.Vis.Tests
                     $"=== ACTUAL (builder) ===\n{DefinitionNormalizer.Dump(actual)}");
             }
         }
+
+        /// <summary>Asserts the code-authored <paramref name="definition"/> writes bytes equivalent to the oracle
+        /// file (the whitespace-normalized fidelity relation; the writer's own well-formedness gate covers the
+        /// reparse half). When <paramref name="oracleIdTokens"/> is given, the built body is first re-stamped with
+        /// the oracle's document-order ids (exactly the generated-catalog mechanism); pass none when the builder's
+        /// natural allocation already matches (a generated oracle).</summary>
+        internal static void AssertWritesOracleBytes(ProductDefinition definition, string oraclePath,
+            params string[] oracleIdTokens)
+        {
+            if (oracleIdTokens.Length > 0)
+            {
+                definition = definition with
+                {
+                    Body = CatalogIds.StampDocumentOrder(definition.Body, oracleIdTokens, definition.Grammar),
+                };
+            }
+            using var ms = new MemoryStream();
+            CatalogFileWriter.Write(definition, ms);
+            AssertBytesEquivalent(ms.ToArray(), oraclePath);
+        }
+
+        /// <inheritdoc cref="AssertWritesOracleBytes(ProductDefinition, string, string[])"/>
+        internal static void AssertWritesOracleBytes(FunctionBlockDefinition definition, string oraclePath,
+            params string[] oracleIdTokens)
+        {
+            if (oracleIdTokens.Length > 0)
+            {
+                definition = definition with
+                {
+                    Body = CatalogIds.StampDocumentOrder(definition.Body, oracleIdTokens, definition.Grammar),
+                };
+            }
+            using var ms = new MemoryStream();
+            CatalogFileWriter.Write(definition, ms);
+            AssertBytesEquivalent(ms.ToArray(), oraclePath);
+        }
+
+        private static void AssertBytesEquivalent(byte[] written, string oraclePath)
+        {
+            byte[] expected = File.ReadAllBytes(
+                Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", oraclePath));
+            if (!CatalogTextCompare.Equivalent(expected, written))
+            {
+                int offset = CatalogTextCompare.FirstDifference(expected, written);
+                Assert.Fail($"Code-authored definition does not byte-reproduce '{oraclePath}' " +
+                            $"(whitespace-normalized) at offset {offset}.\n" +
+                            $"  expected: [{CatalogTextCompare.Context(expected, offset)}]\n" +
+                            $"  actual:   [{CatalogTextCompare.Context(written, offset)}]");
+            }
+        }
     }
 }

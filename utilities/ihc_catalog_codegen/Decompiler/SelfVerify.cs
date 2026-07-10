@@ -75,12 +75,21 @@ namespace Ihc.Vis.CatalogCodegen
                 return new VerifyResult(false, $"category path '{actual.CategoryPath}' != '{expected.CategoryPath}'");
             }
 
-            // (3) Open-world capture: the built product must carry an inline-DTD block for exactly the element types its
-            // source uses that the registry does not declare — no more (registry-declared blocks are dead weight the
-            // insert transform never merges), no fewer (a missing block makes the component unsaveable once inserted).
-            if (SelfVerifyShared.BlocksMismatch(actual.InlineDtdBlocks, nonRegistryBlocks) is { } reason)
+            // (3) Structured grammar: the recipe's strict-parsed grammar must equal the grammar the lenient read
+            // path yields for the same file (value equality over declarations, prolog datum and DOCTYPE root) —
+            // proving the two parse modes agree over the corpus and the generated reference will resolve/insert
+            // exactly as an install-dir read does. Replaces the old InlineDtdBlocks used∩non-registry subset check.
+            if (!actual.Grammar.Equals(expected.Grammar))
             {
-                return new VerifyResult(false, reason);
+                return new VerifyResult(false, "structured grammar mismatch (strict parse vs lenient read)");
+            }
+
+            // (4) Byte fidelity: CatalogFileWriter-serializing the built product must reproduce the source .def under
+            // the fidelity relation of record. This is the same check the final acceptance ran (accptest.md §10), kept
+            // here so every regeneration re-proves it without the disposable acceptance project.
+            if (SelfVerifyShared.WrittenBytesMismatch(source.FileBytes, SelfVerifyShared.WriteBytes(actual)) is { } byteReason)
+            {
+                return new VerifyResult(false, byteReason);
             }
             return VerifyResult.Pass;
         }

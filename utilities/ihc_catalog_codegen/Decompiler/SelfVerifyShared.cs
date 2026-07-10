@@ -2,18 +2,21 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 
+using Ihc.Vis.Catalog;
+using Ihc.Vis.FunctionBlocks;
 using Ihc.Vis.Model;
+using Ihc.Vis.Products;
 using Ihc.Vis.Schema;
 
 namespace Ihc.Vis.CatalogCodegen
 {
     /// <summary>
-    /// The open-world inline-DTD checks shared by <see cref="SelfVerify"/> (products) and <see cref="FbSelfVerify"/>
-    /// (function blocks). Both gates must apply the identical capture rule — a component carries an inline-DTD block for
-    /// exactly the element types its body uses that the registry does not declare — so it lives here rather than being
-    /// copied into each gate where the two could silently drift.
+    /// The fidelity checks shared by <see cref="SelfVerify"/> (products) and <see cref="FbSelfVerify"/> (function
+    /// blocks): the open-world inline-DTD capture rule and the byte-level re-emission gate. Both gates must apply the
+    /// identical rules, so they live here rather than being copied into each gate where the two could silently drift.
     /// </summary>
     internal static class SelfVerifyShared
     {
@@ -32,30 +35,35 @@ namespace Ihc.Vis.CatalogCodegen
                 .ToImmutableDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
         }
 
-        // Compares the built component's inline-DTD blocks against the expected non-registry set (tag → verbatim block).
-        // Returns a one-line reason on mismatch, or null when they agree.
-        public static string? BlocksMismatch(ImmutableDictionary<string, string> actual,
-            ImmutableDictionary<string, string> expected)
+        public static byte[] WriteBytes(ProductDefinition definition)
         {
-            foreach (string tag in expected.Keys)
+            using var ms = new MemoryStream();
+            CatalogFileWriter.Write(definition, ms);
+            return ms.ToArray();
+        }
+
+        public static byte[] WriteBytes(FunctionBlockDefinition definition)
+        {
+            using var ms = new MemoryStream();
+            CatalogFileWriter.Write(definition, ms);
+            return ms.ToArray();
+        }
+
+        // The byte-fidelity gate: the re-emitted definition must equal the source catalog file under the fidelity
+        // relation of record (byte-identical after whitespace-normalization + empty-element collapse + the D3
+        // &apos; ≡ ' forgiveness — see CatalogTextCompare, the single implementation of the relation; every other
+        // escaping difference and every id stays strictly compared). Returns a one-line reason with the
+        // first-divergence offset and context on mismatch, or null when faithful.
+        public static string? WrittenBytesMismatch(byte[] sourceFile, byte[] written)
+        {
+            if (CatalogTextCompare.Equivalent(sourceFile, written))
             {
-                if (!actual.TryGetValue(tag, out string? block))
-                {
-                    return $"inline-DTD block for open-world type '{tag}' not captured";
-                }
-                if (block != expected[tag])
-                {
-                    return $"inline-DTD block for '{tag}' differs from source";
-                }
+                return null;
             }
-            foreach (string tag in actual.Keys)
-            {
-                if (!expected.ContainsKey(tag))
-                {
-                    return $"inline-DTD block '{tag}' captured but registry already declares it (dead weight)";
-                }
-            }
-            return null;
+            int offset = CatalogTextCompare.FirstDifference(sourceFile, written);
+            return "re-emitted bytes differ from the source file (whitespace-normalized) at offset "
+                + $"{offset}: expected [{CatalogTextCompare.Context(sourceFile, offset)}] "
+                + $"actual [{CatalogTextCompare.Context(written, offset)}]";
         }
 
         private static void CollectTags(ProjectElement element, HashSet<string> tags)

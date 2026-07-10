@@ -28,6 +28,11 @@
    <!ATTLIST sms_modem_phonenumber id ID #REQUIRED
                   address CDATA #REQUIRED
                   phonenumber CDATA "">
+   <!ELEMENT scenes ANY>
+   <!ATTLIST scenes id ID #REQUIRED
+                  name CDATA ""
+                  scene_resource IDREF #REQUIRED
+                  note CDATA "">
 ]>
 <product_rs485_sms_modem id="_0x01" product_identifier="_0x9f06" name="05#Synthetic SMS Modem Product" note="Synthetic oracle - SMS modem" icon="_0x11">
   <sms_modem_settings id="_0x10" icon="_0xd">

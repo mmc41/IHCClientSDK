@@ -6,7 +6,6 @@ using System.Text;
 using System.Xml;
 
 using Ihc.Vis.FunctionBlocks;
-using Ihc.Vis.Io;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
 namespace Ihc.Vis.Catalog
@@ -14,10 +13,14 @@ namespace Ihc.Vis.Catalog
     /// <summary>
     /// Reads a vendor component/template file (<c>Products\*.def</c>, <c>FunctionBlocks\*.ifb</c>,
     /// <c>Data\NewDoc.idf</c>, <c>Data\EnumeratorDefinitions.def</c>) into the generic <see cref="ProjectElement"/>
-    /// node model, <b>applying the file's own internal-DTD ATTLIST defaults</b>. This is the crucial difference
-    /// from <see cref="Ihc.Vis.Io.ProjectReader"/> (which ignores the DTD): catalog instances routinely omit attributes such
-    /// as <c>locked="yes"</c>/<c>backup="yes"</c> and rely on the file's DTD default, and the insert transform
-    /// needs those <em>effective</em> values to decide cross-DTD materialization (spec ch. 09 §9.3.7).
+    /// node model as the <b>raw file body</b>: only the attributes physically present, in source order, with their
+    /// file id tokens verbatim. DTD-defaulted attributes are deliberately <em>not</em> materialized here — that keeps
+    /// <c>Body</c> the byte-faithful shape <see cref="CatalogFileWriter"/> re-emits and a builder authors. The
+    /// <em>effective</em> values the insert transform needs for cross-DTD materialization (spec ch. 09 §9.3.7) are
+    /// re-derived on demand from the definition's own DTD at insert time (see
+    /// <see cref="Ihc.Vis.Editing.ProjectEditor"/>.InsertComponent → <see cref="CatalogDefaults"/>). The file's header
+    /// (prolog + DOCTYPE + inline DTD) is lenient-parsed into the definition's structured
+    /// <see cref="Ihc.Vis.Model.CatalogGrammar"/>, and its text encoding is captured, for faithful re-emission.
     /// </summary>
     /// <remarks>
     /// Parsing is non-validating and forgiving (spec ch. 09 §9.3.8): catalog files contain duplicate ids,
@@ -34,7 +37,7 @@ namespace Ihc.Vis.Catalog
         /// <summary>
         /// Reads a product catalog file (<c>Products\*.def</c>) into a <see cref="ProductDefinition"/> — the public
         /// file→instance entry point for importing a single product without an IHC Visual install scan. Applies the
-        /// same encoding sniffing, inline-DTD ATTLIST defaulting, and open-world <c>InlineDtdBlocks</c> capture that
+        /// same encoding sniffing, inline-DTD ATTLIST defaulting, and structured-grammar capture that
         /// <see cref="CatalogDiscovery"/> uses per file, so an imported product resolves and inserts identically to a
         /// scanned one. <see cref="ProductDefinition.CategoryPath"/> is empty (a standalone file has no catalog-tree
         /// category); pass <paramref name="documentation"/> to attach programmatic help metadata (the D3 doc-probe hook).
@@ -55,7 +58,7 @@ namespace Ihc.Vis.Catalog
 
         /// <summary>
         /// Reads a function-block catalog file (<c>FunctionBlocks\*.ifb</c>) into a <see cref="FunctionBlockDefinition"/>
-        /// — the public file→instance entry point for importing a single block. Same encoding/DTD-default/InlineDtd
+        /// — the public file→instance entry point for importing a single block. Same encoding/DTD-default/grammar
         /// handling as <see cref="CatalogDiscovery"/>; <see cref="FunctionBlockDefinition.CategoryPath"/> is empty.
         /// Pass <paramref name="documentation"/> to attach programmatic help metadata (the D3 doc-probe hook).
         /// </summary>
@@ -84,7 +87,8 @@ namespace Ihc.Vis.Catalog
             string displayName = MenuPrefix.Strip(body.GetAttribute("name") ?? string.Empty);
             var definition = new ProductDefinition(identifier, displayName, categoryPath, body)
             {
-                InlineDtdBlocks = InlineDtd.Capture(bytes),
+                Grammar = CatalogDtdParser.ParseLenient(CatalogDtdParser.CaptureHeadText(bytes)),
+                SourceEncoding = CatalogTextEncodingExtensions.Classify(bytes),
             };
             return documentation is null ? definition : definition with { Documentation = documentation };
         }
@@ -98,7 +102,8 @@ namespace Ihc.Vis.Catalog
             string displayName = body.GetAttribute("name") ?? masterName;
             var definition = new FunctionBlockDefinition(masterType, masterVersion, masterName, displayName, categoryPath, body)
             {
-                InlineDtdBlocks = InlineDtd.Capture(bytes),
+                Grammar = CatalogDtdParser.ParseLenient(CatalogDtdParser.CaptureHeadText(bytes)),
+                SourceEncoding = CatalogTextEncodingExtensions.Classify(bytes),
             };
             return documentation is null ? definition : definition with { Documentation = documentation };
         }
@@ -150,7 +155,9 @@ namespace Ihc.Vis.Catalog
             return buffer.ToArray();
         }
 
-        private static Encoding SniffEncoding(byte[] bytes)
+        // Internal (not private): CatalogDtdParser.CaptureHeadText decodes file bytes with the identical rule, so
+        // the header text the grammar parser sees and the body text the XML reader sees can never diverge.
+        internal static Encoding SniffEncoding(byte[] bytes)
         {
             if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
             {
@@ -227,7 +234,17 @@ namespace Ihc.Vis.Catalog
             var attrs = ImmutableArray.CreateBuilder<(string, string)>(reader.AttributeCount);
             for (int i = 0; i < reader.AttributeCount; i++)
             {
-                reader.MoveToAttribute(i);   // includes DTD-defaulted attributes
+                reader.MoveToAttribute(i);
+                // Capture only the attributes physically present in the file, in source order (verified: XmlReader's
+                // present-attribute order == source order across the whole corpus). DTD-defaulted attributes are
+                // skipped so Body is the RAW file body — the byte-faithful shape CatalogFileWriter re-emits and the
+                // shape a builder authors. The insert transform re-materializes catalog defaults on demand from the
+                // definition's own DTD (see ProjectEditor.InsertComponent); DefinitionNormalizer canonicalizes against
+                // the source grammar, so dropping defaults here is symmetric there.
+                if (reader.IsDefault)
+                {
+                    continue;
+                }
                 attrs.Add((reader.LocalName, reader.Value));
             }
             reader.MoveToElement();

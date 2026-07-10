@@ -162,7 +162,7 @@
     <resource_output id="_0x5812" name="Udgang" icon="_0x39" note="Følger eller kipper afhængigt af tilstanden." />
   </outputs>
   <settings id="_0x5925" name="Indstillinger" icon="_0xd" note="Indstillinger som brugeren kan ændre">
-    <resource_enum id="_0x5a0f" name="Funktionsvalg" typedef="_0x5247" inivalue="_0x5448" backup="yes" icon="_0x22" note="Vælg mellem automatisk og manuel styring." />
+    <resource_enum id="_0x5a0f" name="Funktionsvalg" icon="_0x22" typedef="_0x5247" inivalue="_0x5448" backup="yes" note="Vælg mellem automatisk og manuel styring." />
   </settings>
   <internalsettings id="_0x5b29" name="Interne variable" icon="_0x13" note="Private variable til blokkens eget brug" />
   <programs id="_0x5c26" name="Programmer" icon="_0x19" note="Gruppering af blokkens programmer">

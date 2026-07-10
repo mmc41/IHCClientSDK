@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE product_dataline [
+   <!ELEMENT product_dataline ANY>
+   <!ATTLIST product_dataline id ID #REQUIRED
+                  product_identifier CDATA #REQUIRED
+                  name CDATA ""
+                  locked (yes | no) "yes"
+                  enduser_report (yes | no) "no"
+                  icon CDATA ""
+                  note CDATA "">
+	<!ELEMENT resource_Skew ANY>
+   <!ATTLIST resource_skew id ID #REQUIRED
+                  name CDATA ""
+                  note CDATA ""
+                  backup (yes | no) "no"
+                  inivalue CDATA "500.00"
+                  accessibility (read | write | read-write) "read-write">
+]>
+<product_dataline id="_0x01" product_identifier="_0x9f12" name="Synthetic caseskew produkt" note="Synthetic oracle - mis-cased ELEMENT beside orphan ATTLIST (ordinal tags)" icon="_0x83">
+	<resource_skew id="_0x02" name="Skæv kanal" note="Små bogstaver i kroppen" accessibility="read"/>
+</product_dataline>

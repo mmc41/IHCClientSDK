@@ -36,6 +36,11 @@
                   month CDATA #REQUIRED
                   day CDATA #REQUIRED
                   access (readonly | readwrite | writeonly) "readwrite">
+   <!ELEMENT scenes ANY>
+   <!ATTLIST scenes id ID #REQUIRED
+                  name CDATA ""
+                  scene_resource IDREF #REQUIRED
+                  note CDATA "">
 ]>
 <s0_device id="_0x01" product_identifier="_0x9f07" name="Synthetic S0 Meter Product" note="Synthetic oracle - energy meter (måler)" icon="_0x99" ticks="100">
   <W id="_0x02" name="Power now" />
