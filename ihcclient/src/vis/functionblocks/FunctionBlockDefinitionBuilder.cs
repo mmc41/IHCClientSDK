@@ -33,8 +33,8 @@ namespace Ihc.Vis.FunctionBlocks
     /// and remaps the IDREFs on insert. <c>method</c> and non-registry <c>icon</c> tokens are opaque, per-block,
     /// fidelity-critical data and so are caller-supplied.
     /// <para><b>Opaque tokens (method / icon):</b> a GUI does not invent these — it enumerates the legal operation and
-    /// icon vocabulary from the catalog seam (<see cref="Ihc.Vis.Catalog.ICatalog"/>; the SDK-embedded
-    /// <c>BuiltInCatalog</c> is the token source once it lands) and binds pickers to it, the same way resource operands
+    /// icon vocabulary from the catalog seam (<see cref="Ihc.Vis.Catalog.ICatalog"/>, typically the SDK-embedded
+    /// <c>BuiltInCatalog</c>) and binds pickers to it, the same way resource operands
     /// are already picked by <see cref="FbResourceHandle"/> object rather than by id token.</para>
     /// <para><b>Layering:</b> a pure, dependency-free authoring <i>primitive</i>. A GUI backend hands the
     /// <see cref="Build()"/> output to the app-service insert door (<c>project.Edit().Group(..).AddFunctionBlock(def)</c>
@@ -56,16 +56,8 @@ namespace Ihc.Vis.FunctionBlocks
         private bool stampResourceDefaults = true;
         private bool isEmptyTemplate;
         private string emptyIcon = "_0xf";
-        private string? inputsName;
-        private string? outputsName;
-        private string? settingsName;
-        private string? internalName;
-        private string? programsName;
-        private string? inputsNote;
-        private string? outputsNote;
-        private string? settingsNote;
-        private string? internalNote;
-        private string? programsNote;
+        private readonly Dictionary<string, string> containerNameOverrides = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> containerNoteOverrides = new(StringComparer.Ordinal);
         private readonly List<ProjectElement> inputs = new();
         private readonly List<ProjectElement> outputs = new();
         private readonly List<ProjectElement> settings = new();
@@ -153,9 +145,9 @@ namespace Ihc.Vis.FunctionBlocks
         /// <summary>Sets <c>master_date_year</c>/<c>_month</c>/<c>_day</c> from <paramref name="date"/>.</summary>
         public FunctionBlockDefinitionBuilder MasterDate(DateOnly date)
         {
-            SetRoot("master_date_year", Dec(date.Year));
-            SetRoot("master_date_month", Dec(date.Month));
-            return SetRoot("master_date_day", Dec(date.Day));
+            SetRoot("master_date_year", DecToken.Format(date.Year));
+            SetRoot("master_date_month", DecToken.Format(date.Month));
+            return SetRoot("master_date_day", DecToken.Format(date.Day));
         }
 
         // Authors from the RAW catalog body: suppresses the per-type resource default stamping (icon + #REQUIRED value
@@ -197,85 +189,63 @@ namespace Ihc.Vis.FunctionBlocks
         /// <summary>Overrides the <c>inputs</c> container's <c>note</c> (defaults to
         /// <see cref="FbGrammar.InputsNoteDefault"/>). The per-block help text a vendor <c>.ifb</c> gives the inputs
         /// grouping.</summary>
-        public FunctionBlockDefinitionBuilder InputsNote(string note)
-        {
-            inputsNote = note;
-            return this;
-        }
+        public FunctionBlockDefinitionBuilder InputsNote(string note) => OverrideNote("inputs", note);
 
         /// <summary>Overrides the <c>outputs</c> container's <c>note</c> (defaults to
         /// <see cref="FbGrammar.OutputsNoteDefault"/>).</summary>
-        public FunctionBlockDefinitionBuilder OutputsNote(string note)
-        {
-            outputsNote = note;
-            return this;
-        }
+        public FunctionBlockDefinitionBuilder OutputsNote(string note) => OverrideNote("outputs", note);
 
         /// <summary>Overrides the <c>settings</c> container's <c>note</c> (defaults to
         /// <see cref="FbGrammar.SettingsNote"/>). Vendor <c>.ifb</c> files use a different note dialect than the
         /// synthetic default, so a code-authored recreation of a stock block sets it explicitly.</summary>
-        public FunctionBlockDefinitionBuilder SettingsNote(string note)
-        {
-            settingsNote = note;
-            return this;
-        }
+        public FunctionBlockDefinitionBuilder SettingsNote(string note) => OverrideNote("settings", note);
 
         /// <summary>Overrides the <c>internalsettings</c> container's <c>note</c> (defaults to
         /// <see cref="FbGrammar.InternalNote"/>).</summary>
-        public FunctionBlockDefinitionBuilder InternalVariablesNote(string note)
-        {
-            internalNote = note;
-            return this;
-        }
+        public FunctionBlockDefinitionBuilder InternalVariablesNote(string note) => OverrideNote("internalsettings", note);
 
         /// <summary>Overrides the <c>programs</c> container's <c>note</c> (defaults to
         /// <see cref="FbGrammar.ProgramsNote"/>).</summary>
-        public FunctionBlockDefinitionBuilder ProgramsNote(string note)
-        {
-            programsNote = note;
-            return this;
-        }
+        public FunctionBlockDefinitionBuilder ProgramsNote(string note) => OverrideNote("programs", note);
 
         /// <summary>Overrides the <c>inputs</c> container's display <c>name</c> (defaults to
         /// <see cref="FbGrammar.InputsName"/>). Vendor blocks use different labels per language/revision, so a
         /// code-authored recreation of a stock block sets it when it differs.</summary>
-        public FunctionBlockDefinitionBuilder InputsName(string name)
-        {
-            inputsName = name;
-            return this;
-        }
+        public FunctionBlockDefinitionBuilder InputsName(string name) => OverrideName("inputs", name);
 
         /// <summary>Overrides the <c>outputs</c> container's display <c>name</c> (defaults to
         /// <see cref="FbGrammar.OutputsName"/>).</summary>
-        public FunctionBlockDefinitionBuilder OutputsName(string name)
-        {
-            outputsName = name;
-            return this;
-        }
+        public FunctionBlockDefinitionBuilder OutputsName(string name) => OverrideName("outputs", name);
 
         /// <summary>Overrides the <c>settings</c> container's display <c>name</c> (defaults to
         /// <see cref="FbGrammar.SettingsName"/>).</summary>
-        public FunctionBlockDefinitionBuilder SettingsName(string name)
-        {
-            settingsName = name;
-            return this;
-        }
+        public FunctionBlockDefinitionBuilder SettingsName(string name) => OverrideName("settings", name);
 
         /// <summary>Overrides the <c>internalsettings</c> container's display <c>name</c> (defaults to
         /// <see cref="FbGrammar.InternalName"/>).</summary>
-        public FunctionBlockDefinitionBuilder InternalVariablesName(string name)
-        {
-            internalName = name;
-            return this;
-        }
+        public FunctionBlockDefinitionBuilder InternalVariablesName(string name) => OverrideName("internalsettings", name);
 
         /// <summary>Overrides the <c>programs</c> container's display <c>name</c> (defaults to
         /// <see cref="FbGrammar.ProgramsName"/>).</summary>
-        public FunctionBlockDefinitionBuilder ProgramsName(string name)
+        public FunctionBlockDefinitionBuilder ProgramsName(string name) => OverrideName("programs", name);
+
+        private FunctionBlockDefinitionBuilder OverrideName(string containerTag, string name)
         {
-            programsName = name;
+            containerNameOverrides[containerTag] = name;
             return this;
         }
+
+        private FunctionBlockDefinitionBuilder OverrideNote(string containerTag, string note)
+        {
+            containerNoteOverrides[containerTag] = note;
+            return this;
+        }
+
+        private string ContainerName(string containerTag, string fallback) =>
+            containerNameOverrides.TryGetValue(containerTag, out string? name) ? name : fallback;
+
+        private string ContainerNote(string containerTag, string fallback) =>
+            containerNoteOverrides.TryGetValue(containerTag, out string? note) ? note : fallback;
 
         // ---- resources → containers (each returns a handle for program wiring) ----
 
@@ -433,14 +403,7 @@ namespace Ihc.Vis.FunctionBlocks
         /// </summary>
         public ProjectValidationResult Validate()
         {
-            var findings = ImmutableArray.CreateBuilder<ProjectValidationFinding>();
-            if (!isEmptyTemplate && string.IsNullOrEmpty(masterName))
-            {
-                findings.Add(new ProjectValidationFinding(ValidationSeverity.Error, "identity-missing", null,
-                    "The block needs a master_name (or AsEmptyTemplate for a Tom blok). master_type/master_version are "
-                    + "optional — many stock blocks carry no version, and a keyless user block carries no type (it is "
-                    + "then addressable only by name)."));
-            }
+            var findings = CollectErrors();
             foreach (FbProgramBuilder program in programs)
             {
                 if (!program.HasEvents)
@@ -456,6 +419,22 @@ namespace Ihc.Vis.FunctionBlocks
             // here would burn allocator ids Build() needs.
             findings.AddRange(CatalogGrammarAdvisor.Advise(decodedBody ?? AdvisoryPreviewBody(), grammar));
             return ProjectValidationResult.FromFindings(findings.ToImmutable());
+        }
+
+        // The blocking (error-severity) preconditions alone — the gate Build() checks without paying for the
+        // advisory body walk it would discard (advisories and the program-empty findings are warnings and never
+        // block a build).
+        private ImmutableArray<ProjectValidationFinding>.Builder CollectErrors()
+        {
+            var findings = ImmutableArray.CreateBuilder<ProjectValidationFinding>();
+            if (!isEmptyTemplate && string.IsNullOrEmpty(masterName))
+            {
+                findings.Add(new ProjectValidationFinding(ValidationSeverity.Error, "identity-missing", null,
+                    "The block needs a master_name (or AsEmptyTemplate for a Tom blok). master_type/master_version are "
+                    + "optional — many stock blocks carry no version, and a keyless user block carries no type (it is "
+                    + "then addressable only by name)."));
+            }
+            return findings;
         }
 
         private ProjectElement AdvisoryPreviewBody()
@@ -480,10 +459,9 @@ namespace Ihc.Vis.FunctionBlocks
         /// when <see cref="Validate"/> would report an error — call <see cref="Validate"/> first for non-throwing UI feedback.</summary>
         public FunctionBlockDefinition Build()
         {
-            ProjectValidationResult validation = Validate();
-            if (!validation.IsValid)
+            if (CollectErrors().Count > 0)
             {
-                throw new ProjectValidationException(validation);
+                throw new ProjectValidationException(Validate());   // full result, advisories included
             }
 
             // The materialized body is deliberately left un-canonicalized (raw placeholder ids + effective
@@ -542,16 +520,16 @@ namespace Ihc.Vis.FunctionBlocks
             var bodyChildren = new List<ProjectElement>();
             bodyChildren.AddRange(enumDefs.Select(e => e.Materialize()));
             bodyChildren.AddRange(rawBodyChildren);
-            bodyChildren.Add(FbGrammar.Container(ids, "inputs", inputsName ?? FbGrammar.InputsName, FbGrammar.InputsIcon,
-                inputsNote ?? FbGrammar.InputsNoteDefault, inputs));
-            bodyChildren.Add(FbGrammar.Container(ids, "outputs", outputsName ?? FbGrammar.OutputsName, FbGrammar.OutputsIcon,
-                outputsNote ?? FbGrammar.OutputsNoteDefault, outputs));
-            bodyChildren.Add(FbGrammar.Container(ids, "settings", settingsName ?? FbGrammar.SettingsName, FbGrammar.SettingsIcon,
-                settingsNote ?? FbGrammar.SettingsNote, settings));
-            bodyChildren.Add(FbGrammar.Container(ids, "internalsettings", internalName ?? FbGrammar.InternalName, FbGrammar.InternalIcon,
-                internalNote ?? FbGrammar.InternalNote, internalVars));
-            bodyChildren.Add(FbGrammar.Container(ids, "programs", programsName ?? FbGrammar.ProgramsName, FbGrammar.ProgramsIcon,
-                programsNote ?? FbGrammar.ProgramsNote, programs.Select(p => p.Materialize()).ToArray()));
+            bodyChildren.Add(FbGrammar.Container(ids, "inputs", ContainerName("inputs", FbGrammar.InputsName), FbGrammar.InputsIcon,
+                ContainerNote("inputs", FbGrammar.InputsNoteDefault), inputs));
+            bodyChildren.Add(FbGrammar.Container(ids, "outputs", ContainerName("outputs", FbGrammar.OutputsName), FbGrammar.OutputsIcon,
+                ContainerNote("outputs", FbGrammar.OutputsNoteDefault), outputs));
+            bodyChildren.Add(FbGrammar.Container(ids, "settings", ContainerName("settings", FbGrammar.SettingsName), FbGrammar.SettingsIcon,
+                ContainerNote("settings", FbGrammar.SettingsNote), settings));
+            bodyChildren.Add(FbGrammar.Container(ids, "internalsettings", ContainerName("internalsettings", FbGrammar.InternalName), FbGrammar.InternalIcon,
+                ContainerNote("internalsettings", FbGrammar.InternalNote), internalVars));
+            bodyChildren.Add(FbGrammar.Container(ids, "programs", ContainerName("programs", FbGrammar.ProgramsName), FbGrammar.ProgramsIcon,
+                ContainerNote("programs", FbGrammar.ProgramsNote), programs.Select(p => p.Materialize()).ToArray()));
 
             ProjectElement root = FbGrammar.Node("functionblock",
                 ids.Allocate(TypeCode.RequireForTag("functionblock")), NoAttrs, bodyChildren);
@@ -576,9 +554,9 @@ namespace Ihc.Vis.FunctionBlocks
             var bodyChildren = new[]
             {
                 FbGrammar.Container(ids, "inputs", FbGrammar.InputsName, FbGrammar.InputsIcon,
-                    inputsNote ?? FbGrammar.InputsNoteDefault, NoChildren),
+                    ContainerNote("inputs", FbGrammar.InputsNoteDefault), NoChildren),
                 FbGrammar.Container(ids, "outputs", FbGrammar.OutputsName, FbGrammar.OutputsIcon,
-                    outputsNote ?? FbGrammar.OutputsNoteDefault, NoChildren),
+                    ContainerNote("outputs", FbGrammar.OutputsNoteDefault), NoChildren),
                 FbGrammar.Container(ids, "settings", FbGrammar.SettingsName, FbGrammar.SettingsIcon,
                     FbGrammar.SettingsNote, NoChildren),
                 FbGrammar.Container(ids, "internalsettings", FbGrammar.InternalName, FbGrammar.InternalIcon,
@@ -665,7 +643,7 @@ namespace Ihc.Vis.FunctionBlocks
         private FbResourceHandle AddResourceTo(List<ProjectElement> container, string tag, string name,
             Action<FbResourceDefBuilder>? configure)
         {
-            var configurator = new FbResourceDefBuilder(tag);
+            var configurator = new FbResourceDefBuilder();
             configure?.Invoke(configurator);
             ElementId id = ids.Allocate(TypeCode.RequireForTag(tag));
             ProjectElement resource = FbGrammar.Node(tag, id, new[] { ("name", name) }, NoChildren);
@@ -675,7 +653,7 @@ namespace Ihc.Vis.FunctionBlocks
             // verbatim in file order from the decompiler, so stamping would inject them at the wrong position.
             if (stampResourceDefaults)
             {
-                foreach ((string attrName, string attrValue) in FbGrammar.NewResourceDefaults(tag))
+                foreach ((string attrName, string attrValue) in ResourceMaterialization.NewResourceDefaults(tag))
                 {
                     resource = resource.WithAttribute(attrName, attrValue);
                 }
@@ -709,7 +687,6 @@ namespace Ihc.Vis.FunctionBlocks
                 ? FunctionBlockDocumentation.Empty
                 : new FunctionBlockDocumentation(docSummary, resourceDocs.ToImmutableDictionary(StringComparer.Ordinal));
 
-        private static string Dec(int value) => value.ToString(CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -829,11 +806,8 @@ namespace Ihc.Vis.FunctionBlocks
     {
         private readonly List<(string Name, string Value)> attrs = new();
 
-        internal FbResourceDefBuilder(string tag)
+        internal FbResourceDefBuilder()
         {
-            // The tag is accepted for parity with the product configurator (and future per-type validation); the
-            // function-block value setters are family-agnostic, so it is not consulted today.
-            _ = tag;
         }
 
         internal IReadOnlyList<(string Name, string Value)> Attributes => attrs;
@@ -870,18 +844,18 @@ namespace Ihc.Vis.FunctionBlocks
         /// <summary>Sets a timer resource's <c>hour</c>/<c>minute</c>/<c>second</c>(/<c>millisecond</c>) value.</summary>
         public FbResourceDefBuilder TimerHms(int hour, int minute, int second, int millisecond = 0)
         {
-            Set("hour", Dec(hour));
-            Set("minute", Dec(minute));
-            Set("second", Dec(second));
-            return Set("millisecond", Dec(millisecond));
+            Set("hour", DecToken.Format(hour));
+            Set("minute", DecToken.Format(minute));
+            Set("second", DecToken.Format(second));
+            return Set("millisecond", DecToken.Format(millisecond));
         }
 
         /// <summary>Sets a date resource's <c>year</c>/<c>month</c>/<c>day</c> value.</summary>
         public FbResourceDefBuilder DateYmd(int year, int month, int day)
         {
-            Set("year", Dec(year));
-            Set("month", Dec(month));
-            return Set("day", Dec(day));
+            Set("year", DecToken.Format(year));
+            Set("month", DecToken.Format(month));
+            return Set("day", DecToken.Format(day));
         }
 
         /// <summary>Bakes a raw attribute verbatim (escape hatch for type-specific attributes).</summary>
@@ -893,6 +867,5 @@ namespace Ihc.Vis.FunctionBlocks
             return this;
         }
 
-        private static string Dec(int value) => value.ToString(CultureInfo.InvariantCulture);
     }
 }

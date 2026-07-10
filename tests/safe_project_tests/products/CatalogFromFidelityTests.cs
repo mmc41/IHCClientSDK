@@ -13,8 +13,7 @@ namespace Ihc.Vis.Tests
     /// </summary>
     public class CatalogFromFidelityTests
     {
-        private static string OraclePath(string relative) =>
-            Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", relative);
+        private static string OraclePath(string relative) => TestData.PathOf(relative);
 
         [Test]
         public void From_IrregularGrammarBlock_RebuildsToSourceBytes()

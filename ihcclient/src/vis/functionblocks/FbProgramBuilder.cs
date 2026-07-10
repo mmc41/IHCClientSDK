@@ -164,6 +164,11 @@ namespace Ihc.Vis.FunctionBlocks
             return new FbCaseRef(ids, plan);
         }
 
+        // The root actions viewed as an appendable branch (the decor-less FbBranchRef over the same list): lets the
+        // catalog decompiler target root actions and program_sub/case branches uniformly, typed — appends through
+        // the view land in rootActions itself, built exactly as the AddAction/AddSubProgram/AddCase methods above.
+        internal FbBranchRef RootBranch => new(ids, rootActions);
+
         internal ProjectElement Materialize()
         {
             ElementId programId = ids.Allocate(TypeCode.RequireForTag("program_simple"));
@@ -723,7 +728,7 @@ namespace Ihc.Vis.FunctionBlocks
             }
             if (configure is not null)
             {
-                var configurator = new FbResourceDefBuilder(tag);
+                var configurator = new FbResourceDefBuilder();
                 configure(configurator);
                 attrs.AddRange(configurator.Attributes);
             }

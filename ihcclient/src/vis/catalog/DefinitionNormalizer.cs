@@ -51,8 +51,9 @@ namespace Ihc.Vis.Catalog
         }
 
         // Re-mints every id in document (pre-order) sequence off a fresh allocator, keeping each element's type-code
-        // low byte, and remaps every schema-declared IDREF through the old→new token map. Standalone equivalent of the
-        // insert transform's Reassign+RemapIdRefs, minus the project-only passes (enum hoisting, icon stamping).
+        // low byte, and remaps every schema-declared IDREF through the old→new token map (the shared two-pass core in
+        // CatalogIds). Standalone equivalent of the insert transform's Reassign+RemapIdRefs, minus the project-only
+        // passes (enum hoisting, icon stamping).
         //
         // Id assignment is ELEMENT-based, not token-based: catalog .def files legitimately carry duplicate ids (spec
         // ch. 09 §9.3.3 — e.g. a "Controller Link" product's 18 inputs all share one id, or a root and a child collide)
@@ -61,59 +62,16 @@ namespace Ihc.Vis.Catalog
         // only to remap IDREFs, which always target a unique id. For a file with no duplicate ids the two are identical.
         private static ProjectElement Renumber(ProjectElement root, ProjectSchemaView view)
         {
-            var idRefMap = new Dictionary<string, string>(StringComparer.Ordinal);
-            AssignIds(root, new IdAllocator(0), idRefMap);
-            return Rewrite(root, view, new IdAllocator(0), idRefMap);
+            var assignAllocator = new IdAllocator(0);
+            Dictionary<string, string> idRefMap = CatalogIds.BuildIdMap(root, e => FreshToken(assignAllocator, e));
+            var rewriteAllocator = new IdAllocator(0);
+            return CatalogIds.RewriteIds(root, view, e => FreshToken(rewriteAllocator, e), idRefMap);
         }
 
-        private static void AssignIds(ProjectElement element, IdAllocator allocator, Dictionary<string, string> map)
+        private static string FreshToken(IdAllocator allocator, ProjectElement element)
         {
-            if (element.GetAttribute("id") is not null && element.Id is { } id)
-            {
-                int typeCode = TypeCode.ForTag(element.Tag) ?? id.TypeCode;
-                map[element.GetAttribute("id")!] = allocator.Allocate(typeCode).ToToken();
-            }
-            foreach (ProjectElement child in element.ChildrenOrEmpty())
-            {
-                AssignIds(child, allocator, map);
-            }
-        }
-
-        private static ProjectElement Rewrite(ProjectElement element, ProjectSchemaView view,
-            IdAllocator allocator, Dictionary<string, string> idRefMap)
-        {
-            ElementSchema? schema = view.TryGet(element.Tag);
-            ElementId? newId = element.Id;
-            string? newIdToken = null;
-            if (element.GetAttribute("id") is not null && element.Id is { } id)
-            {
-                // A distinct id per element (a second allocator walking the same doc-order as AssignIds, so element N
-                // gets the same id both passes) — duplicate source ids therefore become distinct, exactly as on insert.
-                int typeCode = TypeCode.ForTag(element.Tag) ?? id.TypeCode;
-                ElementId allocated = allocator.Allocate(typeCode);
-                newId = allocated;
-                newIdToken = allocated.ToToken();
-            }
-            var attrs = ImmutableArray.CreateBuilder<(string, string)>();
-            foreach ((string name, string value) in element.AttrsOrEmpty())
-            {
-                if (name == "id" && newIdToken is not null)
-                {
-                    attrs.Add(("id", newIdToken));
-                }
-                else if (schema is not null && schema.IsIdRef(name) && idRefMap.TryGetValue(value, out string? target))
-                {
-                    attrs.Add((name, target));
-                }
-                else
-                {
-                    attrs.Add((name, value));
-                }
-            }
-            ImmutableArray<ProjectElement> children = element.ChildrenOrEmpty()
-                .Select(c => Rewrite(c, view, allocator, idRefMap))
-                .ToImmutableArray();
-            return new ProjectElement(element.Tag, newId, attrs.ToImmutable(), children);
+            int typeCode = TypeCode.ForTag(element.Tag) ?? (element.Id is { } id ? id.TypeCode : 0);
+            return allocator.Allocate(typeCode).ToToken();
         }
 
         /// <summary>Renders a normalized tree as indented pseudo-XML for a readable structural diff on mismatch.</summary>

@@ -33,6 +33,13 @@ namespace Ihc.Vis.Catalog
     /// and their escaping, ids, and the header's declared content — is reproduced exactly.
     /// </para>
     /// <para>
+    /// <b>Deliberately separate from <see cref="Ihc.Vis.Io.ProjectSerializer"/>.</b> The catalog contract —
+    /// per-file DOCTYPE and inline-DTD composition, authored attribute order and presence, two-space indent,
+    /// per-file encoding — differs materially from the <c>.vis</c> contract (fixed prolog, registry-driven ATTLIST
+    /// order with omit-if-default, three-space indent, strict Latin-1), so the two writers share no emission path:
+    /// a change to one file format cannot silently reshape the other.
+    /// </para>
+    /// <para>
     /// <b>Well-formedness is the writer's own guarantee.</b> The raw body verbs accept arbitrary tag/attribute
     /// text, so malformed XML is reachable through the public API — and the whitespace-normalized fidelity relation
     /// cannot see a missing token separator. The complete document is therefore assembled in memory and reparsed

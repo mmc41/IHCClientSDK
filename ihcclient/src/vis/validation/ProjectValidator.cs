@@ -33,8 +33,7 @@ namespace Ihc.Vis.Validation
             ProjectSchemaView view = ProjectSchemaView.For(project);
             var findings = new FindingCollector();
 
-            var elements = new List<ProjectElement>();
-            Collect(project.Root, elements);
+            IReadOnlyList<ProjectElement> elements = project.Root.DescendantsAndSelf();
 
             var idTokens = new HashSet<string>(StringComparer.Ordinal);
             var idToElement = new Dictionary<string, ProjectElement>(StringComparer.Ordinal);
@@ -66,7 +65,7 @@ namespace Ihc.Vis.Validation
 
         // ----- ids -----
 
-        private static long ValidateIds(List<ProjectElement> elements, HashSet<string> idTokens,
+        private static long ValidateIds(IReadOnlyList<ProjectElement> elements, HashSet<string> idTokens,
             Dictionary<string, ProjectElement> idToElement, FindingCollector findings)
         {
             var counters = new HashSet<int>();
@@ -224,7 +223,7 @@ namespace Ihc.Vis.Validation
                 }
                 foreach (ProjectElement child in container.Children)
                 {
-                    string? required = RequiredPinContainer(child.Tag);
+                    string? required = PlacementRules.PinContainerFor(child.Tag);
                     if (required is not null && required != container.Tag)
                     {
                         findings.Error("fb-pin-container", child,
@@ -233,14 +232,6 @@ namespace Ihc.Vis.Validation
                 }
             }
         }
-
-        private static string? RequiredPinContainer(string tag) => tag switch
-        {
-            "resource_input" => "inputs",
-            "resource_output" => "outputs",
-            "resource_scene" => "outputs",
-            _ => null,
-        };
 
         // ----- programming-reference locality + embedded constants (spec ch. 07 / ch. 10 §10.5) -----
 
@@ -338,7 +329,7 @@ namespace Ihc.Vis.Validation
 
         // ----- reciprocal bijections (spec ch. 06 §6.4, ch. 08) -----
 
-        private static void ValidateLinkBijection(List<ProjectElement> elements, FindingCollector findings)
+        private static void ValidateLinkBijection(IReadOnlyList<ProjectElement> elements, FindingCollector findings)
         {
             var halves = new Dictionary<string, ProjectElement>(StringComparer.Ordinal);
             foreach (ProjectElement element in elements)
@@ -377,7 +368,7 @@ namespace Ihc.Vis.Validation
             "scene_link", "scene_dimmer", "scene_relay", "scene_shutter",
         };
 
-        private static void ValidateSceneBijection(List<ProjectElement> elements, FindingCollector findings)
+        private static void ValidateSceneBijection(IReadOnlyList<ProjectElement> elements, FindingCollector findings)
         {
             var halves = new Dictionary<string, ProjectElement>(StringComparer.Ordinal);
             foreach (ProjectElement element in elements)
@@ -410,7 +401,7 @@ namespace Ihc.Vis.Validation
 
         // ----- dataline addressing (spec ch. 04: modules 1–128, unique per direction) -----
 
-        private static void ValidateDatalineAddressing(List<ProjectElement> elements, FindingCollector findings)
+        private static void ValidateDatalineAddressing(IReadOnlyList<ProjectElement> elements, FindingCollector findings)
         {
             var seen = new Dictionary<(string Direction, long Address), ProjectElement>();
             foreach (ProjectElement element in elements)
@@ -452,7 +443,7 @@ namespace Ihc.Vis.Validation
 
         // ----- resource_enum typedef/inivalue consistency -----
 
-        private static void ValidateEnumConsistency(List<ProjectElement> elements,
+        private static void ValidateEnumConsistency(IReadOnlyList<ProjectElement> elements,
             Dictionary<string, ProjectElement> idToElement, FindingCollector findings)
         {
             foreach (ProjectElement element in elements)
@@ -570,32 +561,14 @@ namespace Ihc.Vis.Validation
             return true;
         }
 
-        private static void Collect(ProjectElement element, List<ProjectElement> into)
-        {
-            into.Add(element);
-            if (element.Children.IsDefaultOrEmpty)
-            {
-                return;
-            }
-            foreach (ProjectElement child in element.Children)
-            {
-                Collect(child, into);
-            }
-        }
-
         private static void CollectIdTokens(ProjectElement element, HashSet<string> into)
         {
-            if (element.GetAttribute("id") is { } id)
+            foreach (ProjectElement e in element.DescendantsAndSelf())
             {
-                into.Add(id);
-            }
-            if (element.Children.IsDefaultOrEmpty)
-            {
-                return;
-            }
-            foreach (ProjectElement child in element.Children)
-            {
-                CollectIdTokens(child, into);
+                if (e.GetAttribute("id") is { } id)
+                {
+                    into.Add(id);
+                }
             }
         }
 

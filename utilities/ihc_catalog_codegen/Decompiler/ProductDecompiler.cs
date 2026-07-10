@@ -19,13 +19,10 @@ namespace Ihc.Vis.CatalogCodegen
     /// CatalogReader": given the file the builder would reproduce, emit the builder calls that reproduce it.
     /// </summary>
     /// <remarks>
-    /// <para><b>Lean reconstruction.</b> The reader materializes every DTD-default attribute, but the vendor body only
-    /// wrote the ones that differ from the family default. The decompiler recovers that lean body by consulting the
-    /// file's own inline-DTD grammar (<see cref="ProjectSchemaView.For(ImmutableDictionary{string,string})"/>): an
-    /// attribute is emitted only when it is <c>#REQUIRED</c>, undeclared, or carries a value other than its declared
-    /// default. The canonicalizer drops the omitted defaults symmetrically, so <c>recipe.Build()</c> reduces to the
-    /// same canonical component as the source file (the generator's self-verify gate) while the emitted source stays
-    /// small and readable.</para>
+    /// <para><b>Raw-body model.</b> The reader yields the raw file body (no DTD-default materialization), so the
+    /// decompiler emits every attribute the file wrote, byte-faithfully and in file order; <c>recipe.Build()</c>
+    /// reproduces the source file verbatim (the generator's self-verify gate). The file's own inline-DTD grammar is
+    /// consulted only for IDREF classification.</para>
     /// <para><b>Scope.</b> B1a reverses the flat <c>dataline</c>/<c>airlink</c> families — product-level setters, leaf
     /// I/O pins (<c>.AddInput</c>/<c>.AddOutput</c>/<c>.AddResource</c>) and a trailing <c>scenes</c> bound to the last
     /// resource. B1b adds nested containers (the <c>rs485_led_dimmer_channel</c>, <c>sms_modem_settings</c>,
@@ -69,18 +66,17 @@ namespace Ihc.Vis.CatalogCodegen
                 recipe.Calls.Add(RootCall(name, value));
             }
 
-            var emittedDtdTags = new HashSet<string>(StringComparer.Ordinal);
-            if (BodyIsFluentExpressible(body, grammar))
+            if (BodyIsFluentExpressible(body))
             {
                 string? lastResourceId = null;
                 foreach (ProjectElement child in body.ChildrenOrEmpty())
                 {
                     if (child.Tag == "scenes")
                     {
-                        recipe.Calls.Add(ScenesCall(child, grammar, lastResourceId));
+                        recipe.Calls.Add(ScenesCall(child, lastResourceId));
                         continue;
                     }
-                    AppendChildCalls(recipe, child, grammar, blocks, emittedDtdTags);
+                    AppendChildCalls(recipe, child, grammar);
                     if (IsAddableLeaf(child))
                     {
                         lastResourceId = child.GetAttribute("id");
@@ -93,9 +89,10 @@ namespace Ihc.Vis.CatalogCodegen
                 // other than the one before it, or the body has several) — so the whole child list is emitted verbatim
                 // as RawChild, keeping every id and cross-child IDREF (scenes → its resource, resource_enum → its enum)
                 // exactly as the file wrote them. Product-level setters stay fluent; only the child graph goes raw.
+                // This fallback intentionally imposes no IDREF self-containment check (all sibling ids are verbatim too).
                 foreach (ProjectElement child in body.ChildrenOrEmpty())
                 {
-                    AppendRawChild(recipe, child, grammar, blocks, emittedDtdTags);
+                    recipe.Calls.Add(RawChildCall(child));
                 }
             }
             return recipe;
@@ -103,7 +100,7 @@ namespace Ihc.Vis.CatalogCodegen
 
         // Whether the body's scenes wiring fits AddScenes, which can only express a single scenes that is the last child
         // and binds the immediately-preceding addable resource. Anything else routes the whole child list to RawChild.
-        private static bool BodyIsFluentExpressible(ProjectElement body, ProjectSchemaView grammar)
+        private static bool BodyIsFluentExpressible(ProjectElement body)
         {
             ImmutableArray<ProjectElement> children = body.ChildrenOrEmpty();
             int scenesCount = children.Count(c => c.Tag == "scenes");
@@ -151,12 +148,11 @@ namespace Ihc.Vis.CatalogCodegen
             && TypeCode.ForTag(child.Tag) is not null
             && ProjectSchemaView.RegistryOnly.TryGet(child.Tag) is not null;
 
-        private static void AppendChildCalls(ProductRecipe recipe, ProjectElement child, ProjectSchemaView grammar,
-            ImmutableDictionary<string, string> blocks, HashSet<string> emittedDtdTags)
+        private static void AppendChildCalls(ProductRecipe recipe, ProjectElement child, ProjectSchemaView grammar)
         {
             if (IsAddableLeaf(child))
             {
-                recipe.Calls.Add(AddResourceCall(child, grammar));
+                recipe.Calls.Add(AddResourceCall(child));
                 return;
             }
 
@@ -169,18 +165,7 @@ namespace Ihc.Vis.CatalogCodegen
                 throw new DecompileNotSupportedException(
                     $"nested container '{child.Tag}' has an IDREF reaching outside the subtree — needs whole-body RawChild.");
             }
-            AppendRawChild(recipe, child, grammar, blocks, emittedDtdTags);
-        }
-
-        // Emits a child verbatim as .RawChild(ElRaw(..)). An open-world element type inside the subtree needs no
-        // separate grammar call: the definition's complete structured grammar (every declaration, open-world types
-        // included) is carried by the recipe's baked source grammar, which BakeSourceFidelity applies at Build().
-        // Used both for the individual-container RawChild path and for the whole-body fallback; the fallback
-        // intentionally imposes no IDREF self-containment check (all sibling ids are verbatim too).
-        private static void AppendRawChild(ProductRecipe recipe, ProjectElement child, ProjectSchemaView grammar,
-            ImmutableDictionary<string, string> blocks, HashSet<string> emittedDtdTags)
-        {
-            recipe.Calls.Add(RawChildCall(child, grammar));
+            recipe.Calls.Add(RawChildCall(child));
         }
 
         // ---- product-level setters ----
@@ -217,7 +202,7 @@ namespace Ihc.Vis.CatalogCodegen
             }
         }
 
-        private static FluentCall ScenesCall(ProjectElement scenes, ProjectSchemaView grammar, string? lastResourceId)
+        private static FluentCall ScenesCall(ProjectElement scenes, string? lastResourceId)
         {
             foreach ((string name, string _) in scenes.AttrsOrEmpty())
             {
@@ -242,10 +227,9 @@ namespace Ihc.Vis.CatalogCodegen
 
         // ---- leaf resources (AddInput / AddOutput / AddResource) ----
 
-        private static FluentCall AddResourceCall(ProjectElement child, ProjectSchemaView grammar)
+        private static FluentCall AddResourceCall(ProjectElement child)
         {
             string name = child.GetAttribute("name") ?? string.Empty;
-            ElementSchema? schema = grammar.TryGet(child.Tag);
             var config = ImmutableArray.CreateBuilder<ResourceCall>();
             foreach ((string attrName, string attrValue) in child.AttrsOrEmpty())
             {
@@ -292,7 +276,7 @@ namespace Ihc.Vis.CatalogCodegen
 
         private static ResourceCall ResourceConfigCall(string tag, string name, string value)
         {
-            if (name == AddressAttr(tag))
+            if (name == ProductResourceDefBuilder.AddressAttributeFor(tag))
             {
                 return new ResourceCall(r => r.Address(value), $".Address({CSharpLiteral.Quote(value)})");
             }
@@ -316,25 +300,15 @@ namespace Ihc.Vis.CatalogCodegen
 
         // ---- nested containers (RawChild) ----
 
-        // Reverses a nested container to .RawChild(ElRaw(..)): a lean copy of the subtree (DTD defaults dropped, ids and
-        // any internal IDREF wiring kept verbatim) drives the real builder, and the identical lean tree renders as an
-        // ElRaw literal. Building the one lean tree for both sides keeps the executed and emitted forms in lock-step.
-        private static FluentCall RawChildCall(ProjectElement child, ProjectSchemaView grammar)
-        {
-            ProjectElement lean = LeanSubtree(child, grammar);
-            return new FluentCall(b => b.RawChild(lean), $".RawChild({RenderSubtree(lean, 20)})");
-        }
+        // Reverses a child to .RawChild(ElRaw(..)): the raw subtree (file attributes, ids and internal IDREF wiring
+        // verbatim) drives the real builder, and the same tree renders as an ElRaw literal, keeping the executed and
+        // emitted forms in lock-step. An open-world element type inside the subtree needs no separate grammar call:
+        // the definition's complete structured grammar (every declaration, open-world types included) is carried by
+        // the recipe's baked source grammar, which BakeSourceFidelity applies at Build().
+        private static FluentCall RawChildCall(ProjectElement child) =>
+            new(b => b.RawChild(child), $".RawChild({RenderSubtree(child, 20)})");
 
-        private static ProjectElement LeanSubtree(ProjectElement element, ProjectSchemaView grammar)
-        {
-            // The raw subtree already holds exactly the file's attributes in file order — carry them all verbatim.
-            ImmutableArray<ProjectElement> children = element.ChildrenOrEmpty()
-                .Select(c => LeanSubtree(c, grammar))
-                .ToImmutableArray();
-            return new ProjectElement(element.Tag, element.Id, element.AttrsOrEmpty(), children);
-        }
-
-        // Renders a lean subtree as ElRaw("tag", "idToken", attrs, children...). Verbatim id tokens keep the subtree
+        // Renders a raw subtree as ElRaw("tag", "idToken", attrs, children...). Verbatim id tokens keep the subtree
         // self-consistent (an internal IDREF still names its target's token), so no id remapping is needed at all.
         private static string RenderSubtree(ProjectElement node, int childIndent)
         {
@@ -377,13 +351,12 @@ namespace Ihc.Vis.CatalogCodegen
 
         private static void CollectIds(ProjectElement element, HashSet<string> ids)
         {
-            if (element.GetAttribute("id") is { } id)
+            foreach (ProjectElement e in element.DescendantsAndSelf())
             {
-                ids.Add(id);
-            }
-            foreach (ProjectElement child in element.ChildrenOrEmpty())
-            {
-                CollectIds(child, ids);
+                if (e.GetAttribute("id") is { } id)
+                {
+                    ids.Add(id);
+                }
             }
         }
 
@@ -411,13 +384,6 @@ namespace Ihc.Vis.CatalogCodegen
         }
 
         // ---- shared ----
-
-        // Mirrors ProductResourceDefBuilder.Address's family-to-attribute resolution so the decompiler recognises the
-        // attribute .Address would produce for this resource's family (any other address routes through Attribute).
-        private static string AddressAttr(string tag) =>
-            tag.StartsWith("dataline_", StringComparison.Ordinal) ? "address_dataline"
-            : tag.StartsWith("airlink_", StringComparison.Ordinal) ? "address_channel"
-            : "address";
 
         private static bool IsStructural(string tag) =>
             tag is "scenes" or "enum_definition" or "settings"

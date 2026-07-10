@@ -132,11 +132,11 @@ namespace Ihc.Vis.Projects
         private static ProjectElement BuildModified(DateTimeOffset moment) =>
             Node("modified", null, new[]
             {
-                ("year", Dec(moment.Year)),
-                ("month", Dec(moment.Month)),
-                ("day", Dec(moment.Day)),
-                ("hour", Dec(moment.Hour)),
-                ("minute", Dec(moment.Minute)),
+                ("year", DecToken.Format(moment.Year)),
+                ("month", DecToken.Format(moment.Month)),
+                ("day", DecToken.Format(moment.Day)),
+                ("hour", DecToken.Format(moment.Hour)),
+                ("minute", DecToken.Format(moment.Minute)),
             }, NoChildren);
 
         private static ProjectElement BuildInstallerInfo(ProjectDetails details) =>
@@ -182,7 +182,5 @@ namespace Ihc.Vis.Projects
         private static ProjectElement RequireChild(ProjectElement parent, string tag) =>
             parent.FindChild(tag) ?? throw new InvalidOperationException(
                 $"The File→New template is missing the required '{tag}' element.");
-
-        private static string Dec(int value) => value.ToString(CultureInfo.InvariantCulture);
     }
 }

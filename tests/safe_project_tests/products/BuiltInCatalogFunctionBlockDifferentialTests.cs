@@ -30,7 +30,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void EveryFunctionBlock_MatchesInstallDir()
         {
-            ICatalog installed = Installed();
+            ICatalog installed = VendorCorpus.InstalledOrIgnore(VendorCorpus.ResolveCorpusThenInstall(), "block differential");
             ICatalog built = new BuiltInCatalog();
 
             Assert.That(built.FunctionBlocks.Count, Is.EqualTo(installed.FunctionBlocks.Count),
@@ -51,7 +51,8 @@ namespace Ihc.Vis.Tests
                 // The structured grammar is value-comparable: the generated block must carry the exact grammar the
                 // install-dir parse yields (declarations, prolog datum, DOCTYPE root — the D1 primary model).
                 Assert.That(actual.Grammar, Is.EqualTo(expected.Grammar), $"[{i}] structured grammar");
-                AssertStructural(expected.DisplayName,
+                VendorCorpus.AssertStructural(
+                    $"Generated function block '{expected.DisplayName}' differs from the install-dir .ifb.",
                     DefinitionNormalizer.Normalize(expected.Body, expected.Grammar),
                     DefinitionNormalizer.Normalize(actual.Body, expected.Grammar));
             }
@@ -136,9 +137,8 @@ namespace Ihc.Vis.Tests
             // Doc-equality is corpus-only: the baked syn_en text comes from the repo corpus the catalog was
             // generated from, and (unlike the version-stable bodies) help text differs across IHC Visual
             // versions — a configured-install fallback would fail on wording, not on machinery.
-            string? root = FindRepoRoot(TestContext.CurrentContext.TestDirectory);
-            string? dir = root is null ? null : Path.Combine(root, "tmp", "orginstall", "LK IHC Control", "IHC Visual");
-            if (dir is null || !IsCompleteInstall(dir))
+            string? dir = VendorCorpus.CorpusDir();
+            if (dir is null)
             {
                 Assert.Ignore("Repo corpus (tmp/orginstall) not present; skipping corpus-gated doc-equality.");
             }
@@ -163,65 +163,5 @@ namespace Ihc.Vis.Tests
             }
         }
 
-        // ---- install resolution (mirrors the product differential test) ----
-
-        private static ICatalog Installed()
-        {
-            string? dir = ResolveCompleteInstall();
-            if (dir is null)
-            {
-                Assert.Ignore("No complete IHC Visual install available; skipping install-gated block differential.");
-            }
-            return CatalogDiscovery.FromInstallDir(dir!);
-        }
-
-        private static void AssertStructural(string label, ProjectElement expected, ProjectElement actual)
-        {
-            if (!expected.Equals(actual))
-            {
-                Assert.Fail($"Generated function block '{label}' differs from the install-dir .ifb.\n"
-                            + "EXPECTED (install):\n" + DefinitionNormalizer.Dump(expected)
-                            + "\nACTUAL (built):\n" + DefinitionNormalizer.Dump(actual));
-            }
-        }
-
-        // The committed catalog (bodies + baked syn_en docs) is generated from the repo corpus, so the install-gated
-        // differentials verify against that SAME corpus first (bodies are identical across installs, but syn_en help
-        // text can differ per install version). A configured install is the fallback for a checkout without the corpus.
-        private static string? ResolveCompleteInstall()
-        {
-            string? root = FindRepoRoot(TestContext.CurrentContext.TestDirectory);
-            if (root is not null)
-            {
-                string corpus = Path.Combine(root, "tmp", "orginstall", "LK IHC Control", "IHC Visual");
-                if (IsCompleteInstall(corpus))
-                {
-                    return corpus;
-                }
-            }
-            if (IsCompleteInstall(TestSetup.Settings.IhcVisualInstallDir))
-            {
-                return TestSetup.Settings.IhcVisualInstallDir;
-            }
-            return null;
-        }
-
-        private static bool IsCompleteInstall(string? dir) =>
-            !string.IsNullOrWhiteSpace(dir)
-            && Directory.Exists(Path.Combine(dir, "Products"))
-            && Directory.Exists(Path.Combine(dir, "FunctionBlocks"))
-            && Directory.Exists(Path.Combine(dir, "Data"));
-
-        private static string? FindRepoRoot(string start)
-        {
-            for (DirectoryInfo? dir = new(start); dir is not null; dir = dir.Parent)
-            {
-                if (File.Exists(Path.Combine(dir.FullName, "IHCClientSDK.sln")))
-                {
-                    return dir.FullName;
-                }
-            }
-            return null;
-        }
     }
 }

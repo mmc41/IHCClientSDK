@@ -28,21 +28,8 @@ namespace Ihc.Vis.Tests
             "BuiltInCatalog.Grammar.g.cs", "BuiltInCatalog.Products.g.cs", "BuiltInCatalog.FunctionBlocks.g.cs",
         };
 
-        private static string RepoRoot()
-        {
-            var dir = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
-            while (dir is not null)
-            {
-                if (File.Exists(Path.Combine(dir.FullName, "IHCClientSDK.sln")))
-                {
-                    return dir.FullName;
-                }
-                dir = dir.Parent!;
-            }
-            throw new InvalidOperationException("repo root (IHCClientSDK.sln) not found above the test directory");
-        }
-
-        private static string GeneratedDir => Path.Combine(RepoRoot(), "ihcclient", "src", "vis", "catalog", "generated");
+        private static string GeneratedDir =>
+            Path.Combine(VendorCorpus.RequireRepoRoot(), "ihcclient", "src", "vis", "catalog", "generated");
 
         [Test]
         public void GeneratedCatalog_AndBuilders_CarryNoDtdText()
@@ -50,8 +37,8 @@ namespace Ihc.Vis.Tests
             var offenders = new List<string>();
             IEnumerable<string> targets = GeneratedFiles.Select(f => Path.Combine(GeneratedDir, f)).Concat(new[]
             {
-                Path.Combine(RepoRoot(), "ihcclient", "src", "vis", "products", "ProductDefinitionBuilder.cs"),
-                Path.Combine(RepoRoot(), "ihcclient", "src", "vis", "functionblocks", "FunctionBlockDefinitionBuilder.cs"),
+                Path.Combine(VendorCorpus.RequireRepoRoot(), "ihcclient", "src", "vis", "products", "ProductDefinitionBuilder.cs"),
+                Path.Combine(VendorCorpus.RequireRepoRoot(), "ihcclient", "src", "vis", "functionblocks", "FunctionBlockDefinitionBuilder.cs"),
             });
             foreach (string path in targets)
             {
@@ -69,7 +56,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void CatalogNamespace_CarriesDtdDeclarationTokens_OnlyInEmitterAndParser()
         {
-            string catalogDir = Path.Combine(RepoRoot(), "ihcclient", "src", "vis", "catalog");
+            string catalogDir = Path.Combine(VendorCorpus.RequireRepoRoot(), "ihcclient", "src", "vis", "catalog");
             var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "CatalogDtdEmitter.cs", "CatalogDtdParser.cs",

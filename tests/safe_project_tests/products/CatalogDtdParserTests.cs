@@ -17,11 +17,9 @@ namespace Ihc.Vis.Tests
     /// </summary>
     public class CatalogDtdParserTests
     {
-        private static readonly string ProductDir =
-            Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", "products", "synthetic");
+        private static readonly string ProductDir = TestData.PathOf("products", "synthetic");
 
-        private static readonly string FunctionBlockDir =
-            Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", "functionblocks", "synthetic");
+        private static readonly string FunctionBlockDir = TestData.PathOf("functionblocks", "synthetic");
 
         private static IEnumerable<string> AllOracles() =>
             Directory.EnumerateFiles(ProductDir, "*.def")

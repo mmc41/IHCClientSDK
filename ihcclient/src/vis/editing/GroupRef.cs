@@ -6,12 +6,14 @@ using Ihc.Vis.Catalog;
 using Ihc.Vis.FunctionBlocks;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
+using Ihc.Vis.Schema;
 namespace Ihc.Vis.Editing
 {
     /// <summary>
     /// A live handle to a single <c>group</c> (locality/room) in the edit session. Adds catalog products and
-    /// function blocks to the room (deep-copying their bodies), and looks up existing ones by name for editing a
-    /// loaded project.
+    /// function blocks to the room, and looks up existing ones by name for editing a loaded project. An add
+    /// deep-copies the definition's body (fresh project ids minted, internal IDREFs remapped) and resolves its
+    /// grammar — the definition is reusable, read-only input whose placeholder ids never enter the project.
     /// </summary>
     public sealed class GroupRef
     {
@@ -117,13 +119,10 @@ namespace Ihc.Vis.Editing
         public ProductRef Product(string name)
         {
             ArgumentNullException.ThrowIfNull(name);
-            ElementId id = editor.FindChildIdByName(Id, IsProductFamilyTag, name)
+            ElementId id = editor.FindChildIdByName(Id, PlacementRules.IsDeviceRoot, name)
                 ?? throw new InvalidOperationException($"No product named '{name}' in this room.");
             return new ProductRef(editor, id);
         }
-
-        private static bool IsProductFamilyTag(string tag) =>
-            tag == "s0_device" || tag.StartsWith("product_", StringComparison.Ordinal);
 
         /// <summary>
         /// Looks up an existing function block in this room by name (for editing a loaded project), returning its

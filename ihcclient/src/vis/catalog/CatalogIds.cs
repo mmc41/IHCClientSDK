@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 
 using Ihc.Vis.Model;
 using Ihc.Vis.Schema;
@@ -28,20 +29,14 @@ namespace Ihc.Vis.Catalog
         {
             ArgumentNullException.ThrowIfNull(body);
             var tokens = ImmutableArray.CreateBuilder<string>();
-            Collect(body, tokens);
+            foreach (ProjectElement e in body.DescendantsAndSelf())
+            {
+                if (e.GetAttribute("id") is { } token && e.Id is not null)
+                {
+                    tokens.Add(token);
+                }
+            }
             return tokens.ToImmutable();
-        }
-
-        private static void Collect(ProjectElement element, ImmutableArray<string>.Builder tokens)
-        {
-            if (element.GetAttribute("id") is { } token && element.Id is not null)
-            {
-                tokens.Add(token);
-            }
-            foreach (ProjectElement child in element.ChildrenOrEmpty())
-            {
-                Collect(child, tokens);
-            }
         }
 
         /// <summary>
@@ -56,9 +51,8 @@ namespace Ihc.Vis.Catalog
             ArgumentNullException.ThrowIfNull(body);
             ArgumentNullException.ThrowIfNull(idTokens);
 
-            var map = new Dictionary<string, string>(StringComparer.Ordinal);
             int assign = 0;
-            AssignIds(body, idTokens, ref assign, map);
+            Dictionary<string, string> map = BuildIdMap(body, _ => idTokens[assign++]);
             if (assign != idTokens.Count)
             {
                 throw new InvalidOperationException(
@@ -66,34 +60,39 @@ namespace Ihc.Vis.Catalog
                     $"({assign}); the generated factory is out of sync with its source file. Regenerate the catalog.");
             }
 
-            ProjectSchemaView view = ProjectSchemaView.For(grammar);
             int rewrite = 0;
-            return Rewrite(body, idTokens, ref rewrite, map, view);
+            return RewriteIds(body, ProjectSchemaView.For(grammar), _ => idTokens[rewrite++], map);
         }
 
+        // ---- the shared two-pass document-order id restamp (this class and DefinitionNormalizer.Renumber) ----
+        // Pass 1 (BuildIdMap) visits id-bearing elements pre-order, building the old→new token map (last-wins for a
+        // duplicated source token; IDREFs always target a unique id). Pass 2 (RewriteIds) walks the same order, giving
+        // each element its OWN fresh token — duplicate source ids therefore become distinct, exactly as on insert —
+        // and remaps every schema-declared IDREF through the map. The token supplier is stateful; callers pass a
+        // fresh one per pass so element N receives the same token in both passes.
 
-        private static void AssignIds(ProjectElement element, IReadOnlyList<string> tokens, ref int idx,
-            Dictionary<string, string> map)
+        internal static Dictionary<string, string> BuildIdMap(ProjectElement root, Func<ProjectElement, string> nextToken)
         {
-            if (element.GetAttribute("id") is { } oldToken && element.Id is not null)
+            var map = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (ProjectElement element in root.DescendantsAndSelf())
             {
-                map[oldToken] = tokens[idx++];   // last-wins for a duplicated token; IDREFs target a unique id
+                if (element.GetAttribute("id") is { } oldToken && element.Id is not null)
+                {
+                    map[oldToken] = nextToken(element);
+                }
             }
-            foreach (ProjectElement child in element.ChildrenOrEmpty())
-            {
-                AssignIds(child, tokens, ref idx, map);
-            }
+            return map;
         }
 
-        private static ProjectElement Rewrite(ProjectElement element, IReadOnlyList<string> tokens, ref int idx,
-            Dictionary<string, string> map, ProjectSchemaView view)
+        internal static ProjectElement RewriteIds(ProjectElement element, ProjectSchemaView view,
+            Func<ProjectElement, string> nextToken, Dictionary<string, string> idRefMap)
         {
             ElementSchema? schema = view.TryGet(element.Tag);
             ElementId? newId = element.Id;
             string? newToken = null;
             if (element.GetAttribute("id") is not null && element.Id is not null)
             {
-                newToken = tokens[idx++];
+                newToken = nextToken(element);
                 newId = ElementId.TryParse(newToken, out ElementId parsed) ? parsed : element.Id;
             }
 
@@ -104,7 +103,7 @@ namespace Ihc.Vis.Catalog
                 {
                     attrs.Add(("id", newToken));
                 }
-                else if (schema is not null && schema.IsIdRef(name) && map.TryGetValue(value, out string? target))
+                else if (schema is not null && schema.IsIdRef(name) && idRefMap.TryGetValue(value, out string? target))
                 {
                     attrs.Add((name, target));
                 }
@@ -114,12 +113,10 @@ namespace Ihc.Vis.Catalog
                 }
             }
 
-            var children = ImmutableArray.CreateBuilder<ProjectElement>();
-            foreach (ProjectElement child in element.ChildrenOrEmpty())
-            {
-                children.Add(Rewrite(child, tokens, ref idx, map, view));
-            }
-            return new ProjectElement(element.Tag, newId, attrs.ToImmutable(), children.ToImmutable());
+            ImmutableArray<ProjectElement> children = element.ChildrenOrEmpty()
+                .Select(c => RewriteIds(c, view, nextToken, idRefMap))
+                .ToImmutableArray();
+            return new ProjectElement(element.Tag, newId, attrs.ToImmutable(), children);
         }
     }
 }

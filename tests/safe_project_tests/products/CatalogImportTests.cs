@@ -17,7 +17,7 @@ namespace Ihc.Vis.Tests
     public class CatalogImportTests
     {
         private static string SyntheticProduct(string fileName) =>
-            Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", "products", "synthetic", fileName);
+            TestData.PathOf("products", "synthetic", fileName);
 
         private static ProjectAppService NewApp() =>
             new(TestSetup.Settings, new BuiltInCatalog(),
@@ -87,7 +87,7 @@ namespace Ihc.Vis.Tests
         {
             ProjectAppService app = NewApp();
             int baseCount = app.GetAvailableProducts().Count;
-            string dir = Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", "products", "synthetic");
+            string dir = TestData.PathOf("products", "synthetic");
             int expected = Directory.GetFiles(dir, "*.def", SearchOption.AllDirectories).Length;
 
             int imported = app.ImportCatalogDirectory(dir);

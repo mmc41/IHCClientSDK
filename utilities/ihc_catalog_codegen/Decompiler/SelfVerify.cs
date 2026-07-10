@@ -36,28 +36,11 @@ namespace Ihc.Vis.CatalogCodegen
                 return new VerifyResult(false, $"Build() threw: {ex.GetType().Name}: {ex.Message}");
             }
 
-            // (1) Canonicalize against the file's own (catalog) grammar — the "a builder is a code-authored
-            // CatalogReader" contract the oracle tests assert.
-            ProjectElement expectedBody = DefinitionNormalizer.Normalize(source.Definition.Body, source.Blocks);
-            ProjectElement actualBody = DefinitionNormalizer.Normalize(actual.Body, source.Blocks);
-            if (!expectedBody.Equals(actualBody))
+            // The shared two-grammar body comparison (file's own grammar, then registry + open-world blocks) —
+            // see SelfVerifyShared.BodyMismatch for the contract each pass proves.
+            if (SelfVerifyShared.BodyMismatch(source.Definition.Body, actual.Body, source.Blocks) is { } bodyMismatch)
             {
-                return new VerifyResult(false, "catalog-grammar body mismatch",
-                    DefinitionNormalizer.Dump(expectedBody), DefinitionNormalizer.Dump(actualBody));
-            }
-
-            // (2) Canonicalize against the grammar the insert transform actually uses: the project registry PLUS the
-            // open-world blocks the product carries (a purely-registry view cannot canonicalize an open-world type).
-            // This catches the catalog-vs-project DTD-default bake (B1c): an attribute that rides the .def default but
-            // differs from the registry default must have been baked, or the placed instance would silently change.
-            ImmutableDictionary<string, string> nonRegistryBlocks =
-                SelfVerifyShared.NonRegistryBlocks(source.Definition.Body, source.Blocks);
-            ProjectElement expectedReg = DefinitionNormalizer.Normalize(source.Definition.Body, nonRegistryBlocks);
-            ProjectElement actualReg = DefinitionNormalizer.Normalize(actual.Body, nonRegistryBlocks);
-            if (!expectedReg.Equals(actualReg))
-            {
-                return new VerifyResult(false, "registry-grammar body mismatch (catalog-vs-project default bake)",
-                    DefinitionNormalizer.Dump(expectedReg), DefinitionNormalizer.Dump(actualReg));
+                return bodyMismatch;
             }
 
             ProductDefinition expected = source.Definition;

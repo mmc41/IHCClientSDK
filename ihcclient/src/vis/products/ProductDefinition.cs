@@ -8,17 +8,18 @@ using Ihc.Vis.Model;
 namespace Ihc.Vis.Products
 {
     /// <summary>
-    /// A product type auto-discovered from a <c>Products\*.def</c> catalog file under the configured
-    /// IHC Visual install dir. The <see cref="Body"/> is the parsed component subtree (with
-    /// placeholder ids) that the insert transform deep-copies into a project.
+    /// A product type definition — materialized by the SDK-embedded <see cref="Ihc.Vis.Catalog.BuiltInCatalog"/>,
+    /// authored from code via <see cref="ProductDefinitionBuilder"/>, or read from a <c>Products\*.def</c> catalog
+    /// file. The <see cref="Body"/> is the raw component subtree (placeholder ids, attributes in authored/source
+    /// order) that the insert transform deep-copies into a project and
+    /// <see cref="Ihc.Vis.Catalog.CatalogFileWriter"/> re-emits as a catalog file.
     /// </summary>
     /// <remarks>
-    /// This is the product-level <b>type definition</b> model. Today it is produced by catalog discovery from a
-    /// <c>.def</c> file; <see cref="ProductDefinitionBuilder"/> in this <c>Ihc.Vis.Products</c> namespace — the
-    /// product-level peer of <see cref="Ihc.Vis.Projects.NewProjectBuilder"/> — will additionally author one from code
-    /// (its surface is defined; the implementation lands in a later session), so the SDK need not depend on the IHC
-    /// Visual desktop application for product definitions. Distinct from the edit-session instance
-    /// handle <see cref="Ihc.Vis.Editing.ProductRef"/>, which manipulates a product already placed in a project.
+    /// This is the product-level <b>type definition</b> model, distinct from the edit-session instance handle
+    /// <see cref="Ihc.Vis.Editing.ProductRef"/>, which manipulates a product already placed in a project. Every
+    /// producer — a generated <see cref="Ihc.Vis.Catalog.BuiltInCatalog"/> factory, a hand-authored builder, and
+    /// <see cref="Ihc.Vis.Catalog.CatalogReader"/> on a file — yields this same raw shape, so insertion and catalog
+    /// write fidelity hold identically regardless of provenance, and the SDK needs no IHC Visual desktop install.
     /// </remarks>
     /// <param name="ProductIdentifier">The opaque <c>product_identifier</c> token the product is looked up by, e.g. <c>_0x2101</c>.</param>
     /// <param name="DisplayName">The display name shown in the IHC Visual library/tree.</param>

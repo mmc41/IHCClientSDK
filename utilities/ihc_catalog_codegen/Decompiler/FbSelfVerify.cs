@@ -29,22 +29,11 @@ namespace Ihc.Vis.CatalogCodegen
                 return new VerifyResult(false, $"Build() threw: {ex.GetType().Name}: {ex.Message}");
             }
 
-            ProjectElement expectedBody = DefinitionNormalizer.Normalize(source.Definition.Body, source.Blocks);
-            ProjectElement actualBody = DefinitionNormalizer.Normalize(actual.Body, source.Blocks);
-            if (!expectedBody.Equals(actualBody))
+            // The shared two-grammar body comparison (file's own grammar, then registry + open-world blocks) —
+            // see SelfVerifyShared.BodyMismatch for the contract each pass proves.
+            if (SelfVerifyShared.BodyMismatch(source.Definition.Body, actual.Body, source.Blocks) is { } bodyMismatch)
             {
-                return new VerifyResult(false, "catalog-grammar body mismatch",
-                    DefinitionNormalizer.Dump(expectedBody), DefinitionNormalizer.Dump(actualBody));
-            }
-
-            ImmutableDictionary<string, string> nonRegistryBlocks =
-                SelfVerifyShared.NonRegistryBlocks(source.Definition.Body, source.Blocks);
-            ProjectElement expectedReg = DefinitionNormalizer.Normalize(source.Definition.Body, nonRegistryBlocks);
-            ProjectElement actualReg = DefinitionNormalizer.Normalize(actual.Body, nonRegistryBlocks);
-            if (!expectedReg.Equals(actualReg))
-            {
-                return new VerifyResult(false, "registry-grammar body mismatch (catalog-vs-project default bake)",
-                    DefinitionNormalizer.Dump(expectedReg), DefinitionNormalizer.Dump(actualReg));
+                return bodyMismatch;
             }
 
             FunctionBlockDefinition expected = source.Definition;

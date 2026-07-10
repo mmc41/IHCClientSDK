@@ -53,7 +53,7 @@ namespace Ihc.Vis.Catalog
         public static ProductDefinition ReadProduct(Stream stream, ProductDocumentation? documentation = null)
         {
             ArgumentNullException.ThrowIfNull(stream);
-            return BuildProduct(ReadAllBytes(stream), string.Empty, documentation);
+            return BuildProduct(XmlProlog.ReadAllBytes(stream), string.Empty, documentation);
         }
 
         /// <summary>
@@ -73,7 +73,7 @@ namespace Ihc.Vis.Catalog
         public static FunctionBlockDefinition ReadFunctionBlock(Stream stream, FunctionBlockDocumentation? documentation = null)
         {
             ArgumentNullException.ThrowIfNull(stream);
-            return BuildFunctionBlock(ReadAllBytes(stream), string.Empty, documentation);
+            return BuildFunctionBlock(XmlProlog.ReadAllBytes(stream), string.Empty, documentation);
         }
 
         // The single product/function-block construction path, shared by the public single-file readers above and by
@@ -118,7 +118,7 @@ namespace Ihc.Vis.Catalog
         internal static ProjectElement Read(Stream stream)
         {
             ArgumentNullException.ThrowIfNull(stream);
-            return Read(ReadAllBytes(stream));
+            return Read(XmlProlog.ReadAllBytes(stream));
         }
 
         internal static ProjectElement Read(byte[] bytes)
@@ -144,17 +144,6 @@ namespace Ihc.Vis.Catalog
             return ReadElement(reader);
         }
 
-        private static byte[] ReadAllBytes(Stream stream)
-        {
-            if (stream is MemoryStream memory)
-            {
-                return memory.ToArray();
-            }
-            using var buffer = new MemoryStream();
-            stream.CopyTo(buffer);
-            return buffer.ToArray();
-        }
-
         // Internal (not private): CatalogDtdParser.CaptureHeadText decodes file bytes with the identical rule, so
         // the header text the grammar parser sees and the body text the XML reader sees can never diverge.
         internal static Encoding SniffEncoding(byte[] bytes)
@@ -163,23 +152,16 @@ namespace Ihc.Vis.Catalog
             {
                 return Encoding.UTF8;   // redundant with the StreamReader's own BOM detection, but explicit
             }
-            string head = Encoding.Latin1.GetString(bytes, 0, Math.Min(bytes.Length, 200));
-            int declarationEnd = head.IndexOf("?>", StringComparison.Ordinal);
-            if (head.StartsWith("<?xml", StringComparison.Ordinal) && declarationEnd > 0)
+            if (XmlProlog.TryGetDeclaredEncoding(XmlProlog.Head(bytes)) is { } declared
+                && !declared.Equals("ISO-8859-1", StringComparison.OrdinalIgnoreCase))
             {
-                System.Text.RegularExpressions.Match declared = System.Text.RegularExpressions.Regex.Match(
-                    head.Substring(0, declarationEnd), "encoding=[\"']([^\"']+)[\"']");
-                if (declared.Success
-                    && !declared.Groups[1].Value.Equals("ISO-8859-1", StringComparison.OrdinalIgnoreCase))
+                try
                 {
-                    try
-                    {
-                        return Encoding.GetEncoding(declared.Groups[1].Value);
-                    }
-                    catch (ArgumentException)
-                    {
-                        // unknown name → fall through to Latin-1 (total: every byte decodes)
-                    }
+                    return Encoding.GetEncoding(declared);
+                }
+                catch (ArgumentException)
+                {
+                    // unknown name → fall through to Latin-1 (total: every byte decodes)
                 }
             }
             return Encoding.Latin1;

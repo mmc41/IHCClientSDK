@@ -56,15 +56,18 @@ namespace Ihc.Vis.CatalogCodegen
     /// </summary>
     internal sealed class ProductRecipe
     {
-        // The five named family factories on ProductDefinitionBuilder; anything else routes through Create(tag, ..).
-        private static readonly Dictionary<string, string> FactoryByTag = new(StringComparer.Ordinal)
-        {
-            ["product_dataline"] = "Dataline",
-            ["product_airlink"] = "Airlink",
-            ["product_rs485_led_dimmer"] = "Rs485LedDimmer",
-            ["product_rs485_sms_modem"] = "Rs485SmsModem",
-            ["s0_device"] = "S0Device",
-        };
+        // The five named family factories on ProductDefinitionBuilder — each tag maps to the rendered method name and
+        // the live invocation together, so the emitted call and the self-verify replay can never diverge; anything
+        // else routes through Create(tag, ..).
+        private static readonly Dictionary<string, (string Name, Func<string, string, ProductDefinitionBuilder> Make)> FactoryByTag =
+            new(StringComparer.Ordinal)
+            {
+                ["product_dataline"] = ("Dataline", ProductDefinitionBuilder.Dataline),
+                ["product_airlink"] = ("Airlink", ProductDefinitionBuilder.Airlink),
+                ["product_rs485_led_dimmer"] = ("Rs485LedDimmer", ProductDefinitionBuilder.Rs485LedDimmer),
+                ["product_rs485_sms_modem"] = ("Rs485SmsModem", ProductDefinitionBuilder.Rs485SmsModem),
+                ["s0_device"] = ("S0Device", ProductDefinitionBuilder.S0Device),
+            };
 
         public ProductRecipe(string rootTag, string productIdentifier, string displayName)
         {
@@ -162,21 +165,13 @@ namespace Ihc.Vis.CatalogCodegen
         }
 
         private ProductDefinitionBuilder CreateBuilder() =>
-            FactoryByTag.TryGetValue(RootTag, out string? factory)
-                ? factory switch
-                {
-                    "Dataline" => ProductDefinitionBuilder.Dataline(ProductIdentifier, DisplayName),
-                    "Airlink" => ProductDefinitionBuilder.Airlink(ProductIdentifier, DisplayName),
-                    "Rs485LedDimmer" => ProductDefinitionBuilder.Rs485LedDimmer(ProductIdentifier, DisplayName),
-                    "Rs485SmsModem" => ProductDefinitionBuilder.Rs485SmsModem(ProductIdentifier, DisplayName),
-                    "S0Device" => ProductDefinitionBuilder.S0Device(ProductIdentifier, DisplayName),
-                    _ => throw new InvalidOperationException($"Unmapped factory '{factory}'."),
-                }
+            FactoryByTag.TryGetValue(RootTag, out (string Name, Func<string, string, ProductDefinitionBuilder> Make) factory)
+                ? factory.Make(ProductIdentifier, DisplayName)
                 : ProductDefinitionBuilder.Create(RootTag, ProductIdentifier, DisplayName);
 
         private string RenderFactory() =>
-            FactoryByTag.TryGetValue(RootTag, out string? factory)
-                ? $"ProductDefinitionBuilder.{factory}({CSharpLiteral.Quote(ProductIdentifier)}, {CSharpLiteral.Quote(DisplayName)})"
+            FactoryByTag.TryGetValue(RootTag, out (string Name, Func<string, string, ProductDefinitionBuilder> Make) factory)
+                ? $"ProductDefinitionBuilder.{factory.Name}({CSharpLiteral.Quote(ProductIdentifier)}, {CSharpLiteral.Quote(DisplayName)})"
                 : $"ProductDefinitionBuilder.Create({CSharpLiteral.Quote(RootTag)}, {CSharpLiteral.Quote(ProductIdentifier)}, {CSharpLiteral.Quote(DisplayName)})";
     }
 }

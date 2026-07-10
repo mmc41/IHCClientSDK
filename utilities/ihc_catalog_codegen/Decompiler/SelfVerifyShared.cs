@@ -15,8 +15,9 @@ namespace Ihc.Vis.CatalogCodegen
 {
     /// <summary>
     /// The fidelity checks shared by <see cref="SelfVerify"/> (products) and <see cref="FbSelfVerify"/> (function
-    /// blocks): the open-world inline-DTD capture rule and the byte-level re-emission gate. Both gates must apply the
-    /// identical rules, so they live here rather than being copied into each gate where the two could silently drift.
+    /// blocks): the open-world inline-DTD capture rule, the two-grammar body comparison and the byte-level
+    /// re-emission gate. Both gates must apply the identical rules, so they live here rather than being copied into
+    /// each gate where the two could silently drift.
     /// </summary>
     internal static class SelfVerifyShared
     {
@@ -49,6 +50,35 @@ namespace Ihc.Vis.CatalogCodegen
             return ms.ToArray();
         }
 
+        // The two-grammar body comparison both verify gates share. (1) canonicalize built and source bodies against
+        // the file's OWN grammar — the "a builder is a code-authored CatalogReader" contract the oracle tests assert.
+        // (2) canonicalize against the grammar the insert transform actually uses: the project registry PLUS the
+        // open-world blocks the component carries (a purely-registry view cannot canonicalize an open-world type) —
+        // this catches the catalog-vs-project DTD-default bake (B1c): an attribute that rides the file default but
+        // differs from the registry default must have been baked, or the placed instance would silently change.
+        // Null when both agree; else the failing VerifyResult carrying the normalized trees for a readable diff.
+        public static VerifyResult? BodyMismatch(ProjectElement sourceBody, ProjectElement builtBody,
+            ImmutableDictionary<string, string> blocks)
+        {
+            ProjectElement expectedBody = DefinitionNormalizer.Normalize(sourceBody, blocks);
+            ProjectElement actualBody = DefinitionNormalizer.Normalize(builtBody, blocks);
+            if (!expectedBody.Equals(actualBody))
+            {
+                return new VerifyResult(false, "catalog-grammar body mismatch",
+                    DefinitionNormalizer.Dump(expectedBody), DefinitionNormalizer.Dump(actualBody));
+            }
+
+            ImmutableDictionary<string, string> nonRegistryBlocks = NonRegistryBlocks(sourceBody, blocks);
+            ProjectElement expectedReg = DefinitionNormalizer.Normalize(sourceBody, nonRegistryBlocks);
+            ProjectElement actualReg = DefinitionNormalizer.Normalize(builtBody, nonRegistryBlocks);
+            if (!expectedReg.Equals(actualReg))
+            {
+                return new VerifyResult(false, "registry-grammar body mismatch (catalog-vs-project default bake)",
+                    DefinitionNormalizer.Dump(expectedReg), DefinitionNormalizer.Dump(actualReg));
+            }
+            return null;
+        }
+
         // The byte-fidelity gate: the re-emitted definition must equal the source catalog file under the fidelity
         // relation of record (byte-identical after whitespace-normalization + empty-element collapse + the D3
         // &apos; ≡ ' forgiveness — see CatalogTextCompare, the single implementation of the relation; every other
@@ -68,10 +98,9 @@ namespace Ihc.Vis.CatalogCodegen
 
         private static void CollectTags(ProjectElement element, HashSet<string> tags)
         {
-            tags.Add(element.Tag);
-            foreach (ProjectElement child in element.ChildrenOrEmpty())
+            foreach (ProjectElement e in element.DescendantsAndSelf())
             {
-                CollectTags(child, tags);
+                tags.Add(e.Tag);
             }
         }
     }

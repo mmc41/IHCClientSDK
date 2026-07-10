@@ -19,8 +19,7 @@ namespace Ihc.Vis.Tests
     /// </summary>
     public class CatalogGrammarInsertTests
     {
-        private static string OraclePath(string relative) =>
-            Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", relative);
+        private static string OraclePath(string relative) => TestData.PathOf(relative);
 
         private static ProjectAppService App() => new(TestSetup.Settings, new BuiltInCatalog(),
             new FakeTimeProvider(new DateTimeOffset(2026, 7, 10, 12, 0, 0, TimeSpan.Zero)));

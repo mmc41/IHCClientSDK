@@ -2,18 +2,20 @@
 using System;
 using System.Collections.Generic;
 
-namespace Ihc.Vis.Editing
+namespace Ihc.Vis.Schema
 {
     /// <summary>
     /// The per-resource-type presentation attributes IHC Visual stamps on a resource the moment it is created: the
     /// canonical GUI <c>icon</c> for its type, plus — for the value types whose value attributes are <c>#REQUIRED</c>
     /// (a date's <c>year/month/day</c>, a timer's <c>hour/minute/second/millisecond</c>) — the vendor's initial
-    /// values. Shared by the two creation paths so both reproduce a freshly-authored resource byte-for-byte:
+    /// values. A vendor grammar fact (peer of <see cref="TypeCode"/>), held once here so every creation path
+    /// reproduces a freshly-authored resource byte-for-byte:
     /// <list type="bullet">
-    /// <item><see cref="InsertTransform"/> (catalog insert) stamps only the <see cref="Icon"/> — a catalog element's
-    /// value attributes already arrive from the component <c>.def</c>'s DTD defaults.</item>
-    /// <item>the hand-authoring path (<see cref="ProjectEditor.UpsertResourceChild"/>) has no catalog template, so it
-    /// stamps both the icon and the <c>#REQUIRED</c> value initials via <see cref="NewResourceDefaults"/>.</item>
+    /// <item><c>Ihc.Vis.Editing.InsertTransform</c> (catalog insert) stamps only the <see cref="Icon"/> — a catalog
+    /// element's value attributes already arrive from the component <c>.def</c>'s DTD defaults.</item>
+    /// <item>the hand-authoring paths (<c>Ihc.Vis.Editing.ProjectEditor.UpsertResourceChild</c> and the
+    /// code-authored function-block builders) have no catalog template, so they stamp both the icon and the
+    /// <c>#REQUIRED</c> value initials via <see cref="NewResourceDefaults"/>.</item>
     /// </list>
     /// Every entry is mined conflict-free from the authentic oracles (each listed type maps to exactly one icon). A
     /// type absent from a table carries no canonical value there — its <c>icon</c> stays the DTD default <c>_0x0</c>,

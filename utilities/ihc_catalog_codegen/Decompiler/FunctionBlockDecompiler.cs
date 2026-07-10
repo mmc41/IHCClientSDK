@@ -23,12 +23,11 @@ namespace Ihc.Vis.CatalogCodegen
     /// its own.
     /// </summary>
     /// <remarks>
-    /// The catalog-vs-project lean reconstruction is the same as <see cref="ProductDecompiler"/>: a resource attribute is
-    /// emitted only when it is not already produced by the builder's per-type defaults
-    /// (<see cref="FbGrammar.NewResourceDefaults"/>) and is not droppable as a DTD default under both the file's own
-    /// grammar and the project registry. Structural decorations (container notes, sub-program/branch names) are emitted
-    /// only when they differ from the builder's fixed vendor grammar (<see cref="FbGrammar"/>), so a block that already
-    /// matches the synthetic defaults renders leanly.
+    /// Resource attributes are emitted verbatim in file order — the reader yields the raw body, so the recipe replays
+    /// every attribute the file wrote (the same raw-body model as <see cref="ProductDecompiler"/>). Structural
+    /// decorations (container notes, sub-program/branch names) are emitted only when they differ from the builder's
+    /// fixed vendor grammar (<see cref="FbGrammar"/>), so a block that already matches the synthetic defaults renders
+    /// leanly.
     /// </remarks>
     internal sealed class FunctionBlockDecompiler
     {
@@ -188,41 +187,6 @@ namespace Ihc.Vis.CatalogCodegen
             }
         }
 
-        private void EmitMasterDate(string? year, string? month, string? day)
-        {
-            if (year is null && month is null && day is null)
-            {
-                return;
-            }
-            bool anySet = (year ?? "0") != "0" || (month ?? "0") != "0" || (day ?? "0") != "0";
-            if (!anySet)
-            {
-                return;
-            }
-            if (int.TryParse(year, out int y) && int.TryParse(month, out int m) && int.TryParse(day, out int d)
-                && m is >= 1 and <= 12 && d is >= 1 and <= 31 && y is >= 1 and <= 9999
-                && year == y.ToString(CultureInfo.InvariantCulture)
-                && month == m.ToString(CultureInfo.InvariantCulture)
-                && day == d.ToString(CultureInfo.InvariantCulture))
-            {
-                Head(b => b.MasterDate(new DateOnly(y, m, d)), $".MasterDate(new DateOnly({y}, {m}, {d}))");
-                return;
-            }
-            // A degenerate (zero month) or non-canonically-formatted (zero-padded "05") date can't round-trip through
-            // DateOnly — bake the raw attributes verbatim instead.
-            EmitDateAttr("master_date_year", year);
-            EmitDateAttr("master_date_month", month);
-            EmitDateAttr("master_date_day", day);
-        }
-
-        private void EmitDateAttr(string name, string? value)
-        {
-            if (value is not null && value != "0")
-            {
-                Head(b => b.Attribute(name, value), $".Attribute({CSharpLiteral.Quote(name)}, {CSharpLiteral.Quote(value)})");
-            }
-        }
-
         // Emits the .{Name}/{Note}(..) override for a body container only when its vendor name/note differs from the
         // builder default. The apply delegate is passed directly (as AddProgramOverride does), so the method string is
         // used only to render the call — no second name→delegate mapping to keep in sync.
@@ -319,7 +283,7 @@ namespace Ihc.Vis.CatalogCodegen
                 resourceVarById[id] = varName;
             }
 
-            List<ResourceConfigItem> configs = BuildResourceConfig(resource, applyBuilderDefaults: false);
+            List<ResourceConfigItem> configs = BuildResourceConfig(resource);
             string configRender = string.Concat(configs.Select(c => c.Render));
             string head = $"var {varName} = b.{addMethod}({CSharpLiteral.Quote(tag)}, {CSharpLiteral.Quote(name)}";
             string render = configs.Count == 0
@@ -349,13 +313,9 @@ namespace Ihc.Vis.CatalogCodegen
             }, render));
         }
 
-        private List<ResourceConfigItem> BuildResourceConfig(ProjectElement resource, bool applyBuilderDefaults)
+        private List<ResourceConfigItem> BuildResourceConfig(ProjectElement resource)
         {
             var configs = new List<ResourceConfigItem>();
-            IReadOnlyList<(string Name, string Value)> defaults = applyBuilderDefaults
-                ? FbGrammar.NewResourceDefaults(resource.Tag)
-                : Array.Empty<(string, string)>();
-
             bool isEnum = resource.Tag == "resource_enum";
             if (isEnum)
             {
@@ -387,10 +347,6 @@ namespace Ihc.Vis.CatalogCodegen
                 if (isEnum && name == "inivalue")
                 {
                     continue;   // emitted together with typedef by the Enum() call above
-                }
-                if (defaults.Any(d => d.Name == name && d.Value == value))
-                {
-                    continue;   // the builder's per-type defaults already produce this exact attribute
                 }
                 configs.Add(ResourceConfigCall(name, value));
             }
@@ -456,7 +412,7 @@ namespace Ihc.Vis.CatalogCodegen
             {
                 EmitEvent(varName, leaf);
             }
-            var target = new Target(varName, env => env.Get<FbProgramBuilder>(varName));
+            var target = new Target(varName, env => env.Get<FbProgramBuilder>(varName).RootBranch);
             EmitActionNodes(target, actions);
         }
 
@@ -546,7 +502,7 @@ namespace Ihc.Vis.CatalogCodegen
                 (string operandRender, Func<FbBuildEnv, FbOperand> operandFactory) = BuildOperand(operandEl);
                 string args = RenderOperandLeafArgs(name, link1Var, method, operandRender, note);
                 recipe.Statements.Add(new FbStatement(
-                    env => AddActionOperand(target.Live(env), name, env.Get<FbResourceHandle>(link1Var),
+                    env => target.Live(env).AddAction(name, env.Get<FbResourceHandle>(link1Var),
                         method, operandFactory(env), note),
                     $"{target.Expr}.AddAction({args});"));
                 return;
@@ -557,7 +513,7 @@ namespace Ihc.Vis.CatalogCodegen
             {
                 FbResourceHandle l1 = env.Get<FbResourceHandle>(link1Var);
                 FbResourceHandle? l2 = link2Var is null ? null : env.Get<FbResourceHandle>(link2Var);
-                AddAction(target.Live(env), name, l1, method, l2, note);
+                target.Live(env).AddAction(name, l1, method, l2, note);
             }, $"{target.Expr}.AddAction({body});"));
         }
 
@@ -570,7 +526,7 @@ namespace Ihc.Vis.CatalogCodegen
                 ? $"var {subVar} = {target.Expr}.AddSubProgram();"
                 : $"var {subVar} = {target.Expr}.AddSubProgram({CSharpLiteral.Quote(name)});";
             recipe.Statements.Add(new FbStatement(
-                env => env.Set(subVar, AddSubProgram(target.Live(env), name)), subRender));
+                env => env.Set(subVar, target.Live(env).AddSubProgram(name)), subRender));
 
             if (subNote is not null)
             {
@@ -691,7 +647,7 @@ namespace Ihc.Vis.CatalogCodegen
                 ? $"{target.Expr}.AddCase({CSharpLiteral.Quote(name)}, {switchVar})"
                 : $"{target.Expr}.AddCase({CSharpLiteral.Quote(name)}, {switchVar}, note: {CSharpLiteral.Quote(note)})";
             recipe.Statements.Add(new FbStatement(
-                env => env.Set(caseVar, AddCase(target.Live(env), name, env.Get<FbResourceHandle>(switchVar), note)),
+                env => env.Set(caseVar, target.Live(env).AddCase(name, env.Get<FbResourceHandle>(switchVar), note)),
                 $"var {caseVar} = {switchArg};"));
 
             ProjectElement? defaultActions = null;
@@ -796,7 +752,7 @@ namespace Ihc.Vis.CatalogCodegen
                 return (render, env => FbOperand.Enum(env.Get<FbEnumDefRef>(enumVar), valueName, operandName, operandIcon));
             }
 
-            List<ResourceConfigItem> configs = BuildResourceConfig(operand, applyBuilderDefaults: false);
+            List<ResourceConfigItem> configs = BuildResourceConfig(operand);
             string configRender = string.Concat(configs.Select(c => c.Render));
             string tag = operand.Tag;
             string literalRender = configs.Count == 0
@@ -829,22 +785,6 @@ namespace Ihc.Vis.CatalogCodegen
                 builder.Append(", note: ").Append(CSharpLiteral.Quote(note));
             }
             return builder.ToString();
-        }
-
-        private static void AddActionOperand(object target, string name, FbResourceHandle link1, string method,
-            FbOperand operand, string? note)
-        {
-            switch (target)
-            {
-                case FbProgramBuilder program:
-                    program.AddAction(name, link1, method, operand, note);
-                    break;
-                case FbBranchRef branch:
-                    branch.AddAction(name, link1, method, operand, note);
-                    break;
-                default:
-                    throw new InvalidOperationException($"Cannot add an action to a {target.GetType().Name}.");
-            }
         }
 
         private string ResolveResource(string? idToken) =>
@@ -890,36 +830,6 @@ namespace Ihc.Vis.CatalogCodegen
         private static FbBranchRef BranchOf(FbBuildEnv env, string subVar, string branch) =>
             branch == "WhenTrue" ? env.Get<FbSubProgramRef>(subVar).WhenTrue : env.Get<FbSubProgramRef>(subVar).WhenFalse;
 
-        private static void AddAction(object target, string name, FbResourceHandle link1, string method,
-            FbResourceHandle? link2, string? note)
-        {
-            switch (target)
-            {
-                case FbProgramBuilder program:
-                    program.AddAction(name, link1, method, link2, note);
-                    break;
-                case FbBranchRef branch:
-                    branch.AddAction(name, link1, method, link2, note);
-                    break;
-                default:
-                    throw new InvalidOperationException($"Cannot add an action to a {target.GetType().Name}.");
-            }
-        }
-
-        private static FbSubProgramRef AddSubProgram(object target, string name) => target switch
-        {
-            FbProgramBuilder program => program.AddSubProgram(name),
-            FbBranchRef branch => branch.AddSubProgram(name),
-            _ => throw new InvalidOperationException($"Cannot add a sub-program to a {target.GetType().Name}."),
-        };
-
-        private static FbCaseRef AddCase(object target, string name, FbResourceHandle switchVariable, string? note) => target switch
-        {
-            FbProgramBuilder program => program.AddCase(name, switchVariable, note),
-            FbBranchRef branch => branch.AddCase(name, switchVariable, note),
-            _ => throw new InvalidOperationException($"Cannot add a case switch to a {target.GetType().Name}."),
-        };
-
         private static (ProjectElement True, ProjectElement False) TrueFalseBranches(ProjectElement sub)
         {
             ImmutableArray<ProjectElement> actions = sub.ChildrenOrEmpty().Where(c => c.Tag == "actions").ToImmutableArray();
@@ -948,10 +858,6 @@ namespace Ihc.Vis.CatalogCodegen
             return schema is { Kind: AttrKind.Defaulted } && value == schema.Default ? null : value;
         }
 
-        // Adapts the shared lean-bake rule (LeanBake.ShouldEmit) to the caller's tag, resolving the file's own grammar.
-        private bool ShouldEmit(string tag, string name, string value) =>
-            LeanBake.ShouldEmit(grammar.TryGet(tag), tag, name, value);
-
         private static void RequireTag(ProjectElement element, string tag)
         {
             if (element.Tag != tag)
@@ -960,7 +866,10 @@ namespace Ihc.Vis.CatalogCodegen
             }
         }
 
-        private sealed record Target(string Expr, Func<FbBuildEnv, object> Live);
+        // Live returns the appendable branch view uniformly: for the program root that is FbProgramBuilder.RootBranch,
+        // for program_sub/case bodies the branch handle itself — so adds need no runtime type dispatch. Expr renders
+        // the ORIGINAL variable (a generated factory still calls the builder's own AddAction/AddSubProgram/AddCase).
+        private sealed record Target(string Expr, Func<FbBuildEnv, FbBranchRef> Live);
 
         private sealed class ResourceConfigItem
         {

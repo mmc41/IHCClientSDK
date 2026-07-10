@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 
+using Ihc.Vis.FunctionBlocks;
 using Ihc.Vis.Model;
 namespace Ihc.Vis.Editing
 {
@@ -186,22 +187,26 @@ namespace Ihc.Vis.Editing
     /// </summary>
     internal static class ProgramGrammar
     {
-        public const string EventIcon = "_0xc";
-        public const string ConditionIcon = "_0x1a";
-        public const string ActionIcon = "_0x9";
-        public const string SubProgramIcon = "_0x7";
-        public const string ConditionsIcon = "_0x16";
-        public const string ActionsIcon = "_0x8";
-        public const string EnumOperandIcon = "_0x22";
+        // The icons/names/branch-type shared with code-authored blocks alias FbGrammar's constants (FunctionBlocks
+        // sits below Editing in the layering), so each shared vendor gesture has exactly one transcription. Only the
+        // container NOTES stay local — they genuinely differ per vendor context: these were transcribed from a
+        // project-embedded custom block (project2-CustomBlock.vis), FbGrammar's from the FunctionBlocks\*.ifb set.
+        public const string EventIcon = FbGrammar.EventIcon;
+        public const string ConditionIcon = FbGrammar.ConditionIcon;
+        public const string ActionIcon = FbGrammar.ActionIcon;
+        public const string SubProgramIcon = FbGrammar.SubProgramIcon;
+        public const string ConditionsIcon = FbGrammar.ConditionsIcon;
+        public const string ActionsIcon = FbGrammar.ActionsIcon;
+        public const string EnumOperandIcon = FbGrammar.EnumOperandIcon;
 
-        public const string SubProgramName = "Under program";
-        public const string ConditionsName = "Betingelser";
+        public const string SubProgramName = FbGrammar.SubProgramName;
+        public const string ConditionsName = FbGrammar.ConditionsName;
         public const string ConditionsNote = "Gruppering af betingelser til logisk test";
-        public const string TrueActionsName = "Kommandoer ved betingelser sande";
+        public const string TrueActionsName = FbGrammar.TrueActionsName;
         public const string TrueActionsNote = "Gruppering af kommandoer som udføres når betingelser er sande";
-        public const string FalseActionsName = "Kommandoer ved betingelser falske";
+        public const string FalseActionsName = FbGrammar.FalseActionsName;
         public const string FalseActionsNote = "Gruppering af kommandoer som udføres når betingelser er falske";
-        public const string TrueBranchType = "_0x1";
+        public const string TrueBranchType = FbGrammar.TrueBranchType;
 
         /// <summary>Attribute set for a trigger with no resource operands (<c>event_power</c>): name, icon, optional note.</summary>
         public static (string, string)[] LeafAttrs(string name, string icon, string? note)

@@ -26,7 +26,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void EveryProduct_MatchesInstallDir()
         {
-            ICatalog installed = Installed();
+            ICatalog installed = VendorCorpus.InstalledOrIgnore(VendorCorpus.ResolveInstallThenCorpus(), "product differential");
             ICatalog built = new BuiltInCatalog();
 
             Assert.That(built.Products.Count, Is.EqualTo(installed.Products.Count),
@@ -46,7 +46,8 @@ namespace Ihc.Vis.Tests
                 // install-dir parse yields (declarations, prolog datum, DOCTYPE root — the D1 primary model).
                 Assert.That(actual.Grammar, Is.EqualTo(expected.Grammar), $"[{i}] structured grammar");
                 // Canonicalize both against the source file's own inline-DTD grammar and compare structurally.
-                AssertStructural(expected.ProductIdentifier,
+                VendorCorpus.AssertStructural(
+                    $"Generated product '{expected.ProductIdentifier}' differs from the install-dir .def.",
                     DefinitionNormalizer.Normalize(expected.Body, expected.Grammar),
                     DefinitionNormalizer.Normalize(actual.Body, expected.Grammar));
             }
@@ -73,61 +74,5 @@ namespace Ihc.Vis.Tests
             Assert.That(reloaded.Equals(built), Is.True, "the inserted product round-trips structurally, no install present");
         }
 
-        private static ICatalog Installed()
-        {
-            string? dir = ResolveCompleteInstall();
-            if (dir is null)
-            {
-                Assert.Ignore("No complete IHC Visual install available; skipping install-gated product differential.");
-            }
-            return CatalogDiscovery.FromInstallDir(dir!);
-        }
-
-        private static void AssertStructural(string productId, ProjectElement expected, ProjectElement actual)
-        {
-            if (!expected.Equals(actual))
-            {
-                Assert.Fail($"Generated product '{productId}' differs from the install-dir .def.\n"
-                            + "EXPECTED (install):\n" + DefinitionNormalizer.Dump(expected)
-                            + "\nACTUAL (built):\n" + DefinitionNormalizer.Dump(actual));
-            }
-        }
-
-        // Prefer a configured, complete install; otherwise the repo corpus (dev tree); otherwise null → skip.
-        private static string? ResolveCompleteInstall()
-        {
-            if (IsCompleteInstall(TestSetup.Settings.IhcVisualInstallDir))
-            {
-                return TestSetup.Settings.IhcVisualInstallDir;
-            }
-            string? root = FindRepoRoot(TestContext.CurrentContext.TestDirectory);
-            if (root is not null)
-            {
-                string corpus = Path.Combine(root, "tmp", "orginstall", "LK IHC Control", "IHC Visual");
-                if (IsCompleteInstall(corpus))
-                {
-                    return corpus;
-                }
-            }
-            return null;
-        }
-
-        private static bool IsCompleteInstall(string? dir) =>
-            !string.IsNullOrWhiteSpace(dir)
-            && Directory.Exists(Path.Combine(dir, "Products"))
-            && Directory.Exists(Path.Combine(dir, "FunctionBlocks"))
-            && Directory.Exists(Path.Combine(dir, "Data"));
-
-        private static string? FindRepoRoot(string start)
-        {
-            for (DirectoryInfo? dir = new(start); dir is not null; dir = dir.Parent)
-            {
-                if (File.Exists(Path.Combine(dir.FullName, "IHCClientSDK.sln")))
-                {
-                    return dir.FullName;
-                }
-            }
-            return null;
-        }
     }
 }

@@ -25,12 +25,15 @@ namespace Ihc.Vis.Io
     {
         private const int MaxElementDepth = 128;   // real projects nest ~12 deep; far past that is corrupt input
 
-        private static readonly Regex DeclaredEncoding = new("encoding=[\"']([^\"']+)[\"']", RegexOptions.Compiled);
-
         public static Project Read(Stream stream)
         {
             ArgumentNullException.ThrowIfNull(stream);
-            byte[] bytes = ReadAllBytes(stream);
+            return Read(XmlProlog.ReadAllBytes(stream));
+        }
+
+        public static Project Read(byte[] bytes)
+        {
+            ArgumentNullException.ThrowIfNull(bytes);
             GuardContainer(bytes);
 
             ImmutableDictionary<string, string> inlineDtd;
@@ -113,38 +116,17 @@ namespace Ihc.Vis.Io
 
         private static void GuardDeclaredEncoding(byte[] bytes)
         {
-            // The XML declaration is pure ASCII on the first line; a missing declaration is tolerated (the
-            // XmlReader default is ASCII-compatible), but a declaration naming a foreign encoding would make
-            // the reader's logical values silently disagree with the Latin-1 writer — reject it up front.
-            string head = Encoding.Latin1.GetString(bytes, 0, Math.Min(bytes.Length, 200));
-            if (!head.StartsWith("<?xml", StringComparison.Ordinal))
-            {
-                return;
-            }
-            int declarationEnd = head.IndexOf("?>", StringComparison.Ordinal);
-            if (declarationEnd < 0)
-            {
-                return;   // unterminated declaration — the XmlReader reports it with position info
-            }
-            Match encoding = DeclaredEncoding.Match(head.Substring(0, declarationEnd));
-            if (encoding.Success
-                && !encoding.Groups[1].Value.Equals("ISO-8859-1", StringComparison.OrdinalIgnoreCase))
+            // The XML declaration is pure ASCII on the first line; a missing or unterminated declaration is
+            // tolerated (the XmlReader default is ASCII-compatible / reports it with position info), but a
+            // declaration naming a foreign encoding would make the reader's logical values silently disagree
+            // with the Latin-1 writer — reject it up front.
+            if (XmlProlog.TryGetDeclaredEncoding(XmlProlog.Head(bytes)) is { } declared
+                && !declared.Equals("ISO-8859-1", StringComparison.OrdinalIgnoreCase))
             {
                 throw new ProjectFormatException(
-                    $"The file declares encoding '{encoding.Groups[1].Value}'; .vis files are ISO-8859-1. " +
+                    $"The file declares encoding '{declared}'; .vis files are ISO-8859-1. " +
                     "Re-encode the file as ISO-8859-1 first (note: a re-encoded file will not round-trip byte-identically).");
             }
-        }
-
-        private static byte[] ReadAllBytes(Stream stream)
-        {
-            if (stream is MemoryStream memory)
-            {
-                return memory.ToArray();
-            }
-            using var buffer = new MemoryStream();
-            stream.CopyTo(buffer);
-            return buffer.ToArray();
         }
 
         private static ProjectElement ReadElement(XmlReader reader, int depth)

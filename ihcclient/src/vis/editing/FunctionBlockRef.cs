@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 using Ihc.Vis.Model;
+using Ihc.Vis.Schema;
 namespace Ihc.Vis.Editing
 {
     /// <summary>
@@ -173,13 +174,6 @@ namespace Ihc.Vis.Editing
             return editor.Program(editor.RequireSoleChildId(programsId, "program_simple"));
         }
 
-        // Pin (I/O) resource types are container-bound: they may live only under inputs/outputs, never under a
-        // value-variable container (settings/internalsettings). Value types may live under any container. §6.3.1.
-        private static readonly HashSet<string> PinTypes = new(StringComparer.Ordinal)
-        {
-            "resource_input", "resource_output", "resource_scene",
-        };
-
         private ResourceRef AddResource(string container, string tag, string name, Action<ElementRef>? configure)
         {
             ArgumentNullException.ThrowIfNull(tag);
@@ -197,9 +191,12 @@ namespace Ihc.Vis.Editing
             return resource;
         }
 
+        // Both guards derive from the single pin-binding encoding (PlacementRules.PinContainerFor, §6.3.1) and stay
+        // deliberately open-world beyond it: an unmodeled value type is admitted (the validator warns later), only
+        // the hard mis-placements — a pin outside its bound container, or a nested block — are rejected at the add.
         private static void RequireValueType(string tag, string container)
         {
-            if (PinTypes.Contains(tag) || tag == "functionblock")
+            if (PlacementRules.PinContainerFor(tag) is not null || tag == "functionblock")
             {
                 throw new ArgumentException(
                     $"'{tag}' is a pin/block type; a function block's '{container}' container accepts value variables " +
@@ -207,17 +204,10 @@ namespace Ihc.Vis.Editing
             }
         }
 
-        // Pin types are container-bound in the other direction too (§6.3.1): an output pin under inputs (or an
-        // input pin under outputs) validates as an error and mis-renders in IHC Visual — reject it at the add.
         private static void RequireLegalForContainer(string tag, string container)
         {
-            bool illegal = container switch
-            {
-                "inputs" => tag is "resource_output" or "resource_scene" or "functionblock",
-                "outputs" => tag is "resource_input" or "functionblock",
-                _ => false,   // settings/internalsettings are vetted by RequireValueType
-            };
-            if (illegal)
+            if (tag == "functionblock"
+                || (PlacementRules.PinContainerFor(tag) is { } bound && bound != container))
             {
                 throw new ArgumentException(
                     $"'{tag}' may not live under a function block's '{container}' container (spec ch. 06 §6.3.1).",

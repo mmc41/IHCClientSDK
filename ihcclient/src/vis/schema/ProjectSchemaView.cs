@@ -47,22 +47,30 @@ namespace Ihc.Vis.Schema
             return new ProjectSchemaView(builder.ToImmutable());
         }
 
+        // Grammar → view memo. A CatalogGrammar is immutable (and the built-in catalog interns ~99 distinct grammars
+        // across 173 components), but inserts and builder validations resolve a view per call — the weak table caches
+        // the pure projection once per distinct grammar instance without pinning user-built grammars.
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Ihc.Vis.Model.CatalogGrammar, ProjectSchemaView> byGrammar = new();
+
         /// <summary>Builds a view over a catalog component's structured grammar (registry fallback) — each
-        /// declaration projected directly via <see cref="ElementSchema.FromDeclaration"/>, no text round trip.
-        /// On a lenient-fallback grammar the declarations are the best-effort projection, so exotic user files
-        /// keep their insert semantics.</summary>
+        /// declaration projected directly via <see cref="ElementSchema.FromDeclaration"/>, no text round trip,
+        /// memoized per grammar instance. On a lenient-fallback grammar the declarations are the best-effort
+        /// projection, so exotic user files keep their insert semantics.</summary>
         public static ProjectSchemaView For(Ihc.Vis.Model.CatalogGrammar? grammar)
         {
             if (grammar is null || grammar.Declarations.IsEmpty)
             {
                 return RegistryOnly;
             }
-            var builder = ImmutableDictionary.CreateBuilder<string, ElementSchema>(StringComparer.Ordinal);
-            foreach (Ihc.Vis.Model.GrammarDeclaration declaration in grammar.Declarations)
+            return byGrammar.GetValue(grammar, static g =>
             {
-                builder[declaration.Tag] = ElementSchema.FromDeclaration(declaration);
-            }
-            return new ProjectSchemaView(builder.ToImmutable());
+                var builder = ImmutableDictionary.CreateBuilder<string, ElementSchema>(StringComparer.Ordinal);
+                foreach (Ihc.Vis.Model.GrammarDeclaration declaration in g.Declarations)
+                {
+                    builder[declaration.Tag] = ElementSchema.FromDeclaration(declaration);
+                }
+                return new ProjectSchemaView(builder.ToImmutable());
+            });
         }
 
         /// <summary>The schema for the tag — captured block first, then the static registry — or <c>null</c>.</summary>

@@ -40,8 +40,8 @@ namespace Ihc.Vis.Products
     /// <see cref="ExtendGrammar"/> declaration — cover exotic/open-world families so any product is authorable from code.
     /// <para><b>Opaque tokens (address / icon / product-identifier):</b> these are per-family, fidelity-critical wire
     /// tokens taken verbatim. A GUI does not invent them — it enumerates the legal vocabulary from the catalog seam
-    /// (<see cref="Ihc.Vis.Catalog.ICatalog"/>; the SDK-embedded <c>BuiltInCatalog</c> is the token source once it
-    /// lands) and binds pickers to it, exactly as it already does for the by-handle resource wiring on the block side.</para>
+    /// (<see cref="Ihc.Vis.Catalog.ICatalog"/>, typically the SDK-embedded <c>BuiltInCatalog</c>) and binds pickers
+    /// to it, exactly as it already does for the by-handle resource wiring on the block side.</para>
     /// <para><b>Layering:</b> this is a pure, dependency-free authoring <i>primitive</i>. A GUI backend consumes it and
     /// hands the <see cref="Build()"/> output to the app-service insert door
     /// (<c>project.Edit().Group(..).AddProduct(def)</c> via <see cref="Ihc.Vis.ProjectAppService"/>), which owns the
@@ -359,6 +359,17 @@ namespace Ihc.Vis.Products
         /// </summary>
         public ProjectValidationResult Validate()
         {
+            var findings = CollectErrors();
+            // The grammar↔body advisories (non-blocking warnings; skipped for an Empty grammar) over a preview
+            // body assembled without touching the id allocator — Build() after Validate() must allocate the same ids.
+            findings.AddRange(CatalogGrammarAdvisor.Advise(ComposeRoot(rootId: null, AdvisoryChildren()), grammar));
+            return ProjectValidationResult.FromFindings(findings.ToImmutable());
+        }
+
+        // The blocking (error-severity) preconditions alone — the gate Build() checks without paying for the
+        // advisory body walk it would discard (advisories are warnings and never block a build).
+        private ImmutableArray<ProjectValidationFinding>.Builder CollectErrors()
+        {
             var findings = ImmutableArray.CreateBuilder<ProjectValidationFinding>();
             if (string.IsNullOrEmpty(productIdentifier) || string.IsNullOrEmpty(bodyName ?? displayName)
                 || TypeCode.ForTag(rootTag) is null)
@@ -379,10 +390,7 @@ namespace Ihc.Vis.Products
                         child.GetAttribute("name"), "A resource_enum has no typedef wired to an enum_definition."));
                 }
             }
-            // The grammar↔body advisories (non-blocking warnings; skipped for an Empty grammar) over a preview
-            // body assembled without touching the id allocator — Build() after Validate() must allocate the same ids.
-            findings.AddRange(CatalogGrammarAdvisor.Advise(ComposeRoot(rootId: null, AdvisoryChildren()), grammar));
-            return ProjectValidationResult.FromFindings(findings.ToImmutable());
+            return findings;
         }
 
         // The scenes stub mirrors what Build() will emit (name + scene_resource binding) without allocating its id.
@@ -407,10 +415,9 @@ namespace Ihc.Vis.Products
         /// <see cref="Validate"/> would report an error — call <see cref="Validate"/> first for non-throwing UI feedback.</summary>
         public ProductDefinition Build()
         {
-            ProjectValidationResult validation = Validate();
-            if (!validation.IsValid)
+            if (CollectErrors().Count > 0)
             {
-                throw new ProjectValidationException(validation);
+                throw new ProjectValidationException(Validate());   // full result, advisories included
             }
 
             var childElements = new List<ProjectElement>(children);
@@ -497,13 +504,14 @@ namespace Ihc.Vis.Products
         /// <summary>Sets the resource address token, resolved to the family's address attribute from the resource's
         /// element tag (<c>address_dataline</c> for dataline pins, <c>address_channel</c> for airlink/rs485 channels,
         /// <c>address</c> for modems). Use <see cref="Attribute"/> for an exotic family's address attribute.</summary>
-        public ProductResourceDefBuilder Address(string addressToken)
-        {
-            string attribute = tag.StartsWith("dataline_", StringComparison.Ordinal) ? "address_dataline"
-                : tag.StartsWith("airlink_", StringComparison.Ordinal) ? "address_channel"
-                : "address";
-            return Set(attribute, addressToken);
-        }
+        public ProductResourceDefBuilder Address(string addressToken) => Set(AddressAttributeFor(tag), addressToken);
+
+        // The family-to-attribute resolution Address uses — internal so the catalog decompiler recognises the
+        // attribute .Address would produce for a resource's family without re-encoding this map.
+        internal static string AddressAttributeFor(string tag) =>
+            tag.StartsWith("dataline_", StringComparison.Ordinal) ? "address_dataline"
+            : tag.StartsWith("airlink_", StringComparison.Ordinal) ? "address_channel"
+            : "address";
 
         /// <summary>Sets the cable colour.</summary>
         public ProductResourceDefBuilder CableColour(string colour) => Set("cable_colour", colour);

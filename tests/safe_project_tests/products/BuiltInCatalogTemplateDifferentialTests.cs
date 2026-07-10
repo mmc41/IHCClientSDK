@@ -21,15 +21,8 @@ namespace Ihc.Vis.Tests
     /// </remarks>
     public class BuiltInCatalogTemplateDifferentialTests
     {
-        private static ICatalog Installed()
-        {
-            string? dir = ResolveCompleteInstall();
-            if (dir is null)
-            {
-                Assert.Ignore("No complete IHC Visual install available; skipping install-gated template differential.");
-            }
-            return CatalogDiscovery.FromInstallDir(dir!);
-        }
+        private static ICatalog Installed() =>
+            VendorCorpus.InstalledOrIgnore(VendorCorpus.ResolveInstallThenCorpus(), "template differential");
 
         [Test]
         public void NewProjectSkeleton_MatchesInstallDir()
@@ -66,51 +59,8 @@ namespace Ihc.Vis.Tests
             });
         }
 
-        private static void AssertStructural(ProjectElement expected, ProjectElement actual)
-        {
-            if (!expected.Equals(actual))
-            {
-                Assert.Fail("Structural mismatch between the code-authored template and the install-dir file.\n"
-                            + "EXPECTED (install):\n" + DefinitionNormalizer.Dump(expected)
-                            + "\nACTUAL (built):\n" + DefinitionNormalizer.Dump(actual));
-            }
-        }
-
-        // Prefer a configured, complete install; otherwise the repo corpus (dev tree); otherwise null → skip.
-        private static string? ResolveCompleteInstall()
-        {
-            if (IsCompleteInstall(TestSetup.Settings.IhcVisualInstallDir))
-            {
-                return TestSetup.Settings.IhcVisualInstallDir;
-            }
-            string? root = FindRepoRoot(TestContext.CurrentContext.TestDirectory);
-            if (root is not null)
-            {
-                string corpus = Path.Combine(root, "tmp", "orginstall", "LK IHC Control", "IHC Visual");
-                if (IsCompleteInstall(corpus))
-                {
-                    return corpus;
-                }
-            }
-            return null;
-        }
-
-        private static bool IsCompleteInstall(string? dir) =>
-            !string.IsNullOrWhiteSpace(dir)
-            && Directory.Exists(Path.Combine(dir, "Products"))
-            && Directory.Exists(Path.Combine(dir, "FunctionBlocks"))
-            && Directory.Exists(Path.Combine(dir, "Data"));
-
-        private static string? FindRepoRoot(string start)
-        {
-            for (DirectoryInfo? dir = new(start); dir is not null; dir = dir.Parent)
-            {
-                if (File.Exists(Path.Combine(dir.FullName, "IHCClientSDK.sln")))
-                {
-                    return dir.FullName;
-                }
-            }
-            return null;
-        }
+        private static void AssertStructural(ProjectElement expected, ProjectElement actual) =>
+            VendorCorpus.AssertStructural(
+                "Structural mismatch between the code-authored template and the install-dir file.", expected, actual);
     }
 }

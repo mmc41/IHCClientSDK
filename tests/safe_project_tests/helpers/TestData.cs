@@ -11,8 +11,17 @@ namespace Ihc.Vis.Tests
     /// </summary>
     internal static class TestData
     {
+        // Oracle bytes cached per name across the suite (the 236 KB project3 oracle alone is read by dozens of
+        // tests); cloned per call so a test mutating its buffer can never poison another.
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte[]> Cache =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>The absolute path of a file or directory under the copied <c>testdata</c> tree.</summary>
+        public static string PathOf(params string[] parts) =>
+            Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", Path.Combine(parts));
+
         public static byte[] ReadBytes(string name) =>
-            File.ReadAllBytes(Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", name));
+            (byte[])Cache.GetOrAdd(name, n => File.ReadAllBytes(PathOf(n))).Clone();
 
         public static void AssertBytesIdentical(byte[] expected, byte[] actual, string label)
         {

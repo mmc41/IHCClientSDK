@@ -16,8 +16,7 @@ namespace Ihc.Vis.Tests
     {
         internal static (ProjectElement Body, ImmutableDictionary<string, string> Blocks) Read(string relativePath)
         {
-            byte[] bytes = File.ReadAllBytes(
-                Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", relativePath));
+            byte[] bytes = TestData.ReadBytes(relativePath);
             using var stream = new MemoryStream(bytes);
             ProjectElement body = CatalogReader.Read(stream);
             return (body, InlineDtd.Capture(bytes));
@@ -76,8 +75,7 @@ namespace Ihc.Vis.Tests
 
         private static void AssertBytesEquivalent(byte[] written, string oraclePath)
         {
-            byte[] expected = File.ReadAllBytes(
-                Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", oraclePath));
+            byte[] expected = TestData.ReadBytes(oraclePath);
             if (!CatalogTextCompare.Equivalent(expected, written))
             {
                 int offset = CatalogTextCompare.FirstDifference(expected, written);

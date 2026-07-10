@@ -7,16 +7,18 @@ using System.Linq;
 namespace Ihc.Vis.Model
 {
     /// <summary>
-    /// The single, generic, immutable node every <c>.vis</c> element uses: a <see cref="Tag"/>, an
-    /// optional <see cref="Id"/>, an ordered attribute bag (logical/unescaped values, in registry
-    /// order) and ordered <see cref="Children"/>. Every element type — root, group, product,
-    /// function block, resource, program leaf — shares this one shape.
+    /// The single, generic, immutable node every <c>.vis</c> and catalog-file (<c>.def</c>/<c>.ifb</c>) element
+    /// uses: a <see cref="Tag"/>, an optional <see cref="Id"/>, an ordered attribute bag (logical/unescaped
+    /// values) and ordered <see cref="Children"/>. Every element type — root, group, product, function block,
+    /// resource, program leaf — shares this one shape. Bag order is meaningful: registry (ATTLIST) order in a
+    /// canonicalized project tree, authored/source order in a catalog definition body (which the catalog writer
+    /// emits verbatim, presence and order preserved).
     /// </summary>
     /// <remarks>
-    /// This is the shape the writer/reader/insert-transform all operate on, and the shape that holds
+    /// This is the shape the writers/readers/insert-transform all operate on, and the shape that holds
     /// deep-copied catalog subtrees verbatim, so attributes added by newer IHC Visual
     /// versions are preserved rather than dropped. The wire-format facts (ATTLIST order, defaults,
-    /// rendering) live in the schema registry, never on the node.
+    /// rendering) live in the schema registry and the definition's <see cref="CatalogGrammar"/>, never on the node.
     /// </remarks>
     public sealed record ProjectElement(
         string Tag,
@@ -67,6 +69,24 @@ namespace Ihc.Vis.Model
         }
 
         /// <summary>
+        /// Returns a copy of a raw attribute bag with the named attribute set: replaced in place when present,
+        /// appended at the end when absent — the bag-level peer of <see cref="WithAttribute"/> for callers that
+        /// hold a bag before an element is built (see <see cref="GetAttribute(ImmutableArray{ValueTuple{string, string}}, string)"/>).
+        /// </summary>
+        internal static ImmutableArray<(string Name, string Value)> SetAttribute(
+            ImmutableArray<(string Name, string Value)> attrs, string name, string value)
+        {
+            for (int i = 0; i < attrs.Length; i++)
+            {
+                if (attrs[i].Name == name)
+                {
+                    return attrs.SetItem(i, (name, value));
+                }
+            }
+            return attrs.Add((name, value));
+        }
+
+        /// <summary>
         /// Returns a copy with the named attribute set: the existing entry is replaced in place (registry order
         /// preserved) or, when absent, appended at the end.
         /// </summary>
@@ -113,6 +133,18 @@ namespace Ihc.Vis.Model
         public IReadOnlyList<ProjectElement> Descendants()
         {
             var acc = new List<ProjectElement>();
+            Collect(this, acc);
+            return acc;
+        }
+
+        /// <summary>
+        /// This element followed by every descendant in document order (depth-first, pre-order) — the
+        /// root-inclusive companion of <see cref="Descendants"/>, for collectors that project or filter
+        /// over a whole subtree.
+        /// </summary>
+        public IReadOnlyList<ProjectElement> DescendantsAndSelf()
+        {
+            var acc = new List<ProjectElement> { this };
             Collect(this, acc);
             return acc;
         }

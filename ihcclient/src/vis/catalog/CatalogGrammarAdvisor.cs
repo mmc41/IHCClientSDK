@@ -114,13 +114,12 @@ namespace Ihc.Vis.Catalog
 
         private static void CollectIds(ProjectElement element, HashSet<string> ids, HashSet<string> duplicates)
         {
-            if (element.GetAttribute("id") is { } id && !ids.Add(id))
+            foreach (ProjectElement e in element.DescendantsAndSelf())
             {
-                duplicates.Add(id);
-            }
-            foreach (ProjectElement child in element.ChildrenOrEmpty())
-            {
-                CollectIds(child, ids, duplicates);
+                if (e.GetAttribute("id") is { } id && !ids.Add(id))
+                {
+                    duplicates.Add(id);
+                }
             }
         }
 

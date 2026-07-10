@@ -8,18 +8,20 @@ using Ihc.Vis.Model;
 namespace Ihc.Vis.FunctionBlocks
 {
     /// <summary>
-    /// A function-block type auto-discovered from a <c>FunctionBlocks\*.ifb</c> catalog file under the
-    /// configured IHC Visual install dir. The <see cref="Body"/> is the parsed <c>functionblock</c>
-    /// subtree (with placeholder ids) that the insert transform deep-copies into a project.
+    /// A function-block type definition — materialized by the SDK-embedded
+    /// <see cref="Ihc.Vis.Catalog.BuiltInCatalog"/>, authored from code via
+    /// <see cref="FunctionBlockDefinitionBuilder"/>, or read from a <c>FunctionBlocks\*.ifb</c> catalog file. The
+    /// <see cref="Body"/> is the raw <c>functionblock</c> subtree (placeholder ids, attributes in authored/source
+    /// order) that the insert transform deep-copies into a project and
+    /// <see cref="Ihc.Vis.Catalog.CatalogFileWriter"/> re-emits as a catalog file.
     /// </summary>
     /// <remarks>
-    /// This is the function-block-level <b>type definition</b> model. Today it is produced by catalog discovery
-    /// from an <c>.ifb</c> file; <see cref="FunctionBlockDefinitionBuilder"/> in this <c>Ihc.Vis.FunctionBlocks</c>
-    /// namespace — the function-block-level peer of <see cref="Ihc.Vis.Projects.NewProjectBuilder"/> — will
-    /// additionally author one from code (its surface is defined; the implementation lands in a later session), so
-    /// the SDK need not depend on the IHC Visual desktop application for function-block definitions. Distinct from
-    /// the edit-session instance handle
-    /// <see cref="Ihc.Vis.Editing.FunctionBlockRef"/>, which manipulates a block already placed in a project.
+    /// This is the function-block-level <b>type definition</b> model, distinct from the edit-session instance
+    /// handle <see cref="Ihc.Vis.Editing.FunctionBlockRef"/>, which manipulates a block already placed in a
+    /// project. Every producer — a generated <see cref="Ihc.Vis.Catalog.BuiltInCatalog"/> factory, a hand-authored
+    /// builder, and <see cref="Ihc.Vis.Catalog.CatalogReader"/> on a file — yields this same raw shape, so
+    /// insertion and catalog write fidelity hold identically regardless of provenance, and the SDK needs no
+    /// IHC Visual desktop install.
     /// </remarks>
     /// <param name="MasterType">The catalog key, e.g. <c>1.1.01</c> (the <c>master_type</c> attribute).</param>
     /// <param name="MasterVersion">The variant letter, e.g. <c>e</c> (the <c>master_version</c> attribute).</param>

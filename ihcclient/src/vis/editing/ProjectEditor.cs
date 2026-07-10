@@ -9,6 +9,7 @@ using System.Linq;
 using Ihc.Vis.Catalog;
 using Ihc.Vis.Io;
 using Ihc.Vis.Model;
+using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Schema;
 using Ihc.Vis.Validation;
@@ -417,7 +418,7 @@ namespace Ihc.Vis.Editing
             }
             var seen = new HashSet<string>(StringComparer.Ordinal);
             var stubs = new List<ProjectElement>();
-            foreach (ProjectElement element in new[] { source }.Concat(source.Descendants()))
+            foreach (ProjectElement element in source.DescendantsAndSelf())
             {
                 if (element.GetAttribute("typedef") is { } typedef && typedef != "_0x0" && seen.Add(typedef)
                     && container.ChildrenOrEmpty().FirstOrDefault(d => d.GetAttribute("id") == typedef) is { } def)
@@ -548,9 +549,10 @@ namespace Ihc.Vis.Editing
 
         /// <summary>
         /// Renders an element's human-readable location as <c>locality / product-or-block / pin</c> — the
-        /// significant ancestors (a <c>group</c>, a <c>product_*</c> or a <c>functionblock</c>) followed by the
-        /// element's own name, skipping structural containers (<c>inputs</c>/<c>outputs</c>/…). Empty when the id is
-        /// absent. Used for the "Link fra…" far-end decoration.
+        /// significant ancestors (a <c>group</c>, a <c>functionblock</c> or a device root per
+        /// <see cref="PlacementRules.IsDeviceRoot"/>) followed by the element's own name, skipping structural
+        /// containers (<c>inputs</c>/<c>outputs</c>/…). Empty when the id is absent. Used for the "Link fra…"
+        /// far-end decoration.
         /// </summary>
         public string GetFullPath(ElementId elementId)
         {
@@ -572,7 +574,7 @@ namespace Ihc.Vis.Editing
         }
 
         private static bool IsPathSignificant(string tag) =>
-            tag is "group" or "functionblock" || tag.StartsWith("product_", StringComparison.Ordinal);
+            tag is "group" or "functionblock" || PlacementRules.IsDeviceRoot(tag);
 
         private static ProjectElement? FindParentOf(ProjectElement element, ElementId childId)
         {
@@ -754,7 +756,7 @@ namespace Ihc.Vis.Editing
             }
             ElementId id = allocator.Allocate(TypeCode.RequireForTag("scenes"));
             ProjectElement scenes = SimpleElement("scenes", id,
-                ("name", "Scenarier"), ("scene_resource", outputId.ToToken()));
+                ("name", ProductDefinitionBuilder.DefaultScenesName), ("scene_resource", outputId.ToToken()));
             AppendChild(productId, scenes);
         }
 
@@ -777,7 +779,7 @@ namespace Ihc.Vis.Editing
         internal ElementId? FindDescendantIdByName(ElementId rootId, string name, params string[] tags)
         {
             ProjectElement start = Require(rootId);
-            return FindDescendant(start, e => e.GetAttribute("name") == name
+            return start.FindDescendantOrSelf(e => e.GetAttribute("name") == name
                 && (tags.Length == 0 || tags.Contains(e.Tag)))?.Id;
         }
 
@@ -856,53 +858,38 @@ namespace Ihc.Vis.Editing
 
         private static void CollectLinkPartners(ProjectElement element, List<ElementId> partners)
         {
-            if (ReciprocalHalfTags.Contains(element.Tag)
-                && ElementId.TryParse(element.GetAttribute("link"), out ElementId partner))
+            foreach (ProjectElement e in element.DescendantsAndSelf())
             {
-                partners.Add(partner);
-            }
-            if (element.Children.IsDefaultOrEmpty)
-            {
-                return;
-            }
-            foreach (ProjectElement child in element.Children)
-            {
-                CollectLinkPartners(child, partners);
+                if (ReciprocalHalfTags.Contains(e.Tag)
+                    && ElementId.TryParse(e.GetAttribute("link"), out ElementId partner))
+                {
+                    partners.Add(partner);
+                }
             }
         }
 
         private static void CollectIds(ProjectElement element, HashSet<ElementId> ids)
         {
-            if (element.Id is { } id)
+            foreach (ProjectElement e in element.DescendantsAndSelf())
             {
-                ids.Add(id);
-            }
-            if (element.Children.IsDefaultOrEmpty)
-            {
-                return;
-            }
-            foreach (ProjectElement child in element.Children)
-            {
-                CollectIds(child, ids);
+                if (e.Id is { } id)
+                {
+                    ids.Add(id);
+                }
             }
         }
 
         private static void CollectExternalLinkHalves(ProjectElement element, HashSet<ElementId> insideIds, List<ElementId> external)
         {
-            if (element.Tag is "link_from_resource" or "link_to_resource"
-                && element.Id is { } halfId
-                && ElementId.TryParse(element.GetAttribute("link"), out ElementId partner)
-                && !insideIds.Contains(partner))
+            foreach (ProjectElement e in element.DescendantsAndSelf())
             {
-                external.Add(halfId);                      // reciprocal partner lies outside the copied subtree
-            }
-            if (element.Children.IsDefaultOrEmpty)
-            {
-                return;
-            }
-            foreach (ProjectElement child in element.Children)
-            {
-                CollectExternalLinkHalves(child, insideIds, external);
+                if (e.Tag is "link_from_resource" or "link_to_resource"
+                    && e.Id is { } halfId
+                    && ElementId.TryParse(e.GetAttribute("link"), out ElementId partner)
+                    && !insideIds.Contains(partner))
+                {
+                    external.Add(halfId);                  // reciprocal partner lies outside the copied subtree
+                }
             }
         }
 
@@ -945,47 +932,8 @@ namespace Ihc.Vis.Editing
             root = updated;
         }
 
-        private static ProjectElement? FindById(ProjectElement element, ElementId id)
-        {
-            if (element.Id == id)
-            {
-                return element;
-            }
-            if (element.Children.IsDefaultOrEmpty)
-            {
-                return null;
-            }
-            foreach (ProjectElement child in element.Children)
-            {
-                ProjectElement? found = FindById(child, id);
-                if (found is not null)
-                {
-                    return found;
-                }
-            }
-            return null;
-        }
-
-        private static ProjectElement? FindDescendant(ProjectElement element, Func<ProjectElement, bool> predicate)
-        {
-            if (predicate(element))
-            {
-                return element;
-            }
-            if (element.Children.IsDefaultOrEmpty)
-            {
-                return null;
-            }
-            foreach (ProjectElement child in element.Children)
-            {
-                ProjectElement? found = FindDescendant(child, predicate);
-                if (found is not null)
-                {
-                    return found;
-                }
-            }
-            return null;
-        }
+        private static ProjectElement? FindById(ProjectElement element, ElementId id) =>
+            element.FindDescendantOrSelf(e => e.Id == id);
 
         private static ProjectElement ReplaceById(ProjectElement element, ElementId id,
             Func<ProjectElement, ProjectElement> map, out bool found)

@@ -19,10 +19,11 @@ namespace Ihc.Vis.Catalog
     /// to that materialized value, which is the point at which the catalog is actually built.
     /// </summary>
     /// <remarks>
-    /// <para><b>Deferred materialization.</b> Building ~173 components is not free, and a <c>BuiltInCatalog</c> may be
-    /// constructed (e.g. wrapped in a <c>CompositeCatalog</c>) long before — or without ever — being queried. So the
-    /// <see cref="MaterializedCatalog"/> is built lazily on first member access; the forwarding members exist to
-    /// trigger that deferral, not as gratuitous pass-throughs.</para>
+    /// <para><b>Deferred, shared materialization.</b> Building ~173 components is not free, and a <c>BuiltInCatalog</c>
+    /// may be constructed (e.g. wrapped in a <c>CompositeCatalog</c>) long before — or without ever — being queried. So
+    /// the <see cref="MaterializedCatalog"/> is built lazily on first member access; and because its content is 100%
+    /// deterministic code-authored data, the one materialization is process-wide — every instance forwards to the same
+    /// immutable value instead of re-running the factories.</para>
     /// <para><b>Extension points.</b> This is a <c>partial</c> class. Generated files implement
     /// <see cref="RegisterProducts"/> / <see cref="RegisterFunctionBlocks"/> (the hooks the catalog plans call
     /// <c>AllProducts()</c>/<c>AllFunctionBlocks()</c>) to append their factory outputs, and a hand-authored Phase C
@@ -32,7 +33,10 @@ namespace Ihc.Vis.Catalog
     /// </remarks>
     public sealed partial class BuiltInCatalog : ICatalog
     {
-        private readonly Lazy<MaterializedCatalog> materialized;
+        // One process-wide materialization: the factory instance below exists only as the build context the partial
+        // registration hooks write into; every BuiltInCatalog instance forwards to the same immutable value.
+        private static readonly Lazy<MaterializedCatalog> materialized =
+            new(() => new BuiltInCatalog().Materialize(), LazyThreadSafetyMode.ExecutionAndPublication);
 
         // File→New templates, reassigned by AuthorTemplates() (Phase C) before Materialize() reads them. The empty
         // defaults keep the catalog materializable while Phase C is outstanding; the Phase C byte tests are what
@@ -40,11 +44,6 @@ namespace Ihc.Vis.Catalog
         private ProjectElement newProjectSkeleton = EmptyElement("project");
         private ProjectElement builtInEnumerators = EmptyElement("enum_definitions");
         private FunctionBlockDefinition emptyFunctionBlockTemplate = EmptyBlockTemplate();
-
-        public BuiltInCatalog()
-        {
-            materialized = new Lazy<MaterializedCatalog>(Materialize, LazyThreadSafetyMode.ExecutionAndPublication);
-        }
 
         private MaterializedCatalog Materialize()
         {

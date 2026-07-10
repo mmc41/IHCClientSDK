@@ -134,12 +134,8 @@ namespace Ihc.Vis
             {
                 try
                 {
-                    await using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
-                                                          bufferSize: 4096, useAsync: true);
-                    using var buffer = new MemoryStream();
-                    await file.CopyToAsync(buffer).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    buffer.Position = 0;
-                    Project project = ProjectReader.Read(buffer);
+                    byte[] bytes = await File.ReadAllBytesAsync(path).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    Project project = ProjectReader.Read(bytes);
                     activity?.SetReturnValue(project);
                     return project;
                 }

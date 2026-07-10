@@ -15,11 +15,11 @@ namespace Ihc.Vis.FunctionBlocks
     /// <see cref="FbProgramBuilder"/> emit identical structural decorations (D.R.Y).
     /// </summary>
     /// <remarks>
-    /// These constants are transcribed locally rather than reused from <c>Ihc.Vis.Editing.ProgramGrammar</c>: the
-    /// <c>Editing</c> layer already depends on <c>FunctionBlocks</c> (via <see cref="FbResourceHandle"/>'s reason for
-    /// existing), so <c>FunctionBlocks</c> must not depend back on it. The strings differ from the editing peer's too
-    /// — the notes here match the authentic <c>FunctionBlocks\*.ifb</c> convention (the synthetic oracle set), whereas
-    /// <c>ProgramGrammar</c>'s were transcribed from a project-embedded custom block. Only the <c>inputs</c>/<c>outputs</c>
+    /// This is the single transcription of the shared vendor constants: <c>Ihc.Vis.Editing.ProgramGrammar</c> (the
+    /// layer above — <c>Editing</c> already depends on <c>FunctionBlocks</c> via <see cref="FbResourceHandle"/>)
+    /// aliases the icons/names/branch-type it shares with this table, keeping only its genuinely divergent container
+    /// notes local: those were transcribed from a project-embedded custom block, whereas the notes here match the
+    /// authentic <c>FunctionBlocks\*.ifb</c> convention (the synthetic oracle set). Only the <c>inputs</c>/<c>outputs</c>
     /// container notes vary per block; the caller overrides those via
     /// <see cref="FunctionBlockDefinitionBuilder.InputsNote"/>/<see cref="FunctionBlockDefinitionBuilder.OutputsNote"/>.
     /// </remarks>
@@ -81,7 +81,6 @@ namespace Ihc.Vis.FunctionBlocks
         // container. Icons match the program_sub / actions glyphs; the default-branch name/note are the vendor strings.
         public const string ProgramCaseIcon = "_0x7";
         public const string CaseActionIcon = "_0x8";
-        public const string CaseActionName = "Case";
         public const string DefaultCaseName = "Udføres når ingen case er lig case værdien";
         public const string DefaultCaseNote = "Udføres når ingen case er lig case værdien";
         public const string DefaultCaseType = "_0x1";
@@ -96,50 +95,6 @@ namespace Ihc.Vis.FunctionBlocks
             : $"{masterType}.{masterVersion}. {masterName}";
 
         private static readonly ProjectElement[] NoChildren = Array.Empty<ProjectElement>();
-
-        // The per-resource-type presentation attributes IHC Visual stamps on a freshly-authored resource: the canonical
-        // GUI icon, plus the #REQUIRED value initials for the value types that carry them. Transcribed locally rather
-        // than reused from Ihc.Vis.Editing.ResourceMaterialization (FunctionBlocks must not depend on Editing); keep in
-        // sync with that table. A type absent here keeps its DTD-default icon (_0x0, elided on save).
-        private static readonly Dictionary<string, string> ResourceIcons = new(StringComparer.Ordinal)
-        {
-            ["resource_enum"] = "_0x22",
-            ["resource_input"] = "_0x36",
-            ["resource_output"] = "_0x39",
-            ["resource_timer"] = "_0x43",
-            ["resource_flag"] = "_0x33",
-            ["resource_time"] = "_0x2f",
-            ["resource_date"] = "_0x29",
-            ["resource_weekday"] = "_0x2c",
-            ["resource_timertime"] = "_0x4d",
-            ["resource_holiday"] = "_0x9b",
-        };
-
-        private static readonly Dictionary<string, (string Name, string Value)[]> ResourceRequiredValues =
-            new(StringComparer.Ordinal)
-            {
-                ["resource_date"] = new[] { ("year", "2000"), ("month", "1"), ("day", "1") },
-                ["resource_time"] = new[] { ("hour", "0"), ("minute", "0"), ("second", "0") },
-                ["resource_timer"] = new[] { ("hour", "0"), ("minute", "0"), ("second", "0"), ("millisecond", "0") },
-                ["resource_timertime"] = new[] { ("hour", "0"), ("minute", "0"), ("second", "0"), ("millisecond", "0") },
-            };
-
-        /// <summary>The presentation attributes a hand-authored resource of <paramref name="tag"/> carries: the
-        /// canonical icon (when any) followed by the type's <c>#REQUIRED</c> value initials. Caller attributes are
-        /// applied after these and win on any name collision.</summary>
-        public static IReadOnlyList<(string Name, string Value)> NewResourceDefaults(string tag)
-        {
-            (string Name, string Value)[] required = ResourceRequiredValues.TryGetValue(tag, out (string Name, string Value)[]? values)
-                ? values
-                : Array.Empty<(string, string)>();
-            if (!ResourceIcons.TryGetValue(tag, out string? icon))
-            {
-                return required;
-            }
-            var defaults = new List<(string Name, string Value)>(required.Length + 1) { ("icon", icon) };
-            defaults.AddRange(required);
-            return defaults;
-        }
 
         /// <summary>Allocates a fresh id for <paramref name="tag"/> and builds a container node with the fixed
         /// name/icon plus <paramref name="note"/>, holding <paramref name="children"/>.</summary>

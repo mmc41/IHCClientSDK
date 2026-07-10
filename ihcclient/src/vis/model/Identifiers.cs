@@ -28,6 +28,12 @@ namespace Ihc.Vis.Model
             TryParseValue(token, out long value) ? value : fallback;
     }
 
+    /// <summary>Shared invariant-decimal rendering for numeric <c>.vis</c> attribute values (dates, times, indexes).</summary>
+    internal static class DecToken
+    {
+        public static string Format(int value) => value.ToString(CultureInfo.InvariantCulture);
+    }
+
     /// <summary>
     /// A strongly-typed `.vis` element identifier. An id encodes <c>(Counter &lt;&lt; 8) | TypeCode</c>
     /// (spec ch. 02); the low byte is a constant per element type and the high bits are a

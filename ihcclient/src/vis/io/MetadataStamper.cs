@@ -36,15 +36,13 @@ namespace Ihc.Vis.Io
         private static ProjectElement SetModified(ProjectElement modified, DateTimeOffset now)
         {
             ProjectElement result = modified;
-            result = result.WithAttribute("year", Dec(now.Year));
-            result = result.WithAttribute("month", Dec(now.Month));
-            result = result.WithAttribute("day", Dec(now.Day));
-            result = result.WithAttribute("hour", Dec(now.Hour));
-            result = result.WithAttribute("minute", Dec(now.Minute));
+            result = result.WithAttribute("year", DecToken.Format(now.Year));
+            result = result.WithAttribute("month", DecToken.Format(now.Month));
+            result = result.WithAttribute("day", DecToken.Format(now.Day));
+            result = result.WithAttribute("hour", DecToken.Format(now.Hour));
+            result = result.WithAttribute("minute", DecToken.Format(now.Minute));
             return result;
         }
-
-        private static string Dec(int value) => value.ToString(CultureInfo.InvariantCulture);
 
         /// <summary>Returns a copy of <paramref name="parent"/> with its first child of the given tag transformed.</summary>
         private static ProjectElement MapChild(ProjectElement parent, string tag, Func<ProjectElement, ProjectElement> map)

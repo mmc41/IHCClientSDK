@@ -109,7 +109,7 @@ namespace Ihc.Vis.Editing
                 ElementId allocated = allocator.Allocate(code);
                 idMap[oldId] = allocated.ToToken();
                 newId = allocated;
-                attrs = SetAttribute(attrs, "id", allocated.ToToken());
+                attrs = ProjectElement.SetAttribute(attrs, "id", allocated.ToToken());
             }
 
             if (isRoot)
@@ -119,7 +119,7 @@ namespace Ihc.Vis.Editing
 
             if (ResourceMaterialization.Icon(element.Tag) is { } canonicalIcon)
             {
-                attrs = SetAttribute(attrs, "icon", canonicalIcon);   // vendor stamps the per-resource-type GUI icon on insert
+                attrs = ProjectElement.SetAttribute(attrs, "icon", canonicalIcon);   // vendor stamps the per-resource-type GUI icon on insert
             }
 
             attrs = StampRequiredNullTokens(attrs, element.Tag, view);   // #REQUIRED-yet-empty → null token "_0x0"
@@ -255,9 +255,9 @@ namespace Ihc.Vis.Editing
                 {
                     idMap[oldValueId] = valueId.ToToken();
                 }
-                values.Add(value with { Id = valueId, Attrs = SetAttribute(value.AttrsOrEmpty(), "id", valueId.ToToken()) });
+                values.Add(value with { Id = valueId, Attrs = ProjectElement.SetAttribute(value.AttrsOrEmpty(), "id", valueId.ToToken()) });
             }
-            hoisted.Add(stub with { Id = defId, Attrs = SetAttribute(stub.AttrsOrEmpty(), "id", defId.ToToken()), Children = values.ToImmutable() });
+            hoisted.Add(stub with { Id = defId, Attrs = ProjectElement.SetAttribute(stub.AttrsOrEmpty(), "id", defId.ToToken()), Children = values.ToImmutable() });
         }
 
         /// <summary>Finds the value inside <paramref name="existingDef"/> that the stub value maps to: by typeid when present, else by name.</summary>
@@ -266,10 +266,33 @@ namespace Ihc.Vis.Editing
             string? typeid = value.GetAttribute("typeid");
             if (typeid is not null && typeid != "_0x0")
             {
-                return FindValueByTypeid(existingDef, typeid);
+                return FindValueBy(existingDef, "typeid", typeid);
             }
             string? name = value.GetAttribute("name");
-            return name is null ? null : FindValueByName(existingDef, name);
+            return name is null ? null : FindValueBy(existingDef, "name", name);
+        }
+
+        // The one attribute-rewrite tree walk the four insert-normalization passes share: applies the rule
+        // (schema, name, value → rewritten value, or null to keep) to every attribute of every element in the
+        // subtree, pre-order. The per-pass rules stay tiny and fidelity-critical; the traversal lives once.
+        private static ProjectElement RewriteAttributes(ProjectElement element, ProjectSchemaView? view,
+            Func<ElementSchema?, string, string, string?> rule)
+        {
+            ElementSchema? schema = view?.TryGet(element.Tag);
+            ImmutableArray<(string Name, string Value)> attrs = element.AttrsOrEmpty();
+            for (int i = 0; i < attrs.Length; i++)
+            {
+                if (rule(schema, attrs[i].Name, attrs[i].Value) is { } rewritten)
+                {
+                    attrs = attrs.SetItem(i, (attrs[i].Name, rewritten));
+                }
+            }
+
+            ImmutableArray<ProjectElement> children = element.Children.IsDefaultOrEmpty
+                ? ImmutableArray<ProjectElement>.Empty
+                : element.Children.Select(c => RewriteAttributes(c, view, rule)).ToImmutableArray();
+
+            return element with { Attrs = attrs, Children = children };
         }
 
         /// <summary>
@@ -277,27 +300,10 @@ namespace Ihc.Vis.Editing
         /// attribute name), recursing into children. Reused by <see cref="ProjectEditor.NormalizeCatalogEnums"/> to
         /// repoint <c>resource_enum</c> references at the re-hoisted catalog enums.
         /// </summary>
-        internal static ProjectElement RemapIdRefs(ProjectElement element, Dictionary<string, string> idMap, ProjectSchemaView view)
-        {
-            ElementSchema? schema = view.TryGet(element.Tag);
-            ImmutableArray<(string Name, string Value)> attrs = element.AttrsOrEmpty();
-            if (schema is not null && !attrs.IsDefaultOrEmpty)
-            {
-                for (int i = 0; i < attrs.Length; i++)
-                {
-                    if (schema.IsIdRef(attrs[i].Name) && idMap.TryGetValue(attrs[i].Value, out string? mapped))
-                    {
-                        attrs = attrs.SetItem(i, (attrs[i].Name, mapped));
-                    }
-                }
-            }
-
-            ImmutableArray<ProjectElement> children = element.Children.IsDefaultOrEmpty
-                ? ImmutableArray<ProjectElement>.Empty
-                : element.Children.Select(c => RemapIdRefs(c, idMap, view)).ToImmutableArray();
-
-            return element with { Attrs = attrs, Children = children };
-        }
+        internal static ProjectElement RemapIdRefs(ProjectElement element, Dictionary<string, string> idMap, ProjectSchemaView view) =>
+            RewriteAttributes(element, view, (schema, name, value) =>
+                schema is not null && schema.IsIdRef(name) && idMap.TryGetValue(value, out string? mapped)
+                    ? mapped : null);
 
         /// <summary>
         /// Reconciles a freshly-inserted subtree's numeric attribute precision with the project's: for each attribute
@@ -307,27 +313,10 @@ namespace Ihc.Vis.Editing
         /// default <c>"0"</c>, while a temperature's <c>"20.00"</c> is preserved against <c>"0.00"</c>). Applied only
         /// to the inserted subtree, so loaded elements keep their on-disk precision (round-trip fidelity).
         /// </summary>
-        private static ProjectElement NormalizeNumerics(ProjectElement element, ProjectSchemaView view)
-        {
-            ElementSchema? schema = view.TryGet(element.Tag);
-            ImmutableArray<(string Name, string Value)> attrs = element.AttrsOrEmpty();
-            if (schema is not null && !attrs.IsDefaultOrEmpty)
-            {
-                for (int i = 0; i < attrs.Length; i++)
-                {
-                    if (TryNormalizeToDefaultPrecision(schema, attrs[i].Name, attrs[i].Value, out string reformatted))
-                    {
-                        attrs = attrs.SetItem(i, (attrs[i].Name, reformatted));
-                    }
-                }
-            }
-
-            ImmutableArray<ProjectElement> children = element.Children.IsDefaultOrEmpty
-                ? ImmutableArray<ProjectElement>.Empty
-                : element.Children.Select(c => NormalizeNumerics(c, view)).ToImmutableArray();
-
-            return element with { Attrs = attrs, Children = children };
-        }
+        private static ProjectElement NormalizeNumerics(ProjectElement element, ProjectSchemaView view) =>
+            RewriteAttributes(element, view, (schema, name, value) =>
+                schema is not null && TryNormalizeToDefaultPrecision(schema, name, value, out string reformatted)
+                    ? reformatted : null);
 
         /// <summary>
         /// Canonicalizes opaque <c>_0x</c> hex tokens in the inserted subtree by stripping leading zeros (e.g. an
@@ -337,23 +326,9 @@ namespace Ihc.Vis.Editing
         /// and only in the inserted subtree, so loaded elements keep their on-disk form (round-trip fidelity),
         /// consistent with <see cref="NormalizeNumerics"/>.
         /// </summary>
-        private static ProjectElement NormalizeTokens(ProjectElement element)
-        {
-            ImmutableArray<(string Name, string Value)> attrs = element.AttrsOrEmpty();
-            for (int i = 0; i < attrs.Length; i++)
-            {
-                if (LeadingZeroToken.IsMatch(attrs[i].Value))
-                {
-                    attrs = attrs.SetItem(i, (attrs[i].Name, StripLeadingZeros(attrs[i].Value)));
-                }
-            }
-
-            ImmutableArray<ProjectElement> children = element.Children.IsDefaultOrEmpty
-                ? ImmutableArray<ProjectElement>.Empty
-                : element.Children.Select(NormalizeTokens).ToImmutableArray();
-
-            return element with { Attrs = attrs, Children = children };
-        }
+        private static ProjectElement NormalizeTokens(ProjectElement element) =>
+            RewriteAttributes(element, view: null, (_, _, value) =>
+                LeadingZeroToken.IsMatch(value) ? StripLeadingZeros(value) : null);
 
         /// <summary>
         /// Canonicalizes an inserted subtree's enumerated attribute values to the exact DTD token when a template
@@ -362,27 +337,10 @@ namespace Ihc.Vis.Editing
         /// Canonicalize's default-elision — the value then matches the project default and drops out. Only the
         /// inserted subtree is touched, so loaded elements keep their on-disk spelling (round-trip fidelity).
         /// </summary>
-        private static ProjectElement NormalizeEnums(ProjectElement element, ProjectSchemaView view)
-        {
-            ElementSchema? schema = view.TryGet(element.Tag);
-            ImmutableArray<(string Name, string Value)> attrs = element.AttrsOrEmpty();
-            if (schema is not null && !attrs.IsDefaultOrEmpty)
-            {
-                for (int i = 0; i < attrs.Length; i++)
-                {
-                    if (TryCanonicalizeEnum(schema, attrs[i].Name, attrs[i].Value, out string canonical))
-                    {
-                        attrs = attrs.SetItem(i, (attrs[i].Name, canonical));
-                    }
-                }
-            }
-
-            ImmutableArray<ProjectElement> children = element.Children.IsDefaultOrEmpty
-                ? ImmutableArray<ProjectElement>.Empty
-                : element.Children.Select(c => NormalizeEnums(c, view)).ToImmutableArray();
-
-            return element with { Attrs = attrs, Children = children };
-        }
+        private static ProjectElement NormalizeEnums(ProjectElement element, ProjectSchemaView view) =>
+            RewriteAttributes(element, view, (schema, name, value) =>
+                schema is not null && TryCanonicalizeEnum(schema, name, value, out string canonical)
+                    ? canonical : null);
 
         /// <summary>Maps a value that is not an exact enum token to the token it matches ignoring hyphens ("readwrite" → "read-write").</summary>
         private static bool TryCanonicalizeEnum(ElementSchema schema, string attrName, string value, out string canonical)
@@ -444,27 +402,11 @@ namespace Ihc.Vis.Editing
             return true;
         }
 
-        private static ProjectElement? FindValueByTypeid(ProjectElement def, string typeid)
-        {
-            if (def.Children.IsDefaultOrEmpty)
-            {
-                return null;
-            }
-            foreach (ProjectElement value in def.Children)
-            {
-                if (value.Tag == "enum_value" && value.GetAttribute("typeid") == typeid)
-                {
-                    return value;
-                }
-            }
-            return null;
-        }
-
-        private static ProjectElement? FindValueByName(ProjectElement def, string name)
+        private static ProjectElement? FindValueBy(ProjectElement def, string attrName, string wanted)
         {
             foreach (ProjectElement value in def.ChildrenOrEmpty())
             {
-                if (value.Tag == "enum_value" && value.GetAttribute("name") == name)
+                if (value.Tag == "enum_value" && value.GetAttribute(attrName) == wanted)
                 {
                     return value;
                 }
@@ -495,7 +437,7 @@ namespace Ihc.Vis.Editing
                 if (attr.Kind == AttrKind.Required && attr.Render != AttrRender.Id
                     && string.IsNullOrEmpty(ProjectElement.GetAttribute(attrs, attr.Name)))
                 {
-                    attrs = SetAttribute(attrs, attr.Name, NullToken);
+                    attrs = ProjectElement.SetAttribute(attrs, attr.Name, NullToken);
                 }
             }
             return attrs;
@@ -512,18 +454,6 @@ namespace Ihc.Vis.Editing
                 }
             }
             return attrs;
-        }
-
-        private static ImmutableArray<(string, string)> SetAttribute(ImmutableArray<(string Name, string Value)> attrs, string name, string value)
-        {
-            for (int i = 0; i < attrs.Length; i++)
-            {
-                if (attrs[i].Name == name)
-                {
-                    return attrs.SetItem(i, (name, value));
-                }
-            }
-            return attrs.Add((name, value));
         }
 
         private static ImmutableArray<ProjectElement> Concat(ImmutableArray<ProjectElement> existing, List<ProjectElement> added)
