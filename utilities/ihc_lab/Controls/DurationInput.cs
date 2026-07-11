@@ -29,7 +29,7 @@ public class DurationInput : UserControl
 
     public DurationInput()
     {
-        textBox = new TextBox { Width = 120, Watermark = Watermark };
+        textBox = new TextBox { Width = 120, PlaceholderText = Watermark };
         errorLabel = new TextBlock
         {
             // The glyph keeps the error perceivable without relying on colour alone.

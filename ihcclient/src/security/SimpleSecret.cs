@@ -252,17 +252,18 @@ namespace Ihc
 
         private static byte[] DeriveKey(string passphrase, byte[] salt, int iterations)
         {
-            using var kdf = new Rfc2898DeriveBytes(passphrase, salt, iterations, HashAlgorithmName.SHA256);
-            return kdf.GetBytes(KeySize);
+            return Rfc2898DeriveBytes.Pbkdf2(passphrase, salt, iterations, HashAlgorithmName.SHA256, KeySize);
         }
 
-        private static string ToBase64Url(byte[] data)
+        // internal (not private) so the Base64URL codec can be property-tested directly for the
+        // byte[] -> string -> byte[] round-trip (padding edge cases). safe_unit_tests has InternalsVisibleTo.
+        internal static string ToBase64Url(byte[] data)
         {
             string b64 = Convert.ToBase64String(data);
             return b64.Replace('+', '-').Replace('/', '_').TrimEnd('=');
         }
 
-        private static byte[] FromBase64Url(string s)
+        internal static byte[] FromBase64Url(string s)
         {
             string b64 = s.Replace('-', '+').Replace('_', '/');
             switch (b64.Length % 4)

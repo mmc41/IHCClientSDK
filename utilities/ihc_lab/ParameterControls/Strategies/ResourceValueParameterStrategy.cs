@@ -85,7 +85,7 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
         {
             Name = $"{controlName}.TypeString",
             Width = 180,
-            Watermark = "e.g. dataline_output (optional)"
+            PlaceholderText = "e.g. dataline_output (optional)"
         };
         mainPanel.Children.Add(OperationSupport.LabeledRow("Type String", typeStringBox, labelAlignment: VerticalAlignment.Center));
 

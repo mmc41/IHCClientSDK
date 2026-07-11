@@ -53,7 +53,7 @@ namespace Ihc.Tests
         public void CreateControl_HasHhMmSsWatermark()
         {
             var control = strategy.CreateControl(new FieldMetaData("d", typeof(TimeSpan), [], ""), "0");
-            Assert.That(InputBox(control).Watermark, Is.EqualTo("hh:mm:ss"));
+            Assert.That(InputBox(control).PlaceholderText, Is.EqualTo("hh:mm:ss"));
         }
 
         [AvaloniaTest]

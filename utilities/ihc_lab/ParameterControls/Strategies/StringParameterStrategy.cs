@@ -28,7 +28,7 @@ public class StringParameterStrategy : ParameterControlStrategyBase
         var textBox = new TextBox
         {
             Name = controlName,
-            Watermark = "Enter text...",
+            PlaceholderText = "Enter text...",
             Width = 300
         };
 

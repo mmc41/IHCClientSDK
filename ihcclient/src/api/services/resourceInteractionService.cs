@@ -259,127 +259,6 @@ namespace Ihc {
 
         private readonly SoapImpl impl;
 
-        private ResourceValue mapResourceValueEnvelope(WSResourceValueEnvelope v)
-        {
-            if (v == null)
-                return null;
-
-            var value = new ResourceValue.UnionValue() { };
-
-            if (v.value is WSBooleanValue)
-            {
-                value.BoolValue = (v.value as WSBooleanValue).value;
-                value.ValueKind = ResourceValue.ValueKind.BOOL;
-            }
-
-            if (v.value is WSDateValue)
-            {
-                value.DateValue = mapDate(v.value as WSDateValue);
-                value.ValueKind = ResourceValue.ValueKind.DATE;
-            }
-
-            if (v.value is WSIntegerValue)
-            {
-                value.IntValue = (v.value as WSIntegerValue).integer;
-                // TODO: What about min, max values ?
-                value.ValueKind = ResourceValue.ValueKind.INT;
-            }
-
-            if (v.value is WSFloatingPointValue)
-            {
-                value.DoubleValue = (v.value as WSFloatingPointValue).floatingPointValue;
-                // TODO: What about min, max values?
-                value.ValueKind = ResourceValue.ValueKind.DOUBLE;
-            }
-
-            if (v.value is WSEnumValue)
-            {
-                value.EnumValue = mapEnumValue(v.value as WSEnumValue);
-                value.ValueKind = ResourceValue.ValueKind.ENUM;
-            }
-
-            if (v.value is WSTimeValue)
-            {
-                value.TimeValue = mapTime(v.value as WSTimeValue);
-                value.ValueKind = ResourceValue.ValueKind.TIME;
-            }
-
-            if (v.value is WSTimerValue)
-            {
-                value.TimerValue = mapTimer(v.value as WSTimerValue);
-                value.ValueKind = ResourceValue.ValueKind.TIMER;
-            }
-
-            if (v.value is WSWeekdayValue)
-            {
-                value.WeekdayValue = mapWeekday(v.value as WSWeekdayValue);
-                value.ValueKind = ResourceValue.ValueKind.WEEKDAY;
-            }
-
-            if (v.value is WSPhoneNumberValue phoneVal)
-            {
-                value.PhoneNumberValue = phoneVal.number;
-                value.ValueKind = ResourceValue.ValueKind.PhoneNumber;
-            }
-
-            if (v.value is WSSceneDimmerValue dimmerVal)
-            {
-                value.DimmerPercentage = dimmerVal.dimmerPercentage;
-                value.DimmerDelayTime = dimmerVal.delayTime;
-                value.DimmerRampTime = dimmerVal.rampTime;
-                value.ValueKind = ResourceValue.ValueKind.SceneDimmer;
-            }
-
-            if (v.value is WSSceneRelayValue relayVal)
-            {
-                value.RelayDelayTime = relayVal.delayTime;
-                value.RelayValue = relayVal.relayValue;
-                value.ValueKind = ResourceValue.ValueKind.SceneRelay;
-            }
-
-            if (v.value is WSSceneShutterSimpleValue shutterVal)
-            {
-                value.ShutterPositionIsUp = shutterVal.shutterPositionIsUp;
-                value.ShutterDelayTime = shutterVal.delayTime;
-                value.ValueKind = ResourceValue.ValueKind.SceneShutter;
-            }
-
-            return new ResourceValue() { ResourceID = v.resourceID, IsValueRuntime = v.isValueRuntime, TypeString = v.typeString, Value = value };
-        }
-
-        private WSResourceValueEnvelope mapResourceValueEnvelope(ResourceValue v)
-        {
-            if (v == null)
-                return null;
-
-            WSResourceValue val;
-
-            switch (v.Value.ValueKind)
-            {
-                case ResourceValue.ValueKind.BOOL: val = new WSBooleanValue() { value = (bool)v.Value.BoolValue }; break;
-                case ResourceValue.ValueKind.DATE: val = mapDate((DateTimeOffset)v.Value.DateValue); break;
-                case ResourceValue.ValueKind.INT: val = new WSIntegerValue() { integer = (int)v.Value.IntValue }; break;
-                case ResourceValue.ValueKind.DOUBLE: val = new WSFloatingPointValue() { floatingPointValue = (double)v.Value.DoubleValue }; break;
-                case ResourceValue.ValueKind.ENUM: val = mapEnumValue(v.Value.EnumValue); break;
-                case ResourceValue.ValueKind.TIME: val = mapTime((TimeSpan)v.Value.TimeValue); break;
-                case ResourceValue.ValueKind.TIMER: val = mapTimer((long)v.Value.TimerValue); break;
-                case ResourceValue.ValueKind.WEEKDAY: val = mapWeekday((int)v.Value.WeekdayValue); break;
-                case ResourceValue.ValueKind.PhoneNumber: val = new WSPhoneNumberValue() { number = v.Value.PhoneNumberValue }; break;
-                case ResourceValue.ValueKind.SceneDimmer: val = new WSSceneDimmerValue() { dimmerPercentage = (int)v.Value.DimmerPercentage, delayTime = (int)v.Value.DimmerDelayTime, rampTime = (int)v.Value.DimmerRampTime }; break;
-                case ResourceValue.ValueKind.SceneRelay: val = new WSSceneRelayValue() { delayTime = (int)v.Value.RelayDelayTime, relayValue = (bool)v.Value.RelayValue }; break;
-                case ResourceValue.ValueKind.SceneShutter: val = new WSSceneShutterSimpleValue() { shutterPositionIsUp = (bool)v.Value.ShutterPositionIsUp, delayTime = (int)v.Value.ShutterDelayTime }; break;
-                default: throw new ErrorWithCodeException(Errors.FEATURE_NOT_IMPLEMENTED, "Support for value kind " + v.Value.ValueKind + " not (yet) implemented.");
-            }
-
-            return new WSResourceValueEnvelope()
-            {
-                resourceID = v.ResourceID,
-                isValueRuntime = v.IsValueRuntime,
-                typeString = v.TypeString,
-                value = val
-            };
-        }
-
         private DatalineResource mapDatalineResource(WSDatalineResource r)
         {
             if (r == null)
@@ -396,78 +275,10 @@ namespace Ihc {
             return new EnumDefinition()
             {
                 EnumeratorDefinitionID = e.enumeratorDefinitionID,
-                Values = e.enumeratorValues?.Select((v) => mapEnumValue(v)).ToArray() ?? Array.Empty<EnumValue>()
+                Values = e.enumeratorValues?.Select((v) => ResourceValueEnvelopeMapper.MapEnumValue(v)).ToArray() ?? Array.Empty<EnumValue>()
             };
         }
 
-        private EnumValue mapEnumValue(WSEnumValue v)
-        {
-            if (v == null)
-                return null;
-
-            return new EnumValue() { DefinitionTypeID = v.definitionTypeID, EnumValueID = v.enumValueID, EnumName = v.enumName };
-        }
-
-        private WSEnumValue mapEnumValue(EnumValue v)
-        {
-            if (v == null)
-                return null;
-
-            return new WSEnumValue() { definitionTypeID = v.DefinitionTypeID, enumValueID = v.EnumValueID, enumName = v.EnumName };
-        }
-
-        private DateTimeOffset mapDate(WSDateValue v)
-        {
-            if (v == null)
-                return DateTimeOffset.MinValue;
-
-            return new DateTimeOffset(v.year, v.month, v.day, 0, 0, 0, DateHelper.GetWSTimeOffset());
-        }
-
-        private WSDateValue mapDate(DateTimeOffset v)
-        {
-            return new WSDateValue() { year = (short)v.Year, month = (sbyte)v.Month, day = (sbyte)v.Day };
-        }
-
-        private WSTimeValue mapTime(TimeSpan v)
-        {
-            return new WSTimeValue() { hours = v.Hours, minutes = v.Minutes, seconds = v.Seconds };
-        }
-
-        private TimeSpan mapTime(WSTimeValue v)
-        {
-            if (v == null)
-                return TimeSpan.Zero;
-
-            return new TimeSpan(v.hours, v.minutes, v.seconds);
-        }
-
-        private long mapTimer(WSTimerValue v)
-        {
-            if (v == null)
-                return 0;
-
-            return v.milliseconds;
-        }
-
-        private WSTimerValue mapTimer(long v)
-        {
-            return new WSTimerValue() { milliseconds = v };
-        }
-
-        private int mapWeekday(WSWeekdayValue v)
-        {
-            if (v == null)
-                return 0;
-
-            return v.weekdayNumber;
-        }
-
-        private WSWeekdayValue mapWeekday(int v)
-        {
-            return new WSWeekdayValue() { weekdayNumber = v };
-        }
-        
         private SceneResourceIdAndLocation mapSceneResourceIdAndLocation(Ihc.Soap.Resourceinteraction.WSSceneResourceIdAndLocationURLs arg) {
             if (arg == null)
                 return null;
@@ -543,7 +354,7 @@ namespace Ihc {
                     activity?.SetParameters((nameof(resourceIds), resourceIds));
 
                     var resp = await impl.enableInitialValueNotificationsAsync(new inputMessageName6() { enableInitialValueNotifications1 = resourceIds.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.enableInitialValueNotifications2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToList();
+                    var retv = resp.enableInitialValueNotifications2.Where((v) => v != null).Select((v) => ResourceValueEnvelopeMapper.ToDomain(v)).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -565,7 +376,7 @@ namespace Ihc {
                     activity?.SetParameters((nameof(resourceIds), resourceIds));
 
                     var resp = await impl.enableRuntimeValueNotificationsAsync(new inputMessageName4() { enableRuntimeValueNotifications1 = resourceIds.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.enableRuntimeValueNotifications2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToList();
+                    var retv = resp.enableRuntimeValueNotifications2.Where((v) => v != null).Select((v) => ResourceValueEnvelopeMapper.ToDomain(v)).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -687,7 +498,7 @@ namespace Ihc {
                     activity?.SetParameters((nameof(initialValue), initialValue));
 
                     var resp = await impl.getInitialValueAsync(new inputMessageName15() { getInitialValue1 = initialValue }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var result = mapResourceValueEnvelope(resp.getInitialValue2);
+                    var result = ResourceValueEnvelopeMapper.ToDomain(resp.getInitialValue2);
                     if (result == null)
                     {
                         throw new ErrorWithCodeException(Errors.FEATURE_NOT_IMPLEMENTED, "IHC controller returned null resource value for resource ID " + initialValue);
@@ -713,7 +524,7 @@ namespace Ihc {
                     activity?.SetParameters((nameof(initialValues), initialValues));
 
                     var resp = await impl.getInitialValuesAsync(new inputMessageName17() { getInitialValues1 = initialValues.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getInitialValues2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToList();
+                    var retv = resp.getInitialValues2.Where((v) => v != null).Select((v) => ResourceValueEnvelopeMapper.ToDomain(v)).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -734,7 +545,7 @@ namespace Ihc {
                 {
                     activity?.SetParameters((nameof(v), v));
 
-                    var input = new inputMessageName18() { setResourceValue1 = mapResourceValueEnvelope(v) };
+                    var input = new inputMessageName18() { setResourceValue1 = ResourceValueEnvelopeMapper.ToWire(v) };
                     var resp = await impl.setResourceValueAsync(input).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = resp.setResourceValue2.HasValue ? resp.setResourceValue2.Value : false;
 
@@ -757,7 +568,7 @@ namespace Ihc {
                 {
                     activity?.SetParameters((nameof(values), values));
 
-                    var input = new inputMessageName3() { setResourceValues1 = values.Select(v => mapResourceValueEnvelope(v)).ToArray() };
+                    var input = new inputMessageName3() { setResourceValues1 = values.Select(v => ResourceValueEnvelopeMapper.ToWire(v)).ToArray() };
                     var resp = await impl.setResourceValuesAsync(input).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = resp.setResourceValues2.HasValue ? resp.setResourceValues2.Value : false;
 
@@ -825,7 +636,7 @@ namespace Ihc {
                     activity?.SetParameters((nameof(resourceID), resourceID));
 
                     var resp = await impl.getRuntimeValueAsync(new inputMessageName14() { getRuntimeValue1 = resourceID }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var result = mapResourceValueEnvelope(resp.getRuntimeValue2);
+                    var result = ResourceValueEnvelopeMapper.ToDomain(resp.getRuntimeValue2);
                     if (result == null)
                     {
                         throw new ErrorWithCodeException(Errors.FEATURE_NOT_IMPLEMENTED, "IHC controller returned null runtime value for resource ID " + resourceID);
@@ -851,7 +662,7 @@ namespace Ihc {
                     activity?.SetParameters((nameof(resourceIDs), resourceIDs));
 
                     var resp = await impl.getRuntimeValuesAsync(new inputMessageName16() { getRuntimeValues1 = resourceIDs.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getRuntimeValues2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToList();
+                    var retv = resp.getRuntimeValues2.Where((v) => v != null).Select((v) => ResourceValueEnvelopeMapper.ToDomain(v)).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -917,7 +728,7 @@ namespace Ihc {
                     activity?.SetParameters((nameof(timeout_seconds), timeout_seconds));
 
                     var resp = await impl.waitForResourceValueChangesAsync(new inputMessageName8() { waitForResourceValueChanges1 = timeout_seconds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.waitForResourceValueChanges2.Where((v) => v != null).Select((v) => mapResourceValueEnvelope(v)).ToList();
+                    var retv = resp.waitForResourceValueChanges2.Where((v) => v != null).Select((v) => ResourceValueEnvelopeMapper.ToDomain(v)).ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;
