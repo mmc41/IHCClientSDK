@@ -55,7 +55,7 @@ A.CallTo(() => service.ClearCache()).Returns(Task.CompletedTask);
 - S0 energy meter operations: `GetS0MeterValue()`, `ResetS0Values()`, `SetS0Consumption()`, `SetS0FiscalYearStart()`
 
 **Other Services** - Empty fakes (no operations configured)
-- `IResourceInteractionService`, `IConfigurationService`, `IOpenAPIService`, `INotificationManagerService`, `IMessageControlLogService`, `IModuleService`, `ITimeManagerService`, `IUserManagerService`, `IAirlinkManagementService`, `ISmsModemService`, `InternalTestService`
+- `IResourceInteractionService`, `IConfigurationService`, `IOpenAPIService`, `INotificationManagerService`, `IMessageControlLogService`, `IModuleService`, `ITimeManagerService`, `IUserManagerService`, `IAirlinkManagementService`, `ISmsModemService`, `InternalTestService`, `ILedDimmerManagementService`
 
 ### Test Setup Process
 

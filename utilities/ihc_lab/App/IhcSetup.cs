@@ -31,6 +31,7 @@ public class IhcSetup
 
     public ISmsModemService SmsModemService { get; set; }
     public IInternalTestService InternalTestService { get; set; }
+    public ILedDimmerManagementService LedDimmerManagementService { get; set; }
 
     public IIHCApiService[] AllIhcServices
     {
@@ -50,7 +51,8 @@ public class IhcSetup
                 UserManagerService,
                 AirlinkManagementService,
                 SmsModemService,
-                InternalTestService
+                InternalTestService,
+                LedDimmerManagementService
             ];
         }
     }
@@ -90,6 +92,7 @@ public class IhcSetup
             this.AirlinkManagementService = new AirlinkManagementService(AuthenticationService);
             this.SmsModemService = new SmsModemService(AuthenticationService);
             this.InternalTestService = new InternalTestService(AuthenticationService);
+            this.LedDimmerManagementService = new LedDimmerManagementService(AuthenticationService);
         }
         else
         {
@@ -111,6 +114,7 @@ public class IhcSetup
             this.AirlinkManagementService = IhcFakeSetup.SetupAirlinkManagementService(IhcSettings);
             this.SmsModemService = IhcFakeSetup.SetupSmsModemService(IhcSettings);
             this.InternalTestService = IhcFakeSetup.SetupInternalTestService(IhcSettings);
+            this.LedDimmerManagementService = IhcFakeSetup.SetupLedDimmerManagementService(IhcSettings);
         }
     }
 
@@ -752,6 +756,34 @@ public class IhcFakeSetup
         }));
 
         // ResetSmsModem() is a void op - FakeItEasy returns a completed Task by default.
+        return service;
+    }
+
+    public static ILedDimmerManagementService SetupLedDimmerManagementService(IhcSettings settings)
+    {
+        var service = A.Fake<ILedDimmerManagementService>();
+
+        var device = new LedDimmerInfo
+        {
+            Location = "Living room", Channel = 1, BootloaderVersion = "1.0.0", ApplicationVersion = "2.1.0",
+            ApplicationStatus = 1, HardwareVersion = "v1.2", SerialNumber = "LD-0001", Level = 80, ErrorFlags = 0, ChannelID = 1
+        };
+
+        A.CallTo(() => service.EnterConfiguration()).Returns(Task.FromResult(true));
+        A.CallTo(() => service.ExitConfiguration()).Returns(Task.FromResult(true));
+        A.CallTo(() => service.WaitForDeviceDetected(A<int>._)).Returns(Task.FromResult(device));
+        A.CallTo(() => service.ScanConfiguredDevices(A<int>._, A<int>._)).Returns(Task.FromResult<IReadOnlyList<LedDimmerInfo>>(new List<LedDimmerInfo> { device }));
+        A.CallTo(() => service.AssignID(A<string>._, A<sbyte>._, A<sbyte>._)).Returns(Task.FromResult(true));
+        A.CallTo(() => service.GetDeviceCount()).Returns(Task.FromResult(1));
+        A.CallTo(() => service.GetLightLevel(A<sbyte>._)).Returns(Task.FromResult(new LedDimmerLevel { Level = 80, ErrorFlags = 0 }));
+        A.CallTo(() => service.GetDeviceList()).Returns(Task.FromResult<IReadOnlyList<LedDimmerInfo>>(new List<LedDimmerInfo> { device }));
+        A.CallTo(() => service.GetFirmwareUpgradeProgress()).Returns(Task.FromResult(new LedDimmerProgress
+        {
+            Message = "Upgrade finished", SerialNumber = "LD-0001", Status = "FINISHED", Progress = 100, Maximum = 100,
+            Running = "RUNNING", Finished = "FINISHED", Failed = "FAILED"
+        }));
+
+        // StartFirmwareUpgrade(string) is a void op - FakeItEasy returns a completed Task by default.
         return service;
     }
 
