@@ -32,7 +32,4 @@
   <ItemGroup>
     <PackageReference Include="System.ServiceModel.Primitives" Version="8.*" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="System.ServiceModel.Federation" Version="4.10.*" />
-  </ItemGroup>
 </Project>

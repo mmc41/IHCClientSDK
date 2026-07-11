@@ -21,7 +21,10 @@ namespace Ihc
             if (v == null)
                 return null;
 
-            var value = new ResourceValue.UnionValue() { };
+            // Default to NONE so an envelope with a null (or otherwise unrecognized) inner value is
+            // classified as "no readable value" rather than silently mislabeled as the enum-default BOOL.
+            // Confirmed live: scene resources (type 'resource_scene') return a null <value> here.
+            var value = new ResourceValue.UnionValue() { ValueKind = ResourceValue.ValueKind.NONE };
 
             if (v.value is WSBooleanValue)
             {
@@ -111,21 +114,24 @@ namespace Ihc
 
             WSResourceValue val;
 
-            switch (v.Value.ValueKind)
+            var kind = v.Value.ValueKind;
+
+            switch (kind)
             {
-                case ResourceValue.ValueKind.BOOL: val = new WSBooleanValue() { value = (bool)v.Value.BoolValue }; break;
-                case ResourceValue.ValueKind.DATE: val = MapDate((DateTimeOffset)v.Value.DateValue); break;
-                case ResourceValue.ValueKind.INT: val = new WSIntegerValue() { integer = (int)v.Value.IntValue }; break;
-                case ResourceValue.ValueKind.DOUBLE: val = new WSFloatingPointValue() { floatingPointValue = (double)v.Value.DoubleValue }; break;
+                case ResourceValue.ValueKind.BOOL: val = new WSBooleanValue() { value = Required(v.Value.BoolValue, kind, nameof(v.Value.BoolValue)) }; break;
+                case ResourceValue.ValueKind.DATE: val = MapDate(Required(v.Value.DateValue, kind, nameof(v.Value.DateValue))); break;
+                case ResourceValue.ValueKind.INT: val = new WSIntegerValue() { integer = Required(v.Value.IntValue, kind, nameof(v.Value.IntValue)) }; break;
+                case ResourceValue.ValueKind.DOUBLE: val = new WSFloatingPointValue() { floatingPointValue = Required(v.Value.DoubleValue, kind, nameof(v.Value.DoubleValue)) }; break;
                 case ResourceValue.ValueKind.ENUM: val = MapEnumValue(v.Value.EnumValue); break;
-                case ResourceValue.ValueKind.TIME: val = MapTime((TimeSpan)v.Value.TimeValue); break;
-                case ResourceValue.ValueKind.TIMER: val = MapTimer((long)v.Value.TimerValue); break;
-                case ResourceValue.ValueKind.WEEKDAY: val = MapWeekday((int)v.Value.WeekdayValue); break;
+                case ResourceValue.ValueKind.TIME: val = MapTime(Required(v.Value.TimeValue, kind, nameof(v.Value.TimeValue))); break;
+                case ResourceValue.ValueKind.TIMER: val = MapTimer(Required(v.Value.TimerValue, kind, nameof(v.Value.TimerValue))); break;
+                case ResourceValue.ValueKind.WEEKDAY: val = MapWeekday(Required(v.Value.WeekdayValue, kind, nameof(v.Value.WeekdayValue))); break;
                 case ResourceValue.ValueKind.PhoneNumber: val = new WSPhoneNumberValue() { number = v.Value.PhoneNumberValue }; break;
-                case ResourceValue.ValueKind.SceneDimmer: val = new WSSceneDimmerValue() { dimmerPercentage = (int)v.Value.DimmerPercentage, delayTime = (int)v.Value.DimmerDelayTime, rampTime = (int)v.Value.DimmerRampTime }; break;
-                case ResourceValue.ValueKind.SceneRelay: val = new WSSceneRelayValue() { delayTime = (int)v.Value.RelayDelayTime, relayValue = (bool)v.Value.RelayValue }; break;
-                case ResourceValue.ValueKind.SceneShutter: val = new WSSceneShutterSimpleValue() { shutterPositionIsUp = (bool)v.Value.ShutterPositionIsUp, delayTime = (int)v.Value.ShutterDelayTime }; break;
-                default: throw new ErrorWithCodeException(Errors.FEATURE_NOT_IMPLEMENTED, "Support for value kind " + v.Value.ValueKind + " not (yet) implemented.");
+                case ResourceValue.ValueKind.SceneDimmer: val = new WSSceneDimmerValue() { dimmerPercentage = Required(v.Value.DimmerPercentage, kind, nameof(v.Value.DimmerPercentage)), delayTime = Required(v.Value.DimmerDelayTime, kind, nameof(v.Value.DimmerDelayTime)), rampTime = Required(v.Value.DimmerRampTime, kind, nameof(v.Value.DimmerRampTime)) }; break;
+                case ResourceValue.ValueKind.SceneRelay: val = new WSSceneRelayValue() { delayTime = Required(v.Value.RelayDelayTime, kind, nameof(v.Value.RelayDelayTime)), relayValue = Required(v.Value.RelayValue, kind, nameof(v.Value.RelayValue)) }; break;
+                case ResourceValue.ValueKind.SceneShutter: val = new WSSceneShutterSimpleValue() { shutterPositionIsUp = Required(v.Value.ShutterPositionIsUp, kind, nameof(v.Value.ShutterPositionIsUp)), delayTime = Required(v.Value.ShutterDelayTime, kind, nameof(v.Value.ShutterDelayTime)) }; break;
+                case ResourceValue.ValueKind.NONE: throw new ArgumentException($"Cannot write a ResourceValue with ValueKind.NONE — it represents a resource with no writable value (e.g. a scene). ResourceID {v.ResourceID}.");
+                default: throw new ErrorWithCodeException(Errors.FEATURE_NOT_IMPLEMENTED, "Support for value kind " + kind + " not (yet) implemented.");
             }
 
             return new WSResourceValueEnvelope()
@@ -135,6 +141,19 @@ namespace Ihc
                 typeString = v.TypeString,
                 value = val
             };
+        }
+
+        // Unwrap a payload that must be present for the value kind being written to the wire. A
+        // well-formed ResourceValue always carries the payload matching its ValueKind; a caller that
+        // sets ValueKind but leaves the payload null would otherwise trip an unconditional
+        // Nullable<T> cast and surface an opaque "Nullable object must have a value"
+        // InvalidOperationException. Failing here turns that into a clear, actionable error.
+        private static T Required<T>(T? payload, ResourceValue.ValueKind kind, string field) where T : struct
+        {
+            if (!payload.HasValue)
+                throw new ArgumentException($"ResourceValue of kind {kind} is missing its required {field} payload.");
+
+            return payload.Value;
         }
 
         internal static EnumValue MapEnumValue(WSEnumValue v)

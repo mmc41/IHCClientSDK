@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using CsCheck;
 using KellermanSoftware.CompareNetObjects;
 using Ihc;
+using Ihc.Soap.Resourceinteraction;
 
 namespace Ihc.Tests
 {
@@ -199,6 +200,55 @@ namespace Ihc.Tests
                     && toggled.IsValueRuntime == rv.IsValueRuntime
                     && toggled.Value.ValueKind == ResourceValue.ValueKind.BOOL
                     && toggled.Value.BoolValue == !rv.Value.BoolValue;
+            });
+        }
+
+        /// <summary>
+        /// Hardening contract for the unguarded Nullable&lt;T&gt;-&gt;T casts in ToWire: when a caller
+        /// builds a UnionValue whose ValueKind is set but the matching payload was left null, ToWire
+        /// must fail with a clear, typed ArgumentException instead of an opaque
+        /// "Nullable object must not have a value" InvalidOperationException from the cast.
+        /// (Reproduces review finding #3; the round-trip property above only ever generates
+        /// fully-populated values, so it cannot exercise this edge.)
+        /// </summary>
+        [Test]
+        public void ToWire_ValueKindWithoutMatchingPayload_ThrowsArgumentException()
+        {
+            var malformed = new ResourceValue
+            {
+                ResourceID = 42,
+                TypeString = "dataline_output",
+                Value = new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.INT } // IntValue left null
+            };
+
+            Assert.Throws<ArgumentException>(() => ResourceValueEnvelopeMapper.ToWire(malformed));
+        }
+
+        /// <summary>
+        /// Reproduces review finding #2, confirmed live: a resource with no readable runtime value
+        /// (e.g. a scene, type 'resource_scene') comes back as an envelope whose inner &lt;value&gt; is
+        /// null. ToDomain must classify that as ValueKind.NONE, not silently mislabel it as BOOL with a
+        /// null payload (207 such scene resources were observed on a real controller).
+        /// </summary>
+        [Test]
+        public void ToDomain_NullInnerValue_MapsToNoneKind_NotBool()
+        {
+            var envelope = new WSResourceValueEnvelope
+            {
+                resourceID = 47434,
+                typeString = "resource_scene",
+                isValueRuntime = true,
+                value = null
+            };
+
+            var rv = ResourceValueEnvelopeMapper.ToDomain(envelope);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(rv, Is.Not.Null);
+                Assert.That(rv.Value.ValueKind, Is.EqualTo(ResourceValue.ValueKind.NONE));
+                Assert.That(rv.Value.BoolValue, Is.Null);
+                Assert.That(rv.ResourceID, Is.EqualTo(47434));
             });
         }
     }

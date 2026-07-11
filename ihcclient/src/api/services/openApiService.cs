@@ -438,6 +438,8 @@ namespace Ihc {
                     return new Ihc.Soap.Openapi.WSSceneRelayValue() { delayTime = (int)v.Value.RelayDelayTime, relayValue = (bool)v.Value.RelayValue };
                 case ResourceValue.ValueKind.SceneShutter:
                     return new Ihc.Soap.Openapi.WSSceneShutterSimpleValue() { shutterPositionIsUp = (bool)v.Value.ShutterPositionIsUp, delayTime = (int)v.Value.ShutterDelayTime };
+                case ResourceValue.ValueKind.NONE:
+                    throw new ArgumentException($"Cannot write a ResourceValue with ValueKind.NONE — it represents a resource with no writable value (e.g. a scene). ResourceID {v.ResourceID}.");
                 default:
                     throw new ErrorWithCodeException(Errors.FEATURE_NOT_IMPLEMENTED, "Support for value kind " + v.Value.ValueKind + " not (yet) implemented.");
             }

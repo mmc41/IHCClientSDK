@@ -26,8 +26,8 @@ namespace Ihc
         /// <summary>
         /// Wait for a new LED dimmer device to be detected during configuration.
         /// </summary>
-        /// <param name="timeout">Time to wait for a device to be detected.</param>
-        Task<LedDimmerInfo> WaitForDeviceDetected(int timeout);
+        /// <param name="timeoutSeconds">Time in seconds to wait for a device to be detected.</param>
+        Task<LedDimmerInfo> WaitForDeviceDetected(int timeoutSeconds);
 
         /// <summary>
         /// Scan for already-configured LED dimmer devices.
@@ -238,15 +238,15 @@ namespace Ihc
             }
         }
 
-        public async Task<LedDimmerInfo> WaitForDeviceDetected(int timeout)
+        public async Task<LedDimmerInfo> WaitForDeviceDetected(int timeoutSeconds)
         {
             using (var activity = StartActivity(nameof(WaitForDeviceDetected)))
             {
                 try
                 {
-                    activity?.SetParameters((nameof(timeout), timeout));
+                    activity?.SetParameters((nameof(timeoutSeconds), timeoutSeconds));
 
-                    var result = await impl.waitForDeviceDetectedAsync(new inputMessageName3(timeout)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var result = await impl.waitForDeviceDetectedAsync(new inputMessageName3(timeoutSeconds)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = MapInfo(result.waitForDeviceDetected2);
 
                     activity?.SetReturnValue(retv);
