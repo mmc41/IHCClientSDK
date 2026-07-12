@@ -57,7 +57,7 @@ dotnet run --project utilities/ihc_lab/ihc_lab.csproj
 ## Project Architecture
 
 ### Core Structure
-This is a .NET 9.0 mono-repository containing an unofficial SDK for IHC (Intelligent House Concept) controllers from LK/Schneider Electric.
+This is a .NET 9.0 mono-repository containing an unofficial SDK for IHC (Intelligent House Concept) controllers from LK/Schneider Electric (the `ihc_visual` desktop app and its test project target .NET 10; the solution builds under the .NET 10 SDK).
 
 **Main Projects:**
 - `ihcclient/` - Core SDK library with high-level API wrapper around SOAP services
@@ -153,7 +153,7 @@ Before running any code that connects to an IHC controller:
 
 ## Important Notes
 
-- Target framework: .NET 9.0 (version 0.8.1)
+- Target framework: .NET 9.0 (version 0.8.1) for all projects EXCEPT the `applications/ihc_visual` desktop app and its `tests/safe_visual_tests` (both `net10.0`, Avalonia 12). The whole solution builds under the .NET 10 SDK (it also builds the net9.0 projects); CI pins `DOTNET_VERSION: '10.x'`.
 - Test framework: NUnit 4.x
 - The project wraps SOAP web services since .NET Core doesn't natively support SOAP
 - `AuthenticationService` and `ResourceInteractionService` are feature-complete

@@ -332,6 +332,27 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        [Test]
+        public void Insert_DoesNotRoundAuthoredNumericValue()
+        {
+            // Finding 3: resource_light's project inivalue default is "0" (0 decimals). Reformatting "12.5" to 0
+            // places ROUNDS it ("13"), silently mutating authored data. Only value-preserving zero-trim/pad may be
+            // applied — a value that would round must be left verbatim.
+            ProjectElement body = Node("product_dataline", "_0x01",
+                new[] { ("product_identifier", "_0x2139"), ("name", "Lux") },
+                new[]
+                {
+                    Node("resource_light", "_0x02", new[] { ("name", "Lys"), ("inivalue", "12.5") }, System.Array.Empty<ProjectElement>()),
+                });
+
+            var allocator = new IdAllocator(0x50);
+            InsertResult result = InsertTransform.Insert(body, allocator, EmptyEnumDefinitions(), ProjectSchemaView.RegistryOnly);
+            ProjectElement light = result.InsertedRoot.FindChild("resource_light")!;
+
+            Assert.That(light.GetAttribute("inivalue"), Is.EqualTo("12.5"),
+                "a value that would round is preserved verbatim, never mutated to 13");
+        }
+
         private static ProjectElement SeededEnumDefinitions(params ProjectElement[] defs) =>
             new("enum_definitions", new ElementId(0x30, 0x46),
                 ImmutableArray.Create(("id", "_0x3046")), defs.ToImmutableArray());

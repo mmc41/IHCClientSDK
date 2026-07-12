@@ -2,6 +2,8 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 
+using static Ihc.Vis.Tests.Tree;
+
 namespace Ihc.Vis.Tests
 {
     /// <summary>
@@ -17,18 +19,6 @@ namespace Ihc.Vis.Tests
 
         private static Task<Project> Load(string name) =>
             new ProjectAppService(Settings).Load("testdata/projects/" + name);
-
-        private static ProjectElement Node(string tag, string? id, (string, string)[] attrs, params ProjectElement[] children)
-        {
-            ElementId? parsed = id is not null && ElementId.TryParse(id, out ElementId p) ? p : null;
-            var bag = ImmutableArray.CreateBuilder<(string, string)>();
-            if (id is not null)
-            {
-                bag.Add(("id", id));
-            }
-            bag.AddRange(attrs);
-            return new ProjectElement(tag, parsed, bag.ToImmutable(), children.ToImmutableArray());
-        }
 
         // ----- DeleteById: dangling references block the delete; strays never cascade innocents -----
 

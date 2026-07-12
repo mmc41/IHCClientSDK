@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Ihc.Vis.Tests
@@ -55,6 +56,26 @@ namespace Ihc.Vis.Tests
 
             Assert.That(() => garage.Name("Nyt navn"), Throws.InvalidOperationException,
                 "renaming through a stale handle must not silently do nothing");
+        }
+
+        [Test]
+        public async Task AddProduct_AfterGroupDeleted_Throws_AndLeavesSessionUnchanged()
+        {
+            // Finding 5: InsertComponent used to adopt DTD blocks, burn allocator ids and hoist enums BEFORE the
+            // target group's liveness was ever tested, so an insert into a deleted group left a half-mutated session.
+            Project project = await LoadOracle();
+            var app = new ProjectAppService(Settings);
+            ProductDefinition product = app.GetAvailableProducts().First();
+            ProjectEditor editor = project.Edit();
+            GroupRef garage = editor.Group("Garage");
+
+            editor.RemoveGroup(garage);            // garage's id is now gone from the session
+            Project before = editor.ToProject();
+
+            Assert.That(() => garage.AddProduct(product), Throws.InvalidOperationException,
+                "inserting into a deleted group is an error, not a half-mutated session");
+            Assert.That(editor.ToProject(), Is.EqualTo(before),
+                "a failed insert adopts no DTD block, hoists no enum and burns no id");
         }
     }
 }

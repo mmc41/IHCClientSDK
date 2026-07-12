@@ -1,7 +1,8 @@
-using System.Collections.Immutable;
 using System.Text;
 using FakeItEasy;
 using Microsoft.Extensions.Time.Testing;
+
+using static Ihc.Vis.Tests.Tree;
 
 namespace Ihc.Vis.Tests
 {
@@ -13,18 +14,6 @@ namespace Ihc.Vis.Tests
     /// </summary>
     public class CatalogRobustnessTests
     {
-        private static ProjectElement Node(string tag, string? id, (string, string)[] attrs, params ProjectElement[] children)
-        {
-            ElementId? parsed = id is not null && ElementId.TryParse(id, out ElementId p) ? p : null;
-            var bag = ImmutableArray.CreateBuilder<(string, string)>();
-            if (id is not null)
-            {
-                bag.Add(("id", id));
-            }
-            bag.AddRange(attrs);
-            return new ProjectElement(tag, parsed, bag.ToImmutable(), children.ToImmutableArray());
-        }
-
         private static string T(string tag, int counter) =>
             new ElementId(counter, TypeCode.ForTag(tag) ?? 0).ToToken();
 

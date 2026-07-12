@@ -50,6 +50,27 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
+        public void Build_IsIdempotent_RepeatedBuildProducesIdenticalIds()
+        {
+            // Finding 17: Build() memoizes its root/scenes ids, so Build→preview then Build→write from one builder
+            // produces byte-stable ids instead of drifting off the persistent (never-reset) allocator.
+            ProductDefinitionBuilder builder = ProductDefinitionBuilder
+                .Dataline(productIdentifier: "_0x2201", displayName: "Stikkontakt")
+                .AddOutput("Udgang", o => o.Address("_0x1"))
+                .AddScenes();
+
+            ProductDefinition first = builder.Build();
+            ProductDefinition second = builder.Build();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(second.Body.Id, Is.EqualTo(first.Body.Id), "the root id is stable across Build() calls");
+                Assert.That(second.Body.FindChild("scenes")!.Id, Is.EqualTo(first.Body.FindChild("scenes")!.Id),
+                    "the scenes id is stable across Build() calls");
+            });
+        }
+
+        [Test]
         public async Task InsertAuthoredProduct_IntoLoadedProject_ShowsItWorksWithProjectBuilder()
         {
             // An output-bearing product with a scenes container (vendor default label via DefaultScenesName),

@@ -691,7 +691,7 @@ namespace Ihc.Vis.FunctionBlocks
         /// <paramref name="valueName"/>, with the operand's own <paramref name="name"/>/<paramref name="icon"/>
         /// (defaults match a condition operand; pass <c>null</c> for the bare form a case operand uses).</summary>
         public static FbOperand Enum(FbEnumDefRef definition, string valueName,
-            string? name = "Enumerator", string? icon = "_0x22")
+            string? name = "Enumerator", string? icon = FbGrammar.EnumOperandIcon)
         {
             ArgumentNullException.ThrowIfNull(definition);
             ArgumentNullException.ThrowIfNull(valueName);

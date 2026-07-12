@@ -3,6 +3,7 @@ using System;
 using System.Collections.Immutable;
 using System.Text;
 
+using Ihc.Vis.Model;
 using Ihc.Vis.Schema;
 namespace Ihc.Vis.Io
 {
@@ -39,7 +40,8 @@ namespace Ihc.Vis.Io
             {
                 return ImmutableDictionary<string, string>.Empty;
             }
-            int close = text.IndexOf("]>", open, StringComparison.Ordinal);
+            // Adjacent "]>" only (allowWhitespaceBeforeGt: false) — the .vis capture is byte-conservative.
+            int close = XmlText.FindDtdSubsetClose(text, open + 1, allowWhitespaceBeforeGt: false, out _);
             if (close < 0)
             {
                 return ImmutableDictionary<string, string>.Empty;

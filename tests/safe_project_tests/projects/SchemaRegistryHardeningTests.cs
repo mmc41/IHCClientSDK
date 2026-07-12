@@ -34,6 +34,44 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
+        public void ParseBlock_DuplicateAttlistForSameAttribute_DeduplicatesFirstWins()
+        {
+            // Finding 2: a duplicated ATTLIST is legal XML (first binding wins). Two schema entries for one name
+            // would make ProjectSerializer — which iterates the schema attr list — emit name="v" name="v", an
+            // unloadable file.
+            ElementSchema schema = ProjectSchemaRegistry.ParseBlock(
+                "<!ELEMENT group ANY>\r\n<!ATTLIST group name CDATA \"first\">\r\n<!ATTLIST group name CDATA \"second\">\r\n");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(schema.Attrs.Count(a => a.Name == "name"), Is.EqualTo(1), "the attribute appears exactly once");
+                Assert.That(schema.FindAttr("name")!.Default, Is.EqualTo("first"), "the first declaration binds (XML §3.3)");
+            });
+        }
+
+        [Test]
+        public void ParseBlock_SurrogateCharRefInDefault_StaysVerbatim_NoCrash()
+        {
+            // Finding 7: a surrogate code point (0xD800–0xDFFF) is not a valid scalar and char.ConvertFromUtf32
+            // throws on it — which crashed the schema parse untyped. It must decode to null (verbatim ref) instead.
+            ElementSchema schema = ProjectSchemaRegistry.ParseBlock(
+                "<!ELEMENT fancy ANY>\r\n<!ATTLIST fancy note CDATA \"&#xD800;\">\r\n");
+
+            Assert.That(schema.FindAttr("note")!.Default, Is.EqualTo("&#xD800;"),
+                "an unpaired surrogate reference stays verbatim, never crashes the parse");
+        }
+
+        [Test]
+        public void ParseBlock_CrLfInsideQuotedDefault_CollapsesToOneSpace()
+        {
+            // §3.3.3: after line-ending normalization a CRLF inside a quoted default is ONE space, not two.
+            ElementSchema schema = ProjectSchemaRegistry.ParseBlock(
+                "<!ELEMENT fancy ANY>\r\n<!ATTLIST fancy note CDATA \"A\r\nB\">\r\n");
+
+            Assert.That(schema.FindAttr("note")!.Default, Is.EqualTo("A B"));
+        }
+
+        [Test]
         public void ParseBlock_SingleQuotedDefault_Parses()
         {
             ElementSchema schema = ProjectSchemaRegistry.ParseBlock(

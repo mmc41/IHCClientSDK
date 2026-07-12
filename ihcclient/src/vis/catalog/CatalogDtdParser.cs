@@ -84,40 +84,11 @@ namespace Ihc.Vis.Catalog
             return rootStart >= 0 ? text.Substring(0, rootStart) : text;
         }
 
-        // The index just past the '>' closing the internal subset ("]" then optional whitespace then ">"), scanning
-        // quote-aware from inside the subset; -1 when the subset never closes.
-        private static int FindSubsetEnd(string s, int start)
-        {
-            char quote = '\0';
-            for (int i = start; i < s.Length; i++)
-            {
-                char c = s[i];
-                if (quote != '\0')
-                {
-                    if (c == quote)
-                    {
-                        quote = '\0';
-                    }
-                }
-                else if (c is '"' or '\'')
-                {
-                    quote = c;
-                }
-                else if (c == ']')
-                {
-                    int j = i + 1;
-                    while (j < s.Length && char.IsWhiteSpace(s[j]))
-                    {
-                        j++;
-                    }
-                    if (j < s.Length && s[j] == '>')
-                    {
-                        return j + 1;
-                    }
-                }
-            }
-            return -1;
-        }
+        // The index just past the '>' closing the internal subset ("]" then optional whitespace then ">" — the
+        // vendor-tolerant form), or -1 when it never closes. Adapts the shared quote- and comment-aware scanner
+        // (XmlText.FindDtdSubsetClose) to this parser's past-the-'>' convention.
+        private static int FindSubsetEnd(string s, int start) =>
+            XmlText.FindDtdSubsetClose(s, start, allowWhitespaceBeforeGt: true, out int afterEnd) >= 0 ? afterEnd : -1;
 
         // ----- strict core -----
 

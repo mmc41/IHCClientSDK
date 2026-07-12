@@ -54,6 +54,13 @@ namespace Ihc.Vis.Model
         /// </summary>
         internal const long MaxPackedValue = 0xFFFFFFFFL;
 
+        /// <summary>
+        /// The vendor null token <c>"_0x0"</c>: the sentinel an unwired IDREF carries (the insert transform
+        /// stamps it on #REQUIRED-yet-unwired references; the validator's bijection and dangling-IDREF checks
+        /// bless it). A legitimate authored state — never a live element id.
+        /// </summary>
+        public const string NullToken = "_0x0";
+
         /// <summary>The packed numeric value <c>(Counter &lt;&lt; 8) | (TypeCode &amp; 0xFF)</c>.</summary>
         public long Value => ((long)Counter << 8) | (uint)(TypeCode & 0xFF);
 

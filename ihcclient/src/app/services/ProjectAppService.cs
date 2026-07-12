@@ -14,6 +14,7 @@ using Ihc.Vis.Io;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
+using Ihc.Vis.Schema;
 using Ihc.Vis.Validation;
 namespace Ihc.Vis
 {
@@ -44,6 +45,8 @@ namespace Ihc.Vis
         private readonly Lazy<CompositeCatalog> catalog;
         private readonly TimeProvider timeProvider;
         private readonly IControllerService? controller;
+        // Only the controller bridge (DownloadFrom/UploadTo) authenticates; null for a file-only service.
+        private readonly IAuthenticationService? authService;
 
         /// <summary>
         /// Creates a service from settings, with an optional <paramref name="controller"/> for the
@@ -60,25 +63,29 @@ namespace Ihc.Vis
                    // never caches a factory exception.
                    new Lazy<ICatalog>(() => new BuiltInCatalog(), LazyThreadSafetyMode.PublicationOnly),
                    TimeProvider.System,
-                   controller)
+                   controller,
+                   authService: null)
         {
         }
 
         /// <summary>
         /// Creates a service with an injected catalog and time provider (used by tests for determinism), with
-        /// an optional <paramref name="controller"/> for the download/upload bridge.
+        /// an optional <paramref name="controller"/> for the download/upload bridge and an optional
+        /// <paramref name="authService"/> (tests inject a fake; production builds one from settings when a
+        /// controller is present).
         /// </summary>
         public ProjectAppService(IhcSettings settings, ICatalog catalog, TimeProvider timeProvider,
-                                 IControllerService? controller = null)
+                                 IControllerService? controller = null, IAuthenticationService? authService = null)
             : this(settings,
                    new Lazy<ICatalog>(catalog ?? throw new ArgumentNullException(nameof(catalog))),
                    timeProvider,
-                   controller)
+                   controller,
+                   authService)
         {
         }
 
         private ProjectAppService(IhcSettings settings, Lazy<ICatalog> baseCatalog, TimeProvider timeProvider,
-                                  IControllerService? controller)
+                                  IControllerService? controller, IAuthenticationService? authService)
         {
             ArgumentNullException.ThrowIfNull(settings);
             ArgumentNullException.ThrowIfNull(timeProvider);
@@ -92,6 +99,22 @@ namespace Ihc.Vis
                 LazyThreadSafetyMode.PublicationOnly);
             this.timeProvider = timeProvider;
             this.controller = controller;
+            // Auth is only exercised on the controller bridge. Build it from settings when a controller is present
+            // but the caller injected none (mirroring AdminAppService/InformationAppService); a file-only service
+            // never authenticates, so it stays null.
+            this.authService = authService ?? (controller is not null ? new AuthenticationService(settings) : null);
+        }
+
+        /// <summary>Authenticates with the controller if not already authenticated (the controller-bridge paths).</summary>
+        private async Task EnsureAuthenticated()
+        {
+            IAuthenticationService auth = authService ?? throw new InvalidOperationException(
+                $"This {nameof(ProjectAppService)} has no {nameof(IAuthenticationService)}; a controller-injecting " +
+                "constructor supplies one for the download/upload bridge.");
+            if (!await auth.IsAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext))
+            {
+                await auth.Authenticate().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            }
         }
 
         private IControllerService RequireController() =>
@@ -288,13 +311,21 @@ namespace Ihc.Vis
             if (options.VerifyRoundTrip)
             {
                 Project reparsed = ProjectReader.Read(new MemoryStream(bytes));
-                if (!reparsed.Equals(toWrite))
+                // Tolerant comparison: the serializer omits a Defaulted attribute whose value equals its DTD default
+                // (AttrSchema.OmitsOnWrite) and the reader never re-materializes it, so a model that explicitly
+                // carried such an attribute is a FAITHFUL write even though a naive re-parse equality would differ.
+                // Drop exactly those on both sides before comparing — Project equality is Root-only, so the stripped
+                // roots compare directly — and a foreign file with an explicit default-equal attribute round-trips
+                // while any genuine loss (a changed/absent non-default value, a dropped subtree) still diverges and
+                // throws. Both schema views are memoized (the reader warms the reparsed one eagerly).
+                ProjectElement expected = StripDefaultEqualAttrs(toWrite.Root, ProjectSchemaView.For(toWrite));
+                ProjectElement actual = StripDefaultEqualAttrs(reparsed.Root, ProjectSchemaView.For(reparsed));
+                if (!actual.Equals(expected))
                 {
                     throw new InvalidOperationException(
                         "Serialize/re-parse mismatch: the written bytes do not reproduce the in-memory project" +
-                        FirstDivergence(toWrite.Root, reparsed.Root, path: "utcs_project") +
-                        " — the model holds state the .vis format cannot represent (e.g. an attribute value " +
-                        "equal to its DTD default, which omit-if-default drops).");
+                        FirstDivergence(expected, actual, path: "utcs_project") +
+                        " — the model holds state the .vis format cannot represent.");
                 }
             }
             return bytes;
@@ -349,6 +380,48 @@ namespace Ihc.Vis
             return string.Empty;
         }
 
+        // Drops every attribute the serializer omits on write (AttrSchema.OmitsOnWrite — the serializer's own omit
+        // rule), recursively, so the round-trip verification compares only the state that actually reaches the
+        // file: the benign omit-if-default asymmetry is normalized away on both sides, genuine differences are not.
+        // Copy-on-write: an element with nothing to strip anywhere below it — the overwhelmingly common case, and
+        // by construction always true for the reparsed side — is returned as-is, so the walk allocates nothing.
+        private static ProjectElement StripDefaultEqualAttrs(ProjectElement element, ProjectSchemaView view)
+        {
+            ElementSchema? schema = view.TryGet(element.Tag);
+            ImmutableArray<(string Name, string Value)> attrs = element.AttrsOrEmpty();
+            ImmutableArray<(string, string)>.Builder? keptAttrs = null;   // created on the first dropped attribute
+            for (int i = 0; i < attrs.Length; i++)
+            {
+                if (schema?.FindAttr(attrs[i].Name) is { } attr && attr.OmitsOnWrite(attrs[i].Value))
+                {
+                    if (keptAttrs is null)
+                    {
+                        keptAttrs = ImmutableArray.CreateBuilder<(string, string)>(attrs.Length);
+                        for (int j = 0; j < i; j++) { keptAttrs.Add(attrs[j]); }
+                    }
+                    continue;
+                }
+                keptAttrs?.Add(attrs[i]);
+            }
+            ImmutableArray<ProjectElement> children = element.ChildrenOrEmpty();
+            ImmutableArray<ProjectElement>.Builder? keptChildren = null;   // created on the first changed child
+            for (int i = 0; i < children.Length; i++)
+            {
+                ProjectElement stripped = StripDefaultEqualAttrs(children[i], view);
+                if (keptChildren is null && !ReferenceEquals(stripped, children[i]))
+                {
+                    keptChildren = ImmutableArray.CreateBuilder<ProjectElement>(children.Length);
+                    for (int j = 0; j < i; j++) { keptChildren.Add(children[j]); }
+                }
+                keptChildren?.Add(stripped);
+            }
+            return keptAttrs is null && keptChildren is null
+                ? element
+                : new ProjectElement(element.Tag, element.Id,
+                    keptAttrs?.ToImmutable() ?? attrs,
+                    keptChildren?.ToImmutable() ?? children);
+        }
+
         /// <summary>
         /// Downloads the project from the injected controller and parses it into a <see cref="Project"/>. The
         /// controller blob is the gzip-compressed form of the same <c>utcs_project</c> XML a <c>.vis</c>
@@ -363,6 +436,7 @@ namespace Ihc.Vis
             {
                 try
                 {
+                    await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     ProjectFile file = await controller.GetProject().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     if (file?.Data is null)
                     {
@@ -371,7 +445,10 @@ namespace Ihc.Vis
                             $"{nameof(IControllerService)}.{nameof(IControllerService.IsIHCProjectAvailable)}() " +
                             $"before calling {nameof(DownloadFrom)}.");
                     }
-                    using MemoryStream ms = new MemoryStream(ProjectFile.Encoding.GetBytes(file.Data));
+                    // StrictEncoding (matching the upload side): a real controller only ever produces Latin-1 text,
+                    // so an alternative IControllerService that hands back a >U+00FF char is a bug that must fail
+                    // loudly here, not be silently transcoded to '?' by the lossy replacement fallback.
+                    using MemoryStream ms = new MemoryStream(ProjectFile.StrictEncoding.GetBytes(file.Data));
                     Project project = await Load(ms).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     activity?.SetReturnValue(project);
                     return project;
@@ -406,6 +483,7 @@ namespace Ihc.Vis
             {
                 try
                 {
+                    await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     if (validate)
                     {
                         ProjectValidationResult validation = ProjectValidator.Validate(project);
@@ -414,13 +492,15 @@ namespace Ihc.Vis
                             throw new ProjectValidationException(validation);
                         }
                     }
-                    // Always verify the write on this path: controller EPROM has no .BAK to roll back to, and
-                    // the re-parse comparison is cheap next to the gzip + network cost already being paid.
+                    // Always verify the write on this path (controller EPROM has no .BAK to roll back to) — a
+                    // deliberate, documented postcondition, not a silent discard of the caller's option. The check is
+                    // tolerant of the benign omit-if-default asymmetry, so a foreign file with an explicit
+                    // default-equal attribute still uploads; only a genuinely non-reproducible model is refused.
                     ProjectSaveOptions effective = (options ?? ProjectSaveOptions.Default) with { VerifyRoundTrip = true };
-                    using MemoryStream ms = new MemoryStream();
-                    await Save(project, ms, effective).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    // Serialize straight to the on-wire string — the controller takes a ProjectFile, not a stream — so
+                    // no MemoryStream/ToArray copy is needed (the byte[] → string is the only conversion required).
                     ProjectFile file = new ProjectFile(filename ?? DefaultProjectFilename,
-                                                       ProjectFile.Encoding.GetString(ms.ToArray()));
+                                                       ProjectFile.Encoding.GetString(SerializeForSave(project, effective)));
                     bool stored = await controller.StoreProject(file).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     if (!stored)
                     {
@@ -440,7 +520,7 @@ namespace Ihc.Vis
             }
         }
 
-        /// <summary>The products available for insertion, discovered from the install dir.</summary>
+        /// <summary>The products available for insertion, from the SDK-embedded catalog (plus any imported).</summary>
         public IReadOnlyList<ProductDefinition> GetAvailableProducts()
         {
             using (var activity = StartActivity(nameof(GetAvailableProducts)))
@@ -459,7 +539,7 @@ namespace Ihc.Vis
             }
         }
 
-        /// <summary>The function blocks available for insertion, discovered from the install dir.</summary>
+        /// <summary>The function blocks available for insertion, from the SDK-embedded catalog (plus any imported).</summary>
         public IReadOnlyList<FunctionBlockDefinition> GetAvailableFunctionBlocks()
         {
             using (var activity = StartActivity(nameof(GetAvailableFunctionBlocks)))
@@ -550,7 +630,7 @@ namespace Ihc.Vis
                 string sibling = Path.ChangeExtension(componentPath, extension);
                 if (File.Exists(sibling))
                 {
-                    return File.ReadAllText(sibling);
+                    return File.ReadAllText(sibling, System.Text.Encoding.UTF8);   // sibling help docs are UTF-8 (all vendor docs validate as UTF-8)
                 }
             }
             return null;

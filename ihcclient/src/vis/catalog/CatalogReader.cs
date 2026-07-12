@@ -45,7 +45,7 @@ namespace Ihc.Vis.Catalog
         public static ProductDefinition ReadProduct(string path, ProductDocumentation? documentation = null)
         {
             ArgumentNullException.ThrowIfNull(path);
-            return BuildProduct(File.ReadAllBytes(path), string.Empty, documentation);
+            return ParseCatalogFile(path, () => BuildProduct(File.ReadAllBytes(path), string.Empty, documentation));
         }
 
         /// <summary>Reads a product catalog file from a stream into a <see cref="ProductDefinition"/>; see
@@ -65,7 +65,26 @@ namespace Ihc.Vis.Catalog
         public static FunctionBlockDefinition ReadFunctionBlock(string path, FunctionBlockDocumentation? documentation = null)
         {
             ArgumentNullException.ThrowIfNull(path);
-            return BuildFunctionBlock(File.ReadAllBytes(path), string.Empty, documentation);
+            return ParseCatalogFile(path, () => BuildFunctionBlock(File.ReadAllBytes(path), string.Empty, documentation));
+        }
+
+        /// <summary>
+        /// Runs a catalog-file parse with file-context error wrapping: one malformed/truncated vendor file surfaces
+        /// an <see cref="InvalidDataException"/> naming the offending path, instead of a bare
+        /// <see cref="XmlException"/>/<see cref="IOException"/> that names neither the file nor that a catalog read
+        /// was in progress. This reader owns the path, so the wrap lives here — shared by the path-taking readers
+        /// above and by <see cref="CatalogDiscovery"/>'s install-dir scan.
+        /// </summary>
+        internal static T ParseCatalogFile<T>(string path, Func<T> parse)
+        {
+            try
+            {
+                return parse();
+            }
+            catch (Exception ex) when (ex is XmlException or IOException or UnauthorizedAccessException)
+            {
+                throw new InvalidDataException($"Failed to parse IHC Visual catalog file '{path}': {ex.Message}", ex);
+            }
         }
 
         /// <summary>Reads a function-block catalog file from a stream into a <see cref="FunctionBlockDefinition"/>; see

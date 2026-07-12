@@ -1,6 +1,7 @@
-using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+
+using static Ihc.Vis.Tests.Tree;
 
 namespace Ihc.Vis.Tests
 {
@@ -11,18 +12,6 @@ namespace Ihc.Vis.Tests
     public class ProjectValidatorTests
     {
         private static IhcSettings Settings => TestSetup.Settings;
-
-        private static ProjectElement Node(string tag, string? id, (string, string)[] attrs, params ProjectElement[] children)
-        {
-            ElementId? parsed = id is not null && ElementId.TryParse(id, out ElementId p) ? p : null;
-            var bag = ImmutableArray.CreateBuilder<(string, string)>();
-            if (id is not null)
-            {
-                bag.Add(("id", id));
-            }
-            bag.AddRange(attrs);
-            return new ProjectElement(tag, parsed, bag.ToImmutable(), children.ToImmutableArray());
-        }
 
         [Test]
         public void Validate_RealVendorFile_IsClean()
@@ -69,6 +58,49 @@ namespace Ihc.Vis.Tests
                 Assert.That(result.IsValid, Is.False);
                 Assert.That(result.Errors.Any(e => e.Contains("non-ISO-8859-1")), Is.True);
             });
+        }
+
+        [Test]
+        public void Validate_UnwiredIdRef_NullToken_IsNotFlaggedAsDangling()
+        {
+            // _0x0 is the null-token sentinel for an unwired IDREF (StampRequiredNullTokens stamps it,
+            // ValidateSceneBijection blesses it); the generic idref-dangling rule must not contradict them.
+            ProjectElement root = Node("utcs_project", null,
+                new[] { ("version_major", "4"), ("version_minor", "0"), ("id1", "_0x1"), ("id2", "_0x2"), ("last_unique_id", "_0x60") },
+                Node("groups", "_0x2031", new[] { ("name", "L") },
+                    Node("group", "_0x2132", new[] { ("name", "Stue") },
+                        Node("product_dataline", "_0x5153", new[] { ("product_identifier", "_0x2202"), ("name", "P") },
+                            Node("scenes", "_0x5349", new[] { ("name", "S"), ("scene_resource", "_0x0") })))));
+
+            ProjectValidationResult result = ProjectValidator.Validate(new Project(root));
+
+            Assert.That(result.Errors.Any(e => e.Contains("dangling")), Is.False,
+                "an unwired _0x0 IDREF is a legitimate authored state; errors: " + string.Join(" | ", result.Errors));
+        }
+
+        [Test]
+        public void Validate_CrossBlockProgramCaseLink_IsReported()
+        {
+            // Finding 15: program_case@link is an FB-local switch-variable IDREF; one pointing OUTSIDE its function
+            // block must be flagged. It was silently accepted while locality was gated by attribute NAME (link was
+            // absent from the whitelist, and it cannot be added blindly — link_from/to_resource@link is non-local).
+            ProjectElement root = Node("utcs_project", null,
+                new[] { ("version_major", "4"), ("version_minor", "0"), ("id1", "_0x1"), ("id2", "_0x2"), ("last_unique_id", "_0x7000") },
+                Node("groups", "_0x2031", new[] { ("name", "L") },
+                    Node("group", "_0x2132", new[] { ("name", "Stue") },
+                        Node("product_dataline", "_0x5153", new[] { ("product_identifier", "_0x2202"), ("name", "P") },
+                            Node("dataline_output", "_0x900", new[] { ("name", "Out") })),   // the cross-block target
+                        Node("functionblock", "_0x6001",
+                            new[] { ("master_type", "9"), ("master_version", "9"), ("master_name", "FB"), ("name", "FB") },
+                            Node("programs", "_0x6002", new[] { ("name", "programs") },
+                                Node("program_simple", "_0x6003", new[] { ("name", "Program") },
+                                    Node("actions", "_0x6004", new[] { ("name", "actions") },
+                                        Node("program_case", "_0x6005", new[] { ("name", "Switch"), ("link", "_0x900") }))))))));
+
+            ProjectValidationResult result = ProjectValidator.Validate(new Project(root));
+
+            Assert.That(result.Errors.Any(e => e.Contains("program_case") && e.Contains("outside")), Is.True,
+                "a cross-block program_case@link is a locality violation; errors: " + string.Join(" | ", result.Errors));
         }
 
         // ----- registry-backed conformance: #REQUIRED presence + enumerated-attribute value range -----

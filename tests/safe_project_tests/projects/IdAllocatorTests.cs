@@ -25,6 +25,25 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
+        public void MintMissingIds_PresentButUnparseableIdToken_IsPreserved_NoBurn()
+        {
+            // Finding 16: a node whose id attribute is present but unparseable (the vendor typo "_05", missing the
+            // "0x") must keep its token verbatim. Minting off the null Id would burn a counter id AND leave the
+            // attribute disagreeing with the minted Id (the old rewrite guard never touched a present attribute).
+            var alloc = new IdAllocator(0x40);
+            ProjectElement node = Tree.Node("group", "_05", new[] { ("name", "X") });
+
+            ProjectElement result = alloc.MintMissingIds(node);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.GetAttribute("id"), Is.EqualTo("_05"), "the unparseable token is preserved verbatim");
+                Assert.That(result.Id, Is.Null, "no parseable id is fabricated");
+                Assert.That(alloc.LastUniqueIdToken, Is.EqualTo("_0x40"), "no counter id is burned");
+            });
+        }
+
+        [Test]
         public void ForProject_SeedsFromHighWaterMark_NotTooLowAttribute()
         {
             // last_unique_id says _0x05 but a child counter is already 0x21 -> seed must be 0x21, not 0x05.

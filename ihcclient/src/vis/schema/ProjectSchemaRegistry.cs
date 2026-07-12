@@ -145,6 +145,7 @@ namespace Ihc.Vis.Schema
         {
             const string attlistMarker = "<!ATTLIST ";
             var result = ImmutableArray.CreateBuilder<AttrSchema>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
             int search = block.IndexOf(attlistMarker, StringComparison.Ordinal);
             while (search >= 0)
             {
@@ -159,7 +160,17 @@ namespace Ihc.Vis.Schema
                 string declaredFor = ReadWord(body, ref pos, body.Length);
                 if (declaredFor == tag)
                 {
-                    result.AddRange(TokenizeAttrs(body.Substring(Math.Min(pos, body.Length)), tag));
+                    // XML 1.0 §3.3: when an attribute name is declared more than once — within one ATTLIST or across
+                    // several/duplicate ATTLISTs — the FIRST declaration binds and later ones are ignored. Dedupe by
+                    // name here (the single chokepoint for both cases) so a duplicated declaration can never make the
+                    // serializer, which iterates this schema list, emit the same attribute twice (an unloadable file).
+                    foreach (AttrSchema attr in TokenizeAttrs(body.Substring(Math.Min(pos, body.Length)), tag))
+                    {
+                        if (seen.Add(attr.Name))
+                        {
+                            result.Add(attr);
+                        }
+                    }
                 }
                 search = block.IndexOf(attlistMarker, close, StringComparison.Ordinal);
             }
@@ -197,6 +208,7 @@ namespace Ihc.Vis.Schema
             var sb = new StringBuilder(s.Length);
             char quote = '\0';
             bool inWhitespace = false;
+            bool prevCr = false;
             foreach (char c in s)
             {
                 if (quote != '\0')
@@ -204,10 +216,21 @@ namespace Ihc.Vis.Schema
                     if (c == quote)
                     {
                         quote = '\0';
+                        prevCr = false;
+                        sb.Append(c);
+                        continue;
                     }
-                    sb.Append(c is ' ' or '\t' or '\r' or '\n' ? ' ' : c);   // §3.3.3: one space per whitespace char
+                    // §3.3.3 (after line-ending normalization): a CRLF is ONE space, not two — skip the LF of a CRLF.
+                    if (c == '\n' && prevCr)
+                    {
+                        prevCr = false;
+                        continue;
+                    }
+                    prevCr = c == '\r';
+                    sb.Append(c is ' ' or '\t' or '\r' or '\n' ? ' ' : c);   // §3.3.3: one space per (normalized) whitespace char
                     continue;
                 }
+                prevCr = false;
                 if (c is '"' or '\'')
                 {
                     if (inWhitespace && sb.Length > 0)

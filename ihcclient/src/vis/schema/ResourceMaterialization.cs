@@ -25,6 +25,12 @@ namespace Ihc.Vis.Schema
     {
         private static readonly Dictionary<string, string> Icons = new(StringComparer.Ordinal)
         {
+            // Creation icons for the structural/link elements the authoring paths stamp (ProjectEditor.Link/SeedGroup
+            // and the File→New template): non-default overrides (their DTD default is _0x0), so they belong here, not
+            // in KnownDefaultIconTags. Catalog bodies never contain these tags, so the insert-stamp path is unaffected.
+            ["group"] = "_0x15",
+            ["link_from_resource"] = "_0x47",
+            ["link_to_resource"] = "_0x4a",
             ["resource_enum"] = "_0x22",
             ["resource_input"] = "_0x36",
             ["resource_output"] = "_0x39",
@@ -63,7 +69,7 @@ namespace Ihc.Vis.Schema
         /// </summary>
         internal static readonly IReadOnlySet<string> KnownDefaultIconTags = new HashSet<string>(StringComparer.Ordinal)
         {
-            "utcs_project", "groups", "group", "product_dataline", "link_from_resource", "link_to_resource",
+            "utcs_project", "groups", "product_dataline",
             "functionblock", "inputs", "outputs", "resource_scene", "settings", "internalsettings", "programs",
             "program_simple", "events", "event", "actions", "program_sub", "conditions", "condition", "action",
             "documentation_modules", "dataline_input_modules", "dataline_output_modules", "case_action",
@@ -76,6 +82,15 @@ namespace Ihc.Vis.Schema
 
         /// <summary>The canonical GUI icon for a resource type, or null when the type has none (effective <c>_0x0</c>).</summary>
         public static string? Icon(string tag) => Icons.TryGetValue(tag, out string? icon) ? icon : null;
+
+        /// <summary>
+        /// <see cref="Icon"/> for a type the authoring paths stamp unconditionally: throws when the type has no
+        /// registered override, so a removed or renamed <see cref="Icons"/> entry fails here at the source instead
+        /// of emitting a null attribute value far from the cause.
+        /// </summary>
+        internal static string RequireIcon(string tag) =>
+            Icon(tag) ?? throw new InvalidOperationException(
+                $"No creation icon is registered for <{tag}> in {nameof(ResourceMaterialization)}.");
 
         /// <summary>
         /// The presentation attributes a hand-authored resource of this type must carry to match the vendor: the

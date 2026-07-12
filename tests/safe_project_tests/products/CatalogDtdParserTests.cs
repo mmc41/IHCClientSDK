@@ -217,6 +217,37 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
+        public void CaptureHeadText_IsNotBrokenByApostropheInComment()
+        {
+            // Finding 4: a lone apostrophe inside a DTD comment used to flip the quote tracker so ']>' was never
+            // found — CaptureHeadText fell back to a prolog-only head and the whole grammar was silently dropped.
+            string document = Head("   <!-- Peter's dimmer -->\r\n   <!ELEMENT r ANY>\r\n   <!ATTLIST r a CDATA \"v\">\r\n") + "<r a=\"v\" />";
+
+            string head = CatalogDtdParser.CaptureHeadText(Encoding.ASCII.GetBytes(document));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(head, Does.EndWith("]>\r\n"), "the comment-aware scan finds the true subset end");
+                Assert.That(head, Does.Contain("Peter's dimmer"), "the comment is inside the captured head");
+                Assert.That(head, Does.Contain("<!ELEMENT r ANY>"), "declarations after the comment are captured, not dropped");
+            });
+        }
+
+        [Test]
+        public void LenientParse_HeaderWithApostropheComment_KeepsDeclarations()
+        {
+            // Finding 4 (end-to-end): the same header must project its declarations, not collapse to a prolog-only
+            // (0-declaration) grammar the way the pre-fix CaptureHeadText caused.
+            string head = CatalogDtdParser.CaptureHeadText(Encoding.ASCII.GetBytes(
+                Head("   <!-- Peter's dimmer -->\r\n   <!ELEMENT r ANY>\r\n   <!ATTLIST r inivalue CDATA \"500.00\">\r\n") + "<r />"));
+
+            CatalogGrammar grammar = CatalogDtdParser.ParseLenient(head);
+
+            Assert.That(grammar.TryGetDeclaration("r")!.FindAttr("inivalue")!.RawLiteral, Is.EqualTo("500.00"),
+                "the declaration survives the apostrophe-bearing comment");
+        }
+
+        [Test]
         public void StrictParse_Accepts_DigitLeadingEnumerationTokens()
         {
             string head = Head("   <!ELEMENT r ANY>\r\n   <!ATTLIST r pulse (24 | 48 | none) \"24\">\r\n");

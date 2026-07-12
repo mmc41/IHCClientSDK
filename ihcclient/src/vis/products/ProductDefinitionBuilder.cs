@@ -66,6 +66,8 @@ namespace Ihc.Vis.Products
         private readonly List<(string Name, string Value)> rootAttrs = new();
         private readonly List<ProjectElement> children = new();
         private ElementId? lastResourceId;
+        private ElementId? builtRootId;     // memoized so repeated Build() is idempotent (no id drift off the allocator)
+        private ElementId? builtScenesId;
         private string? scenes;   // the scenes container's label when requested (null = no scenes)
         private CatalogGrammar grammar;                 // the EFFECTIVE grammar: family preset / From-carried / assigned
         private CatalogTextEncoding? sourceEncoding;    // From-carried physical encoding
@@ -393,19 +395,21 @@ namespace Ihc.Vis.Products
             return findings;
         }
 
-        // The scenes stub mirrors what Build() will emit (name + scene_resource binding) without allocating its id.
+        // The scenes stub (name + optional scene_resource binding), shared by Build() (allocated id) and the
+        // Validate() advisory preview (null id, allocator untouched) so their assembly can never drift — the same
+        // shape ComposeRoot already uses.
+        private ProjectElement MakeScenesElement(string label, ElementId? scenesId)
+        {
+            ProjectElement scenesElement = ProjectElement.Create("scenes", scenesId, new[] { ("name", label) }, NoChildren);
+            return lastResourceId is { } bound ? scenesElement.WithAttribute("scene_resource", bound.ToToken()) : scenesElement;
+        }
+
         private List<ProjectElement> AdvisoryChildren()
         {
             var childElements = new List<ProjectElement>(children);
             if (scenes is { } scenesLabel)
             {
-                ProjectElement scenesElement = ProjectElement.Create("scenes", id: null,
-                    new[] { ("name", scenesLabel) }, NoChildren);
-                if (lastResourceId is { } bound)
-                {
-                    scenesElement = scenesElement.WithAttribute("scene_resource", bound.ToToken());
-                }
-                childElements.Add(scenesElement);
+                childElements.Add(MakeScenesElement(scenesLabel, scenesId: null));   // no id: allocator untouched
             }
             return childElements;
         }
@@ -423,16 +427,14 @@ namespace Ihc.Vis.Products
             var childElements = new List<ProjectElement>(children);
             if (scenes is { } scenesLabel)
             {
-                ElementId scenesId = ids.Allocate(TypeCode.RequireForTag("scenes"));
-                ProjectElement scenesElement = ProjectElement.Create("scenes", scenesId, new[] { ("name", scenesLabel) }, NoChildren);
-                if (lastResourceId is { } bound)
-                {
-                    scenesElement = scenesElement.WithAttribute("scene_resource", bound.ToToken());
-                }
-                childElements.Add(scenesElement);
+                // Allocate-once (memoized) so Build→Build produces identical bytes instead of drifting ids off the
+                // persistent allocator that is never reset/reused.
+                builtScenesId ??= ids.Allocate(TypeCode.RequireForTag("scenes"));
+                childElements.Add(MakeScenesElement(scenesLabel, builtScenesId));
             }
 
-            ProjectElement root = ComposeRoot(ids.Allocate(TypeCode.RequireForTag(rootTag)), childElements);
+            builtRootId ??= ids.Allocate(TypeCode.RequireForTag(rootTag));
+            ProjectElement root = ComposeRoot(builtRootId, childElements);
 
             // Return the raw body (placeholder ids + effective attributes), exactly as a CatalogReader.Read yields a
             // .def's parsed tree — deliberately NOT canonicalized: the .def's own DTD defaults (e.g. a product family's
@@ -502,15 +504,29 @@ namespace Ihc.Vis.Products
         internal IReadOnlyList<(string Name, string Value)> Attributes => attrs;
 
         /// <summary>Sets the resource address token, resolved to the family's address attribute from the resource's
-        /// element tag (<c>address_dataline</c> for dataline pins, <c>address_channel</c> for airlink/rs485 channels,
-        /// <c>address</c> for modems). Use <see cref="Attribute"/> for an exotic family's address attribute.</summary>
-        public ProductResourceDefBuilder Address(string addressToken) => Set(AddressAttributeFor(tag), addressToken);
+        /// element tag (<c>address_dataline</c> for dataline pins, <c>address_channel</c> for airlink channels,
+        /// <c>address</c> for modems). rs485 channels have no single address attribute (they use
+        /// <c>channel</c>/<c>channel_id</c>) — set those via <see cref="Attribute"/>; likewise for any exotic
+        /// family's address attribute.</summary>
+        public ProductResourceDefBuilder Address(string addressToken)
+        {
+            // A null resolution (rs485) would otherwise bake an undeclared 'address' attribute that only fails
+            // far later at insert/open/save.
+            string attribute = AddressAttributeFor(tag) ?? throw new InvalidOperationException(
+                $"<{tag}> has no single 'address' attribute — rs485 channels are addressed by 'channel'/" +
+                "'channel_id'. Use .Attribute(\"channel\", …) / .Attribute(\"channel_id\", …) instead.");
+            return Set(attribute, addressToken);
+        }
 
         // The family-to-attribute resolution Address uses — internal so the catalog decompiler recognises the
-        // attribute .Address would produce for a resource's family without re-encoding this map.
-        internal static string AddressAttributeFor(string tag) =>
+        // attribute .Address would produce for a resource's family without re-encoding this map. Total over the
+        // families: null marks one with NO single address attribute (rs485 channels are addressed by
+        // channel/channel_id), which .Address rejects and the decompiler's comparison never matches, leaving
+        // those to render as ordinary .Attribute calls.
+        internal static string? AddressAttributeFor(string tag) =>
             tag.StartsWith("dataline_", StringComparison.Ordinal) ? "address_dataline"
             : tag.StartsWith("airlink_", StringComparison.Ordinal) ? "address_channel"
+            : tag.StartsWith("rs485_", StringComparison.Ordinal) ? null
             : "address";
 
         /// <summary>Sets the cable colour.</summary>

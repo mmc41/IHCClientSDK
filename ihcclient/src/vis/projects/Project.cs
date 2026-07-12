@@ -43,26 +43,29 @@ namespace Ihc.Vis.Projects
         /// <inheritdoc/>
         public override int GetHashCode() => Root.GetHashCode();
 
-        // Memoized, keyed on the InlineDtdBlocks reference it was built from. The record copy-constructor carries
-        // both fields verbatim across `with`, so guarding on that reference keeps the cache across a
-        // `with { Root = ... }` (blocks unchanged → reuse) yet rebuilds after a `with { InlineDtdBlocks = ... }`
-        // (blocks replaced → the carried view no longer matches its source, which would otherwise emit the wrong
-        // DTD). ProjectReader warms it eagerly so a malformed captured DTD block fails at load with file context
-        // instead of at the first save.
-        private ProjectSchemaView? schemaView;
-        private ImmutableDictionary<string, string>? schemaViewSource;
+        // Memoized as ONE reference (source + view together), keyed on the InlineDtdBlocks reference it was built
+        // from. A single reference field means a concurrent reader can never observe a torn (new source, old view)
+        // pair — it sees either the fully-built old memo or the fully-built new one (the two separate fields it
+        // replaced could tear). The record copy-constructor carries this field verbatim across `with`, so the cache
+        // survives a `with { Root = ... }` (blocks unchanged → reuse) yet rebuilds after a
+        // `with { InlineDtdBlocks = ... }` (blocks replaced → the carried view no longer matches, which would
+        // otherwise emit the wrong DTD). ProjectReader warms it eagerly so a malformed captured DTD block fails at
+        // load with file context instead of at the first save.
+        private sealed record SchemaViewMemo(ImmutableDictionary<string, string> Source, ProjectSchemaView View);
+        private SchemaViewMemo? schemaViewMemo;
 
         /// <summary>The schema resolver for this project: its captured inline-DTD blocks first, registry fallback.</summary>
         internal ProjectSchemaView SchemaView
         {
             get
             {
-                if (schemaView is null || !ReferenceEquals(schemaViewSource, InlineDtdBlocks))
+                SchemaViewMemo? memo = schemaViewMemo;   // snapshot the single reference before comparing/using
+                if (memo is null || !ReferenceEquals(memo.Source, InlineDtdBlocks))
                 {
-                    schemaViewSource = InlineDtdBlocks;
-                    schemaView = ProjectSchemaView.For(InlineDtdBlocks);
+                    memo = new SchemaViewMemo(InlineDtdBlocks, ProjectSchemaView.For(InlineDtdBlocks));
+                    schemaViewMemo = memo;
                 }
-                return schemaView;
+                return memo.View;
             }
         }
 

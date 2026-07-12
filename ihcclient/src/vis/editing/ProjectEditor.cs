@@ -146,7 +146,7 @@ namespace Ihc.Vis.Editing
 
             var catalogEnums = container.ChildrenOrEmpty()
                 .Where(c => c.Tag == "enum_definition"
-                    && c.GetAttribute("typeid") is { } typeid && typeid != "_0x0")
+                    && c.GetAttribute("typeid") is { } typeid && typeid != ElementId.NullToken)
                 .ToList();
             if (catalogEnums.Count == 0)
             {
@@ -311,9 +311,9 @@ namespace Ihc.Vis.Editing
             ElementId linkToId = allocator.Allocate(TypeCode.RequireForTag("link_to_resource"));
 
             ProjectElement linkFrom = SimpleElement("link_from_resource", linkFromId,
-                ("name", FollowLinkName), ("icon", "_0x47"), ("link", linkToId.ToToken()));
+                ("name", FollowLinkName), ("icon", ResourceMaterialization.RequireIcon("link_from_resource")), ("link", linkToId.ToToken()));
             ProjectElement linkTo = SimpleElement("link_to_resource", linkToId,
-                ("name", FollowLinkName), ("icon", "_0x4a"), ("link", linkFromId.ToToken()));
+                ("name", FollowLinkName), ("icon", ResourceMaterialization.RequireIcon("link_to_resource")), ("link", linkFromId.ToToken()));
 
             AppendChild(fromId, linkFrom);
             AppendChild(toId, linkTo);
@@ -359,9 +359,12 @@ namespace Ihc.Vis.Editing
                 }
                 foreach (ProjectElement partner in toEl.ChildrenOrEmpty())
                 {
+                    // Reciprocity by parsed ElementId (not raw token text), matching GetLinks / ResolveLinkOpposite /
+                    // the DeleteById cascade: a foreign file's non-canonical spelling (leading zeros, case) of an
+                    // otherwise-reciprocal link must still resolve, not throw "not follow-linked".
                     if (partner.Tag == "link_to_resource" && partner.Id is { } toHalfId
-                        && half.GetAttribute("link") == partner.GetAttribute("id")
-                        && partner.GetAttribute("link") == half.GetAttribute("id"))
+                        && ElementId.TryParse(half.GetAttribute("link"), out ElementId fromHalfLink) && fromHalfLink == toHalfId
+                        && ElementId.TryParse(partner.GetAttribute("link"), out ElementId toHalfLink) && toHalfLink == fromHalfId)
                     {
                         return (fromHalfId, toHalfId);
                     }
@@ -391,9 +394,10 @@ namespace Ihc.Vis.Editing
             // discards) that enum's def+value ids between the product id and its first serialized child — the
             // "enum-footprint" id burn. The in-project instance dropped that stub on its original insert;
             // reconstruct it from the project's shared enum so the existing enum-dedup path
-            // (HoistOrResolveEnum → BurnAndMapToExisting) reproduces the burn. Function blocks / bare resources
-            // carry no product_identifier and are copied one-id-per-element, unchanged.
-            if (body.GetAttribute("product_identifier") is not null)
+            // (HoistOrResolveEnum → BurnAndMapToExisting) reproduces the burn. Gate on device-root placement, not
+            // product_identifier presence: a non-root rs485_led_dimmer_channel also declares product_identifier but
+            // is not a pasted product, and must be copied one-id-per-element unchanged.
+            if (PlacementRules.IsDeviceRoot(body.Tag))
             {
                 body = PrependReferencedEnumStubs(body);
             }
@@ -420,7 +424,7 @@ namespace Ihc.Vis.Editing
             var stubs = new List<ProjectElement>();
             foreach (ProjectElement element in source.DescendantsAndSelf())
             {
-                if (element.GetAttribute("typedef") is { } typedef && typedef != "_0x0" && seen.Add(typedef)
+                if (element.GetAttribute("typedef") is { } typedef && typedef != ElementId.NullToken && seen.Add(typedef)
                     && container.ChildrenOrEmpty().FirstOrDefault(d => d.GetAttribute("id") == typedef) is { } def)
                 {
                     stubs.Add(def);
@@ -640,6 +644,9 @@ namespace Ihc.Vis.Editing
 
         internal ElementId InsertComponent(ElementId groupId, ProjectElement catalogBody, CatalogGrammar grammar)
         {
+            // Fail fast on a stale/absent target before ANY commit (block adoption, id burn, enum hoist): otherwise a
+            // dead group id leaves the session half-mutated — hoisted enums with no owning component and burnt ids.
+            Require(groupId);
             MergeNonRegistryBlocks(catalogBody, grammar);
             ProjectElement enumDefinitions = root.FindChild(EnumDefinitionsTag)
                 ?? throw new InvalidOperationException("The project has no enum_definitions container.");
@@ -848,13 +855,10 @@ namespace Ihc.Vis.Editing
 
         // ----- tree machinery -----
 
-        // Follow-link halves and scene rows both pair reciprocally via their `link` IDREF (spec ch. 06 §6.4,
-        // ch. 08): deleting one side must cascade the other, and only elements of these types may be cascaded.
-        private static readonly HashSet<string> ReciprocalHalfTags = new(StringComparer.Ordinal)
-        {
-            "link_from_resource", "link_to_resource",
-            "scene_link", "scene_dimmer", "scene_relay", "scene_shutter",
-        };
+        // The reciprocal-pair tags (follow-link halves + scene rows, spec ch. 06 §6.4, ch. 08) — sourced from the
+        // schema layer so this editor's delete cascade, the validator's bijection checks and the copy-prune all read
+        // one definition; only elements of these types may be cascaded on a delete.
+        private static readonly IReadOnlySet<string> ReciprocalHalfTags = ReciprocalTags.All;
 
         private static void CollectLinkPartners(ProjectElement element, List<ElementId> partners)
         {
@@ -883,7 +887,7 @@ namespace Ihc.Vis.Editing
         {
             foreach (ProjectElement e in element.DescendantsAndSelf())
             {
-                if (e.Tag is "link_from_resource" or "link_to_resource"
+                if (ReciprocalTags.FollowLinkHalfTags.Contains(e.Tag)
                     && e.Id is { } halfId
                     && ElementId.TryParse(e.GetAttribute("link"), out ElementId partner)
                     && !insideIds.Contains(partner))
@@ -901,7 +905,15 @@ namespace Ihc.Vis.Editing
                 return null;
             }
             ProjectElement? match = groups.Children.FirstOrDefault(g => g.Tag == "group" && g.GetAttribute("name") == name);
-            return match?.Id;
+            if (match is null)
+            {
+                return null;   // truly absent → the caller seeds a fresh room
+            }
+            // A name match whose id token is unparseable is unaddressable, not absent: seeding a second same-named
+            // room would silently duplicate it (and land later inserts in the wrong one). Mirror UpsertResourceChild.
+            return match.Id ?? throw new InvalidOperationException(
+                $"Cannot open locality '{name}': its id token '{match.GetAttribute("id")}' is not a parseable _0x id, " +
+                "so the existing room cannot be addressed for editing. Repair the id first.");
         }
 
         private ElementId SeedGroup(string name)
@@ -909,7 +921,7 @@ namespace Ihc.Vis.Editing
             ProjectElement groups = root.FindChild(GroupsTag)
                 ?? throw new InvalidOperationException("The project has no groups container.");
             ElementId id = allocator.Allocate(TypeCode.RequireForTag("group"));
-            ProjectElement group = SimpleElement("group", id, ("name", name), ("icon", "_0x15"));
+            ProjectElement group = SimpleElement("group", id, ("name", name), ("icon", ResourceMaterialization.RequireIcon("group")));
             root = ReplaceChildByTag(root, GroupsTag, groups with { Children = AppendTo(groups.Children, group) });
             return id;
         }

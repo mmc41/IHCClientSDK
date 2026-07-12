@@ -240,5 +240,28 @@ namespace Ihc.Vis.Tests
                 Assert.That(condEl.GetAttribute("link1"), Is.EqualTo(p.Id!.Value.ToToken()));
             });
         }
+
+        [Test]
+        public async Task AddEnumOperand_AfterEnumDeleted_Throws_NoDanglingTypedef()
+        {
+            // Finding 6: wiring a since-deleted enum definition into a resource_enum operand must fail loudly (like
+            // ResourceRef's RequireLive on the wire path), not persist a dangling typedef the default save writes.
+            Project project = await Load();
+            ElementId progId = FirstProgram(project);
+            (string room, string block) = FirstBlock(project);
+            ProjectEditor editor = project.Edit();
+            FunctionBlockRef fb = editor.Group(room).FunctionBlock(block);
+            ResourceRef p = fb.AddInput("__pgm_p");
+            EnumDefinitionRef def = editor.AddEnumDefinition("NyType", "Værdi1", "Værdi2");
+
+            editor.DeleteById(def.Id);   // still unreferenced, so the delete succeeds
+
+            SubProgramRef sub = editor.Program(progId).AddSubProgram();
+            ConditionRef cond = sub.AddCondition("%P <> %S", p, method: "_0x28");
+
+            Assert.That(() => cond.AddEnumOperand("Enumerator", def, "Værdi2"),
+                Throws.InvalidOperationException.With.Message.Contains(def.Id.ToToken()),
+                "wiring a deleted enum must throw, not write a dangling typedef");
+        }
     }
 }

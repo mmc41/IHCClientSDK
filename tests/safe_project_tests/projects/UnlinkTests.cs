@@ -96,6 +96,38 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
+        public void Unlink_NonCanonicalLinkTokens_ResolvesThePair()
+        {
+            // Finding 13: a foreign file whose reciprocal halves are spelled with leading zeros ("_0x0302" for the
+            // id "_0x302") — ElementId-equal but not string-equal. Unlink must resolve the pair by parsed id, not
+            // throw "not follow-linked in this orientation".
+            const string follow = "Følg Link";
+            Project project = new Project(Tree.Node("utcs_project", null,
+                new[] { ("version_major", "4"), ("version_minor", "0"), ("id1", "_0x1"), ("id2", "_0x2"), ("last_unique_id", "_0x6000") },
+                Tree.Node("groups", "_0x2031", new[] { ("name", "L") },
+                    Tree.Node("group", "_0x2132", new[] { ("name", "Stue") },
+                        Tree.Node("product_dataline", "_0x5153", new[] { ("product_identifier", "_0x2202"), ("name", "PA") },
+                            Tree.Node("dataline_input", "_0x201", new[] { ("name", "InA") },
+                                Tree.Node("link_from_resource", "_0x301", new[] { ("name", follow), ("icon", "_0x47"), ("link", "_0x0302") }))),
+                        Tree.Node("product_dataline", "_0x5154", new[] { ("product_identifier", "_0x2202"), ("name", "PB") },
+                            Tree.Node("dataline_output", "_0x202", new[] { ("name", "OutB") },
+                                Tree.Node("link_to_resource", "_0x302", new[] { ("name", follow), ("icon", "_0x4a"), ("link", "_0x0301") })))))));
+
+            ProjectEditor editor = project.Edit();
+            ResourceRef inA = editor.Group("Stue").Product("PA").Input("InA");
+            ResourceRef outB = editor.Group("Stue").Product("PB").Output("OutB");
+
+            Assert.That(() => editor.Unlink(inA, outB), Throws.Nothing,
+                "a reciprocal pair spelled with leading-zero tokens must resolve, not throw");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(editor.GetLinks(inA.Id!.Value), Is.Empty, "the from-half is removed");
+                Assert.That(editor.GetLinks(outB.Id!.Value), Is.Empty, "the to-half is removed");
+            });
+        }
+
+        [Test]
         public async Task Unlink_WrongOrientation_Throws()
         {
             Project project = await LoadOracle();

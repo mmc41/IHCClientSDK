@@ -85,7 +85,7 @@ namespace Ihc.Vis.Catalog
 
         // A default room: id + name explicit, then the three group DTD defaults (icon/note/helpid).
         private static ProjectElement Room(string id, string name) =>
-            E("group", new[] { ("id", id), ("name", name), ("icon", "_0x15"), ("note", ""), ("helpid", "_0x1388") });
+            E("group", new[] { ("id", id), ("name", name), ("icon", Ihc.Vis.Schema.ResourceMaterialization.RequireIcon("group")), ("note", ""), ("helpid", "_0x1388") });
 
         // The two contact containers share one DTD ATTLIST → eight defaulted-empty attributes in declaration order.
         private static ProjectElement Contact(string tag) =>

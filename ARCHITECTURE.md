@@ -1,0 +1,123 @@
+---
+title: IHCClientSDK -- architecture overview
+last_updated: 2026-07-10
+---
+
+# Architecture
+
+> Single-file architecture overview (matklad `ARCHITECTURE.md` convention) for the IHCClientSDK mono-repo. Read in 15-30 minutes; it covers the stable, high-level structure and the rules that hold across the codebase. File-level detail lives in the per-project READMEs and in the XML doc comments next to the code.
+
+## Problem Overview
+
+IHCClientSDK is an **unofficial, community-built .NET SDK** for IHC (Intelligent House Concept) home-automation controllers from LK/Schneider Electric. The vendor has never released a public SDK; this project fills that gap for experienced .NET developers who want to integrate with their IHC installation from C#/F# on Windows, macOS, or Linux. It is not affiliated with or supported by the vendor, targets v3.0 controllers, and is distributed as source under Apache-2.0 -- consumers reference the `ihcclient` project directly (no NuGet package yet, per the root `README.md`).
+
+The SDK solves two distinct problems:
+
+1. **Talking to a live controller.** IHC controllers expose SOAP web services. `dotnet-svcutil` supplies the generated service contracts, request/response types, and `ClientBase` proxy classes in `generatedsrc/`, but the SDK does not use those generated proxy classes as its transport. Private `SoapImpl` adapters implement the generated contracts and send custom SOAP envelopes through the SDK's own `HttpClient`/cookie plumbing. The high-level controller API (`AuthenticationService`, `ResourceInteractionService`, and one service class per controller web service) exposes SDK models rather than SOAP types; controller I/O operations are asynchronous.
+2. **Editing IHC project files offline.** A controller's configuration is authored in the vendor's Windows-only "IHC Visual" desktop application and stored as a `.vis` XML project file. The `Ihc.Vis` subsystem is a pure-C# engine that loads, validates, edits, creates, and saves these files without requiring an IHC Visual installation, using a catalog of stock components embedded in the SDK. The low-level `ProjectSerializer` and `ProjectAppService.Save(..., ProjectSaveOptions.PreserveExistingMetadata)` reproduce an unchanged loaded file byte-for-byte; the normal default save deliberately re-stamps `id2`/`modified` like IHC Visual. The engine is the backend for the cross-platform GUI under `applications/ihc_visual`.
+
+Most other projects in the repository -- examples, utilities, GUI applications, and five test suites -- exercise, demonstrate, or ship tooling on top of that library. Two utilities (`ihc_httpproxyrecorder` and `ihc_project_io_extractor`) are standalone and do not reference `ihcclient`. The project is an early preview/beta (version 0.8.1 in `ihcclient/ihcclient.csproj`).
+
+## Codemap
+
+`ihcclient/` is the only shared library. Most projects reference it; the HTTP proxy recorder and project IO extractor are independent executables.
+
+- **`ihcclient/`** -- the SDK (namespace roots `Ihc`, `Ihc.App`, `Ihc.Vis`, `Ihc.Soap`). Target `net9.0`.
+  - `wsdl/` + `download_wsdl.sh` / `generate.sh` -- vendor WSDL files and the (macOS-only) scripts that regenerate the SOAP layer.
+  - `generatedsrc/` -- `dotnet-svcutil` output, one file per controller web service (`authentication.cs`, `resourceinteraction.cs`, `controller.cs`, ...), namespaces `Ihc.Soap.*`. The high-level layer consumes its contracts and message types; the generated `*ServiceClient : ClientBase<...>` proxy classes are compiled but are not referenced by handwritten code. Regenerated, never hand-edited.
+  - `src/soap/` -- the custom SOAP envelope, XML serialization, and WSDL-date helpers used by the custom transport (`envelope.cs`, `serialize.cs`, `wsdate_extensions.cs`).
+  - `src/api/` -- the high-level controller API. `services/` holds 13 service classes, mirroring the 13 generated SOAP service contracts; the shared `IIHCApiService` contract and custom `ServiceBaseImpl` transport base are in `serviceBase.cs`. Each service delegates to a private `SoapImpl` adapter that implements a generated contract. `models/` holds the SDK's own public data types; `util/` holds HTTP, cookie-session, polling, validation, security, network, and date plumbing.
+  - `src/app/` -- application services (`Ihc.App`, contract `IIHCAppService` in `services/serviceBase.cs`): `AdminAppService` (administrator settings with change tracking and JSON export), `InformationAppService` (read-only controller info), `LabAppService` (dynamic service/operation invocation for the lab GUI), and `ProjectAppService` (the primary facade over the `Ihc.Vis` engine, including the optional controller upload/download bridge). `models/` contains the admin and information view models. These are tech-agnostic backends meant to sit behind a GUI or console frontend; lower-level `Ihc.Vis` APIs remain public for direct use.
+  - `src/vis/` -- the project-file engine, one folder per `Ihc.Vis.*` namespace:
+    - `model/` -- the immutable `ProjectElement` tree and value types;
+    - `io/` -- `ProjectReader` / `ProjectSerializer` / `Canonicalizer` / `IdAllocator`, the byte-fidelity read/write core;
+    - `schema/` -- `ProjectSchemaRegistry` and the embedded `CanonicalDtdBlocks.dtd` (the single source of truth for the `.vis` inline DTD);
+    - `catalog/` -- catalog sourcing and composition. The `ICatalog` implementations are `MaterializedCatalog` (source-agnostic in-memory data), `BuiltInCatalog` (the SDK-embedded catalog; its `generated/` folder holds three committed `.g.cs` files produced by `utilities/ihc_catalog_codegen`), and `CompositeCatalog` (overlays imported definitions). `CatalogDiscovery.FromInstallDir` scans a vendor installation; `CatalogReader` reads individual `.def`/`.ifb` files; the folder also contains the catalog-file writer/parser;
+    - `products/` and `functionblocks/` -- code-authoring builders (`ProductDefinitionBuilder`, `FunctionBlockDefinitionBuilder`, `FbProgramBuilder`) that define catalog components entirely in C#;
+    - `editing/` -- `ProjectEditor`, the mutable edit session opened via `project.Edit()`, plus `InsertTransform` and link/copy policies;
+    - `projects/` -- `Project`, `NewProjectBuilder`, and the File-New template;
+    - `validation/` -- `ProjectValidator` and its findings model.
+  - `src/config/` -- `IhcSettings`, settings-encryption metadata, assembly metadata, and `Telemetry` (the SDK-wide `ActivitySource`). Controller API services and most application facades receive `IhcSettings` at construction; `LabAppService` instead accepts it later in `Configure` and currently does not use it.
+  - `src/security/` -- `SimpleSecret`, AES-256-GCM encryption used for passwords in settings files.
+  - `src/util/` -- shared reflection metadata (`ServiceMetadata`) used by the lab's dynamic operation browser and recursive copy/transform infrastructure (`CopyUtil`) used by application models.
+- **`applications/ihc_visual/`** -- incubating Avalonia MVVM GUI (the IHC Visual replacement). Targets `net10.0` and is **not** in `IHCClientSDK.sln` or CI yet; same status for its `tests/safe_visual_tests` smoke suite.
+- **`utilities/`** -- console/GUI tools shipped with the repo: `ihc_lab` (Avalonia lab GUI for calling individual APIs), `ihc_admin`, `ihc_info`, `ihc_project_download_upload`, `ihc_project_io_extractor` (standalone parser that generates C# IO-address constants), `ihc_httpproxyrecorder` (standalone ASP.NET proxy for API investigation), `ihc_settings_encrypt` (password encryption), and `ihc_catalog_codegen` (dev-time only: decompiles a vendor IHC Visual catalog into the committed `BuiltInCatalog.*.g.cs` sources).
+- **`examples/`** -- `ihcclient_example1` / `ihcclient_example2`, minimal console consumers.
+- **`tests/`** -- five test suites (NUnit), split by what they may touch: `safe_unit_tests` (controller-free SDK/business logic, FakeItEasy mocks), `safe_project_tests` (the `Ihc.Vis` engine, driven by oracle files under its `testdata/`), `safe_lab_tests` (headless Avalonia UI tests for `ihc_lab` against `mock://` services), `safe_integration_tests` (the only suite allowed to call a real controller, restricted to safe operations), and `safe_visual_tests` (incubating, see above).
+
+Entry points: the SDK has no host or DI container of its own -- consumers `new` up services, starting from `AuthenticationService(IhcSettings)` for controller work or normally `ProjectAppService` for project-file work. Public lower-level project surfaces include `ProjectSerializer`, catalog readers/builders, and `project.Edit()`. Each utility/example/application is a normal `Program.Main`. CI is `.github/workflows/build-validation.yml`: the root solution builds on Ubuntu/Windows/macOS, `safe_unit_tests` runs everywhere, and `safe_lab_tests` runs on Windows. `safe_project_tests`, `safe_integration_tests`, and the out-of-solution `safe_visual_tests` are not executed by that workflow.
+
+## Architectural Invariants
+
+Rules a contributor or agent can rely on, with their scope stated explicitly. Where a test or runtime mechanism verifies a rule it is named; where nothing does, the rule is a convention.
+
+1. **Generated code is never hand-edited.** Both generated layers -- `ihcclient/generatedsrc/` (from WSDL, via `generate.sh`) and `ihcclient/src/vis/catalog/generated/` (from `ihc_catalog_codegen`) -- may only change by re-running their generator. Verification: for the catalog side, `VerbatimFreeGateTests` (in `tests/safe_project_tests/products/`) asserts all three `.g.cs` files carry one identical generation fingerprint, so a partial regeneration fails that suite; for the SOAP side this is convention only (documented in `ihcclient/README.md`).
+2. **Byte-exact `.vis` round-tripping is an explicit save mode.** `ProjectSerializer.Serialize(project)` and `ProjectAppService.Save(..., ProjectSaveOptions.PreserveExistingMetadata)` reproduce an unchanged loaded project's bytes, including its inline DTD blocks, whitespace, metadata, and id formatting. `ProjectSaveOptions.Default` intentionally changes `id2`/`modified` and is therefore not byte-identical. Verification: `ProjectByteFidelityTests`, `RoundTripVerificationTests`, and `KnownAnswerTests` in `tests/safe_project_tests/projects/`, plus authoring-replay suites (`AuthoringByteFidelityTests`, `CopyPasteReplayByteFidelityTests`, `EnumValuesReplayByteFidelityTests`) using committed oracles under `tests/safe_project_tests/testdata/`.
+3. **`BuiltInCatalog` is intended to be equivalent to standard LK visual catalog.**
+4. **Application services should not be mocked; only `IIHCApiService` implementations should be.** Tests fake the low-level API services (FakeItEasy) and run the real business logic in `Ihc.App` services. This is stated in the `IIHCAppService` doc comment in `src/app/services/serviceBase.cs` and in `CLAUDE.md`; it is a convention/review rule, not analyzer-enforced.
+5. **Tests must be incapable of harming a live controller.** Every suite is named `safe_*` to signal this; only `safe_integration_tests` may talk to a real controller, and only via state-safe operations. The unit and lab suites use FakeItEasy services selected by lab/test setup when the endpoint starts with `mock://`; project tests use files/in-memory models; visual tests use the headless UI. This is convention plus test-fixture design -- nothing mechanically prevents a future unsafe test from being added.
+6. **Selected hardware-diagnostic calls are opt-in at runtime.** `InternalTestService` operations guarded as dangerous (including `BurnIO`, SD-card/IO-board tests, production-test completion, and RS485 operations) throw unless `IhcSettings.AllowDangerousInternTestCalls` is enabled. Other state-changing controller APIs use their normal service contracts and are not covered by this flag.
+7. **The SDK has no logging dependency.** There is no `ILogger` usage under `ihcclient/src`; observability is tracing-only via the `ActivitySource` in `src/config/Telemetry.cs`, and `ihcclient.csproj` references no logging packages. Host applications choose their own logging/OTel stack.
+8. **The core library and selected projects should treat warnings as errors.**
+9. **High-level controller APIs should not expose SOAP artifacts.** Their service interfaces expose SDK models from `src/api/models/`; private `SoapImpl` adapters consume `Ihc.Soap.*` types internally. **Gap:** generated SOAP types and proxy classes are technically `public` but consumers should not use them.
+
+The `safe_project_tests` checks named above are available verification, not current CI enforcement. The workflow compiles them as part of the solution but executes only `safe_unit_tests` and, on Windows, `safe_lab_tests`; its pull-request path filter also covers only `.cs` and `.csproj` files.
+
+There is no architecture-test framework (NetArchTest or similar) and no ADR directory in the repository; decision rationale lives in XML doc comments, per-project READMEs, and `CLAUDE.md`.
+
+## Layer Boundaries
+
+**Repo-level direction.** Applications, examples, tests, and most utilities depend on `ihcclient`; the standalone `ihc_httpproxyrecorder` and `ihc_project_io_extractor` do not. No project reference from `ihcclient` points to another repository project, so it remains the bottom of the shared project-reference graph.
+
+**Inside the SDK, the controller-facing stack is layered strictly downward:**
+
+`Ihc.App` application services → `Ihc` API services (`IIHCApiService`) → private `SoapImpl` adapters using generated `Ihc.Soap.*` contracts/message types → `ServiceBaseImpl` + `src/soap/` envelope/serialization + `src/api/util/` HTTP/cookie plumbing → the controller.
+
+The generated `*ServiceClient : ClientBase<...>` proxy classes are not a transport stage in this path; no handwritten source references them. They remain compiled because the generated files and their contracts depend on the `System.ServiceModel.*` packages. Application services take API-service interfaces or settings from which some create them; API services never know about application services. Consumers are normally expected to stay at the top two layers.
+
+**The `Ihc.Vis` engine is a parallel, operationally SOAP-free stack.** Code under `src/vis/` performs no controller/API calls; its runtime work stays within the model, IO, schema, catalog, products, function-blocks, editing, projects, and validation namespaces. It is not a formally isolated assembly or namespace boundary: `CatalogDiscovery` names `IhcSettings` in an error and `ProjectReader` names `IControllerService` in a diagnostic. The operational bridge between the file and controller stacks is `ProjectAppService` (`src/app/services/`), whose optional `IControllerService` parameter provides project download/upload; file-only use passes no controller. Browsing happens on immutable `Project`/`ProjectElement` values, while mutation occurs in a `ProjectEditor` session that commits a fresh snapshot via `ToProject()`.
+
+**Public vs internal surface.** The intended high-level surface is the API services and their models, the `Ihc.App` services, `IhcSettings`, and `ProjectAppService`. The project engine also deliberately exposes lower-level types such as `Project`, `ProjectEditor`, `ProjectSerializer`, catalogs, definition builders, and validation result/finding models; `ProjectValidator` itself is internal and reached through `ProjectAppService.Validate`. Internals are exposed to a closed friend list in `ihcclient.csproj`: `safe_integration_tests`, `safe_unit_tests`, `safe_project_tests`, `ihc_lab`, and `ihc_catalog_codegen`.
+
+**External boundaries.** The system has two very different "outsides":
+
+- *The controller*, reached over HTTP(S) or USB (`SpecialEndpoints.Usb`, endpoint `http://usb`) using SOAP with cookie-based sessions. All service instances share one process-wide static `HttpClient`; the client plumbing disables automatic cookies, applies the SDK's cookie explicitly, and currently accepts every HTTPS server certificate through `DangerousAcceptAnyServerCertificateValidator`. Certificate identity is therefore not authenticated, leaving HTTPS connections vulnerable to man-in-the-middle interception. `mock://` is a reserved selection signal for lab/test setup (`IhcSetup`); real `ServiceBase` construction rejects that prefix rather than automatically creating fakes.
+- *Vendor IHC Visual*, reached through files: `.vis` projects and `.def`/`.ifb` catalog files are a compatibility contract with a closed-source third-party application. Schema/format fidelity and the explicit byte-preserving save mode are therefore architectural requirements: the vendor app must accept, and be untroubled by, anything this SDK writes.
+
+**Isolated GUI boundary.** The root `README.md` describes `applications/ihc_visual` as incubating. It and `tests/safe_visual_tests` target `net10.0`, sit outside `IHCClientSDK.sln` and CI, and currently have only a smoke-test-scale visual suite.
+
+## Cross-Cutting Concerns
+
+**Configuration.** `IhcSettings` (`src/config/IhcSettings.cs`) carries endpoint, credentials, application name, catalog-generator input, and behavior toggles. Controller API services, `AdminAppService`, `InformationAppService`, and `ProjectAppService` receive it at construction; `LabAppService` accepts it post-construction through `Configure`, where it is currently reserved/unused. The ignored root `ihcsettings.json` (templates: `ihcsettings_template.json`, `ihcsettings_example.json`) is used by controller-connected examples, utilities, applications, and integration tests. The library and file-only project engine do not require it, and the SDK reads no configuration file unless a caller explicitly uses `IhcSettings.GetFromFile()` or `GetFromConfiguration()`.
+
+**Secrets.** Sensitive fields are marked with `[SensitiveData]`; `AdminAppService` uses that attribute when encrypting/decrypting JSON, while SOAP-request, cookie, user, and admin-model telemetry performs call-site redaction based on `IhcSettings.LogSensitiveData` (default `false`). This is **not** a global redaction guarantee: `ActivityExtensions` does not inspect `[SensitiveData]`, configuration services attach raw WLAN/SMTP/email-control models to activity tags, those models' parameterless `ToString()` methods reveal secrets, and `UserManagerService.GetUsers` currently applies its redaction conditional in the opposite direction from its comment. Treat trace data as sensitive until those implementation gaps are fixed. Settings-file passwords can be stored with AES-256-GCM (`SimpleSecret`, using `IHC_ENCRYPT_PASSPHRASE`) via `ihc_settings_encrypt`; the settings loaders decrypt them transparently.
+
+**Observability.** The SDK emits OpenTelemetry-compatible traces through one `ActivitySource` (`src/config/Telemetry.cs`). Controller-service operations and major application-service operations normally start an activity tagged with service and operation name, but instrumentation is not universal across every public helper/lifecycle method. `ActivityExtensions` attaches supplied objects directly and provides no attribute-driven scrubbing. The SDK deliberately contains no logging; exporters and any logging live in the host (utilities configure OTLP export from the `telemetry` section of `ihcsettings.json`).
+
+**Authentication and sessions.** Controller sessions are cookie-based (`CookieHandler` in `src/api/util/cookies.cs`), and non-authentication API services normally share the cookie handler from an `IAuthenticationService`. Raw controller consumers authenticate before protected calls and disconnect on shutdown (hence the README's Generic Host recommendation). `AdminAppService` and `InformationAppService` auto-authenticate on demand. `LabAppService` deliberately exposes authentication as a selectable operation rather than doing it automatically, and `ProjectAppService` assumes its optional injected `IControllerService` already belongs to an authenticated session.
+
+**Async.** Controller I/O operations return `Task`, and long polling is surfaced as `IAsyncEnumerable` (see `ResourceInteractionService.GetResourceValueChanges`) instead of events. Project creation/editing/catalog/validation operations and several application-service controls are synchronous. Most controller-service awaits and `ProjectAppService` file/controller awaits honor `IhcSettings.AsyncContinueOnCapturedContext` (default `false`), but this is not uniform: HTTP-handler awaits hardcode `ConfigureAwait(false)` and several application-service awaits use the language default. No analyzer enforces a context-capture policy.
+
+**Error handling.** The project subsystem defines focused boundary exceptions (`CatalogFormatException`, `ProjectFormatException`, `VisSchemaFormatException`, `ProjectValidationException`, `ProjectUploadException`), while controller communication uses `ErrorWithCodeException` for selected IHC errors. Ordinary argument, IO, invalid-state, unsupported-operation, and a small number of generic exceptions also surface; there is no uniform repository-wide exception taxonomy. Validation additionally exists as data: `ProjectAppService.Validate` returns a `ProjectValidationResult` of structured findings so GUIs can present problems without exception control flow.
+
+**Identity and immutability in the project engine.** `.vis` elements carry stable `_0x…` ids; loaded ids are preserved verbatim, new ids are allocated monotonically off the project counter, and deletions leave permanent holes (vendor-compatible behavior, guarded by `AllocatorMonotonicityTests` and `IdAllocatorTests`). The model is immutable; every mutation inside a `ProjectEditor` rebuilds the tree while handles track their target by id.
+
+**Generated-code lifecycle.** Two generators, same policy (regenerate, never edit): the SOAP layer regenerates from `ihcclient/wsdl/` via macOS-only scripts; the embedded catalog regenerates from a vendor install via `ihc_catalog_codegen`, which self-verifies each component byte-level before emitting. Where the generated output lands is part of the public repo, so both generators' outputs are committed.
+
+**External package dependencies.** `ihcclient.csproj` references `Microsoft.Extensions.Configuration*` for optional settings binding and `System.ServiceModel.*` so the generated contracts/proxies compile, even though handwritten transport bypasses the generated proxy classes. It also pins `System.Security.Cryptography.Xml` to a patched 8.x release. Logging and OpenTelemetry SDK/exporter packages belong to host applications rather than the library.
+
+## Glossary
+
+Project-specific vocabulary that recurs in code identifiers and tests.
+
+| Term | Definition | Source |
+|------|------------|--------|
+| Controller | The physical IHC unit running the home installation; exposes SOAP web services over HTTP/USB. | root `README.md` |
+| IHC Visual | The vendor's Windows desktop application for authoring controller configurations; this repo's `.vis` engine and `ihc_visual` app aim to be compatible with it. | `ProjectAppService` docs |
+| `.vis` file | An XML project file (with inline DTD) holding a controller's full configuration; the unit the `Ihc.Vis` engine loads/edits/saves. | `src/vis/io/` |
+| Catalog | The library of pre-constructed products and function blocks, the SDK embeds it as `BuiltInCatalog`. | `src/vis/catalog/` |
+| Product | A physical device definition from the catalog (e.g. a wall switch) that can be inserted into a project. | `ProductDefinition` in `src/vis/products/` |
+| Function block | A reusable logic component with inputs/outputs and programs, defined in the catalog and instantiable in projects. | `FunctionBlockDefinition` in `src/vis/functionblocks/` |
+| Resource | An addressable input/output/variable on a product or function block; the thing `ResourceInteractionService` reads and writes on a live controller. | `src/api/services/resourceInteractionService.cs` |
+| Oracle | A committed reference file (authentic or synthetic `.vis`/`.def`/`.ifb`) that tests compare against | `tests/safe_project_tests/testdata/testdataoverview.md` |
+| Dangerous call | A selected `InternalTestService` hardware-diagnostic operation guarded behind `AllowDangerousInternTestCalls`; the flag does not cover every state-changing controller API. | `src/api/services/internalTestService.cs` |

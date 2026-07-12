@@ -35,17 +35,17 @@ namespace Ihc.Vis.Validation
 
             IReadOnlyList<ProjectElement> elements = project.Root.DescendantsAndSelf();
 
-            var idTokens = new HashSet<string>(StringComparer.Ordinal);
+            // idToElement's key set IS the set of id tokens — no separate HashSet is kept in lockstep with it.
             var idToElement = new Dictionary<string, ProjectElement>(StringComparer.Ordinal);
-            long maxCounter = ValidateIds(elements, idTokens, idToElement, findings);
+            long maxCounter = ValidateIds(elements, idToElement, findings);
 
             foreach (ProjectElement element in elements)
             {
-                ValidateElement(element, idTokens, findings, view);
+                ValidateElement(element, idToElement, findings, view);
                 if (element.Tag == "functionblock")
                 {
                     ValidateFunctionBlockShape(element, findings);
-                    ValidateProgrammingReferences(element, idTokens, findings, view);
+                    ValidateProgrammingReferences(element, idToElement, findings, view);
                 }
                 if (element.Tag is "program_simple" or "program_sub")
                 {
@@ -65,7 +65,7 @@ namespace Ihc.Vis.Validation
 
         // ----- ids -----
 
-        private static long ValidateIds(IReadOnlyList<ProjectElement> elements, HashSet<string> idTokens,
+        private static long ValidateIds(IReadOnlyList<ProjectElement> elements,
             Dictionary<string, ProjectElement> idToElement, FindingCollector findings)
         {
             var counters = new HashSet<int>();
@@ -77,13 +77,12 @@ namespace Ihc.Vis.Validation
                 {
                     continue;
                 }
-                if (!idTokens.Add(idToken))
+                if (!idToElement.TryAdd(idToken, element))
                 {
                     findings.Error("id-duplicate-token", element,
                         $"duplicate id token '{idToken}' (element '{element.Tag}')");
                     continue;
                 }
-                idToElement[idToken] = element;
                 if (ElementId.TryParse(idToken, out ElementId id))
                 {
                     if (!counters.Add(id.Counter))
@@ -114,7 +113,7 @@ namespace Ihc.Vis.Validation
 
         // ----- per-element attribute conformance -----
 
-        private static void ValidateElement(ProjectElement element, HashSet<string> idTokens,
+        private static void ValidateElement(ProjectElement element, Dictionary<string, ProjectElement> idToElement,
             FindingCollector findings, ProjectSchemaView view)
         {
             ElementSchema? schema = view.TryGet(element.Tag);
@@ -155,8 +154,10 @@ namespace Ihc.Vis.Validation
                         "block or the schema registry (serialization will fail)");
                     continue;
                 }
-                if (attr.Render == AttrRender.IdRef && !idTokens.Contains(value))
+                if (attr.Render == AttrRender.IdRef && value != ElementId.NullToken && !idToElement.ContainsKey(value))
                 {
+                    // The null token is the sentinel for an unwired IDREF (StampRequiredNullTokens stamps it,
+                    // ValidateSceneBijection blesses it) — a legitimate authored state, never a dangling reference.
                     findings.Error("idref-dangling", element,
                         $"dangling {name}='{value}' on '{element.Tag}' (no element has that id)");
                 }
@@ -235,12 +236,20 @@ namespace Ihc.Vis.Validation
 
         // ----- programming-reference locality + embedded constants (spec ch. 07 / ch. 10 §10.5) -----
 
-        private static readonly HashSet<string> FbLocalRefAttrs = new(StringComparer.Ordinal)
+        // FB-locality is a per-(element, attribute) fact, not an attribute-name fact: program_case@link is a local
+        // switch-variable IDREF, but link_from/to_resource@link is a legitimately non-local follow-link — so `link`
+        // cannot be gated by name alone. (Pairs per CanonicalDtdBlocks.dtd: event/condition/action → link1/link2;
+        // case_action → variable/value; program_case → link.)
+        private static readonly HashSet<(string Tag, string Attr)> FbLocalRefAttrs = new()
         {
-            "link1", "link2", "variable", "value",
+            ("event", "link1"), ("event", "link2"),
+            ("condition", "link1"), ("condition", "link2"),
+            ("action", "link1"), ("action", "link2"),
+            ("case_action", "variable"), ("case_action", "value"),
+            ("program_case", "link"),
         };
 
-        private static void ValidateProgrammingReferences(ProjectElement functionBlock, HashSet<string> idTokens,
+        private static void ValidateProgrammingReferences(ProjectElement functionBlock, Dictionary<string, ProjectElement> idToElement,
             FindingCollector findings, ProjectSchemaView view)
         {
             var localIds = new HashSet<string>(StringComparer.Ordinal);
@@ -255,9 +264,9 @@ namespace Ihc.Vis.Validation
                     {
                         // Locality applies to the programming references only; `link` (follow-link halves),
                         // `typedef`/`inivalue` (project-level enum registry) etc. are legitimately non-local.
-                        if (FbLocalRefAttrs.Contains(name)
+                        if (FbLocalRefAttrs.Contains((element.Tag, name))
                             && schema.FindAttr(name) is { Render: AttrRender.IdRef }
-                            && idTokens.Contains(value) && !localIds.Contains(value))
+                            && idToElement.ContainsKey(value) && !localIds.Contains(value))
                         {
                             findings.Error("fb-local-ref", element,
                                 $"{name}='{value}' on '{element.Tag}' references an element outside its function " +
@@ -334,7 +343,7 @@ namespace Ihc.Vis.Validation
             var halves = new Dictionary<string, ProjectElement>(StringComparer.Ordinal);
             foreach (ProjectElement element in elements)
             {
-                if (element.Tag is "link_from_resource" or "link_to_resource" && element.GetAttribute("id") is { } id)
+                if (ReciprocalTags.FollowLinkHalfTags.Contains(element.Tag) && element.GetAttribute("id") is { } id)
                 {
                     halves[id] = element;
                 }
@@ -363,17 +372,12 @@ namespace Ihc.Vis.Validation
             }
         }
 
-        private static readonly HashSet<string> SceneHalfTags = new(StringComparer.Ordinal)
-        {
-            "scene_link", "scene_dimmer", "scene_relay", "scene_shutter",
-        };
-
         private static void ValidateSceneBijection(IReadOnlyList<ProjectElement> elements, FindingCollector findings)
         {
             var halves = new Dictionary<string, ProjectElement>(StringComparer.Ordinal);
             foreach (ProjectElement element in elements)
             {
-                if (SceneHalfTags.Contains(element.Tag) && element.GetAttribute("id") is { } id)
+                if (ReciprocalTags.SceneHalfTags.Contains(element.Tag) && element.GetAttribute("id") is { } id)
                 {
                     halves[id] = element;
                 }
@@ -382,7 +386,7 @@ namespace Ihc.Vis.Validation
             foreach (ProjectElement half in halves.Values)
             {
                 string? partnerId = half.GetAttribute("link");
-                if (partnerId is null || partnerId == "_0x0")
+                if (partnerId is null || partnerId == ElementId.NullToken)
                 {
                     continue;   // an unwired scene row is a legitimate authored state
                 }
@@ -411,7 +415,7 @@ namespace Ihc.Vis.Validation
                     continue;
                 }
                 string? address = element.GetAttribute("address_dataline");
-                if (address is null || address == "_0x0")
+                if (address is null || address == ElementId.NullToken)
                 {
                     continue;   // unaddressed (the DTD default) — legal while unconfigured
                 }
@@ -453,7 +457,7 @@ namespace Ihc.Vis.Validation
                     continue;
                 }
                 string? typedef = element.GetAttribute("typedef");
-                if (typedef is null || typedef == "_0x0" || !idToElement.TryGetValue(typedef, out ProjectElement? definition))
+                if (typedef is null || typedef == ElementId.NullToken || !idToElement.TryGetValue(typedef, out ProjectElement? definition))
                 {
                     continue;   // absent/null/dangling typedef is covered by the schema IDREF pass
                 }
@@ -465,7 +469,7 @@ namespace Ihc.Vis.Validation
                     continue;
                 }
                 string? inivalue = element.GetAttribute("inivalue");
-                if (inivalue is null || inivalue == "_0x0")
+                if (inivalue is null || inivalue == ElementId.NullToken)
                 {
                     continue;
                 }

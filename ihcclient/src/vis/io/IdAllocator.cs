@@ -99,12 +99,17 @@ namespace Ihc.Vis.Io
         /// </summary>
         public ProjectElement MintMissingIds(ProjectElement element)
         {
-            ElementId? id = element.Id ?? (TypeCode.ForTag(element.Tag) is { } code ? Allocate(code) : null);
+            // Mint only when the node carries NO id token at all. A present-but-unparseable token (Id == null yet the
+            // "id" attribute is set) is left verbatim: minting off element.Id alone would burn a counter id AND leave
+            // the attribute disagreeing with the minted Id (the guard below never rewrote it), and an unparseable
+            // token cannot be a live IDREF target a caller wired at anyway. Both predicates key off the id attribute.
+            bool hasIdToken = element.GetAttribute("id") is not null;
+            ElementId? id = element.Id ?? (!hasIdToken && TypeCode.ForTag(element.Tag) is { } code ? Allocate(code) : null);
             ImmutableArray<ProjectElement> children = element.ChildrenOrEmpty().IsEmpty
                 ? ImmutableArray<ProjectElement>.Empty
                 : element.ChildrenOrEmpty().Select(MintMissingIds).ToImmutableArray();
             ProjectElement rebuilt = element with { Id = id, Children = children };
-            return id is { } minted && element.GetAttribute("id") is null
+            return id is { } minted && !hasIdToken
                 ? rebuilt.WithAttribute("id", minted.ToToken())
                 : rebuilt;
         }

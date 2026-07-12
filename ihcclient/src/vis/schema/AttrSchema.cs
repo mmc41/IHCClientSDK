@@ -47,5 +47,13 @@ namespace Ihc.Vis.Schema
         AttrKind Kind,
         AttrRender Render,
         string Default,
-        ImmutableArray<string> EnumValues);
+        ImmutableArray<string> EnumValues)
+    {
+        /// <summary>
+        /// Whether the project serializer omits this attribute on write: declared with a default and carrying
+        /// exactly that default (omit-if-default, exact string compare). The single predicate the serializer
+        /// emits by and the round-trip verifier normalizes by — they must never drift apart.
+        /// </summary>
+        public bool OmitsOnWrite(string value) => Kind == AttrKind.Defaulted && value == Default;
+    }
 }

@@ -346,21 +346,12 @@ namespace Ihc.Vis.FunctionBlocks
             return this;
         }
 
-        // ---- escape hatches ----
+        // ---- escape hatch ----
 
-        /// <summary>Splices a pre-built resource subtree into the named container (<c>inputs</c>/<c>outputs</c>/
-        /// <c>settings</c>/<c>internalsettings</c>) — for exotic resource families. Returns this for chaining.</summary>
-        public FunctionBlockDefinitionBuilder RawResource(string container, ProjectElement resource)
-        {
-            ArgumentNullException.ThrowIfNull(resource);
-            ContainerList(container).Add(ids.MintMissingIds(resource));
-            return this;
-        }
-
-        /// <summary>Splices an arbitrary pre-built subtree at the function-block <c>Body</c> root — the body-level peer
-        /// of <c>RawResource</c>, for elements that live directly under <c>functionblock</c> rather than in a resource
-        /// container: an embedded <c>enum_definition</c>, or an additional <c>program_simple</c> under <c>programs</c>.
-        /// Returns this for chaining.</summary>
+        /// <summary>Splices an arbitrary pre-built subtree at the function-block <c>Body</c> root, for elements that
+        /// live directly under <c>functionblock</c> rather than in a resource container: an embedded
+        /// <c>enum_definition</c>, or an additional <c>program_simple</c> under <c>programs</c>. Returns this for
+        /// chaining.</summary>
         public FunctionBlockDefinitionBuilder RawChild(ProjectElement child)
         {
             ArgumentNullException.ThrowIfNull(child);
@@ -384,7 +375,7 @@ namespace Ihc.Vis.FunctionBlocks
         /// <b>Extends</b> the effective grammar (the block preset, a <see cref="From"/>-carried grammar, or a prior
         /// assignment): the callback add-or-replaces whole per-tag declarations, leaving every other declaration,
         /// default and IDREF classification intact — the near-minimal path for declaring one custom body type
-        /// (e.g. an open-world resource spliced via <see cref="RawResource"/>/<see cref="RawChild"/>).
+        /// (e.g. an open-world subtree spliced via <see cref="RawChild"/>).
         /// </summary>
         public FunctionBlockDefinitionBuilder ExtendGrammar(Action<CatalogGrammarBuilder> extend)
         {
@@ -417,7 +408,8 @@ namespace Ihc.Vis.FunctionBlocks
             // + raw children) that leaves the id allocator untouched. Program-graph internals are omitted from the
             // preview: their node types are covered by the block preset by construction, and materializing them
             // here would burn allocator ids Build() needs.
-            findings.AddRange(CatalogGrammarAdvisor.Advise(decodedBody ?? AdvisoryPreviewBody(), grammar));
+            findings.AddRange(CatalogGrammarAdvisor.Advise(
+                decodedBody is { } decoded ? SpliceAuthoredOnto(decoded, forBuild: false) : AdvisoryPreviewBody(), grammar));
             return ProjectValidationResult.FromFindings(findings.ToImmutable());
         }
 
@@ -569,9 +561,63 @@ namespace Ihc.Vis.FunctionBlocks
                 new[] { ("name", ComposedDisplayName), ("icon", emptyIcon) }, bodyChildren);
         }
 
-        // Re-emits a body decoded via From(): the preserved children verbatim, with the current identity/root-attribute
-        // edits re-applied on top. Keeps a From(x).Build() round-trip faithful without re-parsing the program graph.
-        private ProjectElement MaterializeDecoded() => ApplyIdentityAndRootAttrs(decodedBody!);
+        // Re-emits a body decoded via From(): the preserved children plus any post-From() authored edits spliced onto
+        // the matching containers (ProductDefinitionBuilder.From keeps such edits too), with the identity/root-attribute
+        // edits re-applied on top. With no edits every list is empty and the decoded body is returned verbatim, so a
+        // From(x).Build() round-trip stays byte-identical.
+        private ProjectElement MaterializeDecoded() => ApplyIdentityAndRootAttrs(SpliceAuthoredOnto(decodedBody!, forBuild: true));
+
+        // Appends the authored working-list children to the decoded body's matching containers: inputs/outputs/
+        // settings/internalsettings (already-materialized resources — no new id burn) plus, on the Build path only,
+        // the materialized program graph; authored top-level enum stubs and raw children go first, mirroring
+        // MaterializeBody's order. The advisory path (forBuild=false) omits the program graph (materializing it would
+        // burn allocator ids Build() needs) and never throws — it is the non-throwing Validate() preview.
+        private ProjectElement SpliceAuthoredOnto(ProjectElement body, bool forBuild)
+        {
+            var appended = new Dictionary<string, IReadOnlyList<ProjectElement>>(StringComparer.Ordinal)
+            {
+                ["inputs"] = inputs,
+                ["outputs"] = outputs,
+                ["settings"] = settings,
+                ["internalsettings"] = internalVars,
+            };
+            if (forBuild)
+            {
+                appended["programs"] = programs.Select(p => p.Materialize()).ToList();
+            }
+            bool hasEdits = enumDefs.Count > 0 || rawBodyChildren.Count > 0 || appended.Values.Any(v => v.Count > 0);
+            if (!hasEdits)
+            {
+                return body;
+            }
+            if (forBuild)
+            {
+                foreach ((string tag, IReadOnlyList<ProjectElement> extra) in appended)
+                {
+                    if (extra.Count > 0 && body.FindChild(tag) is null)
+                    {
+                        throw new InvalidOperationException(
+                            $"From()-seeded block has no <{tag}> container to receive the authored children; the " +
+                            "decoded body is missing that standard function-block container.");
+                    }
+                }
+            }
+            var newChildren = new List<ProjectElement>();
+            newChildren.AddRange(enumDefs.Select(e => e.Materialize()));
+            newChildren.AddRange(rawBodyChildren);
+            foreach (ProjectElement child in body.ChildrenOrEmpty())
+            {
+                if (appended.TryGetValue(child.Tag, out IReadOnlyList<ProjectElement>? extra) && extra.Count > 0)
+                {
+                    newChildren.Add(child with { Children = child.ChildrenOrEmpty().Concat(extra).ToImmutableArray() });
+                }
+                else
+                {
+                    newChildren.Add(child);
+                }
+            }
+            return body with { Children = newChildren.ToImmutableArray() };
+        }
 
         // The functionblock root's attribute order is a fixed vendor sequence (verified constant across the catalog);
         // authored components emit it in that canonical order regardless of which setter set which attribute, so the
@@ -665,16 +711,6 @@ namespace Ihc.Vis.FunctionBlocks
             container.Add(resource);
             return new FbResourceHandle(name, id);
         }
-
-        private List<ProjectElement> ContainerList(string container) => container switch
-        {
-            "inputs" => inputs,
-            "outputs" => outputs,
-            "settings" => settings,
-            "internalsettings" => internalVars,
-            _ => throw new ArgumentException(
-                $"'{container}' is not a resource container (inputs/outputs/settings/internalsettings).", nameof(container)),
-        };
 
         private FunctionBlockDefinitionBuilder SetRoot(string name, string value)
         {

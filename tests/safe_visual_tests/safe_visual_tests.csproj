@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,7 +24,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="NUnit.Framework" />
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
     <ProjectReference Include="..\..\applications\ihc_visual\ihc_visual.csproj" />
   </ItemGroup>

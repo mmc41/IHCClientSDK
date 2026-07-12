@@ -124,7 +124,6 @@ namespace Ihc.Vis.Tests
             ["FunctionBlockDefinitionBuilder.Documentation(String)"] = Verb.NonEmitting,
             ["FunctionBlockDefinitionBuilder.Documentation(FbResourceHandle,String)"] = Verb.NonEmitting,
             ["FunctionBlockDefinitionBuilder.Documentation(String,String)"] = Verb.NonEmitting,
-            ["FunctionBlockDefinitionBuilder.RawResource(String,ProjectElement)"] = Verb.Dynamic,
             ["FunctionBlockDefinitionBuilder.RawChild(ProjectElement)"] = Verb.Dynamic,
             ["FunctionBlockDefinitionBuilder.Grammar(CatalogGrammar)"] = Verb.NonEmitting,
             ["FunctionBlockDefinitionBuilder.ExtendGrammar(Action`1)"] = Verb.NonEmitting,

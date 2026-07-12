@@ -99,8 +99,8 @@ namespace Ihc.Vis.Catalog
                 // D4: a character the file's own encoding cannot represent is refused, never transcoded — a
                 // replacement '?' would still reparse clean, so this is the only gate that can see it.
                 string offender = ex.IsUnknownSurrogate()
-                    ? $"U+{char.ConvertToUtf32(ex.CharUnknownHigh, ex.CharUnknownLow):X4}"
-                    : $"U+{(int)ex.CharUnknown:X4} ('{ex.CharUnknown}')";
+                    ? ex.OffendingCodePointLabel()
+                    : $"{ex.OffendingCodePointLabel()} ('{ex.CharUnknown}')";
                 throw new CatalogFormatException(
                     $"The definition contains character {offender}, which the file's own {encoding} encoding cannot " +
                     "represent, and was not written. Restrict text to that encoding's repertoire.", ex);
@@ -125,7 +125,7 @@ namespace Ihc.Vis.Catalog
             foreach ((string name, string value) in element.AttrsOrEmpty())
             {
                 sb.Append(' ').Append(name).Append('=').Append('"');
-                AppendEscaped(sb, value);
+                XmlText.AppendEscaped(sb, value, escapeApostrophe: false);   // the catalog writer leaves ' literal (D3)
                 sb.Append('"');
             }
 
@@ -151,34 +151,5 @@ namespace Ihc.Vis.Catalog
             }
         }
 
-        // The vendor catalog escaping rule (measured across the corpus, tmp/catalogfile-anatomy.md §3): the five XML
-        // specials except the apostrophe — & < > " are escaped, ' is left literal — plus numeric refs for control
-        // characters. One vendor file (1.2.05.ifb) escapes ' as &apos;, an inconsistency no single rule can match;
-        // the fidelity relation forgives exactly that pair (CatalogTextCompare, decision D3), so this writer always
-        // emits the literal apostrophe.
-        private static void AppendEscaped(StringBuilder sb, string value)
-        {
-            foreach (char c in value)
-            {
-                switch (c)
-                {
-                    case '&': sb.Append("&amp;"); break;
-                    case '<': sb.Append("&lt;"); break;
-                    case '>': sb.Append("&gt;"); break;
-                    case '"': sb.Append("&quot;"); break;
-                    case '\r': sb.Append("&#xD;"); break;
-                    case '\n': sb.Append("&#xA;"); break;
-                    case '\t': sb.Append("&#x9;"); break;
-                    default:
-                        if (c < 0x20)
-                        {
-                            throw new InvalidOperationException(
-                                $"Attribute value contains control character U+{(int)c:X4}, which XML cannot represent.");
-                        }
-                        sb.Append(c);
-                        break;
-                }
-            }
-        }
     }
 }

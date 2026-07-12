@@ -2,6 +2,8 @@ using System.Collections.Immutable;
 using FakeItEasy;
 using Microsoft.Extensions.Time.Testing;
 
+using static Ihc.Vis.Tests.Tree;
+
 namespace Ihc.Vis.Tests
 {
     /// <summary>
@@ -22,25 +24,6 @@ namespace Ihc.Vis.Tests
         private static string ProjectDataPath =>
             Path.Combine(AppContext.BaseDirectory, "testdata", "projects", "Project1-SimpelWired.vis");
 
-        private static ProjectAppService NewService(IControllerService controller, TimeProvider? clock = null) =>
-            new ProjectAppService(
-                TestSetup.Settings,
-                A.Fake<ICatalog>(),
-                clock ?? new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)),
-                controller);
-
-        private static ProjectElement Node(string tag, string? id, (string, string)[] attrs, params ProjectElement[] children)
-        {
-            ElementId? parsed = id is not null && ElementId.TryParse(id, out ElementId p) ? p : null;
-            var bag = System.Collections.Immutable.ImmutableArray.CreateBuilder<(string, string)>();
-            if (id is not null)
-            {
-                bag.Add(("id", id));
-            }
-            bag.AddRange(attrs);
-            return new ProjectElement(tag, parsed, bag.ToImmutable(), children.ToImmutableArray());
-        }
-
         // Serializable (all #REQUIRED attrs present) but invalid: scenes@scene_resource dangles.
         private static Project InvalidButSerializableProject() => new(
             Node("utcs_project", null,
@@ -54,7 +37,7 @@ namespace Ihc.Vis.Tests
         public void UploadTo_InvalidProject_ThrowsProjectValidationException_AndNeverStores()
         {
             var controller = A.Fake<IControllerService>();
-            var app = NewService(controller);
+            var app = Fakes.BridgeService(controller);
 
             Assert.That(async () => await app.UploadTo(InvalidButSerializableProject(), ProjectSaveOptions.PreserveExistingMetadata),
                 Throws.TypeOf<ProjectValidationException>()
@@ -69,7 +52,7 @@ namespace Ihc.Vis.Tests
         {
             var controller = A.Fake<IControllerService>();
             A.CallTo(() => controller.StoreProject(A<ProjectFile>._)).Returns(true);
-            var app = NewService(controller);
+            var app = Fakes.BridgeService(controller);
 
             bool ok = await app.UploadTo(InvalidButSerializableProject(), ProjectSaveOptions.PreserveExistingMetadata,
                                          validate: false);
@@ -83,7 +66,7 @@ namespace Ihc.Vis.Tests
         {
             var controller = A.Fake<IControllerService>();
             A.CallTo(() => controller.StoreProject(A<ProjectFile>._)).Returns(false);
-            var app = NewService(controller);
+            var app = Fakes.BridgeService(controller);
             Project project = await app.Load(ProjectDataPath);
 
             Assert.That(async () => await app.UploadTo(project, ProjectSaveOptions.PreserveExistingMetadata),
@@ -96,7 +79,7 @@ namespace Ihc.Vis.Tests
         {
             var controller = A.Fake<IControllerService>();
             A.CallTo(() => controller.GetProject()).Returns((ProjectFile?)null);
-            var app = NewService(controller);
+            var app = Fakes.BridgeService(controller);
 
             Assert.That(async () => await app.DownloadFrom(),
                 Throws.InvalidOperationException.With.Message.Contains(nameof(IControllerService.IsIHCProjectAvailable)),
@@ -110,7 +93,7 @@ namespace Ihc.Vis.Tests
             var controller = A.Fake<IControllerService>();
             A.CallTo(() => controller.GetProject()).Returns(new ProjectFile("Project1.ihc", xml));
 
-            Project project = await NewService(controller).DownloadFrom();
+            Project project = await Fakes.BridgeService(controller).DownloadFrom();
 
             Assert.Multiple(() =>
             {
@@ -131,7 +114,7 @@ namespace Ihc.Vis.Tests
                 .Invokes((ProjectFile f) => stored = f)
                 .Returns(true);
 
-            var app = NewService(controller);
+            var app = Fakes.BridgeService(controller);
             Project project = await app.Load(ProjectDataPath);
 
             bool ok = await app.UploadTo(project, ProjectSaveOptions.PreserveExistingMetadata);
@@ -151,7 +134,7 @@ namespace Ihc.Vis.Tests
                 .Invokes((ProjectFile f) => stored = f)
                 .Returns(true);
 
-            var app = NewService(controller, clock);
+            var app = Fakes.BridgeService(controller, clock);
             Project original = await app.Load(ProjectDataPath);
 
             await app.UploadTo(original, ProjectSaveOptions.Default);

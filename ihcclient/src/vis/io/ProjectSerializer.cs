@@ -72,13 +72,18 @@ namespace Ihc.Vis.Io
             {
                 foreach ((string name, string value) in element.Attrs)
                 {
-                    foreach (char c in value)
+                    for (int i = 0; i < value.Length; i++)
                     {
+                        char c = value[i];
                         if (c > 0xFF)
                         {
+                            // An astral char is a surrogate pair; combine the halves so the report names the real
+                            // scalar (U+1F600), not the lone high surrogate (U+D83D) iterated first.
+                            int scalar = char.IsHighSurrogate(c) && i + 1 < value.Length && char.IsLowSurrogate(value[i + 1])
+                                ? char.ConvertToUtf32(c, value[i + 1])
+                                : c;
                             string id = element.Id is { } eid ? $" (id {eid.ToToken()})" : string.Empty;
-                            return $" First offender: attribute '{name}' on <{element.Tag}>{id} containing " +
-                                   $"'{c}' (U+{(int)c:X4}).";
+                            return $" First offender: attribute '{name}' on <{element.Tag}>{id} containing U+{scalar:X4}.";
                         }
                     }
                 }
@@ -171,41 +176,13 @@ namespace Ihc.Vis.Io
                     }
                     continue; // omitted #IMPLIED, or an omitted defaulted attribute
                 }
-                if (attr.Kind == AttrKind.Defaulted && value == attr.Default)
+                if (attr.OmitsOnWrite(value))
                 {
                     continue; // omit-if-default (exact string compare)
                 }
                 sb.Append(' ').Append(attr.Name).Append('=').Append('"');
-                AppendEscaped(sb, value);
+                XmlText.AppendEscaped(sb, value, escapeApostrophe: true);   // the project serializer escapes '
                 sb.Append('"');
-            }
-        }
-
-        private static void AppendEscaped(StringBuilder sb, string value)
-        {
-            foreach (char c in value)
-            {
-                switch (c)
-                {
-                    case '&': sb.Append("&amp;"); break;
-                    case '<': sb.Append("&lt;"); break;
-                    case '>': sb.Append("&gt;"); break;
-                    case '"': sb.Append("&quot;"); break;
-                    case '\'': sb.Append("&apos;"); break;
-                    case '\r': sb.Append("&#xD;"); break;
-                    case '\n': sb.Append("&#xA;"); break;
-                    case '\t': sb.Append("&#x9;"); break;   // a raw tab silently becomes a space on re-read (§3.3.3)
-                    default:
-                        if (c < 0x20)
-                        {
-                            // XML 1.0 forbids these outright — written raw, the file opens in no parser.
-                            throw new InvalidOperationException(
-                                $"Attribute value contains control character U+{(int)c:X4}, which XML cannot " +
-                                "represent; remove it from the offending text.");
-                        }
-                        sb.Append(c);
-                        break;
-                }
             }
         }
 

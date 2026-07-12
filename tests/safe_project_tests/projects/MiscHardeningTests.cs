@@ -1,6 +1,7 @@
-using System.Collections.Immutable;
 using System.Text;
 using System.Threading.Tasks;
+
+using static Ihc.Vis.Tests.Tree;
 
 namespace Ihc.Vis.Tests
 {
@@ -14,18 +15,6 @@ namespace Ihc.Vis.Tests
     public class MiscHardeningTests
     {
         private static IhcSettings Settings => TestSetup.Settings;
-
-        private static ProjectElement Node(string tag, string? id, (string, string)[] attrs, params ProjectElement[] children)
-        {
-            ElementId? parsed = id is not null && ElementId.TryParse(id, out ElementId p) ? p : null;
-            var bag = ImmutableArray.CreateBuilder<(string, string)>();
-            if (id is not null)
-            {
-                bag.Add(("id", id));
-            }
-            bag.AddRange(attrs);
-            return new ProjectElement(tag, parsed, bag.ToImmutable(), children.ToImmutableArray());
-        }
 
         private static Project MinimalProject(params (string, string)[] extraGroupAttrs)
         {
@@ -85,6 +74,18 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
+        public void Serialize_AstralCharacter_ErrorNamesTheCombinedScalar_NotALoneSurrogate()
+        {
+            // Finding 18: an astral char is a surrogate PAIR; the non-Latin1 offender report must name the combined
+            // scalar (U+1F600), not the lone high surrogate (U+D83D) the scan iterates first.
+            Project project = MinimalProject(("note", System.Char.ConvertFromUtf32(0x1F600)));
+
+            Assert.That(() => ProjectSerializer.Serialize(project),
+                Throws.InvalidOperationException.With.Message.Contains("U+1F600").And.Message.Not.Contains("U+D83D"),
+                "the diagnostic names the real code point, not a surrogate half");
+        }
+
+        [Test]
         public void Save_WithValidateBeforeSave_RejectsAnInvalidProject()
         {
             // A dangling scenes binding: serializable, but invalid per the checklist.
@@ -112,6 +113,29 @@ namespace Ihc.Vis.Tests
                 Assert.That(() => new PackedStamp(1, 0, 60, 0), Throws.TypeOf<System.ArgumentOutOfRangeException>());
                 Assert.That(() => new PackedStamp(1, 0, 0, 60), Throws.TypeOf<System.ArgumentOutOfRangeException>());
                 Assert.That(new PackedStamp(4, 16, 5, 51).ToToken(), Is.EqualTo("_0x4100533"));
+            });
+        }
+
+        [Test]
+        public void InlineDtd_QuotedSubsetClose_IsNotTruncated()
+        {
+            // A quoted "]>" inside an ATTLIST default must not be mistaken for the internal-subset terminator.
+            byte[] bytes = Encoding.Latin1.GetBytes(
+                "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\r\n" +
+                "<!DOCTYPE utcs_project [\r\n" +
+                "   <!ELEMENT utcs_project ANY>\r\n" +
+                "   <!ELEMENT widget ANY>\r\n" +
+                "   <!ATTLIST widget note CDATA \"a]>b\">\r\n" +
+                "]>\r\n" +
+                "<utcs_project/>");
+
+            var blocks = InlineDtd.Capture(bytes);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(blocks.ContainsKey("widget"), Is.True, "the block after the quoted ]> is captured, not truncated away");
+                Assert.That(ProjectSchemaRegistry.ParseBlock(blocks["widget"]).FindAttr("note")!.Default, Is.EqualTo("a]>b"),
+                    "the quoted ]> is part of the default, not the subset terminator");
             });
         }
 

@@ -83,6 +83,31 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
+        public void ImportCatalogFile_MalformedFile_ThrowsInvalidDataException_NamingTheFile()
+        {
+            // Finding 14: a malformed/truncated catalog file must surface an error naming the offending file (as
+            // CatalogDiscovery.ParseCatalogFile does), not a bare XmlException that hides which of hundreds failed.
+            string tempDir = Path.Combine(Path.GetTempPath(), "ihc_import_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+            try
+            {
+                string defPath = Path.Combine(tempDir, "broken.def");
+                File.WriteAllText(defPath,
+                    "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\r\n<product_dataline id=\"_0x1\" name=\"X\">");   // root never closed
+
+                ProjectAppService app = NewApp();
+
+                Assert.That(() => app.ImportCatalogFile(defPath),
+                    Throws.TypeOf<InvalidDataException>().With.Message.Contains("broken.def"),
+                    "the import error names the offending file");
+            }
+            finally
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
+
+        [Test]
         public void ImportCatalogDirectory_ImportsEveryDefAndReportsCount()
         {
             ProjectAppService app = NewApp();

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Ihc.Vis.Tests
@@ -87,6 +88,31 @@ namespace Ihc.Vis.Tests
 
             Project built = editor.ToProject();
             Assert.That(built, Is.Not.Null);
+        }
+
+        [Test]
+        public void From_ThenAddInput_SplicesTheEditIntoTheBuiltBody()
+        {
+            // Finding 1: a From()-seeded builder must MERGE post-From edits into the body (as
+            // ProductDefinitionBuilder.From does), not silently discard them — the old MaterializeDecoded re-emitted
+            // only the original decoded body, so AddInput/AddOutput/Program/RawChild were dropped from Build().
+            FunctionBlockDefinitionBuilder source = FunctionBlockDefinitionBuilder
+                .Create("1.1.01", "e", "Kip tænd sluk")
+                .VendorMaster();
+            source.AddInput("Kip");
+            FunctionBlockDefinition original = source.Build();
+
+            FunctionBlockDefinitionBuilder reopened = FunctionBlockDefinitionBuilder.From(original);
+            reopened.AddInput("Ny pin");
+            FunctionBlockDefinition edited = reopened.Build();
+
+            ProjectElement inputs = edited.Body.FindChild("inputs")!;
+            var names = inputs.ChildrenOrEmpty().Select(c => c.GetAttribute("name")).ToList();
+            Assert.Multiple(() =>
+            {
+                Assert.That(names, Does.Contain("Kip"), "the original input is preserved");
+                Assert.That(names, Does.Contain("Ny pin"), "the post-From authored input is spliced in, not dropped");
+            });
         }
 
         [Test]

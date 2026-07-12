@@ -37,10 +37,6 @@ namespace Ihc.Vis.Editing
     {
         private static readonly Regex LeadingZeroToken = new(@"^_0x0+[0-9a-fA-F]+$", RegexOptions.Compiled);
 
-        // The vendor's null reference token, stamped on a #REQUIRED attribute the catalog .def left empty
-        // (see StampRequiredNullTokens).
-        private const string NullToken = "_0x0";
-
         public static InsertResult Insert(ProjectElement catalogBody, IdAllocator allocator,
             ProjectElement enumDefinitions, ProjectSchemaView view)
         {
@@ -168,7 +164,7 @@ namespace Ihc.Vis.Editing
         private static ProjectElement? FindMatchingEnum(ProjectElement stub, ProjectElement enumDefinitions, List<ProjectElement> hoisted)
         {
             string? typeid = stub.GetAttribute("typeid");
-            bool byTypeid = typeid is not null && typeid != "_0x0";
+            bool byTypeid = typeid is not null && typeid != ElementId.NullToken;
             string? name = stub.GetAttribute("name");
 
             bool KeyMatches(ProjectElement def) => def.Tag == "enum_definition"
@@ -264,7 +260,7 @@ namespace Ihc.Vis.Editing
         private static ProjectElement? MatchValue(ProjectElement existingDef, ProjectElement value)
         {
             string? typeid = value.GetAttribute("typeid");
-            if (typeid is not null && typeid != "_0x0")
+            if (typeid is not null && typeid != ElementId.NullToken)
             {
                 return FindValueBy(existingDef, "typeid", typeid);
             }
@@ -384,6 +380,14 @@ namespace Ihc.Vis.Editing
             {
                 return false;   // undeclared, not a fixed-point numeric attribute, or a non-numeric value — leave verbatim
             }
+            // Only reformat when it PRESERVES the value: "F"+places pads/trims trailing zeros ("500.00"→"500";
+            // decimal equality ignores scale) but ALSO rounds ("12.5", places 0 → "13"). Skip the rounding case so
+            // an authored inivalue is never silently mutated on insert. (places is 0..2 across the corpus; the
+            // <=28 guard keeps decimal.Round's argument in range for any pathological default.)
+            if (places <= 28 && decimal.Round(number, places) != number)
+            {
+                return false;
+            }
             reformatted = number.ToString("F" + places.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
             return reformatted != value;
         }
@@ -437,7 +441,7 @@ namespace Ihc.Vis.Editing
                 if (attr.Kind == AttrKind.Required && attr.Render != AttrRender.Id
                     && string.IsNullOrEmpty(ProjectElement.GetAttribute(attrs, attr.Name)))
                 {
-                    attrs = ProjectElement.SetAttribute(attrs, attr.Name, NullToken);
+                    attrs = ProjectElement.SetAttribute(attrs, attr.Name, ElementId.NullToken);
                 }
             }
             return attrs;

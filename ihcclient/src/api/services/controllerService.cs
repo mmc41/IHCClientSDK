@@ -750,6 +750,13 @@ namespace Ihc {
                     );
 
                     ValidationHelper.ValidateDataAnnotations(project, nameof(project));
+                    if (project.Data is null)
+                    {
+                        // Data has no [Required] and NRT is disabled here, so a null slips past ValidateDataAnnotations
+                        // and would surface as a bare ArgumentNullException from GetBytes — name the real problem.
+                        throw new InvalidOperationException(
+                            $"Project '{project.Filename}' has no Data to store; nothing was sent to the controller.");
+                    }
 
                     // Fail before entering change mode: an out-of-repertoire character would otherwise either
                     // abort mid-change-mode or (with a replacement fallback) be silently stored as '?'.
@@ -759,8 +766,9 @@ namespace Ihc {
                     }
                     catch (EncoderFallbackException ex)
                     {
+                        string offender = ex.OffendingCodePointLabel();
                         throw new InvalidOperationException(
-                            $"Project '{project.Filename}' contains character U+{(int)ex.CharUnknown:X4} at index {ex.Index}, " +
+                            $"Project '{project.Filename}' contains character {offender} at index {ex.Index}, " +
                             "outside the ISO-8859-1 repertoire required by the IHC controller. Load the file with " +
                             $"ISO-8859-1 ({nameof(ProjectFile)}.{nameof(ProjectFile.Encoding)}), not UTF-8.", ex);
                     }

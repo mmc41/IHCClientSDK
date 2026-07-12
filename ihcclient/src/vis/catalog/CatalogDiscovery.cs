@@ -53,22 +53,6 @@ namespace Ihc.Vis.Catalog
             return new MaterializedCatalog(products, functionBlocks, skeleton, enums, emptyTemplate);
         }
 
-        // One malformed vendor file must abort discovery with the offending PATH in the message — the raw
-        // XmlException/IOException names neither the file nor that a catalog scan was in progress. The per-file
-        // instance construction lives in CatalogReader (the public file→instance reader); discovery only adds the
-        // tree-relative CategoryPath and this scan-context error wrapping.
-        private static T ParseCatalogFile<T>(string path, Func<T> parse)
-        {
-            try
-            {
-                return parse();
-            }
-            catch (Exception ex) when (ex is System.Xml.XmlException or IOException or UnauthorizedAccessException)
-            {
-                throw new InvalidDataException($"Failed to parse IHC Visual catalog file '{path}': {ex.Message}", ex);
-            }
-        }
-
         // A File→New template (NewDoc.idf / EnumeratorDefinitions.def / fb.def) is used to BUILD a project, not
         // re-emitted as a catalog file, so — unlike a product/function-block descriptor, whose raw body the writer must
         // reproduce — it carries the EFFECTIVE body: the file's own DTD ATTLIST defaults materialized. Those defaults
@@ -78,7 +62,7 @@ namespace Ihc.Vis.Catalog
         private static ProjectElement ReadCatalogFile(string path)
         {
             byte[] bytes = File.ReadAllBytes(path);
-            ProjectElement raw = ParseCatalogFile(path, () => CatalogReader.Read(bytes));
+            ProjectElement raw = CatalogReader.ParseCatalogFile(path, () => CatalogReader.Read(bytes));
             return CatalogDefaults.Materialize(raw,
                 ProjectSchemaView.For(CatalogDtdParser.ParseLenient(CatalogDtdParser.CaptureHeadText(bytes))));
         }
@@ -87,7 +71,7 @@ namespace Ihc.Vis.Catalog
         {
             byte[] bytes = File.ReadAllBytes(fbDefPath);
             CatalogGrammar grammar = CatalogDtdParser.ParseLenient(CatalogDtdParser.CaptureHeadText(bytes));
-            ProjectElement raw = ParseCatalogFile(fbDefPath, () => CatalogReader.Read(bytes));
+            ProjectElement raw = CatalogReader.ParseCatalogFile(fbDefPath, () => CatalogReader.Read(bytes));
             ProjectElement body = CatalogDefaults.Materialize(raw, ProjectSchemaView.For(grammar));
             string name = MenuPrefix.Strip(body.GetAttribute("name") ?? "Tom blok");
             return new FunctionBlockDefinition(string.Empty, string.Empty, name, name, string.Empty, body)
@@ -103,7 +87,7 @@ namespace Ihc.Vis.Catalog
             foreach (string path in EnumerateFilesSorted(productsDir, "*.def"))
             {
                 byte[] bytes = File.ReadAllBytes(path);
-                builder.Add(ParseCatalogFile(path,
+                builder.Add(CatalogReader.ParseCatalogFile(path,
                     () => CatalogReader.BuildProduct(bytes, RelativeDir(productsDir, path), documentation: null)));
             }
             return builder.ToImmutable();
@@ -115,7 +99,7 @@ namespace Ihc.Vis.Catalog
             foreach (string path in EnumerateFilesSorted(functionBlocksDir, "*.ifb"))
             {
                 byte[] bytes = File.ReadAllBytes(path);
-                builder.Add(ParseCatalogFile(path,
+                builder.Add(CatalogReader.ParseCatalogFile(path,
                     () => CatalogReader.BuildFunctionBlock(bytes, RelativeDir(functionBlocksDir, path), documentation: null)));
             }
             return builder.ToImmutable();

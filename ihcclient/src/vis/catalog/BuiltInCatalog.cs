@@ -35,8 +35,11 @@ namespace Ihc.Vis.Catalog
     {
         // One process-wide materialization: the factory instance below exists only as the build context the partial
         // registration hooks write into; every BuiltInCatalog instance forwards to the same immutable value.
+        // PublicationOnly (not ExecutionAndPublication) so a transient first-touch failure (e.g. OOM) is NOT cached
+        // forever — the next access retries — matching ProjectAppService's own catalog Lazy. The factory returns a
+        // fresh immutable instance with no shared mutable state, so a rare concurrent double-run is harmless.
         private static readonly Lazy<MaterializedCatalog> materialized =
-            new(() => new BuiltInCatalog().Materialize(), LazyThreadSafetyMode.ExecutionAndPublication);
+            new(() => new BuiltInCatalog().Materialize(), LazyThreadSafetyMode.PublicationOnly);
 
         // File→New templates, reassigned by AuthorTemplates() (Phase C) before Materialize() reads them. The empty
         // defaults keep the catalog materializable while Phase C is outstanding; the Phase C byte tests are what

@@ -171,6 +171,9 @@ namespace Ihc.Vis.Editing
             ArgumentNullException.ThrowIfNull(name);
             ArgumentNullException.ThrowIfNull(definition);
             ArgumentNullException.ThrowIfNull(valueName);
+            // Fail before wiring a since-deleted enum into the resource_enum's typedef — a dangling reference the
+            // default save would otherwise persist (the enum peer of RequireLive on the wire path).
+            editor.Require(definition.Id);
             ElementId enumId = editor.AllocateChild(conditionId, "resource_enum",
                 ("name", name), ("typedef", definition.Typedef), ("inivalue", definition.InitialValue(valueName)),
                 ("icon", ProgramGrammar.EnumOperandIcon));
