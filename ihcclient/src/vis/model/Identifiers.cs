@@ -32,6 +32,8 @@ namespace Ihc.Vis.Model
     internal static class DecToken
     {
         public static string Format(int value) => value.ToString(CultureInfo.InvariantCulture);
+
+        public static string Format(long value) => value.ToString(CultureInfo.InvariantCulture);
     }
 
     /// <summary>

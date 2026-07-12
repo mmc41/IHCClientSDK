@@ -92,8 +92,7 @@ namespace Ihc.Vis.Model
         /// </summary>
         public ProjectElement WithAttribute(string name, string value)
         {
-            ImmutableArray<(string Name, string Value)> attrs =
-                Attrs.IsDefaultOrEmpty ? ImmutableArray<(string, string)>.Empty : Attrs;
+            ImmutableArray<(string Name, string Value)> attrs = AttrsOrEmpty();
             for (int i = 0; i < attrs.Length; i++)
             {
                 if (attrs[i].Name == name)

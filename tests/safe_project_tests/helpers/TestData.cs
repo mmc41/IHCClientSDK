@@ -20,6 +20,19 @@ namespace Ihc.Vis.Tests
         public static string PathOf(params string[] parts) =>
             Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", Path.Combine(parts));
 
+        /// <summary>Strictly parses a <c>_0x</c> id token; throws on a malformed one.</summary>
+        public static ElementId Id(string token) =>
+            ElementId.TryParse(token, out ElementId id)
+                ? id
+                : throw new ArgumentException($"Bad id token '{token}'.", nameof(token));
+
+        /// <summary>The raw numeric value of a <c>_0x</c> scalar token (e.g. <c>last_unique_id</c>); throws on a
+        /// malformed one.</summary>
+        public static long HexCounter(string? token) =>
+            HexToken.TryParseValue(token, out long value)
+                ? value
+                : throw new ArgumentException($"Bad hex token '{token}'.", nameof(token));
+
         public static byte[] ReadBytes(string name) =>
             (byte[])Cache.GetOrAdd(name, n => File.ReadAllBytes(PathOf(n))).Clone();
 

@@ -1,6 +1,5 @@
 #nullable enable
 using System;
-using System.Globalization;
 
 using Ihc.Vis.Catalog;
 using Ihc.Vis.FunctionBlocks;
@@ -87,9 +86,9 @@ namespace Ihc.Vis.Editing
             }
             ElementId blockId = editor.InsertComponent(Id, template.Body, template.Grammar);
             editor.SetAttributeById(blockId, "name", name);
-            editor.SetAttributeById(blockId, "master_date_year", created.Year.ToString(CultureInfo.InvariantCulture));
-            editor.SetAttributeById(blockId, "master_date_month", created.Month.ToString(CultureInfo.InvariantCulture));
-            editor.SetAttributeById(blockId, "master_date_day", created.Day.ToString(CultureInfo.InvariantCulture));
+            editor.SetAttributeById(blockId, "master_date_year", DecToken.Format(created.Year));
+            editor.SetAttributeById(blockId, "master_date_month", DecToken.Format(created.Month));
+            editor.SetAttributeById(blockId, "master_date_day", DecToken.Format(created.Day));
             return new FunctionBlockRef(editor, blockId);
         }
 

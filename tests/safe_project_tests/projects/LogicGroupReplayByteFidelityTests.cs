@@ -29,36 +29,26 @@ namespace Ihc.Vis.Tests
         // _0xf7 -> _0x104, gaps 68-80), NOT the base file — the shared Action 0 of the -refdelete/-logicgroups/-case
         // replays. id2 _0xc0d0037 decodes to day 12 / hour 13 / min 0 / sec 55.
         [Test]
-        public async Task ActionZeroAlone_ReplaysProject2ControlSaveOracle_ByteIdentical()
-        {
-            byte[] expected = TestData.ReadBytes("projects/" + ControlSaveOracle);
-            var app = new ProjectAppService(Settings);
-            Project original = await app.Load("testdata/projects/" + Original);
-
-            ProjectEditor editor = original.Edit();
-            editor.NormalizeCatalogEnums();
-
-            Project stamped = MetadataStamper.Restamp(editor.ToProject(),
-                new DateTimeOffset(2026, 7, 12, 13, 0, 55, TimeSpan.Zero));
-            using var ms = new MemoryStream();
-            await app.Save(stamped, ms, ProjectSaveOptions.PreserveExistingMetadata);
-
-            TestData.AssertBytesIdentical(expected, ms.ToArray(), "Action-0 control replay → " + ControlSaveOracle);
-        }
+        public async Task ActionZeroAlone_ReplaysProject2ControlSaveOracle_ByteIdentical() =>
+            await ReplayOracle.AssertReplaysByteIdentical(Original, ControlSaveOracle,
+                new DateTimeOffset(2026, 7, 12, 13, 0, 55, TimeSpan.Zero),
+                editor => { });   // the harness's Action 0 is the entire replay
 
         // ---- Full replay: Action 0 → skeleton → conditions → nested group → action → OR → byte-identity ----
 
         [Test]
-        public async Task NestedOrNotConditions_ReplaysCustomBlockLogicOracle_ByteIdentical()
-        {
-            byte[] expected = TestData.ReadBytes("projects/" + LogicGroupsOracle);
-            var app = new ProjectAppService(Settings);
-            Project original = await app.Load("testdata/projects/" + Original);
+        public async Task NestedOrNotConditions_ReplaysCustomBlockLogicOracle_ByteIdentical() =>
+            // id2 _0xc0e2338 decodes to day 12 / hour 14 / min 35 / sec 56; <modified> is minute-precision (14:35).
+            await ReplayOracle.AssertReplaysByteIdentical(Original, LogicGroupsOracle,
+                new DateTimeOffset(2026, 7, 12, 14, 35, 56, TimeSpan.Zero),
+                editor => ApplyLogicGroupGestures(editor));
 
-            // Row notes are the vendor's method-specific vocabulary strings, transcribed verbatim from the oracle
-            // (incl. the vendor's "forskelling" spelling — same strings the drag popup stamps in the V4 oracle).
-            ProjectEditor editor = original.Edit();
-            editor.NormalizeCatalogEnums();                                          // Action 0: _0xf7 -> _0x104
+        // The recorded L1–L6 gesture sequence shared by the byte replay and the composition test; returns the
+        // nested logic-group handle the composition test asserts on. Row notes are the vendor's method-specific
+        // vocabulary strings, transcribed verbatim from the oracle (incl. the vendor's "forskelling" spelling —
+        // same strings the drag popup stamps in the V4 oracle).
+        private static ConditionsGroupRef ApplyLogicGroupGestures(ProjectEditor editor)
+        {
             FunctionBlockRef custom = editor.Group("Stue").FunctionBlock("Custom blok");
             SubProgramRef sub = custom.Program().AddSubProgram();                    // L1: _0x105.._0x108
             sub.Conditions.AddCondition("%P = ON", custom.Input("Flag"), "_0xa",
@@ -66,18 +56,11 @@ namespace Ihc.Vis.Tests
             sub.Conditions.AddCondition("%P <> %S", custom.Input("NyTypeForThisProject"), "_0x28",
                 custom.Setting("NyTypeForThisProject"),
                 "Betingelse at %P er forskelling fra %S");                           // L3 (NOT): _0x10a
-            sub.Conditions.AddConditionGroup();                                      // L4: _0x10b, stays empty
+            ConditionsGroupRef nested = sub.Conditions.AddConditionGroup();          // L4: _0x10b, stays empty
             sub.WhenTrue.AddAction("Kip %P", custom.Output("Udgang"), "_0x23",
                 note: "Sætter %P til modsat værdi af aktuel værdi");                 // L5: _0x10c
             sub.Conditions.Or();                                                     // L6: type="or" literal
-
-            // id2 _0xc0e2338 decodes to day 12 / hour 14 / min 35 / sec 56; <modified> is minute-precision (14:35).
-            Project stamped = MetadataStamper.Restamp(editor.ToProject(),
-                new DateTimeOffset(2026, 7, 12, 14, 35, 56, TimeSpan.Zero));
-            using var ms = new MemoryStream();
-            await app.Save(stamped, ms, ProjectSaveOptions.PreserveExistingMetadata);
-
-            TestData.AssertBytesIdentical(expected, ms.ToArray(), "logic-group replay → " + LogicGroupsOracle);
+            return nested;
         }
 
         // ---- Composition isolation: gesture-order allocation, pinned row shapes, no burn ----
@@ -85,7 +68,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task ConditionGroupAuthoring_AllocatesInGestureOrder_PinnedShapes()
         {
-            Project original = await new ProjectAppService(Settings).Load("testdata/projects/" + Original);
+            Project original = await ReplayOracle.LoadProject(Original);
 
             ProjectEditor editor = original.Edit();
             editor.NormalizeCatalogEnums();
@@ -102,15 +85,7 @@ namespace Ihc.Vis.Tests
                     "output pin resolves");
             });
 
-            SubProgramRef sub = custom.Program().AddSubProgram();
-            sub.Conditions.AddCondition("%P = ON", custom.Input("Flag"), "_0xa",
-                note: "Betingelse at %P er ON");
-            sub.Conditions.AddCondition("%P <> %S", custom.Input("NyTypeForThisProject"), "_0x28",
-                custom.Setting("NyTypeForThisProject"), "Betingelse at %P er forskelling fra %S");
-            ConditionsGroupRef nested = sub.Conditions.AddConditionGroup();
-            sub.WhenTrue.AddAction("Kip %P", custom.Output("Udgang"), "_0x23",
-                note: "Sætter %P til modsat værdi af aktuel værdi");
-            sub.Conditions.Or();
+            ConditionsGroupRef nested = ApplyLogicGroupGestures(editor);
             Project after = editor.ToProject();
 
             ProjectElement subElement = after.Root.Descendants().Single(e => e.GetAttribute("id") == "_0x1051f");
@@ -168,7 +143,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task OrToggle_WritesOnlyTypeOr_AndRestoresOmittedDefault()
         {
-            Project original = await new ProjectAppService(Settings).Load("testdata/projects/" + Original);
+            Project original = await ReplayOracle.LoadProject(Original);
 
             ProjectEditor editor = original.Edit();
             SubProgramRef sub = editor.Group("Stue").FunctionBlock("Custom blok").Program().AddSubProgram();
@@ -195,7 +170,7 @@ namespace Ihc.Vis.Tests
         public async Task NotConditionInNestedGroupWithEnumOperand_ValidatesClean()
         {
             var app = new ProjectAppService(Settings);
-            Project original = await app.Load("testdata/projects/" + Original);
+            Project original = await ReplayOracle.LoadProject(Original);
 
             ProjectEditor editor = original.Edit();
             FunctionBlockRef custom = editor.Group("Stue").FunctionBlock("Custom blok");

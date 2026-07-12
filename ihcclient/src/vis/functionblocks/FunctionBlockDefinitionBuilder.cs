@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Globalization;
 using System.Linq;
 
 using Ihc.Vis.Catalog;
@@ -827,7 +826,7 @@ namespace Ihc.Vis.FunctionBlocks
             // insert either way).
             if (value.Index != 0)
             {
-                attrs.Add(("index", value.Index.ToString(CultureInfo.InvariantCulture)));
+                attrs.Add(("index", DecToken.Format(value.Index)));
             }
             return attrs;
         }

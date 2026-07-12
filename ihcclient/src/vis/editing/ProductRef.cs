@@ -94,9 +94,7 @@ namespace Ihc.Vis.Editing
         public ScenesRef Scenes()
         {
             ProjectElement product = editor.Require(Id);
-            List<ProjectElement> matches = product.Children.IsDefaultOrEmpty
-                ? new List<ProjectElement>()
-                : product.Children.Where(c => c.Tag == "scenes").ToList();
+            List<ProjectElement> matches = product.ChildrenOrEmpty().Where(c => c.Tag == "scenes").ToList();
             if (matches.Count == 0)
             {
                 throw new InvalidOperationException(

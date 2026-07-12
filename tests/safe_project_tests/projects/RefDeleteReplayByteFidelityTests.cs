@@ -24,32 +24,20 @@ namespace Ihc.Vis.Tests
         // ---- Full replay: Action 0 → cascade delete → byte-identity ----
 
         [Test]
-        public async Task CascadeDeleteOutput_ReplaysCustomBlockRefDeleteOracle_ByteIdentical()
-        {
-            byte[] expected = TestData.ReadBytes("projects/" + RefDeleteOracle);
-            var app = new ProjectAppService(Settings);
-            Project original = await app.Load("testdata/projects/" + Original);
-
-            ProjectEditor editor = original.Edit();
-            editor.NormalizeCatalogEnums();                                          // Action 0: _0xf7 -> _0x104
-            FunctionBlockRef custom = editor.Group("Stue").FunctionBlock("Custom blok");
-            editor.DeleteById(custom.Output("Udgang").Id!.Value, DeleteReferencePolicy.CascadeReferences);
-
+        public async Task CascadeDeleteOutput_ReplaysCustomBlockRefDeleteOracle_ByteIdentical() =>
             // id2 _0xc0d0414 decodes to day 12 / hour 13 / min 4 / sec 20; <modified> is minute-precision (13:04).
-            Project stamped = MetadataStamper.Restamp(editor.ToProject(),
-                new DateTimeOffset(2026, 7, 12, 13, 4, 20, TimeSpan.Zero));
-            using var ms = new MemoryStream();
-            await app.Save(stamped, ms, ProjectSaveOptions.PreserveExistingMetadata);
-
-            TestData.AssertBytesIdentical(expected, ms.ToArray(), "cascade-delete replay → " + RefDeleteOracle);
-        }
+            await ReplayOracle.AssertReplaysByteIdentical(Original, RefDeleteOracle,
+                new DateTimeOffset(2026, 7, 12, 13, 4, 20, TimeSpan.Zero),
+                editor => editor.DeleteById(
+                    editor.Group("Stue").FunctionBlock("Custom blok").Output("Udgang").Id!.Value,
+                    DeleteReferencePolicy.CascadeReferences));
 
         // ---- Cascade-set exactness: exactly the vendor's five ids go, nothing else, nothing allocated ----
 
         [Test]
         public async Task CascadeDelete_RemovesExactlyTheReferencingRows_ParentsSurvive()
         {
-            Project original = await new ProjectAppService(Settings).Load("testdata/projects/" + Original);
+            Project original = await ReplayOracle.LoadProject(Original);
 
             ProjectEditor editor = original.Edit();
             FunctionBlockRef custom = editor.Group("Stue").FunctionBlock("Custom blok");
@@ -92,7 +80,7 @@ namespace Ihc.Vis.Tests
         {
             byte[] original = TestData.ReadBytes("projects/" + Original);
             var app = new ProjectAppService(Settings);
-            Project project = await app.Load("testdata/projects/" + Original);
+            Project project = await ReplayOracle.LoadProject(Original);
 
             ProjectEditor editor = project.Edit();
             ResourceRef udgang = editor.Group("Stue").FunctionBlock("Custom blok").Output("Udgang");

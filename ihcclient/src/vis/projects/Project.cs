@@ -180,8 +180,7 @@ namespace Ihc.Vis.Projects
         }
 
         /// <summary>The seven fixed root children, in document order.</summary>
-        public IReadOnlyList<ProjectElement> Children =>
-            Root.Children.IsDefaultOrEmpty ? ImmutableArray<ProjectElement>.Empty : Root.Children;
+        public IReadOnlyList<ProjectElement> Children => Root.ChildrenOrEmpty();
 
         /// <summary>Returns the named fixed child element (e.g. <c>groups</c>), or <c>null</c> when absent.</summary>
         public ProjectElement? Child(string tag) => Root.FindChild(tag);

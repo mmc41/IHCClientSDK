@@ -388,7 +388,7 @@ namespace Ihc.Vis.Editing
             {
                 return false;
             }
-            reformatted = number.ToString("F" + places.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
+            reformatted = number.ToString("F" + DecToken.Format(places), CultureInfo.InvariantCulture);
             return reformatted != value;
         }
 

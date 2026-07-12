@@ -22,36 +22,26 @@ namespace Ihc.Vis.Tests
         // ---- Full replay: Action 0 → R (relay link) → D (dimmer link) → byte-identity ----
 
         [Test]
-        public async Task LinkScenes_ReplaysProject3SceneOracle_ByteIdentical()
-        {
-            byte[] expected = TestData.ReadBytes("projects/" + SceneLinksOracle);
-            var app = new ProjectAppService(Settings);
-            Project original = await app.Load("testdata/projects/" + Original);
-
-            ProjectEditor editor = original.Edit();
-            editor.NormalizeCatalogEnums();                                              // Action 0: _0x56c -> _0x579
-            (ResourceRef relayPin, ScenesRef relayTarget) = ResolveRelayEndpoints(editor);
-            editor.LinkScene(relayPin, relayTarget, SceneValue.Relay(on: true));         // R: _0x57a4d + _0x57b4b
-            (ResourceRef dimmerPin, ScenesRef dimmerTarget) = ResolveDimmerEndpoints(editor);
-            editor.LinkScene(dimmerPin, dimmerTarget,
-                SceneValue.Dimmer(100, TimeSpan.FromMilliseconds(1000)));                // D: _0x57c4c + _0x57d4b
-
+        public async Task LinkScenes_ReplaysProject3SceneOracle_ByteIdentical() =>
             // id2=_0xb0d1a0b decodes to day 11 / hour 13 / min 26 / sec 11; <modified> is minute-precision (13:26),
             // so the second (11) lives only in id2 and must be supplied to the restamp clock.
-            Project stamped = MetadataStamper.Restamp(editor.ToProject(),
-                new DateTimeOffset(2026, 7, 11, 13, 26, 11, TimeSpan.Zero));
-            using var ms = new MemoryStream();
-            await app.Save(stamped, ms, ProjectSaveOptions.PreserveExistingMetadata);
-
-            TestData.AssertBytesIdentical(expected, ms.ToArray(), "scene-link replay → " + SceneLinksOracle);
-        }
+            await ReplayOracle.AssertReplaysByteIdentical(Original, SceneLinksOracle,
+                new DateTimeOffset(2026, 7, 11, 13, 26, 11, TimeSpan.Zero),
+                editor =>
+                {
+                    (ResourceRef relayPin, ScenesRef relayTarget) = ResolveRelayEndpoints(editor);
+                    editor.LinkScene(relayPin, relayTarget, SceneValue.Relay(on: true)); // R: _0x57a4d + _0x57b4b
+                    (ResourceRef dimmerPin, ScenesRef dimmerTarget) = ResolveDimmerEndpoints(editor);
+                    editor.LinkScene(dimmerPin, dimmerTarget,
+                        SceneValue.Dimmer(100, TimeSpan.FromMilliseconds(1000)));       // D: _0x57c4c + _0x57d4b
+                });
 
         // ---- Composition isolation: member-first allocation in gesture order, pinned tokens, no burn ----
 
         [Test]
         public async Task LinkScene_AllocatesMemberFirstContiguously_NoBurn()
         {
-            Project original = await new ProjectAppService(Settings).Load("testdata/projects/" + Original);
+            Project original = await ReplayOracle.LoadProject(Original);
 
             ProjectEditor editor = original.Edit();
             editor.NormalizeCatalogEnums();
@@ -110,7 +100,7 @@ namespace Ihc.Vis.Tests
         public async Task LinkedScenes_ValidateClean()
         {
             var app = new ProjectAppService(Settings);
-            Project original = await app.Load("testdata/projects/" + Original);
+            Project original = await ReplayOracle.LoadProject(Original);
 
             ProjectEditor editor = original.Edit();
             (ResourceRef relayPin, ScenesRef relayTarget) = ResolveRelayEndpoints(editor);

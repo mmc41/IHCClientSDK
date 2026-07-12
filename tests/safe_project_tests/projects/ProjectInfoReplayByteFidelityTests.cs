@@ -18,37 +18,23 @@ namespace Ihc.Vis.Tests
     {
         private const string Original = "project3-KompleksWired.vis";
         private const string ProjektinfoOracle = "project3-KompleksWired-projektinfo.vis";
-        private static IhcSettings Settings => TestSetup.Settings;
 
         // ---- Full replay: Action 0 → P (Projektinfo dialog) → byte-identity ----
 
         [Test]
-        public async Task EnterProjektinfo_ReplaysProject3InfoOracle_ByteIdentical()
-        {
-            byte[] expected = TestData.ReadBytes("projects/" + ProjektinfoOracle);
-            var app = new ProjectAppService(Settings);
-            Project original = await app.Load("testdata/projects/" + Original);
-
-            ProjectEditor editor = original.Edit();
-            editor.NormalizeCatalogEnums();          // Action 0: _0x56c -> _0x579
-            ApplyProjektinfoDialog(editor);          // P: the one recorded dialog session
-
+        public async Task EnterProjektinfo_ReplaysProject3InfoOracle_ByteIdentical() =>
             // id2=_0xb0d001e decodes to day 11 / hour 13 / min 0 / sec 30; <modified> is minute-precision (13:00),
             // so the second (30) lives only in id2 and must be supplied to the restamp clock.
-            Project stamped = MetadataStamper.Restamp(editor.ToProject(),
-                new DateTimeOffset(2026, 7, 11, 13, 0, 30, TimeSpan.Zero));
-            using var ms = new MemoryStream();
-            await app.Save(stamped, ms, ProjectSaveOptions.PreserveExistingMetadata);
-
-            TestData.AssertBytesIdentical(expected, ms.ToArray(), "Projektinfo replay → " + ProjektinfoOracle);
-        }
+            await ReplayOracle.AssertReplaysByteIdentical(Original, ProjektinfoOracle,
+                new DateTimeOffset(2026, 7, 11, 13, 0, 30, TimeSpan.Zero),
+                ApplyProjektinfoDialog);             // P: the one recorded dialog session
 
         // ---- Composition isolation: the id-less metadata blocks own no ids and mint none ----
 
         [Test]
         public async Task MetadataEdits_AllocateNoIds()
         {
-            Project original = await new ProjectAppService(Settings).Load("testdata/projects/" + Original);
+            Project original = await ReplayOracle.LoadProject(Original);
 
             ProjectEditor editor = original.Edit();
             ApplyProjektinfoDialog(editor);

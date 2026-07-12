@@ -29,49 +29,40 @@ namespace Ihc.Vis.Tests
         // ---- Full replay: Action 0 → skeleton → case+Else → burns+values → actions → byte-identity ----
 
         [Test]
-        public async Task AuthorCounterCase_ReplaysCustomBlockCaseOracle_ByteIdentical()
-        {
-            byte[] expected = TestData.ReadBytes("projects/" + CaseOracle);
-            var app = new ProjectAppService(Settings);
-            Project original = await app.Load("testdata/projects/" + Original);
-
-            // Row names/notes are the vendor method-vocabulary strings, transcribed verbatim from the oracle bytes.
-            ProjectEditor editor = original.Edit();
-            editor.NormalizeCatalogEnums();                                          // Action 0: _0xf7 -> _0x104
-            FunctionBlockRef custom = editor.Group("Stue").FunctionBlock("Custom blok");
-            SubProgramRef sub = custom.Program().AddSubProgram();                    // C1: _0x105.._0x108
-            CaseRef kase = sub.WhenTrue.AddCase("Case (%LT)", custom.Input("Tæller"),
-                "Udfører case når %P er lig case værdien");                          // C2: _0x109 + Else _0x10a
-            Burn(editor, custom);                                                    // _0x10b: Rediger-konstant burn
-            BranchRef eq100 = kase.Case("Case", "resource_counter",
-                op => op.SetAttribute("inivalue", "100"),
-                "Udfører case når %P er lig case værdien");                          // C3: _0x10c + operand _0x10d
-            Burn(editor, custom);                                                    // _0x10e: second burn
-            BranchRef eq1000 = kase.Case("Case", "resource_counter",
-                op => op.SetAttribute("inivalue", "1000"),
-                "Udfører case når %P er lig case værdien");                          // C4: _0x10f + operand _0x110
-            eq100.AddAction("%P = ON", custom.Output("Udgang"), "_0xa",
-                note: "Sætter %P til ON");                                           // C5: _0x111
-            sub.WhenFalse.AddAction("Kip %P", custom.Output("Udgang"), "_0x23",
-                note: "Sætter %P til modsat værdi af aktuel værdi");                 // C6: _0x112 (false branch!)
-            eq1000.AddAction("%P = OFF", custom.Output("Udgang"), "_0x14",
-                note: "Sætter %P til OFF");                                          // C7: _0x113
-
+        public async Task AuthorCounterCase_ReplaysCustomBlockCaseOracle_ByteIdentical() =>
             // id2 _0xc0e2c02 decodes to day 12 / hour 14 / min 44 / sec 2; <modified> is minute-precision (14:44).
-            Project stamped = MetadataStamper.Restamp(editor.ToProject(),
-                new DateTimeOffset(2026, 7, 12, 14, 44, 2, TimeSpan.Zero));
-            using var ms = new MemoryStream();
-            await app.Save(stamped, ms, ProjectSaveOptions.PreserveExistingMetadata);
-
-            TestData.AssertBytesIdentical(expected, ms.ToArray(), "case replay → " + CaseOracle);
-        }
+            await ReplayOracle.AssertReplaysByteIdentical(Original, CaseOracle,
+                new DateTimeOffset(2026, 7, 12, 14, 44, 2, TimeSpan.Zero),
+                editor =>
+                {
+                    // Row names/notes are the vendor method-vocabulary strings, transcribed verbatim from the
+                    // oracle bytes.
+                    FunctionBlockRef custom = editor.Group("Stue").FunctionBlock("Custom blok");
+                    SubProgramRef sub = custom.Program().AddSubProgram();            // C1: _0x105.._0x108
+                    CaseRef kase = sub.WhenTrue.AddCase("Case (%LT)", custom.Input("Tæller"),
+                        "Udfører case når %P er lig case værdien");                  // C2: _0x109 + Else _0x10a
+                    Burn(editor, custom);                                            // _0x10b: Rediger-konstant burn
+                    BranchRef eq100 = kase.Case("Case", "resource_counter",
+                        op => op.SetAttribute("inivalue", "100"),
+                        "Udfører case når %P er lig case værdien");                  // C3: _0x10c + operand _0x10d
+                    Burn(editor, custom);                                            // _0x10e: second burn
+                    BranchRef eq1000 = kase.Case("Case", "resource_counter",
+                        op => op.SetAttribute("inivalue", "1000"),
+                        "Udfører case når %P er lig case værdien");                  // C4: _0x10f + operand _0x110
+                    eq100.AddAction("%P = ON", custom.Output("Udgang"), "_0xa",
+                        note: "Sætter %P til ON");                                   // C5: _0x111
+                    sub.WhenFalse.AddAction("Kip %P", custom.Output("Udgang"), "_0x23",
+                        note: "Sætter %P til modsat værdi af aktuel værdi");         // C6: _0x112 (false branch!)
+                    eq1000.AddAction("%P = OFF", custom.Output("Udgang"), "_0x14",
+                        note: "Sætter %P til OFF");                                  // C7: _0x113
+                });
 
         // ---- Composition isolation: eager Else, doc-last default, operand-first, pinned shapes, no burn ----
 
         [Test]
         public async Task CaseAuthoring_EagerElseDocLast_OperandFirst_PinnedShapes()
         {
-            Project original = await new ProjectAppService(Settings).Load("testdata/projects/" + Original);
+            Project original = await ReplayOracle.LoadProject(Original);
 
             ProjectEditor editor = original.Edit();
             editor.NormalizeCatalogEnums();
@@ -150,7 +141,7 @@ namespace Ihc.Vis.Tests
         public async Task CounterAndEnumCases_ValidateClean()
         {
             var app = new ProjectAppService(Settings);
-            Project original = await app.Load("testdata/projects/" + Original);
+            Project original = await ReplayOracle.LoadProject(Original);
 
             ProjectEditor editor = original.Edit();
             FunctionBlockRef custom = editor.Group("Stue").FunctionBlock("Custom blok");

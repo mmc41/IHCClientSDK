@@ -67,8 +67,8 @@ namespace Ihc.Vis.Editing
             ArgumentNullException.ThrowIfNull(name);
             ArgumentNullException.ThrowIfNull(configure);
             ProjectElement block = editor.Require(Id);
-            ElementId? inSettings = SettingIn(block, "settings", name);
-            ElementId? inInternal = SettingIn(block, "internalsettings", name);
+            ElementId? inSettings = NamedRowIdIn(block, "settings", name);
+            ElementId? inInternal = NamedRowIdIn(block, "internalsettings", name);
             if (inSettings is { } ambiguous && inInternal is { } other)
             {
                 throw new InvalidOperationException(
@@ -88,13 +88,10 @@ namespace Ihc.Vis.Editing
             return this;
         }
 
-        private static ElementId? SettingIn(ProjectElement block, string container, string name)
-        {
-            ProjectElement? holder = block.FindChild(container);
-            return holder is null || holder.Children.IsDefaultOrEmpty
-                ? null
-                : holder.Children.FirstOrDefault(c => c.GetAttribute("name") == name)?.Id;
-        }
+        // The container-scoped, type-agnostic row-by-name lookup shared by Setting(name, configure) and
+        // ResolveResource; null when the container is absent or holds no row of that name.
+        private static ElementId? NamedRowIdIn(ProjectElement block, string container, string name) =>
+            block.FindChild(container)?.ChildrenOrEmpty().FirstOrDefault(c => c.GetAttribute("name") == name)?.Id;
 
         /// <summary>
         /// Adds a new input pin (<c>resource_input</c>) under this block's <c>inputs</c> container and returns its
@@ -171,13 +168,10 @@ namespace Ihc.Vis.Editing
         private ResourceRef ResolveResource(string container, string name, string kind)
         {
             ArgumentNullException.ThrowIfNull(name);
-            ProjectElement? holder = editor.Require(Id).FindChild(container);
-            ProjectElement? match = holder is null || holder.Children.IsDefaultOrEmpty
-                ? null
-                : holder.Children.FirstOrDefault(c => c.GetAttribute("name") == name);
-            return match is null
+            ElementId? id = NamedRowIdIn(editor.Require(Id), container, name);
+            return id is null
                 ? throw new InvalidOperationException($"No {kind} named '{name}' on this function block.")
-                : new ResourceRef(name, match.Id!.Value);
+                : new ResourceRef(name, id.Value);
         }
 
         /// <summary>
@@ -270,9 +264,9 @@ namespace Ihc.Vis.Editing
                 ("name", name),
                 ("master_name", name),
                 ("master_programmer", programmer),
-                ("master_date_year", exported.Year.ToString(System.Globalization.CultureInfo.InvariantCulture)),
-                ("master_date_month", exported.Month.ToString(System.Globalization.CultureInfo.InvariantCulture)),
-                ("master_date_day", exported.Day.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                ("master_date_year", DecToken.Format(exported.Year)),
+                ("master_date_month", DecToken.Format(exported.Month)),
+                ("master_date_day", DecToken.Format(exported.Day)),
                 ("icon", "_0x10"),
             };
             if (note is not null)
@@ -308,7 +302,8 @@ namespace Ihc.Vis.Editing
         private static CatalogGrammar AssembleExportGrammar(ProjectElement body, ProjectSchemaView view)
         {
             var head = new System.Text.StringBuilder(4096);
-            head.Append("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\r\n");
+            head.Append("<?xml version=\"1.0\" encoding=\"").Append(CatalogGrammar.DefaultDeclaredEncoding)
+                .Append("\"?>\r\n");
             head.Append("<!DOCTYPE ").Append(body.Tag).Append(" [\r\n");
             var seen = new HashSet<string>(StringComparer.Ordinal);
             foreach (ProjectElement element in body.DescendantsAndSelf())
@@ -378,7 +373,7 @@ namespace Ihc.Vis.Editing
         /// <summary>Sets the setting to a duration in minutes (typed convenience for time settings).</summary>
         public SettingBuilder Minutes(int minutes)
         {
-            attributes.Add(("minute", minutes.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+            attributes.Add(("minute", DecToken.Format(minutes)));
             return this;
         }
 

@@ -1,7 +1,8 @@
 #nullable enable
 using System;
 using System.Collections.Immutable;
-using System.Globalization;
+
+using Ihc.Vis.Model;
 
 namespace Ihc.Vis.Editing
 {
@@ -41,8 +42,8 @@ namespace Ihc.Vis.Editing
             ArgumentOutOfRangeException.ThrowIfGreaterThan(levelPercent, 100);
             ArgumentOutOfRangeException.ThrowIfNegative(rampTime.Ticks, nameof(rampTime));
             return new("scene_dimmer", ImmutableArray.Create(
-                ("dimming_value", levelPercent.ToString(CultureInfo.InvariantCulture)),
-                ("ramptime_ms", ((long)rampTime.TotalMilliseconds).ToString(CultureInfo.InvariantCulture))));
+                ("dimming_value", DecToken.Format(levelPercent)),
+                ("ramptime_ms", DecToken.Format((long)rampTime.TotalMilliseconds))));
         }
 
         /// <summary>

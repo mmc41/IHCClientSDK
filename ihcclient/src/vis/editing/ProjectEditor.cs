@@ -113,7 +113,7 @@ namespace Ihc.Vis.Editing
             for (int i = 0; i < values.Length; i++)
             {
                 valueElements.Add(SimpleElement("enum_value", allocator.Allocate(TypeCode.RequireForTag("enum_value")),
-                    ("name", values[i]), ("index", i.ToString(CultureInfo.InvariantCulture))));
+                    ("name", values[i]), ("index", DecToken.Format(i))));
             }
             ProjectElement def = SimpleElement("enum_definition", defId, ("name", name))
                 with { Children = valueElements.ToImmutable() };
@@ -161,13 +161,14 @@ namespace Ihc.Vis.Editing
             ArgumentNullException.ThrowIfNull(definition);
             ArgumentNullException.ThrowIfNull(values);
 
-            string defToken = definition.Typedef;
             ProjectElement container = root.FindChild(EnumDefinitionsTag)
                 ?? throw new InvalidOperationException("The project has no enum_definitions container.");
+            // By parsed ElementId (not raw token text), the codebase's id-matching convention: a foreign file's
+            // non-canonical spelling of the definition id must still resolve.
             ProjectElement def = container.ChildrenOrEmpty()
-                .FirstOrDefault(c => c.GetAttribute("id") == defToken)
+                .FirstOrDefault(c => c.Id == definition.Id)
                 ?? throw new InvalidOperationException(
-                    $"Enum definition '{defToken}' is no longer part of the project.");
+                    $"Enum definition '{definition.Typedef}' is no longer part of the project.");
             if (def.GetAttribute("typeid") is { } typeid && typeid != ElementId.NullToken)
             {
                 throw new InvalidOperationException(
@@ -180,7 +181,7 @@ namespace Ihc.Vis.Editing
             for (int i = 0; i < values.Length; i++)
             {
                 appended.Add(SimpleElement("enum_value", allocator.Allocate(TypeCode.RequireForTag("enum_value")),
-                    ("name", values[i]), ("index", (existing + i).ToString(CultureInfo.InvariantCulture))));
+                    ("name", values[i]), ("index", DecToken.Format(existing + i))));
             }
             ProjectElement updated = def with { Children = def.ChildrenOrEmpty().Concat(appended).ToImmutableArray() };
             root = ReplaceChildByTag(root, EnumDefinitionsTag, container with
@@ -415,14 +416,13 @@ namespace Ihc.Vis.Editing
             bool removedAny = true;
             while (removedAny)
             {
-                removedAny = false;
-                var rows = new List<ElementId>();
+                var rows = new List<ProjectElement>();
                 void Walk(ProjectElement element)
                 {
-                    if (element.Tag is "action" or "condition" or "event" && element.Id is { } rowId
-                        && (SlotHits(element, "link1", deletedIds) || SlotHits(element, "link2", deletedIds)))
+                    if (element.Tag is "action" or "condition" or "event" && element.Id is not null
+                        && RowReferencesDeleted(element, deletedIds))
                     {
-                        rows.Add(rowId);    // the whole row goes; no need to look inside it
+                        rows.Add(element);    // the whole row goes; no need to look inside it
                     }
                     else if (!element.Children.IsDefaultOrEmpty)
                     {
@@ -433,21 +433,27 @@ namespace Ihc.Vis.Editing
                     }
                 }
                 Walk(tree);
-                foreach (ElementId rowId in rows)
+                foreach (ProjectElement row in rows)   // rows are disjoint — Walk never descends into a matched row
                 {
-                    if (FindById(tree, rowId) is { } row)
-                    {
-                        CollectIds(row, deletedIds);
-                        tree = RemoveById(tree, rowId);
-                        removedAny = true;
-                    }
+                    CollectIds(row, deletedIds);
+                    tree = RemoveById(tree, row.Id!.Value);
                 }
+                removedAny = rows.Count > 0;
             }
             return tree;
         }
 
-        private static bool SlotHits(ProjectElement row, string slot, HashSet<ElementId> deletedIds) =>
-            ElementId.TryParse(row.GetAttribute(slot), out ElementId target) && deletedIds.Contains(target);
+        // A row hits when any of its schema-declared IDREFs (today link1/link2 on all three row tags) points into
+        // the deleted set — schema-driven like FindDanglingReferences, so a future row IDREF slot cannot be missed
+        // here while the strict guard still sees it.
+        private bool RowReferencesDeleted(ProjectElement row, HashSet<ElementId> deletedIds) =>
+            SchemaView.TryGet(row.Tag) is { } schema && !row.Attrs.IsDefaultOrEmpty
+            && row.Attrs.Any(a => IsDeletedIdRef(schema, a.Name, a.Value, deletedIds));
+
+        // The one IDREF-into-the-deleted-set test, shared by the cascade (RowReferencesDeleted) and the strict guard
+        // (FindDanglingReferences) so the two can never diverge on which references count as hits.
+        private static bool IsDeletedIdRef(ElementSchema schema, string name, string value, HashSet<ElementId> deletedIds) =>
+            schema.IsIdRef(name) && ElementId.TryParse(value, out ElementId target) && deletedIds.Contains(target);
 
         private List<string> FindDanglingReferences(ProjectElement tree, HashSet<ElementId> deletedIds)
         {
@@ -459,8 +465,7 @@ namespace Ihc.Vis.Editing
                 {
                     foreach ((string name, string value) in element.Attrs)
                     {
-                        if (schema.IsIdRef(name) && ElementId.TryParse(value, out ElementId target)
-                            && deletedIds.Contains(target))
+                        if (IsDeletedIdRef(schema, name, value, deletedIds))
                         {
                             hits.Add($"<{element.Tag}> {(element.Id is { } eid ? eid.ToToken() : "?")} {name}='{value}'");
                         }
@@ -519,7 +524,8 @@ namespace Ihc.Vis.Editing
             ProjectElement fromEl = Require(RequireId(from));
             ProjectElement toEl = Require(RequireId(to));
 
-            if (FindReciprocalPair(fromEl, toEl) is not { } pair)
+            if (FindReciprocalPair(fromEl, toEl, t => t == ReciprocalTags.FollowLinkFromTag, ReciprocalTags.FollowLinkToTag)
+                is not { } pair)
             {
                 throw new InvalidOperationException(
                     $"Resources '{from.Name}' and '{to.Name}' are not follow-linked in this orientation; nothing to unlink.");
@@ -530,16 +536,19 @@ namespace Ihc.Vis.Editing
         }
 
         /// <summary>
-        /// The first mutually-reciprocal follow-link pair between the two resources (the from-half on the source,
-        /// the to-half on the sink, each pointing at the other), or <c>null</c> when no such pair exists. Matching
-        /// is by exact reciprocity — never "first half of the tag" — so multi-link owners and shared sinks resolve
-        /// to the requested pair only.
+        /// The first mutually-reciprocal pair between two parents — the half matching <paramref name="fromTag"/>
+        /// inside <paramref name="fromEl"/>, the half matching <paramref name="toTag"/> inside
+        /// <paramref name="toEl"/>, each pointing at the other via <c>link</c> — or <c>null</c> when no such pair
+        /// exists. Serves <see cref="Unlink"/> (follow-link halves) and <see cref="UnlinkScene"/> (scene member ↔
+        /// <c>scene_link</c>). Matching is by exact reciprocity — never "first half of the tag" — so multi-link
+        /// owners and shared sinks resolve to the requested pair only.
         /// </summary>
-        private static (ElementId FromHalf, ElementId ToHalf)? FindReciprocalPair(ProjectElement fromEl, ProjectElement toEl)
+        private static (ElementId FromHalf, ElementId ToHalf)? FindReciprocalPair(ProjectElement fromEl,
+            ProjectElement toEl, Func<string, bool> fromTag, string toTag)
         {
             foreach (ProjectElement half in fromEl.ChildrenOrEmpty())
             {
-                if (half.Tag != "link_from_resource" || half.Id is not { } fromHalfId)
+                if (!fromTag(half.Tag) || half.Id is not { } fromHalfId)
                 {
                     continue;
                 }
@@ -548,7 +557,7 @@ namespace Ihc.Vis.Editing
                     // Reciprocity by parsed ElementId (not raw token text), matching GetLinks / ResolveLinkOpposite /
                     // the DeleteById cascade: a foreign file's non-canonical spelling (leading zeros, case) of an
                     // otherwise-reciprocal link must still resolve, not throw "not follow-linked".
-                    if (partner.Tag == "link_to_resource" && partner.Id is { } toHalfId
+                    if (partner.Tag == toTag && partner.Id is { } toHalfId
                         && ElementId.TryParse(half.GetAttribute("link"), out ElementId fromHalfLink) && fromHalfLink == toHalfId
                         && ElementId.TryParse(partner.GetAttribute("link"), out ElementId toHalfLink) && toHalfLink == fromHalfId)
                     {
@@ -611,65 +620,29 @@ namespace Ihc.Vis.Editing
             ProjectElement pin = Require(RequireId(sceneOutput));
             ProjectElement scenes = Require(target.Id);
 
-            if (FindScenePair(scenes, pin) is not { } pair)
+            if (FindReciprocalPair(scenes, pin, ReciprocalTags.SceneMemberTags.Contains, ReciprocalTags.SceneLinkTag)
+                is not { } pair)
             {
                 throw new InvalidOperationException(
                     $"Resource '{sceneOutput.Name}' and scenes container '{target.Name}' are not scene-linked; " +
                     "nothing to unlink.");
             }
-            root = RemoveById(root, pair.Member);
-            root = RemoveById(root, pair.SceneLink);
+            root = RemoveById(root, pair.FromHalf);
+            root = RemoveById(root, pair.ToHalf);
             return this;
         }
-
-        // The scene-capable output families with pinned member kinds (US-024, ch. 08 §8.4): relays/sockets take
-        // scene_relay, dimmer regulation takes scene_dimmer. Unknown families stay permissive (the open-world
-        // CanInsert convention) — only a known mismatch is a hard error.
-        private static string? PinnedMemberTagFor(string boundOutputTag) => boundOutputTag switch
-        {
-            "dataline_output" or "airlink_relay" => "scene_relay",
-            "airlink_dimming" => "scene_dimmer",
-            _ => null,
-        };
 
         private void RequireSceneKindMatch(ProjectElement scenes, ScenesRef target, SceneValue value)
         {
             if (ElementId.TryParse(scenes.GetAttribute("scene_resource"), out ElementId boundId)
                 && FindById(root, boundId) is { } bound
-                && PinnedMemberTagFor(bound.Tag) is { } pinned
+                && SceneRules.PinnedMemberTagFor(bound.Tag) is { } pinned
                 && pinned != value.MemberTag)
             {
                 throw new InvalidOperationException(
                     $"Scenes container '{target.Name}' is bound to a <{bound.Tag}> output, which takes {pinned} " +
                     $"members; a {value.MemberTag} value cannot be linked here.");
             }
-        }
-
-        /// <summary>
-        /// The first mutually-reciprocal scene pair between the container and the pin (the member row inside the
-        /// scenes container, the <c>scene_link</c> inside the pin, each pointing at the other), or <c>null</c> when
-        /// no such pair exists. Matching mirrors <see cref="FindReciprocalPair"/>: exact reciprocity by parsed
-        /// <see cref="ElementId"/>, so multi-membership containers and shared pins resolve to the requested pair only.
-        /// </summary>
-        private static (ElementId Member, ElementId SceneLink)? FindScenePair(ProjectElement scenes, ProjectElement pin)
-        {
-            foreach (ProjectElement member in scenes.ChildrenOrEmpty())
-            {
-                if (!ReciprocalTags.SceneMemberTags.Contains(member.Tag) || member.Id is not { } memberId)
-                {
-                    continue;
-                }
-                foreach (ProjectElement partner in pin.ChildrenOrEmpty())
-                {
-                    if (partner.Tag == "scene_link" && partner.Id is { } sceneLinkId
-                        && ElementId.TryParse(member.GetAttribute("link"), out ElementId memberLink) && memberLink == sceneLinkId
-                        && ElementId.TryParse(partner.GetAttribute("link"), out ElementId partnerLink) && partnerLink == memberId)
-                    {
-                        return (memberId, sceneLinkId);
-                    }
-                }
-            }
-            return null;
         }
 
         /// <summary>
@@ -1130,6 +1103,16 @@ namespace Ihc.Vis.Editing
         {
             ElementId id = allocator.Allocate(TypeCode.RequireForTag(tag));
             AppendChild(parentId, SimpleElement(tag, id, attrs));
+            return id;
+        }
+
+        /// <summary>As <see cref="AllocateChild"/>, but inserts the new element at <paramref name="index"/> among
+        /// the parent's children (clamped; appends when past the end) instead of last.</summary>
+        internal ElementId AllocateChildAt(ElementId parentId, string tag, int index,
+            params (string Name, string Value)[] attrs)
+        {
+            ElementId id = allocator.Allocate(TypeCode.RequireForTag(tag));
+            InsertChildAt(parentId, SimpleElement(tag, id, attrs), index);
             return id;
         }
 

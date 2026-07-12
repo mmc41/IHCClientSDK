@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace Ihc.Vis.Tests
 {
     /// <summary>
@@ -23,26 +21,13 @@ namespace Ihc.Vis.Tests
         // ---- Full replay: Action 0 → append AppendA/B/C to the empty TestEnum → byte-identity ----
 
         [Test]
-        public async Task AddEnumValues_ReplaysProject3EnumAppendOracle_ByteIdentical()
-        {
-            byte[] expected = TestData.ReadBytes("projects/" + EnumAppendOracle);
-            var app = new ProjectAppService(Settings);
-            Project original = await app.Load("testdata/projects/" + Original);
-
-            ProjectEditor editor = original.Edit();
-            editor.NormalizeCatalogEnums();                              // Action 0: _0x56c -> _0x579
-            editor.AddEnumValues(editor.EnumDefinition(TestEnumName),    // Action V: values _0x57a48/_0x57b48/_0x57c48
-                "AppendA", "AppendB", "AppendC");
-
+        public async Task AddEnumValues_ReplaysProject3EnumAppendOracle_ByteIdentical() =>
             // id2=_0xb0d1105 decodes to day 11 / hour 13 / min 17 / sec 5; <modified> is minute-precision (13:17),
             // so the second (5) lives only in id2 and must be supplied to the restamp clock.
-            Project stamped = MetadataStamper.Restamp(editor.ToProject(),
-                new DateTimeOffset(2026, 7, 11, 13, 17, 5, TimeSpan.Zero));
-            using var ms = new MemoryStream();
-            await app.Save(stamped, ms, ProjectSaveOptions.PreserveExistingMetadata);
-
-            TestData.AssertBytesIdentical(expected, ms.ToArray(), "enum-append replay → " + EnumAppendOracle);
-        }
+            await ReplayOracle.AssertReplaysByteIdentical(Original, EnumAppendOracle,
+                new DateTimeOffset(2026, 7, 11, 13, 17, 5, TimeSpan.Zero),
+                editor => editor.AddEnumValues(editor.EnumDefinition(TestEnumName),  // values _0x57a48/_0x57b48/_0x57c48
+                    "AppendA", "AppendB", "AppendC"));
 
         // ---- Validate: appending to the standalone, unreferenced enum stays legal ----
 
@@ -50,7 +35,7 @@ namespace Ihc.Vis.Tests
         public async Task AppendedValues_OnStandaloneUnreferencedEnum_ValidateClean()
         {
             var app = new ProjectAppService(Settings);
-            Project original = await app.Load("testdata/projects/" + Original);
+            Project original = await ReplayOracle.LoadProject(Original);
 
             ProjectEditor editor = original.Edit();
             editor.NormalizeCatalogEnums();
@@ -68,7 +53,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task AddEnumValues_AfterNormalizeCatalogEnums_AppendsInPlaceNoBurn()
         {
-            Project original = await new ProjectAppService(Settings).Load("testdata/projects/" + Original);
+            Project original = await ReplayOracle.LoadProject(Original);
 
             ProjectEditor editor = original.Edit();
             editor.NormalizeCatalogEnums();
@@ -81,7 +66,7 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(HexCounter(boundary.LastUniqueId), Is.EqualTo(0x579), "Action-0 boundary");
+                Assert.That(TestData.HexCounter(boundary.LastUniqueId), Is.EqualTo(0x579), "Action-0 boundary");
                 Assert.That(def.GetAttribute("id"), Is.EqualTo("_0x51147"), "definition id retained");
                 Assert.That(positionBefore,
                     Is.LessThan(boundary.Child("enum_definitions")!.Children.Length - 1),
@@ -91,8 +76,8 @@ namespace Ihc.Vis.Tests
                 Assert.That(def.Children.Select(c => (long)c.Id!.Value.Counter),
                     Is.EqualTo(new long[] { 0x57a, 0x57b, 0x57c }),
                     "one contiguous id per value, allocated right after the boundary — no burn");
-                Assert.That(HexCounter(after.LastUniqueId) - HexCounter(boundary.LastUniqueId), Is.EqualTo(3),
-                    "exactly +3 ids");
+                Assert.That(TestData.HexCounter(after.LastUniqueId) - TestData.HexCounter(boundary.LastUniqueId),
+                    Is.EqualTo(3), "exactly +3 ids");
             });
         }
 
@@ -110,8 +95,5 @@ namespace Ihc.Vis.Tests
             }
             return -1;
         }
-
-        private static long HexCounter(string? token) =>
-            long.Parse(token!.AsSpan(3), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
     }
 }

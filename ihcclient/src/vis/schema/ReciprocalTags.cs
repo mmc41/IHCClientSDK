@@ -14,10 +14,19 @@ namespace Ihc.Vis.Schema
     /// </summary>
     internal static class ReciprocalTags
     {
+        /// <summary>The follow-link half tag on the source resource (points at its <see cref="FollowLinkToTag"/>).</summary>
+        public const string FollowLinkFromTag = "link_from_resource";
+
+        /// <summary>The follow-link half tag on the sink resource (points back at its <see cref="FollowLinkFromTag"/>).</summary>
+        public const string FollowLinkToTag = "link_to_resource";
+
+        /// <summary>The scene back-reference tag inside an FB's <c>resource_scene</c> pin (partner of a scene member row).</summary>
+        public const string SceneLinkTag = "scene_link";
+
         /// <summary>The two follow-link half tags (a from-half on the source resource, a to-half on the sink).</summary>
         public static readonly IReadOnlySet<string> FollowLinkHalfTags = new HashSet<string>(StringComparer.Ordinal)
         {
-            "link_from_resource", "link_to_resource",
+            FollowLinkFromTag, FollowLinkToTag,
         };
 
         /// <summary>The scene member row tags — the value-carrying half inside a product's <c>scenes</c> container
@@ -29,7 +38,7 @@ namespace Ihc.Vis.Schema
 
         /// <summary>The scene-row tags that pair reciprocally via <c>link</c> (a scene half ↔ its resource row).</summary>
         public static readonly IReadOnlySet<string> SceneHalfTags =
-            SceneMemberTags.Concat(new[] { "scene_link" }).ToHashSet(StringComparer.Ordinal);
+            SceneMemberTags.Concat(new[] { SceneLinkTag }).ToHashSet(StringComparer.Ordinal);
 
         /// <summary>Every tag that participates in a reciprocal link/scene pair — the union of the two sets above;
         /// only elements of these types may be cascaded on a delete.</summary>

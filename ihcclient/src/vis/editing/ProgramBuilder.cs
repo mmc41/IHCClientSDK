@@ -275,7 +275,8 @@ namespace Ihc.Vis.Editing
             ArgumentNullException.ThrowIfNull(name);
             ArgumentNullException.ThrowIfNull(operandTag);
             ArgumentNullException.ThrowIfNull(configureOperand);
-            string criterion = editor.Require(Id).GetAttribute("link")
+            ProjectElement kase = editor.Require(Id);
+            string criterion = kase.GetAttribute("link")
                 ?? throw new InvalidOperationException("This program_case carries no switch criterion (link).");
             var attrs = new List<(string, string)> { ("name", name), ("icon", ProgramGrammar.CaseActionIcon) };
             if (note is not null)
@@ -283,28 +284,22 @@ namespace Ihc.Vis.Editing
                 attrs.Add(("note", note));
             }
             attrs.Add(("variable", criterion));
-            int defaultIndex = IndexOfDefault();
-            ElementId caseActionId = editor.AllocateChild(Id, "case_action", attrs.ToArray());
-            ElementId operandId = editor.AllocateChild(caseActionId, operandTag);
-            if (editor.TryResolve(operandId, out ElementRef? operand))
-            {
-                configureOperand(operand!);
-            }
-            editor.SetAttributeById(caseActionId, "value", operandId.ToToken());
             // The vendor serializes case values before the doc-last Else, though the Else allocated first (§18-A).
-            editor.MoveSubtree(caseActionId, Id, defaultIndex);
+            ElementId caseActionId = editor.AllocateChildAt(Id, "case_action", IndexOfDefault(kase), attrs.ToArray());
+            ElementId operandId = editor.AllocateChild(caseActionId, operandTag);
+            configureOperand(new ElementRef(editor, operandId));
+            editor.SetAttributeById(caseActionId, "value", operandId.ToToken());
             return new BranchRef(editor, caseActionId);
         }
 
         /// <summary>The default (Else) branch — present from case-insert, document-last. Returns its handle.</summary>
         public BranchRef Default() => new(editor, defaultActionsId);
 
-        private int IndexOfDefault()
+        private int IndexOfDefault(ProjectElement kase)
         {
-            System.Collections.Immutable.ImmutableArray<ProjectElement> children = editor.Require(Id).Children;
-            for (int i = 0; i < children.Length; i++)
+            for (int i = 0; i < kase.Children.Length; i++)
             {
-                if (children[i].Id == defaultActionsId)
+                if (kase.Children[i].Id == defaultActionsId)
                 {
                     return i;
                 }

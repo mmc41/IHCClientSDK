@@ -23,31 +23,19 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task Mutations_ReplayProject3MutatedOracle_ByteIdentical()
         {
-            byte[] expected = TestData.ReadBytes("projects/" + MutatedOracle);
-            var app = new ProjectAppService(Settings);
-            Project original = await app.Load("testdata/projects/" + Original);
-            ProductDefinition smsModem = app.GetAvailableProducts()
+            ProductDefinition smsModem = new ProjectAppService(Settings).GetAvailableProducts()
                 .Single(p => p.ProductIdentifier == "_0x3103");   // "SMS Modem" (inserted live via menu command 24773)
-
-            ProjectEditor editor = original.Edit();
-            editor.NormalizeCatalogEnums();                       // Action 0: _0x56c -> _0x579
-            editor.Group("Garage").AddProduct(smsModem);          // A: _0x57a.._0x59d (36 ids) + 4 generated DTD blocks
-            editor.AddEnumDefinition("MutOracleEnum");            // B: empty def _0x59e47, appended to enum_definitions
-            editor.DeleteById(Id("_0x5153"));                     // C: FUGA delete → paired-link cascade + DTD regen
 
             // id2=_0x40c1836 decodes to day 4 / hour 12 / min 24 / sec 54; <modified> is minute-precision (12:24),
             // so the second (54) lives only in id2 and must be supplied to the restamp clock.
-            Project stamped = MetadataStamper.Restamp(editor.ToProject(),
-                new DateTimeOffset(2026, 7, 4, 12, 24, 54, TimeSpan.Zero));
-            using var ms = new MemoryStream();
-            await app.Save(stamped, ms, ProjectSaveOptions.PreserveExistingMetadata);
-
-            TestData.AssertBytesIdentical(expected, ms.ToArray(), "mutation replay → " + MutatedOracle);
+            await ReplayOracle.AssertReplaysByteIdentical(Original, MutatedOracle,
+                new DateTimeOffset(2026, 7, 4, 12, 24, 54, TimeSpan.Zero),
+                editor =>
+                {
+                    editor.Group("Garage").AddProduct(smsModem);  // A: _0x57a.._0x59d (36 ids) + 4 generated DTD blocks
+                    editor.AddEnumDefinition("MutOracleEnum");    // B: empty def _0x59e47, appended to enum_definitions
+                    editor.DeleteById(TestData.Id("_0x5153"));    // C: FUGA delete → paired-link cascade + DTD regen
+                });
         }
-
-        // ----- helpers -----
-
-        private static ElementId Id(string token) =>
-            ElementId.TryParse(token, out ElementId id) ? id : throw new ArgumentException($"Bad id token: {token}");
     }
 }
