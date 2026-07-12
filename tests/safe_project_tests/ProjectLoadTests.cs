@@ -20,7 +20,7 @@ namespace Ihc.Projects.Tests
         [Test]
         public void Load_ProjectEmpty_HasCanonicalSkeleton()
         {
-            Project project = Load("ProjectEmpty.vis");
+            Project project = Load("Project0-Tomt.vis");
 
             Assert.Multiple(() =>
             {
@@ -48,7 +48,7 @@ namespace Ihc.Projects.Tests
         [Test]
         public void Load_ProjectEmpty_MatchesBuiltInEnumsByTypeid()
         {
-            Project project = Load("ProjectEmpty.vis");
+            Project project = Load("Project0-Tomt.vis");
             ProjectElement enums = project.Child("enum_definitions")!;
 
             IEnumerable<string?> typeids = enums.Children.Select(d => d.GetAttribute("typeid"));
@@ -61,7 +61,7 @@ namespace Ihc.Projects.Tests
         [Test]
         public void Load_Project1_EveryElementIdMatchesRegistryTypeCode()
         {
-            Project project = Load("Project1.vis");
+            Project project = Load("Project1-SimpelWired.vis");
 
             var offenders = new List<string>();
             foreach (ProjectElement e in Descendants(project.Root))

@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
@@ -30,6 +31,31 @@ namespace Ihc.Projects
         /// <summary>Returns the first direct child with the given tag, or <c>null</c> when none.</summary>
         public ProjectElement? FindChild(string tag) =>
             Children.IsDefaultOrEmpty ? null : Children.FirstOrDefault(c => c.Tag == tag);
+
+        /// <summary>
+        /// Every element below this one in document order (depth-first, pre-order), excluding this element itself.
+        /// The order matches the file's top-to-bottom element order, so ids enumerate exactly as they appear on
+        /// disk — the read primitive an id-addressable selection model iterates over.
+        /// </summary>
+        public IReadOnlyList<ProjectElement> Descendants()
+        {
+            var acc = new List<ProjectElement>();
+            Collect(this, acc);
+            return acc;
+        }
+
+        private static void Collect(ProjectElement element, List<ProjectElement> acc)
+        {
+            if (element.Children.IsDefaultOrEmpty)
+            {
+                return;
+            }
+            foreach (ProjectElement child in element.Children)
+            {
+                acc.Add(child);
+                Collect(child, acc);
+            }
+        }
 
         /// <summary>
         /// Structural (value) equality over the whole subtree. The synthesized record equality would compare

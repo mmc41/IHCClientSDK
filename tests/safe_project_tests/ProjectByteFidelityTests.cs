@@ -7,11 +7,12 @@ namespace Ihc.Projects.Tests
 {
     /// <summary>
     /// The Stage-2 byte-identity gate: a project loaded from a vendor <c>.vis</c> file and re-serialized with its
-    /// metadata preserved must be <strong>byte-for-byte</strong> what IHC Visual wrote. Covers both the empty
-    /// project (13 element types) and the complex sample <c>Project1.vis</c> (38 element types) — together the
-    /// byte-verifiable element set — through both the pure <see cref="ProjectSerializer"/> and the
-    /// <see cref="ProjectAppService"/> save path. A separate test pins the clock and verifies the default
-    /// (vendor-like) save re-stamps only <c>id2</c>/<c>modified</c>.
+    /// metadata preserved must be <strong>byte-for-byte</strong> what IHC Visual wrote. Covers the full authentic
+    /// vendor corpus — <c>Project0-Tomt.vis</c> (empty baseline), <c>Project1-SimpelWired.vis</c> (wired products +
+    /// FB programs + links), <c>project2-CustomBlock.vis</c> (custom/locked function blocks + <c>resource_holiday</c>)
+    /// and <c>project3-KompleksWired.vis</c> (airlink + RS-485 + scenes + empty <c>Tom blok</c> blocks) — through both
+    /// the pure <see cref="ProjectSerializer"/> and the <see cref="ProjectAppService"/> save path. A separate test
+    /// pins the clock and verifies the default (vendor-like) save re-stamps only <c>id2</c>/<c>modified</c>.
     /// </summary>
     public class ProjectByteFidelityTests
     {
@@ -23,8 +24,10 @@ namespace Ihc.Projects.Tests
             return new ProjectAppService(Settings).Load(ms).GetAwaiter().GetResult();
         }
 
-        [TestCase("ProjectEmpty.vis")]
-        [TestCase("Project1.vis")]
+        [TestCase("Project0-Tomt.vis")]
+        [TestCase("Project1-SimpelWired.vis")]
+        [TestCase("project2-CustomBlock.vis")]
+        [TestCase("project3-KompleksWired.vis")]
         public void Serialize_RoundTrip_IsByteIdentical(string file)
         {
             byte[] original = TestData.ReadBytes(file);
@@ -34,8 +37,10 @@ namespace Ihc.Projects.Tests
             TestData.AssertBytesIdentical(original, reserialized, $"ProjectSerializer round-trip of {file}");
         }
 
-        [TestCase("ProjectEmpty.vis")]
-        [TestCase("Project1.vis")]
+        [TestCase("Project0-Tomt.vis")]
+        [TestCase("Project1-SimpelWired.vis")]
+        [TestCase("project2-CustomBlock.vis")]
+        [TestCase("project3-KompleksWired.vis")]
         public async Task Save_PreserveExistingMetadata_IsByteIdentical(string file)
         {
             byte[] original = TestData.ReadBytes(file);
@@ -51,7 +56,7 @@ namespace Ihc.Projects.Tests
         [Test]
         public async Task Save_Default_ReStampsId2AndModified_LeavesIdentityUntouched()
         {
-            byte[] original = TestData.ReadBytes("Project1.vis");
+            byte[] original = TestData.ReadBytes("Project1-SimpelWired.vis");
             Project before = Load(original);
 
             // Pin the save clock to the 28th, 09:07:53 → id2 packs day/hour/minute/second.

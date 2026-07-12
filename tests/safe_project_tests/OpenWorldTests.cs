@@ -28,7 +28,7 @@ namespace Ihc.Projects.Tests
         [Test]
         public void RoundTrip_CustomComponent_IsByteIdentical()
         {
-            byte[] original = TestData.ReadBytes("OpenWorldCustomComponent.vis");
+            byte[] original = TestData.ReadBytes("Synthetic/OpenWorldCustomComponent.vis");
 
             byte[] reserialized = ProjectSerializer.Serialize(Load(original));
 
@@ -38,7 +38,7 @@ namespace Ihc.Projects.Tests
         [Test]
         public async Task Save_PreserveExistingMetadata_CustomComponent_IsByteIdentical()
         {
-            byte[] original = TestData.ReadBytes("OpenWorldCustomComponent.vis");
+            byte[] original = TestData.ReadBytes("Synthetic/OpenWorldCustomComponent.vis");
             Project project = Load(original);
 
             using var ms = new MemoryStream();
@@ -50,7 +50,7 @@ namespace Ihc.Projects.Tests
         [Test]
         public async Task MinimalEdit_DefaultSave_PreservesUnknownSubtree()
         {
-            byte[] original = TestData.ReadBytes("OpenWorldCustomComponent.vis");
+            byte[] original = TestData.ReadBytes("Synthetic/OpenWorldCustomComponent.vis");
             Project before = Load(original);
             ProjectElement widgetBefore = FindByTag(before.Root, "custom_widget")!;
 
@@ -74,7 +74,7 @@ namespace Ihc.Projects.Tests
         [Test]
         public void RoundTrip_EncodingMismatch_IsByteIdentical()
         {
-            byte[] original = TestData.ReadBytes("EncodingMismatchSwedish.vis");
+            byte[] original = TestData.ReadBytes("Synthetic/EncodingMismatchSwedish.vis");
 
             byte[] reserialized = ProjectSerializer.Serialize(Load(original));
 
@@ -84,7 +84,7 @@ namespace Ihc.Projects.Tests
         [Test]
         public void EncodingMismatch_LogicalValueIsMojibake_NotRepaired()
         {
-            Project project = Load(TestData.ReadBytes("EncodingMismatchSwedish.vis"));
+            Project project = Load(TestData.ReadBytes("Synthetic/EncodingMismatchSwedish.vis"));
 
             // The name's bytes are UTF-8 (å ä ö é) under an ISO-8859-1 declaration; the SDK decodes per the declared
             // encoding, so the logical value is the Latin-1 mojibake (Ã¥Ã¤Ã¶Ã©), never the intended Swedish.
@@ -96,7 +96,7 @@ namespace Ihc.Projects.Tests
         public void Serialize_UndeclaredAttribute_Throws()
         {
             // 'bogus' is declared by neither the registry nor the file's own inline DTD → must not be silently emitted.
-            Project project = Load(TestData.ReadBytes("OpenWorldUndeclaredAttr.vis"));
+            Project project = Load(TestData.ReadBytes("Synthetic/OpenWorldUndeclaredAttr.vis"));
 
             Assert.Throws<InvalidOperationException>(() => ProjectSerializer.Serialize(project));
         }

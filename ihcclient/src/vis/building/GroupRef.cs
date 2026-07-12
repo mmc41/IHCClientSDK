@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Globalization;
 
 namespace Ihc.Projects
 {
@@ -42,6 +43,39 @@ namespace Ihc.Projects
         }
 
         /// <summary>
+        /// Scaffolds a from-scratch empty function block ("Tom blok") into this room from the catalog's
+        /// <see cref="ICatalog.EmptyFunctionBlockTemplate"/> (<c>Data\fb.def</c>): the five mandatory containers in
+        /// fixed order plus one empty <c>program_simple(events, actions)</c>, vendor icon <c>_0xf</c> and fresh ids.
+        /// The block carries no LK/Schneider master identity — only its <paramref name="created"/> date is stamped
+        /// (<c>master_date_year</c>/<c>_month</c>/<c>_day</c>), matching what IHC Visual writes for an authored block.
+        /// Returns the block's live handle for adding pins/variables.
+        /// </summary>
+        public FunctionBlockRef AddEmptyFunctionBlock(FunctionBlockDescriptor template, DateOnly created,
+            string name = "Tom blok")
+        {
+            ArgumentNullException.ThrowIfNull(template);
+            ArgumentNullException.ThrowIfNull(name);
+            ElementId blockId = editor.InsertComponent(Id, template.Body, template.InlineDtdBlocks);
+            editor.SetAttributeById(blockId, "name", name);
+            editor.SetAttributeById(blockId, "master_date_year", created.Year.ToString(CultureInfo.InvariantCulture));
+            editor.SetAttributeById(blockId, "master_date_month", created.Month.ToString(CultureInfo.InvariantCulture));
+            editor.SetAttributeById(blockId, "master_date_day", created.Day.ToString(CultureInfo.InvariantCulture));
+            return new FunctionBlockRef(editor, blockId);
+        }
+
+        /// <summary>
+        /// Clones an existing in-project subtree (by id) into this room — the clipboard paste — deep-copying it with
+        /// fresh ids (type-code suffix preserved), remapped internal IDREFs and shared enums, governing cross-boundary
+        /// follow-link halves by <paramref name="policy"/> (default: drop them). Returns a live handle to the paste.
+        /// </summary>
+        public ElementRef PasteInto(ElementId sourceId, LinkCopyPolicy policy = LinkCopyPolicy.DropExternal)
+        {
+            ElementId copyId = editor.CopySubtree(sourceId, Id, policy);
+            editor.TryResolve(copyId, out ElementRef? handle);
+            return handle!;
+        }
+
+        /// <summary>
         /// Looks up an existing product in this room by name (for editing a loaded project), returning its live handle.
         /// </summary>
         public ProductRef Product(string name)
@@ -65,22 +99,24 @@ namespace Ihc.Projects
         }
 
         /// <summary>
-        /// Removes a product from this room (and any links to/from its resources). The product's <c>_0x</c> ids
-        /// are retired permanently — deletes leave counter holes and ids are never reused.
+        /// Removes a product from this room, cascading the reciprocal follow-link halves outside it that point into
+        /// its resources (via <see cref="ProjectEditor.DeleteById"/>). The product's <c>_0x</c> ids are retired
+        /// permanently — deletes leave counter holes and ids are never reused.
         /// </summary>
         public void RemoveProduct(ProductRef product)
         {
             ArgumentNullException.ThrowIfNull(product);
-            editor.RemoveSubtree(product.Id);
+            editor.DeleteById(product.Id);
         }
 
         /// <summary>
-        /// Removes a function block from this room (and any links to/from its resources). Retired ids are not reused.
+        /// Removes a function block from this room, cascading the reciprocal follow-link halves outside it that
+        /// point into its resources (via <see cref="ProjectEditor.DeleteById"/>). Retired ids are not reused.
         /// </summary>
         public void RemoveFunctionBlock(FunctionBlockRef functionBlock)
         {
             ArgumentNullException.ThrowIfNull(functionBlock);
-            editor.RemoveSubtree(functionBlock.Id);
+            editor.DeleteById(functionBlock.Id);
         }
     }
 }

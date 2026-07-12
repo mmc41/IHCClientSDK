@@ -26,7 +26,7 @@ namespace Ihc.Projects.Tests
             new(tag, null, ImmutableArray<(string, string)>.Empty, ImmutableArray<ProjectElement>.Empty);
 
         private static Project LoadProject1(ProjectAppService app) =>
-            app.Load(new MemoryStream(TestData.ReadBytes("Project1.vis"))).GetAwaiter().GetResult();
+            app.Load(new MemoryStream(TestData.ReadBytes("Project1-SimpelWired.vis"))).GetAwaiter().GetResult();
 
         // ----- GetAvailableProducts / GetAvailableFunctionBlocks: the service surfaces its catalog -----
 
@@ -86,7 +86,7 @@ namespace Ihc.Projects.Tests
         {
             var settings = new IhcSettings { IhcVisualInstallDir = @"Z:\no\such\ihc-visual\dir" };
             var app = new ProjectAppService(settings);
-            byte[] original = TestData.ReadBytes("Project1.vis");
+            byte[] original = TestData.ReadBytes("Project1-SimpelWired.vis");
 
             // Load + Save round-trips byte-identical without ever touching the (non-existent) catalog dir.
             Project project = await app.Load(new MemoryStream(original));
@@ -122,7 +122,7 @@ namespace Ihc.Projects.Tests
         public async Task SaveToPath_RoundTrips_AndCreateBackupRenamesThePriorFile()
         {
             var app = new ProjectAppService(Settings);
-            byte[] original = TestData.ReadBytes("Project1.vis");
+            byte[] original = TestData.ReadBytes("Project1-SimpelWired.vis");
             Project project = LoadProject1(app);
 
             string path = Path.Combine(Path.GetTempPath(), "ihc-projapp-" + Guid.NewGuid().ToString("N") + ".vis");

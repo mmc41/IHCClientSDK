@@ -97,18 +97,18 @@ namespace Ihc.Projects
             return new ResourceRef(name, id);
         }
 
-        /// <summary>Removes an input child (and its retired id is not reused).</summary>
+        /// <summary>Removes an input child, cascading any reciprocal link half; its retired id is not reused.</summary>
         public void RemoveInput(ResourceRef input)
         {
             ArgumentNullException.ThrowIfNull(input);
-            editor.RemoveSubtree(RequireId(input));
+            editor.DeleteById(RequireId(input));
         }
 
-        /// <summary>Removes an output child (and its retired id is not reused).</summary>
+        /// <summary>Removes an output child, cascading any reciprocal link half; its retired id is not reused.</summary>
         public void RemoveOutput(ResourceRef output)
         {
             ArgumentNullException.ThrowIfNull(output);
-            editor.RemoveSubtree(RequireId(output));
+            editor.DeleteById(RequireId(output));
         }
 
         /// <summary>Removes this product's <c>scenes</c> container by name.</summary>
@@ -117,7 +117,7 @@ namespace Ihc.Projects
             ElementId? scenes = editor.FindChildIdByName(Id, "scenes", "Scenarier");
             if (scenes is { } id)
             {
-                editor.RemoveSubtree(id);
+                editor.DeleteById(id);
             }
         }
 

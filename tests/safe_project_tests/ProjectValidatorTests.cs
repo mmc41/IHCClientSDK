@@ -27,7 +27,7 @@ namespace Ihc.Projects.Tests
         [Test]
         public void Validate_RealVendorFile_IsClean()
         {
-            using var ms = new MemoryStream(TestData.ReadBytes("Project1.vis"));
+            using var ms = new MemoryStream(TestData.ReadBytes("Project1-SimpelWired.vis"));
             var app = new ProjectAppService(Settings);
             Project project = app.Load(ms).GetAwaiter().GetResult();
 

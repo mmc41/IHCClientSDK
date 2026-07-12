@@ -93,6 +93,23 @@ namespace Ihc.Projects
         /// <summary>Returns the named fixed child element (e.g. <c>groups</c>), or <c>null</c> when absent.</summary>
         public ProjectElement? Child(string tag) => Root.FindChild(tag);
 
+        /// <summary>
+        /// Resolves an element by its stable <see cref="ElementId"/> anywhere in the project tree (the root and
+        /// all descendants), or <c>null</c> when no element carries that id. This is the id-addressable read
+        /// primitive a GUI selection model resolves against — unambiguous even where several elements share a name.
+        /// </summary>
+        public ProjectElement? FindById(ElementId id) =>
+            Root.Id == id ? Root : Root.Descendants().FirstOrDefault(e => e.Id == id);
+
+        /// <summary>
+        /// Returns the immediate parent of the element carrying the given id, or <c>null</c> when the id is the
+        /// root or is absent. <see cref="ProjectElement"/> is an immutable value with no parent pointer, so parent
+        /// navigation is resolved here against the tree (the read side of link navigation and far-end paths).
+        /// </summary>
+        public ProjectElement? FindParent(ElementId id) =>
+            new[] { Root }.Concat(Root.Descendants())
+                .FirstOrDefault(e => !e.Children.IsDefaultOrEmpty && e.Children.Any(c => c.Id == id));
+
         /// <summary>The <c>group</c> localities declared under <c>groups</c>.</summary>
         public IReadOnlyList<ProjectElement> Groups =>
             Child("groups") is { } groups && !groups.Children.IsDefaultOrEmpty

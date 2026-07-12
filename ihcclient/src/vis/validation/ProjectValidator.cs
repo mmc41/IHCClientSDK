@@ -59,6 +59,10 @@ namespace Ihc.Projects
             foreach (ProjectElement element in elements)
             {
                 ValidateElement(element, idTokens, errors, view);
+                if (element.Tag == "functionblock")
+                {
+                    ValidateFunctionBlockShape(element, errors);
+                }
             }
 
             ValidateLinkBijection(elements, errors);
@@ -117,6 +121,75 @@ namespace Ihc.Projects
                 }
             }
         }
+
+        // The mandatory function-block child sequence (spec ch. 06 §6.3): exactly one of each, in this order.
+        private static readonly string[] FunctionBlockContainers =
+        {
+            "inputs", "outputs", "settings", "internalsettings", "programs",
+        };
+
+        private static void ValidateFunctionBlockShape(ProjectElement functionBlock, ImmutableArray<string>.Builder errors)
+        {
+            string id = functionBlock.GetAttribute("id") ?? "?";
+            ImmutableArray<ProjectElement> children = functionBlock.Children.IsDefaultOrEmpty
+                ? ImmutableArray<ProjectElement>.Empty
+                : functionBlock.Children;
+
+            // (1) exactly the five containers, in the fixed order (no missing / extra / foreign / reordered child).
+            bool shapeOk = children.Length == FunctionBlockContainers.Length;
+            for (int i = 0; shapeOk && i < children.Length; i++)
+            {
+                shapeOk = children[i].Tag == FunctionBlockContainers[i];
+            }
+            if (!shapeOk)
+            {
+                var actual = new List<string>();
+                foreach (ProjectElement c in children)
+                {
+                    actual.Add(c.Tag);
+                }
+                errors.Add($"functionblock '{id}' must contain exactly the five containers " +
+                           $"[{string.Join(", ", FunctionBlockContainers)}] in that order, but has [{string.Join(", ", actual)}]");
+            }
+
+            // (2) programs may hold only program_simple.
+            ProjectElement? programs = functionBlock.FindChild("programs");
+            if (programs is not null && !programs.Children.IsDefaultOrEmpty)
+            {
+                foreach (ProjectElement program in programs.Children)
+                {
+                    if (program.Tag != "program_simple")
+                    {
+                        errors.Add($"functionblock '{id}': programs contains '{program.Tag}', but programs may hold only program_simple");
+                    }
+                }
+            }
+
+            // (3) pin types are bound to their container (§6.3.1).
+            foreach (ProjectElement container in children)
+            {
+                if (container.Children.IsDefaultOrEmpty)
+                {
+                    continue;
+                }
+                foreach (ProjectElement child in container.Children)
+                {
+                    string? required = RequiredPinContainer(child.Tag);
+                    if (required is not null && required != container.Tag)
+                    {
+                        errors.Add($"functionblock '{id}': {child.Tag} must be under {required}, not {container.Tag}");
+                    }
+                }
+            }
+        }
+
+        private static string? RequiredPinContainer(string tag) => tag switch
+        {
+            "resource_input" => "inputs",
+            "resource_output" => "outputs",
+            "resource_scene" => "outputs",
+            _ => null,
+        };
 
         private static void ValidateLinkBijection(List<ProjectElement> elements, ImmutableArray<string>.Builder errors)
         {

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace Ihc.Projects
@@ -39,6 +40,9 @@ namespace Ihc.Projects
 
         internal IdAllocator Allocator => allocator;
 
+        /// <summary>The schema resolver for this session (the file's own inline DTD first, registry fallback).</summary>
+        internal ProjectSchemaView SchemaView => ProjectSchemaView.For(inlineDtdBlocks);
+
         /// <summary>Gets the named locality (room), seeding it if necessary, and returns its live handle.</summary>
         public GroupRef Group(string name)
         {
@@ -48,13 +52,55 @@ namespace Ihc.Projects
         }
 
         /// <summary>
-        /// Removes a locality (room) and everything in it (and any links to/from its resources). Retired
-        /// <c>_0x</c> ids are not reused; returns <c>this</c> for optional chaining.
+        /// Resolves an id to a generic <see cref="ElementRef"/> handle — the id-addressed, write-side counterpart
+        /// of <see cref="Project.FindById"/> and the foundation of a GUI selection model. Unlike the name-addressed
+        /// <see cref="Group"/>/<see cref="GroupRef.Product"/>/<see cref="GroupRef.FunctionBlock"/> lookups it
+        /// addresses any element (resources, links, program nodes) and disambiguates same-named siblings. Returns
+        /// <c>false</c> with a null handle when no element in the session carries that id.
+        /// </summary>
+        public bool TryResolve(ElementId id, [NotNullWhen(true)] out ElementRef? handle)
+        {
+            if (FindById(root, id) is null)
+            {
+                handle = null;
+                return false;
+            }
+            handle = new ElementRef(this, id);
+            return true;
+        }
+
+        /// <summary>
+        /// Removes a locality (room) and everything in it, cascading the reciprocal follow-link halves outside it
+        /// that point into its resources (via <see cref="DeleteById"/>). Retired <c>_0x</c> ids are not reused;
+        /// returns <c>this</c> for optional chaining.
         /// </summary>
         public ProjectEditor RemoveGroup(GroupRef group)
         {
             ArgumentNullException.ThrowIfNull(group);
-            RemoveSubtree(group.Id);
+            return DeleteById(group.Id);
+        }
+
+        /// <summary>
+        /// Deletes the element with the given id and its whole subtree, cascading the reciprocal follow-link halves
+        /// that live <b>outside</b> the subtree and point into it — so deleting a wired product, function block,
+        /// resource or locality keeps the <c>link_from_resource</c>/<c>link_to_resource</c> bijection intact and the
+        /// project saveable. Retired <c>_0x</c> ids are not reused; a no-op when the id is absent. This is the
+        /// id-addressed generic delete that backs every <c>Remove*</c> handle. Returns <c>this</c> for chaining.
+        /// </summary>
+        public ProjectEditor DeleteById(ElementId id)
+        {
+            ProjectElement? subtree = FindById(root, id);
+            if (subtree is null)
+            {
+                return this;                             // absent id → nothing to delete
+            }
+            var partnerIds = new List<ElementId>();
+            CollectLinkPartners(subtree, partnerIds);    // (a) partner ids of every link half inside the subtree
+            root = RemoveById(root, id);                 // (d) remove the subtree (its own link halves go with it)
+            foreach (ElementId partnerId in partnerIds)
+            {
+                root = RemoveById(root, partnerId);      // (b) remove each external reciprocal half (no-op if internal)
+            }
             return this;
         }
 
@@ -95,6 +141,206 @@ namespace Ihc.Projects
             RemoveLinkHalf(RequireId(from), "link_from_resource", RequireId(to), "link_to_resource");
             RemoveLinkHalf(RequireId(to), "link_to_resource", RequireId(from), "link_from_resource");
             return this;
+        }
+
+        /// <summary>
+        /// Clones an existing in-project subtree (the clipboard copy/paste) under a new parent: deep-copies it
+        /// through the same transform as a catalog insert — fresh ids off the project counter (each element's
+        /// type-code suffix preserved), internal IDREFs remapped through one old→new map, and shared enums reused —
+        /// then applies <paramref name="policy"/> to any follow-link half whose reciprocal partner lies outside the
+        /// copy. Works for any subtree (locality, product, function block or bare resource). Returns the new root's
+        /// id. The source is left untouched.
+        /// </summary>
+        public ElementId CopySubtree(ElementId sourceId, ElementId targetParentId,
+            LinkCopyPolicy policy = LinkCopyPolicy.DropExternal)
+        {
+            ProjectElement source = Require(sourceId);
+            Require(targetParentId);                      // fail fast if the paste target does not exist
+            ElementId copyRootId = InsertComponent(targetParentId, source, ImmutableDictionary<string, string>.Empty);
+            if (policy == LinkCopyPolicy.DropExternal)
+            {
+                DropExternalLinkHalves(copyRootId);
+            }
+            return copyRootId;
+        }
+
+        /// <summary>
+        /// Relocates an existing subtree to a new parent while <b>preserving every id</b> — the drag-move / cut+paste
+        /// reparent (spec ch. 02 §6.6: ids never change on a move). Detaches the subtree and re-appends it under
+        /// <paramref name="targetParentId"/> at an optional <paramref name="index"/> (end when omitted), leaving all
+        /// reciprocal links intact because nothing is re-id'd. Throws if the target is the subtree itself or inside
+        /// it (which would detach the target). Returns <c>this</c> for chaining.
+        /// </summary>
+        public ProjectEditor MoveSubtree(ElementId sourceId, ElementId targetParentId, int? index = null)
+        {
+            ProjectElement subtree = Require(sourceId);   // the exact node — ids preserved verbatim
+            Require(targetParentId);
+            if (FindById(subtree, targetParentId) is not null)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot move {sourceId.ToToken()} into itself or its own descendant {targetParentId.ToToken()}.");
+            }
+            root = RemoveById(root, sourceId);            // detach (ids untouched)
+            InsertChildAt(targetParentId, subtree, index);
+            return this;
+        }
+
+        private void InsertChildAt(ElementId parentId, ProjectElement child, int? index) =>
+            Mutate(parentId, parent =>
+            {
+                ImmutableArray<ProjectElement> children = parent.Children.IsDefaultOrEmpty
+                    ? ImmutableArray<ProjectElement>.Empty
+                    : parent.Children;
+                int at = index is { } i ? Math.Clamp(i, 0, children.Length) : children.Length;
+                return parent with { Children = children.Insert(at, child) };
+            });
+
+        private void DropExternalLinkHalves(ElementId copyRootId)
+        {
+            ProjectElement copy = Require(copyRootId);
+            var copyIds = new HashSet<ElementId>();
+            CollectIds(copy, copyIds);
+            var external = new List<ElementId>();
+            CollectExternalLinkHalves(copy, copyIds, external);
+            foreach (ElementId halfId in external)
+            {
+                root = RemoveById(root, halfId);          // structural removal only; the source's own links stay intact
+            }
+        }
+
+        // ----- placement legality (read; right-click "insert…" menus and gray-out) -----
+
+        /// <summary>
+        /// Whether an element of type <paramref name="childTag"/> may be inserted directly under the target node —
+        /// the placement-legality predicate for graying out illegal right-click actions (spec ch. 03/04, §6.3.1,
+        /// §8.2). A parent type the containment model does not cover is permissive (returns <c>true</c>), so a legal
+        /// insert is never blocked by an unmodeled rule.
+        /// </summary>
+        public bool CanInsert(ElementId targetId, string childTag)
+        {
+            ArgumentNullException.ThrowIfNull(childTag);
+            return PlacementRules.CanInsert(Require(targetId).Tag, childTag, FindParentOf(root, targetId)?.Tag);
+        }
+
+        /// <summary>
+        /// The item types legal to insert under the target node, grouped by category, for building a context menu —
+        /// empty for a parent type the containment model does not cover (the GUI then relies on
+        /// <see cref="CanInsert"/>'s permissive default).
+        /// </summary>
+        public IReadOnlyList<InsertOption> GetInsertableAt(ElementId targetId) =>
+            PlacementRules.OptionsFor(Require(targetId).Tag, FindParentOf(root, targetId)?.Tag);
+
+        // ----- link navigation (read; the F4 jump and far-end path) -----
+
+        /// <summary>
+        /// Enumerates the follow-link rows a resource owns — its <c>link_from_resource</c>/<c>link_to_resource</c>
+        /// children — as <see cref="LinkInfo"/> (row id, direction tag, and the partner-row id its <c>link</c> IDREF
+        /// points at). Empty for an element that owns no links. The read side of the link model for a GUI.
+        /// </summary>
+        public IReadOnlyList<LinkInfo> GetLinks(ElementId resourceId)
+        {
+            ProjectElement resource = Require(resourceId);
+            var links = new List<LinkInfo>();
+            if (!resource.Children.IsDefaultOrEmpty)
+            {
+                foreach (ProjectElement child in resource.Children)
+                {
+                    if (child.Tag is "link_from_resource" or "link_to_resource"
+                        && child.Id is { } rowId
+                        && ElementId.TryParse(child.GetAttribute("link"), out ElementId partner))
+                    {
+                        links.Add(new LinkInfo(rowId, child.Tag, partner));
+                    }
+                }
+            }
+            return links;
+        }
+
+        /// <summary>
+        /// Resolves a link row's opposite endpoint (the F4 jump): follows the row's <c>link</c> IDREF to the partner
+        /// link element and returns its <b>parent</b> — the peer resource (spec ch. 06 §6.4.1). Returns <c>null</c>
+        /// when the id is not a link row or the partner/peer is missing.
+        /// </summary>
+        public ElementRef? ResolveLinkOpposite(ElementId linkRowId)
+        {
+            ProjectElement? row = FindById(root, linkRowId);
+            if (row?.Tag is not ("link_from_resource" or "link_to_resource")
+                || !ElementId.TryParse(row.GetAttribute("link"), out ElementId partnerLinkId))
+            {
+                return null;
+            }
+            ProjectElement? peer = FindParentOf(root, partnerLinkId);
+            return peer?.Id is { } peerId ? new ElementRef(this, peerId) : null;
+        }
+
+        /// <summary>
+        /// Renders an element's human-readable location as <c>locality / product-or-block / pin</c> — the
+        /// significant ancestors (a <c>group</c>, a <c>product_*</c> or a <c>functionblock</c>) followed by the
+        /// element's own name, skipping structural containers (<c>inputs</c>/<c>outputs</c>/…). Empty when the id is
+        /// absent. Used for the "Link fra…" far-end decoration.
+        /// </summary>
+        public string GetFullPath(ElementId elementId)
+        {
+            var chain = new List<ProjectElement>();
+            if (!BuildPath(root, elementId, chain))
+            {
+                return string.Empty;
+            }
+            var parts = new List<string>();
+            for (int i = 0; i < chain.Count; i++)
+            {
+                bool isTarget = i == chain.Count - 1;
+                if ((isTarget || IsPathSignificant(chain[i].Tag)) && chain[i].GetAttribute("name") is { } name)
+                {
+                    parts.Add(name);
+                }
+            }
+            return string.Join(" / ", parts);
+        }
+
+        private static bool IsPathSignificant(string tag) =>
+            tag is "group" or "functionblock" || tag.StartsWith("product_", StringComparison.Ordinal);
+
+        private static ProjectElement? FindParentOf(ProjectElement element, ElementId childId)
+        {
+            if (element.Children.IsDefaultOrEmpty)
+            {
+                return null;
+            }
+            foreach (ProjectElement child in element.Children)
+            {
+                if (child.Id == childId)
+                {
+                    return element;
+                }
+                ProjectElement? found = FindParentOf(child, childId);
+                if (found is not null)
+                {
+                    return found;
+                }
+            }
+            return null;
+        }
+
+        private static bool BuildPath(ProjectElement element, ElementId targetId, List<ProjectElement> chain)
+        {
+            chain.Add(element);
+            if (element.Id == targetId)
+            {
+                return true;
+            }
+            if (!element.Children.IsDefaultOrEmpty)
+            {
+                foreach (ProjectElement child in element.Children)
+                {
+                    if (BuildPath(child, targetId, chain))
+                    {
+                        return true;
+                    }
+                }
+            }
+            chain.RemoveAt(chain.Count - 1);
+            return false;
         }
 
         /// <summary>
@@ -221,12 +467,59 @@ namespace Ihc.Projects
         internal void SetAttributeById(ElementId id, string name, string value) =>
             Mutate(id, e => SetAttribute(e, name, value));
 
-        internal void RemoveSubtree(ElementId id)
+        // ----- tree machinery -----
+
+        private static void CollectLinkPartners(ProjectElement element, List<ElementId> partners)
         {
-            root = RemoveById(root, id);
+            if (element.Tag is "link_from_resource" or "link_to_resource"
+                && ElementId.TryParse(element.GetAttribute("link"), out ElementId partner))
+            {
+                partners.Add(partner);
+            }
+            if (element.Children.IsDefaultOrEmpty)
+            {
+                return;
+            }
+            foreach (ProjectElement child in element.Children)
+            {
+                CollectLinkPartners(child, partners);
+            }
         }
 
-        // ----- tree machinery -----
+        private static void CollectIds(ProjectElement element, HashSet<ElementId> ids)
+        {
+            if (element.Id is { } id)
+            {
+                ids.Add(id);
+            }
+            if (element.Children.IsDefaultOrEmpty)
+            {
+                return;
+            }
+            foreach (ProjectElement child in element.Children)
+            {
+                CollectIds(child, ids);
+            }
+        }
+
+        private static void CollectExternalLinkHalves(ProjectElement element, HashSet<ElementId> insideIds, List<ElementId> external)
+        {
+            if (element.Tag is "link_from_resource" or "link_to_resource"
+                && element.Id is { } halfId
+                && ElementId.TryParse(element.GetAttribute("link"), out ElementId partner)
+                && !insideIds.Contains(partner))
+            {
+                external.Add(halfId);                      // reciprocal partner lies outside the copied subtree
+            }
+            if (element.Children.IsDefaultOrEmpty)
+            {
+                return;
+            }
+            foreach (ProjectElement child in element.Children)
+            {
+                CollectExternalLinkHalves(child, insideIds, external);
+            }
+        }
 
         private ElementId? FindGroupByName(string name)
         {
@@ -249,7 +542,7 @@ namespace Ihc.Projects
             return id;
         }
 
-        private ProjectElement Require(ElementId id) => FindById(root, id)
+        internal ProjectElement Require(ElementId id) => FindById(root, id)
             ?? throw new InvalidOperationException($"No element with id {id.ToToken()} in the edit session.");
 
         private void AppendChild(ElementId parentId, ProjectElement child) =>

@@ -18,7 +18,7 @@ namespace Ihc.Projects.Tests
     {
         private IhcSettings settings => TestSetup.Settings;
 
-        [Test, Explicit("Stage 1: authoring-API preview against stubs; reconstructs Project1.vis — not run")]
+        [Test, Explicit("Stage 1: authoring-API preview against stubs; reconstructs Project1-SimpelWired.vis — not run")]
         public void BuildProject1_FromCode_ShowsAuthoringApi()
         {
             var cat   = CatalogDiscovery.FromInstallDir(settings.IhcVisualInstallDir);
@@ -90,7 +90,7 @@ namespace Ihc.Projects.Tests
 
             // Stage-2 assertion (commented; shown only to convey intent):
             // var bytes = ProjectSerializer.Serialize(project);
-            // Assert.That(bytes, Is.EqualTo(File.ReadAllBytes("testdata/Project1.vis")));
+            // Assert.That(bytes, Is.EqualTo(File.ReadAllBytes("testdata/Project1-SimpelWired.vis")));
             Assert.That(project, Is.Not.Null);
         }
 
@@ -103,7 +103,7 @@ namespace Ihc.Projects.Tests
 
             // Load an existing project, then open the same mutable edit session over it. Every existing
             // _0x id is preserved through edit + resave (identity is the id, not document position).
-            var project = await app.Load("testdata/Project1.vis");
+            var project = await app.Load("testdata/Project1-SimpelWired.vis");
             var editor  = project.Edit();
 
             // Look existing rooms/products/function blocks up by name — no re-creation. AddInput/AddOutput

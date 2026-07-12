@@ -39,6 +39,13 @@ namespace Ihc.Projects
         /// seeded into every new project, matched by <c>typeid</c>.
         /// </summary>
         ProjectElement BuiltInEnumerators { get; }
+
+        /// <summary>
+        /// The empty function-block ("Tom blok") template parsed from <c>Data\fb.def</c> — the five containers in
+        /// fixed order plus one empty <c>program_simple(events, actions)</c> and vendor icon <c>_0xf</c>. Deep-copied
+        /// by <see cref="GroupRef.AddEmptyFunctionBlock"/> to scaffold a from-scratch block (spec ch. 09 §9.4.4).
+        /// </summary>
+        FunctionBlockDescriptor EmptyFunctionBlockTemplate { get; }
     }
 
     /// <summary>
@@ -60,12 +67,14 @@ namespace Ihc.Projects
             ImmutableArray<ProductDescriptor> products,
             ImmutableArray<FunctionBlockDescriptor> functionBlocks,
             ProjectElement newProjectSkeleton,
-            ProjectElement builtInEnumerators)
+            ProjectElement builtInEnumerators,
+            FunctionBlockDescriptor emptyFunctionBlockTemplate)
         {
             this.products = products;
             this.functionBlocks = functionBlocks;
             NewProjectSkeleton = newProjectSkeleton;
             BuiltInEnumerators = builtInEnumerators;
+            EmptyFunctionBlockTemplate = emptyFunctionBlockTemplate;
             productsByIdentifier = new FrozenDictionaryLike<ProductDescriptor>(
                 products, p => p.ProductIdentifier);
             functionBlocksByType = new FrozenDictionaryLike<FunctionBlockDescriptor>(
@@ -90,7 +99,20 @@ namespace Ihc.Projects
             ImmutableArray<FunctionBlockDescriptor> functionBlocks = DiscoverFunctionBlocks(functionBlocksDir);
             ProjectElement skeleton = CatalogReader.ReadFile(Path.Combine(dataDir, "NewDoc.idf"));
             ProjectElement enums = CatalogReader.ReadFile(Path.Combine(dataDir, "EnumeratorDefinitions.def"));
-            return new CatalogDiscovery(products, functionBlocks, skeleton, enums);
+            FunctionBlockDescriptor emptyTemplate = ReadEmptyFunctionBlockTemplate(Path.Combine(dataDir, "fb.def"));
+            return new CatalogDiscovery(products, functionBlocks, skeleton, enums, emptyTemplate);
+        }
+
+        private static FunctionBlockDescriptor ReadEmptyFunctionBlockTemplate(string fbDefPath)
+        {
+            byte[] bytes = File.ReadAllBytes(fbDefPath);
+            using var ms = new MemoryStream(bytes);
+            ProjectElement body = CatalogReader.Read(ms);
+            string name = StripMenuPrefix(body.GetAttribute("name") ?? "Tom blok");
+            return new FunctionBlockDescriptor(string.Empty, string.Empty, name, name, string.Empty, body)
+            {
+                InlineDtdBlocks = InlineDtd.Capture(bytes),
+            };
         }
 
         private static ImmutableArray<ProductDescriptor> DiscoverProducts(string productsDir)
@@ -163,6 +185,9 @@ namespace Ihc.Projects
 
         /// <inheritdoc/>
         public ProjectElement BuiltInEnumerators { get; }
+
+        /// <inheritdoc/>
+        public FunctionBlockDescriptor EmptyFunctionBlockTemplate { get; }
 
         /// <summary>
         /// A tiny last-wins lookup over a descriptor list (catalog keys are not globally unique — favorites

@@ -8,7 +8,7 @@ namespace Ihc.Projects.Tests
     /// <summary>
     /// The CREATE byte-identity gate (install-dir-gated, spec ch. 10 §10.7): <see cref="ProjectAppService.CreateNew"/>
     /// reads the installed <c>NewDoc.idf</c> + <c>EnumeratorDefinitions.def</c> templates and, with a pinned clock
-    /// and the testdata field values, reproduces <c>ProjectEmpty.vis</c> byte-for-byte after a default save re-stamps
+    /// and the testdata field values, reproduces <c>Project0-Tomt.vis</c> byte-for-byte after a default save re-stamps
     /// <c>id2</c>/<c>modified</c>. Skips gracefully when no IHC Visual install is configured.
     /// </summary>
     public class CreateNewTests
@@ -42,7 +42,7 @@ namespace Ihc.Projects.Tests
             using var ms = new MemoryStream();
             await app.Save(project, ms, ProjectSaveOptions.Default);
 
-            TestData.AssertBytesIdentical(TestData.ReadBytes("ProjectEmpty.vis"), ms.ToArray(), "CreateNew + default save");
+            TestData.AssertBytesIdentical(TestData.ReadBytes("Project0-Tomt.vis"), ms.ToArray(), "CreateNew + default save");
         }
 
         [Test]

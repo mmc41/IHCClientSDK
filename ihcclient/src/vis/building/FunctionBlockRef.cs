@@ -40,6 +40,17 @@ namespace Ihc.Projects
             return this;
         }
 
+        /// <summary>
+        /// Unlocks the function block (US-020 "Oplås") — the inverse of <see cref="Locked"/>: clears <c>locked</c> to
+        /// its default <c>no</c>, so the canonicalizer omits it and a block loaded with <c>locked="yes"</c> becomes
+        /// an editable custom block. Returns this.
+        /// </summary>
+        public FunctionBlockRef Unlock()
+        {
+            editor.SetAttributeById(Id, "locked", "no");
+            return this;
+        }
+
         /// <summary>Overrides one named setting whose default came from the catalog; returns this.</summary>
         public FunctionBlockRef Setting(string name, Func<SettingBuilder, SettingBuilder> configure)
         {
@@ -53,6 +64,39 @@ namespace Ihc.Projects
                 editor.SetAttributeById(settingId, attr, value);
             }
             return this;
+        }
+
+        /// <summary>
+        /// Adds a new input pin (<c>resource_input</c>) under this block's <c>inputs</c> container and returns its
+        /// live handle for linking. For an empty (US-019) or unlocked (US-020) block that has no catalog resources.
+        /// </summary>
+        public ResourceRef AddInput(string name) => AddResource("inputs", "resource_input", name, configure: null);
+
+        /// <summary>Adds a new output pin (<c>resource_output</c>) under <c>outputs</c>; returns its live handle.</summary>
+        public ResourceRef AddOutput(string name) => AddResource("outputs", "resource_output", name, configure: null);
+
+        /// <summary>
+        /// Adds a new value variable of type <paramref name="tag"/> (e.g. <c>resource_flag</c>, <c>resource_timer</c>,
+        /// <c>resource_enum</c>) under this block's <c>settings</c> container. Per the §6.3.1 section↔type matrix,
+        /// <c>settings</c> accepts value types only — a pin type (<c>resource_input</c>/<c>_output</c>/<c>_scene</c>)
+        /// or <c>functionblock</c> is rejected. The optional <paramref name="configure"/> callback receives the new
+        /// resource's handle to set type-specific attributes (e.g. a timer's <c>hour</c>/<c>minute</c>).
+        /// </summary>
+        public ResourceRef AddSetting(string tag, string name, Action<ElementRef>? configure = null)
+        {
+            RequireValueType(tag, "settings");
+            return AddResource("settings", tag, name, configure);
+        }
+
+        /// <summary>
+        /// Adds a new value variable of type <paramref name="tag"/> under this block's <c>internalsettings</c>
+        /// container (private variables). Accepts value types only — pin types and <c>functionblock</c> are rejected
+        /// (§6.3.1). The optional <paramref name="configure"/> callback sets type-specific attributes.
+        /// </summary>
+        public ResourceRef AddInternalVariable(string tag, string name, Action<ElementRef>? configure = null)
+        {
+            RequireValueType(tag, "internalsettings");
+            return AddResource("internalsettings", tag, name, configure);
         }
 
         /// <summary>References a catalog-sourced input by name, returning its live handle.</summary>
@@ -71,6 +115,37 @@ namespace Ihc.Projects
             ElementId id = editor.FindDescendantIdByName(Id, name, "resource_output")
                 ?? throw new InvalidOperationException($"No output named '{name}' on this function block.");
             return new ResourceRef(name, id);
+        }
+
+        // Pin (I/O) resource types are container-bound: they may live only under inputs/outputs, never under a
+        // value-variable container (settings/internalsettings). Value types may live under any container. §6.3.1.
+        private static readonly HashSet<string> PinTypes = new(StringComparer.Ordinal)
+        {
+            "resource_input", "resource_output", "resource_scene",
+        };
+
+        private ResourceRef AddResource(string container, string tag, string name, Action<ElementRef>? configure)
+        {
+            ArgumentNullException.ThrowIfNull(tag);
+            ArgumentNullException.ThrowIfNull(name);
+            ElementId containerId = editor.Require(Id).FindChild(container)?.Id
+                ?? throw new InvalidOperationException($"This function block has no <{container}> container.");
+            ResourceRef resource = editor.UpsertResourceChild(containerId, tag, name, System.Array.Empty<(string, string)>());
+            if (configure is not null && resource.Id is { } id && editor.TryResolve(id, out ElementRef? handle))
+            {
+                configure(handle);
+            }
+            return resource;
+        }
+
+        private static void RequireValueType(string tag, string container)
+        {
+            if (PinTypes.Contains(tag) || tag == "functionblock")
+            {
+                throw new ArgumentException(
+                    $"'{tag}' is a pin/block type; a function block's '{container}' container accepts value variables " +
+                    $"only (pins belong in inputs/outputs). See spec ch. 06 §6.3.1.", nameof(tag));
+            }
         }
     }
 

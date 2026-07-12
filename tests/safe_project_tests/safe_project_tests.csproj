@@ -26,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="testdata\*.vis" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="testdata\**\*.vis" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <Target Name="CopyConfigFiles" AfterTargets="AfterBuild">
