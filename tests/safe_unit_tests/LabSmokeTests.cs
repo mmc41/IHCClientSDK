@@ -61,6 +61,7 @@ namespace Ihc.Tests
                 IhcFakeSetup.SetupAirlinkManagementService(s),
                 IhcFakeSetup.SetupSmsModemService(s),
                 IhcFakeSetup.SetupInternalTestService(s),
+                IhcFakeSetup.SetupLedDimmerManagementService(s),
             };
         }
 
@@ -180,7 +181,7 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// Every exposed operation, across all 13 mocked services, can be selected and invoked through
+        /// Every exposed operation, across all 14 mocked services, can be selected and invoked through
         /// LabAppService with realistic arguments and returns a non-null result without crashing.
         /// </summary>
         [TestCaseSource(nameof(AllExposedOperations))]
@@ -210,7 +211,7 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// Guards the smoke surface itself: all 13 services are present and a substantial number of operations
+        /// Guards the smoke surface itself: all 14 services are present and a substantial number of operations
         /// are exposed, so a regression in the filter/metadata cannot silently shrink coverage to nothing.
         /// </summary>
         [Test]
@@ -218,7 +219,7 @@ namespace Ihc.Tests
         {
             var lab = BuildLab();
 
-            Assert.That(lab.Services.Length, Is.EqualTo(13), "All 13 mocked IHC services should be exposed");
+            Assert.That(lab.Services.Length, Is.EqualTo(14), "All 14 mocked IHC services should be exposed");
 
             int operationCount = lab.Services.Sum(s => s.OperationItems.Length);
             Assert.That(operationCount, Is.GreaterThan(120),

@@ -31,14 +31,14 @@
                 <!-- Endpoint (Required) -->
                 <TextBlock Text="Endpoint: *" Margin="0,5,0,2"/>
                 <TextBox Name="EndpointTextBox"
-                         Watermark="http://192.168.1.10"
+                         PlaceholderText="http://192.168.1.10"
                          TextChanged="OnRequiredFieldChanged"
                          Margin="0,0,0,10"/>
 
                 <!-- Username (Required) -->
                 <TextBlock Text="Username: *" Margin="0,5,0,2"/>
                 <TextBox Name="UserNameTextBox"
-                         Watermark="Enter username"
+                         PlaceholderText="Enter username"
                          TextChanged="OnRequiredFieldChanged"
                          Margin="0,0,0,10"/>
 
@@ -46,7 +46,7 @@
                 <TextBlock Text="Password: *" Margin="0,5,0,2"/>
                 <TextBox Name="PasswordTextBox"
                          PasswordChar="*"
-                         Watermark="Enter password"
+                         PlaceholderText="Enter password"
                          TextChanged="OnRequiredFieldChanged"
                          Margin="0,0,0,10"/>
 

@@ -49,7 +49,7 @@ namespace Ihc.Tests
             A.Fake<IConfigurationService>(), A.Fake<IOpenAPIService>(), A.Fake<INotificationManagerService>(),
             A.Fake<IMessageControlLogService>(), A.Fake<IModuleService>(), A.Fake<ITimeManagerService>(),
             A.Fake<IUserManagerService>(), A.Fake<IAirlinkManagementService>(), A.Fake<ISmsModemService>(),
-            A.Fake<IInternalTestService>()
+            A.Fake<IInternalTestService>(), A.Fake<ILedDimmerManagementService>()
         };
 
         /// <summary>The IHC service interface name behind a fake proxy, for readable warning messages.</summary>

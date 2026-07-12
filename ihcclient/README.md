@@ -53,5 +53,13 @@ as `Disconnect` being called when aborting with CTRL-C etc. AspNetCore apps all 
 https://docs.microsoft.com/en-us/aspnet/core/fundamentals/host/generic-host?view=aspnetcore-2.2).
 
 ## Updating WSDL / generated src.
-In the rare event that WSDL must be changed and new generated code is needed, one can use the `download_wsdl.sh` and `generate.sh` files for this on MacOS (no scripts currently avilable for Windows/Linux). The output is placed in the `generatedsrc` folder. These files should not be changed manually. Note that `wget` and the [dotnet-svcutil](https://docs.microsoft.com/en-us/dotnet/core/additional-tools/dotnet-svcutil-guide?tabs=dotnetsvcutil2x) tool must be installed for the above scripts to work.
+In the rare event that WSDL must be changed and new generated code is needed, one can use the `download_wsdl.sh` and `generate.sh` files (MacOS/Linux) or the `download_wsdl.ps1` and `generate.ps1` PowerShell ports (Windows) for this. The output is placed in the `generatedsrc` folder. These files should not be changed manually. Note that `wget` and the [dotnet-svcutil](https://docs.microsoft.com/en-us/dotnet/core/additional-tools/dotnet-svcutil-guide?tabs=dotnetsvcutil2x) tool must be installed for the above scripts to work.
+
+## Fixing the WSDL
+The raw WSDL downloaded from the controller (`download_wsdl.sh` / `download_wsdl.ps1` write the files into `wsdl/`) contains defects that break code generation or deserialization, so it must be patched by hand. The pristine originals are kept under `wsdl/orginal/` and the hand-corrected copies under `wsdl/fixed/`; code generation reads `wsdl/fixed/` — never the originals. After re-downloading, refresh `wsdl/orginal/` from the downloaded files, then copy each changed file into `wsdl/fixed/` and re-apply the following known fixes:
+
+- **`WSDate` element order** (affects almost every WSDL, since the type is shared): change the `WSDate` complex type from `<xsd:sequence>` to `<xsd:all>`. The controller returns the date fields in an order that does not match the declared sequence, and `xsd:all` makes deserialization order-independent.
+- **Missing elements in `configuration.wsdl`**: add the `smsModemSoftwareVersion` and `ledDimmerSoftwareVersion` string elements, which are absent from the vendor WSDL.
+
+The easiest way to see the exact set of edits is to diff a `wsdl/fixed/` file against its `wsdl/orginal/` counterpart.
 

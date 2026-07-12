@@ -112,9 +112,14 @@ namespace Ihc {
                 attrs.Add(genericType, attr);
 
             var xmlSerializer = GetOrCreateSerializer(typeof(A), attrs, genericTypes);
-            using (var stream = new MemoryStream(System.Text.Encoding.ASCII.GetBytes(xml)))
+            // Read characters straight from the decoded string via a TextReader so no
+            // byte re-encoding can corrupt the payload. (Previously this used
+            // Encoding.ASCII.GetBytes, which flattened every non-ASCII character - e.g.
+            // the Danish letters aeoe/AEOE - to '?'.) A TextReader also ignores any
+            // encoding declaration in the XML, since the bytes are already characters.
+            using (var reader = new StringReader(xml))
             {
-                var result = xmlSerializer.Deserialize(stream);
+                var result = xmlSerializer.Deserialize(reader);
                 return result as A;
             }
         } catch (Exception ex) {

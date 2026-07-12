@@ -447,7 +447,7 @@ namespace Ihc.Tests
                 var filepath = Path.Combine(outputDir, filename);
 
                 // Save the bitmap as PNG
-                bitmap.Save(filepath);
+                bitmap.Save(filepath, PngBitmapEncoderOptions.Default);
 
                 var description = customDescription ?? "Test Failure Screenshot";
                 TestContext.Out.WriteLine($"Test failure screenshot saved: {filepath}");

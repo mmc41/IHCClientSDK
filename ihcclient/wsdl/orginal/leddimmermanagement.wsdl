@@ -1,0 +1,477 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<wsdl:definitions targetNamespace="utcs" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:tns="utcs" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<wsdl:types>
+<xsd:schema targetNamespace="utcs" xmlns="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="qualified">
+<xsd:element name="enterConfiguration1" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="exitConfiguration1" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="waitForDeviceDetected1" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:complexType name="WSLEDDimmerInfo">
+<xsd:sequence>
+<xsd:element name="location" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="channel" type="xsd:byte">
+</xsd:element>
+
+<xsd:element name="bootloaderVersion" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="applicationVersion" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="applicationStatus" type="xsd:byte">
+</xsd:element>
+
+<xsd:element name="hardwareVersion" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="serialNumber" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="level" type="xsd:byte">
+</xsd:element>
+
+<xsd:element name="errorFlags" type="xsd:byte">
+</xsd:element>
+
+<xsd:element name="channelID" type="xsd:byte">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:element name="waitForDeviceDetected2" nillable="true" type="tns:WSLEDDimmerInfo">
+</xsd:element>
+
+<xsd:element name="scanConfiguredDevices1" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="scanConfiguredDevices2" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:complexType name="ArrayOfWSLEDDimmerInfo">
+<xsd:sequence>
+<xsd:element name="arrayItem" maxOccurs="unbounded" nillable="true" type="tns:WSLEDDimmerInfo">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:element name="scanConfiguredDevices3" nillable="true" type="tns:ArrayOfWSLEDDimmerInfo">
+</xsd:element>
+
+<xsd:element name="assignID1" nillable="true" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="assignID2" nillable="true" type="xsd:byte">
+</xsd:element>
+
+<xsd:element name="assignID3" nillable="true" type="xsd:byte">
+</xsd:element>
+
+<xsd:element name="assignID4" nillable="true" type="xsd:boolean">
+</xsd:element>
+
+<xsd:element name="getDeviceCount1" nillable="true" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="getLightLevel1" nillable="true" type="xsd:byte">
+</xsd:element>
+
+<xsd:complexType name="WSLEDDimmerLevel">
+<xsd:sequence>
+<xsd:element name="level" type="xsd:byte">
+</xsd:element>
+
+<xsd:element name="errorFlags" type="xsd:byte">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:element name="getLightLevel2" nillable="true" type="tns:WSLEDDimmerLevel">
+</xsd:element>
+
+<xsd:element name="getDeviceList1" nillable="true" type="tns:ArrayOfWSLEDDimmerInfo">
+</xsd:element>
+
+<xsd:element name="startFirmwareUpgrade1" nillable="true" type="xsd:string">
+</xsd:element>
+
+<xsd:complexType name="WSLEDDimmerProgress">
+<xsd:sequence>
+<xsd:element name="message" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="serialNumber" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="status" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="progress" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="maximum" type="xsd:int">
+</xsd:element>
+
+<xsd:element name="RUNNING" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="FINISHED" type="xsd:string">
+</xsd:element>
+
+<xsd:element name="FAILED" type="xsd:string">
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:element name="getFirmwareUpgradeProgress1" nillable="true" type="tns:WSLEDDimmerProgress">
+</xsd:element>
+</xsd:schema>
+</wsdl:types>
+
+<wsdl:message name="enterConfigurationRequest">
+</wsdl:message>
+
+<wsdl:message name="enterConfigurationResponse">
+<wsdl:part name="return" element="tns:enterConfiguration1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="exitConfigurationRequest">
+</wsdl:message>
+
+<wsdl:message name="exitConfigurationResponse">
+<wsdl:part name="return" element="tns:exitConfiguration1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="waitForDeviceDetectedRequest">
+<wsdl:part name="parameter1" element="tns:waitForDeviceDetected1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="waitForDeviceDetectedResponse">
+<wsdl:part name="return" element="tns:waitForDeviceDetected2">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="scanConfiguredDevicesRequest">
+<wsdl:part name="parameter2" element="tns:scanConfiguredDevices1">
+</wsdl:part>
+
+<wsdl:part name="parameter3" element="tns:scanConfiguredDevices2">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="scanConfiguredDevicesResponse">
+<wsdl:part name="return" element="tns:scanConfiguredDevices3">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="assignIDRequest">
+<wsdl:part name="parameter4" element="tns:assignID1">
+</wsdl:part>
+
+<wsdl:part name="parameter5" element="tns:assignID2">
+</wsdl:part>
+
+<wsdl:part name="parameter6" element="tns:assignID3">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="assignIDResponse">
+<wsdl:part name="return" element="tns:assignID4">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getDeviceCountRequest">
+</wsdl:message>
+
+<wsdl:message name="getDeviceCountResponse">
+<wsdl:part name="return" element="tns:getDeviceCount1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getLightLevelRequest">
+<wsdl:part name="parameter7" element="tns:getLightLevel1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getLightLevelResponse">
+<wsdl:part name="return" element="tns:getLightLevel2">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="getDeviceListRequest">
+</wsdl:message>
+
+<wsdl:message name="getDeviceListResponse">
+<wsdl:part name="return" element="tns:getDeviceList1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="startFirmwareUpgradeRequest">
+<wsdl:part name="parameter8" element="tns:startFirmwareUpgrade1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:message name="startFirmwareUpgradeResponse">
+</wsdl:message>
+
+<wsdl:message name="getFirmwareUpgradeProgressRequest">
+</wsdl:message>
+
+<wsdl:message name="getFirmwareUpgradeProgressResponse">
+<wsdl:part name="return" element="tns:getFirmwareUpgradeProgress1">
+</wsdl:part>
+</wsdl:message>
+
+<wsdl:portType name="LEDDimmerManagementService">
+<wsdl:operation name="enterConfiguration">
+<wsdl:input name="inputMessageName1" message="tns:enterConfigurationRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName1" message="tns:enterConfigurationResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="exitConfiguration">
+<wsdl:input name="inputMessageName2" message="tns:exitConfigurationRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName2" message="tns:exitConfigurationResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="waitForDeviceDetected">
+<wsdl:input name="inputMessageName3" message="tns:waitForDeviceDetectedRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName3" message="tns:waitForDeviceDetectedResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="scanConfiguredDevices">
+<wsdl:input name="inputMessageName4" message="tns:scanConfiguredDevicesRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName4" message="tns:scanConfiguredDevicesResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="assignID">
+<wsdl:input name="inputMessageName5" message="tns:assignIDRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName5" message="tns:assignIDResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getDeviceCount">
+<wsdl:input name="inputMessageName6" message="tns:getDeviceCountRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName6" message="tns:getDeviceCountResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getLightLevel">
+<wsdl:input name="inputMessageName7" message="tns:getLightLevelRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName7" message="tns:getLightLevelResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getDeviceList">
+<wsdl:input name="inputMessageName8" message="tns:getDeviceListRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName8" message="tns:getDeviceListResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="startFirmwareUpgrade">
+<wsdl:input name="inputMessageName9" message="tns:startFirmwareUpgradeRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName9" message="tns:startFirmwareUpgradeResponse">
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getFirmwareUpgradeProgress">
+<wsdl:input name="inputMessageName10" message="tns:getFirmwareUpgradeProgressRequest">
+</wsdl:input>
+
+<wsdl:output name="outputMessageName10" message="tns:getFirmwareUpgradeProgressResponse">
+</wsdl:output>
+</wsdl:operation>
+</wsdl:portType>
+
+<wsdl:binding name="LEDDimmerManagementServiceBinding" type="tns:LEDDimmerManagementService">
+<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http">
+</soap:binding>
+
+<wsdl:operation name="enterConfiguration">
+<soap:operation soapAction="enterConfiguration" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName1">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName1">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="exitConfiguration">
+<soap:operation soapAction="exitConfiguration" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName2">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName2">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="waitForDeviceDetected">
+<soap:operation soapAction="waitForDeviceDetected" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName3">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName3">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="scanConfiguredDevices">
+<soap:operation soapAction="scanConfiguredDevices" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName4">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName4">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="assignID">
+<soap:operation soapAction="assignID" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName5">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName5">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getDeviceCount">
+<soap:operation soapAction="getDeviceCount" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName6">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName6">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getLightLevel">
+<soap:operation soapAction="getLightLevel" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName7">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName7">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getDeviceList">
+<soap:operation soapAction="getDeviceList" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName8">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName8">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="startFirmwareUpgrade">
+<soap:operation soapAction="startFirmwareUpgrade" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName9">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName9">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+
+<wsdl:operation name="getFirmwareUpgradeProgress">
+<soap:operation soapAction="getFirmwareUpgradeProgress" style="document">
+</soap:operation>
+
+<wsdl:input name="inputMessageName10">
+<soap:body use="literal">
+</soap:body>
+</wsdl:input>
+
+<wsdl:output name="outputMessageName10">
+<soap:body use="literal">
+</soap:body>
+</wsdl:output>
+</wsdl:operation>
+</wsdl:binding>
+
+<wsdl:service name="LEDDimmerManagementServiceService">
+<wsdl:port name="LEDDimmerManagementServiceBindingPort" binding="tns:LEDDimmerManagementServiceBinding">
+<soap:address location="http://localhost/LEDDimmerManagementService">
+</soap:address>
+</wsdl:port>
+</wsdl:service>
+</wsdl:definitions>

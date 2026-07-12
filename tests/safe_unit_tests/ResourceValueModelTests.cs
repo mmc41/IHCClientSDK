@@ -15,15 +15,16 @@ namespace Ihc.Tests
     public class ResourceValueModelTests
     {
         [Test]
-        public void ValueKind_HasAllTwelveKinds()
+        public void ValueKind_HasAllThirteenKinds()
         {
             var kinds = Enum.GetNames(typeof(ResourceValue.ValueKind)).ToList();
 
-            Assert.That(kinds, Has.Count.EqualTo(12));
+            Assert.That(kinds, Has.Count.EqualTo(13));
             Assert.That(kinds, Does.Contain("PhoneNumber"));
             Assert.That(kinds, Does.Contain("SceneDimmer"));
             Assert.That(kinds, Does.Contain("SceneRelay"));
             Assert.That(kinds, Does.Contain("SceneShutter"));
+            Assert.That(kinds, Does.Contain("NONE"));
         }
 
         [Test]

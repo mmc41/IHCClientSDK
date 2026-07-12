@@ -56,7 +56,7 @@ namespace Ihc.Tests
         /// <summary>
         /// Every service and every operation the Lab exposes can be selected through the GUI ComboBoxes, and
         /// each operation's parameter controls are generated without surfacing an error. This dynamically
-        /// exercises the parameter-control generation for all ~150 operations across all 13 mocked services.
+        /// exercises the parameter-control generation for all ~150 operations across all 14 mocked services.
         /// </summary>
         [AvaloniaTest]
         [CaptureScreenshotOnFailure]
@@ -68,7 +68,7 @@ namespace Ihc.Tests
             var operationsCombo = window.FindControl<ComboBox>("OperationsComboBox")!;
             var parametersPanel = window.FindControl<StackPanel>("ParametersPanel")!;
 
-            Assert.That(servicesCombo.Items.Count, Is.EqualTo(13), "All 13 mocked services should be listed in the GUI");
+            Assert.That(servicesCombo.Items.Count, Is.EqualTo(14), "All 14 mocked services should be listed in the GUI");
 
             var failures = new List<string>();
             int serviceCount = servicesCombo.Items.Count;

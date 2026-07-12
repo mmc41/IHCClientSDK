@@ -71,7 +71,10 @@ namespace Ihc {
             /// <summary>Scene relay value type (relay state + delay time).</summary>
             SceneRelay,
             /// <summary>Scene shutter value type (shutter up/down + delay time).</summary>
-            SceneShutter
+            SceneShutter,
+            /// <summary>No readable value: the resource carries no runtime value (e.g. a scene, whose
+            /// GetRuntimeValue envelope has a null &lt;value&gt;). Read-only — not writable to the controller.</summary>
+            NONE
         };
 
         /// <summary>

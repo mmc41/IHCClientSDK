@@ -74,13 +74,15 @@ This is a .NET 9.0 mono-repository containing an unofficial SDK for IHC (Intelli
 The `ihcclient` project follows a layered architecture:
 
 **High-Level Services** (`ihcclient/src/api/services/`):
-- Service classes: `AuthenticationService`, `ResourceInteractionService`, `ConfigurationService`, `ControllerService`, `MessagecontrollogService`, `ModuleService`, `NotificationManagerService`, `TimeManagerService`, `UserManagerService`, `OpenAPIService`, `AirlinkManagementService`, `SmsModemService`, `InternalTestService`
+- Service classes: `AuthenticationService`, `ResourceInteractionService`, `ConfigurationService`, `ControllerService`, `MessagecontrollogService`, `ModuleService`, `NotificationManagerService`, `TimeManagerService`, `UserManagerService`, `OpenAPIService`, `AirlinkManagementService`, `SmsModemService`, `InternalTestService`, `LedDimmerManagementService`, `ProductionTestService`
 - Each service wraps a corresponding SOAP implementation (SoapImpl classes)
 - Uses custom data models in `src/models/` instead of exposing SOAP artifacts
 - Fully async API design with no SOAP inheritance
 - Services require logger and endpoint in constructor; most require authentication first (except OpenAPIService)
 - `SmsModemService` - SMS modem control including settings, status, hardware/firmware info, and reset operations
 - `InternalTestService` - LK/Schneider internal testing operations for hardware diagnostics, LED control, board version queries, time/date management, and RS485 communication. Some potentially dangerous operations (BurnIO, TestSdCard, TestIOBoard, RS485 operations, ProductionTestPassed) require `allowDangerousInternTestCalls` setting enabled in IhcSettings. Intended for manufacturing/testing scenarios.
+- `LedDimmerManagementService` - LED dimmer device management: enter/exit configuration mode, detect/scan devices, assign channel IDs, read device count/light level, list devices, and start/monitor firmware upgrades.
+- `ProductionTestService` - LK/Schneider production-test service. INTERNAL / potentially dangerous (manufacturing use). The controller WSDL currently defines no operations, so this is an empty placeholder wrapper; future operations should be gated on `allowDangerousInternTestCalls` like `InternalTestService`.
 
 **Application Services** (`ihcclient/src/app/services/`, namespace: `Ihc.App`):
 - Higher-level, tech-agnostic backend services intended for GUI or console applications

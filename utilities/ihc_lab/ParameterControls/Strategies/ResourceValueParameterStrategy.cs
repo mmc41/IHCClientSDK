@@ -8,7 +8,8 @@ namespace IhcLab.ParameterControls.Strategies;
 
 /// <summary>
 /// Strategy for ResourceValue parameters. Renders the full WSResourceValueEnvelope a SetResourceValue(s) write
-/// needs: a ResourceID field, a TypeString field, an IsValueRuntime toggle, a ValueKind dropdown (all 12 kinds),
+/// needs: a ResourceID field, a TypeString field, an IsValueRuntime toggle, a ValueKind dropdown (the 12 writable
+/// kinds; the read-only NONE kind is excluded),
 /// and a payload editor that is rebuilt to match the selected ValueKind (decision D4) - so only the valid payload
 /// field(s) are ever editable. ENUM is entered as two numeric id fields (decision D5). The composite scene kinds
 /// (SceneDimmer/SceneRelay/SceneShutter) and PhoneNumber show their multiple payload fields.
@@ -85,7 +86,7 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
         {
             Name = $"{controlName}.TypeString",
             Width = 180,
-            Watermark = "e.g. dataline_output (optional)"
+            PlaceholderText = "e.g. dataline_output (optional)"
         };
         mainPanel.Children.Add(OperationSupport.LabeledRow("Type String", typeStringBox, labelAlignment: VerticalAlignment.Center));
 
@@ -101,7 +102,8 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
         {
             Name = $"{controlName}.ValueKind",
             MinWidth = 140,
-            ItemsSource = Enum.GetNames(typeof(ResourceValue.ValueKind)),
+            ItemsSource = Enum.GetNames(typeof(ResourceValue.ValueKind))
+                .Where(n => n != nameof(ResourceValue.ValueKind.NONE)).ToArray(),
             SelectedIndex = 0
         };
         mainPanel.Children.Add(OperationSupport.LabeledRow("Value Kind", valueKindDropDown, labelAlignment: VerticalAlignment.Center));
