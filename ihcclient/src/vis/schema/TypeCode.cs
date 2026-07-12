@@ -12,7 +12,7 @@ namespace Ihc.Vis.Schema
     /// <c>customer_info</c>, <c>installer_info</c>, <c>project_info</c>) have no code.
     /// </summary>
     /// <remarks>
-    /// This table carries the codes for the element types currently in the schema registry (all 80 id-bearing
+    /// This table carries the codes for the element types currently in the schema registry (all 84 id-bearing
     /// types — the five id-less elements have none). It grows alongside the registry's canonical DTD blocks; the
     /// authoritative full map is spec ch. 02 §2.3. Two codes are deliberately shared between an internal subclass
     /// and its base (the tag, not the code, is authoritative): <c>case_action</c>/<c>actions</c> = 0x66 and
@@ -51,6 +51,10 @@ namespace Ihc.Vis.Schema
             ["enum_value"] = 0x48,
             ["scenes"] = 0x49,
             ["resource_scene"] = 0x4a,
+            // Scene membership halves (byte-verified by project3-KompleksWired-scenelinks.vis; spec ch. 08 §8.6)
+            ["scene_link"] = 0x4b,
+            ["scene_dimmer"] = 0x4c,
+            ["scene_relay"] = 0x4d,
             // Products / IO
             ["product_dataline"] = 0x53,
             ["dataline_input"] = 0x5a,
@@ -91,6 +95,9 @@ namespace Ihc.Vis.Schema
             ["light_indication"] = 0x1d,
             ["case_action"] = 0x66,
             ["event_power"] = 0xc8,
+            // Scene shutter member (spec §8.4.1/§8.6 — jalousi position recall; sibling of the byte-verified
+            // scene_relay/scene_dimmer above, but no committed vendor .vis carries an instance yet)
+            ["scene_shutter"] = 0x4e,
             // Airlink (wireless) products + IO/commands
             ["product_airlink"] = 0x54,
             ["airlink_shutter_lock"] = 0x59,

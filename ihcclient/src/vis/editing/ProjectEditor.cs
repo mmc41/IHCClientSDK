@@ -32,6 +32,7 @@ namespace Ihc.Vis.Editing
     public sealed class ProjectEditor
     {
         internal const string FollowLinkName = "Følg Link";
+        internal const string SceneLinkName = "Scenarie link";
         private const string GroupsTag = "groups";
         private const string EnumDefinitionsTag = "enum_definitions";
 
@@ -109,13 +110,10 @@ namespace Ihc.Vis.Editing
 
             ElementId defId = allocator.Allocate(TypeCode.RequireForTag("enum_definition"));
             var valueElements = ImmutableArray.CreateBuilder<ProjectElement>(values.Length);
-            var valueRefs = ImmutableArray.CreateBuilder<(string, ElementId)>(values.Length);
             for (int i = 0; i < values.Length; i++)
             {
-                ElementId valueId = allocator.Allocate(TypeCode.RequireForTag("enum_value"));
-                valueElements.Add(SimpleElement("enum_value", valueId,
+                valueElements.Add(SimpleElement("enum_value", allocator.Allocate(TypeCode.RequireForTag("enum_value")),
                     ("name", values[i]), ("index", i.ToString(CultureInfo.InvariantCulture))));
-                valueRefs.Add((values[i], valueId));
             }
             ProjectElement def = SimpleElement("enum_definition", defId, ("name", name))
                 with { Children = valueElements.ToImmutable() };
@@ -125,7 +123,82 @@ namespace Ihc.Vis.Editing
             root = ReplaceChildByTag(root, EnumDefinitionsTag,
                 container with { Children = AppendTo(container.Children, def) });
 
-            return new EnumDefinitionRef(name, defId, valueRefs.ToImmutable());
+            return ToEnumRef(def);
+        }
+
+        /// <summary>
+        /// Resolves a pre-existing project-global enum definition by its exact <c>name</c> and returns the same
+        /// wiring handle <see cref="AddEnumDefinition"/> hands out — for wiring an enum operand
+        /// (<see cref="ConditionRef.AddEnumOperand"/>) or appending values (<see cref="AddEnumValues"/>) to an
+        /// enum authored in an earlier session. Built-in catalog (<c>typeid</c>-bearing, "[read only]") enums
+        /// resolve too — they are legal wiring targets; only mutation refuses them. Throws when no definition
+        /// carries the name (the message lists the available definitions).
+        /// </summary>
+        public EnumDefinitionRef EnumDefinition(string name)
+        {
+            ArgumentNullException.ThrowIfNull(name);
+            ProjectElement container = root.FindChild(EnumDefinitionsTag)
+                ?? throw new InvalidOperationException("The project has no enum_definitions container.");
+            ProjectElement def = container.ChildrenOrEmpty()
+                .FirstOrDefault(c => c.Tag == "enum_definition" && c.GetAttribute("name") == name)
+                ?? throw new InvalidOperationException(
+                    $"The project has no enum definition named '{name}'; available definitions: " +
+                    $"({string.Join(" | ", container.ChildrenOrEmpty().Where(c => c.Tag == "enum_definition").Select(c => c.GetAttribute("name")))}).");
+            return ToEnumRef(def);
+        }
+
+        /// <summary>
+        /// Appends values to an existing project-global enum definition — as IHC Visual's enum dialog does
+        /// (oracle <c>project3-KompleksWired-enumappend.vis</c>, ENG-A3): the definition keeps its id and its
+        /// document position (append <b>in place</b>, self-closed → open), each value allocates one fresh id in
+        /// argument order, and <c>index</c> continues 0-based from the existing value count (<c>index="0"</c> is
+        /// elided as the DTD default on commit). Returns a refreshed handle covering old and new values (the
+        /// handle passed in stays stale). Throws on built-in catalog (<c>typeid</c>-bearing, "[read only]")
+        /// definitions — IHC Visual does not let their values be edited either.
+        /// </summary>
+        public EnumDefinitionRef AddEnumValues(EnumDefinitionRef definition, params string[] values)
+        {
+            ArgumentNullException.ThrowIfNull(definition);
+            ArgumentNullException.ThrowIfNull(values);
+
+            string defToken = definition.Typedef;
+            ProjectElement container = root.FindChild(EnumDefinitionsTag)
+                ?? throw new InvalidOperationException("The project has no enum_definitions container.");
+            ProjectElement def = container.ChildrenOrEmpty()
+                .FirstOrDefault(c => c.GetAttribute("id") == defToken)
+                ?? throw new InvalidOperationException(
+                    $"Enum definition '{defToken}' is no longer part of the project.");
+            if (def.GetAttribute("typeid") is { } typeid && typeid != ElementId.NullToken)
+            {
+                throw new InvalidOperationException(
+                    $"Enum definition '{def.GetAttribute("name")}' is a built-in catalog type — \"[read only]\" " +
+                    "in IHC Visual — so its values cannot be edited.");
+            }
+
+            int existing = def.ChildrenOrEmpty().Count(c => c.Tag == "enum_value");
+            var appended = ImmutableArray.CreateBuilder<ProjectElement>(values.Length);
+            for (int i = 0; i < values.Length; i++)
+            {
+                appended.Add(SimpleElement("enum_value", allocator.Allocate(TypeCode.RequireForTag("enum_value")),
+                    ("name", values[i]), ("index", (existing + i).ToString(CultureInfo.InvariantCulture))));
+            }
+            ProjectElement updated = def with { Children = def.ChildrenOrEmpty().Concat(appended).ToImmutableArray() };
+            root = ReplaceChildByTag(root, EnumDefinitionsTag, container with
+            {
+                Children = container.ChildrenOrEmpty().Select(c => ReferenceEquals(c, def) ? updated : c).ToImmutableArray(),
+            });
+            return ToEnumRef(updated);
+        }
+
+        /// <summary>Builds the wiring handle for an in-tree <c>enum_definition</c> element.</summary>
+        private static EnumDefinitionRef ToEnumRef(ProjectElement definition)
+        {
+            var values = ImmutableArray.CreateBuilder<(string, ElementId)>();
+            foreach (ProjectElement value in definition.ChildrenOrEmpty().Where(c => c.Tag == "enum_value"))
+            {
+                values.Add((value.GetAttribute("name") ?? "", value.Id!.Value));
+            }
+            return new EnumDefinitionRef(definition.GetAttribute("name") ?? "", definition.Id!.Value, values.ToImmutable());
         }
 
         /// <summary>
@@ -172,6 +245,45 @@ namespace Ihc.Vis.Editing
         }
 
         /// <summary>
+        /// Updates the id-less <c>project_info</c> root metadata block (Dokumentation ▸ Projektinfo, US-039):
+        /// upsert — only the fields the callback sets are written; setting <c>""</c> clears a field (dropped as
+        /// the DTD default on commit, the vendor's blank ⇒ attribute-omitted semantics). The three metadata
+        /// blocks declare no id, so they are unreachable through the id-addressed edit surface — this is their
+        /// sanctioned write path.
+        /// </summary>
+        public ProjectEditor SetProjectInfo(Func<ProjectInfoBuilder, ProjectInfoBuilder> configure)
+        {
+            ArgumentNullException.ThrowIfNull(configure);
+            return UpdateMetadataChild("project_info", configure(new ProjectInfoBuilder()).Attributes);
+        }
+
+        /// <summary>Updates the id-less <c>customer_info</c> root metadata block; semantics as <see cref="SetProjectInfo"/>.</summary>
+        public ProjectEditor SetCustomerInfo(Func<PartyInfoBuilder, PartyInfoBuilder> configure)
+        {
+            ArgumentNullException.ThrowIfNull(configure);
+            return UpdateMetadataChild("customer_info", configure(new PartyInfoBuilder()).Attributes);
+        }
+
+        /// <summary>Updates the id-less <c>installer_info</c> root metadata block; semantics as <see cref="SetProjectInfo"/>.</summary>
+        public ProjectEditor SetInstallerInfo(Func<PartyInfoBuilder, PartyInfoBuilder> configure)
+        {
+            ArgumentNullException.ThrowIfNull(configure);
+            return UpdateMetadataChild("installer_info", configure(new PartyInfoBuilder()).Attributes);
+        }
+
+        private ProjectEditor UpdateMetadataChild(string tag, IReadOnlyList<(string Name, string Value)> attributes)
+        {
+            ProjectElement block = root.FindChild(tag)
+                ?? throw new InvalidOperationException($"The project has no <{tag}> metadata element.");
+            foreach ((string name, string value) in attributes)
+            {
+                block = block.WithAttribute(name, value);
+            }
+            root = ReplaceChildByTag(root, tag, block);
+            return this;
+        }
+
+        /// <summary>
         /// Opens a <see cref="ProgramBuilder"/> over an existing <c>program_simple</c> (addressed by id) to author its
         /// events and nested logic by hand — the id-addressed program-authoring entry a GUI drives after selecting a
         /// program node. The target must be a <c>program_simple</c> owning the <c>events</c>/<c>actions</c> containers
@@ -186,6 +298,22 @@ namespace Ihc.Vis.Editing
                     $"Element {programSimpleId.ToToken()} is a <{program.Tag}>, not a <program_simple>.");
             }
             return new ProgramBuilder(this, programSimpleId);
+        }
+
+        /// <summary>
+        /// Opens a <see cref="ConditionsGroupRef"/> over an existing <c>conditions</c> group (addressed by id) — the
+        /// id-addressed entry a GUI drives after selecting a Betingelser node in a loaded project (US-029: OR/AND
+        /// toggle, add condition rows, add nested logic groups).
+        /// </summary>
+        public ConditionsGroupRef ConditionsGroup(ElementId conditionsId)
+        {
+            ProjectElement conditions = Require(conditionsId);
+            if (conditions.Tag != "conditions")
+            {
+                throw new InvalidOperationException(
+                    $"Element {conditionsId.ToToken()} is a <{conditions.Tag}>, not a <conditions>.");
+            }
+            return new ConditionsGroupRef(this, conditionsId);
         }
 
         /// <summary>
@@ -208,7 +336,7 @@ namespace Ihc.Vis.Editing
 
         /// <summary>
         /// Removes a locality (room) and everything in it, cascading the reciprocal follow-link halves outside it
-        /// that point into its resources (via <see cref="DeleteById"/>). Retired <c>_0x</c> ids are not reused;
+        /// that point into its resources (via <see cref="DeleteById(ElementId)"/>). Retired <c>_0x</c> ids are not reused;
         /// returns <c>this</c> for optional chaining.
         /// </summary>
         public ProjectEditor RemoveGroup(GroupRef group)
@@ -228,7 +356,17 @@ namespace Ihc.Vis.Editing
         /// committing — the session never holds a dangling reference. Retired <c>_0x</c> ids are not reused; a
         /// no-op when the id is absent. Returns <c>this</c> for chaining.
         /// </summary>
-        public ProjectEditor DeleteById(ElementId id)
+        public ProjectEditor DeleteById(ElementId id) => DeleteById(id, DeleteReferencePolicy.Strict);
+
+        /// <summary>
+        /// Deletes as <see cref="DeleteById(ElementId)"/>, with <paramref name="policy"/> deciding the fate of
+        /// program rows that still reference the deleted subtree:
+        /// <see cref="DeleteReferencePolicy.CascadeReferences"/> removes each referencing
+        /// <c>action</c>/<c>condition</c>/<c>event</c> row whole (any link slot, parents kept — the vendor US-009
+        /// semantics pinned by ENG2-A5), while <see cref="DeleteReferencePolicy.Strict"/> refuses the delete.
+        /// Returns <c>this</c> for chaining.
+        /// </summary>
+        public ProjectEditor DeleteById(ElementId id, DeleteReferencePolicy policy)
         {
             ProjectElement? subtree = FindById(root, id);
             if (subtree is null)
@@ -252,6 +390,10 @@ namespace Ihc.Vis.Editing
                     deletedIds.Add(partnerId);
                 }
             }
+            if (policy == DeleteReferencePolicy.CascadeReferences)
+            {
+                candidate = CascadeReferencingRows(candidate, deletedIds);
+            }
             List<string> dangling = FindDanglingReferences(candidate, deletedIds);
             if (dangling.Count > 0)
             {
@@ -262,6 +404,50 @@ namespace Ihc.Vis.Editing
             root = candidate;
             return this;
         }
+
+        // The vendor US-009 reference cascade (ENG2-A5, §18 M-B = row-only, any-link-slot): every
+        // action/condition/event row whose link1 or link2 points into the deleted set is removed WHOLE — its
+        // embedded operand children go with it — while parent groups stay (emptied containers survive). Fixpoint
+        // because a removed row's own ids join the set and may be referenced by further rows; anything the capture
+        // does not pin (scenes bindings, enum typedefs, case criteria) is left for the strict guard to refuse.
+        private ProjectElement CascadeReferencingRows(ProjectElement tree, HashSet<ElementId> deletedIds)
+        {
+            bool removedAny = true;
+            while (removedAny)
+            {
+                removedAny = false;
+                var rows = new List<ElementId>();
+                void Walk(ProjectElement element)
+                {
+                    if (element.Tag is "action" or "condition" or "event" && element.Id is { } rowId
+                        && (SlotHits(element, "link1", deletedIds) || SlotHits(element, "link2", deletedIds)))
+                    {
+                        rows.Add(rowId);    // the whole row goes; no need to look inside it
+                    }
+                    else if (!element.Children.IsDefaultOrEmpty)
+                    {
+                        foreach (ProjectElement child in element.Children)
+                        {
+                            Walk(child);
+                        }
+                    }
+                }
+                Walk(tree);
+                foreach (ElementId rowId in rows)
+                {
+                    if (FindById(tree, rowId) is { } row)
+                    {
+                        CollectIds(row, deletedIds);
+                        tree = RemoveById(tree, rowId);
+                        removedAny = true;
+                    }
+                }
+            }
+            return tree;
+        }
+
+        private static bool SlotHits(ProjectElement row, string slot, HashSet<ElementId> deletedIds) =>
+            ElementId.TryParse(row.GetAttribute(slot), out ElementId target) && deletedIds.Contains(target);
 
         private List<string> FindDanglingReferences(ProjectElement tree, HashSet<ElementId> deletedIds)
         {
@@ -374,22 +560,135 @@ namespace Ihc.Vis.Editing
         }
 
         /// <summary>
+        /// Wires a scene membership between an FB scene output pin and a product's scenes container, writing both
+        /// reciprocal halves in a single call (US-024, spec ch. 08 §§8.4–8.5): the member row derived from
+        /// <paramref name="value"/> (<c>scene_relay</c>/<c>scene_dimmer</c>/<c>scene_shutter</c>, carrying the
+        /// values) inside the scenes container, and the <c>scene_link</c> back-reference inside the pin — the two
+        /// pointing at each other. Allocation is member-first (the vendor's order, pinned by the
+        /// <c>-scenelinks</c> oracle). A member kind contradicting the container's bound output family throws;
+        /// unknown families stay permissive (open-world). Returns <c>this</c> for optional chaining.
+        /// </summary>
+        public ProjectEditor LinkScene(ResourceRef sceneOutput, ScenesRef target, SceneValue value)
+        {
+            ArgumentNullException.ThrowIfNull(sceneOutput);
+            ArgumentNullException.ThrowIfNull(target);
+            ArgumentNullException.ThrowIfNull(value);
+            ElementId pinId = RequireId(sceneOutput);
+            ProjectElement pin = Require(pinId);      // both ends must exist before any id is allocated or a half
+            ProjectElement scenes = Require(target.Id);   // appended — a stale handle must fail here (Link precedent)
+            if (pin.Tag != "resource_scene")
+            {
+                throw new InvalidOperationException(
+                    $"Resource '{sceneOutput.Name}' is a <{pin.Tag}>; only <resource_scene> outputs fire scenes.");
+            }
+            RequireSceneKindMatch(scenes, target, value);
+
+            ElementId memberId = allocator.Allocate(TypeCode.RequireForTag(value.MemberTag));   // member first (ENG-A2)
+            ElementId sceneLinkId = allocator.Allocate(TypeCode.RequireForTag("scene_link"));
+
+            var memberAttrs = new List<(string Name, string Value)>(value.Attributes.Length + 2) { ("name", SceneLinkName) };
+            memberAttrs.AddRange(value.Attributes);
+            memberAttrs.Add(("link", sceneLinkId.ToToken()));
+            ProjectElement member = SimpleElement(value.MemberTag, memberId, memberAttrs.ToArray());
+            ProjectElement sceneLink = SimpleElement("scene_link", sceneLinkId,
+                ("name", SceneLinkName), ("icon", ResourceMaterialization.RequireIcon("scene_link")), ("link", memberId.ToToken()));
+
+            AppendChild(target.Id, member);
+            AppendChild(pinId, sceneLink);
+            return this;
+        }
+
+        /// <summary>
+        /// Removes the scene membership between an FB scene output pin and a product's scenes container — the
+        /// inverse of <see cref="LinkScene"/> — deleting exactly the two halves of that pair. Throws when the two
+        /// are not scene-linked (nothing is mutated then), so a stale or mistaken unlink can never silently delete
+        /// other memberships. Returns <c>this</c> for optional chaining.
+        /// </summary>
+        public ProjectEditor UnlinkScene(ResourceRef sceneOutput, ScenesRef target)
+        {
+            ArgumentNullException.ThrowIfNull(sceneOutput);
+            ArgumentNullException.ThrowIfNull(target);
+            ProjectElement pin = Require(RequireId(sceneOutput));
+            ProjectElement scenes = Require(target.Id);
+
+            if (FindScenePair(scenes, pin) is not { } pair)
+            {
+                throw new InvalidOperationException(
+                    $"Resource '{sceneOutput.Name}' and scenes container '{target.Name}' are not scene-linked; " +
+                    "nothing to unlink.");
+            }
+            root = RemoveById(root, pair.Member);
+            root = RemoveById(root, pair.SceneLink);
+            return this;
+        }
+
+        // The scene-capable output families with pinned member kinds (US-024, ch. 08 §8.4): relays/sockets take
+        // scene_relay, dimmer regulation takes scene_dimmer. Unknown families stay permissive (the open-world
+        // CanInsert convention) — only a known mismatch is a hard error.
+        private static string? PinnedMemberTagFor(string boundOutputTag) => boundOutputTag switch
+        {
+            "dataline_output" or "airlink_relay" => "scene_relay",
+            "airlink_dimming" => "scene_dimmer",
+            _ => null,
+        };
+
+        private void RequireSceneKindMatch(ProjectElement scenes, ScenesRef target, SceneValue value)
+        {
+            if (ElementId.TryParse(scenes.GetAttribute("scene_resource"), out ElementId boundId)
+                && FindById(root, boundId) is { } bound
+                && PinnedMemberTagFor(bound.Tag) is { } pinned
+                && pinned != value.MemberTag)
+            {
+                throw new InvalidOperationException(
+                    $"Scenes container '{target.Name}' is bound to a <{bound.Tag}> output, which takes {pinned} " +
+                    $"members; a {value.MemberTag} value cannot be linked here.");
+            }
+        }
+
+        /// <summary>
+        /// The first mutually-reciprocal scene pair between the container and the pin (the member row inside the
+        /// scenes container, the <c>scene_link</c> inside the pin, each pointing at the other), or <c>null</c> when
+        /// no such pair exists. Matching mirrors <see cref="FindReciprocalPair"/>: exact reciprocity by parsed
+        /// <see cref="ElementId"/>, so multi-membership containers and shared pins resolve to the requested pair only.
+        /// </summary>
+        private static (ElementId Member, ElementId SceneLink)? FindScenePair(ProjectElement scenes, ProjectElement pin)
+        {
+            foreach (ProjectElement member in scenes.ChildrenOrEmpty())
+            {
+                if (!ReciprocalTags.SceneMemberTags.Contains(member.Tag) || member.Id is not { } memberId)
+                {
+                    continue;
+                }
+                foreach (ProjectElement partner in pin.ChildrenOrEmpty())
+                {
+                    if (partner.Tag == "scene_link" && partner.Id is { } sceneLinkId
+                        && ElementId.TryParse(member.GetAttribute("link"), out ElementId memberLink) && memberLink == sceneLinkId
+                        && ElementId.TryParse(partner.GetAttribute("link"), out ElementId partnerLink) && partnerLink == memberId)
+                    {
+                        return (memberId, sceneLinkId);
+                    }
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
         /// Clones an existing in-project subtree (the clipboard copy/paste) under a new parent: deep-copies it
         /// through the same transform as a catalog insert — fresh ids off the project counter (each element's
         /// type-code suffix preserved), internal IDREFs remapped through one old→new map, and shared enums reused —
-        /// then applies <paramref name="policy"/> to any follow-link half whose reciprocal partner lies outside the
-        /// copy. Works for any subtree (locality, product, function block or bare resource). Returns the new root's
-        /// id. The source is left untouched.
+        /// then applies <paramref name="policy"/> to any reciprocal half (follow-link half or scene row) whose
+        /// partner lies outside the copy. Works for any subtree (locality, product, function block or bare
+        /// resource). Returns the new root's id. The source is left untouched.
         /// </summary>
         public ElementId CopySubtree(ElementId sourceId, ElementId targetParentId,
             LinkCopyPolicy policy = LinkCopyPolicy.DropExternal)
         {
             ProjectElement source = Require(sourceId);
             Require(targetParentId);                      // fail fast if the paste target does not exist
-            // Drop external follow-link halves BEFORE the clone allocates ids: the vendor's paste consumes no id for
+            // Drop external reciprocal halves BEFORE the clone allocates ids: the vendor's paste consumes no id for
             // a dropped half, so removing them afterwards (copy-then-prune) would leave a phantom id burn. Internal
-            // halves (both ends inside the copy) stay and are remapped by InsertTransform.
-            ProjectElement body = policy == LinkCopyPolicy.DropExternal ? DropExternalLinkHalves(source) : source;
+            // pairs (both ends inside the copy) stay and are remapped by InsertTransform.
+            ProjectElement body = policy == LinkCopyPolicy.DropExternal ? DropExternalReciprocalHalves(source) : source;
             // A catalog product's .def body carries its enum as its first child, so a vendor paste allocates (and
             // discards) that enum's def+value ids between the product id and its first serialized child — the
             // "enum-footprint" id burn. The in-project instance dropped that stub on its original insert;
@@ -467,17 +766,18 @@ namespace Ihc.Vis.Editing
             });
 
         /// <summary>
-        /// Returns a copy of <paramref name="source"/> with every follow-link half whose reciprocal partner lies
-        /// outside the subtree removed — applied to the source body <b>before</b> the clone allocates ids, so a
-        /// dropped half consumes no id (matching the vendor paste). Internal halves are left for
+        /// Returns a copy of <paramref name="source"/> with every reciprocal half (follow-link half or scene row)
+        /// whose partner lies outside the subtree removed — applied to the source body <b>before</b> the clone
+        /// allocates ids, so a dropped half consumes no id (matching the vendor paste for follow-links; the scene
+        /// extension is SDK-defined under the same rule, no parity capture yet). Internal pairs are left for
         /// <see cref="InsertTransform"/> to deep-copy and remap.
         /// </summary>
-        private static ProjectElement DropExternalLinkHalves(ProjectElement source)
+        private static ProjectElement DropExternalReciprocalHalves(ProjectElement source)
         {
             var insideIds = new HashSet<ElementId>();
             CollectIds(source, insideIds);
             var external = new List<ElementId>();
-            CollectExternalLinkHalves(source, insideIds, external);
+            CollectExternalReciprocalHalves(source, insideIds, external);
             ProjectElement pruned = source;
             foreach (ElementId halfId in external)
             {
@@ -883,13 +1183,16 @@ namespace Ihc.Vis.Editing
             }
         }
 
-        private static void CollectExternalLinkHalves(ProjectElement element, HashSet<ElementId> insideIds, List<ElementId> external)
+        private static void CollectExternalReciprocalHalves(ProjectElement element, HashSet<ElementId> insideIds, List<ElementId> external)
         {
             foreach (ProjectElement e in element.DescendantsAndSelf())
             {
-                if (ReciprocalTags.FollowLinkHalfTags.Contains(e.Tag)
+                // A null-token link is an unwired row, not an external one — the validator's scene-bijection rule
+                // deems that a legitimate authored state, so the prune must not make it vanish on copy.
+                if (ReciprocalTags.All.Contains(e.Tag)
                     && e.Id is { } halfId
-                    && ElementId.TryParse(e.GetAttribute("link"), out ElementId partner)
+                    && e.GetAttribute("link") is { } linkToken && linkToken != ElementId.NullToken
+                    && ElementId.TryParse(linkToken, out ElementId partner)
                     && !insideIds.Contains(partner))
                 {
                     external.Add(halfId);                  // reciprocal partner lies outside the copied subtree

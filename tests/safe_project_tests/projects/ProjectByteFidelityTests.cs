@@ -10,10 +10,13 @@ namespace Ihc.Vis.Tests
     /// metadata preserved must be <strong>byte-for-byte</strong> what IHC Visual wrote. Covers the full authentic
     /// vendor corpus — <c>Project0-Tomt.vis</c> (empty baseline), <c>Project1-SimpelWired.vis</c> (wired products +
     /// FB programs + links), <c>project2-CustomBlock.vis</c> (custom/locked function blocks + <c>resource_holiday</c>)
-    /// and <c>project3-KompleksWired.vis</c> (airlink + RS-485 + scenes + empty <c>Tom blok</c> blocks) — plus the two
-    /// derived oracles <c>project3-KompleksWired-copied.vis</c> and <c>-mutated.vis</c>, which exercise the vendor's
-    /// post-edit structures (dropped-link self-closing inputs, remapped scenes, reused enums, and the burned-id gaps
-    /// from enum re-hoist / copy) — through both the pure <see cref="ProjectSerializer"/> and the
+    /// and <c>project3-KompleksWired.vis</c> (airlink + RS-485 + scenes + empty <c>Tom blok</c> blocks) — plus the
+    /// derived oracles (<c>-copied</c>, <c>-mutated</c>, <c>-enumvalues</c>, <c>-projektinfo</c>, <c>-scenelinks</c>,
+    /// <c>-enumappend</c>, <c>control-save</c>, <c>-refdelete</c>, <c>-logicgroups</c>, <c>-case</c>,
+    /// <c>-gemsideeffect</c>), which exercise the vendor's post-edit structures (dropped-link self-closing inputs,
+    /// remapped/authored scenes, reused enums, burned-id gaps from enum re-hoist / copy, metadata blocks, scene-link
+    /// pairs, appended enum values, reference-cascade deletes, nested/OR condition groups, <c>program_case</c>
+    /// structures and in-doc Gem re-attribution) — through both the pure <see cref="ProjectSerializer"/> and the
     /// <see cref="ProjectAppService"/> save path. A separate test pins the clock and verifies the default (vendor-like)
     /// save re-stamps only <c>id2</c>/<c>modified</c>.
     /// </summary>
@@ -30,10 +33,18 @@ namespace Ihc.Vis.Tests
         [TestCase("Project0-Tomt.vis")]
         [TestCase("Project1-SimpelWired.vis")]
         [TestCase("project2-CustomBlock.vis")]
+        [TestCase("project2-control-save.vis")]
+        [TestCase("project2-CustomBlock-refdelete.vis")]
+        [TestCase("project2-CustomBlock-logicgroups.vis")]
+        [TestCase("project2-CustomBlock-case.vis")]
         [TestCase("project3-KompleksWired.vis")]
         [TestCase("project3-KompleksWired-copied.vis")]
         [TestCase("project3-KompleksWired-mutated.vis")]
         [TestCase("project3-KompleksWired-enumvalues.vis")]
+        [TestCase("project3-KompleksWired-projektinfo.vis")]
+        [TestCase("project3-KompleksWired-scenelinks.vis")]
+        [TestCase("project3-KompleksWired-enumappend.vis")]
+        [TestCase("project3-KompleksWired-gemsideeffect.vis")]
         public void Serialize_RoundTrip_IsByteIdentical(string file)
         {
             byte[] original = TestData.ReadBytes("projects/" + file);
@@ -46,10 +57,18 @@ namespace Ihc.Vis.Tests
         [TestCase("Project0-Tomt.vis")]
         [TestCase("Project1-SimpelWired.vis")]
         [TestCase("project2-CustomBlock.vis")]
+        [TestCase("project2-control-save.vis")]
+        [TestCase("project2-CustomBlock-refdelete.vis")]
+        [TestCase("project2-CustomBlock-logicgroups.vis")]
+        [TestCase("project2-CustomBlock-case.vis")]
         [TestCase("project3-KompleksWired.vis")]
         [TestCase("project3-KompleksWired-copied.vis")]
         [TestCase("project3-KompleksWired-mutated.vis")]
         [TestCase("project3-KompleksWired-enumvalues.vis")]
+        [TestCase("project3-KompleksWired-projektinfo.vis")]
+        [TestCase("project3-KompleksWired-scenelinks.vis")]
+        [TestCase("project3-KompleksWired-enumappend.vis")]
+        [TestCase("project3-KompleksWired-gemsideeffect.vis")]
         public async Task Save_PreserveExistingMetadata_IsByteIdentical(string file)
         {
             byte[] original = TestData.ReadBytes("projects/" + file);

@@ -276,6 +276,186 @@ namespace Ihc.Vis.Tests
                 1 + 3, "T10 add-enum-with-values-then-delete");
         }
 
+        // ---- T11: scene-link a product's scenes container to an FB scene pin, then unlink ----
+
+        // N = member row + scene_link (member-first, ENG-A2). T11a uses the relay endpoints of the -scenelinks
+        // oracle; T11b uses its dimmer endpoints but with NON-default magnitudes (80 % / 5 s) deliberately: the A2
+        // capture could only record the scenario dialog's defaults (100 % / 1000 ms), so non-default value
+        // serialization is gated here instead.
+        [Test]
+        public async Task T11a_LinkSceneRelayThenUnlink_IsIdenticalExceptPinnedLastUniqueId()
+        {
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
+            Project project = await LoadOracle();
+
+            ProjectEditor editor = project.Edit();
+            GroupRef room = editor.Group("Stue & Køkken \"åben\"");
+            ResourceRef pin = room.FunctionBlock("1.1.01.e. Kip tænd sluk").SceneOutput("Scenarie Sluk");
+            ScenesRef target = room.Product("Lampeudtag").Scenes();
+            editor.LinkScene(pin, target, SceneValue.Relay(on: true));
+            editor.UnlinkScene(pin, target);
+            Project after = editor.ToProject();
+
+            AssertIdenticalExceptLastUniqueId(original, await Save(after), project.LastUniqueId!, after.LastUniqueId!,
+                2, "T11a link-scene-relay-then-unlink");
+        }
+
+        [Test]
+        public async Task T11b_LinkSceneDimmerNonDefaultThenUnlink_IsIdenticalExceptPinnedLastUniqueId()
+        {
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
+            Project project = await LoadOracle();
+
+            ProjectEditor editor = project.Edit();
+            ResourceRef pin = editor.Group("Værelse").FunctionBlock("4.1.01. AND (\"Og\"- blok)")
+                .SceneOutput("Scenarie Sluk");
+            ScenesRef target = editor.Group("Soveværelse").Product("Dimmer Universal").Scenes();
+            editor.LinkScene(pin, target, SceneValue.Dimmer(80, TimeSpan.FromSeconds(5)));
+            editor.UnlinkScene(pin, target);
+            Project after = editor.ToProject();
+
+            AssertIdenticalExceptLastUniqueId(original, await Save(after), project.LastUniqueId!, after.LastUniqueId!,
+                2, "T11b link-scene-dimmer-then-unlink");
+        }
+
+        // ---- T12: OR-then-AND toggle on an existing stock conditions group (G2, US-029) ----
+
+        // Pure attribute cycle through the id-addressed ConditionsGroupRef surface on a loaded project: Or() writes
+        // the literal type="or", And() returns to the DTD default "and" which the canonicalizer re-omits — no ids,
+        // no residue. The target is a stock conditions group that ships without a type attribute.
+        [Test]
+        public async Task T12_OrThenAndOnExistingConditions_IsByteIdentical()
+        {
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
+            Project project = await LoadOracle();
+            ProjectElement conditions = project.Root.Descendants()
+                .First(e => e.Tag == "conditions" && e.GetAttribute("type") is null);
+
+            ProjectEditor editor = project.Edit();
+            editor.ConditionsGroup(conditions.Id!.Value).Or().And();
+
+            TestData.AssertBytesIdentical(original, await Save(editor.ToProject()),
+                "T12 or-then-and cycle on a stock group");
+        }
+
+        // ---- T13: author a sub-program + nested logic group on an empty block, then delete the sub (G2) ----
+
+        // N = the 4-node program_sub skeleton + 1 nested conditions group; deleting the program_sub removes all
+        // five. Garage's "Tom blok" ships with an empty program_simple, so the authored sub is its sole program_sub.
+        [Test]
+        public async Task T13_AddSubProgramWithConditionGroupThenDelete_IsIdenticalExceptPinnedLastUniqueId()
+        {
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
+            Project project = await LoadOracle();
+
+            ProjectEditor editor = project.Edit();
+            SubProgramRef sub = editor.Group("Garage").FunctionBlock("Tom blok").Program().AddSubProgram();
+            sub.Conditions.AddConditionGroup();
+            ProjectElement garage = editor.ToProject().Groups.First(g => g.GetAttribute("name") == "Garage");
+            editor.DeleteById(garage.Descendants().Single(e => e.Tag == "program_sub").Id!.Value);
+            Project after = editor.ToProject();
+
+            AssertIdenticalExceptLastUniqueId(original, await Save(after), project.LastUniqueId!, after.LastUniqueId!,
+                4 + 1, "T13 add-sub-program-with-group-then-delete");
+        }
+
+        // ---- T14: author a case switch (values + default action), then delete the host sub (G3, US-031) ----
+
+        // N = the 4-node program_sub skeleton + program_case with its eagerly-allocated Else (2) + one case value
+        // (case_action + embedded counter operand, 2) + one Else action — the SDK burns nothing (the vendor's
+        // Rediger-konstant burn is a UI artifact). Deleting the program_sub removes all nine.
+        [Test]
+        public async Task T14_AddCaseWithValuesThenDelete_IsIdenticalExceptPinnedLastUniqueId()
+        {
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
+            Project project = await LoadOracle();
+
+            ProjectEditor editor = project.Edit();
+            FunctionBlockRef tomBlok = editor.Group("Garage").FunctionBlock("Tom blok");
+            ResourceRef criterion = tomBlok.AddInternalVariable("resource_counter", "T14 Tæller");
+            SubProgramRef sub = tomBlok.Program().AddSubProgram();
+            CaseRef kase = sub.WhenTrue.AddCase("Case (%LT)", criterion);
+            kase.Case("Case", "resource_counter", op => op.SetAttribute("inivalue", "100"));
+            kase.Default().AddAction("%P = 0", criterion, "_0xa");
+            ProjectElement garage = editor.ToProject().Groups.First(g => g.GetAttribute("name") == "Garage");
+            editor.DeleteById(garage.Descendants().Single(e => e.Tag == "program_sub").Id!.Value);
+            editor.DeleteById(criterion.Id!.Value);
+            Project after = editor.ToProject();
+
+            AssertIdenticalExceptLastUniqueId(original, await Save(after), project.LastUniqueId!, after.LastUniqueId!,
+                1 + 4 + 2 + 2 + 1, "T14 add-case-with-values-then-delete");
+        }
+
+        // ---- T15: Projektinfo set-then-restore across all three id-less metadata blocks (G4, US-039) ----
+
+        // Fill every dialog field of project_info / customer_info / installer_info, then restore the seed:
+        // project3 carries only programmer + installer name/country, so every other field restores to ""
+        // (blank ⇒ re-omitted on commit), re-emptying customer_info entirely. Pure cycle — no ids involved.
+        [Test]
+        public async Task T15_SetThenRestoreProjectInfo_IsByteIdentical()
+        {
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
+            Project project = await LoadOracle();
+
+            ProjectEditor editor = project.Edit();
+            editor.SetProjectInfo(p => p.Programmer("T15").Number("T15").Drawing("T15").Type("T15").Description("T15"))
+                  .SetCustomerInfo(c => c.Name("T15").Address("T15").City("T15").ZipCode("T15").Country("T15")
+                                         .Phone("T15").MobilePhone("T15").Email("T15"))
+                  .SetInstallerInfo(i => i.Name("T15").Address("T15").City("T15").ZipCode("T15").Country("T15")
+                                          .Phone("T15").MobilePhone("T15").Email("T15"));
+            editor.SetProjectInfo(p => p.Programmer("Morten Christensen").Number("").Drawing("").Type("").Description(""))
+                  .SetCustomerInfo(c => c.Name("").Address("").City("").ZipCode("").Country("")
+                                         .Phone("").MobilePhone("").Email(""))
+                  .SetInstallerInfo(i => i.Name("Morten").Address("").City("").ZipCode("").Country("Danmark")
+                                          .Phone("").MobilePhone("").Email(""));
+
+            byte[] actual = await Save(editor.ToProject());
+
+            TestData.AssertBytesIdentical(original, actual, "T15 Projektinfo set-then-restore");
+        }
+
+        // ---- T17: append values to the pre-existing empty TestEnum, then delete them (M-A, US-030) ----
+
+        // Never NormalizeCatalogEnums() here (same reason as T10). "TestEnum æøå äö "x"" ships empty and
+        // unreferenced, so the three appended values are the only delta, deleting them trips no dangling-ref
+        // guard, and the emptied definition must serialize back to its original self-closed form. N = 3 values.
+        [Test]
+        public async Task T17_AddEnumValuesThenDelete_IsIdenticalExceptPinnedLastUniqueId()
+        {
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
+            Project project = await LoadOracle();
+
+            ProjectEditor editor = project.Edit();
+            EnumDefinitionRef appended = editor.AddEnumValues(
+                editor.EnumDefinition("TestEnum æøå äö \"x\""), "P1", "P2", "P3");
+            foreach (string value in new[] { "P1", "P2", "P3" })
+            {
+                ElementId.TryParse(appended.InitialValue(value), out ElementId valueId);
+                editor.DeleteById(valueId);
+            }
+            Project after = editor.ToProject();
+
+            AssertIdenticalExceptLastUniqueId(original, await Save(after), project.LastUniqueId!, after.LastUniqueId!,
+                3, "T17 append-enum-values-then-delete");
+        }
+
+        // ---- T18: exporting a placed block is a pure read — the saved project is untouched (G5, US-021) ----
+
+        // The deliberate deviation from vendor Gem (which renames + re-stamps the in-document block): the SDK's
+        // ExportDefinition must leave the session without a trace, so a bare save afterwards is byte-identical.
+        [Test]
+        public async Task T18_ExportDefinition_LeavesProjectByteIdentical()
+        {
+            byte[] original = TestData.ReadBytes("projects/" + Oracle);
+            Project project = await LoadOracle();
+
+            ProjectEditor editor = project.Edit();
+            editor.Group("Stue & Køkken \"åben\"").FunctionBlock("1.1.01.e. Kip tænd sluk")
+                .ExportDefinition("T18", "T18", new DateOnly(2026, 7, 12), "T18");
+
+            TestData.AssertBytesIdentical(original, await Save(editor.ToProject()), "T18 export-is-read-only");
+        }
+
         // ----- helpers -----
 
         private static bool HasLinks(ProjectElement subtree) =>

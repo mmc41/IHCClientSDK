@@ -25,6 +25,12 @@ dotnet test tests/safe_lab_tests/safe_lab_tests.csproj
 # Run controller-free unit tests (no Avalonia headless app, no active controller)
 dotnet test tests/safe_unit_tests/safe_unit_tests.csproj
 
+# Run .vis project engine + ProjectAppService tests (controller-free, oracle-based)
+dotnet test tests/safe_project_tests/safe_project_tests.csproj
+
+# Run IHC Visual desktop app GUI tests (headless Avalonia UI tests, no controller)
+dotnet test tests/safe_visual_tests/safe_visual_tests.csproj
+
 # Run tests with detailed output
 dotnet test tests/safe_integration_tests/safe_integration_tests.csproj --verbosity detailed
 
@@ -54,6 +60,12 @@ dotnet run --project utilities/ihc_project_download_upload/ihc_ProjectDownloadUp
 dotnet run --project utilities/ihc_lab/ihc_lab.csproj
 ```
 
+### Running Applications
+```bash
+# Run IHC Visual desktop application (Avalonia, .NET 10; GUI over ProjectAppService)
+dotnet run --project applications/ihc_visual/ihc_visual.csproj
+```
+
 ## Project Architecture
 
 ### Core Structure
@@ -64,6 +76,8 @@ This is a .NET 9.0 mono-repository containing an unofficial SDK for IHC (Intelli
 - `tests/safe_integration_tests/` - NUnit test suite for SDK integration tests (safe to run against active controllers)
 - `tests/safe_lab_tests/` - NUnit test suite for IHC Lab GUI tests (headless Avalonia UI tests with diagnostic features)
 - `tests/safe_unit_tests/` - NUnit test suite for controller-free unit tests (no Avalonia headless app; mocks IHC services with FakeItEasy)
+- `tests/safe_visual_tests/` - NUnit test suite for the IHC Visual desktop app (headless Avalonia UI tests against the real `ihc_visual.App`; no controller)
+- `applications/ihc_visual/` - Avalonia desktop application (.NET 10) recreating IHC Visual project editing; pure GUI over `ProjectAppService` (all business logic stays in the SDK)
 - `examples/ihcclient_example1/` & `examples/ihcclient_example2/` - Console application examples
 - `utilities/ihc_project_io_extractor/` - Utility to generate C# constants from IHC project files
 - `utilities/ihc_httpproxyrecorder/` - HTTP proxy for debugging/investigating IHC API calls
@@ -92,6 +106,7 @@ The `ihcclient` project follows a layered architecture:
   - `AdminAppService` - Manages administrator-related data (users, email, SMTP, DNS, network, web access, WLAN settings). Features change tracking that detects and applies only modified settings to minimize API calls. Supports JSON serialization with optional encryption of sensitive data (marked with `[SensitiveData]` attribute). Provides `GetModel()` to retrieve settings, `Store()` to apply changes, and `SaveAsJson()`/`LoadFromJson()` for file operations.
   - `InformationAppService` - Retrieves read-only controller information (system status, versions, uptime, time settings, SD card info, SMS modem info). Provides `GetInformationModel()` for comprehensive system information retrieval.
   - `LabAppService` - Laboratory/testing backend where users can dynamically select and execute individual IHC service operations. Supports runtime service and operation selection for experimentation and testing scenarios.
+  - `ProjectAppService` (namespace `Ihc.Vis`) - The single door for IHC project (`.vis`) IO and the backend for the `ihc_visual` app: `CreateNew` (File→New template), `Load`/`Save` (byte-fidelity round-trip, atomic writes, optional `.BAK`), `Validate`, catalog discovery (`GetAvailableProducts`/`GetAvailableFunctionBlocks` from the SDK-embedded `BuiltInCatalog` — no IHC Visual install required), runtime catalog import (`ImportCatalogFile`/`ImportCatalogDirectory`), and the controller bridge (`DownloadFrom`/`UploadTo`). Editing a loaded/created project goes through the `project.Edit()` extension (`Ihc.Vis.Editing.ProjectEditor`) — the single mutation entry point (localities, products, function blocks, links, programs, copy/move/delete).
 - Application services can create their own SDK service instances or accept existing instances via constructor injection
 - Designed to be framework-agnostic, suitable for WPF, Avalonia, console apps, or web backends
 
@@ -171,6 +186,8 @@ Before running any code that connects to an IHC controller:
 - **safe_integration_tests** - SDK integration tests (safe to run against active controllers)
 - **safe_lab_tests** - Headless Avalonia UI tests for IHC Lab application with advanced diagnostic capabilities (using fake sevices instead of active controller)
 - **safe_unit_tests** - Controller-free unit tests for SDK and Lab business logic (no Avalonia headless app; mocks IHC services with FakeItEasy). UI control-construction tests belong in safe_lab_tests instead.
+- **safe_project_tests** - Controller-free tests for the `.vis` project engine and `ProjectAppService` (byte-fidelity round-trips against `testdata/` oracles, editing, catalog, validation). The regression gate for any change under `ihcclient/src/vis/`.
+- **safe_visual_tests** - Headless Avalonia UI tests for the `ihc_visual` desktop application (runs the real `ihc_visual.App`; no controller, no IHC API services needed for file-only flows).
 
 ### safe_lab_tests Diagnostic Features
 

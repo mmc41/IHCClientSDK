@@ -1,8 +1,10 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 
+using Ihc.Vis.FunctionBlocks;
 using Ihc.Vis.Model;
 using Ihc.Vis.Schema;
 namespace Ihc.Vis.Editing
@@ -144,21 +146,49 @@ namespace Ihc.Vis.Editing
             return AddResource("internalsettings", tag, name, configure);
         }
 
-        /// <summary>References a catalog-sourced input by name, returning its live handle.</summary>
-        public ResourceRef Input(string name)
+        /// <summary>
+        /// References an input row by name, returning its live handle. Scoped to the <c>inputs</c> container and
+        /// type-agnostic — a custom block's inputs may be value variables (enum/date/flag …), not only
+        /// <c>resource_input</c> pins. Same-named rows resolve to the first in document order.
+        /// </summary>
+        public ResourceRef Input(string name) => ResolveResource("inputs", name, "input");
+
+        /// <summary>References an output row by name (type-agnostic, scoped to <c>outputs</c>); returns its live handle.</summary>
+        public ResourceRef Output(string name) => ResolveResource("outputs", name, "output");
+
+        /// <summary>
+        /// References a settings value variable by name, returning its live handle for wiring into program rows
+        /// (conditions/actions operands, US-029). Scoped to the <c>settings</c> container.
+        /// </summary>
+        public ResourceRef Setting(string name) => ResolveResource("settings", name, "setting");
+
+        /// <summary>
+        /// References an internal (private) value variable by name, returning its live handle for wiring into
+        /// program rows. Scoped to the <c>internalsettings</c> container.
+        /// </summary>
+        public ResourceRef InternalVariable(string name) => ResolveResource("internalsettings", name, "internal variable");
+
+        private ResourceRef ResolveResource(string container, string name, string kind)
         {
             ArgumentNullException.ThrowIfNull(name);
-            ElementId id = editor.FindDescendantIdByName(Id, name, "resource_input")
-                ?? throw new InvalidOperationException($"No input named '{name}' on this function block.");
-            return new ResourceRef(name, id);
+            ProjectElement? holder = editor.Require(Id).FindChild(container);
+            ProjectElement? match = holder is null || holder.Children.IsDefaultOrEmpty
+                ? null
+                : holder.Children.FirstOrDefault(c => c.GetAttribute("name") == name);
+            return match is null
+                ? throw new InvalidOperationException($"No {kind} named '{name}' on this function block.")
+                : new ResourceRef(name, match.Id!.Value);
         }
 
-        /// <summary>References a catalog-sourced output by name, returning its live handle.</summary>
-        public ResourceRef Output(string name)
+        /// <summary>
+        /// References a scene output pin (<c>resource_scene</c>) by name, returning its live handle — the source
+        /// side of <see cref="ProjectEditor.LinkScene"/>.
+        /// </summary>
+        public ResourceRef SceneOutput(string name)
         {
             ArgumentNullException.ThrowIfNull(name);
-            ElementId id = editor.FindDescendantIdByName(Id, name, "resource_output")
-                ?? throw new InvalidOperationException($"No output named '{name}' on this function block.");
+            ElementId id = editor.FindDescendantIdByName(Id, name, "resource_scene")
+                ?? throw new InvalidOperationException($"No scene output named '{name}' on this function block.");
             return new ResourceRef(name, id);
         }
 
@@ -172,6 +202,124 @@ namespace Ihc.Vis.Editing
         {
             ElementId programsId = editor.RequireChildId(Id, "programs");
             return editor.Program(editor.RequireSoleChildId(programsId, "program_simple"));
+        }
+
+        /// <summary>
+        /// Lifts this placed block to a keyless user-block <see cref="FunctionBlockDefinition"/> — the engine half
+        /// of the US-021 "Gem funktionsblok…" dialog, byte-gated by the vendor export oracle
+        /// <c>gemoracle-kip.ifb</c> (ENG-A4). Read-only over the session: unlike vendor Gem (which also renames and
+        /// re-stamps the placed block in the document — a mutation no capture pins byte-level yet), the project is
+        /// left untouched; a GUI wanting that parity composes the rename via <see cref="Name"/>. Per the capture:
+        /// the subtree is copied with its project ids VERBATIM (non-contiguous, unrenumbered), every reciprocal
+        /// wiring row (follow-link halves, scene links) is stripped — a type definition carries no instance wiring;
+        /// no catalog file does — and the root is re-attributed to a keyless user block:
+        /// <c>master_schneider_electric</c>/<c>master_type</c>/<c>master_version</c> removed, <c>name</c> and
+        /// <c>master_name</c> = <paramref name="name"/>, <c>master_programmer</c>/<c>master_date_*</c> stamped,
+        /// <c>locked</c> retained, user-library icon <c>_0x10</c>. The grammar is assembled from the session's own
+        /// schema view — one declaration per element type the body uses, in first-occurrence order, the vendor head
+        /// shape — so the result writes to an <c>.ifb</c> via <see cref="Ihc.Vis.Catalog.CatalogFileWriter"/> and
+        /// reads back via <see cref="Ihc.Vis.Catalog.CatalogReader"/>.
+        /// </summary>
+        /// <param name="name">The dialog Navn — the definition's display name and <c>master_name</c>.</param>
+        /// <param name="programmer">The exporting user (the vendor stamps the current Windows user; explicit here
+        /// so exports are deterministic).</param>
+        /// <param name="exported">The export date (the vendor stamps "today"; explicit for the same reason).</param>
+        /// <param name="note">The dialog Note (the block tooltip); <c>null</c> leaves the exported root without a
+        /// <c>note</c> attribute — the lean vendor form for an empty note.</param>
+        public FunctionBlockDefinition ExportDefinition(string name, string programmer, DateOnly exported,
+            string? note = null)
+        {
+            ArgumentNullException.ThrowIfNull(name);
+            ArgumentNullException.ThrowIfNull(programmer);
+            ProjectElement body = RestampExportIdentity(WithoutWiringRows(editor.Require(Id)),
+                name, programmer, exported, note);
+            return new FunctionBlockDefinition(
+                MasterType: string.Empty,
+                MasterVersion: string.Empty,
+                MasterName: name,
+                DisplayName: FbGrammar.ComposeDisplayName(masterType: null, masterVersion: null, name),
+                CategoryPath: string.Empty,
+                body)
+            {
+                Grammar = AssembleExportGrammar(body, editor.SchemaView),
+            };
+        }
+
+        // Drops every reciprocal wiring row (follow-link half or scene link) from the copy — unconditionally, not
+        // just externally-paired ones: a type definition carries no instance wiring, and no catalog file (stock or
+        // vendor-exported) contains such rows.
+        private static ProjectElement WithoutWiringRows(ProjectElement element) =>
+            element.Children.IsDefaultOrEmpty
+                ? element
+                : element with
+                {
+                    Children = element.Children
+                        .Where(c => !ReciprocalTags.All.Contains(c.Tag))
+                        .Select(WithoutWiringRows)
+                        .ToImmutableArray(),
+                };
+
+        // Re-attributes the root to a keyless user block (ENG-A4): the three vendor-identity keys and the source
+        // note never carry over; the stamps replace in place so the remaining attributes keep their vendor order,
+        // and any stamp the source lacked (e.g. a never-stamped hand-authored block) is appended.
+        private static ProjectElement RestampExportIdentity(ProjectElement root, string name, string programmer,
+            DateOnly exported, string? note)
+        {
+            var stamps = new List<(string Name, string Value)>
+            {
+                ("name", name),
+                ("master_name", name),
+                ("master_programmer", programmer),
+                ("master_date_year", exported.Year.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                ("master_date_month", exported.Month.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                ("master_date_day", exported.Day.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                ("icon", "_0x10"),
+            };
+            if (note is not null)
+            {
+                stamps.Add(("note", note));
+            }
+            var bag = new List<(string Name, string Value)>();
+            foreach ((string attr, string value) in root.AttrsOrEmpty())
+            {
+                if (attr is "id" or "master_schneider_electric" or "master_type" or "master_version" or "note")
+                {
+                    continue;   // id re-leads the bag via Create; the stripped keys and source note never carry over
+                }
+                int stamp = stamps.FindIndex(s => s.Name == attr);
+                if (stamp >= 0)
+                {
+                    bag.Add(stamps[stamp]);
+                    stamps.RemoveAt(stamp);
+                }
+                else
+                {
+                    bag.Add((attr, value));
+                }
+            }
+            bag.AddRange(stamps);
+            return ProjectElement.Create(root.Tag, root.Id, bag, root.ChildrenOrEmpty());
+        }
+
+        // The vendor head shape: one declaration per element type the body uses, in preorder first-occurrence
+        // order, each taken verbatim from the session's schema view (the file's own inline DTD first, registry
+        // fallback — the same one attribute table the vendor renders into both .vis inline DTDs and .ifb heads),
+        // then parsed into the structured grammar the catalog writer and a re-import resolve against.
+        private static CatalogGrammar AssembleExportGrammar(ProjectElement body, ProjectSchemaView view)
+        {
+            var head = new System.Text.StringBuilder(4096);
+            head.Append("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\r\n");
+            head.Append("<!DOCTYPE ").Append(body.Tag).Append(" [\r\n");
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            foreach (ProjectElement element in body.DescendantsAndSelf())
+            {
+                if (seen.Add(element.Tag))
+                {
+                    head.Append(view.Get(element.Tag).CanonicalDtdBlock);
+                }
+            }
+            head.Append("]>\r\n");
+            return Catalog.CatalogDtdParser.ParseStrict(head.ToString());
         }
 
         private ResourceRef AddResource(string container, string tag, string name, Action<ElementRef>? configure)

@@ -92,20 +92,72 @@ namespace Ihc.Vis.Projects
         /// <summary>The persistent high-water-mark id <c>last_unique_id</c>.</summary>
         public string? LastUniqueId => Root.GetAttribute("last_unique_id");
 
+        // The typed metadata getters below cover every dialog-writable attribute of the three id-less root
+        // metadata blocks (each block's full DTD attribute set minus udf, which no vendor dialog writes).
+        // Write paths: ProjectDetails at creation, ProjectEditor.Set{Project|Customer|Installer}Info afterwards.
+
         /// <summary>The programmer (<c>project_info/@programmer</c>); the write-path counterpart is <see cref="ProjectDetails.Programmer"/>.</summary>
         public string? Programmer => Child("project_info")?.GetAttribute("programmer");
 
         /// <summary>The project number (<c>project_info/@number</c>).</summary>
         public string? ProjectNumber => Child("project_info")?.GetAttribute("number");
 
+        /// <summary>The drawing reference (<c>project_info/@drawing</c>).</summary>
+        public string? Drawing => Child("project_info")?.GetAttribute("drawing");
+
+        /// <summary>The project type (<c>project_info/@type</c>).</summary>
+        public string? ProjectType => Child("project_info")?.GetAttribute("type");
+
+        /// <summary>The project description (<c>project_info/@description</c>).</summary>
+        public string? Description => Child("project_info")?.GetAttribute("description");
+
         /// <summary>The installer name (<c>installer_info/@name</c>); the write-path counterpart is <see cref="ProjectDetails.InstallerName"/>.</summary>
         public string? InstallerName => Child("installer_info")?.GetAttribute("name");
+
+        /// <summary>The installer street address (<c>installer_info/@address</c>).</summary>
+        public string? InstallerAddress => Child("installer_info")?.GetAttribute("address");
+
+        /// <summary>The installer city (<c>installer_info/@city</c>).</summary>
+        public string? InstallerCity => Child("installer_info")?.GetAttribute("city");
+
+        /// <summary>The installer postal code (<c>installer_info/@zipcode</c>).</summary>
+        public string? InstallerZipCode => Child("installer_info")?.GetAttribute("zipcode");
 
         /// <summary>The installer country (<c>installer_info/@country</c>); the write-path counterpart is <see cref="ProjectDetails.InstallerCountry"/>.</summary>
         public string? InstallerCountry => Child("installer_info")?.GetAttribute("country");
 
+        /// <summary>The installer phone number (<c>installer_info/@phone</c>).</summary>
+        public string? InstallerPhone => Child("installer_info")?.GetAttribute("phone");
+
+        /// <summary>The installer mobile phone number (<c>installer_info/@mobilephone</c>).</summary>
+        public string? InstallerMobilePhone => Child("installer_info")?.GetAttribute("mobilephone");
+
+        /// <summary>The installer e-mail address (<c>installer_info/@email</c>).</summary>
+        public string? InstallerEmail => Child("installer_info")?.GetAttribute("email");
+
         /// <summary>The customer name (<c>customer_info/@name</c>).</summary>
         public string? CustomerName => Child("customer_info")?.GetAttribute("name");
+
+        /// <summary>The customer street address (<c>customer_info/@address</c>).</summary>
+        public string? CustomerAddress => Child("customer_info")?.GetAttribute("address");
+
+        /// <summary>The customer city (<c>customer_info/@city</c>).</summary>
+        public string? CustomerCity => Child("customer_info")?.GetAttribute("city");
+
+        /// <summary>The customer postal code (<c>customer_info/@zipcode</c>).</summary>
+        public string? CustomerZipCode => Child("customer_info")?.GetAttribute("zipcode");
+
+        /// <summary>The customer country (<c>customer_info/@country</c>).</summary>
+        public string? CustomerCountry => Child("customer_info")?.GetAttribute("country");
+
+        /// <summary>The customer phone number (<c>customer_info/@phone</c>).</summary>
+        public string? CustomerPhone => Child("customer_info")?.GetAttribute("phone");
+
+        /// <summary>The customer mobile phone number (<c>customer_info/@mobilephone</c>).</summary>
+        public string? CustomerMobilePhone => Child("customer_info")?.GetAttribute("mobilephone");
+
+        /// <summary>The customer e-mail address (<c>customer_info/@email</c>).</summary>
+        public string? CustomerEmail => Child("customer_info")?.GetAttribute("email");
 
         /// <summary>The last-modified time from the <c>modified</c> element (local time), or <c>null</c> when absent/malformed.</summary>
         public DateTimeOffset? Modified

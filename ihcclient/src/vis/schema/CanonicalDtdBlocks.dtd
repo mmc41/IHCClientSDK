@@ -121,6 +121,31 @@
                   scene_resource IDREF #REQUIRED
                   note CDATA ""
                   udf CDATA "">
+   <!ELEMENT scene_relay ANY>
+   <!ATTLIST scene_relay id ID #REQUIRED
+                  name CDATA ""
+                  relay_value (on | off) "off"
+                  delay_ms CDATA "0"
+                  note CDATA ""
+                  link IDREF #REQUIRED
+                  udf CDATA "">
+   <!ELEMENT scene_dimmer ANY>
+   <!ATTLIST scene_dimmer id ID #REQUIRED
+                  name CDATA ""
+                  dimming_value CDATA "0"
+                  ramptime_ms CDATA "0"
+                  delay_ms CDATA "0"
+                  note CDATA ""
+                  link IDREF #REQUIRED
+                  udf CDATA "">
+   <!ELEMENT scene_shutter ANY>
+   <!ATTLIST scene_shutter id ID #REQUIRED
+                  name CDATA ""
+                  shutter_position (up | down) "up"
+                  delay_ms CDATA "0"
+                  note CDATA ""
+                  link IDREF #REQUIRED
+                  udf CDATA "">
    <!ELEMENT functionblock ANY>
    <!ATTLIST functionblock id ID #REQUIRED
                   name CDATA ""
@@ -176,6 +201,13 @@
                   icon CDATA "_0x89"
                   hide_dialog (yes | no) "no"
                   note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT scene_link ANY>
+   <!ATTLIST scene_link id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link IDREF #REQUIRED
                   udf CDATA "">
    <!ELEMENT settings ANY>
    <!ATTLIST settings id ID #REQUIRED

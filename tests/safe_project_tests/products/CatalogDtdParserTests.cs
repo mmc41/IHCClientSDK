@@ -21,9 +21,14 @@ namespace Ihc.Vis.Tests
 
         private static readonly string FunctionBlockDir = TestData.PathOf("functionblocks", "synthetic");
 
+        // Authentic vendor-exported .ifb oracles live directly in functionblocks/ (non-recursive, so the
+        // synthetic set stays separate); their headers must strict-parse like the rest of the corpus.
+        private static readonly string VendorFunctionBlockDir = TestData.PathOf("functionblocks");
+
         private static IEnumerable<string> AllOracles() =>
             Directory.EnumerateFiles(ProductDir, "*.def")
                 .Concat(Directory.EnumerateFiles(FunctionBlockDir, "*.ifb"))
+                .Concat(Directory.EnumerateFiles(VendorFunctionBlockDir, "*.ifb"))
                 .OrderBy(p => p, System.StringComparer.Ordinal);
 
         // ----- oracle round trip: strict parse → re-emit → splice → reparse + equivalence -----

@@ -64,6 +64,14 @@ namespace Ihc.Vis.Editing
         /// ids (the vendor "add sub-program" skeleton). Returns a handle for authoring its conditions and branches.
         /// </summary>
         public SubProgramRef AddSubProgram() => ProgramGrammar.CreateSubProgram(editor, actionsId);
+
+        /// <summary>
+        /// Adds a <c>program_case</c> switch on <paramref name="switchVariable"/> to the program's root actions,
+        /// eagerly allocating its default (Else) branch with it — the vendor case-insert gesture (US-031, ENG2-B2).
+        /// Returns a handle for adding case values and reaching the default branch.
+        /// </summary>
+        public CaseRef AddCase(string name, ResourceRef switchVariable, string? note = null) =>
+            ProgramGrammar.CreateCase(editor, actionsId, name, switchVariable, note);
     }
 
     /// <summary>
@@ -73,20 +81,22 @@ namespace Ihc.Vis.Editing
     /// </summary>
     public sealed class SubProgramRef
     {
-        private readonly ProjectEditor editor;
-        private readonly ElementId conditionsId;
-
         internal SubProgramRef(ProjectEditor editor, ElementId subId, ElementId conditionsId,
             ElementId trueActionsId, ElementId falseActionsId)
         {
-            this.editor = editor;
             Id = subId;
-            this.conditionsId = conditionsId;
+            Conditions = new ConditionsGroupRef(editor, conditionsId);
             WhenTrue = new BranchRef(editor, trueActionsId);
             WhenFalse = new BranchRef(editor, falseActionsId);
         }
 
         internal ElementId Id { get; }
+
+        /// <summary>
+        /// This sub-program's top-level <c>conditions</c> group — the handle for OR/AND toggling, condition rows and
+        /// nested logic groups (US-029).
+        /// </summary>
+        public ConditionsGroupRef Conditions { get; }
 
         /// <summary>The true-branch ("Kommandoer ved betingelser sande") action container.</summary>
         public BranchRef WhenTrue { get; }
@@ -99,15 +109,76 @@ namespace Ihc.Vis.Editing
         /// per <paramref name="method"/>, optionally against <paramref name="link2"/>. Returns a handle for adding an
         /// embedded literal enum operand (see <see cref="ConditionRef.AddEnumOperand"/>).
         /// </summary>
+        public ConditionRef AddCondition(string name, ResourceRef link1, string method, ResourceRef? link2 = null, string? note = null) =>
+            Conditions.AddCondition(name, link1, method, link2, note);
+    }
+
+    /// <summary>
+    /// A live handle to a <c>conditions</c> group — a boolean AND (default) or OR (<see cref="Or"/>) grouping of
+    /// <c>condition</c> leaves and, recursively, nested logic groups (<see cref="AddConditionGroup"/> — the vendor
+    /// "Logik gruppe", US-029). A sub-program's <see cref="SubProgramRef.Conditions"/> is its top-level group; an
+    /// existing group loaded from file is addressed by id via <see cref="ProjectEditor.ConditionsGroup"/>.
+    /// </summary>
+    public sealed class ConditionsGroupRef
+    {
+        private readonly ProjectEditor editor;
+
+        internal ConditionsGroupRef(ProjectEditor editor, ElementId id)
+        {
+            this.editor = editor;
+            Id = id;
+        }
+
+        /// <summary>The <c>conditions</c> element's id.</summary>
+        public ElementId Id { get; }
+
+        /// <summary>
+        /// Marks this group as an OR grouping — the vendor EK-dialog "Logisk betingelse" toggle, persisted as the
+        /// literal <c>type="or"</c> and nothing else (ENG2-B1). Returns this.
+        /// </summary>
+        public ConditionsGroupRef Or()
+        {
+            editor.SetAttributeById(Id, "type", "or");
+            return this;
+        }
+
+        /// <summary>
+        /// Restores the default AND grouping — <c>type</c> returns to its DTD default <c>and</c>, which the
+        /// canonicalizer re-omits, so an Or/And cycle leaves no byte trace. Returns this.
+        /// </summary>
+        public ConditionsGroupRef And()
+        {
+            editor.SetAttributeById(Id, "type", "and");
+            return this;
+        }
+
+        /// <summary>
+        /// Adds a <c>condition</c> to this group — a logical test on <paramref name="link1"/> per
+        /// <paramref name="method"/>, optionally against <paramref name="link2"/>. The persisted
+        /// <paramref name="name"/> is the vendor's <c>%P</c>/<c>%S</c> template form, not the popup's substituted
+        /// display label (ENG2-B1). Returns a handle for adding an embedded literal enum operand.
+        /// </summary>
         public ConditionRef AddCondition(string name, ResourceRef link1, string method, ResourceRef? link2 = null, string? note = null)
         {
             ArgumentNullException.ThrowIfNull(name);
             ArgumentNullException.ThrowIfNull(link1);
             ArgumentNullException.ThrowIfNull(method);
             ProgramGrammar.RequireLiveOperands(editor, link1, link2);
-            ElementId id = editor.AllocateChild(conditionsId, "condition",
+            ElementId id = editor.AllocateChild(Id, "condition",
                 ProgramGrammar.WiredAttrs(name, ProgramGrammar.ConditionIcon, note, link1, link2, method));
             return new ConditionRef(editor, id);
+        }
+
+        /// <summary>
+        /// Adds a nested logic group (vendor "Logik gruppe") — a nested <c>conditions</c> element reusing the
+        /// Betingelser decoration verbatim (ENG2-B1: no distinct strings). Returns the nested group's handle.
+        /// </summary>
+        public ConditionsGroupRef AddConditionGroup()
+        {
+            ElementId id = editor.AllocateChild(Id, "conditions",
+                ("name", ProgramGrammar.ConditionsName), ("icon", ProgramGrammar.ConditionsIcon),
+                ("note", ProgramGrammar.ConditionsNote));
+            return new ConditionsGroupRef(editor, id);
         }
     }
 
@@ -143,6 +214,103 @@ namespace Ihc.Vis.Editing
 
         /// <summary>Adds a nested <c>program_sub</c> (four-node skeleton) inside this branch; returns its handle.</summary>
         public SubProgramRef AddSubProgram() => ProgramGrammar.CreateSubProgram(editor, actionsId);
+
+        /// <summary>
+        /// Adds a <c>program_case</c> switch on <paramref name="switchVariable"/> inside this branch, eagerly
+        /// allocating its default (Else) branch with it — the vendor case-insert gesture (US-031, ENG2-B2). Returns
+        /// a handle for adding case values and reaching the default branch.
+        /// </summary>
+        public CaseRef AddCase(string name, ResourceRef switchVariable, string? note = null) =>
+            ProgramGrammar.CreateCase(editor, actionsId, name, switchVariable, note);
+    }
+
+    /// <summary>
+    /// A live handle to a <c>program_case</c> switch authored via <see cref="ProgramBuilder.AddCase"/> or
+    /// <see cref="BranchRef.AddCase"/>. Pinned vendor semantics (ENG2-B2): the <c>program_case</c> and its default
+    /// (Else) <c>actions</c> container allocate together at case-insert, but the default container serializes
+    /// <b>last</b> — each added case value (a <c>case_action</c> wrapping its embedded literal operand as first
+    /// child) inserts before it. Switch-type eligibility is deliberately open-world: no tag guard is applied (the
+    /// validators flag genuinely broken wiring later).
+    /// </summary>
+    public sealed class CaseRef
+    {
+        private readonly ProjectEditor editor;
+        private readonly ElementId defaultActionsId;
+
+        internal CaseRef(ProjectEditor editor, ElementId caseId, ElementId defaultActionsId)
+        {
+            this.editor = editor;
+            Id = caseId;
+            this.defaultActionsId = defaultActionsId;
+        }
+
+        /// <summary>The <c>program_case</c> element's id.</summary>
+        public ElementId Id { get; }
+
+        /// <summary>
+        /// Adds a case value branch whose criterion equals the enum <paramref name="valueName"/> of
+        /// <paramref name="definition"/> — a <c>case_action</c> wrapping a bare embedded <c>resource_enum</c>
+        /// operand (<c>typedef</c>/<c>inivalue</c>, the fb08 shape). Returns the branch handle for adding actions.
+        /// </summary>
+        public BranchRef Case(string name, EnumDefinitionRef definition, string valueName, string? note = null)
+        {
+            ArgumentNullException.ThrowIfNull(definition);
+            ArgumentNullException.ThrowIfNull(valueName);
+            // Fail before wiring a since-deleted enum into the operand's typedef (the AddEnumOperand guard).
+            editor.Require(definition.Id);
+            return Case(name, "resource_enum",
+                op => op.SetAttribute("typedef", definition.Typedef)
+                        .SetAttribute("inivalue", definition.InitialValue(valueName)),
+                note);
+        }
+
+        /// <summary>
+        /// Adds a case value branch with an explicitly-typed embedded operand (e.g. a counter criterion's bare
+        /// <c>&lt;resource_counter inivalue="100"&gt;</c> — ENG2-B2): allocates the <c>case_action</c>, then the
+        /// <paramref name="operandTag"/> operand as its first child, hands the operand to
+        /// <paramref name="configureOperand"/>, and wires <c>case_action@value</c> to it. Returns the branch handle.
+        /// </summary>
+        public BranchRef Case(string name, string operandTag, Action<ElementRef> configureOperand, string? note = null)
+        {
+            ArgumentNullException.ThrowIfNull(name);
+            ArgumentNullException.ThrowIfNull(operandTag);
+            ArgumentNullException.ThrowIfNull(configureOperand);
+            string criterion = editor.Require(Id).GetAttribute("link")
+                ?? throw new InvalidOperationException("This program_case carries no switch criterion (link).");
+            var attrs = new List<(string, string)> { ("name", name), ("icon", ProgramGrammar.CaseActionIcon) };
+            if (note is not null)
+            {
+                attrs.Add(("note", note));
+            }
+            attrs.Add(("variable", criterion));
+            int defaultIndex = IndexOfDefault();
+            ElementId caseActionId = editor.AllocateChild(Id, "case_action", attrs.ToArray());
+            ElementId operandId = editor.AllocateChild(caseActionId, operandTag);
+            if (editor.TryResolve(operandId, out ElementRef? operand))
+            {
+                configureOperand(operand!);
+            }
+            editor.SetAttributeById(caseActionId, "value", operandId.ToToken());
+            // The vendor serializes case values before the doc-last Else, though the Else allocated first (§18-A).
+            editor.MoveSubtree(caseActionId, Id, defaultIndex);
+            return new BranchRef(editor, caseActionId);
+        }
+
+        /// <summary>The default (Else) branch — present from case-insert, document-last. Returns its handle.</summary>
+        public BranchRef Default() => new(editor, defaultActionsId);
+
+        private int IndexOfDefault()
+        {
+            System.Collections.Immutable.ImmutableArray<ProjectElement> children = editor.Require(Id).Children;
+            for (int i = 0; i < children.Length; i++)
+            {
+                if (children[i].Id == defaultActionsId)
+                {
+                    return i;
+                }
+            }
+            throw new InvalidOperationException("This program_case has lost its default (Else) branch.");
+        }
     }
 
     /// <summary>
@@ -210,6 +378,11 @@ namespace Ihc.Vis.Editing
         public const string FalseActionsName = FbGrammar.FalseActionsName;
         public const string FalseActionsNote = "Gruppering af kommandoer som udføres når betingelser er falske";
         public const string TrueBranchType = FbGrammar.TrueBranchType;
+        public const string ProgramCaseIcon = FbGrammar.ProgramCaseIcon;
+        public const string CaseActionIcon = FbGrammar.CaseActionIcon;
+        public const string DefaultCaseName = FbGrammar.DefaultCaseName;
+        public const string DefaultCaseNote = FbGrammar.DefaultCaseNote;
+        public const string DefaultCaseType = FbGrammar.DefaultCaseType;
 
         /// <summary>Attribute set for a trigger with no resource operands (<c>event_power</c>): name, icon, optional note.</summary>
         public static (string, string)[] LeafAttrs(string name, string icon, string? note)
@@ -255,6 +428,30 @@ namespace Ihc.Vis.Editing
             ElementId falseActionsId = editor.AllocateChild(subId, "actions",
                 ("name", FalseActionsName), ("icon", ActionsIcon), ("note", FalseActionsNote));
             return new SubProgramRef(editor, subId, conditionsId, trueActionsId, falseActionsId);
+        }
+
+        /// <summary>
+        /// Allocates a <c>program_case</c> and — together with it, per the ENG2-B2 census — its default (Else)
+        /// <c>actions</c> container under <paramref name="parentActionsId"/>, returning the case handle. The
+        /// criterion is always written to <c>program_case@link</c> (Fb-builder precedent, though the DTD says
+        /// #IMPLIED); the Else carries the fixed vendor decoration and branch type.
+        /// </summary>
+        public static CaseRef CreateCase(ProjectEditor editor, ElementId parentActionsId, string name,
+            ResourceRef switchVariable, string? note)
+        {
+            ArgumentNullException.ThrowIfNull(name);
+            ArgumentNullException.ThrowIfNull(switchVariable);
+            string criterion = editor.RequireLive(switchVariable).ToToken();
+            var attrs = new List<(string, string)> { ("name", name), ("icon", ProgramCaseIcon) };
+            if (note is not null)
+            {
+                attrs.Add(("note", note));
+            }
+            attrs.Add(("link", criterion));
+            ElementId caseId = editor.AllocateChild(parentActionsId, "program_case", attrs.ToArray());
+            ElementId defaultActionsId = editor.AllocateChild(caseId, "actions",
+                ("name", DefaultCaseName), ("icon", ActionsIcon), ("note", DefaultCaseNote), ("type", DefaultCaseType));
+            return new CaseRef(editor, caseId, defaultActionsId);
         }
 
         private static string RequireId(ResourceRef resource, string paramName) =>

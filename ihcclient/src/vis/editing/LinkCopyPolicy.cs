@@ -3,16 +3,17 @@
 namespace Ihc.Vis.Editing
 {
     /// <summary>
-    /// How <see cref="ProjectEditor.CopySubtree"/> treats a copied follow-link half (<c>link_from_resource</c>/
-    /// <c>link_to_resource</c>) whose reciprocal partner lies <b>outside</b> the copied subtree. Internal links
-    /// (both halves inside the copy) are always deep-copied and remapped to the new ids regardless of policy; this
-    /// only governs the cross-boundary halves the clone would otherwise leave pointing at the source's partners.
+    /// How <see cref="ProjectEditor.CopySubtree"/> treats a copied reciprocal half — a follow-link half
+    /// (<c>link_from_resource</c>/<c>link_to_resource</c>) or a scene row (<c>scene_relay</c>/<c>scene_dimmer</c>/
+    /// <c>scene_shutter</c>/<c>scene_link</c>) — whose partner lies <b>outside</b> the copied subtree. Internal
+    /// pairs (both halves inside the copy) are always deep-copied and remapped to the new ids regardless of policy;
+    /// this only governs the cross-boundary halves the clone would otherwise leave pointing at the source's partners.
     /// </summary>
     public enum LinkCopyPolicy
     {
         /// <summary>
         /// Drop each copied half whose partner is outside the subtree, so the paste carries only fully-internal
-        /// links and validates clean. The safe default for clipboard paste.
+        /// pairs and validates clean. The safe default for clipboard paste.
         /// </summary>
         DropExternal,
 

@@ -193,5 +193,127 @@ namespace Ihc.Vis.Tests
                 Assert.That(app.Validate(after).IsValid, Is.True);
             });
         }
+
+        // ----- scene-half prune policy (G1c): DropExternal covers scene rows, not just follow-link halves -----
+        //
+        // SDK-defined policy (labeled provisional until a vendor parity capture of a scene-membered copy exists):
+        // a scene member row (scene_relay/scene_dimmer/scene_shutter) or scene_link whose reciprocal partner lies
+        // OUTSIDE the copied subtree is dropped BEFORE the clone allocates ids — same rule and same no-phantom-burn
+        // guarantee as follow-link halves. Scene pairs on project3-KompleksWired are authored in-session via
+        // LinkScene (the committed corpus has no scene rows).
+
+        [Test]
+        public async Task CopySubtree_DropExternal_PrunesSceneMemberRow_NoPhantomBurn()
+        {
+            Project project = await LoadProject3();
+            var app = new ProjectAppService(Settings);
+            ProjectEditor editor = project.Edit();
+
+            // Copy Lampeudtag before any scene membership exists → the copy's baseline allocation count.
+            long baseline = Counter(editor.ToProject().LastUniqueId!);
+            ElementRef plainCopy = editor.Group("Garage").PasteInto(Id("_0x5453"));
+            long afterPlain = Counter(editor.ToProject().LastUniqueId!);
+            long plainAllocations = afterPlain - baseline;
+
+            // Wire the scene membership (+2 ids), then copy the now-membered product elsewhere.
+            LinkRelayScene(editor);
+            ElementRef memberedCopy = editor.Group("Soveværelse").PasteInto(Id("_0x5453"));
+            long afterMembered = Counter(editor.ToProject().LastUniqueId!);
+            Project after = editor.ToProject();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(afterMembered - afterPlain - 2, Is.EqualTo(plainAllocations),
+                    "the dropped member row consumes no id — pruned before the clone allocates (no phantom burn)");
+                Assert.That(memberedCopy.Element.Descendants().Any(e => IsSceneHalf(e.Tag)), Is.False,
+                    "the member's partner scene_link lies outside the copy, so the member row is dropped");
+                Assert.That(memberedCopy.Element.Children.Any(c => c.Tag == "scenes"), Is.True,
+                    "only the member row is pruned — the scenes container itself copies");
+                Assert.That(after.Root.Descendants().Count(e => e.Tag == "scene_relay"), Is.EqualTo(1),
+                    "the source's member row is untouched");
+                Assert.That(after.Root.Descendants().Count(e => e.Tag == "scene_link"), Is.EqualTo(1),
+                    "the source's scene_link is untouched");
+                Assert.That(plainCopy.Element.Children.Any(c => c.Tag == "scenes"), Is.True,
+                    "baseline copy sanity: same shape modulo the membership");
+                Assert.That(app.Validate(after).IsValid, Is.True,
+                    "a pruned copy leaves no one-sided scene half behind");
+            });
+        }
+
+        [Test]
+        public async Task CopySubtree_DropExternal_PrunesSceneLinkOffCopiedFb()
+        {
+            Project project = await LoadProject3();
+            var app = new ProjectAppService(Settings);
+            ProjectEditor editor = project.Edit();
+            LinkRelayScene(editor);
+
+            ElementRef copy = editor.Group("Garage").PasteInto(Id("_0x8b28"));   // the Kip block carrying the scene_link
+            Project after = editor.ToProject();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(copy.Element.Descendants().Any(e => e.Tag == "scene_link"), Is.False,
+                    "the scene_link's partner member lies outside the copy, so it is dropped");
+                Assert.That(copy.Element.Descendants().Count(e => e.Tag == "resource_scene"), Is.EqualTo(2),
+                    "the scene pins themselves copy — only the wired half is pruned");
+                Assert.That(after.Root.Descendants().Count(e => e.Tag == "scene_link"), Is.EqualTo(1),
+                    "the source's scene_link is untouched");
+                Assert.That(app.Validate(after).IsValid, Is.True);
+            });
+        }
+
+        [Test]
+        public async Task CopySubtree_WholeRoom_KeepsInternalScenePair_Remapped()
+        {
+            Project project = await LoadProject3();
+            var app = new ProjectAppService(Settings);
+            ProjectEditor editor = project.Edit();
+            LinkRelayScene(editor);
+            string sourceMemberToken = editor.ToProject().Root.Descendants()
+                .Single(e => e.Tag == "scene_relay").GetAttribute("id")!;
+
+            // Both halves live inside the copied room (member on Lampeudtag, scene_link on the Kip block).
+            ElementId roomCopyId = editor.CopySubtree(Id("_0x2132"), Id("_0x2031"));
+            Project after = editor.ToProject();
+            ProjectElement roomCopy = after.FindById(roomCopyId)!;
+
+            ProjectElement member = roomCopy.Descendants().Single(e => e.Tag == "scene_relay");
+            ProjectElement sceneLink = roomCopy.Descendants().Single(e => e.Tag == "scene_link");
+            Assert.Multiple(() =>
+            {
+                Assert.That(member.GetAttribute("link"), Is.EqualTo(sceneLink.GetAttribute("id")),
+                    "an internal pair survives the copy, remapped member -> scene_link");
+                Assert.That(sceneLink.GetAttribute("link"), Is.EqualTo(member.GetAttribute("id")),
+                    "…and scene_link -> member");
+                Assert.That(member.GetAttribute("id"), Is.Not.EqualTo(sourceMemberToken),
+                    "the copy's member is a fresh id, not the source row");
+                Assert.That(member.GetAttribute("relay_value"), Is.EqualTo("on"), "the member's value copies");
+                Assert.That(app.Validate(after).IsValid, Is.True);
+            });
+        }
+
+        // ----- scene-policy helpers (project3 endpoints pinned by the -scenelinks oracle work, G1b) -----
+
+        private static Task<Project> LoadProject3() =>
+            new ProjectAppService(Settings).Load("testdata/projects/project3-KompleksWired.vis");
+
+        /// <summary>Wires the relay membership: Kip pin "Scenarie Sluk" (_0x974a) ↔ Lampeudtag "Scenarier" (_0x5649).</summary>
+        private static void LinkRelayScene(ProjectEditor editor)
+        {
+            GroupRef room = editor.Group("Stue & Køkken \"åben\"");
+            ResourceRef pin = room.FunctionBlock("1.1.01.e. Kip tænd sluk").SceneOutput("Scenarie Sluk");
+            editor.LinkScene(pin, room.Product("Lampeudtag").Scenes(), SceneValue.Relay(on: true));
+        }
+
+        private static bool IsSceneHalf(string tag) =>
+            tag is "scene_relay" or "scene_dimmer" or "scene_shutter" or "scene_link";
+
+        private static long Counter(string token) =>
+            long.Parse(token.AsSpan(3), System.Globalization.NumberStyles.HexNumber,
+                System.Globalization.CultureInfo.InvariantCulture);
+
+        private static ElementId Id(string token) =>
+            ElementId.TryParse(token, out ElementId id) ? id : throw new System.ArgumentException($"Bad id token: {token}");
     }
 }

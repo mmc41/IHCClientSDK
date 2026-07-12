@@ -31,6 +31,9 @@ namespace Ihc.Vis.Schema
             ["group"] = "_0x15",
             ["link_from_resource"] = "_0x47",
             ["link_to_resource"] = "_0x4a",
+            // The FB-side scene-membership half carries the same "Link fra…" icon as link_from_resource on every
+            // vendor instance (spec §8.5; -scenelinks oracle) — the product-side members declare no icon at all.
+            ["scene_link"] = "_0x47",
             ["resource_enum"] = "_0x22",
             ["resource_input"] = "_0x36",
             ["resource_output"] = "_0x39",

@@ -29,9 +29,11 @@ namespace Ihc.Vis.Schema
     /// </para>
     /// <para>
     /// The blocks are the verbatim DTD IHC Visual writes in a real <c>.vis</c> (spec ch. 01 §8 canon). It covers the
-    /// <strong>38 byte-verified</strong> types in the testdata (the empty project's 13 plus 25 in the complex sample)
+    /// <strong>41 byte-verified</strong> types in the testdata (the empty project's 13, 25 more in the complex
+    /// sample, and the 3 scene-link types the <c>-scenelinks</c> derived oracle's regenerated DTD declares)
     /// plus the curated grammar of the further <strong>insertable vendor catalog families</strong> (airlink,
-    /// rs485 led-dimmer/sms-modem, s0, dimmer/shutter settings, <c>program_case</c>, the extra <c>resource_*</c> kinds).
+    /// rs485 led-dimmer/sms-modem, s0, dimmer/shutter settings, <c>program_case</c>, <c>scene_shutter</c>,
+    /// the extra <c>resource_*</c> kinds).
     /// Those families are kept here because the catalog <c>.def</c>/<c>.ifb</c> templates are <em>not</em> a reliable
     /// wire-grammar source — they are pre-customization templates with copy-pasted/incomplete DTDs (e.g. a body that
     /// uses an element type its own DTD never declares). They are structurally tested via catalog insert/round-trip,

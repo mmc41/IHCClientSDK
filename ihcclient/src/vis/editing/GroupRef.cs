@@ -96,7 +96,8 @@ namespace Ihc.Vis.Editing
         /// <summary>
         /// Clones an existing in-project subtree (by id) into this room — the clipboard paste — deep-copying it with
         /// fresh ids (type-code suffix preserved), remapped internal IDREFs and shared enums, governing cross-boundary
-        /// follow-link halves by <paramref name="policy"/> (default: drop them). Returns a live handle to the paste.
+        /// reciprocal halves (follow-link halves and scene rows) by <paramref name="policy"/> (default: drop them).
+        /// Returns a live handle to the paste.
         /// </summary>
         public ElementRef PasteInto(ElementId sourceId, LinkCopyPolicy policy = LinkCopyPolicy.DropExternal)
         {
@@ -105,7 +106,7 @@ namespace Ihc.Vis.Editing
             {
                 throw new InvalidOperationException(
                     $"Paste of {sourceId.ToToken()} produced no live element: the copied subtree was a bare " +
-                    $"follow-link half whose partner lies outside the copy, so {nameof(LinkCopyPolicy)}." +
+                    $"reciprocal half whose partner lies outside the copy, so {nameof(LinkCopyPolicy)}." +
                     $"{nameof(LinkCopyPolicy.DropExternal)} removed the entire copy. Copy the owning resource instead.");
             }
             return handle;
@@ -138,7 +139,7 @@ namespace Ihc.Vis.Editing
 
         /// <summary>
         /// Removes a product from this room, cascading the reciprocal follow-link halves outside it that point into
-        /// its resources (via <see cref="ProjectEditor.DeleteById"/>). The product's <c>_0x</c> ids are retired
+        /// its resources (via <see cref="ProjectEditor.DeleteById(ElementId)"/>). The product's <c>_0x</c> ids are retired
         /// permanently — deletes leave counter holes and ids are never reused.
         /// </summary>
         public void RemoveProduct(ProductRef product)
@@ -149,7 +150,7 @@ namespace Ihc.Vis.Editing
 
         /// <summary>
         /// Removes a function block from this room, cascading the reciprocal follow-link halves outside it that
-        /// point into its resources (via <see cref="ProjectEditor.DeleteById"/>). Retired ids are not reused.
+        /// point into its resources (via <see cref="ProjectEditor.DeleteById(ElementId)"/>). Retired ids are not reused.
         /// </summary>
         public void RemoveFunctionBlock(FunctionBlockRef functionBlock)
         {

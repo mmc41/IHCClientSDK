@@ -84,6 +84,40 @@ namespace Ihc.Vis.Editing
             return this;
         }
 
+        /// <summary>
+        /// Returns the live handle of this product's single <c>scenes</c> container — the target side of
+        /// <see cref="ProjectEditor.LinkScene"/>. Family-agnostic (scene-capable outputs include airlink
+        /// dimmers/relays as well as dataline outputs), matched by tag like <see cref="RemoveScenes"/> since the
+        /// display name is user-editable CDATA. Throws when the product has no scenes container (see
+        /// <see cref="AddScenes"/>) or more than one.
+        /// </summary>
+        public ScenesRef Scenes()
+        {
+            ProjectElement product = editor.Require(Id);
+            List<ProjectElement> matches = product.Children.IsDefaultOrEmpty
+                ? new List<ProjectElement>()
+                : product.Children.Where(c => c.Tag == "scenes").ToList();
+            if (matches.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Product {Id.ToToken()} has no scenes container; only scene-capable products (or " +
+                    $"{nameof(AddScenes)}) provide one.");
+            }
+            if (matches.Count > 1)
+            {
+                throw new InvalidOperationException(
+                    $"Product {Id.ToToken()} has {matches.Count} scenes containers; address one by id via " +
+                    $"{nameof(ProjectEditor.TryResolve)}.");
+            }
+            if (matches[0].Id is not { } scenesId)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot address the scenes container of product {Id.ToToken()}: its id token " +
+                    $"'{matches[0].GetAttribute("id")}' is not a parseable _0x id.");
+            }
+            return new ScenesRef(matches[0].GetAttribute("name") ?? string.Empty, scenesId);
+        }
+
         /// <summary>Looks up an existing input by name, returning its live handle.</summary>
         public ResourceRef Input(string name)
         {

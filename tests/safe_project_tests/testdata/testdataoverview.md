@@ -182,6 +182,230 @@ its own inline DTD, and **passively round-trips it byte-identically** — it is 
 inline DTD, so it runs on a clean checkout with no install dir; delivered by `EnumValuesReplayByteFidelityTests`.
 Since the vendor block is contiguous with no burn, the SDK's single-shot `AddEnumDefinition` reproduces it directly.
 
+### project3-KompleksWired-projektinfo.vis (237 KB, 2,499 lines) — derived Projektinfo oracle
+
+Authentic IHC Visual output **derived from `project3-KompleksWired.vis`** by one recorded metadata-editing
+action in a single session (single save); session notes in `tmp/experiments/out/ENG-A1/findings.md`. Its
+purpose is the **Projektinfo/metadata authoring byte-fidelity** gate (backlog G4, US-039): the SDK loads the
+*original*, replays Action 0 + the info edits below through the future
+`SetProjectInfo`/`SetCustomerInfo`/`SetInstallerInfo` surface, saves with the clock pinned to this file's
+stamp `id2="_0xb0d001e"` / `modified 2026-07-11 13:00`, and asserts byte-identity. `id1` is unchanged
+(`_0x1d0e2923`); `last_unique_id` stays **`_0x579` — zero new ids** (metadata edits allocate nothing). The
+same load-time **Action 0** as the other derived oracles applies first: a bare save re-hoists the two catalog
+(`[read only]`, `typeid`) enums to the bottom of the enum block (`_0x56d..0x579`) and rewrites their 4
+`resource_enum` refs. The single action:
+
+- **P — Projektinfo dialog (Dokumentation ▸ Projektinfo, command 30501).** Every field filled with a unique
+  marker; customer *Mobil telefon* deliberately left blank; OK → Save As. The delta vs the Action-0 baseline
+  is **only** the three id-less root metadata elements:
+
+  ```xml
+  <customer_info name="kundeNavn-A1" address="kundeVej-A1" city="kundeBy-A1" zipcode="kundePost-A1" country="kundeLand-A1" phone="kundeTlf-A1" email="kunde-email-A1"/>
+  <installer_info name="instNavn-A1" address="instVej-A1" city="instBy-A1" zipcode="instPost-A1" country="instLand-A1" phone="instTlf-A1" mobilephone="instMob-A1" email="inst-email-A1"/>
+  <project_info programmer="prog-æøå-A1" number="num-A1" drawing="draw&amp;A1" type="type-A1" description="desc-&quot;Q&quot;-A1"/>
+  ```
+
+  Pinned semantics: attribute order is **DTD-declared order** (never fill order); a **blank field ⇒ the
+  attribute is OMITTED** (customer has no `mobilephone`), never emitted as `=""`; escaping `&`→`&amp;`,
+  `"`→`&quot;`, æøå → raw Latin-1 bytes; `udf` (DTD-declared on all three) has no dialog field and is never
+  written; every attribute the dialog writes is DTD-declared.
+
+Designed for: metadata authoring byte-fidelity via root-child replace — `project_info`/`customer_info`/
+`installer_info` are **id-less** (unreachable through the id-addressed edit surface) — plus the pinned
+field→attribute vocabulary for the expanded `ProjectDetails`. Replay delivered by the future
+`ProjectInfoReplayByteFidelityTests` (G4b); passively round-tripped in `ProjectByteFidelityTests` +
+`DtdConformanceTests` from day one.
+
+### project3-KompleksWired-scenelinks.vis (238 KB, 2,531 lines) — derived scene-link oracle
+
+Authentic IHC Visual output **derived from `project3-KompleksWired.vis`** by two recorded scenario-link
+drags in a single session (single save); session notes in `tmp/experiments/out/ENG-A2/findings.md`. Its
+purpose is the **scene-link authoring byte-fidelity** gate (backlog G1, US-024): the SDK loads the
+*original*, replays Action 0 + the two links below through the future `LinkScene`/`SceneValue` surface,
+saves with the clock pinned to `id2="_0xb0d1a0b"` / `modified 2026-07-11 13:26`, and asserts byte-identity.
+`id1` is unchanged; `last_unique_id` rises **`_0x579 → _0x57d`** (+4, member-first, no burn). Action 0
+applies first. The two links (in allocation order):
+
+- **R — relay scene link.** FB scene-output pin `resource_scene _0x974a` dragged onto product `Lampeudtag`'s
+  `<scenes>` container `_0x5649`, value relay **on**:
+
+  ```xml
+  <scene_relay id="_0x57a4d" name="Scenarie link" relay_value="on" link="_0x57b4b"/>   <!-- in the product <scenes> -->
+  <scene_link id="_0x57b4b" name="Scenarie link" icon="_0x47" link="_0x57a4d"/>        <!-- in the FB <resource_scene> -->
+  ```
+
+- **D — dimmer scene link.** FB scene-output pin `resource_scene _0x4814a` dragged onto the airlink dimmer's
+  `<scenes>` container `_0x8349`, value **100% / 1000 ms** — the scenario dialog's DEFAULTS (the capture
+  driver auto-OK'd the dialog; non-default magnitudes are invariance-test material, not oracle material):
+
+  ```xml
+  <scene_dimmer id="_0x57c4c" name="Scenarie link" dimming_value="100" ramptime_ms="1000" link="_0x57d4b"/>
+  <scene_link id="_0x57d4b" name="Scenarie link" icon="_0x47" link="_0x57c4c"/>
+  ```
+
+Pinned semantics: allocation is **member-first in gesture order** (the member `scene_relay 0x4d` /
+`scene_dimmer 0x4c` takes the lower counter, its partner `scene_link 0x4b` the next; no burn); the **member
+row carries the values** and lives inside the product's `<scenes>`, the **`scene_link` carries
+`icon="_0x47"`** and lives inside the FB's `<resource_scene>`; the halves cross-reference bidirectionally via
+`link=`. Inline-DTD delta vs the base: `scene_relay` (with enumerated `relay_value (on | off) "off"`),
+`scene_dimmer` and `scene_link` newly declared, all with `link IDREF #REQUIRED` — the G1a registry blocks
+must match this delta exactly (oracle wins over spec text); `scene_shutter` does not occur (no jalousi in
+project3 — its block stays spec-derived and provisional).
+
+Designed for: G1 scene-link authoring replay (`SceneLinkReplayByteFidelityTests`) + the schema-enabler
+cross-check (TypeCode 0x4b–0x4e, project-form DTD blocks); passively round-tripped in
+`ProjectByteFidelityTests` + `DtdConformanceTests` from day one.
+
+### project3-KompleksWired-enumappend.vis (237 KB, 2,503 lines) — derived enum-append oracle
+
+Authentic IHC Visual output **derived from `project3-KompleksWired.vis`** by one recorded value-append
+action in a single session (single save); session notes in `tmp/experiments/out/ENG-A3/findings.md`. Its
+purpose is the **append-values-to-an-existing-enum byte-fidelity** gate (backlog M-A part 2, US-030
+edit-existing flows — the mutation-context complement of `-enumvalues`, which pinned *creation*): the SDK
+loads the *original*, replays Action 0 + the append below through the future `AddEnumValues` surface, saves
+with the clock pinned to `id2="_0xb0d1105"` / `modified 2026-07-11 13:17`, and asserts byte-identity. `id1`
+is unchanged; `last_unique_id` rises **`_0x579 → _0x57c`** (+3, one id per value, no burn). Action 0 applies
+first. The single action:
+
+- **V — append values to an existing enum.** Bibliotek ▸ Rediger Enumerator typer (dialog 24588), select the
+  existing **empty** user enum `TestEnum æøå äö "x"` (`_0x51147`), add values **AppendA**, **AppendB**,
+  **AppendC**, OK → Save As:
+
+  ```xml
+  <enum_definition id="_0x51147" name="TestEnum æøå äö &quot;x&quot;">
+     <enum_value id="_0x57a48" name="AppendA"/>
+     <enum_value id="_0x57b48" name="AppendB" index="1"/>
+     <enum_value id="_0x57c48" name="AppendC" index="2"/>
+  </enum_definition>
+  ```
+
+  Pinned semantics: the vendor appends **IN PLACE** — the `enum_definition` keeps its id and its original
+  position in the enum block (no re-hoist/move of the edited enum); the values allocate contiguously (type
+  `0x48`), and `index` is 0-based with **`index="0"` elided** — identical stamping to from-scratch creation.
+  Both element types are already in the inline DTD, so there is **no DTD change**.
+
+Designed for: M-A `AddEnumValues` replay (append semantics on a pre-existing def — id retention, in-place
+position, index continuation from empty); passively round-tripped in `ProjectByteFidelityTests` +
+`DtdConformanceTests` from day one.
+
+### project2-control-save.vis (36.5 KB, 653 lines) — project2 Action-0 baseline
+
+Authentic IHC Visual output **derived from `project2-CustomBlock.vis`** by a bare load → Save As (no
+edits) in one session; session notes in `tmp/experiments/out/ENG2-A5/findings.md`. It pins **project2's
+"Action 0"**: on load, IHC Visual re-hoists the two `typeid`-bearing catalog enums to the enum-block
+bottom — Persienne `_0x4447→_0xf847`, Logning `_0x4a47→_0xfe47` — and repoints every `resource_enum@typedef`;
+`last_unique_id` rises **`_0xf7 → _0x104`** (+13), freeing gaps 68–80 (+7 B vs base). Same behavior the
+`-mutated` oracle pinned for project3. Save stamps: `id2="_0xc0d0037"` / `modified 2026-07-12 13:00:55`;
+`id1` unchanged.
+
+**This file (not base project2) is the replay baseline for `-refdelete`, `-logicgroups` and `-case`** —
+their replay tests load base project2, apply `NormalizeCatalogEnums()` (Action 0), then the lettered
+actions. A control replay (Action 0 only, clock pinned as above) must reproduce these bytes.
+
+Designed for: project2 Action-0 control replay; passive round-trip in `ProjectByteFidelityTests` +
+`DtdConformanceTests`.
+
+### project2-CustomBlock-refdelete.vis (35.7 KB, 644 lines) — derived reference-cascade-delete oracle
+
+Authentic IHC Visual output **derived from `project2-CustomBlock.vis`** by one recorded delete in a single
+session (single save); session notes in `tmp/experiments/out/ENG2-A5/findings.md`. Its purpose is the
+**reference-cascade delete byte-fidelity** gate (backlog M-B, US-009 program-reference half): the SDK loads
+the *original*, replays Action 0 + the delete below through `DeleteById(…, CascadeReferences)`, saves with
+the clock pinned to `id2="_0xc0d0414"` / `modified 2026-07-12 13:04:20`, and asserts byte-identity. `id1`
+unchanged; `last_unique_id` stays **`_0x104`** (delete allocates 0 ids). Action 0 applies first. The single
+action:
+
+- **D — cascade-delete a program-referenced FB resource.** Programming mode on `Custom blok`
+  (config-view Slet is a **no-op** on FB resources — programming mode required), select Output
+  `Udgang _0x7112` (TV1), Slet (cmd 24586) — **silent, no confirmation dialog** → Save As.
+
+  Pinned semantics (**§18 M-B granularity = A, row-only, any-link-slot**): removes the
+  `resource_output _0x7112` definition AND all 4 referencing `action` rows **whole** —
+  `_0xedca/_0xf5ca/_0xf6ca/_0xf7ca` — including `_0xf6ca`, which matched only via `link2` (its
+  `link2="_0x7011"` partner `_0x7011` itself **survives** with its 3 other refs intact). Parent
+  `actions`/Kommandoer groups are left in place (no empty-group folding). Freed id counters exactly
+  {113, 237, 245, 246, 247}.
+
+Designed for: M-B `DeleteReferencePolicy.CascadeReferences` replay + cascade-exactness; passive round-trip
+in `ProjectByteFidelityTests` + `DtdConformanceTests` from day one.
+
+### project2-CustomBlock-logicgroups.vis (37.9 KB, 664 lines) — derived condition-logic-groups oracle
+
+Authentic IHC Visual output **derived from `project2-CustomBlock.vis`** by one recorded program-authoring
+sequence in a single session (single save); session notes in `tmp/experiments/out/ENG2-B1/findings.md`
+(§"COMPLETE CAPTURE"). First oracle in the corpus with a **NOT condition (`method="_0x28"`)** and a
+**nested conditions group**. Its purpose is the **condition-logic-groups byte-fidelity** gate (backlog G2,
+US-029): the SDK loads the *original*, replays Action 0 + the sequence below through the
+`ConditionsGroupRef` surface, saves with the clock pinned to `id2="_0xc0e2338"` /
+`modified 2026-07-12 14:35:56`, and asserts byte-identity. `id1` unchanged; `last_unique_id` rises
+**`_0x104 → _0x10c`** (+8, no burn). Action 0 applies first. The sequence (programming mode on
+`Custom blok`, all under the root Kommandoer):
+
+- **L1 — insert sub-program.** 4-id skeleton in allocation order: `program_sub _0x105` →
+  `conditions _0x106` → sande `actions _0x107` (`type="_0x1"`) → falske `actions _0x108`.
+- **L2 — plain condition.** Drag `Flag` → Betingelser, popup `Flag = ON` → `condition _0x109`
+  (`name="%P = ON"`, `method="_0xa"`, `link1`=Flag).
+- **L3 — NOT condition.** Drag `NyTypeForThisProject` → Betingelser, popup `… <>` →
+  `condition _0x10a` (`name="%P &lt;&gt; %S"`, **`method="_0x28"`** = NOT, `link1`+`link2`).
+- **L4 — nested logic group.** Insert Logik gruppe → nested `conditions _0x10b`, **empty**, reusing the
+  Betingelser decoration verbatim (name `Betingelser`, icon `_0x16`, note "Gruppering af betingelser til
+  logisk test" — **§18 G2 gate = A, alias as-is**; no distinct "Logikgruppe" strings).
+- **L5 — action.** Drag `Udgang` → sande Kommandoer, popup `Kip` → `action _0x10c` (`name="Kip %P"`,
+  `method="_0x23"`).
+- **L6 — OR toggle.** Betingelser EK-dialog → Logisk betingelse OR → **only** literal
+  `conditions@type="or"` on `_0x106` (AND = attribute absent; nothing else rewritten).
+
+  KEY pinned semantics: persisted `<condition|action>@name` is the **`%P`/`%S` TEMPLATE**, not the popup's
+  variable-substituted display label — the binding is `method` + `link1/link2`.
+
+Designed for: G2 `ConditionsGroupRef` (Or/And/nested + `AddCondition(method)`) replay; passive round-trip
+in `ProjectByteFidelityTests` + `DtdConformanceTests` from day one.
+
+### project2-CustomBlock-case.vis (39.2 KB, 687 lines) — derived case-structure oracle
+
+Authentic IHC Visual output **derived from `project2-CustomBlock.vis`** by one recorded program-authoring
+sequence in a single session (single save); session notes in `tmp/experiments/out/ENG2-B2/findings.md`
+(§"CAPTURE"). First oracle in the corpus with a **`program_case`/`case_action`** structure. Its purpose is
+the **case-structure byte-fidelity** gate (backlog G3, US-031): the SDK loads the *original*, replays
+Action 0 + the sequence below through the `AddCase`/`CaseRef` surface, saves with the clock pinned to
+`id2="_0xc0e2c02"` / `modified 2026-07-12 14:44:02`, and asserts byte-identity. `id1` unchanged;
+`last_unique_id` rises **`_0x104 → _0x113`** (+15, two 1-id burns). Action 0 applies first. The sequence
+(programming mode on `Custom blok`):
+
+- **C1 — insert sub-program.** Same 4-id skeleton as `-logicgroups` (`_0x105`–`_0x108`).
+- **C2 — insert case.** Drag `Tæller` → sande Kommandoer, popup `Case (Tæller)` → **`program_case` and its
+  Else `actions` allocated together at case-insert** (§18 G3 gate = **A**): `program_case _0x10921`
+  (`name="Case (%LT)"`, `link`=criterion `Tæller`) then Else `actions _0x10a66` (allocation-**2nd**,
+  serialized **LAST** inside the case).
+- **C3/C4 — two case values (100, 1000).** Each `newCaseValue` opens the "Rediger konstant" dialog (Edit
+  id 268), **burns 1 id** (gaps 267, 270), then allocates `case_action` + embedded
+  **`<resource_counter inivalue="100|1000">`** operand (counter criteria use `resource_counter`; enum
+  criteria embed `resource_enum` per fb08). `case_action@variable`=criterion, `@value`=operand.
+- **C5/C6/C7 — branch actions.** `=100` → `%P = ON` (`_0xa`), `=1000` → `%P = OFF` (`_0x14`), Else →
+  `Kip %P` (`_0x23`) — actions allocated last.
+
+Designed for: G3 `AddCase`/`CaseRef` replay (eager Else, value burn, counter operand, doc-last Else);
+passive round-trip in `ProjectByteFidelityTests` + `DtdConformanceTests` from day one.
+
+### project3-KompleksWired-gemsideeffect.vis (236 KB, 2,499 lines) — derived Gem-side-effect oracle
+
+Authentic IHC Visual output **derived from `project3-KompleksWired.vis`** by one recorded Gem Funktionsblok
+in a single session (single save); session notes in `tmp/experiments/out/ENG2-A4B/findings.md`. Its purpose
+is pinning the **in-document side effect of exporting a block to the library** (backlog G5 §18
+"source-doc side effect" — the shipped `ExportDefinition` is read-only; this oracle makes a vendor-parity
+mode byte-testable): Gem (cmd 24765) on the stock Kip block `_0x8b28` (Navn=`GemOracle`, Note=`Oracle
+tooltip`) **rewrites the placed block in place**, identical to the `.ifb` export head — `name`→`GemOracle`,
+`master_name`→`GemOracle`, `master_programmer`→current user, `master_date_*`→save date, **strip**
+`master_schneider_electric/type/version`, `icon _0xe`→`_0x10`, `note`→`Oracle tooltip`, `locked="yes"`
+kept. Save As. Delta vs base = Action 0 (catalog-enum re-hoist `_0x56c→_0x579`, gaps 65–77) + the block
+re-attribution only (−379 B); **the rename allocates 0 ids** (`last_unique_id _0x579`, same as a bare
+load+save). Save stamps: `id2="_0xc0c3829"` / `modified 2026-07-12 12:56:41`; `id1` unchanged. The twin
+export `gemoracle-kip2.ifb` equals the committed `gemoracle-kip.ifb` except `master_date_day`. No new DTD
+element types.
+
+Designed for: optional G5 vendor-parity mode replay (in-doc re-attribution); passive round-trip in
+`ProjectByteFidelityTests` + `DtdConformanceTests` from day one.
+
 ## Authentic oracles (`projects/LiveAuthored/`)
 
 Minimal single-purpose projects captured live in IHC Visual during experiment B3, each isolating
@@ -264,6 +488,38 @@ of `locked`, `product_identifier`s repeated across files) is intentionally **out
 clean products, so these oracles stay clean; corpus-variety and format-robustness coverage belongs to tests
 over the real `.def` corpus, not to these builder oracles.
 
+## Authentic FunctionBlock oracle (`functionblocks/`)
+
+### gemoracle-kip.ifb (20.8 KB, 293 lines)
+
+The only **authentic** catalog file in testdata: real IHC Visual (03.04.72.03) output of **Gem Funktionsblok**
+(command 24765) on the locked stock block **"1.1.01.e. Kip tænd sluk"** (`_0x8b28`, placed and wired in
+project3's Stue), with dialog Navn=`GemOracle` and Note=`Oracle tooltip`; session notes in
+`tmp/experiments/out/ENG-A4/findings.md`. Its purpose is the **export-placed-block byte gate** (backlog G5,
+US-021 "Gem…"): `FunctionBlockRef.ExportDefinition` lifts the placed project block to a
+`FunctionBlockDefinition`, and `CatalogFileWriter.Write` reproduces this file under the catalog fidelity
+relation (whitespace-normalized, `CatalogTextCompare`) — the committed gate is
+`ExportDefinitionOracleTests.ExportDefinition_GemBlok_MatchesVendorIfb_TextIdentical`, with identity, grammar,
+wiring-strip and re-import shape tests alongside. It also joins the passive catalog batteries alongside
+the synthetic sets (`CatalogFileWriterTests` reader→writer W1 + `CatalogDtdParserTests` strict grammar
+round-trip) — the corpus's only committed *vendor-exported user block*.
+
+Pinned facts (the G5 design gates, all answered by this capture):
+
+- **Ids = project ids VERBATIM** — the root keeps `_0x8b28`; body ids are the original project ids,
+  non-contiguous and unrenumbered.
+- **Keyless user block:** `master_schneider_electric`, `master_type` and `master_version` (present on the
+  stock source) are **STRIPPED**; `master_name` = dialog Navn, `master_programmer` = current user,
+  `master_date_*` = export date (2026-07-11); `locked="yes"` retained; `icon` reassigned (`_0xe` → `_0x10`);
+  `note` = dialog Note.
+- **External wiring stripped:** zero `link_from_resource`/`link_to_resource`/`scene_link` rows in the body.
+- `<?xml version="1.0" encoding="ISO-8859-1"?>`, **CRLF**; the DTD head declares exactly the 18 element
+  types the body uses.
+- **Vendor side effect (not visible in this file):** Gem also renames + re-stamps the in-doc source block
+  (the project document becomes dirty). `ExportDefinition` deliberately does NOT mirror that mutation — no
+  post-Gem `.vis` oracle pins those bytes, so the SDK export is read-only (`AuthoringByteInvarianceTests`
+  T18 pins the untouched project; a GUI wanting vendor parity composes the rename via the block handle).
+
 ## Synthetic FunctionBlock oracles (`functionblocks/synthetic/`) — not authentic
 
 Eight synthetic `.ifb` FunctionBlock files (not IHC Visual output) — the committed oracles for
@@ -303,7 +559,7 @@ non-registry element needs the project-level path, covered by `projects/Syntheti
 ## Notes
 
 - Files are copied to the test output via the csproj `testdata\**\` globs (`*.vis` plus `*.def` and
-  `*.ifb` for the synthetic catalog oracles); access them through the `TestData` helper (relative
+  `*.ifb` for the catalog oracles); access them through the `TestData` helper (relative
   paths like `projects/LiveAuthored/step02-pir2.vis` or `functionblocks/synthetic/synthetic_fb01_toggle.ifb`).
 - All oracles share `programmer="Morten Christensen"`, format `version 4.0`, ISO-8859-1 encoding.
 - Do not re-save these files with any editor — a single normalized byte invalidates every

@@ -61,7 +61,7 @@ namespace Ihc.Vis.Projects
                 new[]
                 {
                     BuildModified(creationTime),
-                    Node("customer_info", null, NoAttrs, NoChildren),
+                    BuildCustomerInfo(details),
                     BuildInstallerInfo(details),
                     BuildProjectInfo(details),
                     enumDefinitions,
@@ -139,15 +139,43 @@ namespace Ihc.Vis.Projects
                 ("minute", DecToken.Format(moment.Minute)),
             }, NoChildren);
 
+        // Unset optional details pass through as "" — exactly the DTD default, so the final Canonicalize
+        // pass drops them and an all-default block serializes as the same empty element it always did.
+        private static ProjectElement BuildCustomerInfo(ProjectDetails details) =>
+            Node("customer_info", null, new[]
+            {
+                ("name", details.CustomerName ?? ""),
+                ("address", details.CustomerAddress ?? ""),
+                ("city", details.CustomerCity ?? ""),
+                ("zipcode", details.CustomerZipCode ?? ""),
+                ("country", details.CustomerCountry ?? ""),
+                ("phone", details.CustomerPhone ?? ""),
+                ("mobilephone", details.CustomerMobilePhone ?? ""),
+                ("email", details.CustomerEmail ?? ""),
+            }, NoChildren);
+
         private static ProjectElement BuildInstallerInfo(ProjectDetails details) =>
             Node("installer_info", null, new[]
             {
                 ("name", details.InstallerName),
+                ("address", details.InstallerAddress ?? ""),
+                ("city", details.InstallerCity ?? ""),
+                ("zipcode", details.InstallerZipCode ?? ""),
                 ("country", details.InstallerCountry),
+                ("phone", details.InstallerPhone ?? ""),
+                ("mobilephone", details.InstallerMobilePhone ?? ""),
+                ("email", details.InstallerEmail ?? ""),
             }, NoChildren);
 
         private static ProjectElement BuildProjectInfo(ProjectDetails details) =>
-            Node("project_info", null, new[] { ("programmer", details.Programmer) }, NoChildren);
+            Node("project_info", null, new[]
+            {
+                ("programmer", details.Programmer),
+                ("number", details.ProjectNumber ?? ""),
+                ("drawing", details.Drawing ?? ""),
+                ("type", details.ProjectType ?? ""),
+                ("description", details.Description ?? ""),
+            }, NoChildren);
 
         // --- small construction helpers (the final Canonicalize pass fixes order / omits defaults / drops unknowns) ---
 

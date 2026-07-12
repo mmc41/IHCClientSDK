@@ -20,11 +20,16 @@ namespace Ihc.Vis.Schema
             "link_from_resource", "link_to_resource",
         };
 
-        /// <summary>The scene-row tags that pair reciprocally via <c>link</c> (a scene half ↔ its resource row).</summary>
-        public static readonly IReadOnlySet<string> SceneHalfTags = new HashSet<string>(StringComparer.Ordinal)
+        /// <summary>The scene member row tags — the value-carrying half inside a product's <c>scenes</c> container
+        /// (its partner <c>scene_link</c> lives inside the FB's <c>resource_scene</c> pin).</summary>
+        public static readonly IReadOnlySet<string> SceneMemberTags = new HashSet<string>(StringComparer.Ordinal)
         {
-            "scene_link", "scene_dimmer", "scene_relay", "scene_shutter",
+            "scene_dimmer", "scene_relay", "scene_shutter",
         };
+
+        /// <summary>The scene-row tags that pair reciprocally via <c>link</c> (a scene half ↔ its resource row).</summary>
+        public static readonly IReadOnlySet<string> SceneHalfTags =
+            SceneMemberTags.Concat(new[] { "scene_link" }).ToHashSet(StringComparer.Ordinal);
 
         /// <summary>Every tag that participates in a reciprocal link/scene pair — the union of the two sets above;
         /// only elements of these types may be cascaded on a delete.</summary>

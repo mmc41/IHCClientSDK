@@ -8,8 +8,9 @@ using Ihc.Vis.Catalog;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// W1 (reader→writer identity) on the committed synthetic oracles: for every invented, vendor-format
-    /// <c>testdata/products/synthetic/*.def</c> and <c>testdata/functionblocks/synthetic/*.ifb</c>, serializing the
+    /// W1 (reader→writer identity) on the committed catalog oracles: for every invented, vendor-format
+    /// <c>testdata/products/synthetic/*.def</c> and <c>testdata/functionblocks/synthetic/*.ifb</c>, plus every
+    /// authentic vendor-exported <c>testdata/functionblocks/*.ifb</c> (Gem Funktionsblok output), serializing the
     /// definition <see cref="CatalogReader"/> parsed from it must reproduce the file <b>after whitespace
     /// normalization</b> (whitespace outside quotes removed on both sides — the fidelity relation the final acceptance
     /// uses, since vendor hand-formatting is not reconstructable). This proves the writer is a faithful mirror of the
@@ -23,9 +24,14 @@ namespace Ihc.Vis.Tests
 
         private static readonly string FunctionBlockDir = TestData.PathOf("functionblocks", "synthetic");
 
+        // Authentic vendor-exported .ifb oracles (e.g. gemoracle-kip.ifb) live directly in functionblocks/;
+        // the enumeration is non-recursive so the synthetic set stays separate.
+        private static readonly string VendorFunctionBlockDir = TestData.PathOf("functionblocks");
+
         private static IEnumerable<string> ProductOracles() => Oracles(ProductDir, "*.def");
 
-        private static IEnumerable<string> FunctionBlockOracles() => Oracles(FunctionBlockDir, "*.ifb");
+        private static IEnumerable<string> FunctionBlockOracles() =>
+            Oracles(FunctionBlockDir, "*.ifb").Concat(Oracles(VendorFunctionBlockDir, "*.ifb"));
 
         private static IEnumerable<string> Oracles(string dir, string pattern) =>
             Directory.Exists(dir)
