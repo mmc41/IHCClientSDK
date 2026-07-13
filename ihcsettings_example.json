@@ -1,64 +1,66 @@
 {
-    "comment" : "Example of how your ihcsettings.json file can look like. You need this user supplied file to run examples and tests",
-    "encryption": {
-      "comment": "The setting reflect encryption status of passwords within this file. The value should only be modified by ihc_settings_encrypt tool. Uses IHC_ENCRYPT_PASSPHRASE environment variable",
-      "isEncrypted": false
-    },
-    "ihcclient": {
-        "comment" : "Refer to your IHC controller config for endpoint and authentication details. Use 'http://usb' for endpoint for a USB connected controller. Known application names include 'treeview', 'openapi', 'administrator'. The optional 'ihcVisualInstallDir' is NOT read by the runtime project-edit service (ProjectAppService ships an SDK-embedded catalog for products/function blocks and File->New templates); it is retained only as input to the dev-time catalog code generator and some test helpers, so normal use can leave it out.",
-        "endpoint" : "http://192.100.1.10",
-        "userName" : "johndoe",
-        "password" : "mypassword",
-        "application" : "administrator",
-        "logSensitiveData": false,
-        "asyncContinueOnCapturedContext": false,
-        "allowDangerousInternTestCalls": false,
-        "ihcVisualInstallDir": "C:\\Program Files (x86)\\LK IHC Control\\IHC Visual"
-    },
-    "Logging": {
-        "comment" : "Optional section. Not used by SDK but used for some utilities",
-        "LogLevel": {
-          "Default": "Debug",
-          "Microsoft": "Warning",
-          "Microsoft.Hosting.Lifetime": "Information",
-          "Avalonia": "Trace"
-        }
-    },
-    "telemetry": {
-      "comment" : "OpenTelemetry example setting using Openobserve.ai provider. Set <token> to correct value from Datasource menu under Traces",
-      "Host": "http://localhost:5080",
-      "Traces": "http://localhost:5080/api/default/v1/traces",
-      "Logs": "http://localhost:5080/api/default/v1/logs",
-      "Headers": "Authorization=Basic <token>, stream-name=Ihc, organization=default"
-    },
-    "testConfig": {
-      "comment" : "ID's of boolean typed resources that can be used by tests and examples. Chose arbitrary 'tryk' you can press for input and connected 'lampleudtag' for output where you can see if it is on. Get the IDs from IHC Visual by pressing CTRL and hover mouse pointer over suitable input/output (or run IOExtractor project and inspect output)",
-      "boolOutput1" : "133107",
-      "boolInput1" : "8886058",
-      "boolInput2" : "7770844"
-    },
-    "projectExtrator": {
-        "comment": "Configuration for optional ihcprojectextractor tool",
-        "identifiers": {
-          "pascalcase": true,
-          "stringReplacements": {
-            "æ": "ae",
-            "ø": "oe",
-            "å": "aa",
-            "v.": "ved",
-            "Premier 360 DT": "",
-            "1873 Bobby-AM": ""
-          },
-          "stringReplacements2": {
-            "Æ": "AE",
-            "Ø": "OE",
-            "Å": "AA"
-          }
-        },
-        "CSharpGenerator": {
-          "namespace": "MyInstallation"
-        },
-        "JSGenerator": {},
-        "JsonGenerator": {}
+  "comment": "Example of how your ihcsettings.json file can look like. You need this user supplied file to run examples and tests",
+  "encryption": {
+    "comment": "The setting reflect encryption status of passwords within this file. The value should only be modified by ihc_settings_encrypt tool. Uses IHC_ENCRYPT_PASSPHRASE environment variable",
+    "isEncrypted": false
+  },
+  "ihcclient": {
+    "comment": "Refer to your IHC controller config for endpoint and authentication details. Use 'http://usb' for endpoint for a USB connected controller. Known application names include 'treeview', 'openapi', 'administrator'. The optional 'ihcVisualInstallDir' is NOT read by the runtime project-edit service (ProjectAppService ships an SDK-embedded catalog for products/function blocks and File->New templates); it is retained only as input to the dev-time catalog code generator and some test helpers, so normal use can leave it out.",
+    "endpoint": "http://192.100.1.10",
+    "userName": "johndoe",
+    "password": "mypassword",
+    "application": "administrator",
+    "logSensitiveData": false,
+    "asyncContinueOnCapturedContext": false,
+    "allowDangerousInternTestCalls": false,
+    "ihcVisualInstallDir": "C:\\Program Files (x86)\\LK IHC Control\\IHC Visual"
+  },
+  "Logging": {
+    "comment": "Optional section. Not used by SDK but used for some utilities",
+    "LogLevel": {
+      "Default": "Debug",
+      "Microsoft": "Warning",
+      "Microsoft.Hosting.Lifetime": "Information",
+      "Avalonia": "Trace"
     }
+  },
+  "telemetry": {
+    "comment": "OpenTelemetry example setting using Openobserve.ai provider. Set <token> to correct value from Datasource menu under Traces",
+    "Host": "http://localhost:5080",
+    "Traces": "http://localhost:5080/api/default/v1/traces",
+    "Logs": "http://localhost:5080/api/default/v1/logs",
+    "Headers": "Authorization=Basic <token>, stream-name=Ihc, organization=default",
+    "SelfCheckEndpoint": "http://localhost:5080/api/default/v1/traces",
+    "SelfCheckExpectedStatus": "^2\\d\\d$"
+  },
+  "testConfig": {
+    "comment": "ID's of boolean typed resources that can be used by tests and examples. Chose arbitrary 'tryk' you can press for input and connected 'lampleudtag' for output where you can see if it is on. Get the IDs from IHC Visual by pressing CTRL and hover mouse pointer over suitable input/output (or run IOExtractor project and inspect output)",
+    "boolOutput1": "133107",
+    "boolInput1": "8886058",
+    "boolInput2": "7770844"
+  },
+  "projectExtrator": {
+    "comment": "Configuration for optional ihcprojectextractor tool",
+    "identifiers": {
+      "pascalcase": true,
+      "stringReplacements": {
+        "æ": "ae",
+        "ø": "oe",
+        "å": "aa",
+        "v.": "ved",
+        "Premier 360 DT": "",
+        "1873 Bobby-AM": ""
+      },
+      "stringReplacements2": {
+        "Æ": "AE",
+        "Ø": "OE",
+        "Å": "AA"
+      }
+    },
+    "CSharpGenerator": {
+      "namespace": "MyInstallation"
+    },
+    "JSGenerator": {},
+    "JsonGenerator": {}
+  }
 }

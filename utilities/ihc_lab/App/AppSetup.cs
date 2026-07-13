@@ -89,10 +89,13 @@ public static class AppSetup
             builder.AddConfiguration(configuration.loggingConfig);
         });
 
-        // Setup tracing for our application 
+        // Setup tracing for our application.
+        // IMPORTANT: The TracerProvider must be kept alive for the lifetime of the app and disposed
+        // on shutdown; otherwise it can be garbage-collected (silently stopping export) and it never
+        // flushes pending spans. Anchor it in a static field, mirroring the logger factory.
         if (!string.IsNullOrEmpty(configuration.telemetryConfig.Traces))
         {
-            var telmetryTracerProvider = Sdk.CreateTracerProviderBuilder()
+            TracerProvider = Sdk.CreateTracerProviderBuilder()
                 .SetErrorStatusOnException(true)
                 .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: IhcLab.Telemetry.AppServiceName, serviceNamespace: IhcLab.Telemetry.AppServiceNamespace, serviceVersion: VersionInfo.GetAppVersionStr()))
                 .AddSource(Ihc.Telemetry.ActivitySourceName, IhcLab.Telemetry.ActivitySourceName)
@@ -107,7 +110,13 @@ public static class AppSetup
 
         return loggerFactory;
     }
-    
+
+    /// <summary>
+    /// The application's OpenTelemetry TracerProvider, kept alive for the process lifetime.
+    /// Held so it is not garbage-collected and can be disposed (flushing pending spans) on shutdown.
+    /// </summary>
+    public static TracerProvider? TracerProvider { get; private set; }
+
     public static AppBuilder LogToSink(this AppBuilder builder, ILoggerFactory logFactory, LogEventLevel level = LogEventLevel.Warning)
     {       
         Logger.Sink = new ChainedILoggerSink(logFactory, Logger.Sink, level);

@@ -41,7 +41,7 @@ The SDK currently supports v3.0 IHC controllers only. Support for pre-3.0 contro
 
 Definitely missing is a ready-to-consume NuGet package for the client. I expect to publish a package if there is interest. For now you will have to build the client yourself.
 
-A cross-platform replacement for the vendor's IHC Visual designer application is incubating in [applications/ihc_visual](applications/ihc_visual/), built on the SDK's project-edit engine. It is in early development and not yet part of the solution or CI builds.
+A cross-platform replacement for the vendor's IHC Visual designer application is incubating in [applications/ihc_openvisual](applications/ihc_openvisual/), built on the SDK's project-edit engine. It is in early development, but part of the solution and its headless smoke tests run in CI (Windows).
 
 See [ihcclient](ihcclient/README.md#status) for more details on IHC API implementation status.
 
@@ -112,6 +112,24 @@ await projectService.Save(project, "MyHouse-updated.vis");  // unchanged content
 
 See the [ihcclient README](ihcclient/README.md) for API details and [ARCHITECTURE.md](ARCHITECTURE.md) for how the pieces fit together.
 
+## Running from the command line
+
+All applications, utilities and examples are launched with `dotnet run --project <csproj>` from the repository root. Each needs an `ihcsettings.json` in the repo root (see [Configuration](#configuration)); the offline `.vis` and settings tools do not need a controller.
+
+| Project | Kind | Command |
+|---------|------|---------|
+| IHC OpenVisual (`.vis` editor GUI) | Application | `dotnet run --project applications/ihc_openvisual/ihc_openvisual.csproj` |
+| IHC Lab (API explorer GUI) | Utility | `dotnet run --project utilities/ihc_lab/ihc_lab.csproj` |
+| IHC admin (settings download/upload) | Utility | `dotnet run --project utilities/ihc_admin/ihc_admin.csproj` |
+| IHC info (system information) | Utility | `dotnet run --project utilities/ihc_info/ihc_info.csproj` |
+| Program code extractor (IO constants) | Utility | `dotnet run --project utilities/ihc_project_io_extractor/ihc_projectextractor.csproj` |
+| HTTP proxy recorder | Utility | `dotnet run --project utilities/ihc_httpproxyrecorder/ihc_httpproxyrecorder.csproj` |
+| Project download/upload | Utility | `dotnet run --project utilities/ihc_project_download_upload/ihc_ProjectDownloadUpload.csproj` |
+| Settings encrypt/decrypt | Utility | `dotnet run --project utilities/ihc_settings_encrypt/ihc_settings_encrypt.csproj -- encrypt ihcsettings.json` |
+| Catalog codegen (dev-time only) | Utility | `dotnet run --project utilities/ihc_catalog_codegen/ihc_catalog_codegen.csproj` |
+| Example 1 (read/write IO) | Example | `dotnet run --project examples/ihcclient_example1/example1.csproj` |
+| Example 2 | Example | `dotnet run --project examples/ihcclient_example2/example2.csproj` |
+
 ## Content
 
 This project is hosted in a mono-repo containing the following sub-projects:
@@ -119,7 +137,7 @@ This project is hosted in a mono-repo containing the following sub-projects:
 * SDK:
   * [ihcclient](ihcclient/README.md) This is the main project that contains the code for the IHC client API. This is the project you will need to reference in your own solutions.
 * Applications:
-  * [ihc_visual](applications/ihc_visual/) contains an incubating cross-platform GUI intended to replicate the vendor's IHC Visual designer on top of the SDK's project-edit engine (early development; not yet in the solution or CI).
+  * [ihc_openvisual](applications/ihc_openvisual/) contains an incubating cross-platform GUI intended to replicate the vendor's IHC Visual designer on top of the SDK's project-edit engine (early development; part of the solution, with headless smoke tests in CI).
 * SDK usage examples:
   * [ihcclient_example1](examples/ihcclient_example1/README.md) contains code for a simple command line client console program in C#. Use this for inspiration on how to get started.
   * [ihcclient_example2](examples/ihcclient_example2/README.md) contains code for a simple command line client console program in C#. Use this for inspiration on how to get started.
@@ -137,7 +155,7 @@ This project is hosted in a mono-repo containing the following sub-projects:
   * [Safe project tests](tests/safe_project_tests/) contains tests for the `.vis` project-file engine, driven by committed oracle files. Does not access a controller.
   * [Safe Lab tests](tests/safe_lab_tests/README.md) contains headless gui tests for Ihc Lab utility. Does not access a controller.
   * [Safe integration tests](tests/safe_integration_tests/README.md) contains system integration tests written in C# that can be safely run against a controller in use.
-  * [Safe visual tests](tests/safe_visual_tests/) contains incubating smoke tests for the ihc_visual application (not yet in the solution or CI).
+  * [Safe visual tests](tests/safe_visual_tests/) contains incubating headless smoke tests for the ihc_openvisual application (in the solution and CI). Does not access a controller.
 
 For a whole-repo overview of layers, invariants and boundaries, see [ARCHITECTURE.md](ARCHITECTURE.md).
 

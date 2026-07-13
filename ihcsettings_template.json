@@ -29,7 +29,9 @@
       "Host": "Url to hosted telemetry solution frontpage that the user can login to (OpenTel provider specified)",
       "Traces": "Trace endpoint provided by telemetry solution. Used to send data to solution. (OpenTel provider specified)",
       "Logs": "Trace endpoint provided by telemetry solution. Used to send data to solution. (OpenTel provider specified)",
-      "Headers": "Comma-seperated list of key=value pairs including authorization information (OpenTel provider specified)"
+      "Headers": "Comma-seperated list of key=value pairs including authorization information (OpenTel provider specified)",
+      "SelfCheckEndpoint": "",
+      "SelfCheckExpectedStatus": "^2\\d\\d$"
     },
     "testConfig": {
         "comment" : "ID's of resources that can be used by tests and examples. Chose arbitrary 'tryk' you can press for input and connected 'lampleudtag' for output where you can see if it is on. Get the IDs from IHC Visual by pressing CTRL and hover mouse pointer over suitable input/output (or run IOExtractor project and inspect output)",

@@ -158,7 +158,7 @@ public abstract class AvaloniaTestBase
             Directory.CreateDirectory(outputDir);
             var filepath = Path.Combine(outputDir, $"{safeTestName}_{timestamp}.png");
 
-            bitmap.Save(filepath);
+            bitmap.Save(filepath, PngBitmapEncoderOptions.Default);
 
             TestContext.Out.WriteLine($"Test failure screenshot saved: {filepath}");
             TestContext.AddTestAttachment(filepath, "Test Failure Screenshot");

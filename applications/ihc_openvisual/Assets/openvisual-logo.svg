@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140"
+     role="img" aria-labelledby="ov-title"
+     fill="none" stroke="currentColor" stroke-width="7"
+     stroke-linecap="round" stroke-linejoin="round">
+  <title id="ov-title">IHC OpenVisual</title>
+  <path id="house" d="M16 128 L16 56 L60 16 L104 56 L104 128 Z"/>
+  <text id="wordmark-ihc" x="60" y="84" text-anchor="middle"
+        font-family="'Segoe UI','Arial',sans-serif" font-size="32" font-weight="700"
+        fill="currentColor" stroke="none">IHC</text>
+  <line id="rule" x1="34" y1="95" x2="86" y2="95" stroke-width="3"/>
+  <text id="wordmark-ov" x="60" y="115" text-anchor="middle"
+        font-family="'Segoe UI','Arial',sans-serif" font-size="14" font-weight="600"
+        fill="currentColor" stroke="none">OpenVisual</text>
+</svg>

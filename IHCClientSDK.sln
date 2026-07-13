@@ -41,7 +41,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihc_catalog_codegen", "util
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "applications", "applications", "{A10A91C2-6485-6656-963B-F6FCBC812542}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihc_visual", "applications\ihc_visual\ihc_visual.csproj", "{79E71CC1-775E-476C-9BB5-5C007735FA29}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihc_openvisual", "applications\ihc_openvisual\ihc_openvisual.csproj", "{79E71CC1-775E-476C-9BB5-5C007735FA29}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "safe_visual_tests", "tests\safe_visual_tests\safe_visual_tests.csproj", "{87DAEAE2-D0E2-47E3-B0B3-4DC2590412C7}"
 EndProject

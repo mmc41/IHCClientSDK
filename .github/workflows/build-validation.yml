@@ -45,6 +45,6 @@ jobs:
       run: dotnet test tests/safe_lab_tests/safe_lab_tests.csproj --no-build
 
     - name: Test (headless Visual UI tests)
-      # ihc_visual's headless Avalonia tests, scoped to Windows for the same native-render reason.
+      # ihc_openvisual's headless Avalonia tests, scoped to Windows for the same native-render reason.
       if: matrix.os == 'windows-latest'
       run: dotnet test tests/safe_visual_tests/safe_visual_tests.csproj --no-build

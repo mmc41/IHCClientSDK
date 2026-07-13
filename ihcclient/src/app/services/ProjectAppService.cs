@@ -14,6 +14,7 @@ using Ihc.Vis.Io;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
+using Ihc.Vis.Reporting;
 using Ihc.Vis.Schema;
 using Ihc.Vis.Validation;
 namespace Ihc.Vis
@@ -90,7 +91,7 @@ namespace Ihc.Vis
             ArgumentNullException.ThrowIfNull(settings);
             ArgumentNullException.ThrowIfNull(timeProvider);
             this.settings = settings;
-            // Wrap the base catalog in a CompositeCatalog so runtime ImportCatalogFile/Directory can overlay extra
+            // Wrap the base catalog in a CompositeCatalog so runtime ImportCatalogFile can overlay extra
             // components (imported-wins) on top of the built-ins; an already-composite base is reused as-is. Lazy, so
             // the base is not materialized until a catalog operation (CreateNew/GetAvailable*/Import) runs — file and
             // controller IO still need no IHC Visual install.
@@ -566,7 +567,8 @@ namespace Ihc.Vis
         /// built-in with the same key (imported-wins) and appears in <see cref="GetAvailableProducts"/> /
         /// <see cref="GetAvailableFunctionBlocks"/>. Pass <paramref name="documentationProbe"/> (e.g.
         /// <see cref="ReadSiblingDocumentation"/>) to attach help metadata from a sibling file; it maps the component
-        /// path to summary text (or null for none).
+        /// path to summary text (or null for none). This is the single-file import primitive by design — to import a
+        /// whole folder, the caller enumerates its <c>.def</c>/<c>.ifb</c> files and calls this once per file.
         /// </summary>
         public void ImportCatalogFile(string path, Func<string, string?>? documentationProbe = null)
         {
@@ -575,7 +577,21 @@ namespace Ihc.Vis
             {
                 try
                 {
-                    ImportFile(path, documentationProbe);
+                    string? summary = documentationProbe?.Invoke(path);
+                    if (Path.GetExtension(path).Equals(".ifb", StringComparison.OrdinalIgnoreCase))
+                    {
+                        FunctionBlockDocumentation? documentation = summary is null
+                            ? null
+                            : new FunctionBlockDocumentation(summary, ImmutableDictionary<string, string>.Empty);
+                        catalog.Value.Import(CatalogReader.ReadFunctionBlock(path, documentation));
+                    }
+                    else
+                    {
+                        ProductDocumentation? documentation = summary is null
+                            ? null
+                            : new ProductDocumentation(summary, ImmutableDictionary<string, string>.Empty);
+                        catalog.Value.Import(CatalogReader.ReadProduct(path, documentation));
+                    }
                     activity?.SetReturnValue(path);
                 }
                 catch (Exception ex)
@@ -587,37 +603,7 @@ namespace Ihc.Vis
         }
 
         /// <summary>
-        /// Imports every product (<c>*.def</c>) and function-block (<c>*.ifb</c>) file found recursively under
-        /// <paramref name="directory"/> (ordinal-sorted, so import order — and thus last-wins among the imports — is
-        /// deterministic), returning the number imported. See <see cref="ImportCatalogFile"/> for per-file behavior and
-        /// the <paramref name="documentationProbe"/> hook.
-        /// </summary>
-        public int ImportCatalogDirectory(string directory, Func<string, string?>? documentationProbe = null)
-        {
-            ArgumentNullException.ThrowIfNull(directory);
-            using (var activity = StartActivity(nameof(ImportCatalogDirectory)))
-            {
-                try
-                {
-                    int count = 0;
-                    foreach (string path in EnumerateCatalogFiles(directory))
-                    {
-                        ImportFile(path, documentationProbe);
-                        count++;
-                    }
-                    activity?.SetReturnValue(count);
-                    return count;
-                }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
-        }
-
-        /// <summary>
-        /// A ready-made <c>documentationProbe</c> for <see cref="ImportCatalogFile"/>/<see cref="ImportCatalogDirectory"/>:
+        /// A ready-made <c>documentationProbe</c> for <see cref="ImportCatalogFile"/>:
         /// reads a sibling <c>.syn_en</c> (else <c>.md</c>) help file next to the component and returns its full text
         /// as the documentation summary — mirroring the vendor <c>FunctionBlocks\*.md</c> help documents — or null when
         /// neither sibling exists. Opt in by passing this method as the probe argument.
@@ -636,38 +622,65 @@ namespace Ihc.Vis
             return null;
         }
 
-        private void ImportFile(string path, Func<string, string?>? documentationProbe)
-        {
-            string? summary = documentationProbe?.Invoke(path);
-            if (Path.GetExtension(path).Equals(".ifb", StringComparison.OrdinalIgnoreCase))
-            {
-                FunctionBlockDocumentation? documentation = summary is null
-                    ? null
-                    : new FunctionBlockDocumentation(summary, ImmutableDictionary<string, string>.Empty);
-                catalog.Value.Import(CatalogReader.ReadFunctionBlock(path, documentation));
-            }
-            else
-            {
-                ProductDocumentation? documentation = summary is null
-                    ? null
-                    : new ProductDocumentation(summary, ImmutableDictionary<string, string>.Empty);
-                catalog.Value.Import(CatalogReader.ReadProduct(path, documentation));
-            }
-        }
-
-        private static IEnumerable<string> EnumerateCatalogFiles(string directory)
-        {
-            if (!Directory.Exists(directory))
-            {
-                throw new DirectoryNotFoundException($"Catalog import directory '{directory}' does not exist.");
-            }
-            return Directory.EnumerateFiles(directory, "*.def", SearchOption.AllDirectories)
-                .Concat(Directory.EnumerateFiles(directory, "*.ifb", SearchOption.AllDirectories))
-                .OrderBy(p => p, StringComparer.Ordinal);
-        }
-
         // To edit a project, call the project.Edit() extension on a loaded/created Project — there is no
         // service-level Edit, to keep a single mutation entry point.
+
+        /// <summary>
+        /// Builds the render-ready installation ("Installationsdokumentation") report model from a loaded
+        /// project: masthead, per-product detail tables (Installation-pane order), the flat data-line
+        /// cross-reference tables, and the module/special-product/S0 tables, in the fixed output order. Every
+        /// value is display-final (blank→"--" or empty cell, addresses decoded); the installation report never
+        /// omits undocumented products (omission is end-user-report-only). All report business logic lives here —
+        /// a GUI transforms the result 1-to-1 into HTML.
+        /// </summary>
+        public InstallationReport GenerateInstallationReport(Project project)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            using (var activity = StartActivity(nameof(GenerateInstallationReport)))
+            {
+                try
+                {
+                    InstallationReport report = ReportBuilder.BuildInstallation(project);
+                    activity?.SetReturnValue(report.ProductDetails.Length);
+                    return report;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Builds the render-ready end-user ("Funktionsdokumentation") report model from a loaded project: every
+        /// locality in Installation-pane order (never omitted), each carrying only the products flagged for
+        /// end-user documentation, with note propagation resolved (one function-block-input note per link on each
+        /// physical terminal) and the screen-only differing-locality suffix marked. All report business logic
+        /// lives here — a GUI transforms the result 1-to-1 into HTML (screen and print variants).
+        /// </summary>
+        public EndUserReport GenerateEndUserReport(Project project)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            using (var activity = StartActivity(nameof(GenerateEndUserReport)))
+            {
+                try
+                {
+                    EndUserReport report = ReportBuilder.BuildEndUser(project);
+                    activity?.SetReturnValue(report.Localities.Length);
+                    return report;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
+
+        // The third report type — function-block documentation (US-041) — is deferred: its per-field layout is
+        // not transcribed yet. Only the placeholder Ihc.Vis.Reporting.FunctionBlockReport type exists; no builder
+        // is wired here until the layout is specified.
 
         /// <summary>Validates a project against the pre-serialize checklist.</summary>
         public ProjectValidationResult Validate(Project project)

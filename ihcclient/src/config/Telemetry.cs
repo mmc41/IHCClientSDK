@@ -1,6 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 
 namespace Ihc {
@@ -33,6 +39,24 @@ namespace Ihc {
         /// Additional headers for telemetry requests.
         /// </summary>
         public string Headers { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The exact URL the startup connectivity self-check probes. Setting this ENABLES the check;
+        /// leaving it empty disables it. The check probes the endpoint once at startup and reports the
+        /// result, so a wrong endpoint or bad Authorization header fails loudly instead of the OTLP
+        /// exporter dropping all telemetry silently. Typically the <see cref="Traces"/> or
+        /// <see cref="Logs"/> OTLP endpoint - they share host and auth, so one probe validates
+        /// connectivity and the Authorization header - but it may point at any backend health URL.
+        /// </summary>
+        public string SelfCheckEndpoint { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Regex the HTTP status code must FULLY match for the self-check to count as success, e.g.
+        /// <c>^2\d\d$</c> for any 2xx, or <c>^(200|204)$</c> for specific codes. Required when
+        /// <see cref="SelfCheckEndpoint"/> is set (there is no impl default). An invalid regex is
+        /// reported as a configuration problem and disables the check.
+        /// </summary>
+        public string SelfCheckExpectedStatus { get; set; } = string.Empty;
 
         /// <summary>
         /// Reads Telemetry configuiration from IConfiguration
@@ -169,6 +193,152 @@ namespace Ihc {
                 activity.AddEvent(new ActivityEvent("Warning", tags: eventTags));
             }
             return activity;
+        }
+    }
+
+    /// <summary>Outcome category of a telemetry connectivity self-check (<see cref="TelemetrySelfCheck.ProbeAsync"/>).</summary>
+    public enum TelemetrySelfCheckStatus
+    {
+        /// <summary>No <see cref="TelemetryConfiguration.SelfCheckEndpoint"/> configured; the check did not run.</summary>
+        Disabled,
+        /// <summary>The check could not run because its configuration is missing or invalid (a problem to surface).</summary>
+        ConfigError,
+        /// <summary>The endpoint answered with a status matching <see cref="TelemetryConfiguration.SelfCheckExpectedStatus"/>.</summary>
+        Reachable,
+        /// <summary>The endpoint answered, but with a non-matching status - exported telemetry would be dropped.</summary>
+        Rejected,
+        /// <summary>The endpoint could not be reached at all - exported telemetry would be dropped.</summary>
+        Unreachable
+    }
+
+    /// <summary>The result of a telemetry self-check: its <see cref="Status"/> and a ready-to-log <see cref="Message"/>.</summary>
+    public sealed record TelemetrySelfCheckResult(TelemetrySelfCheckStatus Status, string Message)
+    {
+        /// <summary>True when the outcome is a problem the operator should see (config error, rejected, or unreachable).</summary>
+        public bool IsProblem => Status is TelemetrySelfCheckStatus.ConfigError
+            or TelemetrySelfCheckStatus.Rejected or TelemetrySelfCheckStatus.Unreachable;
+    }
+
+    /// <summary>
+    /// The startup telemetry connectivity self-check, shared by every app/utility that wires OpenTelemetry.
+    /// The OTLP exporter drops rejected or unreachable batches silently, so a wrong endpoint or a bad
+    /// Authorization header otherwise produces no visible error - telemetry just never arrives. This probes
+    /// the configured endpoint once and returns a ready-to-report <see cref="TelemetrySelfCheckResult"/>;
+    /// mapping that result onto a logger/console is the caller's (app-specific) concern, which keeps this SDK
+    /// helper free of any logging dependency.
+    /// <para>The probe is standards-based and backend-agnostic: it POSTs an empty OTLP/HTTP request (a
+    /// zero-byte ExportServiceRequest with <c>Content-Type: application/x-protobuf</c>, the same protocol the
+    /// exporter uses). Per the OTLP/HTTP spec an empty request is valid and yields 2xx, so this exercises
+    /// endpoint + auth without depending on any vendor's JSON handling.</para>
+    /// </summary>
+    public static class TelemetrySelfCheck
+    {
+        /// <summary>
+        /// Probes the endpoint (via <see cref="ProbeAsync"/>) and reports the outcome to Console/Trace — never
+        /// <c>ILogger</c>, so this stays in the logging-free SDK. Every outcome is written to
+        /// <see cref="System.Diagnostics.Trace"/>; a problem is additionally written to <see cref="Console.Error"/>
+        /// so it is visible even when the only logging provider is the dead OTLP endpoint. Non-blocking (callers
+        /// fire-and-forget) and never throws.
+        /// </summary>
+        public static async Task ProbeAndReportAsync(TelemetryConfiguration telemetry)
+        {
+            TelemetrySelfCheckResult result = await ProbeAsync(telemetry).ConfigureAwait(false);
+            Trace.WriteLine(result.Message);
+            if (result.IsProblem)
+                Console.Error.WriteLine(result.Message);
+        }
+
+        /// <summary>
+        /// Probes <see cref="TelemetryConfiguration.SelfCheckEndpoint"/> once (5s timeout) and returns the outcome.
+        /// <see cref="TelemetrySelfCheckStatus.Disabled"/> when no endpoint is set; a
+        /// <see cref="TelemetrySelfCheckStatus.ConfigError"/> when the endpoint is set without a valid
+        /// <see cref="TelemetryConfiguration.SelfCheckExpectedStatus"/> regex. Never throws.
+        /// </summary>
+        public static async Task<TelemetrySelfCheckResult> ProbeAsync(TelemetryConfiguration telemetry)
+        {
+            if (string.IsNullOrWhiteSpace(telemetry.SelfCheckEndpoint))
+                return new TelemetrySelfCheckResult(TelemetrySelfCheckStatus.Disabled,
+                    "Telemetry self-check disabled (no telemetry.SelfCheckEndpoint configured); skipping.");
+
+            if (string.IsNullOrWhiteSpace(telemetry.SelfCheckExpectedStatus))
+                return new TelemetrySelfCheckResult(TelemetrySelfCheckStatus.ConfigError,
+                    "telemetry.SelfCheckEndpoint is set but telemetry.SelfCheckExpectedStatus (success-status regex) is not set in ihcsettings.json; skipping self-check.");
+
+            Regex expectedStatus;
+            try
+            {
+                expectedStatus = new Regex(telemetry.SelfCheckExpectedStatus);
+            }
+            catch (ArgumentException ex)
+            {
+                return new TelemetrySelfCheckResult(TelemetrySelfCheckStatus.ConfigError,
+                    $"Telemetry self-check disabled: telemetry.SelfCheckExpectedStatus is not a valid regex ('{telemetry.SelfCheckExpectedStatus}'): {ex.Message}");
+            }
+
+            string url = telemetry.SelfCheckEndpoint;
+            try
+            {
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                // Empty OTLP/HTTP request: a zero-byte body is a valid ExportServiceRequest per the spec, and
+                // application/x-protobuf is the protocol the real exporter uses - portable across OTLP backends.
+                var content = new ByteArrayContent(Array.Empty<byte>());
+                content.Headers.ContentType = new MediaTypeHeaderValue("application/x-protobuf");
+                using var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
+                foreach ((string key, string value) in ParseHeaders(telemetry.Headers))
+                {
+                    // Authorization/custom headers go on the request; fall back to content headers if rejected.
+                    if (!request.Headers.TryAddWithoutValidation(key, value))
+                        request.Content.Headers.TryAddWithoutValidation(key, value);
+                }
+
+                using HttpResponseMessage response = await http.SendAsync(request).ConfigureAwait(false);
+                int status = (int)response.StatusCode;
+                if (StatusMatches(expectedStatus, status))
+                    return new TelemetrySelfCheckResult(TelemetrySelfCheckStatus.Reachable,
+                        $"Telemetry endpoint reachable (HTTP {status}) at {url}.");
+
+                return new TelemetrySelfCheckResult(TelemetrySelfCheckStatus.Rejected,
+                    $"Telemetry endpoint REJECTED export: HTTP {status} at {url} (does not match SelfCheckExpectedStatus '{telemetry.SelfCheckExpectedStatus}'). " +
+                    "Exported data will be dropped silently. Check the endpoint path and the Authorization header in ihcsettings.json.");
+            }
+            catch (Exception ex)
+            {
+                return new TelemetrySelfCheckResult(TelemetrySelfCheckStatus.Unreachable,
+                    $"Telemetry endpoint UNREACHABLE at {url}: {ex.Message}. " +
+                    "Exported data will be dropped silently. Check that the collector is running and the endpoint is correct in ihcsettings.json.");
+            }
+        }
+
+        /// <summary>
+        /// True when the regex matches the entire status-code string. Matching the whole value (rather than
+        /// a substring) avoids surprises like "20" accepting 500 - callers can still write anchors themselves.
+        /// </summary>
+        private static bool StatusMatches(Regex expectedStatus, int status)
+        {
+            string text = status.ToString(CultureInfo.InvariantCulture);
+            Match m = expectedStatus.Match(text);
+            return m.Success && m.Index == 0 && m.Length == text.Length;
+        }
+
+        /// <summary>
+        /// Parses the OTLP header string ("key1=value1, key2=value2, ...") the same way the exporter does,
+        /// splitting each pair on its FIRST '=' so base64 values containing '=' padding stay intact.
+        /// </summary>
+        private static IEnumerable<(string key, string value)> ParseHeaders(string headers)
+        {
+            if (string.IsNullOrEmpty(headers))
+                yield break;
+
+            foreach (string part in headers.Split(','))
+            {
+                int idx = part.IndexOf('=');
+                if (idx <= 0)
+                    continue;
+                string key = part.Substring(0, idx).Trim();
+                string value = part.Substring(idx + 1).Trim();
+                if (key.Length > 0)
+                    yield return (key, value);
+            }
         }
     }
 

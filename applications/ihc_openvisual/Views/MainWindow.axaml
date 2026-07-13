@@ -1,0 +1,227 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:ihc_openvisual.ViewModels"
+        xmlns:svc="using:ihc_openvisual.Services"
+        xmlns:conv="using:ihc_openvisual.Converters"
+        xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="680"
+        x:Class="ihc_openvisual.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/openvisual.ico"
+        Width="1000" Height="680"
+        Title="{Binding Title}">
+
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Ctrl+N" Command="{Binding NewCommand}"/>
+        <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenCommand}"/>
+        <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCommand}"/>
+    </Window.KeyBindings>
+
+    <DockPanel>
+        <!-- ============ Menu bar: the stable title hosts ============ -->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_File">
+                <MenuItem Header="_New project" Command="{Binding NewCommand}" InputGesture="Ctrl+N"/>
+                <MenuItem Header="_Open project…" Command="{Binding OpenCommand}" InputGesture="Ctrl+O"/>
+                <Separator/>
+                <MenuItem Header="_Save project" Command="{Binding SaveCommand}" InputGesture="Ctrl+S"/>
+                <MenuItem Header="Save project _as…" Command="{Binding SaveAsCommand}"/>
+                <Separator/>
+                <MenuItem Header="_Close project" Command="{Binding CloseCommand}"/>
+                <Separator/>
+                <MenuItem Header="Recent projects" ItemsSource="{Binding RecentProjects}">
+                    <MenuItem.ItemTemplate>
+                        <DataTemplate x:DataType="vm:RecentProjectViewModel">
+                            <TextBlock Text="{Binding DisplayName}"/>
+                        </DataTemplate>
+                    </MenuItem.ItemTemplate>
+                    <MenuItem.Styles>
+                        <Style Selector="MenuItem > MenuItem">
+                            <Setter Property="Command" Value="{ReflectionBinding OpenCommand}"/>
+                            <Setter Property="CommandParameter" Value="{ReflectionBinding Path}"/>
+                        </Style>
+                    </MenuItem.Styles>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="E_xit" Command="{Binding ExitCommand}" InputGesture="Alt+F4"/>
+            </MenuItem>
+
+            <!-- Edit is owned by later epics (E14–E15); present as a stable host. -->
+            <MenuItem Header="_Edit">
+                <MenuItem Header="(no commands yet)" IsEnabled="False"/>
+            </MenuItem>
+
+            <MenuItem Header="_View">
+                <MenuItem Header="_Toolbar" ToggleType="CheckBox"
+                          IsChecked="{Binding IsToolbarVisible}" Command="{Binding ToggleToolbarCommand}"/>
+                <MenuItem Header="_Status bar" ToggleType="CheckBox"
+                          IsChecked="{Binding IsStatusBarVisible}" Command="{Binding ToggleStatusBarCommand}"/>
+                <Separator/>
+                <MenuItem Header="Theme">
+                    <MenuItem Header="System" ToggleType="Radio"
+                              Command="{Binding SetThemeCommand}" CommandParameter="{x:Static svc:AppTheme.System}"
+                              IsChecked="{Binding CurrentTheme, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter=System}"/>
+                    <MenuItem Header="Light" ToggleType="Radio"
+                              Command="{Binding SetThemeCommand}" CommandParameter="{x:Static svc:AppTheme.Light}"
+                              IsChecked="{Binding CurrentTheme, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter=Light}"/>
+                    <MenuItem Header="Dark" ToggleType="Radio"
+                              Command="{Binding SetThemeCommand}" CommandParameter="{x:Static svc:AppTheme.Dark}"
+                              IsChecked="{Binding CurrentTheme, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter=Dark}"/>
+                </MenuItem>
+            </MenuItem>
+
+            <!-- Insert / Library / Controller / Documentation: owned by later epics; present now as stable hosts. -->
+            <MenuItem Header="_Insert">
+                <MenuItem Header="(no commands yet)" IsEnabled="False"/>
+            </MenuItem>
+            <MenuItem Header="_Library">
+                <MenuItem Header="(no commands yet)" IsEnabled="False"/>
+            </MenuItem>
+            <MenuItem Header="_Controller">
+                <MenuItem Header="(no commands yet)" IsEnabled="False"/>
+            </MenuItem>
+            <MenuItem Header="Doc_umentation">
+                <MenuItem Header="(no commands yet)" IsEnabled="False"/>
+            </MenuItem>
+
+            <MenuItem Header="_Help">
+                <MenuItem Header="Show settings" Command="{Binding ShowSettingsCommand}"/>
+                <MenuItem Header="Telemetry diagnostics" Command="{Binding TelemetryDiagnosticsCommand}"/>
+                <Separator/>
+                <MenuItem Header="_About…" Command="{Binding AboutCommand}"/>
+            </MenuItem>
+        </Menu>
+
+        <!-- ============ Toolbar ============ -->
+        <Border DockPanel.Dock="Top" IsVisible="{Binding IsToolbarVisible}"
+                Background="{DynamicResource ToolbarBackgroundBrush}"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,0,1"
+                Padding="6,4">
+            <StackPanel Orientation="Horizontal" Spacing="2">
+                <StackPanel.Styles>
+                    <Style Selector="Button.tool">
+                        <Setter Property="Width" Value="32"/>
+                        <Setter Property="Height" Value="30"/>
+                        <Setter Property="Padding" Value="0"/>
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                        <Setter Property="VerticalContentAlignment" Value="Center"/>
+                    </Style>
+                    <Style Selector="svg|Svg.toolicon">
+                        <Setter Property="Width" Value="18"/>
+                        <Setter Property="Height" Value="18"/>
+                    </Style>
+                    <Style Selector="Rectangle.toolsep">
+                        <Setter Property="Width" Value="1"/>
+                        <Setter Property="Margin" Value="5,3"/>
+                        <Setter Property="Fill" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+                    </Style>
+                </StackPanel.Styles>
+
+                <Button Classes="tool" Command="{Binding NewCommand}" ToolTip.Tip="New project (Ctrl+N)">
+                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_new.svg" CurrentColor="{DynamicResource IconColor}"/>
+                </Button>
+                <Button Classes="tool" Command="{Binding OpenCommand}" ToolTip.Tip="Open project (Ctrl+O)">
+                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_open.svg" CurrentColor="{DynamicResource IconColor}"/>
+                </Button>
+                <Button Classes="tool" Command="{Binding SaveCommand}" ToolTip.Tip="Save project (Ctrl+S)">
+                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_save.svg" CurrentColor="{DynamicResource IconColor}"/>
+                </Button>
+
+                <Rectangle Classes="toolsep"/>
+                <Button Classes="tool" Command="{Binding AboutCommand}" ToolTip.Tip="Help / About">
+                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_help.svg" CurrentColor="{DynamicResource IconColor}"/>
+                </Button>
+
+                <Rectangle Classes="toolsep"/>
+                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Retrieve from controller (E10)">
+                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_retrieve.svg" CurrentColor="{DynamicResource IconColor}"/>
+                </Button>
+                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Send to controller (E10)">
+                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_send.svg" CurrentColor="{DynamicResource IconColor}"/>
+                </Button>
+
+                <Rectangle Classes="toolsep"/>
+                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Cut (E14)">
+                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_cut.svg" CurrentColor="{DynamicResource IconColor}"/>
+                </Button>
+                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Copy (E14)">
+                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_copy.svg" CurrentColor="{DynamicResource IconColor}"/>
+                </Button>
+                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Paste (E14)">
+                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_paste.svg" CurrentColor="{DynamicResource IconColor}"/>
+                </Button>
+            </StackPanel>
+        </Border>
+
+        <!-- ============ Status bar ============ -->
+        <Border DockPanel.Dock="Bottom" IsVisible="{Binding IsStatusBarVisible}"
+                Background="{DynamicResource StatusBarBackgroundBrush}"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,1,0,0"
+                Padding="8,3">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="{Binding StatusText}" VerticalAlignment="Center"
+                           FontSize="{StaticResource CaptionFontSize}"/>
+                <!-- Locale indicator: Danish flag -->
+                <Border Grid.Column="1" Width="20" Height="14" Background="#C8102E" ToolTip.Tip="Danish project locale">
+                    <Canvas>
+                        <Rectangle Canvas.Left="6" Canvas.Top="0" Width="2.5" Height="14" Fill="White"/>
+                        <Rectangle Canvas.Left="0" Canvas.Top="5.75" Width="20" Height="2.5" Fill="White"/>
+                    </Canvas>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- ============ Two tree panes with a splitter ============ -->
+        <Grid ColumnDefinitions="*,Auto,*">
+            <DockPanel Grid.Column="0">
+                <Border DockPanel.Dock="Top" Background="{DynamicResource PaneHeaderBackgroundBrush}" Padding="10,5">
+                    <TextBlock Text="Installation" Foreground="{DynamicResource PaneHeaderForegroundBrush}"
+                               FontWeight="SemiBold" FontSize="{StaticResource BodyFontSize}"/>
+                </Border>
+                <TreeView ItemsSource="{Binding InstallationNodes}">
+                    <TreeView.Styles>
+                        <Style Selector="TreeViewItem" x:DataType="vm:TreeNodeViewModel">
+                            <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
+                        </Style>
+                    </TreeView.Styles>
+                    <TreeView.ItemTemplate>
+                        <TreeDataTemplate x:DataType="vm:TreeNodeViewModel" ItemsSource="{Binding Children}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <svg:Svg Width="16" Height="16" Path="{Binding IconAsset}" CurrentColor="{DynamicResource IconColor}"/>
+                                <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </TreeDataTemplate>
+                    </TreeView.ItemTemplate>
+                </TreeView>
+            </DockPanel>
+
+            <GridSplitter Grid.Column="1" Width="4" ResizeDirection="Columns"
+                          Background="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+
+            <DockPanel Grid.Column="2">
+                <Border DockPanel.Dock="Top" Background="{DynamicResource PaneHeaderBackgroundBrush}" Padding="10,5">
+                    <TextBlock Text="Functions" Foreground="{DynamicResource PaneHeaderForegroundBrush}"
+                               FontWeight="SemiBold" FontSize="{StaticResource BodyFontSize}"/>
+                </Border>
+                <TreeView ItemsSource="{Binding FunctionNodes}">
+                    <TreeView.Styles>
+                        <Style Selector="TreeViewItem" x:DataType="vm:TreeNodeViewModel">
+                            <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
+                        </Style>
+                    </TreeView.Styles>
+                    <TreeView.ItemTemplate>
+                        <TreeDataTemplate x:DataType="vm:TreeNodeViewModel" ItemsSource="{Binding Children}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <svg:Svg Width="16" Height="16" Path="{Binding IconAsset}" CurrentColor="{DynamicResource IconColor}"/>
+                                <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </TreeDataTemplate>
+                    </TreeView.ItemTemplate>
+                </TreeView>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</Window>

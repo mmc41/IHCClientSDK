@@ -19,6 +19,9 @@ namespace Ihc.Vis.Tests
         private static string SyntheticProduct(string fileName) =>
             TestData.PathOf("products", "synthetic", fileName);
 
+        private static string SyntheticFunctionBlock(string fileName) =>
+            TestData.PathOf("functionblocks", "synthetic", fileName);
+
         private static ProjectAppService NewApp() =>
             new(TestSetup.Settings, new BuiltInCatalog(),
                 new FakeTimeProvider(new DateTimeOffset(2026, 7, 7, 12, 0, 0, TimeSpan.Zero)));
@@ -46,6 +49,31 @@ namespace Ihc.Vis.Tests
             Project reloaded = app.Load(new MemoryStream(ms.ToArray())).GetAwaiter().GetResult();
 
             Assert.That(reloaded.Equals(built), Is.True, "imported product round-trips, no install present");
+        }
+
+        [Test]
+        public void ImportCatalogFile_FunctionBlockResolvesInsertsAndRoundTrips_WithoutInstall()
+        {
+            ProjectAppService app = NewApp();
+            Project blank = app.CreateNew(new ProjectDetails("P", "I", "DK"));
+            int baseCount = app.GetAvailableFunctionBlocks().Count;
+
+            app.ImportCatalogFile(SyntheticFunctionBlock("synthetic_fb01_toggle.ifb"));
+
+            // Resolvable: a ".ifb" import lands among the available function blocks (not the products).
+            Assert.That(app.GetAvailableFunctionBlocks(), Has.Count.EqualTo(baseCount + 1));
+            FunctionBlockDefinition imported = app.GetAvailableFunctionBlocks().Single(fb => fb.MasterType == "9.1.01");
+
+            // Insertable + round-trips: add the block to a room, save and reload structurally equal.
+            ProjectEditor editor = blank.Edit();
+            editor.Group("Stue").AddFunctionBlock(imported);
+            Project built = editor.ToProject();
+
+            using var ms = new MemoryStream();
+            app.Save(built, ms, ProjectSaveOptions.PreserveExistingMetadata).GetAwaiter().GetResult();
+            Project reloaded = app.Load(new MemoryStream(ms.ToArray())).GetAwaiter().GetResult();
+
+            Assert.That(reloaded.Equals(built), Is.True, "imported function block round-trips, no install present");
         }
 
         [Test]
@@ -108,20 +136,24 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
-        public void ImportCatalogDirectory_ImportsEveryDefAndReportsCount()
+        public void ImportCatalogFile_CallerEnumeratingAFolder_ImportsEveryDef()
         {
+            // The SDK surface is single-file only: importing a whole folder is the caller's job — enumerate the
+            // files and call ImportCatalogFile once each. This confirms that pattern covers the folder use-case.
             ProjectAppService app = NewApp();
             int baseCount = app.GetAvailableProducts().Count;
             string dir = TestData.PathOf("products", "synthetic");
-            int expected = Directory.GetFiles(dir, "*.def", SearchOption.AllDirectories).Length;
+            string[] defs = Directory.GetFiles(dir, "*.def", SearchOption.AllDirectories);
 
-            int imported = app.ImportCatalogDirectory(dir);
+            foreach (string def in defs)
+            {
+                app.ImportCatalogFile(def);
+            }
 
             Assert.Multiple(() =>
             {
-                Assert.That(expected, Is.GreaterThan(0), "sanity: the synthetic product corpus is present");
-                Assert.That(imported, Is.EqualTo(expected), "reports the number of files imported");
-                Assert.That(app.GetAvailableProducts(), Has.Count.EqualTo(baseCount + expected), "all appear in the catalog");
+                Assert.That(defs, Is.Not.Empty, "sanity: the synthetic product corpus is present");
+                Assert.That(app.GetAvailableProducts(), Has.Count.EqualTo(baseCount + defs.Length), "all appear in the catalog");
                 Assert.That(app.GetAvailableProducts().Any(p => p.ProductIdentifier == "_0x9f04"), Is.True, "a specific import resolves");
             });
         }

@@ -40,6 +40,10 @@ public class Program
             config = new Configuration();
             loggerFactory = AppSetup.SetupTelemetryAndLoggingFactory(config);
 
+            // Probe the configured OTLP endpoint so a wrong endpoint/token fails loudly instead of
+            // silently dropping all telemetry. Runs in the background; does not block startup.
+            _ = Ihc.TelemetrySelfCheck.ProbeAndReportAsync(config.telemetryConfig);
+
             // throw new Exception("bla during startup");
 
             // Default init by Avalonia template.
@@ -47,6 +51,12 @@ public class Program
         } catch (Exception ex)
         {
             Trace.WriteLine("Fatal error " + ex);
+        }
+        finally
+        {
+            // Flush and release telemetry on shutdown so the final batch of spans/logs is exported.
+            AppSetup.TracerProvider?.Dispose();
+            loggerFactory?.Dispose();
         }
     }
 

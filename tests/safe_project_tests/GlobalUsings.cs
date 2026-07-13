@@ -9,6 +9,7 @@ global using Ihc.Vis.FunctionBlocks;
 global using Ihc.Vis.Catalog;
 global using Ihc.Vis.Editing;
 global using Ihc.Vis.Io;
+global using Ihc.Vis.Reporting;
 global using Ihc.Vis.Schema;
 global using Ihc.Vis.Validation;
 // The schema TypeCode helper collides with System.TypeCode once Ihc.Vis.Schema and System are both

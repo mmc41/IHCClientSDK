@@ -1,0 +1,51 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="280"
+        x:Class="ihc_openvisual.Views.AboutWindow"
+        Title="About IHC OpenVisual"
+        Width="420" Height="290"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        ShowInTaskbar="False">
+    <StackPanel Margin="24" Spacing="10">
+        <TextBlock Text="IHC OpenVisual"
+                   FontSize="{StaticResource TitleFontSize}" FontWeight="Bold"
+                   HorizontalAlignment="Center"/>
+
+        <TextBlock Name="AppDescription"
+                   FontSize="{StaticResource BodyFontSize}"
+                   Foreground="{DynamicResource SecondaryTextBrush}"
+                   TextWrapping="Wrap" TextAlignment="Center"
+                   HorizontalAlignment="Center"/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
+            <TextBlock Text="Source:" VerticalAlignment="Center"/>
+            <TextBlock Name="RepoLink"
+                       Foreground="{DynamicResource LinkBrush}"
+                       TextDecorations="Underline" Cursor="Hand"
+                       PointerPressed="OnRepoLinkClick"
+                       VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <TextBlock Name="RepoAuthors"
+                   FontSize="{StaticResource BodyFontSize}"
+                   HorizontalAlignment="Center"/>
+
+        <StackPanel HorizontalAlignment="Center" Spacing="2" Margin="0,6,0,0">
+            <TextBlock Name="AppVersionText"
+                       FontSize="{StaticResource CaptionFontSize}"
+                       Foreground="{DynamicResource SecondaryTextBrush}"
+                       HorizontalAlignment="Center"/>
+            <TextBlock Name="SdkVersionText"
+                       FontSize="{StaticResource CaptionFontSize}"
+                       Foreground="{DynamicResource SecondaryTextBrush}"
+                       HorizontalAlignment="Center"/>
+        </StackPanel>
+
+        <Button Content="Close" Width="{StaticResource DialogButtonWidth}"
+                HorizontalAlignment="Center" Margin="0,8,0,0"
+                IsCancel="True" IsDefault="True" Click="OnCloseClick"/>
+    </StackPanel>
+</Window>

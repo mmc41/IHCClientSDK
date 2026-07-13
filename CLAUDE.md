@@ -28,7 +28,7 @@ dotnet test tests/safe_unit_tests/safe_unit_tests.csproj
 # Run .vis project engine + ProjectAppService tests (controller-free, oracle-based)
 dotnet test tests/safe_project_tests/safe_project_tests.csproj
 
-# Run IHC Visual desktop app GUI tests (headless Avalonia UI tests, no controller)
+# Run IHC OpenVisual desktop app GUI tests (headless Avalonia UI tests, no controller)
 dotnet test tests/safe_visual_tests/safe_visual_tests.csproj
 
 # Run tests with detailed output
@@ -62,27 +62,40 @@ dotnet run --project utilities/ihc_lab/ihc_lab.csproj
 
 ### Running Applications
 ```bash
-# Run IHC Visual desktop application (Avalonia, .NET 10; GUI over ProjectAppService)
-dotnet run --project applications/ihc_visual/ihc_visual.csproj
+# Run IHC OpenVisual desktop application (Avalonia, .NET 10; GUI over ProjectAppService)
+dotnet run --project applications/ihc_openvisual/ihc_openvisual.csproj
 ```
+
+## Checking for Runtime Errors (OpenObserve)
+
+Use the **`openobserve` skill** to check for and diagnose runtime errors in exported logs
+and traces (after running an app/utility, or on any reported bug/exception/slowness).
+Requires OpenObserve up and `ihcsettings.json` telemetry configured; if the skill reports
+it can't connect, that means "unknown", not "no errors".
 
 ## Project Architecture
 
+> For a whole-repo overview of layers, invariants, and boundaries, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ### Core Structure
-This is a .NET 9.0 mono-repository containing an unofficial SDK for IHC (Intelligent House Concept) controllers from LK/Schneider Electric (the `ihc_visual` desktop app and its test project target .NET 10; the solution builds under the .NET 10 SDK).
+This is a .NET 10 mono-repository containing an unofficial SDK for IHC (Intelligent House Concept) controllers from LK/Schneider Electric. All projects target `net10.0` and the solution builds under the .NET 10 SDK.
 
 **Main Projects:**
 - `ihcclient/` - Core SDK library with high-level API wrapper around SOAP services
 - `tests/safe_integration_tests/` - NUnit test suite for SDK integration tests (safe to run against active controllers)
 - `tests/safe_lab_tests/` - NUnit test suite for IHC Lab GUI tests (headless Avalonia UI tests with diagnostic features)
 - `tests/safe_unit_tests/` - NUnit test suite for controller-free unit tests (no Avalonia headless app; mocks IHC services with FakeItEasy)
-- `tests/safe_visual_tests/` - NUnit test suite for the IHC Visual desktop app (headless Avalonia UI tests against the real `ihc_visual.App`; no controller)
-- `applications/ihc_visual/` - Avalonia desktop application (.NET 10) recreating IHC Visual project editing; pure GUI over `ProjectAppService` (all business logic stays in the SDK)
+- `tests/safe_visual_tests/` - NUnit test suite for the IHC OpenVisual desktop app (headless Avalonia UI tests against the real `ihc_openvisual.App`; no controller)
+- `applications/ihc_openvisual/` - Avalonia desktop application recreating IHC Visual project editing; pure GUI over `ProjectAppService` (all business logic stays in the SDK)
 - `examples/ihcclient_example1/` & `examples/ihcclient_example2/` - Console application examples
+- `utilities/ihc_lab/` - Avalonia-based GUI desktop application for IHC controller interaction and testing
+- `utilities/ihc_admin/` - Command line utility that downloads/uploads controller administrator settings as a JSON file
+- `utilities/ihc_info/` - Command line utility that prints IHC system information (versions, license, users, modules, resources)
 - `utilities/ihc_project_io_extractor/` - Utility to generate C# constants from IHC project files
 - `utilities/ihc_httpproxyrecorder/` - HTTP proxy for debugging/investigating IHC API calls
 - `utilities/ihc_project_download_upload/` - Tool for downloading/uploading IHC project files
-- `utilities/ihc_lab/` - Avalonia-based GUI desktop application for IHC controller interaction and testing
+- `utilities/ihc_settings_encrypt/` - Tool to encrypt/decrypt passwords in `ihcsettings.json` (AES-256-GCM)
+- `utilities/ihc_catalog_codegen/` - Developer-time generator that decompiles a vendor IHC Visual catalog into the SDK's built-in catalog C# sources (only needed when regenerating the catalog)
 
 ### SDK Architecture
 The `ihcclient` project follows a layered architecture:
@@ -92,7 +105,7 @@ The `ihcclient` project follows a layered architecture:
 - Each service wraps a corresponding SOAP implementation (SoapImpl classes)
 - Uses custom data models in `src/models/` instead of exposing SOAP artifacts
 - Fully async API design with no SOAP inheritance
-- Services require logger and endpoint in constructor; most require authentication first (except OpenAPIService)
+- `AuthenticationService`/`OpenAPIService` take an `IhcSettings` in the constructor; the other services take an `IAuthenticationService` (from which they inherit settings/endpoint). Most require authentication first (except `OpenAPIService`)
 - `SmsModemService` - SMS modem control including settings, status, hardware/firmware info, and reset operations
 - `InternalTestService` - LK/Schneider internal testing operations for hardware diagnostics, LED control, board version queries, time/date management, and RS485 communication. Some potentially dangerous operations (BurnIO, TestSdCard, TestIOBoard, RS485 operations, ProductionTestPassed) require `allowDangerousInternTestCalls` setting enabled in IhcSettings. Intended for manufacturing/testing scenarios.
 - `LedDimmerManagementService` - LED dimmer device management: enter/exit configuration mode, detect/scan devices, assign channel IDs, read device count/light level, list devices, and start/monitor firmware upgrades.
@@ -106,7 +119,7 @@ The `ihcclient` project follows a layered architecture:
   - `AdminAppService` - Manages administrator-related data (users, email, SMTP, DNS, network, web access, WLAN settings). Features change tracking that detects and applies only modified settings to minimize API calls. Supports JSON serialization with optional encryption of sensitive data (marked with `[SensitiveData]` attribute). Provides `GetModel()` to retrieve settings, `Store()` to apply changes, and `SaveAsJson()`/`LoadFromJson()` for file operations.
   - `InformationAppService` - Retrieves read-only controller information (system status, versions, uptime, time settings, SD card info, SMS modem info). Provides `GetInformationModel()` for comprehensive system information retrieval.
   - `LabAppService` - Laboratory/testing backend where users can dynamically select and execute individual IHC service operations. Supports runtime service and operation selection for experimentation and testing scenarios.
-  - `ProjectAppService` (namespace `Ihc.Vis`) - The single door for IHC project (`.vis`) IO and the backend for the `ihc_visual` app: `CreateNew` (File→New template), `Load`/`Save` (byte-fidelity round-trip, atomic writes, optional `.BAK`), `Validate`, catalog discovery (`GetAvailableProducts`/`GetAvailableFunctionBlocks` from the SDK-embedded `BuiltInCatalog` — no IHC Visual install required), runtime catalog import (`ImportCatalogFile`/`ImportCatalogDirectory`), and the controller bridge (`DownloadFrom`/`UploadTo`). Editing a loaded/created project goes through the `project.Edit()` extension (`Ihc.Vis.Editing.ProjectEditor`) — the single mutation entry point (localities, products, function blocks, links, programs, copy/move/delete).
+  - `ProjectAppService` (namespace `Ihc.Vis`) - The single door for IHC project (`.vis`) IO and the backend for the `ihc_openvisual` app: `CreateNew` (File→New template), `Load`/`Save` (byte-fidelity round-trip, atomic writes, optional `.BAK`), `Validate`, catalog discovery (`GetAvailableProducts`/`GetAvailableFunctionBlocks` from the SDK-embedded `BuiltInCatalog` — no IHC Visual install required), runtime single-file catalog import (`ImportCatalogFile` — one `.def`/`.ifb` per call; import a folder by enumerating it caller-side and calling this per file), and the controller bridge (`DownloadFrom`/`UploadTo`). Editing a loaded/created project goes through the `project.Edit()` extension (`Ihc.Vis.Editing.ProjectEditor`) — the single mutation entry point (localities, products, function blocks, links, programs, copy/move/delete).
 - Application services can create their own SDK service instances or accept existing instances via constructor injection
 - Designed to be framework-agnostic, suitable for WPF, Avalonia, console apps, or web backends
 
@@ -116,15 +129,16 @@ The `ihcclient` project follows a layered architecture:
 - Should not be used directly - access through high-level services
 - Regeneration requires macOS with `download_wsdl.sh` and `generate.sh` scripts located in `ihcclient/`
 
-**Supporting Infrastructure** (`ihcclient/src/util/`):
-- HTTP client utilities, serialization helpers, date extensions
-- Cookie handling for maintaining IHC controller sessions
+**Supporting Infrastructure** (`ihcclient/src/api/util/` and `ihcclient/src/util/`):
+- HTTP client utilities and cookie handling for maintaining IHC controller sessions (`src/api/util/`)
+- Serialization helpers, encoding/copy utilities (`src/util/`); settings live in `src/config/`
 
 **Extensions** (`ihcclient/src/extensions/`):
 - Extension methods for various types
 
 ### Key Design Patterns
-- All service classes require logger and endpoint in constructor
+- Services are constructed from an `IhcSettings` (`AuthenticationService`/`OpenAPIService`) or an `IAuthenticationService` (all others) — not a logger + endpoint
+- The SDK core emits OpenTelemetry traces via `ActivitySource` and has no logging dependency; only setup/utility/app code uses `ILogger`
 - Authentication required before using most services (except OpenAPIService)
 - Async/await throughout with async enumerables for long polling operations (see `ResourceInteractionService.GetResourceValueChanges`)
 - Custom serialization layer to handle IHC-specific data formats
@@ -132,6 +146,23 @@ The `ihcclient` project follows a layered architecture:
 - Each service uses internal SoapImpl wrapper around generated SOAP code
 - Prioritise the following patterns in specified order of priority: D.R.Y, KISS, YAGNI, Single return statements, SOLID.
 - Use nameof() instead of hardcoded parameter names
+
+### OpenVisual Desktop Application (`applications/ihc_openvisual/`)
+
+`ihc_openvisual` (product name **IHC OpenVisual**) is a cross-platform Avalonia desktop app that recreates the vendor's Windows-only IHC Visual authoring tool for `.vis` project files. It is a **thin MVVM GUI over `ProjectAppService`**: all `.vis` parsing, editing, validation, catalog, and controller logic stays in the SDK (`Ihc.Vis`). The UI never hand-rolls XML, routes every mutation through `project.Edit()` / `ProjectEditor`, and holds element ids (not object references).
+
+- **Stack**: .NET 10, Avalonia 12 (Fluent theme, Inter fonts, compiled bindings), CommunityToolkit.Mvvm; in-process `ihcclient` project reference (no version skew).
+- **Status**: incubating — app shell, MVVM scaffolding, the 44-glyph SVG icon set, and a headless smoke suite exist; the authoring UI is being built out against the epics/stories in `docs/`. Now in `IHCClientSDK.sln`, and `safe_visual_tests` runs in CI (Windows).
+- **Layering/test rule**: view-models avoid Avalonia types so logic is testable headlessly — view-model/logic tests go in `safe_unit_tests`, headless-UI tests in `safe_visual_tests`, engine byte-fidelity in `safe_project_tests`. Follows the `ihc_lab` MVVM + headless-test + telemetry-bootstrap conventions.
+
+**Documentation** lives in `applications/ihc_openvisual/docs/` — read the relevant doc before implementing an app feature:
+
+| Doc | Purpose |
+|-----|---------|
+| `product.md` | Authoritative vision + PRD-lite: features F1–F11, milestones M1–M5, quality attributes, test strategy, glossary |
+| `stories/*.md` | Epics **E1–E16** and their user stories (`US-NNN`) with acceptance criteria — the implementation spec; start here for any feature |
+| `icons_design.md` | Flat-line SVG icon design guidelines (24-unit grid, `currentColor`, legible at 16 px; state via glyph + colour, never colour alone) |
+| `icon_codes.md` | `.vis`/`.ifb` element (and vendor `_0xNN` code) → `Assets/*.svg` icon mapping |
 
 ## Configuration Requirements
 
@@ -147,19 +178,15 @@ Required for development:
 Note: The SDK library itself does NOT require this file - only the test/example/utility projects need it for configuration.
 
 **SDK API Usage:**
-When creating service instances programmatically, pass `logSensitiveData` parameter:
+Services are constructed from an `IhcSettings`. `AuthenticationService`/`OpenAPIService` take the settings directly; other services take an already-constructed `IAuthenticationService`:
 
 ```csharp
-// Secure default - credentials not logged
-var authService = new AuthenticationService(logger, endpoint);
-
-// Debug mode - credentials visible in logs (USE WITH CAUTION)
-var authService = new AuthenticationService(logger, endpoint, logSensitiveData: true);
+IhcSettings settings = IhcSettings.GetFromConfiguration(config);
+var authService = new AuthenticationService(settings);
+var resourceService = new ResourceInteractionService(authService);
 ```
 
-This parameter is available on:
-- `AuthenticationService` constructor
-- `OpenAPIService` constructor
+`logSensitiveData` is a field on `IhcSettings` (`"logSensitiveData"` in `ihcsettings.json`), not a constructor parameter. Keep it `false` unless debugging — when `true`, credentials are visible in traces.
 
 ### IHC Controller Setup
 Before running any code that connects to an IHC controller:
@@ -168,7 +195,7 @@ Before running any code that connects to an IHC controller:
 
 ## Important Notes
 
-- Target framework: .NET 9.0 (version 0.8.1) for all projects EXCEPT the `applications/ihc_visual` desktop app and its `tests/safe_visual_tests` (both `net10.0`, Avalonia 12). The whole solution builds under the .NET 10 SDK (it also builds the net9.0 projects); CI pins `DOTNET_VERSION: '10.x'`.
+- Target framework: `net10.0` for all projects (version 0.8.1); `applications/ihc_openvisual` and `tests/safe_visual_tests` additionally use Avalonia 12. The whole solution builds under the .NET 10 SDK; CI pins `DOTNET_VERSION: '10.x'`.
 - Test framework: NUnit 4.x
 - The project wraps SOAP web services since .NET Core doesn't natively support SOAP
 - `AuthenticationService` and `ResourceInteractionService` are feature-complete
@@ -187,7 +214,7 @@ Before running any code that connects to an IHC controller:
 - **safe_lab_tests** - Headless Avalonia UI tests for IHC Lab application with advanced diagnostic capabilities (using fake sevices instead of active controller)
 - **safe_unit_tests** - Controller-free unit tests for SDK and Lab business logic (no Avalonia headless app; mocks IHC services with FakeItEasy). UI control-construction tests belong in safe_lab_tests instead.
 - **safe_project_tests** - Controller-free tests for the `.vis` project engine and `ProjectAppService` (byte-fidelity round-trips against `testdata/` oracles, editing, catalog, validation). The regression gate for any change under `ihcclient/src/vis/`.
-- **safe_visual_tests** - Headless Avalonia UI tests for the `ihc_visual` desktop application (runs the real `ihc_visual.App`; no controller, no IHC API services needed for file-only flows).
+- **safe_visual_tests** - Headless Avalonia UI tests for the `ihc_openvisual` desktop application (runs the real `ihc_openvisual.App`; no controller, no IHC API services needed for file-only flows).
 
 ### safe_lab_tests Diagnostic Features
 
