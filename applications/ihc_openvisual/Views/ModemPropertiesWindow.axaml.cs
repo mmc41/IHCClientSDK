@@ -12,9 +12,8 @@ namespace ihc_openvisual.Views;
 /// code; the four RS485 cabling wire colours; the SIM PIN code; and telephone numbers 1–4. Returns the edited
 /// <see cref="ModemPropertiesResult"/>, or null on Cancel.
 /// </summary>
-public partial class ModemPropertiesWindow : Window
+public partial class ModemPropertiesWindow : ResultDialog<ModemPropertiesResult>
 {
-    private ModemPropertiesResult? _result;
     private string _currentLocalityId = string.Empty;
 
     public ModemPropertiesWindow()
@@ -22,7 +21,7 @@ public partial class ModemPropertiesWindow : Window
         InitializeComponent();
     }
 
-    public static async Task<ModemPropertiesResult?> ShowAsync(Window owner, ModemPropertiesInput input)
+    public static Task<ModemPropertiesResult?> ShowAsync(Window owner, ModemPropertiesInput input)
     {
         var window = new ModemPropertiesWindow { Title = input.Title };
         window._currentLocalityId = input.CurrentLocalityId;
@@ -45,8 +44,7 @@ public partial class ModemPropertiesWindow : Window
             window.NameBox.SelectAll();
             window.NameBox.Focus();
         };
-        await window.ShowDialog(owner);
-        return window._result;
+        return window.ShowDialogForResult(owner);
     }
 
     private void OnOk(object? sender, RoutedEventArgs e)
@@ -59,17 +57,10 @@ public partial class ModemPropertiesWindow : Window
             Phone3Box.Text ?? string.Empty,
             Phone4Box.Text ?? string.Empty,
         };
-        _result = new ModemPropertiesResult(
+        Accept(new ModemPropertiesResult(
             NameBox.Text ?? string.Empty, localityId, NoteBox.Text ?? string.Empty, IdentificationBox.Text ?? string.Empty,
             Cable0VBox.Text ?? string.Empty, Cable24VBox.Text ?? string.Empty,
             CableRS485MinusBox.Text ?? string.Empty, CableRS485PlusBox.Text ?? string.Empty,
-            PinCodeBox.Text ?? string.Empty, phones);
-        Close();
-    }
-
-    private void OnCancel(object? sender, RoutedEventArgs e)
-    {
-        _result = null;
-        Close();
+            PinCodeBox.Text ?? string.Empty, phones));
     }
 }

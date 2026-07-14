@@ -220,7 +220,9 @@ public sealed class ProjectSession : IDisposable
     public EndUserReport? GenerateEndUserReport() =>
         Current is { } project ? _service.GenerateEndUserReport(project) : null;
 
-    private static readonly (string Container, string Label)[] FbReportSections =
+    /// <summary>The function-block variable sections, in document order, with their display labels. Shared by the
+    /// FB report model and the Functions-pane tree/operand projection so both stay in lockstep.</summary>
+    public static readonly (string Container, string Label)[] FbVariableSections =
     {
         ("inputs", "Input"), ("outputs", "Output"), ("settings", "Settings"), ("internalsettings", "Internal variables"),
     };
@@ -240,7 +242,7 @@ public sealed class ProjectSession : IDisposable
                 foreach (ProjectElement fb in group.ChildrenOrEmpty().Where(c => c.Tag == "functionblock"))
                 {
                     var sections = ImmutableArray.CreateBuilder<FbReportSection>();
-                    foreach ((string container, string label) in FbReportSections)
+                    foreach ((string container, string label) in FbVariableSections)
                     {
                         var vars = fb.FindChild(container)?.ChildrenOrEmpty()
                             .Select(v => v.GetAttribute("name") ?? v.Tag).ToImmutableArray() ?? ImmutableArray<string>.Empty;
@@ -299,30 +301,15 @@ public sealed class ProjectSession : IDisposable
     /// <c>customer_info</c>/<c>installer_info</c> contact attributes by id (blank clears to the DTD default). This
     /// identifies the installation in the generated reports. Commits, marks dirty. Returns false on failure.
     /// </summary>
-    public async Task<bool> UpdateProjectInfoAsync(ProjectInfoData data)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(UpdateProjectInfoAsync)}");
-        try
+    public Task<bool> UpdateProjectInfoAsync(ProjectInfoData data) =>
+        RunEditAsync(nameof(UpdateProjectInfoAsync), "Project information failed", (project, editor) =>
         {
-            ProjectEditor editor = Current.Edit();
             editor.SetMetadata("project_info",
                 ("description", data.Description), ("number", data.Number), ("programmer", data.Programmer));
             WriteContact(editor, "customer_info", data.Customer);
             WriteContact(editor, "installer_info", data.Installer);
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to update project information");
-            await _dialogs.ShowMessageAsync("Project information failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     /// <summary>The dedicated user enum definition that holds the data-tables "user-defined texts" (US-049).</summary>
     public const string UserTextsTableName = "User-defined texts";
@@ -415,78 +402,33 @@ public sealed class ProjectSession : IDisposable
         rows.OrderBy(r => r.Line).ThenBy(r => r.Terminal).Select(r => r.Entry).ToImmutableArray();
 
     /// <summary>Appends a user-defined text (US-049), creating the user-texts table on first use. Returns false on failure.</summary>
-    public async Task<bool> AddUserTextAsync(string text)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(AddUserTextAsync)}");
-        try
+    public Task<bool> AddUserTextAsync(string text) =>
+        RunEditAsync(nameof(AddUserTextAsync), "Add text failed", (project, editor) =>
         {
-            ProjectEditor editor = Current.Edit();
-            bool exists = Current.Child("enum_definitions")?.ChildrenOrEmpty()
+            bool exists = project.Child("enum_definitions")?.ChildrenOrEmpty()
                 .Any(c => c.Tag == "enum_definition" && c.GetAttribute("name") == UserTextsTableName) == true;
             EnumDefinitionRef def = exists ? editor.EnumDefinition(UserTextsTableName) : editor.AddEnumDefinition(UserTextsTableName);
             editor.AddEnumValues(def, text);
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to add user text");
-            await _dialogs.ShowMessageAsync("Add text failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     /// <summary>Renames a user-defined text by id (US-049 Edit). Returns false on failure.</summary>
-    public async Task<bool> UpdateUserTextAsync(ElementId textId, string text)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(UpdateUserTextAsync)}");
-        try
+    public Task<bool> UpdateUserTextAsync(ElementId textId, string text) =>
+        RunEditAsync(nameof(UpdateUserTextAsync), "Edit text failed", (project, editor) =>
         {
-            ProjectEditor editor = Current.Edit();
             if (!editor.TryResolve(textId, out ElementRef? handle))
                 return false;
             handle.SetAttribute("name", text);
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to edit user text {Id}", textId.ToToken());
-            await _dialogs.ShowMessageAsync("Edit text failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     /// <summary>Deletes a user-defined text by id (US-049 Delete). Returns false on failure.</summary>
-    public async Task<bool> DeleteUserTextAsync(ElementId textId)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(DeleteUserTextAsync)}");
-        try
+    public Task<bool> DeleteUserTextAsync(ElementId textId) =>
+        RunEditAsync(nameof(DeleteUserTextAsync), "Delete text failed", (project, editor) =>
         {
-            ProjectEditor editor = Current.Edit();
             editor.DeleteById(textId, DeleteReferencePolicy.CascadeReferences);
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to delete user text {Id}", textId.ToToken());
-            await _dialogs.ShowMessageAsync("Delete text failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     private static void WriteContact(ProjectEditor editor, string tag, ContactInfo c) =>
         editor.SetMetadata(tag, ("name", c.Name), ("address", c.Address), ("city", c.City),
@@ -501,20 +443,18 @@ public sealed class ProjectSession : IDisposable
         return Current.FindParent(sectionId) is { Tag: "functionblock" } block ? block : null;
     }
 
-    public async Task<bool> LinkPinsAsync(ElementId draggedPinId, ElementId dropTargetPinId)
-    {
-        if (Current is null || draggedPinId == dropTargetPinId)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(LinkPinsAsync)}");
-        try
+    public Task<bool> LinkPinsAsync(ElementId draggedPinId, ElementId dropTargetPinId) =>
+        RunEditAsync(nameof(LinkPinsAsync), "Link failed", async (project, editor) =>
         {
+            if (draggedPinId == dropTargetPinId)
+                return false;
             // A direct function-block-to-function-block variable link (US-033b) only joins compatible endpoints: a
             // flag/output source of one block to a flag/input target of another block. (Product↔block links, where at
             // most one endpoint is an FB variable, keep their existing behaviour.)
             if (OwningFunctionBlock(draggedPinId) is { } sourceBlock && OwningFunctionBlock(dropTargetPinId) is { } targetBlock)
             {
-                string sourceTag = Current.FindById(draggedPinId)?.Tag ?? string.Empty;
-                string targetTag = Current.FindById(dropTargetPinId)?.Tag ?? string.Empty;
+                string sourceTag = project.FindById(draggedPinId)?.Tag ?? string.Empty;
+                string targetTag = project.FindById(dropTargetPinId)?.Tag ?? string.Empty;
                 if (sourceBlock.Id == targetBlock.Id
                     || sourceTag is not ("resource_flag" or "resource_output")
                     || targetTag is not ("resource_flag" or "resource_input"))
@@ -524,34 +464,18 @@ public sealed class ProjectSession : IDisposable
                     return false;
                 }
             }
-            ProjectEditor editor = Current.Edit();
             editor.Link(dropTargetPinId, draggedPinId);   // drop target = link_from (destination), dragged = link_to (source)
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to link {From} to {To}", draggedPinId.ToToken(), dropTargetPinId.ToToken());
-            await _dialogs.ShowMessageAsync("Link failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     /// <summary>
     /// Edits an existing scenario link's stored value (US-058): rewrites the scene member's value attributes by id —
     /// <c>dimming_value</c>/<c>ramptime_ms</c> for a dimmer member, <c>relay_value</c> for a relay/socket member.
     /// Commits, marks dirty. Returns false on failure.
     /// </summary>
-    public async Task<bool> UpdateSceneValueAsync(ElementId memberId, SceneValueResult r, bool isDimmer)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(UpdateSceneValueAsync)}");
-        try
+    public Task<bool> UpdateSceneValueAsync(ElementId memberId, SceneValueResult r, bool isDimmer) =>
+        RunEditAsync(nameof(UpdateSceneValueAsync), "Scene value update failed", (project, editor) =>
         {
-            ProjectEditor editor = Current.Edit();
             if (!editor.TryResolve(memberId, out ElementRef? handle))
                 return false;
             if (isDimmer)
@@ -563,18 +487,8 @@ public sealed class ProjectSession : IDisposable
             {
                 handle.SetAttribute("relay_value", r.On ? "on" : "off");
             }
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to update scene value {Id}", memberId.ToToken());
-            await _dialogs.ShowMessageAsync("Scene value update failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     /// <summary>
     /// Removes a link by one of its rows (US-057): deletes the selected link half (follow-link "link to"/"link from"
@@ -582,57 +496,27 @@ public sealed class ProjectSession : IDisposable
     /// go together while every other link on the two pins is left intact. Commits, marks dirty. Returns false on
     /// failure.
     /// </summary>
-    public async Task<bool> RemoveLinkAsync(ElementId linkRowId)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(RemoveLinkAsync)}");
-        try
+    public Task<bool> RemoveLinkAsync(ElementId linkRowId) =>
+        RunEditAsync(nameof(RemoveLinkAsync), "Remove link failed", (project, editor) =>
         {
-            ProjectEditor editor = Current.Edit();
             editor.DeleteById(linkRowId);   // cascades the reciprocal half that points back into the deleted row
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to remove link {Id}", linkRowId.ToToken());
-            await _dialogs.ShowMessageAsync("Remove link failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     /// <summary>
     /// Creates a scenario link (US-024): wires the function-block scene output pin to the product's scenes container
     /// with the given value — <see cref="SceneValue.Dimmer"/> (light level %, ramp) for a dimmer or
     /// <see cref="SceneValue.Relay"/> (ON/OFF) otherwise. Commits, marks dirty. Returns false on failure.
     /// </summary>
-    public async Task<bool> LinkSceneAsync(ElementId sceneOutputId, ElementId scenesId, SceneValueResult r, bool isDimmer)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(LinkSceneAsync)}");
-        try
+    public Task<bool> LinkSceneAsync(ElementId sceneOutputId, ElementId scenesId, SceneValueResult r, bool isDimmer) =>
+        RunEditAsync(nameof(LinkSceneAsync), "Scene link failed", (project, editor) =>
         {
             SceneValue value = isDimmer
                 ? SceneValue.Dimmer(r.LevelPercent, TimeSpan.FromSeconds((r.RampMinutes * 60) + r.RampSeconds))
                 : SceneValue.Relay(r.On);
-            ProjectEditor editor = Current.Edit();
             editor.LinkScene(sceneOutputId, scenesId, value);
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to create scene link {Pin} → {Scenes}", sceneOutputId.ToToken(), scenesId.ToToken());
-            await _dialogs.ShowMessageAsync("Scene link failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     /// <summary>The catalog products available for insertion (from the SDK-embedded catalog; no controller needed).</summary>
     public IReadOnlyList<ProductDefinition> GetAvailableProducts() => _service.GetAvailableProducts();
@@ -649,19 +533,16 @@ public sealed class ProjectSession : IDisposable
     /// enforces the section↔type matrix (a pin type into <c>settings</c> is refused). Commits, marks dirty. Returns
     /// the new variable's id, or null when the target is not a block section or the type is not allowed there.
     /// </summary>
-    public async Task<ElementId?> AddVariableAsync(ElementId sectionId, string resourceTag, string name)
+    public Task<ElementId?> AddVariableAsync(ElementId sectionId, string resourceTag, string name)
     {
-        if (Current is null)
-            return null;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(AddVariableAsync)}");
-        activity?.SetTag("variable.type", resourceTag);
-        try
+        ElementId? addedId = null;
+        return RunEditAsync<ElementId?>(nameof(AddVariableAsync), "Add variable failed", (project, editor) =>
         {
-            ProjectElement? section = Current.FindById(sectionId);
-            ProjectElement? block = Current.FindParent(sectionId);
+            Activity.Current?.SetTag("variable.type", resourceTag);
+            ProjectElement? section = project.FindById(sectionId);
+            ProjectElement? block = project.FindParent(sectionId);
             if (section is null || block?.Tag != "functionblock" || block.Id is not { } blockId)
-                return null;
-            ProjectEditor editor = Current.Edit();
+                return false;
             FunctionBlockRef fb = editor.FunctionBlock(blockId);
             ResourceRef added = section.Tag switch
             {
@@ -671,17 +552,9 @@ public sealed class ProjectSession : IDisposable
                 "internalsettings" => fb.AddInternalVariable(resourceTag, name),
                 _ => throw new InvalidOperationException($"<{section.Tag}> is not a function-block variable section."),
             };
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
-            return added.Id;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to add {Type} to section {Section}", resourceTag, sectionId.ToToken());
-            await _dialogs.ShowMessageAsync("Add variable failed", ex.Message);
-            return null;
-        }
+            addedId = added.Id;
+            return true;
+        }, _ => addedId, onFail: null);
     }
 
     /// <summary>
@@ -691,19 +564,16 @@ public sealed class ProjectSession : IDisposable
     /// <paramref name="sectionId"/> wired to that type (<c>typedef</c> + <c>inivalue</c> of the first state). The type
     /// is global — other blocks can reference it. Returns the new variable's id, or null on failure. No controller.
     /// </summary>
-    public async Task<ElementId?> AddEnumVariableAsync(ElementId sectionId, string variableName, string typeName, IReadOnlyList<string> states)
+    public Task<ElementId?> AddEnumVariableAsync(ElementId sectionId, string variableName, string typeName, IReadOnlyList<string> states)
     {
-        if (Current is null)
-            return null;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(AddEnumVariableAsync)}");
-        activity?.SetTag("enum.type", typeName);
-        try
+        ElementId? addedId = null;
+        return RunEditAsync<ElementId?>(nameof(AddEnumVariableAsync), "Add enumerator failed", (project, editor) =>
         {
-            ProjectElement? section = Current.FindById(sectionId);
-            ProjectElement? block = Current.FindParent(sectionId);
+            Activity.Current?.SetTag("enum.type", typeName);
+            ProjectElement? section = project.FindById(sectionId);
+            ProjectElement? block = project.FindParent(sectionId);
             if (section is null || block?.Tag != "functionblock" || block.Id is not { } blockId)
-                return null;
-            ProjectEditor editor = Current.Edit();
+                return false;
             EnumDefinitionRef def = editor.AddEnumDefinition(typeName, states.ToArray());
             FunctionBlockRef fb = editor.FunctionBlock(blockId);
             void Configure(ElementRef r)
@@ -718,17 +588,9 @@ public sealed class ProjectSession : IDisposable
                 "internalsettings" => fb.AddInternalVariable("resource_enum", variableName, Configure),
                 _ => throw new InvalidOperationException($"<{section.Tag}> does not accept an enum variable."),
             };
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
-            return added.Id;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to add enumerator {Type} to section {Section}", typeName, sectionId.ToToken());
-            await _dialogs.ShowMessageAsync("Add enumerator failed", ex.Message);
-            return null;
-        }
+            addedId = added.Id;
+            return true;
+        }, _ => addedId, onFail: null);
     }
 
     /// <summary>
@@ -793,104 +655,60 @@ public sealed class ProjectSession : IDisposable
     /// program then runs on controller power-up (also on project transfer and software restart), useful for
     /// re-establishing timer values. Takes no operand. Returns false for a non-events target. No controller.
     /// </summary>
-    public async Task<bool> AddPowerEventAsync(ElementId eventsContainerId)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(AddPowerEventAsync)}");
-        try
+    public Task<bool> AddPowerEventAsync(ElementId eventsContainerId) =>
+        RunEditAsync(nameof(AddPowerEventAsync), "Add Powerup event failed", (project, editor) =>
         {
-            if (Current.FindById(eventsContainerId)?.Tag != "events"
-                || Current.FindParent(eventsContainerId) is not { Tag: "program_simple", Id: { } programId })
+            if (project.FindById(eventsContainerId)?.Tag != "events"
+                || project.FindParent(eventsContainerId) is not { Tag: "program_simple", Id: { } programId })
                 return false;
-            ProjectEditor editor = Current.Edit();
             editor.Program(programId).AddPowerEvent("Powerup",
                 "Runs the program on controller power-up (also on project transfer and software restart).");
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to add Powerup event on {Container}", eventsContainerId.ToToken());
-            await _dialogs.ShowMessageAsync("Add Powerup event failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     /// <summary>
     /// Sets an output's "Save current value" power-loss persistence (US-033): writes <c>backup="yes"|"no"</c> on the
     /// function-block or physical output <paramref name="outputId"/> so its value is restored after a power loss
     /// instead of reset. Returns false when the target is not an output. No controller.
     /// </summary>
-    public async Task<bool> SetOutputBackupAsync(ElementId outputId, bool save)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(SetOutputBackupAsync)}");
-        try
+    public Task<bool> SetOutputBackupAsync(ElementId outputId, bool save) =>
+        RunEditAsync(nameof(SetOutputBackupAsync), "Save current value failed", (project, editor) =>
         {
-            if (Current.FindById(outputId)?.Tag is not ("resource_output" or "dataline_output" or "airlink_relay"))
+            if (project.FindById(outputId)?.Tag is not ("resource_output" or "dataline_output" or "airlink_relay"))
                 return false;
-            ProjectEditor editor = Current.Edit();
             if (!editor.TryResolve(outputId, out ElementRef? handle))
                 return false;
             handle.SetAttribute("backup", save ? "yes" : "no");
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to set backup on output {Id}", outputId.ToToken());
-            await _dialogs.ShowMessageAsync("Save current value failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
-    private async Task<bool> AuthorProgramChildAsync(
-        ElementId containerId, ElementId variableId, string method, string name, string? note, bool isEvent)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity(
-            $"{nameof(ProjectSession)}.{(isEvent ? nameof(AddProgramEventAsync) : nameof(AddProgramCommandAsync))}");
-        activity?.SetTag("program.method", method);
-        try
-        {
-            ProjectElement? container = Current.FindById(containerId);
-            ProjectEditor editor = Current.Edit();
-            ResourceRef variable = editor.Resource(variableId);
-            if (isEvent)
+    private Task<bool> AuthorProgramChildAsync(
+        ElementId containerId, ElementId variableId, string method, string name, string? note, bool isEvent) =>
+        RunEditAsync(
+            isEvent ? nameof(AddProgramEventAsync) : nameof(AddProgramCommandAsync),
+            isEvent ? "Add event failed" : "Add command failed",
+            (project, editor) =>
             {
-                // Events live only on the program root's events container (parent = program_simple).
-                if (container?.Tag != "events" || Current.FindParent(containerId) is not { Tag: "program_simple", Id: { } programId })
-                    return false;
-                editor.Program(programId).AddEvent(name, variable, method, note: note);
-            }
-            else
-            {
-                // Commands go into any command container — the root "Commands", a sub-program's true/false branch,
-                // or a case value's <case_action> (US-028/US-029/US-031).
-                if (container?.Tag is not ("actions" or "case_action"))
-                    return false;
-                editor.Branch(containerId).AddAction(name, variable, method, note: note);
-            }
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to author program {Kind} on {Container}",
-                isEvent ? "event" : "command", containerId.ToToken());
-            await _dialogs.ShowMessageAsync(isEvent ? "Add event failed" : "Add command failed", ex.Message);
-            return false;
-        }
-    }
+                Activity.Current?.SetTag("program.method", method);
+                ProjectElement? container = project.FindById(containerId);
+                ResourceRef variable = editor.Resource(variableId);
+                if (isEvent)
+                {
+                    // Events live only on the program root's events container (parent = program_simple).
+                    if (container?.Tag != "events" || project.FindParent(containerId) is not { Tag: "program_simple", Id: { } programId })
+                        return false;
+                    editor.Program(programId).AddEvent(name, variable, method, note: note);
+                }
+                else
+                {
+                    // Commands go into any command container — the root "Commands", a sub-program's true/false branch,
+                    // or a case value's <case_action> (US-028/US-029/US-031).
+                    if (container?.Tag is not ("actions" or "case_action"))
+                        return false;
+                    editor.Branch(containerId).AddAction(name, variable, method, note: note);
+                }
+                return true;
+            });
 
     /// <summary>
     /// Inserts a conditional sub-program (US-029) into an <c>actions</c> container <paramref name="commandsId"/> (a
@@ -934,33 +752,18 @@ public sealed class ProjectSession : IDisposable
     /// operation per line by construction — larger formulas are a sequence of these. The stored <paramref name="name"/>
     /// keeps the vendor <c>%P = %P ± %S</c> template. Returns false on a non-command target. No controller.
     /// </summary>
-    public async Task<bool> AddArithmeticCommandAsync(ElementId commandsId, ElementId targetId, string method, ElementId operandId, string name)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(AddArithmeticCommandAsync)}");
-        activity?.SetTag("program.method", method);
-        try
+    public Task<bool> AddArithmeticCommandAsync(ElementId commandsId, ElementId targetId, string method, ElementId operandId, string name) =>
+        RunEditAsync(nameof(AddArithmeticCommandAsync), "Add arithmetic failed", (project, editor) =>
         {
-            if (Current.FindById(commandsId)?.Tag is not ("actions" or "case_action"))
+            Activity.Current?.SetTag("program.method", method);
+            if (project.FindById(commandsId)?.Tag is not ("actions" or "case_action"))
                 return false;
-            ProjectEditor editor = Current.Edit();
             editor.Branch(commandsId).AddAction(name, editor.Resource(targetId), method, editor.Resource(operandId));
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to add arithmetic command on {Container}", commandsId.ToToken());
-            await _dialogs.ShowMessageAsync("Add arithmetic failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     /// <summary>The variable types a case may switch on (US-031): counter, enumerator, weekday, integer, or date.</summary>
-    private static readonly HashSet<string> EligibleCaseVariableTags = new()
+    public static readonly HashSet<string> EligibleCaseVariableTags = new()
     {
         "resource_counter", "resource_enum", "resource_weekday", "resource_integer", "resource_date",
     };
@@ -970,32 +773,17 @@ public sealed class ProjectSession : IDisposable
     /// switch variable <paramref name="switchVariableId"/> (counter/enum/weekday/integer/date) — a <c>program_case</c>
     /// eagerly allocating its default (Else) branch. Returns false for a non-eligible variable or non-command target.
     /// </summary>
-    public async Task<bool> AddCaseAsync(ElementId commandsId, ElementId switchVariableId)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(AddCaseAsync)}");
-        try
+    public Task<bool> AddCaseAsync(ElementId commandsId, ElementId switchVariableId) =>
+        RunEditAsync(nameof(AddCaseAsync), "Add case failed", (project, editor) =>
         {
-            ProjectElement? container = Current.FindById(commandsId);
-            ProjectElement? switchVar = Current.FindById(switchVariableId);
+            ProjectElement? container = project.FindById(commandsId);
+            ProjectElement? switchVar = project.FindById(switchVariableId);
             if (container?.Tag is not ("actions" or "case_action") || switchVar is null
                 || !EligibleCaseVariableTags.Contains(switchVar.Tag))
                 return false;
-            ProjectEditor editor = Current.Edit();
             editor.Branch(commandsId).AddCase("Case", editor.Resource(switchVariableId));
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to insert case on {Container}", commandsId.ToToken());
-            await _dialogs.ShowMessageAsync("Add case failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     /// <summary>
     /// Adds a case value branch (US-031) to a <c>program_case</c> <paramref name="caseId"/> for the literal
@@ -1003,55 +791,25 @@ public sealed class ProjectSession : IDisposable
     /// <c>&lt;resource_counter inivalue="100"&gt;</c>). Returns false for a non-case target, a missing switch, or an
     /// enum switch (enum case values need the type's states — deferred). No controller.
     /// </summary>
-    public async Task<bool> AddCaseValueAsync(ElementId caseId, string criterion)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(AddCaseValueAsync)}");
-        try
+    public Task<bool> AddCaseValueAsync(ElementId caseId, string criterion) =>
+        RunEditAsync(nameof(AddCaseValueAsync), "Add case value failed", (project, editor) =>
         {
-            ProjectElement? kase = Current.FindById(caseId);
+            ProjectElement? kase = project.FindById(caseId);
             if (kase?.Tag != "program_case" || !ElementId.TryParse(kase.GetAttribute("link"), out ElementId switchId)
-                || Current.FindById(switchId) is not { } switchVar || switchVar.Tag == "resource_enum")
+                || project.FindById(switchId) is not { } switchVar || switchVar.Tag == "resource_enum")
                 return false;
-            ProjectEditor editor = Current.Edit();
             editor.Case(caseId).Case(criterion, switchVar.Tag, op => op.SetAttribute("inivalue", criterion));
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to add case value '{Criterion}' to {Case}", criterion, caseId.ToToken());
-            await _dialogs.ShowMessageAsync("Add case value failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
-    private async Task<bool> MutateProgramAsync(string op, ElementId targetId, string requiredTag, string kind, Action<ProjectEditor> mutate)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{op}");
-        try
+    private Task<bool> MutateProgramAsync(string op, ElementId targetId, string requiredTag, string kind, Action<ProjectEditor> mutate) =>
+        RunEditAsync(op, $"Add {kind} failed", (project, editor) =>
         {
-            if (Current.FindById(targetId)?.Tag != requiredTag)
+            if (project.FindById(targetId)?.Tag != requiredTag)
                 return false;
-            ProjectEditor editor = Current.Edit();
             mutate(editor);
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to author program {Kind} on {Target}", kind, targetId.ToToken());
-            await _dialogs.ShowMessageAsync($"Add {kind} failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     /// <summary>
     /// Saves a placed function block to a reusable <c>.ifb</c> catalog file (US-021): lifts the block (by id) to a
@@ -1088,62 +846,33 @@ public sealed class ProjectSession : IDisposable
     /// it becomes editable like a custom block. Commits, marks dirty. Returns false when the id no longer resolves or
     /// the edit fails.
     /// </summary>
-    public async Task<bool> UnlockFunctionBlockAsync(ElementId functionBlockId)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(UnlockFunctionBlockAsync)}");
-        try
+    public Task<bool> UnlockFunctionBlockAsync(ElementId functionBlockId) =>
+        RunEditAsync(nameof(UnlockFunctionBlockAsync), "Unlock failed", (project, editor) =>
         {
-            ProjectEditor editor = Current.Edit();
             if (!editor.TryResolve(functionBlockId, out ElementRef? handle))
             {
                 _logger.LogWarning("Cannot unlock {Id}: it no longer exists", functionBlockId.ToToken());
                 return false;
             }
             handle.SetAttribute("locked", "no");
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to unlock function block {Id}", functionBlockId.ToToken());
-            await _dialogs.ShowMessageAsync("Unlock failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     /// <summary>
     /// Inserts an empty "from scratch" function block into a locality (US-019): scaffolds the catalog's
     /// <c>Tom blok</c> template (the four variable sections + one empty program) named <see cref="EmptyBlockName"/>,
     /// commits, marks dirty. Returns the new block's id, or null when there is no open project or the edit fails.
     /// </summary>
-    public async Task<ElementId?> AddEmptyFunctionBlockAsync(ElementId localityId)
-    {
-        if (Current is null)
-            return null;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(AddEmptyFunctionBlockAsync)}");
-        try
-        {
-            FunctionBlockDefinition template = _service.GetEmptyFunctionBlockTemplate();
-            ProjectEditor editor = Current.Edit();
-            editor.Group(localityId).AddEmptyFunctionBlock(template, DateOnly.FromDateTime(DateTime.Now), EmptyBlockName);
-            Project updated = editor.ToProject();
-            ElementId? newId = updated.FindById(localityId)?.ChildrenOrEmpty()
-                .LastOrDefault(c => c.Tag == "functionblock")?.Id;
-            await CommitAsync(updated);
-            return newId;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to insert an empty function block into locality {Locality}", localityId.ToToken());
-            await _dialogs.ShowMessageAsync("Insert failed", ex.Message);
-            return null;
-        }
-    }
+    public Task<ElementId?> AddEmptyFunctionBlockAsync(ElementId localityId) =>
+        RunEditAsync<ElementId?>(nameof(AddEmptyFunctionBlockAsync), "Insert failed",
+            (project, editor) =>
+            {
+                FunctionBlockDefinition template = _service.GetEmptyFunctionBlockTemplate();
+                editor.Group(localityId).AddEmptyFunctionBlock(template, DateOnly.FromDateTime(DateTime.Now), EmptyBlockName);
+                return true;
+            },
+            updated => updated.FindById(localityId)?.ChildrenOrEmpty().LastOrDefault(c => c.Tag == "functionblock")?.Id,
+            onFail: null);
 
     /// <summary>
     /// Inserts a preprogrammed library function block into a locality (US-018): deep-copies the block identified by
@@ -1151,33 +880,19 @@ public sealed class ProjectSession : IDisposable
     /// sections and program materialized by the SDK), commits, marks dirty. Returns the new block's id, or null when
     /// there is no open project, the id is not a known library block, or the edit fails.
     /// </summary>
-    public async Task<ElementId?> AddFunctionBlockAsync(ElementId localityId, string masterType)
-    {
-        if (Current is null)
-            return null;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(AddFunctionBlockAsync)}");
-        activity?.SetTag("functionblock.masterType", masterType);
-        try
-        {
-            FunctionBlockDefinition definition = _service.GetAvailableFunctionBlocks()
-                .FirstOrDefault(f => f.MasterType == masterType)
-                ?? throw new InvalidOperationException($"No library function block with master type '{masterType}'.");
-            ProjectEditor editor = Current.Edit();
-            editor.Group(localityId).AddFunctionBlock(definition);
-            Project updated = editor.ToProject();
-            ElementId? newId = updated.FindById(localityId)?.ChildrenOrEmpty()
-                .LastOrDefault(c => c.Tag == "functionblock")?.Id;
-            await CommitAsync(updated);
-            return newId;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to insert function block {Block} into locality {Locality}", masterType, localityId.ToToken());
-            await _dialogs.ShowMessageAsync("Insert failed", ex.Message);
-            return null;
-        }
-    }
+    public Task<ElementId?> AddFunctionBlockAsync(ElementId localityId, string masterType) =>
+        RunEditAsync<ElementId?>(nameof(AddFunctionBlockAsync), "Insert failed",
+            (project, editor) =>
+            {
+                Activity.Current?.SetTag("functionblock.masterType", masterType);
+                FunctionBlockDefinition definition = _service.GetAvailableFunctionBlocks()
+                    .FirstOrDefault(f => f.MasterType == masterType)
+                    ?? throw new InvalidOperationException($"No library function block with master type '{masterType}'.");
+                editor.Group(localityId).AddFunctionBlock(definition);
+                return true;
+            },
+            updated => updated.FindById(localityId)?.ChildrenOrEmpty().LastOrDefault(c => c.Tag == "functionblock")?.Id,
+            onFail: null);
 
     /// <summary>
     /// Inserts a catalog product into a locality (US-010): deep-copies the product identified by
@@ -1185,41 +900,28 @@ public sealed class ProjectSession : IDisposable
     /// scenes materialized by the SDK), commits, marks dirty and records the change. Returns the new product's id, or
     /// null when there is no open project, the id is not a known catalog product, or the edit fails.
     /// </summary>
-    public async Task<ElementId?> AddProductAsync(ElementId localityId, string productIdentifier)
-    {
-        if (Current is null)
-            return null;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(AddProductAsync)}");
-        activity?.SetTag("product.identifier", productIdentifier);
-        try
-        {
-            ProductDefinition definition = _service.GetAvailableProducts()
-                .FirstOrDefault(p => p.ProductIdentifier == productIdentifier)
-                ?? throw new InvalidOperationException($"No catalog product with identifier '{productIdentifier}'.");
-            // At most one modem per project, regardless of type (US-013).
-            if (ProductKinds.IsModem(definition.Body.Tag) && HasModem(Current))
+    public Task<ElementId?> AddProductAsync(ElementId localityId, string productIdentifier) =>
+        RunEditAsync<ElementId?>(nameof(AddProductAsync), "Insert failed",
+            async (project, editor) =>
             {
-                activity?.SetTag("modem.blocked", true);
-                await _dialogs.ShowMessageAsync("Only one modem",
-                    "A project may contain at most one modem. Remove the existing modem before adding another.");
-                return null;
-            }
-            ProjectEditor editor = Current.Edit();
-            editor.Group(localityId).AddProduct(definition);
-            Project updated = editor.ToProject();
+                Activity.Current?.SetTag("product.identifier", productIdentifier);
+                ProductDefinition definition = _service.GetAvailableProducts()
+                    .FirstOrDefault(p => p.ProductIdentifier == productIdentifier)
+                    ?? throw new InvalidOperationException($"No catalog product with identifier '{productIdentifier}'.");
+                // At most one modem per project, regardless of type (US-013).
+                if (ProductKinds.IsModem(definition.Body.Tag) && HasModem(project))
+                {
+                    Activity.Current?.SetTag("modem.blocked", true);
+                    await _dialogs.ShowMessageAsync("Only one modem",
+                        "A project may contain at most one modem. Remove the existing modem before adding another.");
+                    return false;
+                }
+                editor.Group(localityId).AddProduct(definition);
+                return true;
+            },
             // The product is appended as the locality's last child.
-            ElementId? newId = updated.FindById(localityId)?.ChildrenOrEmpty().LastOrDefault()?.Id;
-            await CommitAsync(updated);   // dirty + change counter + Nth-change backup, then RaiseChanged rebuilds the trees
-            return newId;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to insert product {Product} into locality {Locality}", productIdentifier, localityId.ToToken());
-            await _dialogs.ShowMessageAsync("Insert failed", ex.Message);
-            return null;
-        }
-    }
+            updated => updated.FindById(localityId)?.ChildrenOrEmpty().LastOrDefault()?.Id,
+            onFail: null);
 
     /// <summary>
     /// Inserts a new locality (US-008): appends a room named <see cref="NewLocalityName"/> under the project's
@@ -1227,29 +929,16 @@ public sealed class ProjectSession : IDisposable
     /// <see cref="Project.Groups"/>) so the caller can select it, or null when there is no open project or the edit
     /// fails.
     /// </summary>
-    public async Task<ElementId?> AddLocalityAsync()
-    {
-        if (Current is null)
-            return null;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(AddLocalityAsync)}");
-        try
-        {
-            ProjectEditor editor = Current.Edit();
-            editor.AddGroup(NewLocalityName);
-            Project updated = editor.ToProject();
+    public Task<ElementId?> AddLocalityAsync() =>
+        RunEditAsync<ElementId?>(nameof(AddLocalityAsync), "Insert failed",
+            (project, editor) =>
+            {
+                editor.AddGroup(NewLocalityName);
+                return true;
+            },
             // The new room is appended last, so it is the final entry in Groups.
-            ElementId? newId = updated.Groups.Count > 0 ? updated.Groups[^1].Id : null;
-            await CommitAsync(updated);   // dirty + change counter + Nth-change backup, then RaiseChanged rebuilds the trees
-            return newId;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to insert a locality");
-            await _dialogs.ShowMessageAsync("Insert failed", ex.Message);
-            return null;
-        }
-    }
+            updated => updated.Groups.Count > 0 ? updated.Groups[^1].Id : null,
+            onFail: null);
 
     /// <summary>
     /// Deletes a locality (US-009). An empty room is removed silently; a room that still holds products or function
@@ -1257,40 +946,25 @@ public sealed class ProjectSession : IDisposable
     /// that referenced the removed products (<see cref="DeleteReferencePolicy.CascadeReferences"/>). Returns false
     /// (nothing mutated) when the id is absent, the installer declines the confirmation, or the edit fails.
     /// </summary>
-    public async Task<bool> DeleteLocalityAsync(ElementId id)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(DeleteLocalityAsync)}");
-        try
+    public Task<bool> DeleteLocalityAsync(ElementId id) =>
+        RunEditAsync(nameof(DeleteLocalityAsync), "Delete failed", async (project, editor) =>
         {
-            ProjectElement? group = Current.FindById(id);
+            ProjectElement? group = project.FindById(id);
             if (group is null)
                 return false;
             if (!group.Children.IsDefaultOrEmpty)
             {
                 string name = group.GetAttribute("name") ?? "this locality";
-                activity?.SetTag("locality.hasContents", true);
+                Activity.Current?.SetTag("locality.hasContents", true);
                 bool confirmed = await _dialogs.ConfirmAsync("Delete locality",
                     $"'{name}' contains products. Deleting it also removes those products and the commands and " +
                     "conditions that use them. Delete anyway?");
                 if (!confirmed)
                     return false;   // declined — nothing is deleted
             }
-            ProjectEditor editor = Current.Edit();
             editor.DeleteById(id, DeleteReferencePolicy.CascadeReferences);
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);   // dirty + change counter + Nth-change backup, then RaiseChanged rebuilds the trees
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to delete locality {Id}", id.ToToken());
-            await _dialogs.ShowMessageAsync("Delete failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     /// <summary>Raised after a catalog import changes the available products/function blocks (US-059/US-060), so the
     /// insertion menus can be rebuilt.</summary>
@@ -1437,14 +1111,10 @@ public sealed class ProjectSession : IDisposable
     /// nothing. If the engine cannot safely cascade a binding it **refuses and explains what to rewire**. Returns
     /// false on refusal/decline/failure. No controller.
     /// </summary>
-    public async Task<bool> DeleteNodeAsync(ElementId id)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(DeleteNodeAsync)}");
-        try
+    public Task<bool> DeleteNodeAsync(ElementId id) =>
+        RunEditAsync(nameof(DeleteNodeAsync), "Delete failed", async (project, editor) =>
         {
-            if (Current.FindById(id) is not { } element || !IsDeletableNode(element.Tag))
+            if (project.FindById(id) is not { } element || !IsDeletableNode(element.Tag))
             {
                 await _dialogs.ShowMessageAsync("Cannot delete", "This node cannot be deleted.");
                 return false;
@@ -1456,27 +1126,9 @@ public sealed class ProjectSession : IDisposable
             {
                 return false;   // declined — nothing is deleted
             }
-            ProjectEditor editor = Current.Edit();
             editor.DeleteById(id, referenced ? DeleteReferencePolicy.CascadeReferences : DeleteReferencePolicy.Strict);
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (InvalidOperationException ex)   // the engine refuses a delete it cannot safely cascade
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Refused to delete {Id}", id.ToToken());
-            await _dialogs.ShowMessageAsync("Cannot delete", ex.Message);
-            return false;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to delete node {Id}", id.ToToken());
-            await _dialogs.ShowMessageAsync("Delete failed", ex.Message);
-            return false;
-        }
-    }
+        }, refusalTitle: "Cannot delete");   // the engine refuses a delete it cannot safely cascade
 
     // Whether a source node may be moved/pasted into a target container (US-054/US-056): a product or function block
     // belongs under a locality (group). (Variable/section moves are a later extension.)
@@ -1491,14 +1143,10 @@ public sealed class ProjectSession : IDisposable
     /// list ends. Reorders only same-tag siblings (so a locality moves past localities, a product past products).
     /// Undoable. No controller.
     /// </summary>
-    public async Task<bool> ReorderNodeAsync(ElementId id, int delta)
-    {
-        if (Current is null || delta == 0)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(ReorderNodeAsync)}");
-        try
+    public Task<bool> ReorderNodeAsync(ElementId id, int delta) =>
+        RunEditAsync(nameof(ReorderNodeAsync), "Reorder failed", (project, editor) =>
         {
-            if (Current.FindParent(id) is not { Id: { } parentId } parent || Current.FindById(id) is not { } node)
+            if (delta == 0 || project.FindParent(id) is not { Id: { } parentId } parent || project.FindById(id) is not { } node)
                 return false;
             var siblings = parent.ChildrenOrEmpty().Where(c => c.Tag == node.Tag).ToList();
             int here = siblings.FindIndex(c => c.Id == id);
@@ -1507,20 +1155,9 @@ public sealed class ProjectSession : IDisposable
                 return false;   // already at the end in that direction
             // Translate the same-tag position to the absolute child index of the sibling we swap with.
             int absoluteIndex = parent.ChildrenOrEmpty().ToList().FindIndex(c => c.Id == siblings[there].Id);
-            ProjectEditor editor = Current.Edit();
             editor.MoveSubtree(id, parentId, absoluteIndex);
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to reorder {Id}", id.ToToken());
-            await _dialogs.ShowMessageAsync("Reorder failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     /// <summary>
     /// Moves a node to another container (US-054): re-parents the subtree under <paramref name="targetParentId"/> with
@@ -1528,16 +1165,12 @@ public sealed class ProjectSession : IDisposable
     /// it participates in survive. Refuses an illegal container, a self/descendant target, or a no-op move into the
     /// current parent. Undoable (single snapshot). Returns false on refusal/failure. No controller.
     /// </summary>
-    public async Task<bool> MoveNodeAsync(ElementId sourceId, ElementId targetParentId)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(MoveNodeAsync)}");
-        try
+    public Task<bool> MoveNodeAsync(ElementId sourceId, ElementId targetParentId) =>
+        RunEditAsync(nameof(MoveNodeAsync), "Move failed", async (project, editor) =>
         {
-            if (Current.FindById(sourceId) is not { } source || Current.FindById(targetParentId) is not { } target)
+            if (project.FindById(sourceId) is not { } source || project.FindById(targetParentId) is not { } target)
                 return false;
-            if (Current.FindParent(sourceId)?.Id == targetParentId)
+            if (project.FindParent(sourceId)?.Id == targetParentId)
             {
                 await _dialogs.ShowMessageAsync("Move", "The node is already in that container.");
                 return false;
@@ -1547,27 +1180,9 @@ public sealed class ProjectSession : IDisposable
                 await _dialogs.ShowMessageAsync("Cannot move", "That container cannot hold this node.");
                 return false;
             }
-            ProjectEditor editor = Current.Edit();
             editor.MoveSubtree(sourceId, targetParentId);
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (InvalidOperationException ex)   // self/descendant target
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Refused move {Source} → {Target}", sourceId.ToToken(), targetParentId.ToToken());
-            await _dialogs.ShowMessageAsync("Cannot move", ex.Message);
-            return false;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to move {Source}", sourceId.ToToken());
-            await _dialogs.ShowMessageAsync("Move failed", ex.Message);
-            return false;
-        }
-    }
+        }, refusalTitle: "Cannot move");   // self/descendant target
 
     /// <summary>
     /// Copies a node and pastes it as an **independent duplicate** under <paramref name="targetParentId"/> (US-056):
@@ -1576,40 +1191,23 @@ public sealed class ProjectSession : IDisposable
     /// stay connected); the original is left unchanged. Refuses an illegal container. Undoable. Returns the new node's
     /// id, or null on refusal/failure. No controller.
     /// </summary>
-    public async Task<ElementId?> CopyNodeAsync(ElementId sourceId, ElementId targetParentId)
+    public Task<ElementId?> CopyNodeAsync(ElementId sourceId, ElementId targetParentId)
     {
-        if (Current is null)
-            return null;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(CopyNodeAsync)}");
-        try
-        {
-            if (Current.FindById(sourceId) is not { } source || Current.FindById(targetParentId) is not { } target)
-                return null;
-            if (!CanContain(source.Tag, target.Tag))
+        ElementId newId = default;
+        return RunEditAsync<ElementId?>(nameof(CopyNodeAsync), "Paste failed",
+            async (project, editor) =>
             {
-                await _dialogs.ShowMessageAsync("Cannot paste", "That container cannot hold this node.");
-                return null;
-            }
-            ProjectEditor editor = Current.Edit();
-            ElementId newId = editor.CopySubtree(sourceId, targetParentId);
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
-            return newId;
-        }
-        catch (InvalidOperationException ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Refused copy {Source} → {Target}", sourceId.ToToken(), targetParentId.ToToken());
-            await _dialogs.ShowMessageAsync("Cannot paste", ex.Message);
-            return null;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to copy {Source}", sourceId.ToToken());
-            await _dialogs.ShowMessageAsync("Paste failed", ex.Message);
-            return null;
-        }
+                if (project.FindById(sourceId) is not { } source || project.FindById(targetParentId) is not { } target)
+                    return false;
+                if (!CanContain(source.Tag, target.Tag))
+                {
+                    await _dialogs.ShowMessageAsync("Cannot paste", "That container cannot hold this node.");
+                    return false;
+                }
+                newId = editor.CopySubtree(sourceId, targetParentId);
+                return true;
+            },
+            _ => newId, onFail: null, refusalTitle: "Cannot paste");
     }
 
     /// <summary>
@@ -1617,17 +1215,12 @@ public sealed class ProjectSession : IDisposable
     /// <c>dimmer_setting_*</c> children — fade-rate up/down (soft on/off), dimming rate (manual ramp), minimum/maximum
     /// value, and the load-mode token. Commits, marks dirty. Returns false on failure.
     /// </summary>
-    public async Task<bool> UpdateDimmerSettingsAsync(ElementId productId, AdvancedDimmerResult r)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(UpdateDimmerSettingsAsync)}");
-        try
+    public Task<bool> UpdateDimmerSettingsAsync(ElementId productId, AdvancedDimmerResult r) =>
+        RunEditAsync(nameof(UpdateDimmerSettingsAsync), "Update failed", (project, editor) =>
         {
-            ProjectElement? product = Current.FindById(productId);
+            ProjectElement? product = project.FindById(productId);
             if (product is null)
                 return false;
-            ProjectEditor editor = Current.Edit();
             void SetSetting(string tag, string value)
             {
                 if (product.DescendantsAndSelf().FirstOrDefault(e => e.Tag == tag) is { Id: { } sid }
@@ -1643,18 +1236,8 @@ public sealed class ProjectSession : IDisposable
             SetSetting("dimmer_setting_minimum_value", Dec(r.MinimumPercent));
             SetSetting("dimmer_setting_maximum_value", Dec(r.MaximumPercent));
             SetSetting("dimmer_setting_load_mode", r.LoadMode);
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to update dimmer settings for {Id}", productId.ToToken());
-            await _dialogs.ShowMessageAsync("Update failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     /// <summary>Whether the project already contains a modem device root (the at-most-one-modem rule, US-013).</summary>
     public static bool HasModem(Project project) =>
@@ -1666,17 +1249,12 @@ public sealed class ProjectSession : IDisposable
     /// matching <c>sms_modem_phonenumber</c> slots; re-parents to the chosen Location when changed. Commits, marks
     /// dirty. Returns false on failure.
     /// </summary>
-    public async Task<bool> UpdateModemAsync(ElementId modemId, ModemPropertiesResult r)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(UpdateModemAsync)}");
-        try
+    public Task<bool> UpdateModemAsync(ElementId modemId, ModemPropertiesResult r) =>
+        RunEditAsync(nameof(UpdateModemAsync), "Update failed", (project, editor) =>
         {
-            ProjectElement? modem = Current.FindById(modemId);
+            ProjectElement? modem = project.FindById(modemId);
             if (modem is null)
                 return false;
-            ProjectEditor editor = Current.Edit();
             if (!editor.TryResolve(modemId, out ElementRef? handle))
                 return false;
             handle.SetAttribute("name", r.Name);
@@ -1703,40 +1281,25 @@ public sealed class ProjectSession : IDisposable
                 }
             }
             if (ElementId.TryParse(r.LocalityId, out ElementId targetLocality)
-                && Current.FindParent(modemId)?.Id is { } currentParent && currentParent != targetLocality)
+                && project.FindParent(modemId)?.Id is { } currentParent && currentParent != targetLocality)
             {
                 editor.MoveSubtree(modemId, targetLocality);
             }
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to update modem {Id}", modemId.ToToken());
-            await _dialogs.ShowMessageAsync("Update failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     /// <summary>
     /// Applies edited terminal addressing to a product input/output pin (US-012): encodes (data line, terminal) into
     /// <c>address_dataline</c> and writes <c>cable_colour</c>, <c>note</c>, and — for an output — the <c>inivalue</c>
     /// (on = normally-closed, off = normally-open). Commits, marks dirty, records the change. Returns false on failure.
     /// </summary>
-    public async Task<bool> UpdatePinAsync(ElementId pinId, PinPropertiesResult r)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(UpdatePinAsync)}");
-        try
+    public Task<bool> UpdatePinAsync(ElementId pinId, PinPropertiesResult r) =>
+        RunEditAsync(nameof(UpdatePinAsync), "Addressing failed", (project, editor) =>
         {
-            ProjectElement? pin = Current.FindById(pinId);
+            ProjectElement? pin = project.FindById(pinId);
             if (pin is null)
                 return false;
             bool isOutput = pin.Tag == "dataline_output";
-            ProjectEditor editor = Current.Edit();
             if (!editor.TryResolve(pinId, out ElementRef? handle))
                 return false;
             handle.SetAttribute("address_dataline",
@@ -1745,18 +1308,8 @@ public sealed class ProjectSession : IDisposable
             handle.SetAttribute("note", r.Note);
             if (isOutput)
                 handle.SetAttribute("inivalue", r.InitialValueOn ? "on" : "off");
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to address pin {Id}", pinId.ToToken());
-            await _dialogs.ShowMessageAsync("Addressing failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     /// <summary>
     /// Applies edited product documentation (US-011): writes the product's <c>name</c>/<c>note</c>/<c>cabletype</c>/
@@ -1764,14 +1317,9 @@ public sealed class ProjectSession : IDisposable
     /// re-parents the product to the chosen <c>Location</c> locality when it changed (ids preserved via
     /// <see cref="ProjectEditor.MoveSubtree"/>). Commits, marks dirty, records the change. Returns false on failure.
     /// </summary>
-    public async Task<bool> UpdateProductAsync(ElementId productId, ProductPropertiesResult r)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(UpdateProductAsync)}");
-        try
+    public Task<bool> UpdateProductAsync(ElementId productId, ProductPropertiesResult r) =>
+        RunEditAsync(nameof(UpdateProductAsync), "Update failed", (project, editor) =>
         {
-            ProjectEditor editor = Current.Edit();
             if (!editor.TryResolve(productId, out ElementRef? handle))
             {
                 _logger.LogWarning("Cannot update product {Id}: it no longer exists", productId.ToToken());
@@ -1788,36 +1336,21 @@ public sealed class ProjectSession : IDisposable
                 handle.SetAttribute("cablenumber", r.CableNumber);
             }
             if (ElementId.TryParse(r.LocalityId, out ElementId targetLocality)
-                && Current.FindParent(productId)?.Id is { } currentParent && currentParent != targetLocality)
+                && project.FindParent(productId)?.Id is { } currentParent && currentParent != targetLocality)
             {
                 editor.MoveSubtree(productId, targetLocality);   // Location changed → re-parent (ids preserved)
             }
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to update product {Id}", productId.ToToken());
-            await _dialogs.ShowMessageAsync("Update failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     /// <summary>
     /// Renames a locality (US-007): sets the <c>group</c>'s <c>name</c> and <c>note</c> by id, commits the edited
     /// project, and records the change — which also marks the project dirty and drives the every-Nth-change crash
     /// backup (US-005). Returns false (with a diagnostic) when the id no longer resolves or the edit fails.
     /// </summary>
-    public async Task<bool> RenameLocalityAsync(ElementId id, string name, string note)
-    {
-        if (Current is null)
-            return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(RenameLocalityAsync)}");
-        try
+    public Task<bool> RenameLocalityAsync(ElementId id, string name, string note) =>
+        RunEditAsync(nameof(RenameLocalityAsync), "Rename failed", (project, editor) =>
         {
-            ProjectEditor editor = Current.Edit();
             if (!editor.TryResolve(id, out ElementRef? handle))
             {
                 _logger.LogWarning("Cannot rename locality {Id}: it no longer exists", id.ToToken());
@@ -1825,18 +1358,8 @@ public sealed class ProjectSession : IDisposable
             }
             handle.SetAttribute("name", name);
             handle.SetAttribute("note", note);
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);   // dirty + change counter + Nth-change backup, then RaiseChanged rebuilds the trees
             return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to rename locality {Id}", id.ToToken());
-            await _dialogs.ShowMessageAsync("Rename failed", ex.Message);
-            return false;
-        }
-    }
+        });
 
     /// <summary>Records one committed edit (the hook editors use in E2+): marks the project dirty and triggers a
     /// crash backup on every Nth change. Fire-and-forget for UI callers; tests await <see cref="MarkChangedAsync"/>.</summary>
@@ -1859,6 +1382,66 @@ public sealed class ProjectSession : IDisposable
         }
         await MarkChangedAsync();
     }
+
+    /// <summary>
+    /// The single edit envelope for every project-mutating operation: the null-project guard, the telemetry
+    /// activity, and the try/catch that reports a failure as <c>SetError</c> + a logged error + an error dialog. The
+    /// <paramref name="mutate"/> callback applies the edit to a fresh <see cref="ProjectEditor"/> over the current
+    /// <see cref="Project"/> and returns <c>true</c> to commit or <c>false</c> to abort silently (a failed guard);
+    /// on commit the edited project is swapped in via <see cref="CommitAsync"/> and <paramref name="result"/>
+    /// computes the return value from it. Returns <paramref name="onFail"/> when there is no open project, a guard
+    /// aborts, or the edit throws. A thrown <see cref="InvalidOperationException"/> (an engine refusal) uses
+    /// <paramref name="refusalTitle"/> for the dialog when one is given, otherwise <paramref name="failureTitle"/>.
+    /// </summary>
+    private async Task<T> RunEditAsync<T>(
+        string op, string failureTitle,
+        Func<Project, ProjectEditor, Task<bool>> mutate,
+        Func<Project, T> result, T onFail,
+        string? refusalTitle = null)
+    {
+        if (Current is null)
+            return onFail;
+        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{op}");
+        try
+        {
+            ProjectEditor editor = Current.Edit();
+            if (!await mutate(Current, editor))
+                return onFail;   // a guard aborted: nothing committed, nothing dirty
+            Project updated = editor.ToProject();
+            await CommitAsync(updated);
+            return result(updated);
+        }
+        catch (Exception ex)
+        {
+            Ihc.ActivityExtensions.SetError(activity, ex);
+            _logger.LogError(ex, "Edit {Op} failed", op);
+            await _dialogs.ShowMessageAsync(
+                ex is InvalidOperationException && refusalTitle is not null ? refusalTitle : failureTitle, ex.Message);
+            return onFail;
+        }
+    }
+
+    /// <summary>Synchronous-callback overload of <see cref="RunEditAsync{T}(string,string,Func{Project,ProjectEditor,Task{bool}},Func{Project,T},T,string?)"/>.</summary>
+    private Task<T> RunEditAsync<T>(
+        string op, string failureTitle,
+        Func<Project, ProjectEditor, bool> mutate,
+        Func<Project, T> result, T onFail,
+        string? refusalTitle = null)
+        => RunEditAsync(op, failureTitle, (p, e) => Task.FromResult(mutate(p, e)), result, onFail, refusalTitle);
+
+    /// <summary>Bool-returning convenience: commits and returns <c>true</c>, or <c>false</c> on abort/failure.</summary>
+    private Task<bool> RunEditAsync(
+        string op, string failureTitle,
+        Func<Project, ProjectEditor, Task<bool>> mutate,
+        string? refusalTitle = null)
+        => RunEditAsync(op, failureTitle, mutate, static _ => true, false, refusalTitle);
+
+    /// <summary>Bool-returning convenience over a synchronous callback.</summary>
+    private Task<bool> RunEditAsync(
+        string op, string failureTitle,
+        Func<Project, ProjectEditor, bool> mutate,
+        string? refusalTitle = null)
+        => RunEditAsync(op, failureTitle, mutate, static _ => true, false, refusalTitle);
 
     /// <summary>
     /// Undoes the last project-mutating edit (US-052): restores the previous snapshot, pushes the current one onto the

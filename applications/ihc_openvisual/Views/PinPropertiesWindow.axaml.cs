@@ -10,16 +10,14 @@ namespace ihc_openvisual.Views;
 /// terminals already in use (in the same direction), the cable colour and note, and — for an output — the initial
 /// value (OFF = normally-open / ON = normally-closed). Returns the edited <see cref="PinPropertiesResult"/> or null.
 /// </summary>
-public partial class PinPropertiesWindow : Window
+public partial class PinPropertiesWindow : ResultDialog<PinPropertiesResult>
 {
-    private PinPropertiesResult? _result;
-
     public PinPropertiesWindow()
     {
         InitializeComponent();
     }
 
-    public static async Task<PinPropertiesResult?> ShowAsync(Window owner, PinPropertiesInput input)
+    public static Task<PinPropertiesResult?> ShowAsync(Window owner, PinPropertiesInput input)
     {
         var window = new PinPropertiesWindow { Title = input.Title };
         window.DataLineBox.Value = input.DataLine;
@@ -30,24 +28,14 @@ public partial class PinPropertiesWindow : Window
         window.InUseText.Text = input.InUseTerminals.Count > 0 ? string.Join(", ", input.InUseTerminals) : "(none)";
         window.InitialValuePanel.IsVisible = input.IsOutput;
         window.InitialValueCombo.SelectedIndex = input.InitialValueOn ? 1 : 0;
-        await window.ShowDialog(owner);
-        return window._result;
+        return window.ShowDialogForResult(owner);
     }
 
-    private void OnOk(object? sender, RoutedEventArgs e)
-    {
-        _result = new PinPropertiesResult(
+    private void OnOk(object? sender, RoutedEventArgs e) =>
+        Accept(new PinPropertiesResult(
             (int)(DataLineBox.Value ?? 1),
             (int)(TerminalBox.Value ?? 0),
             CableColourBox.Text ?? string.Empty,
             NoteBox.Text ?? string.Empty,
-            InitialValueCombo.SelectedIndex == 1);
-        Close();
-    }
-
-    private void OnCancel(object? sender, RoutedEventArgs e)
-    {
-        _result = null;
-        Close();
-    }
+            InitialValueCombo.SelectedIndex == 1));
 }

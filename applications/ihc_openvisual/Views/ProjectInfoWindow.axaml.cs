@@ -10,16 +10,14 @@ namespace ihc_openvisual.Views;
 /// details that identify the installation in the reports. Returns the edited <see cref="ProjectInfoData"/>, or null
 /// on Cancel.
 /// </summary>
-public partial class ProjectInfoWindow : Window
+public partial class ProjectInfoWindow : ResultDialog<ProjectInfoData>
 {
-    private ProjectInfoData? _result;
-
     public ProjectInfoWindow()
     {
         InitializeComponent();
     }
 
-    public static async Task<ProjectInfoData?> ShowAsync(Window owner, ProjectInfoData current)
+    public static Task<ProjectInfoData?> ShowAsync(Window owner, ProjectInfoData current)
     {
         var window = new ProjectInfoWindow();
         window.ProjDescriptionBox.Text = current.Description;
@@ -27,8 +25,7 @@ public partial class ProjectInfoWindow : Window
         window.ProjProgrammerBox.Text = current.Programmer;
         window.Fill("Cust", current.Customer);
         window.Fill("Inst", current.Installer);
-        await window.ShowDialog(owner);
-        return window._result;
+        return window.ShowDialogForResult(owner);
     }
 
     private void Fill(string prefix, ContactInfo c)
@@ -50,17 +47,8 @@ public partial class ProjectInfoWindow : Window
     private TextBox Box(string name) => this.FindControl<TextBox>(name)!;
     private string Text(string name) => Box(name).Text ?? string.Empty;
 
-    private void OnOk(object? sender, RoutedEventArgs e)
-    {
-        _result = new ProjectInfoData(
+    private void OnOk(object? sender, RoutedEventArgs e) =>
+        Accept(new ProjectInfoData(
             Text("ProjDescriptionBox"), Text("ProjNumberBox"), Text("ProjProgrammerBox"),
-            Read("Cust"), Read("Inst"));
-        Close();
-    }
-
-    private void OnCancel(object? sender, RoutedEventArgs e)
-    {
-        _result = null;
-        Close();
-    }
+            Read("Cust"), Read("Inst")));
 }

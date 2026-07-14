@@ -49,7 +49,19 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>The active tree node — whichever pane the installer last selected in. Context-menu commands, F2 and
     /// the insert target all read this. Not bound directly to a tree (each pane binds its own selection below), so a
     /// Functions-pane node (a function block) can be the active node without fighting the Installation tree.</summary>
-    [ObservableProperty] private TreeNodeViewModel? _selectedNode;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanInsertProduct))]
+    private TreeNodeViewModel? _selectedNode;
+
+    /// <summary>Whether the active selection lives in the <i>Installation</i> pane (vs the <i>Functions</i> pane). The
+    /// shared node context menu uses this to offer product insertion only where products belong.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanInsertProduct))]
+    private bool _isInstallationPaneActive;
+
+    /// <summary>Context-menu gate: <i>Insert product</i> is offered only on an addressable node in the Installation
+    /// pane — the Functions pane hosts function blocks, and the Localities root hosts localities (US-010).</summary>
+    public bool CanInsertProduct => IsInstallationPaneActive && SelectedNode?.CanEditProperties == true;
 
     /// <summary>The <i>Installation</i> pane's current selection (two-way bound); also set programmatically to
     /// highlight a just-inserted locality (US-008).</summary>
@@ -61,13 +73,19 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnSelectedInstallationNodeChanged(TreeNodeViewModel? value)
     {
         if (value is not null)
+        {
+            IsInstallationPaneActive = true;
             SelectedNode = value;
+        }
     }
 
     partial void OnSelectedFunctionsNodeChanged(TreeNodeViewModel? value)
     {
         if (value is not null)
+        {
+            IsInstallationPaneActive = false;
             SelectedNode = value;
+        }
     }
 
     public ObservableCollection<TreeNodeViewModel> InstallationNodes { get; } = new();
@@ -200,7 +218,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 ProgramCommandMenu.Add(new ProductMenuItemViewModel($"{varName} {verb}", method,
                     new AsyncRelayCommand(() => AddProgramCommandAsync(actionsId, varId, method, name, note))));
             // A case can be built here when the armed variable is an eligible switch type (US-031).
-            if (_session.Current?.FindById(varId)?.Tag is { } varTag && EligibleCaseTags.Contains(varTag))
+            if (_session.Current?.FindById(varId)?.Tag is { } varTag && ProjectSession.EligibleCaseVariableTags.Contains(varTag))
                 ProgramCaseMenu.Add(new ProductMenuItemViewModel($"Case ({varName})", "case",
                     new AsyncRelayCommand(() => AddCaseAsync(actionsId, varId))));
             // Arithmetic can be built here when the armed variable is a numeric target register (US-032).
@@ -422,10 +440,6 @@ public partial class MainWindowViewModel : ViewModelBase
     /// armed (US-031). Rebuilt with the other program menus.</summary>
     public ObservableCollection<ProductMenuItemViewModel> ProgramCaseMenu { get; } = new();
 
-    // The variable types a case may switch on (US-031): counter, enumerator, weekday, integer, or date.
-    private static readonly string[] EligibleCaseTags =
-        { "resource_counter", "resource_enum", "resource_weekday", "resource_integer", "resource_date" };
-
     /// <summary>The arithmetic operations offered on a Commands node when a numeric target register is armed (US-032):
     /// a per-operator submenu of the block's numeric operands. One operation per command line.</summary>
     public ObservableCollection<ProductMenuItemViewModel> ProgramArithmeticMenu { get; } = new();
@@ -495,7 +509,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_session.Current is not { } project || _programmingBlockId is not { } blockId
             || project.FindById(blockId) is not { } block)
             yield break;
-        foreach ((string container, string _) in FbSections)
+        foreach ((string container, string _) in ProjectSession.FbVariableSections)
         {
             if (block.FindChild(container) is not { } section)
                 continue;
@@ -576,12 +590,7 @@ public partial class MainWindowViewModel : ViewModelBase
         foreach (ProductMenuItemViewModel item in CatalogMenu.Build(products, "LK IHC Wireless produkter", Insert))
             WirelessProductsMenu.Add(item);
 
-        var modems = new List<Ihc.Vis.Products.ProductDefinition>();
-        foreach (var p in products)
-        {
-            if (ProductKinds.IsModem(p.Body.Tag))
-                modems.Add(p);
-        }
+        var modems = products.Where(p => ProductKinds.IsModem(p.Body.Tag));
         foreach (ProductMenuItemViewModel item in CatalogMenu.BuildLeaves(modems, Insert))
             SpecialProductsMenu.Add(item);
 
@@ -855,7 +864,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private Task Properties(TreeNodeViewModel? node) => RunAsync(nameof(Properties), () => OpenPropertiesAsync(node));
 
-    private static TreeNodeViewModel? FindNode(System.Collections.Generic.IEnumerable<TreeNodeViewModel> nodes, ElementId id)
+    private static TreeNodeViewModel? FindNode(IEnumerable<TreeNodeViewModel> nodes, ElementId id)
     {
         foreach (TreeNodeViewModel node in nodes)
         {
@@ -1508,10 +1517,6 @@ public partial class MainWindowViewModel : ViewModelBase
             elementId: member.Id) { IsLinkRow = true };
     }
 
-    private static readonly (string Container, string Label)[] FbSections =
-    {
-        ("inputs", "Input"), ("outputs", "Output"), ("settings", "Settings"), ("internalsettings", "Internal variables"),
-    };
 
     private TreeNodeViewModel BuildFunctionBlockNode(ProjectElement fb, string name)
     {
@@ -1523,7 +1528,7 @@ public partial class MainWindowViewModel : ViewModelBase
             IsFunctionBlock = true,
             Tooltip = BuildTooltip(fb),
         };
-        foreach ((string container, string label) in FbSections)
+        foreach ((string container, string label) in ProjectSession.FbVariableSections)
         {
             ProjectElement? holder = fb.FindChild(container);
             var section = new TreeNodeViewModel(label, NodeIcons.For(container, null), elementId: holder?.Id)

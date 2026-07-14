@@ -10,10 +10,8 @@ namespace ihc_openvisual.Views;
 /// multi-line <i>Note</i> field, and OK/Cancel. Title follows the pattern <c>Edit &lt;name&gt; properties</c>.
 /// Returns the edited <see cref="PropertiesResult"/>, or null on Cancel.
 /// </summary>
-public partial class PropertiesWindow : Window
+public partial class PropertiesWindow : ResultDialog<PropertiesResult>
 {
-    private PropertiesResult? _result;
-
     public PropertiesWindow()
     {
         InitializeComponent();
@@ -21,7 +19,7 @@ public partial class PropertiesWindow : Window
 
     /// <summary>Shows the dialog modally over <paramref name="owner"/>, pre-filling the name (selected) and note;
     /// resolves to the edited values or null when cancelled.</summary>
-    public static async Task<PropertiesResult?> ShowAsync(Window owner, string title, string name, string note)
+    public static Task<PropertiesResult?> ShowAsync(Window owner, string title, string name, string note)
     {
         var window = new PropertiesWindow { Title = title };
         window.NameBox.Text = name;
@@ -31,19 +29,9 @@ public partial class PropertiesWindow : Window
             window.NameBox.SelectAll();
             window.NameBox.Focus();
         };
-        await window.ShowDialog(owner);
-        return window._result;
+        return window.ShowDialogForResult(owner);
     }
 
-    private void OnOk(object? sender, RoutedEventArgs e)
-    {
-        _result = new PropertiesResult(NameBox.Text ?? string.Empty, NoteBox.Text ?? string.Empty);
-        Close();
-    }
-
-    private void OnCancel(object? sender, RoutedEventArgs e)
-    {
-        _result = null;
-        Close();
-    }
+    private void OnOk(object? sender, RoutedEventArgs e) =>
+        Accept(new PropertiesResult(NameBox.Text ?? string.Empty, NoteBox.Text ?? string.Empty));
 }

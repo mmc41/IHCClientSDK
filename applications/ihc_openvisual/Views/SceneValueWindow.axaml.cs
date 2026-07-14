@@ -10,16 +10,14 @@ namespace ihc_openvisual.Views;
 /// (minutes/seconds); for a relay/socket scene an ON/OFF state. Returns the edited <see cref="SceneValueResult"/>,
 /// or null on Cancel.
 /// </summary>
-public partial class SceneValueWindow : Window
+public partial class SceneValueWindow : ResultDialog<SceneValueResult>
 {
-    private SceneValueResult? _result;
-
     public SceneValueWindow()
     {
         InitializeComponent();
     }
 
-    public static async Task<SceneValueResult?> ShowAsync(Window owner, SceneValueInput input)
+    public static Task<SceneValueResult?> ShowAsync(Window owner, SceneValueInput input)
     {
         var window = new SceneValueWindow { Title = input.Title };
         window.DimmerPanel.IsVisible = input.IsDimmer;
@@ -28,23 +26,13 @@ public partial class SceneValueWindow : Window
         window.RampMinutesBox.Value = input.RampMinutes;
         window.RampSecondsBox.Value = input.RampSeconds;
         window.StateCombo.SelectedIndex = input.On ? 1 : 0;
-        await window.ShowDialog(owner);
-        return window._result;
+        return window.ShowDialogForResult(owner);
     }
 
-    private void OnOk(object? sender, RoutedEventArgs e)
-    {
-        _result = new SceneValueResult(
+    private void OnOk(object? sender, RoutedEventArgs e) =>
+        Accept(new SceneValueResult(
             StateCombo.SelectedIndex == 1,
             (int)(LevelBox.Value ?? 0),
             (int)(RampMinutesBox.Value ?? 0),
-            (int)(RampSecondsBox.Value ?? 0));
-        Close();
-    }
-
-    private void OnCancel(object? sender, RoutedEventArgs e)
-    {
-        _result = null;
-        Close();
-    }
+            (int)(RampSecondsBox.Value ?? 0)));
 }

@@ -11,9 +11,8 @@ namespace ihc_openvisual.Views;
 /// the free-text Note, Cable type, Cable numbering, Identification code and Light group fields. Returns the edited
 /// <see cref="ProductPropertiesResult"/>, or null on Cancel.
 /// </summary>
-public partial class ProductPropertiesWindow : Window
+public partial class ProductPropertiesWindow : ResultDialog<ProductPropertiesResult>
 {
-    private ProductPropertiesResult? _result;
     private string _currentLocalityId = string.Empty;
 
     public ProductPropertiesWindow()
@@ -21,7 +20,7 @@ public partial class ProductPropertiesWindow : Window
         InitializeComponent();
     }
 
-    public static async Task<ProductPropertiesResult?> ShowAsync(Window owner, ProductPropertiesInput input)
+    public static Task<ProductPropertiesResult?> ShowAsync(Window owner, ProductPropertiesInput input)
     {
         var window = new ProductPropertiesWindow { Title = input.Title };
         window._currentLocalityId = input.CurrentLocalityId;
@@ -40,8 +39,7 @@ public partial class ProductPropertiesWindow : Window
             window.NameBox.SelectAll();
             window.NameBox.Focus();
         };
-        await window.ShowDialog(owner);
-        return window._result;
+        return window.ShowDialogForResult(owner);
     }
 
     private void OnOk(object? sender, RoutedEventArgs e) => CloseWith(openAdvanced: false);
@@ -52,7 +50,7 @@ public partial class ProductPropertiesWindow : Window
     private void CloseWith(bool openAdvanced)
     {
         string localityId = (LocationCombo.SelectedItem as LocalityChoice)?.Id ?? _currentLocalityId;
-        _result = new ProductPropertiesResult(
+        Accept(new ProductPropertiesResult(
             NameBox.Text ?? string.Empty,
             localityId,
             NoteBox.Text ?? string.Empty,
@@ -60,13 +58,6 @@ public partial class ProductPropertiesWindow : Window
             CableNumberBox.Text ?? string.Empty,
             IdentificationBox.Text ?? string.Empty,
             LightGroupBox.Text ?? string.Empty,
-            openAdvanced);
-        Close();
-    }
-
-    private void OnCancel(object? sender, RoutedEventArgs e)
-    {
-        _result = null;
-        Close();
+            openAdvanced));
     }
 }

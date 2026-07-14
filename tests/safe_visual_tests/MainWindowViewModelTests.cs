@@ -305,6 +305,31 @@ public class MainWindowViewModelTests
         Assert.That(vm.StatusText, Does.Contain("Select a locality"));
     }
 
+    // US-010: the shared node context menu offers "Insert product" only in the Installation pane (the Functions
+    // pane hosts function blocks, not products), and only on a node that addresses a locality — not the Localities
+    // root. CanInsertProduct is the gate the shared MenuFlyout binds that item's visibility to.
+    [Test]
+    public async Task CanInsertProduct_OnlyOnAddressableInstallationNode()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+
+        Assert.That(vm.CanInsertProduct, Is.False, "nothing selected yet");
+
+        vm.SelectedInstallationNode = vm.InstallationNodes[0];               // Localities root (no element id)
+        Assert.That(vm.CanInsertProduct, Is.False, "the root hosts localities, not products");
+
+        vm.SelectedInstallationNode = vm.InstallationNodes[0].Children[0];   // Living room (Installation pane)
+        Assert.That(vm.CanInsertProduct, Is.True);
+
+        vm.SelectedFunctionsNode = vm.FunctionNodes[0].Children[0];          // switch active pane to Functions
+        Assert.That(vm.CanInsertProduct, Is.False, "products are not inserted through the Functions pane");
+
+        vm.SelectedInstallationNode = vm.InstallationNodes[0].Children[2];   // back to an Installation node (Kitchen)
+        Assert.That(vm.CanInsertProduct, Is.True);
+    }
+
     // US-011: applying product documentation writes the mapped attributes on the product element.
     [Test]
     public async Task UpdateProduct_WritesDocumentationAttributes()
