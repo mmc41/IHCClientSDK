@@ -7,7 +7,7 @@ namespace Ihc.Vis.Editing
     /// A live handle to a resource (a product input/output or a function-block input/output) in the
     /// edit session. Carries the resource's stable identity — its real <c>_0x</c> id, which is
     /// preserved when a project is loaded and allocated when a resource is newly added — so a link
-    /// made via <see cref="ProjectEditor.Link"/> survives renames and round-trips losslessly.
+    /// made via <see cref="ProjectEditor.Link(ResourceRef,ResourceRef)"/> survives renames and round-trips losslessly.
     /// </summary>
     public sealed class ResourceRef
     {

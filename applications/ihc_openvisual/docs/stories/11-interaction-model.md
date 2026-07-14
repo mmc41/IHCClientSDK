@@ -57,6 +57,17 @@ bar, and shortcut — **so that** I can work whichever way suits the moment.
 
 **Readiness:** Ready.
 
+**Implementation status:** ✅ **Implemented.** The three-route equivalence is architecturally guaranteed: every action
+binds to a single view-model command, and the **context menus** (TreeView-level, gated on `SelectedNode`), the **menu
+bar** (Insert / Library / Documentation / Controller / Help), and the **keyboard shortcuts** all invoke that same
+command — so no action lives in only one route (e.g. product insertion is on the locality's right-click menu *and*
+under *Insert ▸ Products*). Added this turn to close the gaps: **`Shift+F10`** opens the selected node's context menu
+without the mouse (code-behind); **`F1`** shows help for the selected element (its note, or a generic message) — wired
+to a keybinding and a *Help ▸ Help for selection* menu item; **`F2`** already opens Properties. `F10` activates the menu
+bar via Avalonia's native menu access-key handling. Tests: the F1 help command (note vs generic) is covered in
+`MainWindowViewModelTests`. Suites: `safe_visual_tests` **163**, byte-fidelity `safe_project_tests` **663** green.
+OpenObserve 0 errors.
+
 ---
 
 ## US-045 — Navigate and edit the tree with the keyboard
@@ -105,3 +116,23 @@ conditions):
 
 **Readiness:** Ready. (The arrow‑key direction is flagged above as a contradiction for the team
 to resolve during implementation; it does not block the rest of the shortcut set.)
+
+**Implementation status:** ✅ **Implemented (in-scope shortcuts; clipboard/undo bindings land with their own epics;
+simulation bindings out of scope per E8).** The shortcut set now bound:
+- **Help & properties:** `F1` help for the selected element; `F2` properties.
+- **Function blocks:** `F3` show the block's program; `F4` jump to a link's opposite end; `Ctrl+G` save a block;
+  `Ctrl+Shift+B` insert an empty block.
+- **Project & app:** `Ctrl+N`/`Ctrl+O`/`Ctrl+S` new/open/save; `F5` send project; `Alt+F4` quit.
+- **Windows/menus:** `F6` switch between the two tree panes (code-behind); `F10` menu bar (Avalonia native);
+  `Shift+F10` context menu for the selected element.
+- **Edit — insert:** `Ctrl+I` insert an input, `Ctrl+U` insert an output into the programming block's sections.
+- **Tree navigation:** `Up`/`Down` move the selection and `Left`/`Right` collapse/expand use the TreeView's **native**
+  behaviour — resolving the R-note discrepancy in favour of the **platform convention** (Right = expand, Left =
+  collapse), which the app does not reverse.
+
+**Deferred to their own epics** (as the epic scope states — E11 excludes the individual command semantics): `Ctrl+Z`
+undo / `Ctrl+Y` redo (E14, US-052) and `Ctrl+X`/`Ctrl+C`/`Ctrl+V` cut/copy/paste (E15, US-053) — their key bindings are
+wired when those commands exist. The **simulation** bindings (`F8`/`F7`/`F9`/`Ctrl+E`/`Ctrl+L`/`Ctrl+M`/`Break`/`Space`/
+`Ctrl+Space`) are documented-only — the simulation feature is out of scope (E8). Tests: `Ctrl+I`/`Ctrl+U` insert-input/
+output (in and outside programming mode) + `F1` help in `MainWindowViewModelTests`. Suites: `safe_visual_tests` **163**,
+byte-fidelity `safe_project_tests` **663** green. OpenObserve 0 errors.

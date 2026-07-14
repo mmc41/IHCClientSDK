@@ -6,6 +6,10 @@ status: draft
 
 # E5 — Function blocks: insert & structure
 
+> **Implementation status (2026-07-13):** ✅ **Implemented** — US-018 (insert library block), US-019 (empty block),
+> US-020 (unlock) done; US-021 core (Save block) done with folder/favourites adapted for the install-free design.
+> Covered by `safe_visual_tests` (86 green). Per-story detail below.
+
 > **Current scope:** ✅ **In scope** — inserting, structuring and unlocking function blocks and
 > managing FB folders is project CRUD.
 
@@ -68,6 +72,21 @@ Scenario: A block bundles its variables and program
 
 **Readiness:** Ready.
 
+**Implementation status:** ✅ **Implemented.** Library function blocks insert from **Library ▸ Insert function
+block** and the locality right‑click **Insert function block** — a catalog‑driven nested menu of the library
+folders (`FunctionBlocksMenu`, from `GetAvailableFunctionBlocks()` grouped by the `NN.`‑prefixed `CategoryPath`
+via `CatalogMenu.BuildFunctionBlocks`, keyed by `MasterType`). The block inserts under the selected locality via
+`ProjectSession.AddFunctionBlockAsync` → `ProjectEditor.Group(id).AddFunctionBlock(def)` (fresh ids; variable
+sections + program materialized by the SDK), traced, marks dirty; status reads
+`Function block '<block>' has been inserted under <locality>`. It nests in the **Functions** pane only, carries
+the **library FB icon** (`fb-lk.svg`; an unlocked block would use `fb-editable.svg`), and expands to its four
+variable sections — **Input / Output / Settings / Internal variables** — each holding its typed pins with inline
+default values (`name = value`). Tested: `MainWindowViewModelTests` (nests in Functions pane with the four
+sections + pins, Installation‑only exclusion; menu leaf targets selection + exact status; menu has catalog folders)
+and `SmokeTests.MainWindow_AfterInsertFunctionBlock_RendersBlockWithSections`. Render verified (block expands to
+Input/Output/Settings/Internal variables with pins); live app + OpenObserve no errors. *(US-019 empty block,
+US-020 unlock, US-021 folders next.)*
+
 ---
 
 ## US-019 — Insert an empty function block
@@ -106,6 +125,18 @@ Scenario: Editing the block enters programming mode
 
 **Readiness:** Ready.
 
+**Implementation status:** ✅ **Implemented.** An empty function block inserts from the locality right‑click
+**Empty function block** and **Ctrl+Shift+B**; it is named **Empty block**, scaffolded from the catalog's
+`Tom blok` template via `ProjectSession.AddEmptyFunctionBlockAsync` → `ProjectEditor.Group(id).AddEmptyFunctionBlock`
+(new SDK accessor `ProjectAppService.GetEmptyFunctionBlockTemplate`), traced, marks dirty; the status bar reads
+`Empty block was inserted under <locality>`. It appears in the **Functions** pane with the **editable** FB icon
+(`fb-editable.svg`) and expands to exactly the four sections — **Input / Output / Settings / Internal variables**
+(empty, no pins). The block renames via the Properties route (F2 / right‑click) using the shared Name/Note dialog
+(`Edit <name> properties`). Tested: `MainWindowViewModelTests` (four sections + name; command targets selection +
+exact status; F2 renames the block) and `SmokeTests.MainWindow_AfterInsertEmptyBlock_RendersEmptyBlock`; SDK addition
+kept `safe_project_tests` green (663). Render verified (Empty block expands to the four empty sections); live app +
+OpenObserve no errors. *(F3 programming‑mode switch is US-026, deferred. US-020 unlock, US-021 folders next.)*
+
 ---
 
 ## US-020 — Unlock a library function block for editing
@@ -133,6 +164,17 @@ Scenario: Locked blocks resist internal edits
   badge switches to the plain function‑block icon, signalling it is now editable.
 
 **Readiness:** Ready.
+
+**Implementation status:** ✅ **Implemented.** A locked library function block (all catalog blocks are inserted
+`locked="yes"`) is unlocked via the right‑click **Unlock** item — offered only on a locked block
+(`TreeNodeViewModel.IsLockedFunctionBlock`). `ProjectSession.UnlockFunctionBlockAsync` clears the `locked` flag by id
+(`SetAttribute("locked","no")`, dropped as the DTD default), traced, marks dirty; status reads `Unlocked <name>.`. On
+the tree rebuild the block's icon switches from the **library** glyph (`fb-lk.svg`) to the **editable** glyph
+(`fb-editable.svg`) — `BuildFunctionBlockNode` picks the icon from the live `locked` attribute. An empty block (already
+`locked="no"`) is never offered Unlock. Tested: `MainWindowViewModelTests` (unlock clears the lock + switches the icon;
+command confirms and an empty block is not lockable). Render verified (locked library icon vs unlocked editable icon
+side by side); live app + OpenObserve no errors. *(Locked‑block read‑only enforcement on internals is inherent — the
+internal‑edit surfaces are E7, gated on the same `locked` flag. US-021 own/favourite folders next.)*
 
 ---
 
@@ -172,3 +214,20 @@ Scenario: Add and use a favourite
   **Inspection** that empty folders are hidden and own folders survive an update.
 
 **Readiness:** Ready.
+
+**Implementation status:** 🟡 **Core implemented (Save block); folder/favourites management adapted for the
+install‑free design.** The high‑value **Save a block for reuse** (scenario 2) is done: right‑click a function block
+▸ **Save block…** (or **Ctrl+G**) opens the Name/Note dialog (the note becomes the saved block's tooltip on
+re‑import), then a native `.ifb` save picker; `ProjectSession.SaveFunctionBlockAsync` lifts the placed block to a
+keyless user‑block definition (new SDK `ProjectEditor.FunctionBlock(id)` → `FunctionBlockRef.ExportDefinition`) and
+writes it with `CatalogFileWriter` — a read‑only export (no project mutation), traced; status `Saved function block
+'<name>'.`. The written `.ifb` re‑imports cleanly (`ProjectAppService.ImportCatalogFile`), which the test asserts by
+round‑trip. **Scenarios 1 (own on‑disk folders) and 3 (Favourites)** are **adapted / deferred**: OpenVisual is
+*install‑free* (embedded `BuiltInCatalog`, product.md) so it has no fixed on‑disk library‑folder tree to create
+folders in or pin favourites to — the installer instead saves reusable blocks to any `.ifb` via the picker and can
+re‑import them; a full library‑folder/Favourites manager presupposes an IHC‑Visual‑style on‑disk catalog install and
+is out of scope for the current design. Tested: `MainWindowViewModelTests` (Save writes a re‑importable `.ifb`;
+command prompts + writes + confirms). This turn also fixed a **per‑pane selection** defect so a Functions‑pane
+function block becomes the active node (its Unlock/Save/Properties context commands now act on it live) — verified by
+`SmokeTests.FunctionsTree_SelectingFunctionBlock_MakesItTheActiveNode`. SDK addition kept `safe_project_tests` green
+(663); live app + OpenObserve no errors.

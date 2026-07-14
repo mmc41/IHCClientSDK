@@ -10,7 +10,7 @@ namespace Ihc.Vis.Editing
     /// The typed value payload of a scene membership (US-024): the state the member output assumes when the
     /// scenario fires. Factory-constructed per member kind — <see cref="Relay"/> (<c>scene_relay</c>),
     /// <see cref="Dimmer"/> (<c>scene_dimmer</c>) or <see cref="Shutter"/> (<c>scene_shutter</c>) — and consumed
-    /// by <see cref="ProjectEditor.LinkScene"/>, which derives the member row's element type and value attributes
+    /// by <see cref="ProjectEditor.LinkScene(ResourceRef,ScenesRef,SceneValue)"/>, which derives the member row's element type and value attributes
     /// from it. Values equal to the DTD defaults (relay off, dimmer 0 % / 0 ms, shutter up) are elided on save by
     /// the canonicalizer's omit-if-default rule, exactly as the vendor writes them.
     /// </summary>

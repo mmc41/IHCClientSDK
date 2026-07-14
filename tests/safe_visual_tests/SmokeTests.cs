@@ -1,9 +1,14 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using Avalonia.VisualTree;
+using CommunityToolkit.Mvvm.Input;
+using ihc_openvisual.Services;
+using ihc_openvisual.ViewModels;
 using ihc_openvisual.Views;
 
 namespace safe_visual_tests;
@@ -38,6 +43,675 @@ public class SmokeTests : AvaloniaTestBase
             Assert.That(window.Title, Does.Contain("IHC OpenVisual"), "the title bar names the application");
             Assert.That(menu.Items.Count, Is.EqualTo(8), "the eight stable menu titles are present (Simulation is out of scope)");
             Assert.That(treeCount, Is.EqualTo(2), "both tree panes (Installation and Functions) are shown");
+        });
+    }
+
+    // US-006: the default localities render in the Installation tree under the headless renderer.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task MainWindow_RendersDefaultLocalities_InInstallationTree()
+    {
+        using var harness = ShellHarness.Create();
+        var viewModel = harness.CreateViewModel();
+        await viewModel.InitializeAsync();
+
+        var window = new MainWindow { DataContext = viewModel };
+        CurrentTestWindow = window;
+        window.Show();
+        window.CaptureRenderedFrame();
+
+        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(labels, Does.Contain("Localities"), "the localities root renders");
+            Assert.That(labels, Does.Contain("Living room"), "the first default locality renders");
+            Assert.That(labels, Does.Contain("Outdoors"), "the last default locality renders");
+        });
+    }
+
+    // US-007: the locality Properties dialog exposes a pre-fillable Name field and a multi-line Note field.
+    // US-008: an inserted locality renders as a new node in the Installation tree.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task MainWindow_AfterInsertLocality_RendersNewNode()
+    {
+        using var harness = ShellHarness.Create();
+        var viewModel = harness.CreateViewModel();
+        await viewModel.InitializeAsync();
+        await viewModel.InsertLocalityCommand.ExecuteAsync(null);
+
+        var window = new MainWindow { DataContext = viewModel };
+        CurrentTestWindow = window;
+        window.Show();
+        window.CaptureRenderedFrame();
+
+        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        Assert.That(labels, Does.Contain("Locality"), "the newly inserted locality renders in the tree");
+    }
+
+    // US-010: an inserted wired product renders (nested under its auto-expanded locality) in the Installation tree.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task MainWindow_AfterInsertProduct_RendersProductNode()
+    {
+        using var harness = ShellHarness.Create();
+        var viewModel = harness.CreateViewModel();
+        await viewModel.InitializeAsync();
+        var product = harness.Session.GetAvailableProducts()
+            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+        await harness.Session.AddProductAsync(viewModel.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier);
+
+        var window = new MainWindow { DataContext = viewModel };
+        CurrentTestWindow = window;
+        window.Show();
+        window.CaptureRenderedFrame();
+
+        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        Assert.That(labels, Does.Contain(product.DisplayName), "the inserted product renders under its locality");
+    }
+
+    // US-014: an inserted wireless product renders with the yellow "!" unlinked marker.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task MainWindow_AfterInsertWireless_ShowsUnlinkedMarker()
+    {
+        using var harness = ShellHarness.Create();
+        var viewModel = harness.CreateViewModel();
+        await viewModel.InitializeAsync();
+        var wireless = harness.Session.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("LK IHC Wireless"));
+        await harness.Session.AddProductAsync(viewModel.InstallationNodes[0].Children[0].ElementId!.Value, wireless.ProductIdentifier);
+
+        var window = new MainWindow { DataContext = viewModel };
+        CurrentTestWindow = window;
+        window.Show();
+        window.CaptureRenderedFrame();
+
+        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        Assert.Multiple(() =>
+        {
+            Assert.That(labels, Does.Contain(wireless.DisplayName), "the wireless product renders");
+            Assert.That(labels, Does.Contain("!"), "the unlinked marker renders");
+        });
+    }
+
+    // US-018: an inserted library function block renders (with its sections) in the Functions pane.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task MainWindow_AfterInsertFunctionBlock_RendersBlockWithSections()
+    {
+        using var harness = ShellHarness.Create();
+        var viewModel = harness.CreateViewModel();
+        await viewModel.InitializeAsync();
+        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        await harness.Session.AddFunctionBlockAsync(viewModel.InstallationNodes[0].Children[0].ElementId!.Value, block.MasterType);
+
+        var window = new MainWindow { DataContext = viewModel };
+        CurrentTestWindow = window;
+        window.Show();
+        window.CaptureRenderedFrame();
+
+        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        // The block renders under its (auto-expanded) locality in the Functions pane; its sections are one level
+        // deeper and revealed on expand (covered at the view-model level).
+        Assert.That(labels, Does.Contain(block.DisplayName), "the function block renders in the Functions pane");
+    }
+
+    // US-019: an inserted empty function block renders in the Functions pane.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task MainWindow_AfterInsertEmptyBlock_RendersEmptyBlock()
+    {
+        using var harness = ShellHarness.Create();
+        var viewModel = harness.CreateViewModel();
+        await viewModel.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(viewModel.InstallationNodes[0].Children[0].ElementId!.Value);
+
+        var window = new MainWindow { DataContext = viewModel };
+        CurrentTestWindow = window;
+        window.Show();
+        window.CaptureRenderedFrame();
+
+        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        Assert.That(labels, Does.Contain("Empty block"), "the empty function block renders in the Functions pane");
+    }
+
+    // Selection: a Functions-pane function block, when selected, becomes the active node so its context-menu
+    // commands (Unlock/Save block/Properties) act on it (fix for the per-pane selection binding).
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task FunctionsTree_SelectingFunctionBlock_MakesItTheActiveNode()
+    {
+        using var harness = ShellHarness.Create();
+        var viewModel = harness.CreateViewModel();
+        await viewModel.InitializeAsync();
+        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        await harness.Session.AddFunctionBlockAsync(viewModel.InstallationNodes[0].Children[0].ElementId!.Value, block.MasterType);
+
+        var window = new MainWindow { DataContext = viewModel };
+        CurrentTestWindow = window;
+        window.Show();
+        window.CaptureRenderedFrame();
+
+        var functionsTree = window.FindControl<TreeView>("FunctionsTree")!;
+        var fbNode = viewModel.FunctionNodes[0].Children[0].Children[0];
+        functionsTree.SelectedItem = fbNode;
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(viewModel.SelectedNode, Is.SameAs(fbNode), "a Functions-pane block becomes the active node");
+            Assert.That(viewModel.SelectedNode!.IsFunctionBlock, Is.True);
+        });
+    }
+
+    // US-022: after linking, the two panes render reciprocal "← / →" link rows under the linked pins.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task MainWindow_AfterLink_RendersReciprocalLinkRows()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        var product = harness.Session.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
+        await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
+        var productInput = vm.InstallationNodes[0].Children[0].Children[0].Children[0];
+        var blockInput = vm.FunctionNodes[0].Children[0].Children[0].Children[0].Children[0];
+        await harness.Session.LinkPinsAsync(productInput.ElementId!.Value, blockInput.ElementId!.Value);
+
+        var window = new MainWindow { DataContext = vm };
+        CurrentTestWindow = window;
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        for (int i = 0; i < 3; i++)
+        {
+            foreach (var item in window.GetVisualDescendants().OfType<TreeViewItem>())
+                item.IsExpanded = true;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        }
+
+        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        Assert.Multiple(() =>
+        {
+            Assert.That(labels.Any(t => t?.StartsWith("←") == true), Is.True, "a link-from (←) row renders");
+            Assert.That(labels.Any(t => t?.StartsWith("→") == true), Is.True, "a link-to (→) row renders");
+        });
+    }
+
+    // US-028: an authored event and command render as rows under the program's Events/Commands (Functions pane).
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task MainWindow_RendersAuthoredEventAndCommand_InProgrammingMode()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        await harness.Session.AddEmptyFunctionBlockAsync(loc);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        await harness.Session.AddVariableAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, "resource_input", "Doorbell");
+        await harness.Session.AddVariableAsync(vm.InstallationNodes[0].Children[1].ElementId!.Value, "resource_output", "Chime");
+
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[0].Children[0]);   // arm the Input
+        vm.SelectNode(FindFlag(vm.FunctionNodes, n => n.IsEventsContainer)!);
+        await ((IAsyncRelayCommand)vm.ProgramEventMenu[0].Command!).ExecuteAsync(null);    // "Doorbell changes to ON"
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[1].Children[0]);   // arm the Output
+        vm.SelectNode(FindFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+        await ((IAsyncRelayCommand)vm.ProgramCommandMenu.First(m => m.Header.Contains("toggled")).Command!).ExecuteAsync(null);
+
+        var window = new MainWindow { DataContext = vm };
+        CurrentTestWindow = window;
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        for (int i = 0; i < 3; i++)
+        {
+            foreach (var item in window.GetVisualDescendants().OfType<TreeViewItem>())
+                item.IsExpanded = true;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        }
+        window.CaptureRenderedFrame();
+
+        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        Assert.Multiple(() =>
+        {
+            Assert.That(labels, Does.Contain("Doorbell -> ON"), "the authored event renders under Events");
+            Assert.That(labels, Does.Contain("Toggle Chime"), "the authored command renders under Commands");
+        });
+    }
+
+    // US-029: an inserted sub-program renders its Conditions group and true/false command branches in the tree.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task MainWindow_RendersSubProgramStructure_InProgrammingMode()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        await vm.AddSubProgramCommand.ExecuteAsync(FindFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+        await vm.SetConditionsOrCommand.ExecuteAsync(FindFlag(vm.FunctionNodes, n => n.IsConditionsContainer)!);
+
+        var window = new MainWindow { DataContext = vm };
+        CurrentTestWindow = window;
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        for (int i = 0; i < 3; i++)
+        {
+            foreach (var item in window.GetVisualDescendants().OfType<TreeViewItem>())
+                item.IsExpanded = true;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        }
+        window.CaptureRenderedFrame();
+
+        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        Assert.Multiple(() =>
+        {
+            Assert.That(labels, Does.Contain("Sub-program"), "the sub-program renders");
+            Assert.That(labels.Any(t => t?.StartsWith("Conditions") == true && t.Contains(">=1")), Is.True, "the OR-toggled Conditions group renders");
+            Assert.That(labels, Does.Contain("Commands when conditions true"));
+            Assert.That(labels, Does.Contain("Commands when conditions false"));
+        });
+    }
+
+    // US-030: an enum variable created via the Settings palette renders under the block's Settings section.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task MainWindow_RendersEnumVariable_UnderSettings()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Mode", new[] { "Direct", "With delay", "Switched off" });
+        vm.SelectNode(vm.InstallationNodes[0].Children[2]);   // Settings
+        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Command!).ExecuteAsync(null);
+
+        var window = new MainWindow { DataContext = vm };
+        CurrentTestWindow = window;
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        for (int i = 0; i < 3; i++)
+        {
+            foreach (var item in window.GetVisualDescendants().OfType<TreeViewItem>())
+                item.IsExpanded = true;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        }
+        window.CaptureRenderedFrame();
+
+        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        Assert.That(labels, Does.Contain("Mode"), "the enum variable renders under Settings");
+    }
+
+    // US-031: an inserted case with a value branch renders "Case (<var>)", the criterion branch, and Else.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task MainWindow_RendersCaseStructure_InProgrammingMode()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        await harness.Session.AddVariableAsync(vm.InstallationNodes[0].Children[3].ElementId!.Value, "resource_counter", "Cleanings");
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[3].Children[0]);
+        vm.SelectNode(FindFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+        await ((IAsyncRelayCommand)vm.ProgramCaseMenu.First(m => m.Header == "Case (Cleanings)").Command!).ExecuteAsync(null);
+        harness.Dialogs.PropertiesResult = new PropertiesResult("100", string.Empty);
+        await vm.NewCaseValueCommand.ExecuteAsync(FindFlag(vm.FunctionNodes, n => n.IsCaseNode));
+
+        var window = new MainWindow { DataContext = vm };
+        CurrentTestWindow = window;
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        for (int i = 0; i < 3; i++)
+        {
+            foreach (var item in window.GetVisualDescendants().OfType<TreeViewItem>())
+                item.IsExpanded = true;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        }
+        window.CaptureRenderedFrame();
+
+        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        Assert.Multiple(() =>
+        {
+            Assert.That(labels, Does.Contain("Case (Cleanings)"), "the case switch renders");
+            Assert.That(labels, Does.Contain("100"), "the value branch renders");
+            Assert.That(labels, Does.Contain("Else"), "the default branch renders");
+        });
+    }
+
+    // US-032: an authored arithmetic command line renders its one-operation formula under Commands.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task MainWindow_RendersArithmeticCommand_InProgrammingMode()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        var settingsId = vm.InstallationNodes[0].Children[2].ElementId!.Value;
+        await harness.Session.AddVariableAsync(settingsId, "resource_floating_point", "F1");
+        await harness.Session.AddVariableAsync(settingsId, "resource_floating_point", "F2");
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => c.DisplayName == "F1"));
+        vm.SelectNode(FindFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+        var addCategory = vm.ProgramArithmeticMenu.First(m => m.Header.StartsWith("F1 +"));
+        await ((IAsyncRelayCommand)addCategory.Children.First(c => c.Header == "F2").Command!).ExecuteAsync(null);
+
+        var window = new MainWindow { DataContext = vm };
+        CurrentTestWindow = window;
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        for (int i = 0; i < 3; i++)
+        {
+            foreach (var item in window.GetVisualDescendants().OfType<TreeViewItem>())
+                item.IsExpanded = true;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        }
+        window.CaptureRenderedFrame();
+
+        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        Assert.That(labels, Does.Contain("F1 = F1 + F2"), "the arithmetic command renders its formula");
+    }
+
+    // US-033: a Powerup event and a saved output both render in programming mode.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task MainWindow_RendersPowerupEventAndSavedOutput()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        await vm.AddPowerEventCommand.ExecuteAsync(FindFlag(vm.FunctionNodes, n => n.IsEventsContainer));
+        var outputSectionId = vm.InstallationNodes[0].Children[1].ElementId!.Value;
+        var outputId = (await harness.Session.AddVariableAsync(outputSectionId, "resource_output", "Light"))!.Value;
+        await vm.ToggleSaveValueCommand.ExecuteAsync(FindFlag(vm.InstallationNodes, n => n.ElementId == outputId));
+
+        var window = new MainWindow { DataContext = vm };
+        CurrentTestWindow = window;
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        for (int i = 0; i < 3; i++)
+        {
+            foreach (var item in window.GetVisualDescendants().OfType<TreeViewItem>())
+                item.IsExpanded = true;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        }
+        window.CaptureRenderedFrame();
+
+        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        Assert.Multiple(() =>
+        {
+            Assert.That(labels, Does.Contain("Powerup"), "the Powerup event renders");
+            Assert.That(labels, Does.Contain("Light (saved)"), "the saved output is marked");
+        });
+    }
+
+    // US-033b: a function-block-to-function-block variable link renders reciprocal ← / → rows in the Functions pane.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task MainWindow_AfterFbToFbLink_RendersReciprocalRows()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        await harness.Session.AddEmptyFunctionBlockAsync(loc);
+        await harness.Session.AddEmptyFunctionBlockAsync(loc);
+        var blocks = harness.Session.Current!.FindById(loc)!.ChildrenOrEmpty().Where(c => c.Tag == "functionblock").ToList();
+        var outA = (await harness.Session.AddVariableAsync(blocks[0].FindChild("outputs")!.Id!.Value, "resource_output", "OutA"))!.Value;
+        var inB = (await harness.Session.AddVariableAsync(blocks[1].FindChild("inputs")!.Id!.Value, "resource_input", "InB"))!.Value;
+        await harness.Session.LinkPinsAsync(outA, inB);
+
+        var window = new MainWindow { DataContext = vm };
+        CurrentTestWindow = window;
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        for (int i = 0; i < 3; i++)
+        {
+            foreach (var item in window.GetVisualDescendants().OfType<TreeViewItem>())
+                item.IsExpanded = true;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        }
+        window.CaptureRenderedFrame();
+
+        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        Assert.Multiple(() =>
+        {
+            Assert.That(labels.Any(t => t?.StartsWith("←") == true), Is.True, "a link-from (←) row renders");
+            Assert.That(labels.Any(t => t?.StartsWith("→") == true), Is.True, "a link-to (→) row renders");
+        });
+    }
+
+    // US-049: the data-tables dialog renders both lists (read-only system tables + editable user texts).
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task DataTablesWindow_ShowsSystemAndUserLists()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddUserTextAsync("By main door");
+        var dt = new DataTablesViewModel(harness.Session, harness.Dialogs);
+
+        var window = new DataTablesWindow { DataContext = dt };
+        CurrentTestWindow = window;
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        window.CaptureRenderedFrame();
+
+        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        Assert.Multiple(() =>
+        {
+            Assert.That(labels, Does.Contain("System tables (read-only)"));
+            Assert.That(labels, Does.Contain("User-defined texts"));
+            Assert.That(labels, Does.Contain("By main door"), "the user text renders in the editable list");
+        });
+    }
+
+    // US-050: the read-only Wired module map renders the input/output module list headers.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public void ModuleMapWindow_ShowsInputAndOutputModuleLists()
+    {
+        var map = new ModuleAddressMap(
+            System.Collections.Immutable.ImmutableArray.Create(new ModuleAddressEntry("1.5", "Push", "Left")),
+            System.Collections.Immutable.ImmutableArray<ModuleAddressEntry>.Empty);
+
+        var window = new ModuleMapWindow { DataContext = map };
+        CurrentTestWindow = window;
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        window.CaptureRenderedFrame();
+
+        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        Assert.Multiple(() =>
+        {
+            Assert.That(labels, Does.Contain("Wired input modules"));
+            Assert.That(labels, Does.Contain("Wired output modules"));
+            Assert.That(labels, Does.Contain("1.5").And.Contain("Push"), "an addressed terminal renders with its product");
+        });
+    }
+
+    // US-039: the project-information dialog exposes the project, customer and installer field groups.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public void ProjectInfoWindow_ShowsProjectCustomerInstallerFields()
+    {
+        var window = new ProjectInfoWindow();
+        var custName = window.FindControl<TextBox>("CustNameBox");
+        var instPhone = window.FindControl<TextBox>("InstPhoneBox");
+        if (custName is not null) custName.Text = "Bob";
+        if (instPhone is not null) instPhone.Text = "12345";
+        CurrentTestWindow = window;
+        window.Show();
+        window.CaptureRenderedFrame();
+
+        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        Assert.Multiple(() =>
+        {
+            Assert.That(labels, Does.Contain("Project"));
+            Assert.That(labels, Does.Contain("Customer"));
+            Assert.That(labels, Does.Contain("Installer"));
+            Assert.That(custName, Is.Not.Null);
+        });
+    }
+
+    private static TreeNodeViewModel? FindFlag(IEnumerable<TreeNodeViewModel> nodes, Func<TreeNodeViewModel, bool> match)
+    {
+        foreach (var node in nodes)
+        {
+            if (match(node))
+                return node;
+            if (FindFlag(node.Children, match) is { } found)
+                return found;
+        }
+        return null;
+    }
+
+    // US-009: a deleted (empty) locality no longer renders in the tree.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task MainWindow_AfterDeleteLocality_RemovesNode()
+    {
+        using var harness = ShellHarness.Create();
+        var viewModel = harness.CreateViewModel();
+        await viewModel.InitializeAsync();
+        var node = viewModel.InstallationNodes[0].Children[0];   // "Living room"
+        await viewModel.DeleteCommand.ExecuteAsync(node);
+
+        var window = new MainWindow { DataContext = viewModel };
+        CurrentTestWindow = window;
+        window.Show();
+        window.CaptureRenderedFrame();
+
+        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        Assert.That(labels, Does.Not.Contain("Living room"), "the deleted locality no longer renders");
+    }
+
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public void PropertiesWindow_ShowsNameAndNoteFields()
+    {
+        var window = new PropertiesWindow { Title = "Edit Living room properties" };
+        var name = window.FindControl<TextBox>("NameBox");
+        var note = window.FindControl<TextBox>("NoteBox");
+        if (name is not null) name.Text = "Living room";
+        CurrentTestWindow = window;
+        window.Show();
+        window.CaptureRenderedFrame();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(window.Title, Is.EqualTo("Edit Living room properties"));
+            Assert.That(name?.Text, Is.EqualTo("Living room"), "the Name field is pre-fillable");
+            Assert.That(note, Is.Not.Null, "a multi-line Note field is present");
+            Assert.That(note!.AcceptsReturn, Is.True, "the Note field is multi-line");
+        });
+    }
+
+    // US-011: the product-properties dialog exposes the documentation fields.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public void ProductPropertiesWindow_ShowsDocumentationFields()
+    {
+        var window = new ProductPropertiesWindow { Title = "Product properties" };
+        var name = window.FindControl<TextBox>("NameBox");
+        var location = window.FindControl<ComboBox>("LocationCombo");
+        var cableType = window.FindControl<TextBox>("CableTypeBox");
+        var identification = window.FindControl<TextBox>("IdentificationBox");
+        var lightGroup = window.FindControl<TextBox>("LightGroupBox");
+        if (name is not null) name.Text = "LK FUGA Tryk 2 tast";
+        CurrentTestWindow = window;
+        window.Show();
+        window.CaptureRenderedFrame();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(window.Title, Is.EqualTo("Product properties"));
+            Assert.That(name?.Text, Is.EqualTo("LK FUGA Tryk 2 tast"));
+            Assert.That(location, Is.Not.Null, "the Location drop-down is present");
+            Assert.That(cableType, Is.Not.Null);
+            Assert.That(identification, Is.Not.Null);
+            Assert.That(lightGroup, Is.Not.Null);
+        });
+    }
+
+    // US-012: the terminal-addressing dialog exposes data line, terminal and initial-value controls.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public void PinPropertiesWindow_ShowsAddressingFields()
+    {
+        var window = new PinPropertiesWindow { Title = "Input 'Tryk (venstre)'" };
+        var dataLine = window.FindControl<NumericUpDown>("DataLineBox");
+        var terminal = window.FindControl<NumericUpDown>("TerminalBox");
+        var initialValue = window.FindControl<ComboBox>("InitialValueCombo");
+        if (dataLine is not null) dataLine.Value = 2;
+        CurrentTestWindow = window;
+        window.Show();
+        window.CaptureRenderedFrame();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(window.Title, Is.EqualTo("Input 'Tryk (venstre)'"));
+            Assert.That(dataLine?.Value, Is.EqualTo(2));
+            Assert.That(terminal, Is.Not.Null, "the terminal control is present");
+            Assert.That(initialValue, Is.Not.Null, "the initial-value control is present (shown for outputs)");
+        });
+    }
+
+    // US-013: the SMS-modem properties dialog exposes documentation, cabling, PIN and telephone-number fields.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public void ModemPropertiesWindow_ShowsModemFields()
+    {
+        var window = new ModemPropertiesWindow { Title = "SMS modem properties" };
+        var name = window.FindControl<TextBox>("NameBox");
+        var pin = window.FindControl<TextBox>("PinCodeBox");
+        var cable = window.FindControl<TextBox>("Cable0VBox");
+        var phone1 = window.FindControl<TextBox>("Phone1Box");
+        if (name is not null) name.Text = "SMS Modem";
+        CurrentTestWindow = window;
+        window.Show();
+        window.CaptureRenderedFrame();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(window.Title, Is.EqualTo("SMS modem properties"));
+            Assert.That(name?.Text, Is.EqualTo("SMS Modem"));
+            Assert.That(pin, Is.Not.Null, "the PIN field is present");
+            Assert.That(cable, Is.Not.Null, "the cabling fields are present");
+            Assert.That(phone1, Is.Not.Null, "the telephone-number fields are present");
+        });
+    }
+
+    // US-015: the advanced wireless-dimmer dialog exposes the timing/level/load-characteristic fields.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public void AdvancedDimmerWindow_ShowsDimmerFields()
+    {
+        var window = new AdvancedDimmerWindow();
+        var softOn = window.FindControl<NumericUpDown>("SoftOnBox");
+        var minimum = window.FindControl<NumericUpDown>("MinimumBox");
+        var loadMode = window.FindControl<ComboBox>("LoadModeCombo");
+        if (softOn is not null) softOn.Value = 700;
+        CurrentTestWindow = window;
+        window.Show();
+        window.CaptureRenderedFrame();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(window.Title, Is.EqualTo("Advanced dimmer properties"));
+            Assert.That(softOn?.Value, Is.EqualTo(700));
+            Assert.That(minimum, Is.Not.Null);
+            Assert.That(loadMode, Is.Not.Null, "the load-characteristic selector is present");
         });
     }
 

@@ -1,0 +1,55 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:ihc_openvisual.ViewModels"
+        xmlns:svc="clr-namespace:ihc_openvisual.Services"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="560" d:DesignHeight="420"
+        x:Class="ihc_openvisual.Views.DataTablesWindow"
+        x:DataType="vm:DataTablesViewModel"
+        Title="Data tables"
+        Width="560" Height="440"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <Grid Margin="16" ColumnDefinitions="*,12,*" RowDefinitions="Auto,*,Auto">
+        <TextBlock Grid.Row="0" Grid.Column="0" Text="System tables (read-only)" FontWeight="Bold" Margin="0,0,0,6"/>
+        <TextBlock Grid.Row="0" Grid.Column="2" Text="User-defined texts" FontWeight="Bold" Margin="0,0,0,6"/>
+
+        <!-- System tables: each table name then its reference rows, read-only -->
+        <ListBox Grid.Row="1" Grid.Column="0" ItemsSource="{Binding SystemTables}" IsEnabled="False">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="svc:DataTableView">
+                    <StackPanel Margin="0,2">
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                        <ItemsControl ItemsSource="{Binding Rows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" Margin="12,0,0,0" Foreground="Gray"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- User-defined texts: editable list -->
+        <ListBox Grid.Row="1" Grid.Column="2" x:Name="UserTextsList"
+                 ItemsSource="{Binding UserTexts}" SelectedItem="{Binding SelectedUserText, Mode=TwoWay}">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:UserTextItem">
+                    <TextBlock Text="{Binding Text}"/>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <StackPanel Grid.Row="2" Grid.Column="2" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+            <Button Content="Add" Command="{Binding AddTextCommand}"/>
+            <Button Content="Edit" Command="{Binding EditTextCommand}"/>
+            <Button Content="Delete" Command="{Binding DeleteTextCommand}"/>
+        </StackPanel>
+
+        <Button Grid.Row="2" Grid.Column="0" Content="Close" MinWidth="84" IsCancel="True"
+                HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnClose"/>
+    </Grid>
+</Window>

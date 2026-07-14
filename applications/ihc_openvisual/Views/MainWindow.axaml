@@ -17,7 +17,35 @@
         <KeyBinding Gesture="Ctrl+N" Command="{Binding NewCommand}"/>
         <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenCommand}"/>
         <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCommand}"/>
+        <KeyBinding Gesture="Ctrl+Shift+B" Command="{Binding InsertEmptyFunctionBlockCommand}"/>
+        <KeyBinding Gesture="Ctrl+G" Command="{Binding SaveFunctionBlockCommand}" CommandParameter="{Binding SelectedNode}"/>
+        <KeyBinding Gesture="F3" Command="{Binding EnterProgrammingModeCommand}" CommandParameter="{Binding SelectedNode}"/>
+        <KeyBinding Gesture="Escape" Command="{Binding LeaveProgrammingModeCommand}"/>
+        <KeyBinding Gesture="F5" Command="{Binding SendProjectCommand}"/>
+        <KeyBinding Gesture="F1" Command="{Binding HelpCommand}" CommandParameter="{Binding SelectedNode}"/>
+        <KeyBinding Gesture="Ctrl+I" Command="{Binding InsertInputCommand}"/>
+        <KeyBinding Gesture="Ctrl+U" Command="{Binding InsertOutputCommand}"/>
+        <KeyBinding Gesture="Ctrl+Z" Command="{Binding UndoCommand}"/>
+        <KeyBinding Gesture="Ctrl+Y" Command="{Binding RedoCommand}"/>
+        <KeyBinding Gesture="Ctrl+X" Command="{Binding CutCommand}" CommandParameter="{Binding SelectedNode}"/>
+        <KeyBinding Gesture="Ctrl+C" Command="{Binding CopyCommand}" CommandParameter="{Binding SelectedNode}"/>
+        <KeyBinding Gesture="Ctrl+V" Command="{Binding PasteCommand}" CommandParameter="{Binding SelectedNode}"/>
+        <KeyBinding Gesture="Ctrl+Shift+Up" Command="{Binding MoveUpCommand}" CommandParameter="{Binding SelectedNode}"/>
+        <KeyBinding Gesture="Ctrl+Shift+Down" Command="{Binding MoveDownCommand}" CommandParameter="{Binding SelectedNode}"/>
     </Window.KeyBindings>
+
+    <Window.Resources>
+        <!-- Recursive theme for the catalog product-insertion menu: each generated MenuItem takes its Header,
+             child items and insert command from its ProductMenuItemViewModel, and reuses this same theme for its
+             own children (self-reference via DynamicResource) so arbitrarily deep category trees render (US-010). -->
+        <ControlTheme x:Key="ProductMenuItemTheme" TargetType="MenuItem" x:DataType="vm:ProductMenuItemViewModel"
+                      BasedOn="{StaticResource {x:Type MenuItem}}">
+            <Setter Property="Header" Value="{Binding Header}"/>
+            <Setter Property="ItemsSource" Value="{Binding Children}"/>
+            <Setter Property="Command" Value="{Binding Command}"/>
+            <Setter Property="ItemContainerTheme" Value="{DynamicResource ProductMenuItemTheme}"/>
+        </ControlTheme>
+    </Window.Resources>
 
     <DockPanel>
         <!-- ============ Menu bar: the stable title hosts ============ -->
@@ -50,7 +78,13 @@
 
             <!-- Edit is owned by later epics (E14–E15); present as a stable host. -->
             <MenuItem Header="_Edit">
-                <MenuItem Header="(no commands yet)" IsEnabled="False"/>
+                <MenuItem Header="_Undo" Command="{Binding UndoCommand}" InputGesture="Ctrl+Z"/>
+                <MenuItem Header="_Redo" Command="{Binding RedoCommand}" InputGesture="Ctrl+Y"/>
+                <Separator/>
+                <MenuItem Header="Cu_t" Command="{Binding CutCommand}" CommandParameter="{Binding SelectedNode}" InputGesture="Ctrl+X"/>
+                <MenuItem Header="_Copy" Command="{Binding CopyCommand}" CommandParameter="{Binding SelectedNode}" InputGesture="Ctrl+C"/>
+                <MenuItem Header="_Paste" Command="{Binding PasteCommand}" CommandParameter="{Binding SelectedNode}" InputGesture="Ctrl+V"/>
+                <MenuItem Header="_Delete" Command="{Binding DeleteCommand}" CommandParameter="{Binding SelectedNode}" InputGesture="Delete"/>
             </MenuItem>
 
             <MenuItem Header="_View">
@@ -72,21 +106,46 @@
                 </MenuItem>
             </MenuItem>
 
-            <!-- Insert / Library / Controller / Documentation: owned by later epics; present now as stable hosts. -->
+            <!-- Insert: Products submenu is E3; the rest are owned by later epics. -->
             <MenuItem Header="_Insert">
-                <MenuItem Header="(no commands yet)" IsEnabled="False"/>
+                <MenuItem Header="_Products">
+                    <MenuItem Header="_Wired products" ItemsSource="{Binding WiredProductsMenu}"
+                              ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
+                    <MenuItem Header="IHC _Wireless products" ItemsSource="{Binding WirelessProductsMenu}"
+                              ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
+                    <MenuItem Header="_Special products" ItemsSource="{Binding SpecialProductsMenu}"
+                              ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
+                </MenuItem>
             </MenuItem>
             <MenuItem Header="_Library">
-                <MenuItem Header="(no commands yet)" IsEnabled="False"/>
+                <MenuItem Header="Insert _function block" ItemsSource="{Binding FunctionBlocksMenu}"
+                          ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
+                <Separator/>
+                <MenuItem Header="_Import catalog file…" Command="{Binding ImportCatalogFileCommand}"/>
+                <MenuItem Header="Import catalog f_older…" Command="{Binding ImportCatalogFolderCommand}"/>
             </MenuItem>
             <MenuItem Header="_Controller">
-                <MenuItem Header="(no commands yet)" IsEnabled="False"/>
+                <MenuItem Header="_Send project" Command="{Binding SendProjectCommand}" InputGesture="F5"/>
+                <MenuItem Header="_Retrieve project" Command="{Binding RetrieveProjectCommand}"/>
             </MenuItem>
             <MenuItem Header="Doc_umentation">
-                <MenuItem Header="(no commands yet)" IsEnabled="False"/>
+                <MenuItem Header="_Project info…" Command="{Binding ProjectInfoCommand}"/>
+                <MenuItem Header="_Data tables…" Command="{Binding DataTablesCommand}"/>
+                <MenuItem Header="_Wired module map…" Command="{Binding ModuleMapCommand}"/>
+                <Separator/>
+                <MenuItem Header="_Reports">
+                    <MenuItem Header="_Installation documentation" Command="{Binding InstallationReportScreenCommand}"/>
+                    <MenuItem Header="Installation documentation (_print)" Command="{Binding InstallationReportPrintCommand}"/>
+                    <MenuItem Header="_Function / end-user documentation" Command="{Binding EndUserReportScreenCommand}"/>
+                    <MenuItem Header="Function / end-user documentation (p_rint)" Command="{Binding EndUserReportPrintCommand}"/>
+                    <MenuItem Header="Function-_block documentation" Command="{Binding FunctionBlockReportScreenCommand}"/>
+                    <MenuItem Header="Function-block documentation (pr_int)" Command="{Binding FunctionBlockReportPrintCommand}"/>
+                </MenuItem>
             </MenuItem>
 
             <MenuItem Header="_Help">
+                <MenuItem Header="Help for _selection" Command="{Binding HelpCommand}" CommandParameter="{Binding SelectedNode}" InputGesture="F1"/>
+                <Separator/>
                 <MenuItem Header="Show settings" Command="{Binding ShowSettingsCommand}"/>
                 <MenuItem Header="Telemetry diagnostics" Command="{Binding TelemetryDiagnosticsCommand}"/>
                 <Separator/>
@@ -178,10 +237,85 @@
         <Grid ColumnDefinitions="*,Auto,*">
             <DockPanel Grid.Column="0">
                 <Border DockPanel.Dock="Top" Background="{DynamicResource PaneHeaderBackgroundBrush}" Padding="10,5">
-                    <TextBlock Text="Installation" Foreground="{DynamicResource PaneHeaderForegroundBrush}"
+                    <TextBlock Text="{Binding InstallationPaneHeader}" Foreground="{DynamicResource PaneHeaderForegroundBrush}"
                                FontWeight="SemiBold" FontSize="{StaticResource BodyFontSize}"/>
                 </Border>
-                <TreeView ItemsSource="{Binding InstallationNodes}">
+                <TreeView x:Name="InstallationTree" ItemsSource="{Binding InstallationNodes}" KeyDown="OnTreeKeyDown"
+                          SelectedItem="{Binding SelectedInstallationNode, Mode=TwoWay}">
+                    <TreeView.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Insert _locality" Command="{Binding InsertLocalityCommand}"
+                                      IsVisible="{Binding SelectedNode.CanInsertLocality, FallbackValue=False}"/>
+                            <MenuItem Header="Insert _product"
+                                      IsVisible="{Binding SelectedNode.CanEditProperties, FallbackValue=False}">
+                                <MenuItem Header="_Wired products" ItemsSource="{Binding WiredProductsMenu}"
+                                          ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
+                                <MenuItem Header="IHC _Wireless products" ItemsSource="{Binding WirelessProductsMenu}"
+                                          ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
+                                <MenuItem Header="_Special products" ItemsSource="{Binding SpecialProductsMenu}"
+                                          ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
+                            </MenuItem>
+                            <MenuItem Header="Insert _function block" ItemsSource="{Binding FunctionBlocksMenu}"
+                                      ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
+                                      IsVisible="{Binding SelectedNode.CanEditProperties, FallbackValue=False}"/>
+                            <MenuItem Header="_Empty function block" Command="{Binding InsertEmptyFunctionBlockCommand}"
+                                      InputGesture="Ctrl+Shift+B"
+                                      IsVisible="{Binding SelectedNode.CanEditProperties, FallbackValue=False}"/>
+                            <MenuItem Header="_Unlock" Command="{Binding UnlockCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.IsLockedFunctionBlock, FallbackValue=False}"/>
+                            <MenuItem Header="_Save block…" Command="{Binding SaveFunctionBlockCommand}" CommandParameter="{Binding SelectedNode}"
+                                      InputGesture="Ctrl+G"
+                                      IsVisible="{Binding SelectedNode.IsFunctionBlock, FallbackValue=False}"/>
+                            <MenuItem Header="Insert _variable" ItemsSource="{Binding VariablePaletteMenu}"
+                                      ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
+                                      IsVisible="{Binding SelectedNode.IsBlockSection, FallbackValue=False}"/>
+                            <MenuItem Header="Link _from here" Command="{Binding StartLinkCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.IsPin, FallbackValue=False}"/>
+                            <MenuItem Header="Link _to here" Command="{Binding LinkToHereCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.IsLinkTarget, FallbackValue=False}"/>
+                            <MenuItem Header="_Use in program" Command="{Binding UseInProgramCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.IsPin, FallbackValue=False}"/>
+                            <MenuItem Header="Save current _value" Command="{Binding ToggleSaveValueCommand}" CommandParameter="{Binding SelectedNode}"
+                                      ToggleType="CheckBox" IsChecked="{Binding SelectedNode.IsValueSaved, Mode=OneWay, FallbackValue=False}"
+                                      IsVisible="{Binding SelectedNode.IsOutputPin, FallbackValue=False}"/>
+                            <MenuItem Header="Add _event" ItemsSource="{Binding ProgramEventMenu}"
+                                      ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
+                                      IsVisible="{Binding SelectedNode.IsEventsContainer, FallbackValue=False}"/>
+                            <MenuItem Header="Add _Powerup event" Command="{Binding AddPowerEventCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.IsEventsContainer, FallbackValue=False}"/>
+                            <MenuItem Header="Add _command" ItemsSource="{Binding ProgramCommandMenu}"
+                                      ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
+                                      IsVisible="{Binding SelectedNode.IsCommandsContainer, FallbackValue=False}"/>
+                            <MenuItem Header="_Sub-program" Command="{Binding AddSubProgramCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.IsCommandsContainer, FallbackValue=False}"/>
+                            <MenuItem Header="C_ase" ItemsSource="{Binding ProgramCaseMenu}"
+                                      ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
+                                      IsVisible="{Binding SelectedNode.IsCommandsContainer, FallbackValue=False}"/>
+                            <MenuItem Header="Arith_metic" ItemsSource="{Binding ProgramArithmeticMenu}"
+                                      ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
+                                      IsVisible="{Binding SelectedNode.IsCommandsContainer, FallbackValue=False}"/>
+                            <MenuItem Header="New case _value…" Command="{Binding NewCaseValueCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.IsCaseNode, FallbackValue=False}"/>
+                            <MenuItem Header="Add co_ndition" ItemsSource="{Binding ProgramConditionMenu}"
+                                      ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
+                                      IsVisible="{Binding SelectedNode.IsConditionsContainer, FallbackValue=False}"/>
+                            <MenuItem Header="Logic _group" Command="{Binding AddLogicGroupCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.IsConditionsContainer, FallbackValue=False}"/>
+                            <MenuItem Header="Logical condition"
+                                      IsVisible="{Binding SelectedNode.IsConditionsContainer, FallbackValue=False}">
+                                <MenuItem Header="AND (_&amp;)" Command="{Binding SetConditionsAndCommand}" CommandParameter="{Binding SelectedNode}"/>
+                                <MenuItem Header="OR (_&gt;=1)" Command="{Binding SetConditionsOrCommand}" CommandParameter="{Binding SelectedNode}"/>
+                            </MenuItem>
+                            <MenuItem Header="Move _up" Command="{Binding MoveUpCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.CanEditProperties, FallbackValue=False}"/>
+                            <MenuItem Header="Move dow_n" Command="{Binding MoveDownCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.CanEditProperties, FallbackValue=False}"/>
+                            <MenuItem Header="_Delete" Command="{Binding DeleteCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.CanDelete, FallbackValue=False}"/>
+                            <MenuItem Header="P_roperties" Command="{Binding PropertiesCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.CanEditProperties, FallbackValue=False}"/>
+                        </ContextMenu>
+                    </TreeView.ContextMenu>
                     <TreeView.Styles>
                         <Style Selector="TreeViewItem" x:DataType="vm:TreeNodeViewModel">
                             <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
@@ -189,9 +323,14 @@
                     </TreeView.Styles>
                     <TreeView.ItemTemplate>
                         <TreeDataTemplate x:DataType="vm:TreeNodeViewModel" ItemsSource="{Binding Children}">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
+                            <StackPanel Orientation="Horizontal" Spacing="6" ToolTip.Tip="{Binding Tooltip}">
                                 <svg:Svg Width="16" Height="16" Path="{Binding IconAsset}" CurrentColor="{DynamicResource IconColor}"/>
-                                <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"
+                                           FontWeight="{Binding IsBold, Converter={x:Static conv:BoolToFontWeightConverter.Instance}}"/>
+                                <!-- Unlinked wireless product marker (US-014) -->
+                                <TextBlock Text="!" FontWeight="Bold" Foreground="#E0A800" VerticalAlignment="Center"
+                                           IsVisible="{Binding IsUnlinked}"
+                                           ToolTip.Tip="Not yet linked to the controller"/>
                             </StackPanel>
                         </TreeDataTemplate>
                     </TreeView.ItemTemplate>
@@ -203,10 +342,76 @@
 
             <DockPanel Grid.Column="2">
                 <Border DockPanel.Dock="Top" Background="{DynamicResource PaneHeaderBackgroundBrush}" Padding="10,5">
-                    <TextBlock Text="Functions" Foreground="{DynamicResource PaneHeaderForegroundBrush}"
+                    <TextBlock Text="{Binding FunctionsPaneHeader}" Foreground="{DynamicResource PaneHeaderForegroundBrush}"
                                FontWeight="SemiBold" FontSize="{StaticResource BodyFontSize}"/>
                 </Border>
-                <TreeView ItemsSource="{Binding FunctionNodes}">
+                <TreeView x:Name="FunctionsTree" ItemsSource="{Binding FunctionNodes}" KeyDown="OnTreeKeyDown"
+                          SelectedItem="{Binding SelectedFunctionsNode, Mode=TwoWay}">
+                    <TreeView.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Insert _locality" Command="{Binding InsertLocalityCommand}"
+                                      IsVisible="{Binding SelectedNode.CanInsertLocality, FallbackValue=False}"/>
+                            <MenuItem Header="Insert _function block" ItemsSource="{Binding FunctionBlocksMenu}"
+                                      ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
+                                      IsVisible="{Binding SelectedNode.CanEditProperties, FallbackValue=False}"/>
+                            <MenuItem Header="_Empty function block" Command="{Binding InsertEmptyFunctionBlockCommand}"
+                                      InputGesture="Ctrl+Shift+B"
+                                      IsVisible="{Binding SelectedNode.CanEditProperties, FallbackValue=False}"/>
+                            <MenuItem Header="_Unlock" Command="{Binding UnlockCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.IsLockedFunctionBlock, FallbackValue=False}"/>
+                            <MenuItem Header="_Save block…" Command="{Binding SaveFunctionBlockCommand}" CommandParameter="{Binding SelectedNode}"
+                                      InputGesture="Ctrl+G"
+                                      IsVisible="{Binding SelectedNode.IsFunctionBlock, FallbackValue=False}"/>
+                            <MenuItem Header="Insert _variable" ItemsSource="{Binding VariablePaletteMenu}"
+                                      ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
+                                      IsVisible="{Binding SelectedNode.IsBlockSection, FallbackValue=False}"/>
+                            <MenuItem Header="Link _from here" Command="{Binding StartLinkCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.IsPin, FallbackValue=False}"/>
+                            <MenuItem Header="Link _to here" Command="{Binding LinkToHereCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.IsLinkTarget, FallbackValue=False}"/>
+                            <MenuItem Header="_Use in program" Command="{Binding UseInProgramCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.IsPin, FallbackValue=False}"/>
+                            <MenuItem Header="Save current _value" Command="{Binding ToggleSaveValueCommand}" CommandParameter="{Binding SelectedNode}"
+                                      ToggleType="CheckBox" IsChecked="{Binding SelectedNode.IsValueSaved, Mode=OneWay, FallbackValue=False}"
+                                      IsVisible="{Binding SelectedNode.IsOutputPin, FallbackValue=False}"/>
+                            <MenuItem Header="Add _event" ItemsSource="{Binding ProgramEventMenu}"
+                                      ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
+                                      IsVisible="{Binding SelectedNode.IsEventsContainer, FallbackValue=False}"/>
+                            <MenuItem Header="Add _Powerup event" Command="{Binding AddPowerEventCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.IsEventsContainer, FallbackValue=False}"/>
+                            <MenuItem Header="Add _command" ItemsSource="{Binding ProgramCommandMenu}"
+                                      ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
+                                      IsVisible="{Binding SelectedNode.IsCommandsContainer, FallbackValue=False}"/>
+                            <MenuItem Header="_Sub-program" Command="{Binding AddSubProgramCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.IsCommandsContainer, FallbackValue=False}"/>
+                            <MenuItem Header="C_ase" ItemsSource="{Binding ProgramCaseMenu}"
+                                      ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
+                                      IsVisible="{Binding SelectedNode.IsCommandsContainer, FallbackValue=False}"/>
+                            <MenuItem Header="Arith_metic" ItemsSource="{Binding ProgramArithmeticMenu}"
+                                      ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
+                                      IsVisible="{Binding SelectedNode.IsCommandsContainer, FallbackValue=False}"/>
+                            <MenuItem Header="New case _value…" Command="{Binding NewCaseValueCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.IsCaseNode, FallbackValue=False}"/>
+                            <MenuItem Header="Add co_ndition" ItemsSource="{Binding ProgramConditionMenu}"
+                                      ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
+                                      IsVisible="{Binding SelectedNode.IsConditionsContainer, FallbackValue=False}"/>
+                            <MenuItem Header="Logic _group" Command="{Binding AddLogicGroupCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.IsConditionsContainer, FallbackValue=False}"/>
+                            <MenuItem Header="Logical condition"
+                                      IsVisible="{Binding SelectedNode.IsConditionsContainer, FallbackValue=False}">
+                                <MenuItem Header="AND (_&amp;)" Command="{Binding SetConditionsAndCommand}" CommandParameter="{Binding SelectedNode}"/>
+                                <MenuItem Header="OR (_&gt;=1)" Command="{Binding SetConditionsOrCommand}" CommandParameter="{Binding SelectedNode}"/>
+                            </MenuItem>
+                            <MenuItem Header="Move _up" Command="{Binding MoveUpCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.CanEditProperties, FallbackValue=False}"/>
+                            <MenuItem Header="Move dow_n" Command="{Binding MoveDownCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.CanEditProperties, FallbackValue=False}"/>
+                            <MenuItem Header="_Delete" Command="{Binding DeleteCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.CanDelete, FallbackValue=False}"/>
+                            <MenuItem Header="P_roperties" Command="{Binding PropertiesCommand}" CommandParameter="{Binding SelectedNode}"
+                                      IsVisible="{Binding SelectedNode.CanEditProperties, FallbackValue=False}"/>
+                        </ContextMenu>
+                    </TreeView.ContextMenu>
                     <TreeView.Styles>
                         <Style Selector="TreeViewItem" x:DataType="vm:TreeNodeViewModel">
                             <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
@@ -214,9 +419,14 @@
                     </TreeView.Styles>
                     <TreeView.ItemTemplate>
                         <TreeDataTemplate x:DataType="vm:TreeNodeViewModel" ItemsSource="{Binding Children}">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
+                            <StackPanel Orientation="Horizontal" Spacing="6" ToolTip.Tip="{Binding Tooltip}">
                                 <svg:Svg Width="16" Height="16" Path="{Binding IconAsset}" CurrentColor="{DynamicResource IconColor}"/>
-                                <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"
+                                           FontWeight="{Binding IsBold, Converter={x:Static conv:BoolToFontWeightConverter.Instance}}"/>
+                                <!-- Unlinked wireless product marker (US-014) -->
+                                <TextBlock Text="!" FontWeight="Bold" Foreground="#E0A800" VerticalAlignment="Center"
+                                           IsVisible="{Binding IsUnlinked}"
+                                           ToolTip.Tip="Not yet linked to the controller"/>
                             </StackPanel>
                         </TreeDataTemplate>
                     </TreeView.ItemTemplate>

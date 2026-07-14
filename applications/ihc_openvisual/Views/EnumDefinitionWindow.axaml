@@ -1,0 +1,32 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="380" d:DesignHeight="320"
+        x:Class="ihc_openvisual.Views.EnumDefinitionWindow"
+        Title="Enumerator"
+        Width="380" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        ShowInTaskbar="False">
+    <StackPanel Margin="20" Spacing="6">
+        <StackPanel.Styles>
+            <Style Selector="TextBlock.label">
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Margin" Value="0,6,0,0"/>
+            </Style>
+        </StackPanel.Styles>
+
+        <TextBlock Classes="label" Text="Enumerator type"/>
+        <TextBox Name="TypeNameBox"/>
+
+        <TextBlock Classes="label" Text="States (one per line, in order)"/>
+        <TextBox Name="StatesBox" AcceptsReturn="True" TextWrapping="NoWrap"
+                 Height="140" VerticalContentAlignment="Top"/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,14,0,0">
+            <Button Name="OkButton" Content="OK" MinWidth="84" IsDefault="True" Click="OnOk"/>
+            <Button Name="CancelButton" Content="Cancel" MinWidth="84" IsCancel="True" Click="OnCancel"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

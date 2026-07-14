@@ -1,0 +1,59 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:svc="using:ihc_openvisual.Services"
+        mc:Ignorable="d" d:DesignWidth="440" d:DesignHeight="480"
+        x:Class="ihc_openvisual.Views.ProductPropertiesWindow"
+        Title="Product properties"
+        Width="440" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        ShowInTaskbar="False">
+    <StackPanel Margin="20" Spacing="6">
+        <StackPanel.Styles>
+            <Style Selector="TextBlock.label">
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Margin" Value="0,6,0,0"/>
+            </Style>
+        </StackPanel.Styles>
+
+        <TextBlock Classes="label" Text="Name"/>
+        <TextBox Name="NameBox"/>
+
+        <TextBlock Classes="label" Text="Location"/>
+        <ComboBox Name="LocationCombo" HorizontalAlignment="Stretch">
+            <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="svc:LocalityChoice">
+                    <TextBlock Text="{Binding Name}"/>
+                </DataTemplate>
+            </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <TextBlock Classes="label" Text="Note"/>
+        <TextBox Name="NoteBox" AcceptsReturn="True" TextWrapping="Wrap" Height="70" VerticalContentAlignment="Top"/>
+
+        <StackPanel Name="CablingPanel" Spacing="6">
+            <TextBlock Classes="label" Text="Cable type"/>
+            <TextBox Name="CableTypeBox"/>
+
+            <TextBlock Classes="label" Text="Cable numbering"/>
+            <TextBox Name="CableNumberBox"/>
+        </StackPanel>
+
+        <TextBlock Classes="label" Text="Identification code"/>
+        <TextBox Name="IdentificationBox"/>
+
+        <TextBlock Classes="label" Text="Light group"/>
+        <TextBox Name="LightGroupBox"/>
+
+        <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,14,0,0">
+            <Button Grid.Column="0" Name="AdvancedButton" Content="Advanced…" MinWidth="96"
+                    IsVisible="False" Click="OnAdvanced"/>
+            <Button Grid.Column="2" Name="OkButton" Content="OK" MinWidth="84" Margin="8,0,0,0"
+                    IsDefault="True" Click="OnOk"/>
+            <Button Grid.Column="3" Name="CancelButton" Content="Cancel" MinWidth="84" Margin="8,0,0,0"
+                    IsCancel="True" Click="OnCancel"/>
+        </Grid>
+    </StackPanel>
+</Window>

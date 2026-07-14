@@ -31,6 +31,28 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
+        public async Task AddGroup_AlwaysAppendsNewRoom_EvenWhenSameNameExists()
+        {
+            // US-008 "insert locality": unlike Group() (find-or-seed), AddGroup always adds a new room appended
+            // last — so repeated inserts yield distinct same-named rooms, as IHC Visual does.
+            Project project = await new ProjectAppService(Settings).Load("testdata/projects/Project0-Tomt.vis");
+            int before = project.Groups.Count;
+            ProjectEditor editor = project.Edit();
+
+            editor.AddGroup("Locality");
+            editor.AddGroup("Locality");
+
+            Project after = editor.ToProject();
+            Assert.Multiple(() =>
+            {
+                Assert.That(after.Groups.Count, Is.EqualTo(before + 2), "each AddGroup appends a distinct room");
+                Assert.That(after.Groups[^1].GetAttribute("name"), Is.EqualTo("Locality"), "the new room is last");
+                Assert.That(after.Groups[^2].GetAttribute("name"), Is.EqualTo("Locality"), "same-named rooms coexist");
+                Assert.That(after.Groups[^1].Id, Is.Not.EqualTo(after.Groups[^2].Id), "each gets a fresh id");
+            });
+        }
+
+        [Test]
         public void Group_ExistingRoomWithUnparseableId_Throws_NotDuplicate()
         {
             // Finding 12: an open-world room whose id token is out of the parseable range (> 0xFFFFFFFF) has a null

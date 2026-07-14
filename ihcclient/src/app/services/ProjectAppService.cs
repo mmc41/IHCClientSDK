@@ -560,6 +560,26 @@ namespace Ihc.Vis
         }
 
         /// <summary>
+        /// The empty "from scratch" function-block template (<c>Tom blok</c>) — the five mandatory containers plus one
+        /// empty program — that <see cref="Ihc.Vis.Editing.GroupRef.AddEmptyFunctionBlock"/> scaffolds into a locality.
+        /// </summary>
+        public FunctionBlockDefinition GetEmptyFunctionBlockTemplate()
+        {
+            using (var activity = StartActivity(nameof(GetEmptyFunctionBlockTemplate)))
+            {
+                try
+                {
+                    return catalog.Value.EmptyFunctionBlockTemplate;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
         /// Imports one catalog component file at runtime so it resolves and inserts alongside the built-ins: a
         /// <c>.ifb</c> is read as a function block, any other extension (<c>.def</c>) as a product, via the same
         /// encoding/DTD-default/inline-DTD handling as install discovery

@@ -11,9 +11,22 @@ public sealed class NullDialogService : IDialogService
     public Task ShowMessageAsync(string title, string message) => Task.CompletedTask;
     public Task<string?> PickOpenProjectAsync(string? initialDirectory) => Task.FromResult<string?>(null);
     public Task<string?> PickSaveProjectAsync(string? initialDirectory, string suggestedFileName) => Task.FromResult<string?>(null);
+    public Task<string?> PickSaveFunctionBlockAsync(string suggestedFileName) => Task.FromResult<string?>(null);
     public Task ShowAboutAsync() => Task.CompletedTask;
     public Task ShowSettingsAsync(string settingsText) => Task.CompletedTask;
     public Task OpenExternalUrlAsync(string url) => Task.CompletedTask;
+    public Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note) => Task.FromResult<PropertiesResult?>(null);
+    public Task<ProductPropertiesResult?> EditProductPropertiesAsync(ProductPropertiesInput input) => Task.FromResult<ProductPropertiesResult?>(null);
+    public Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input) => Task.FromResult<PinPropertiesResult?>(null);
+    public Task<ModemPropertiesResult?> EditModemPropertiesAsync(ModemPropertiesInput input) => Task.FromResult<ModemPropertiesResult?>(null);
+    public Task<AdvancedDimmerResult?> EditAdvancedDimmerAsync(AdvancedDimmerInput input) => Task.FromResult<AdvancedDimmerResult?>(null);
+    public Task<SceneValueResult?> EditSceneValueAsync(SceneValueInput input) => Task.FromResult<SceneValueResult?>(null);
+    public Task<EnumDefinitionResult?> EditEnumDefinitionAsync(EnumDefinitionInput input) => Task.FromResult<EnumDefinitionResult?>(null);
+    public Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current) => Task.FromResult<ProjectInfoData?>(null);
+    public Task ShowDataTablesAsync(ihc_openvisual.ViewModels.DataTablesViewModel viewModel) => Task.CompletedTask;
+    public Task ShowModuleMapAsync(ModuleAddressMap map) => Task.CompletedTask;
+    public Task<string?> PickCatalogFileAsync() => Task.FromResult<string?>(null);
+    public Task<string?> PickCatalogFolderAsync() => Task.FromResult<string?>(null);
 }
 
 /// <summary>A no-op <see cref="IThemeService"/> for the designer/design-time view-model.</summary>

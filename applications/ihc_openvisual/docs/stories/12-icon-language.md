@@ -99,3 +99,22 @@ colour, **so that** I can read the installation, function and program trees at a
   provide the *distinctions and meanings*, choosing equivalent glyphs. (R‑note, not a blocker.)
 
 **Readiness:** Ready.
+
+**Implementation status:** ✅ **Implemented.** `NodeIcons.For(tag, iconCode)` maps every node category in the checklist
+to a distinct `/Assets/*.svg` glyph (the 44-glyph set built in E1): **structure** (localities, the four block sections,
+RS485 module containers, and — via the tree builders per the `locked` attribute — the two different **library**
+`fb-lk` vs **editable** `fb-editable` block icons); **product pins** by direction (`pin-in`/`pin-out`); **link rows**
+(`link-from` ← / `link-to` →); **all variable types** — Flag, Date, Weekday, Time of day, Counter, Integer, Decimal,
+Timer, Timer value, Enumerator, Light, **Light level**, Temperature, Holiday, **Humidity** (the last two mapped this
+turn — they were falling back); **program elements** (Program, Sub-program, Event group, Event, Conditions-**AND** vs
+Conditions-**OR**, Condition, Command group, Command); and **scenario** pins. The **unlinked wireless "!"** decoration
+and the inline **`Name = value`** rows are already rendered (US-014/US-010) and are distinct from the type icon.
+
+Gaps closed this turn: `resource_humidity_level` → `var-humidity.svg`, `resource_light_level` → `var-light-level.svg`,
+and the module containers → `rs485-module.svg`. *(Not represented in this catalog's model, so no icon is wired: a
+dedicated **Energy/Power** (kW/kWh/W/Wh) variable tag — the S0 metering is product-level, not a variable type here —
+and the **simulation** red/green state colouring + **breakpoint**, which belong to the out-of-scope simulation epic
+E8.)* Tests: 3 in `NodeIconsTests` (every variable type distinct + no neutral fallback + the closed gaps; program/pin/
+scenario categories distinct incl. AND≠OR and in≠out; library vs editable block icons differ). Suites:
+`safe_visual_tests` **166**, byte-fidelity `safe_project_tests` **663** green. OpenObserve 0 errors. Verification
+(**Inspection**): icon mapping asserted per category.

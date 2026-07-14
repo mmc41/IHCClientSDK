@@ -26,6 +26,9 @@ public sealed class AvaloniaDialogService : IDialogService
     public Window? Owner { get; set; }
 
     private static readonly FilePickerFileType VisFileType = new("IHC project (*.vis)") { Patterns = new[] { "*.vis" } };
+    private static readonly FilePickerFileType IfbFileType = new("IHC function block (*.ifb)") { Patterns = new[] { "*.ifb" } };
+    private static readonly FilePickerFileType CatalogFileType =
+        new("IHC catalog definition (*.def, *.ifb)") { Patterns = new[] { "*.def", "*.ifb" } };
 
     public async Task<SaveChangesResult> ConfirmSaveChangesAsync(string documentName)
     {
@@ -73,6 +76,45 @@ public sealed class AvaloniaDialogService : IDialogService
         return file?.TryGetLocalPath();
     }
 
+    public async Task<string?> PickSaveFunctionBlockAsync(string suggestedFileName)
+    {
+        if (Owner is null)
+            return null;
+        IStorageFile? file = await Owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save function block",
+            SuggestedFileName = suggestedFileName,
+            DefaultExtension = "ifb",
+            FileTypeChoices = new[] { IfbFileType }
+        });
+        return file?.TryGetLocalPath();
+    }
+
+    public async Task<string?> PickCatalogFileAsync()
+    {
+        if (Owner is null)
+            return null;
+        IReadOnlyList<IStorageFile> files = await Owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Import catalog file",
+            AllowMultiple = false,
+            FileTypeFilter = new[] { CatalogFileType }
+        });
+        return files.Count > 0 ? files[0].TryGetLocalPath() : null;
+    }
+
+    public async Task<string?> PickCatalogFolderAsync()
+    {
+        if (Owner is null)
+            return null;
+        IReadOnlyList<IStorageFolder> folders = await Owner.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Import catalog folder",
+            AllowMultiple = false
+        });
+        return folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
+    }
+
     public async Task ShowAboutAsync()
     {
         if (Owner is null)
@@ -82,6 +124,76 @@ public sealed class AvaloniaDialogService : IDialogService
 
     public Task ShowSettingsAsync(string settingsText) =>
         ShowButtonsAsync("Effective settings", settingsText, selectable: true, ("Close", true));
+
+    public async Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note)
+    {
+        if (Owner is null)
+            return null;
+        return await PropertiesWindow.ShowAsync(Owner, title, name, note);
+    }
+
+    public async Task<ProductPropertiesResult?> EditProductPropertiesAsync(ProductPropertiesInput input)
+    {
+        if (Owner is null)
+            return null;
+        return await ProductPropertiesWindow.ShowAsync(Owner, input);
+    }
+
+    public async Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input)
+    {
+        if (Owner is null)
+            return null;
+        return await PinPropertiesWindow.ShowAsync(Owner, input);
+    }
+
+    public async Task<ModemPropertiesResult?> EditModemPropertiesAsync(ModemPropertiesInput input)
+    {
+        if (Owner is null)
+            return null;
+        return await ModemPropertiesWindow.ShowAsync(Owner, input);
+    }
+
+    public async Task<AdvancedDimmerResult?> EditAdvancedDimmerAsync(AdvancedDimmerInput input)
+    {
+        if (Owner is null)
+            return null;
+        return await AdvancedDimmerWindow.ShowAsync(Owner, input);
+    }
+
+    public async Task<SceneValueResult?> EditSceneValueAsync(SceneValueInput input)
+    {
+        if (Owner is null)
+            return null;
+        return await SceneValueWindow.ShowAsync(Owner, input);
+    }
+
+    public async Task<EnumDefinitionResult?> EditEnumDefinitionAsync(EnumDefinitionInput input)
+    {
+        if (Owner is null)
+            return null;
+        return await EnumDefinitionWindow.ShowAsync(Owner, input);
+    }
+
+    public async Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current)
+    {
+        if (Owner is null)
+            return null;
+        return await ProjectInfoWindow.ShowAsync(Owner, current);
+    }
+
+    public async Task ShowDataTablesAsync(ihc_openvisual.ViewModels.DataTablesViewModel viewModel)
+    {
+        if (Owner is null)
+            return;
+        await DataTablesWindow.ShowAsync(Owner, viewModel);
+    }
+
+    public async Task ShowModuleMapAsync(ModuleAddressMap map)
+    {
+        if (Owner is null)
+            return;
+        await ModuleMapWindow.ShowAsync(Owner, map);
+    }
 
     public Task OpenExternalUrlAsync(string url)
     {

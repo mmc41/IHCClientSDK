@@ -12,7 +12,7 @@ namespace Ihc.Vis.Editing
     /// receiving a program whole from a catalog deep-copy. Adds <c>event_power</c>/<c>event</c> triggers to the
     /// program's <c>events</c> container and nested <c>program_sub</c> logic (a conditions list + true/false action
     /// branches) to its root <c>actions</c> container. Leaf triggers/conditions/actions reference resources by live
-    /// <see cref="ResourceRef"/> — the same handles <see cref="ProjectEditor.Link"/> consumes — and carry an opaque
+    /// <see cref="ResourceRef"/> — the same handles <see cref="ProjectEditor.Link(ResourceRef,ResourceRef)"/> consumes — and carry an opaque
     /// <c>method</c> operation token (from the install <c>Data\mNN.def</c> vocabulary).
     /// </summary>
     /// <remarks>
@@ -55,6 +55,23 @@ namespace Ihc.Vis.Editing
             ProgramGrammar.RequireLiveOperands(editor, link1, link2);
             editor.AllocateChild(eventsId, "event",
                 ProgramGrammar.WiredAttrs(name, ProgramGrammar.EventIcon, note, link1, link2, method));
+            return this;
+        }
+
+        /// <summary>
+        /// Adds a top-level <c>action</c> command to the program's root actions (its "Commands" group) driving
+        /// <paramref name="link1"/> per <paramref name="method"/>, optionally with a second operand
+        /// <paramref name="link2"/> — the unconditional command counterpart of <see cref="AddEvent"/> (US-028: a
+        /// program's events fire its commands top-to-bottom). Returns this for chaining.
+        /// </summary>
+        public ProgramBuilder AddAction(string name, ResourceRef link1, string method, ResourceRef? link2 = null, string? note = null)
+        {
+            ArgumentNullException.ThrowIfNull(name);
+            ArgumentNullException.ThrowIfNull(link1);
+            ArgumentNullException.ThrowIfNull(method);
+            ProgramGrammar.RequireLiveOperands(editor, link1, link2);
+            editor.AllocateChild(actionsId, "action",
+                ProgramGrammar.WiredAttrs(name, ProgramGrammar.ActionIcon, note, link1, link2, method));
             return this;
         }
 

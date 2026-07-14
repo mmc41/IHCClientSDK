@@ -18,8 +18,8 @@ namespace Ihc.Vis.Editing
 {
     /// <summary>
     /// The mutable edit session over an immutable <see cref="Project"/> — the authoring (write) surface a GUI
-    /// drives. Open it with <c>project.Edit()</c>, mutate through live handles (<see cref="Group"/> → products /
-    /// function blocks / resources; <see cref="Link"/>/<see cref="Unlink"/>; the <c>Remove*</c> methods), then call
+    /// drives. Open it with <c>project.Edit()</c>, mutate through live handles (<see cref="Group(string)"/> → products /
+    /// function blocks / resources; <see cref="Link(ResourceRef,ResourceRef)"/>/<see cref="Unlink(ResourceRef,ResourceRef)"/>; the <c>Remove*</c> methods), then call
     /// <see cref="ToProject"/> to commit a fresh immutable snapshot to save. Loaded <c>_0x</c> ids are preserved;
     /// new ones are allocated eagerly for added elements off the project counter (deletes leave permanent holes).
     /// </summary>
@@ -94,6 +94,53 @@ namespace Ihc.Vis.Editing
             ArgumentNullException.ThrowIfNull(name);
             ElementId id = FindGroupByName(name) ?? SeedGroup(name);
             return new GroupRef(this, id);
+        }
+
+        /// <summary>
+        /// Returns the live handle for an existing locality (room) addressed by its stable id — the id-addressed
+        /// counterpart of <see cref="Group(string)"/>, so a GUI that holds element ids (and must disambiguate
+        /// same-named rooms) can add products/function blocks to exactly the intended locality. Throws when the id
+        /// is absent or does not address a <c>group</c>.
+        /// </summary>
+        public GroupRef Group(ElementId id)
+        {
+            ProjectElement group = Require(id);
+            if (group.Tag != "group")
+            {
+                throw new InvalidOperationException(
+                    $"Element {id.ToToken()} is a <{group.Tag}>, not a <group> (locality).");
+            }
+            return new GroupRef(this, id);
+        }
+
+        /// <summary>
+        /// Returns the live handle for an existing function block addressed by its stable id — the id-addressed
+        /// counterpart of <see cref="GroupRef.FunctionBlock(string)"/>, for a GUI that holds element ids (e.g. to
+        /// export a selected block via <see cref="FunctionBlockRef.ExportDefinition"/>). Throws when the id is absent
+        /// or does not address a <c>functionblock</c>.
+        /// </summary>
+        public FunctionBlockRef FunctionBlock(ElementId id)
+        {
+            ProjectElement element = Require(id);
+            if (element.Tag != "functionblock")
+            {
+                throw new InvalidOperationException(
+                    $"Element {id.ToToken()} is a <{element.Tag}>, not a <functionblock>.");
+            }
+            return new FunctionBlockRef(this, id);
+        }
+
+        /// <summary>
+        /// Appends a brand-new locality (room) named <paramref name="name"/> under the project's <c>groups</c>
+        /// container and returns its live handle — the "insert locality" authoring action (US-008). Unlike
+        /// <see cref="Group(string)"/> (find-or-seed by name) this <b>always</b> adds a new room, appended last (the bottom
+        /// of the tree), so repeated inserts yield distinct same-named rooms, as IHC Visual does. Its id is minted
+        /// fresh off the project counter.
+        /// </summary>
+        public GroupRef AddGroup(string name)
+        {
+            ArgumentNullException.ThrowIfNull(name);
+            return new GroupRef(this, SeedGroup(name));
         }
 
         /// <summary>
@@ -302,6 +349,73 @@ namespace Ihc.Vis.Editing
         }
 
         /// <summary>
+        /// Wraps an existing resource element (a product/function-block input, output, setting or internal variable,
+        /// addressed by its id) as a <see cref="ResourceRef"/> operand — the id-addressed operand factory a GUI drives
+        /// when it holds only element ids (US-028: author an event/command referencing a selected variable). The
+        /// element must be live; its display name is read from the <c>name</c> attribute for the operand handle.
+        /// </summary>
+        public ResourceRef Resource(ElementId id)
+        {
+            ProjectElement resource = Require(id);
+            return new ResourceRef(resource.GetAttribute("name") ?? string.Empty, id);
+        }
+
+        /// <summary>
+        /// Sets attributes on a singleton, id-less top-level metadata container addressed by <paramref name="tag"/>
+        /// (<c>project_info</c>/<c>customer_info</c>/<c>installer_info</c> — US-039): these carry no <c>id</c>, so they
+        /// are reached by tag rather than by <see cref="TryResolve"/>. A blank value clears the attribute to its DTD
+        /// default. Returns this. Throws when the project has no such container.
+        /// </summary>
+        public ProjectEditor SetMetadata(string tag, params (string Name, string Value)[] attributes)
+        {
+            ArgumentNullException.ThrowIfNull(tag);
+            ArgumentNullException.ThrowIfNull(attributes);
+            ProjectElement child = root.FindChild(tag)
+                ?? throw new InvalidOperationException($"The project has no <{tag}> container.");
+            foreach ((string name, string value) in attributes)
+            {
+                child = child.WithAttribute(name, value);
+            }
+            root = ReplaceChildByTag(root, tag, child);
+            return this;
+        }
+
+        /// <summary>
+        /// Opens a <see cref="BranchRef"/> over an existing <c>actions</c> container (addressed by id) — a program's
+        /// root "Commands" group or a sub-program's true/false branch — to append commands or nested sub-programs by
+        /// hand (US-028/US-029). The id-addressed command-authoring entry a GUI drives after selecting an actions node.
+        /// </summary>
+        public BranchRef Branch(ElementId actionsId)
+        {
+            ProjectElement actions = Require(actionsId);
+            // A case value's <case_action> is itself a command container (CaseRef.Case returns a BranchRef over it),
+            // so it is a legal Branch target alongside a plain <actions> group (US-031).
+            if (actions.Tag is not ("actions" or "case_action"))
+            {
+                throw new InvalidOperationException(
+                    $"Element {actionsId.ToToken()} is a <{actions.Tag}>, not an <actions> or <case_action>.");
+            }
+            return new BranchRef(this, actionsId);
+        }
+
+        /// <summary>
+        /// Opens a <see cref="CaseRef"/> over an existing <c>program_case</c> switch (addressed by id) to add case
+        /// values or reach its default (Else) branch (US-031) — the id-addressed entry a GUI drives after selecting a
+        /// Case node. The default (Else) branch is the switch's document-last <c>actions</c> child (ENG2-B2).
+        /// </summary>
+        public CaseRef Case(ElementId caseId)
+        {
+            ProjectElement kase = Require(caseId);
+            if (kase.Tag != "program_case")
+            {
+                throw new InvalidOperationException(
+                    $"Element {caseId.ToToken()} is a <{kase.Tag}>, not a <program_case>.");
+            }
+            ProjectElement elseBranch = kase.ChildrenOrEmpty().Last(c => c.Tag == "actions");
+            return new CaseRef(this, caseId, elseBranch.Id!.Value);
+        }
+
+        /// <summary>
         /// Opens a <see cref="ConditionsGroupRef"/> over an existing <c>conditions</c> group (addressed by id) — the
         /// id-addressed entry a GUI drives after selecting a Betingelser node in a loaded project (US-029: OR/AND
         /// toggle, add condition rows, add nested logic groups).
@@ -320,7 +434,7 @@ namespace Ihc.Vis.Editing
         /// <summary>
         /// Resolves an id to a generic <see cref="ElementRef"/> handle — the id-addressed, write-side counterpart
         /// of <see cref="Project.FindById"/> and the foundation of a GUI selection model. Unlike the name-addressed
-        /// <see cref="Group"/>/<see cref="GroupRef.Product"/>/<see cref="GroupRef.FunctionBlock"/> lookups it
+        /// <see cref="Group(string)"/>/<see cref="GroupRef.Product"/>/<see cref="GroupRef.FunctionBlock"/> lookups it
         /// addresses any element (resources, links, program nodes) and disambiguates same-named siblings. Returns
         /// <c>false</c> with a null handle when no element in the session carries that id.
         /// </summary>
@@ -512,7 +626,31 @@ namespace Ihc.Vis.Editing
         }
 
         /// <summary>
-        /// Removes the reciprocal follow-link between two live resources — the inverse of <see cref="Link"/> with
+        /// Id-addressed <see cref="Link(ResourceRef,ResourceRef)"/> — the entry a GUI drives from two selected pins
+        /// (it holds element ids, not the internal <see cref="ResourceRef"/> handles). <paramref name="fromId"/>
+        /// receives the <c>link_from_resource</c> half, <paramref name="toId"/> the <c>link_to_resource</c> half.
+        /// Both ids must resolve to existing elements. Returns <c>this</c> for optional chaining.
+        /// </summary>
+        public ProjectEditor Link(ElementId fromId, ElementId toId)
+        {
+            ProjectElement from = Require(fromId);
+            ProjectElement to = Require(toId);
+            return Link(new ResourceRef(from.GetAttribute("name") ?? string.Empty, fromId),
+                        new ResourceRef(to.GetAttribute("name") ?? string.Empty, toId));
+        }
+
+        /// <summary>Id-addressed <see cref="Unlink(ResourceRef,ResourceRef)"/> — removes the reciprocal follow-link
+        /// pair between the two pins (US-057). Returns <c>this</c> for chaining.</summary>
+        public ProjectEditor Unlink(ElementId fromId, ElementId toId)
+        {
+            ProjectElement from = Require(fromId);
+            ProjectElement to = Require(toId);
+            return Unlink(new ResourceRef(from.GetAttribute("name") ?? string.Empty, fromId),
+                          new ResourceRef(to.GetAttribute("name") ?? string.Empty, toId));
+        }
+
+        /// <summary>
+        /// Removes the reciprocal follow-link between two live resources — the inverse of <see cref="Link(ResourceRef,ResourceRef)"/> with
         /// the same orientation — deleting exactly the two halves of that pair. Throws when the resources are not
         /// follow-linked in this orientation (nothing is mutated then), so a stale or mistaken unlink can never
         /// silently delete other links. Returns <c>this</c> for optional chaining.
@@ -539,7 +677,7 @@ namespace Ihc.Vis.Editing
         /// The first mutually-reciprocal pair between two parents — the half matching <paramref name="fromTag"/>
         /// inside <paramref name="fromEl"/>, the half matching <paramref name="toTag"/> inside
         /// <paramref name="toEl"/>, each pointing at the other via <c>link</c> — or <c>null</c> when no such pair
-        /// exists. Serves <see cref="Unlink"/> (follow-link halves) and <see cref="UnlinkScene"/> (scene member ↔
+        /// exists. Serves <see cref="Unlink(ResourceRef,ResourceRef)"/> (follow-link halves) and <see cref="UnlinkScene(ResourceRef,ScenesRef)"/> (scene member ↔
         /// <c>scene_link</c>). Matching is by exact reciprocity — never "first half of the tag" — so multi-link
         /// owners and shared sinks resolve to the requested pair only.
         /// </summary>
@@ -607,9 +745,29 @@ namespace Ihc.Vis.Editing
             return this;
         }
 
+        /// <summary>Id-addressed <see cref="LinkScene(ResourceRef,ScenesRef,SceneValue)"/> — the entry a GUI drives
+        /// from a selected FB scene output pin and a product's scenes container (US-024).</summary>
+        public ProjectEditor LinkScene(ElementId sceneOutputId, ElementId scenesId, SceneValue value)
+        {
+            ProjectElement pin = Require(sceneOutputId);
+            ProjectElement scenes = Require(scenesId);
+            return LinkScene(new ResourceRef(pin.GetAttribute("name") ?? string.Empty, sceneOutputId),
+                             new ScenesRef(scenes.GetAttribute("name") ?? string.Empty, scenesId), value);
+        }
+
+        /// <summary>Id-addressed <see cref="UnlinkScene(ResourceRef,ScenesRef)"/> — removes the scene membership pair
+        /// between a scene output pin and a scenes container (US-057).</summary>
+        public ProjectEditor UnlinkScene(ElementId sceneOutputId, ElementId scenesId)
+        {
+            ProjectElement pin = Require(sceneOutputId);
+            ProjectElement scenes = Require(scenesId);
+            return UnlinkScene(new ResourceRef(pin.GetAttribute("name") ?? string.Empty, sceneOutputId),
+                               new ScenesRef(scenes.GetAttribute("name") ?? string.Empty, scenesId));
+        }
+
         /// <summary>
         /// Removes the scene membership between an FB scene output pin and a product's scenes container — the
-        /// inverse of <see cref="LinkScene"/> — deleting exactly the two halves of that pair. Throws when the two
+        /// inverse of <see cref="LinkScene(ResourceRef,ScenesRef,SceneValue)"/> — deleting exactly the two halves of that pair. Throws when the two
         /// are not scene-linked (nothing is mutated then), so a stale or mistaken unlink can never silently delete
         /// other memberships. Returns <c>this</c> for optional chaining.
         /// </summary>

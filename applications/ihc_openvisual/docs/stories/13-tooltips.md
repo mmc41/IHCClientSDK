@@ -61,6 +61,16 @@ menus, dialogs).
 
 **Readiness:** Ready.
 
+**Implementation status:** ✅ **Implemented.** Every tree node built from a project element now carries a computed
+`TreeNodeViewModel.Tooltip`, bound via `ToolTip.Tip` on the item template in **both** panes, shown on **plain hover**
+(no modifier). `MainWindowViewModel.BuildTooltip` composes it from the element's **documentation note** (line breaks
+preserved, `\r\n`→`\n`) — set on localities, products, function blocks and pins (`BuildTree`/`BuildComponentNode`/
+`BuildFunctionBlockNode`/`BuildPinNode`). A node with **no** note and **no** resource id (the Localities root — which
+has no element at all — or an empty locality) yields a `null` tooltip, so Avalonia shows none. Dismiss-on-leave is
+Avalonia's native tooltip behaviour. Tests: 3 in `TooltipTests` (root + empty locality → no tooltip; a product input's
+note is carried). Suites: `safe_visual_tests` **169**, byte-fidelity `safe_project_tests` **663** green. OpenObserve 0
+errors.
+
 ---
 
 ## US-048 — Always see a node's IHC resource ID in its tooltip
@@ -101,6 +111,16 @@ holding a modifier key or opening a dialog.
   them as fixed requirements. (R‑note.)
 
 **Readiness:** Ready.
+
+**Implementation status:** ✅ **Implemented.** For the resource-mapped node categories — **input, output, function
+block** (`resource_input`/`resource_output`/`dataline_input`/`dataline_output`/`functionblock`) — `BuildTooltip`
+appends a **`Resource ID: <n>`** line, where `<n>` is the element id's decimal `ElementId.Value` (the packed IHC
+resource id used to cross-reference the controller), shown on **plain hover** with no modifier. When a node has **both**
+a note and a resource id, the tooltip shows the **note first**, then the resource-id line (verified by test). A node
+with **no** assigned resource id (a non-resource node, e.g. a section container or a note-less locality) shows **no**
+resource-id line. Tests: `TooltipTests` covers a function block's resource id and a product input showing note-then-id.
+Suites: `safe_visual_tests` **169**, byte-fidelity `safe_project_tests` **663** green. OpenObserve 0 errors.
+Verification (**Demonstration**): the id line renders for input/output/block nodes and is absent otherwise.
 
 ---
 

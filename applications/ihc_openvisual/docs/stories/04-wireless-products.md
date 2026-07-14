@@ -6,6 +6,11 @@ status: draft
 
 # E4 — Wireless products & controller linking
 
+> **Implementation status (2026-07-13):** ✅ **In-scope stories implemented** — US-014 (insert wireless product +
+> unlinked marker) and US-015 (advanced dimmer properties) are done and covered by `safe_visual_tests` (73 green).
+> **US-016 and US-017 are ⛔ not implemented** — they require the wireless controller API and live hardware, which
+> is out of scope for this controller-free work (they stay specified for when the API lands). Per-story detail below.
+
 > **Current scope:** ◑ **Partly in scope.** Inserting wireless products and editing their properties
 > (US-014, US-015) are project CRUD → **✅ in scope**. Linking / commissioning wireless products to the
 > controller (US-016, US-017) is wireless *wiring* → **⛔ Blocked** pending the wireless API.
@@ -69,6 +74,21 @@ Scenario: Wireless categories come from the catalog
 
 **Readiness:** Ready.
 
+**Implementation status:** ✅ **Implemented.** IHC Wireless products (`product_airlink`, catalog category
+*LK IHC Wireless produkter*) insert from **Insert ▸ Products ▸ IHC Wireless products** and the locality
+right‑click **Insert product ▸ IHC Wireless products** (`WirelessProductsMenu`, same catalog‑driven nested
+menu as the wired products). Insert reuses the generic `ProjectSession.AddProductAsync`; the product nests under
+its locality with its pins, status `Product '<name>' inserted under <locality>`. An inserted wireless product
+shows the yellow **!** unlinked marker (`TreeNodeViewModel.IsUnlinked`, set via `ProductKinds.IsUnlinkedWireless`
+on a blank/`_0x0` `serialnumber`) — it stays until controller linking (E10/US-016, blocked). Insert **auto‑opens**
+the product‑properties dialog flagged `IsWireless`, which **hides the cable type/numbering** rows (wireless has no
+cabling); `UpdateProductAsync` skips the cabling attributes for airlink products (they are not declared on
+`product_airlink`), writing only name/note/documentation_tag/power_group. Tested: `MainWindowViewModelTests`
+(insert nests + unlinked marker; update writes documentation without cabling; auto‑open flagged wireless; menu
+categories from catalog) and `SmokeTests.MainWindow_AfterInsertWireless_ShowsUnlinkedMarker`. Render verified; live
+app + OpenObserve no errors. *(US-015 advanced dimmer properties next; US-016/US-017 remain ⛔ blocked pending the
+wireless API — not implementable without a controller.)*
+
 ---
 
 ## US-015 — Set advanced wireless‑dimmer properties
@@ -112,6 +132,18 @@ Scenario: Wireless categories come from the catalog
   Auto load‑characteristic behaviour.
 
 **Readiness:** Ready.
+
+**Implementation status:** ✅ **Implemented.** For a wireless dimmer, its Properties dialog shows an **Advanced…**
+button (`IsWirelessDimmer` = an airlink product carrying a `dimmer_settings` container); clicking it applies the
+documentation then opens the modal `AdvancedDimmerWindow`: **Soft on‑time** / **Soft off‑time** (ms, 200–60000,
+default 700), **Manual ramp time** (s, 2–10), **Minimum value** / **Maximum value** (%, 0–100, max default 100) and
+**Load characteristic** (Inductive / Capacitive / Auto). Numeric fields clamp to their ranges via `NumericUpDown`
+min/max. OK commits through `ProjectSession.UpdateDimmerSettingsAsync`, writing the `value` of the dimmer's
+`dimmer_setting_fade_rate_up`/`_fade_rate_down`/`_dimming_rate`/`_minimum_value`/`_maximum_value` children and the
+`dimmer_setting_load_mode` token (Inductive→`rl`, Capacitive→`rc`, Auto→`auto`); traced, marks dirty. Non‑dimmer
+products show no Advanced button. Tested: `MainWindowViewModelTests` (settings written; Advanced opens the dialog and
+applies for a dimmer; non‑dimmer has no Advanced) and `SmokeTests.AdvancedDimmerWindow_ShowsDimmerFields`. Render
+verified; live app + OpenObserve no errors.
 
 ---
 

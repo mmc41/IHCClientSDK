@@ -176,7 +176,7 @@ namespace Ihc.Vis.Editing
 
         /// <summary>
         /// References a scene output pin (<c>resource_scene</c>) by name, returning its live handle — the source
-        /// side of <see cref="ProjectEditor.LinkScene"/>.
+        /// side of <see cref="ProjectEditor.LinkScene(ResourceRef,ScenesRef,SceneValue)"/>.
         /// </summary>
         public ResourceRef SceneOutput(string name)
         {

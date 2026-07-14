@@ -1,0 +1,78 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:svc="using:ihc_openvisual.Services"
+        mc:Ignorable="d" d:DesignWidth="460" d:DesignHeight="640"
+        x:Class="ihc_openvisual.Views.ModemPropertiesWindow"
+        Title="SMS modem properties"
+        Width="460" MaxHeight="720" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        ShowInTaskbar="False">
+    <ScrollViewer>
+        <StackPanel Margin="20" Spacing="6">
+            <StackPanel.Styles>
+                <Style Selector="TextBlock.label">
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="Margin" Value="0,6,0,0"/>
+                </Style>
+                <Style Selector="TextBlock.group">
+                    <Setter Property="FontWeight" Value="Bold"/>
+                    <Setter Property="Margin" Value="0,10,0,2"/>
+                </Style>
+            </StackPanel.Styles>
+
+            <TextBlock Classes="label" Text="Name"/>
+            <TextBox Name="NameBox"/>
+
+            <TextBlock Classes="label" Text="Location"/>
+            <ComboBox Name="LocationCombo" HorizontalAlignment="Stretch">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="svc:LocalityChoice">
+                        <TextBlock Text="{Binding Name}"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+
+            <TextBlock Classes="label" Text="Note"/>
+            <TextBox Name="NoteBox"/>
+
+            <TextBlock Classes="label" Text="Identification code"/>
+            <TextBox Name="IdentificationBox"/>
+
+            <TextBlock Classes="group" Text="Cabling"/>
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="4">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="0 V" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="0" Grid.Column="1" Name="Cable0VBox"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="24 V" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Name="Cable24VBox"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="RS485 −" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="2" Grid.Column="1" Name="CableRS485MinusBox"/>
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="RS485 +" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="3" Grid.Column="1" Name="CableRS485PlusBox"/>
+            </Grid>
+
+            <TextBlock Classes="group" Text="Settings"/>
+            <TextBlock Classes="label" Text="PIN code"/>
+            <TextBox Name="PinCodeBox"/>
+
+            <TextBlock Classes="group" Text="Telephone numbers"/>
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="4">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Number 1" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="0" Grid.Column="1" Name="Phone1Box"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Number 2" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Name="Phone2Box"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Number 3" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="2" Grid.Column="1" Name="Phone3Box"/>
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Number 4" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="3" Grid.Column="1" Name="Phone4Box"/>
+            </Grid>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,14,0,0">
+                <Button Name="OkButton" Content="OK" MinWidth="84" IsDefault="True" Click="OnOk"/>
+                <Button Name="CancelButton" Content="Cancel" MinWidth="84" IsCancel="True" Click="OnCancel"/>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

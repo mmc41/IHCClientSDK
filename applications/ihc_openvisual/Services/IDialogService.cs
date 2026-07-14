@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace ihc_openvisual.Services;
@@ -9,6 +10,92 @@ public enum SaveChangesResult
     Discard,
     Cancel
 }
+
+/// <summary>The edited values returned from the element Properties dialog (US-007): the new name and note.</summary>
+public sealed record PropertiesResult(string Name, string Note);
+
+/// <summary>A locality option for the product-properties <i>Location</i> drop-down (US-011).</summary>
+public sealed record LocalityChoice(string Id, string Name);
+
+/// <summary>The current values + locality choices shown by the product-properties dialog (US-011). When
+/// <c>IsWireless</c> is true the dialog omits the cable type/numbering fields (wireless products have no cabling,
+/// US-014).</summary>
+public sealed record ProductPropertiesInput(
+    string Title, string Name, string Note, string CableType, string CableNumber,
+    string IdentificationCode, string LightGroup,
+    IReadOnlyList<LocalityChoice> Localities, string CurrentLocalityId,
+    bool IsWireless = false, bool IsWirelessDimmer = false);
+
+/// <summary>The edited product documentation returned from the dialog (US-011); <c>LocalityId</c> is the chosen
+/// location's id token. <c>OpenAdvanced</c> is set when the installer clicked <i>Advanced…</i> on a wireless dimmer
+/// (US-015) — the caller applies the documentation then opens the advanced dimmer dialog.</summary>
+public sealed record ProductPropertiesResult(
+    string Name, string LocalityId, string Note, string CableType, string CableNumber,
+    string IdentificationCode, string LightGroup, bool OpenAdvanced = false);
+
+/// <summary>The current values shown by the advanced wireless-dimmer dialog (US-015). Times in ms/s, levels in %,
+/// <c>LoadMode</c> is the stored token (<c>auto</c>/<c>rc</c>/<c>rl</c>).</summary>
+public sealed record AdvancedDimmerInput(
+    int SoftOnMs, int SoftOffMs, int ManualRampS, int MinimumPercent, int MaximumPercent, string LoadMode);
+
+/// <summary>The edited advanced wireless-dimmer settings (US-015).</summary>
+public sealed record AdvancedDimmerResult(
+    int SoftOnMs, int SoftOffMs, int ManualRampS, int MinimumPercent, int MaximumPercent, string LoadMode);
+
+/// <summary>A party's contact details (US-039) — a <c>customer_info</c>/<c>installer_info</c> record. The reports
+/// render only Name/Address/Phone; the rest are captured for completeness.</summary>
+public sealed record ContactInfo(
+    string Name, string Address, string City, string Zip, string Country, string Phone, string Mobile, string Email)
+{
+    public static readonly ContactInfo Empty = new("", "", "", "", "", "", "", "");
+}
+
+/// <summary>The project-information dialog's data (US-039): project metadata plus the customer and installer
+/// contacts. Used both to prefill the dialog and as its result.</summary>
+public sealed record ProjectInfoData(
+    string Description, string Number, string Programmer, ContactInfo Customer, ContactInfo Installer)
+{
+    public static readonly ProjectInfoData Empty = new("", "", "", ContactInfo.Empty, ContactInfo.Empty);
+}
+
+/// <summary>The current values shown by the enumerator dialog (US-030): the enum type's name and its ordered state
+/// names. <c>IsNew</c> distinguishes creating a new type (name editable) from editing an existing one (append states).</summary>
+public sealed record EnumDefinitionInput(string Title, string TypeName, IReadOnlyList<string> States, bool IsNew);
+
+/// <summary>The edited enumerator returned from the dialog (US-030): the type name and the full ordered state list.</summary>
+public sealed record EnumDefinitionResult(string TypeName, IReadOnlyList<string> States);
+
+/// <summary>The current values shown by the scene-value dialog (US-024/US-058). A dimmer scene asks a light level
+/// (%) + ramp time; a relay/socket scene an ON/OFF state.</summary>
+public sealed record SceneValueInput(
+    string Title, bool IsDimmer, bool On, int LevelPercent, int RampMinutes, int RampSeconds);
+
+/// <summary>The edited scene value (US-024/US-058).</summary>
+public sealed record SceneValueResult(bool On, int LevelPercent, int RampMinutes, int RampSeconds);
+
+/// <summary>The current values shown by the terminal-addressing dialog (US-012). <c>InUseTerminals</c> are the
+/// already-used <c>line.terminal</c> addresses in the same direction.</summary>
+public sealed record PinPropertiesInput(
+    string Title, bool IsOutput, int DataLine, int Terminal, string CableColour, string Note,
+    bool InitialValueOn, IReadOnlyList<string> InUseTerminals);
+
+/// <summary>The edited terminal addressing returned from the dialog (US-012).</summary>
+public sealed record PinPropertiesResult(
+    int DataLine, int Terminal, string CableColour, string Note, bool InitialValueOn);
+
+/// <summary>The current values shown by the modem properties dialog (US-013). <c>PhoneNumbers</c> holds telephone
+/// numbers 1..N (slot order).</summary>
+public sealed record ModemPropertiesInput(
+    string Title, string Name, string Note, string IdentificationCode,
+    string Cable0V, string Cable24V, string CableRS485Minus, string CableRS485Plus,
+    string PinCode, IReadOnlyList<string> PhoneNumbers,
+    IReadOnlyList<LocalityChoice> Localities, string CurrentLocalityId);
+
+/// <summary>The edited modem documentation returned from the dialog (US-013).</summary>
+public sealed record ModemPropertiesResult(
+    string Name, string LocalityId, string Note, string IdentificationCode,
+    string Cable0V, string Cable24V, string CableRS485Minus, string CableRS485Plus,
+    string PinCode, IReadOnlyList<string> PhoneNumbers);
 
 /// <summary>
 /// Abstraction over the modal dialogs the shell needs (confirm-save, file pickers, message boxes, the
@@ -29,10 +116,58 @@ public interface IDialogService
     /// <summary>Opens a save-as picker; returns the chosen path, or null if cancelled.</summary>
     Task<string?> PickSaveProjectAsync(string? initialDirectory, string suggestedFileName);
 
+    /// <summary>Opens a save-as picker for an <c>.ifb</c> function-block file (US-021); returns the path, or null.</summary>
+    Task<string?> PickSaveFunctionBlockAsync(string suggestedFileName);
+
+    /// <summary>Opens a picker for a single catalog definition file (<c>.def</c>/<c>.ifb</c>) to import (US-059);
+    /// returns the chosen path, or null if cancelled.</summary>
+    Task<string?> PickCatalogFileAsync();
+
+    /// <summary>Opens a folder picker for a catalog folder to import (US-060); returns the chosen path, or null.</summary>
+    Task<string?> PickCatalogFolderAsync();
+
     Task ShowAboutAsync();
 
     Task ShowSettingsAsync(string settingsText);
 
     /// <summary>Opens a URL in the OS default browser; failures are recorded to diagnostics, never fatal.</summary>
     Task OpenExternalUrlAsync(string url);
+
+    /// <summary>Opens the modal element Properties dialog (title, pre-filled name + note); returns the edited
+    /// values, or null when the installer cancels.</summary>
+    Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note);
+
+    /// <summary>Opens the modal product-documentation Properties dialog (US-011); returns the edited documentation,
+    /// or null when the installer cancels.</summary>
+    Task<ProductPropertiesResult?> EditProductPropertiesAsync(ProductPropertiesInput input);
+
+    /// <summary>Opens the modal terminal-addressing dialog for a product input/output pin (US-012); returns the
+    /// edited addressing, or null when the installer cancels.</summary>
+    Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input);
+
+    /// <summary>Opens the modal modem properties dialog (US-013); returns the edited documentation, or null when the
+    /// installer cancels.</summary>
+    Task<ModemPropertiesResult?> EditModemPropertiesAsync(ModemPropertiesInput input);
+
+    /// <summary>Opens the modal advanced wireless-dimmer dialog (US-015); returns the edited settings, or null when
+    /// the installer cancels.</summary>
+    Task<AdvancedDimmerResult?> EditAdvancedDimmerAsync(AdvancedDimmerInput input);
+
+    /// <summary>Opens the modal scene-value dialog (US-024/US-058); returns the edited value, or null when the
+    /// installer cancels.</summary>
+    Task<SceneValueResult?> EditSceneValueAsync(SceneValueInput input);
+
+    /// <summary>Opens the modal enumerator dialog (US-030) to create or edit an enum type and its ordered states;
+    /// returns the edited type, or null when the installer cancels.</summary>
+    Task<EnumDefinitionResult?> EditEnumDefinitionAsync(EnumDefinitionInput input);
+
+    /// <summary>Opens the modal project-information dialog (US-039) prefilled with <paramref name="current"/>;
+    /// returns the edited project/customer/installer info, or null when the installer cancels.</summary>
+    Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current);
+
+    /// <summary>Opens the modal Data tables dialog (US-049) bound to the given view-model.</summary>
+    Task ShowDataTablesAsync(ihc_openvisual.ViewModels.DataTablesViewModel viewModel);
+
+    /// <summary>Opens the read-only Wired module address map dialog (US-050).</summary>
+    Task ShowModuleMapAsync(ModuleAddressMap map);
 }

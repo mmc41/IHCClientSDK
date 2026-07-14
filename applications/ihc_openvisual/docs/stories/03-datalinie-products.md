@@ -6,6 +6,10 @@ status: draft
 
 # E3 — Wired (data-line) products
 
+> **Implementation status (2026-07-13):** ✅ **Implemented** — US-010 (insert wired product), US-011 (product
+> properties), US-012 (I/O terminal addressing) and US-013 (modem + one-modem rule) are done and covered by
+> `safe_visual_tests` (64 green). Per-story detail below.
+
 > **Current scope:** ✅ **In scope** — inserting, documenting and addressing wired products is
 > project CRUD.
 
@@ -75,6 +79,22 @@ Scenario: Product categories come from the catalog
 
 **Readiness:** Ready.
 
+**Implementation status:** ✅ **Implemented.** Wired products insert from **both** routes — the *Insert ▸
+Products ▸ Wired products* menu bar and the locality right‑click *Insert product ▸ Wired products* — sharing
+one catalog‑driven submenu (`CatalogMenu.BuildWiredProducts` projects the flat `GetAvailableProducts()` list,
+grouped by the `NN#`‑prefixed `CategoryPath`, into a `ProductMenuItemViewModel` tree; a recursive
+`ControlTheme` renders any depth). A leaf inserts under the selected locality via
+`ProjectSession.AddProductAsync` → the new id‑addressed `ProjectEditor.Group(ElementId).AddProduct(def)` (fresh
+ids, pins/scenes materialized by the SDK), traced, marking dirty. The product nests under its
+(auto‑expanded) locality in the **Installation** pane with its input/output/scenario pins as child nodes
+(icons from `NodeIcons`; fixed sub‑resource defaults shown inline as `name = value`); the Functions pane is
+unaffected. The status bar reads `Product '<name>' inserted under <locality>`. Right‑click selects the node
+first so both routes target it. Tested: `CatalogMenuTests` (category grouping/prefix‑strip/leaf wiring),
+`MainWindowViewModelTests` (nest + pins + Installation‑only + dirty; menu‑leaf targets selection + status;
+no‑selection hint), `SmokeTests.MainWindow_AfterInsertProduct_RendersProductNode`; SDK `Group(ElementId)`
+exercised. Visual render verified; live app drove the menu with OpenObserve reporting no errors. *(US-011
+product‑properties dialog, US-012 terminal addressing, US-013 modem come next.)*
+
 ---
 
 ## US-011 — Fill product documentation properties
@@ -117,6 +137,19 @@ later via properties), **so that** the generated reports (E9) describe the insta
   as suggestions, not constraints. (R‑note.)
 
 **Readiness:** Ready.
+
+**Implementation status:** ✅ **Implemented.** A modal `ProductPropertiesWindow` (title *Product properties*)
+exposes **Name**, a **Location** drop‑down of localities, and free‑text **Note**, **Cable type**, **Cable
+numbering**, **Identification code** and **Light group**. It **opens automatically on insert** (US-010 flow) and
+reopens from **F2 / right‑click ▸ Properties** on a product node — the Properties route now dispatches by element
+type (product → this dialog; locality → the US-007 rename dialog). OK commits via
+`ProjectSession.UpdateProductAsync`, which writes the mapped attributes by id (`name`/`note`/`cabletype`/
+`cablenumber`/`documentation_tag`/`power_group`; blank clears — matching the report fields, US-040) and re‑parents
+the product to the chosen Location locality when changed (`ProjectEditor.MoveSubtree`, ids preserved); traced,
+marks dirty. All fields free text per the R‑note. Tested: `MainWindowViewModelTests` (attributes written; Location
+re‑parents; auto‑open pre‑filled; Properties on a product opens the product dialog not the locality one) and
+`SmokeTests.ProductPropertiesWindow_ShowsDocumentationFields`. Dialog render verified; live app + OpenObserve no
+errors. *(US-012 terminal addressing and US-013 modem come next.)*
 
 ---
 
@@ -163,6 +196,21 @@ Scenario: Configure an output and its initial value
   > Properties) addressing routes, and the NO/NC meaning of *Initial value*.
 
 **Readiness:** Ready.
+
+**Implementation status:** ✅ **Implemented (in‑tree route).** Right‑click a product input/output pin
+(`dataline_input`/`dataline_output`) ▸ **Properties** opens the modal `PinPropertiesWindow`: **Data line** +
+**Terminal**, the **terminals already in use** on that direction, **Cable colour**, **Note**, and — for an
+output — **Initial value** (`OFF — normally‑open (NO)` / `ON — normally‑closed (NC)`). The (data line, terminal)
+pair encodes to the vendor `address_dataline` token via `DatalineAddressing` (16 terminals/line for inputs, 8 for
+outputs; `value = (line‑1)·perLine + terminal`, matching the report decode); OK commits through
+`ProjectSession.UpdatePinAsync` (writes `address_dataline`/`cable_colour`/`note`, output `inivalue`), traced, marks
+dirty. In‑use terminals are gathered by scanning same‑direction pins project‑wide. The Properties route now
+dispatches locality / product / **pin** by element tag. Tested: `DatalineAddressingTests` (encode/decode +
+round‑trip + out‑of‑range), `MainWindowViewModelTests` (input address+cable+note; output inivalue + 8/line; pin
+dialog opens with in‑use terminals, not the product/locality one), `SmokeTests.PinPropertiesWindow_ShowsAddressingFields`.
+Dialog render verified; live app + OpenObserve no errors. *(The in‑dialog double‑click route from the product
+properties dialog is a secondary entry to the same dialog — deferred; the in‑tree route fully exercises addressing.
+US-013 modem next.)*
 
 ---
 
@@ -216,3 +264,19 @@ rule.
   one‑modem constraint.
 
 **Readiness:** Ready.
+
+**Implementation status:** ✅ **Implemented (SMS modem).** A modem inserts from **Insert ▸ Products ▸ Special
+products** and the locality right‑click **Insert product ▸ Special products** (both bound to `SpecialProductsMenu`,
+built from the catalog's modem products — currently the RS485 `SMS Modem`). The **at‑most‑one‑modem rule** is
+enforced in `ProjectSession.AddProductAsync` (blocks a second modem project‑wide with a message, regardless of
+type; `ProductKinds.IsModem`). Insert **auto‑opens** the `ModemPropertiesWindow` (title *SMS modem properties*):
+Name, Location drop‑down, Note, Identification code; **Cabling** (0 V / 24 V / RS485− / RS485+ wire colours);
+**Settings** PIN code; **Telephone numbers** 1–4. OK commits via `ProjectSession.UpdateModemAsync` — writes the
+root `name`/`note`/`documentation_tag`/`cablecolour_*`, the `sms_modem_pincode` `value`, and the matching
+`sms_modem_phonenumber` slots' `phonenumber`; re‑parents on Location change; traced, marks dirty. The Properties
+route dispatches a modem node to this dialog. Tested: `MainWindowViewModelTests` (one‑modem rule; documentation +
+cabling + PIN + phone written; insert auto‑opens the modem dialog not the product one; menu contains the modem)
+and `SmokeTests.ModemPropertiesWindow_ShowsModemFields`. Dialog render verified; live app + OpenObserve no errors.
+*(Scope notes: only the SMS modem exists in the built‑in catalog, so the analog "Modem properties" variant and the
+full 30‑number telephone list are not built; the SMS variant with numbers 1–4 covers the common case. **Epic E3
+(US-010–US-013) complete.**)*

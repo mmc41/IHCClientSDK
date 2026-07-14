@@ -1,7 +1,7 @@
 ---
 version: 0.1.0
-last-updated: 2026-07-03
-status: draft
+last-updated: 2026-07-13
+status: out-of-scope
 ---
 
 # E8 — Simulation & debugging
@@ -9,6 +9,17 @@ status: draft
 > **Current scope:** ⛔ **Out of scope** — the offline simulation engine is not yet specified in enough
 > detail to build faithfully; it also only *validates* a project rather than doing CRUD on its content.
 > Kept as documentation, not slated for implementation.
+
+> **Implementation status (2026-07-13):** ⛔ **US-034, US-035, US-036, US-037, US-038 — all OUT OF SCOPE
+> (not implemented, by design).** This matches the app's product definition (`product.md`): the Simulation
+> menu was intentionally removed, so the shell exposes 8 menu titles and no simulation surface. Building a
+> faithful offline simulation runtime — state colouring (red/green), *follow*/*toggle* input actuation,
+> breakpoints + step execution (F9), a settable simulation clock/date, power-loss simulation, and an
+> Excel-exporting simulation log — would require an execution engine that is deliberately unspecified here,
+> and simulation only *evaluates* a project rather than editing its `.vis` content (the app's remit). No
+> code, tests, or UI are added for E8; the stories are retained as documentation only. Consistent with the
+> other genuinely-unbuildable stories (US-016/US-017 needed live wireless hardware). Proceeding to E9
+> (documentation), the next epic with implementable, controller-free CRUD/reporting stories.
 
 **Goal:** Let a commissioning technician or programmer validate the project offline — driving inputs
 and outputs, watching red/green states, setting breakpoints, stepping, simulating clock/date, and

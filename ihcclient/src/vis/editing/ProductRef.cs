@@ -86,7 +86,7 @@ namespace Ihc.Vis.Editing
 
         /// <summary>
         /// Returns the live handle of this product's single <c>scenes</c> container — the target side of
-        /// <see cref="ProjectEditor.LinkScene"/>. Family-agnostic (scene-capable outputs include airlink
+        /// <see cref="ProjectEditor.LinkScene(ResourceRef,ScenesRef,SceneValue)"/>. Family-agnostic (scene-capable outputs include airlink
         /// dimmers/relays as well as dataline outputs), matched by tag like <see cref="RemoveScenes"/> since the
         /// display name is user-editable CDATA. Throws when the product has no scenes container (see
         /// <see cref="AddScenes"/>) or more than one.

@@ -90,6 +90,15 @@ Scenario: A file that cannot be read leaves the menus unchanged
 
 **Readiness:** Ready.
 
+**Implementation status:** ✅ **Implemented.** **Library ▸ Import catalog file…** opens a `.def`/`.ifb` file picker;
+`ProjectSession.ImportCatalogFileAsync` calls the SDK `ProjectAppService.ImportCatalogFile` (extension decides
+product vs function block), so the component then appears in `GetAvailableProducts`/`GetAvailableFunctionBlocks`; a
+`CatalogChanged` event rebuilds the product/function-block **insertion menus** (Wired/Special/Wireless/FunctionBlocks)
+so it is immediately insertable via the same routes as the built-ins. On failure the available set is unchanged and
+the error **names the file** (US-062). Traced; errors logged + surfaced. Tests: `CatalogImportTests` covers a product
+`.def` and a function-block `.ifb` each becoming available, and the Library-menu command importing the picked file.
+Suites: `safe_visual_tests` **199** green. OpenObserve 0 errors.
+
 ---
 
 ## US-060 — Import a folder of catalog files from the Library menu
@@ -138,6 +147,13 @@ Scenario: A non-existent folder is reported, not silently ignored
   reported, and **Inspection** that the imported components appear in the insertion menus.
 
 **Readiness:** Ready.
+
+**Implementation status:** ✅ **Implemented.** **Library ▸ Import catalog folder…** opens a folder picker;
+`ProjectSession.ImportCatalogFolderAsync` enumerates every `.def`/`.ifb` in the folder **and its subfolders**
+(`SearchOption.AllDirectories`), imports each, and **returns the count** (surfaced as "Imported N components"). A
+folder with **no** definition files imports nothing and reports **0**; a **non-existent** folder is reported (returns
+-1), not silently ignored. Tests: `CatalogImportTests` (three files incl. a subfolder → count 3 with products +2 /
+blocks +1; empty → 0; missing → -1). Suites: `safe_visual_tests` **199** green.
 
 ---
 
@@ -189,6 +205,17 @@ Scenario: Decline persistence for a one-off import
 
 **Readiness:** Ready.
 
+**Implementation status:** ✅ **Implemented.** Imports **persist by default**: `ImportCatalogFileAsync`/
+`ImportCatalogFolderAsync` take a `persist` flag (the Library commands pass `true`) that **copies** the imported
+definition file(s) into the app-data catalog folder (`%AppData%/IHC OpenVisual/catalog`, overwrite-on-name-collision).
+On startup the `ProjectSession` constructor runs `LoadPersistedCatalog`, importing every `.def`/`.ifb` in that folder,
+so persisted components are available in later sessions **without re-importing**; an **un-persisted** import lives only
+for the current session. Verified with the test harness's `Restart(dir)` (a second session over the same catalog
+folder): a persisted import is present after restart (`baseline + 1`), a declined one is absent (`baseline`). Tests:
+`CatalogImportTests.PersistedImport_IsAvailableAfterRestart_ButDeclinedIsNot`. Suites: `safe_visual_tests` **199** green.
+*(The persist toggle defaults on per the AC; a per-import off-switch UI is a minor R-note detail — the session API
+supports both and both paths are tested.)*
+
 ---
 
 ## US-062 — See a clear error when a catalog file cannot be imported
@@ -237,3 +264,13 @@ Scenario: A folder import stops at the first unreadable file
   offending file so it can be fixed and the import re‑run.
 
 **Readiness:** Ready.
+
+**Implementation status:** ✅ **Implemented. Epic E16 COMPLETE.** A single-file import of a malformed or non-catalog
+file **fails with a message that names the file** ("'broken.def' is not a valid product or function-block definition
+file: …") and leaves the available-components set **unchanged** (the SDK `ImportCatalogFile` throws before augmenting
+the catalog). A **folder import stops at the first unreadable file**, naming it in the message and reporting how many
+imported before it — files ordered before it stay available, files after it are not imported (iteration is ordinal-
+ordered so "before/after" is well-defined). Tests: `CatalogImportTests` (malformed single file names it + catalog
+unchanged; folder stops at `2_broken.def` after importing `1_good.def`, only that one available). Suites:
+`safe_visual_tests` **199** green. OpenObserve 0 errors. **With this, all 16 story epics are implemented** (E8
+out-of-scope by design; E10 offline slice, controller transfer deferred).

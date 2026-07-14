@@ -6,6 +6,10 @@ status: draft
 
 # E2 — Locality management
 
+> **Implementation status (2026-07-13):** ✅ **Implemented** — US-006 (default tree), US-007 (rename via
+> Properties), US-008 (add), US-009 (delete + confirmation/cascade) are all done and covered by
+> `safe_visual_tests` (36 green) with the SDK cascade in `safe_project_tests`. Per-story detail below.
+
 > **Current scope:** ✅ **In scope** — locality create / rename / delete is project CRUD.
 
 **Goal:** Let an IHC installer model the rooms and places of the installation as a *Localities*
@@ -35,15 +39,17 @@ both panes, **so that** I have realistic starting rooms to adapt to my installat
 
 ### Acceptance criteria (Checklist)
 
-- [ ] MUST: Both panes show a root node **Localities** with an expand/collapse control, expanded by
+- [x] MUST: Both panes show a root node **Localities** with an expand/collapse control, expanded by
   default.
-- [ ] MUST: Under *Localities* are exactly these ten localities, in this order: **Living room, Hall, Kitchen,
+- [x] MUST: Under *Localities* are exactly these ten localities, in this order: **Living room, Hall, Kitchen,
   Bedroom, Room, Bathroom, Utility room, Garage, Basement, Outdoors**.
-- [ ] MUST: Each locality renders as a node with a small square (checkbox‑style) icon followed by its
+- [x] MUST: Each locality renders as a node with a small square (checkbox‑style) icon followed by its
   bold name; the same ten localities appear in the *Functions* pane as in the *Installation* pane.
-- [ ] SHOULD: A locality is a container: expanding it reveals the products (Installation pane) or
+- [x] SHOULD: A locality is a container: expanding it reveals the products (Installation pane) or
   function blocks (Functions pane) placed in it; when empty it has no expand control.
-- [ ] MAY: The *Functions* pane groups a locality’s function blocks under the same locality node used
+  *(Avalonia `TreeView` shows the expander only when a node has children, so an empty room has none;
+  product/FB children arrive with E3–E5.)*
+- [x] MAY: The *Functions* pane groups a locality’s function blocks under the same locality node used
   in the *Installation* pane, keeping one shared locality structure across the two views.
 
 ### AC illustrations
@@ -52,6 +58,17 @@ both panes, **so that** I have realistic starting rooms to adapt to my installat
   Utility room, Garage, Basement, Outdoors}` identically in both panes.
 
 **Readiness:** Ready.
+
+**Implementation status:** ✅ **Implemented.** A new project OpenVisual authors seeds the ten English
+default localities — English is the product language (product.md), while a *loaded* file keeps its own
+names verbatim. The SDK `CreateNew` still produces the vendor's byte-identical Danish template; the app
+renames the ten defaults by position in `DefaultLocalities.ApplyEnglish` (an attribute-only edit via
+`project.Edit()`, traced on `Telemetry.ActivitySource`, applied only on New — never on Load), leaving the
+SDK byte-fidelity oracles untouched (662 project tests green). Both panes render a `Localities`-rooted,
+expanded tree of the ten rooms with the square `locality.svg` glyph and **bold** labels
+(`TreeNodeViewModel.IsBold` → `BoolToFontWeightConverter`). Tested: `MainWindowViewModelTests`
+(names + order + bold, both panes) and `SmokeTests.MainWindow_RendersDefaultLocalities_InInstallationTree`
+(headless Skia render). Visual render verified; OpenObserve reported no errors.
 
 ---
 
@@ -95,6 +112,19 @@ Scenario: Cancel discards the edit
 
 **Readiness:** Ready.
 
+**Implementation status:** ✅ **Implemented.** A modal `PropertiesWindow` (title `Edit <name> properties`,
+single-line `Name` pre-filled + selected, multi-line `Note`, OK/Cancel) opens from the tree node's
+right-click **Properties** item and from **F2** on the selected node (both route through
+`MainWindowViewModel.PropertiesCommand`; view wiring in `MainWindow.axaml.cs`). OK commits via
+`ProjectSession.RenameLocalityAsync` — an id-addressed `ElementRef.SetAttribute("name"/"note")` edit on
+`project.Edit()`, traced on `Telemetry.ActivitySource`, that marks the project dirty and records the change
+(now the first production caller of the every-Nth-change crash backup, closing the US-005 wiring gap); the
+rename shows in **both** panes and the status bar confirms `Renamed to <name>.`. Cancel keeps the original
+name and note. Special characters (`&`, `"`, Danish/Swedish letters) round-trip verbatim (verified in the
+render). Tested: `MainWindowViewModelTests` (rename both panes + status + dirty; Cancel keeps original; note
+pre-fill on reopen) and `SmokeTests.PropertiesWindow_ShowsNameAndNoteFields`. Visual render verified;
+live app run + OpenObserve reported no errors.
+
 ---
 
 ## US-008 — Add a new locality
@@ -131,6 +161,19 @@ Scenario: Insertion targets the current selection
   `Locality was inserted under Localities`.
 
 **Readiness:** Ready.
+
+**Implementation status:** ✅ **Implemented.** Right-click the *Localities* root → **Insert locality**
+(a context-menu item gated by `TreeNodeViewModel.CanInsertLocality`, so it appears only on the root; room
+nodes show *Properties* instead). It commits via `ProjectSession.AddLocalityAsync` → the new SDK primitive
+`ProjectEditor.AddGroup(name)` (always appends a fresh room, unlike find-or-seed `Group`), traced on
+`Telemetry.ActivitySource`, marking the project dirty and recording the change. The new node — named
+`Locality`, bold, addressable — is appended **last** (below *Outdoors*) in **both** panes, is **selected**
+in the Installation pane (`SelectedNode` two-way binding), and the status bar reads exactly
+`Locality was inserted under Localities`. It is immediately renamable via US-007. Repeated inserts yield
+distinct same-named rooms (as IHC Visual does). Tested: engine `GroupEditTests.AddGroup_AlwaysAppendsNewRoom…`
+(safe_project_tests, 663 green — byte-fidelity intact), `MainWindowViewModelTests` (append + name + select +
+status + dirty, and insert-then-rename), and `SmokeTests.MainWindow_AfterInsertLocality_RendersNewNode`.
+Visual render verified; OpenObserve reported no errors.
 
 ---
 
@@ -172,3 +215,17 @@ Scenario: Decline the confirmation
   confirmation gate and the cascade removal of dependent commands/conditions.
 
 **Readiness:** Ready.
+
+**Implementation status:** ✅ **Implemented.** Right-click a locality → **Delete** (context-menu item gated by
+`TreeNodeViewModel.CanDelete`). It commits via `ProjectSession.DeleteLocalityAsync`: an **empty** room is removed
+silently; a room whose model still holds products/function blocks first raises a confirmation
+(`IDialogService.ConfirmAsync`) and, on acceptance, deletes with
+`ProjectEditor.DeleteById(id, DeleteReferencePolicy.CascadeReferences)` — the vendor US-009 row-only cascade
+(ENG2-A5) that also removes the referencing commands/conditions; declining deletes nothing. Traced on
+`Telemetry.ActivitySource`, errors logged; the removal shows in **both** panes and the status bar reads
+`Deleted <name>.`. Tested: `MainWindowViewModelTests` — empty delete (both panes + dirty, no prompt), and the
+confirm/decline gate over a locality made non-empty via the built-in-catalog empty function block (no
+controller); `SmokeTests.MainWindow_AfterDeleteLocality_RemovesNode`; the SDK cascade itself is covered by
+`DeleteCascadeTests`. Visual render verified; OpenObserve reported no errors. *(Note: the in-app non-empty
+cascade will only be reachable through the UI once product/FB insertion lands in E3–E5; the gate + cascade are
+already exercised at the session/SDK layer.)* **Epic E2 (US-006–US-009) complete.**

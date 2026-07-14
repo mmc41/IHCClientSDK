@@ -1,0 +1,44 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:svc="clr-namespace:ihc_openvisual.Services"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="560" d:DesignHeight="420"
+        x:Class="ihc_openvisual.Views.ModuleMapWindow"
+        x:DataType="svc:ModuleAddressMap"
+        Title="Wired module address map"
+        Width="560" Height="440"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <Grid Margin="16" ColumnDefinitions="*,12,*" RowDefinitions="Auto,*,Auto">
+        <TextBlock Grid.Row="0" Grid.Column="0" Text="Wired input modules" FontWeight="Bold" Margin="0,0,0,6"/>
+        <TextBlock Grid.Row="0" Grid.Column="2" Text="Wired output modules" FontWeight="Bold" Margin="0,0,0,6"/>
+
+        <ListBox Grid.Row="1" Grid.Column="0" ItemsSource="{Binding InputModules}">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="svc:ModuleAddressEntry">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding Address}" FontFamily="Consolas,monospace" MinWidth="44"/>
+                        <TextBlock Text="{Binding Product}"/>
+                        <TextBlock Text="{Binding Terminal}" Foreground="Gray"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <ListBox Grid.Row="1" Grid.Column="2" ItemsSource="{Binding OutputModules}">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="svc:ModuleAddressEntry">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding Address}" FontFamily="Consolas,monospace" MinWidth="44"/>
+                        <TextBlock Text="{Binding Product}"/>
+                        <TextBlock Text="{Binding Terminal}" Foreground="Gray"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Button Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Content="Close" MinWidth="84" IsCancel="True"
+                HorizontalAlignment="Right" Margin="0,8,0,0" Click="OnClose"/>
+    </Grid>
+</Window>

@@ -1,0 +1,75 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="440" d:DesignHeight="560"
+        x:Class="ihc_openvisual.Views.ProjectInfoWindow"
+        Title="Project information"
+        Width="440" Height="600"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        ShowInTaskbar="False">
+    <DockPanel Margin="16">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+            <Button Name="OkButton" Content="OK" MinWidth="84" IsDefault="True" Click="OnOk"/>
+            <Button Name="CancelButton" Content="Cancel" MinWidth="84" IsCancel="True" Click="OnCancel"/>
+        </StackPanel>
+        <ScrollViewer>
+            <StackPanel Spacing="4">
+                <StackPanel.Styles>
+                    <Style Selector="TextBlock.section">
+                        <Setter Property="FontWeight" Value="Bold"/>
+                        <Setter Property="Margin" Value="0,10,0,2"/>
+                    </Style>
+                    <Style Selector="TextBlock.label">
+                        <Setter Property="Margin" Value="0,4,0,0"/>
+                    </Style>
+                </StackPanel.Styles>
+
+                <TextBlock Classes="section" Text="Project"/>
+                <TextBlock Classes="label" Text="Description"/>
+                <TextBox Name="ProjDescriptionBox"/>
+                <TextBlock Classes="label" Text="Number"/>
+                <TextBox Name="ProjNumberBox"/>
+                <TextBlock Classes="label" Text="Programmer"/>
+                <TextBox Name="ProjProgrammerBox"/>
+
+                <TextBlock Classes="section" Text="Customer"/>
+                <TextBlock Classes="label" Text="Name"/>
+                <TextBox Name="CustNameBox"/>
+                <TextBlock Classes="label" Text="Address"/>
+                <TextBox Name="CustAddressBox"/>
+                <TextBlock Classes="label" Text="City"/>
+                <TextBox Name="CustCityBox"/>
+                <TextBlock Classes="label" Text="Zip code"/>
+                <TextBox Name="CustZipBox"/>
+                <TextBlock Classes="label" Text="Country"/>
+                <TextBox Name="CustCountryBox"/>
+                <TextBlock Classes="label" Text="Phone"/>
+                <TextBox Name="CustPhoneBox"/>
+                <TextBlock Classes="label" Text="Mobile"/>
+                <TextBox Name="CustMobileBox"/>
+                <TextBlock Classes="label" Text="Email"/>
+                <TextBox Name="CustEmailBox"/>
+
+                <TextBlock Classes="section" Text="Installer"/>
+                <TextBlock Classes="label" Text="Name"/>
+                <TextBox Name="InstNameBox"/>
+                <TextBlock Classes="label" Text="Address"/>
+                <TextBox Name="InstAddressBox"/>
+                <TextBlock Classes="label" Text="City"/>
+                <TextBox Name="InstCityBox"/>
+                <TextBlock Classes="label" Text="Zip code"/>
+                <TextBox Name="InstZipBox"/>
+                <TextBlock Classes="label" Text="Country"/>
+                <TextBox Name="InstCountryBox"/>
+                <TextBlock Classes="label" Text="Phone"/>
+                <TextBox Name="InstPhoneBox"/>
+                <TextBlock Classes="label" Text="Mobile"/>
+                <TextBox Name="InstMobileBox"/>
+                <TextBlock Classes="label" Text="Email"/>
+                <TextBox Name="InstEmailBox"/>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>
