@@ -18,7 +18,7 @@
         </StackPanel.Styles>
 
         <TextBlock Classes="label" Text="Data line"/>
-        <NumericUpDown Name="DataLineBox" Minimum="1" Maximum="16" Increment="1" FormatString="0"/>
+        <NumericUpDown Name="DataLineBox" Minimum="1" Increment="1" FormatString="0"/>
 
         <TextBlock Classes="label" Text="Terminal"/>
         <NumericUpDown Name="TerminalBox" Minimum="1" Increment="1" FormatString="0"/>

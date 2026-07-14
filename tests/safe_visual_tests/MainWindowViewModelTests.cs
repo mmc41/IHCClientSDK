@@ -11,6 +11,7 @@ using Ihc.Vis;
 using Ihc.Vis.Catalog;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
+using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 
 namespace safe_visual_tests;
@@ -513,14 +514,14 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var modem = harness.Session.GetAvailableProducts().First(p => ProductKinds.IsModem(p.Body.Tag));
+        var modem = harness.Session.GetAvailableProducts().First(p => ProductClassifier.IsModem(p.Body.Tag));
         var loc0 = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var loc1 = vm.InstallationNodes[0].Children[1].ElementId!.Value;
 
         var first = await harness.Session.AddProductAsync(loc0, modem.ProductIdentifier);
         var second = await harness.Session.AddProductAsync(loc1, modem.ProductIdentifier);
 
-        int modemCount = harness.Session.Current!.Root.DescendantsAndSelf().Count(e => ProductKinds.IsModem(e.Tag));
+        int modemCount = harness.Session.Current!.Root.DescendantsAndSelf().Count(e => ProductClassifier.IsModem(e.Tag));
         Assert.Multiple(() =>
         {
             Assert.That(first, Is.Not.Null, "the first modem inserts");
@@ -537,7 +538,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var modem = harness.Session.GetAvailableProducts().First(p => ProductKinds.IsModem(p.Body.Tag));
+        var modem = harness.Session.GetAvailableProducts().First(p => ProductClassifier.IsModem(p.Body.Tag));
         var loc = vm.InstallationNodes[0].Children[7].ElementId!.Value;   // Garage
         var mid = (await harness.Session.AddProductAsync(loc, modem.ProductIdentifier))!.Value;
 

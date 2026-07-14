@@ -9,8 +9,8 @@ status: draft
 > **Current scope:** ◑ **Partly in scope.** Entering project information (US-039), editing
 > user‑defined data‑table texts (US-049) and viewing the Wired module address map (US-050) are
 > project‑metadata / read‑only CRUD → **✅ in scope**. Report generation (US-040 installation + end‑user;
-> US-041 function‑block) reads the project to produce output → **🕒 Deferred implementation**, but the
-> output format is now **fully specified** (see the US-040 appendix).
+> US-041 function‑block) reads the project to produce output → **✅ implemented**, output format fully
+> specified (see the US-040 appendix).
 
 **Goal:** Let an IHC installer capture project‑ and product‑level documentation and generate
 installation and end‑user reports, so the delivered installation is properly documented.
@@ -75,20 +75,7 @@ Scenario: Project info feeds the reports
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ **Implemented.** **Documentation ▸ Project info…** opens the new modal
-`ProjectInfoWindow` (scrollable), prefilled from the project via `ProjectSession.GetProjectInfo()`, covering **Project**
-(description / number / programmer), **Customer** and **Installer** (each the full contact set: name / address / city /
-zip / country / phone / mobile / email — the report-relevant name/address/phone plus the rest per the constraint). OK
-writes them back with `UpdateProjectInfoAsync`, which the reports then read (verified: `customer_info@address` /
-`installer_info@name` are set where the SDK report model consumes them, closing the "project info feeds the reports"
-AC). Cancel is a no-op.
-
-SDK enabler added: `ProjectEditor.SetMetadata(tag, …attrs)` — a tag-addressed attribute setter for the singleton,
-**id-less** `project_info`/`customer_info`/`installer_info` containers (they carry no `id`, so `TryResolve` can't reach
-them; `SetMetadata` rewrites via `WithAttribute`/`ReplaceChildByTag`, blank clears to the DTD default). Dialog contract
-`ProjectInfoData`/`ContactInfo` + `EditProjectInfoAsync`. Session `GetProjectInfo`/`UpdateProjectInfoAsync` (traced,
-errors logged + surfaced). Tests: 2 view-model/session + 1 headless dialog smoke (`SmokeTests`). Suites: `safe_visual_tests`
-**136**, byte-fidelity `safe_project_tests` **663**, `safe_unit_tests` **493** green. OpenObserve 0 errors.
+**Implementation status:** ✅ Implemented.
 
 ---
 
@@ -141,33 +128,7 @@ function report, **so that** I can hand over complete documentation.
   omission rules there form the specification the SDK report model satisfies. Verification remains
   **Demonstration**.
 
-**Implementation status:** ✅ **Implemented.** **Documentation ▸ Reports** offers **Installation documentation** and
-**Function / end-user documentation**, each in a screen and a **printer** variant (four menu commands). Choosing one
-generates the SDK render-ready model (`ProjectSession.GenerateInstallationReport`/`GenerateEndUserReport` → the existing
-`ProjectAppService.Generate*Report`), transforms it **1-to-1 into a self-contained static HTML page** via the new
-`ReportHtmlRenderer` (mechanical template, no business logic; all values already display-final from the SDK), writes it
-to a temp file, and opens it in the **standard browser** (`OpenExternalUrlAsync`). The installer/customer masthead,
-per-product detail tables + terminal sub-tables, flat data-line cross-reference tables, module/special-product/S0 tables,
-and Installation-pane order all come straight from the model; the **end-user omission** (products not flagged
-`enduser_report='yes'`) and **note propagation** are resolved in the SDK, so the renderer simply emits what the model
-contains. The **printer variant** swaps in a compact black print stylesheet (`xx-small`, gridded borders,
-`page-break-inside:avoid`); the **end-user print** variant additionally drops the table-of-contents and the
-differing-locality suffix; the **installation print** variant is the same layout with the print CSS only.
-
-Session `GenerateInstallationReport`/`GenerateEndUserReport`/`WriteReportHtmlAsync` (traced; the SDK generators are also
-traced). No SDK change (the model was already delivered), so byte-fidelity `safe_project_tests` **663** stays green.
-Tests: 5 in `ReportRenderingTests` (mastheads + product detail; print CSS swap; end-user TOC + suffix on screen;
-print drops both; the command writes HTML and opens a `file:` URL carrying the entered installer info) + an `[Explicit]`
-sample-HTML dump used for visual review. Suites: `safe_visual_tests` **141** green. OpenObserve 0 errors. Verification
-(**Demonstration**): sample rendered pages reviewed visually.
-
-**Checklist:**
-- [x] MUST: *Documentation ▸ Reports* opens both report types (installation technical + function/end-user).
-- [x] MUST: installation report contains installer/customer info, modules, and per-locality product detail (all fields).
-- [x] MUST: products documented in Installation-pane order (from the SDK model).
-- [x] MUST: end-user report lists all localities with per-input functions (name + location + propagated FB-input note).
-- [x] MUST: end-user omission (undocumented products dropped) / installation `--` placeholders — resolved in the SDK model.
-- [x] SHOULD: printer-friendly variant of both report types (print stylesheet; end-user has the distinct print layout).
+**Implementation status:** ✅ Implemented.
 
 <!-- BEGIN appendix — report output format (delimited; removable wholesale) -->
 
@@ -285,31 +246,7 @@ function‑block report, which is to be specified in detail when this story is i
 before implementation (the mechanism, menu placement, ordering and print‑variant behaviour are settled;
 the internal table layout is not).
 
-**Implementation status:** ✅ **Implemented (minimal listing; deep per-field internal layout deferred pending spec).**
-The **settled** parts of the checklist are delivered: **Documentation ▸ Reports ▸ Function-block documentation**
-(screen + **printer** variants) renders a title banner, an `<h2>Functionsblok dokumentation</h2>` heading, then each
-function block **in Installation/Functions-pane document order**, using the same model→HTML mechanism as US-040
-(`ReportHtmlRenderer.RenderFunctionBlocks`, opened in the standard browser). The **printer** variant is the same layout
-with the print stylesheet only (a CSS swap, like the installation report). The per-block **body** is a minimal listing —
-the block name and its four variable sections (Input / Output / Settings / Internal variables) with each section's
-variable names — which is all the internal detail the current spec settles.
-
-Because the story's deep per-field internal table layout is deliberately unspecified (and the SDK `FunctionBlockReport`
-model is an intentionally-empty placeholder — "do not add fields until the layout is specified"), the model is assembled
-**app-side** (`ProjectSession.BuildFunctionBlockReport`, read-only, document order) rather than from the empty SDK model;
-when the SDK layout is specified, the renderer switches to it with no menu/flow change. Tests: 3 in `ReportRenderingTests`
-(document order + sections/variables; print CSS swap; the command lists the inserted block and opens a `file:` URL) + the
-`[Explicit]` sample dump. Suites: `safe_visual_tests` **144**, byte-fidelity `safe_project_tests` **663** green.
-OpenObserve 0 errors. Sample page reviewed visually.
-
-**Checklist:**
-- [x] MUST: *Documentation ▸ Reports* offers a Function-block documentation choice (screen + printer).
-- [x] MUST: transformed 1-to-1 to HTML, shown in the standard browser (same two-layer mechanism as US-040).
-- [x] MUST: renders the project's function blocks — banner + `<h2>Functionsblok dokumentation</h2>` + block content.
-- [x] MUST: blocks in Installation/Functions-pane document order.
-- [x] SHOULD: printer variant = same layout with the print stylesheet only (CSS swap).
-- [ ] DEFERRED: the **deep per-field internal table layout** — awaits the SDK report-model specification (the story's
-  open item); the current body is a minimal name + variable-sections listing.
+**Implementation status:** ✅ Implemented (minimal listing; deep per-field layout deferred).
 
 ---
 
@@ -374,23 +311,7 @@ Scenario: Delete a user-defined text without a confirmation prompt
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ **Implemented.** **Documentation ▸ Data tables…** opens the new `DataTablesWindow`
-(two lists): **System tables** (read-only) on the left and **User-defined texts** (editable) on the right.
-Mapping to the `.vis` model (the R-note left the exact set to implementation): the **system tables** are the
-built-in, `typeid`-bearing enum definitions (the SDK already treats these as read-only — reference data shown
-greyed, no Add/Edit/Delete); the **user-defined texts** are the values of a dedicated `User-defined texts` enum
-definition, created on first Add. **Add / Edit / Delete** work over the texts (Add appends, Edit renames by id,
-Delete removes by id) — all three verified end-to-end including the byte round-trip after a value delete. Per the
-R-note (the vendor deletes with **no** confirmation) **Delete is guarded by an app-level confirm**.
-
-Reuses SDK enum machinery only — `AddEnumDefinition`/`AddEnumValues`/`EnumDefinition(name)` (Add), `TryResolve` +
-`SetAttribute` (Edit), `DeleteById(…CascadeReferences)` (Delete); no SDK change, so byte-fidelity `safe_project_tests`
-**663** stays green. New `DataTablesModel`/`DataTableView`/`UserText` records, the Avalonia-free `DataTablesViewModel`
-(headlessly testable), and the thin `DataTablesWindow` view. Session `GetDataTables`/`AddUserTextAsync`/
-`UpdateUserTextAsync`/`DeleteUserTextAsync` (traced, errors logged + surfaced). Tests: 8 in `DataTablesTests`
-(system-tables read-only, add/edit/delete CRUD, VM add via prompt, Delete-confirm guard both ways, the menu command
-opens the dialog) + 1 headless window smoke (`SmokeTests`). Suites: `safe_visual_tests` **152** green. OpenObserve 0
-errors.
+**Implementation status:** ✅ Implemented.
 
 ---
 
@@ -427,18 +348,7 @@ in one place instead of opening each product.
 - Note: the input/output module‑map view (*Documentation* module list) is a fixed requirement; the
   precise columns shown are to be confirmed during implementation. (R‑note.)
 
-**Implementation status:** ✅ **Implemented. Epic E9 COMPLETE.** **Documentation ▸ Wired module map…** opens the new
-read-only `ModuleMapWindow` showing two lists — **Wired input modules** and **Wired output modules** — each addressed
-terminal rendered as its decoded `line.terminal` address plus the occupying product terminal (product name + pin name),
-sorted by address. Unaddressed terminals are omitted and wireless products contribute nothing (no module addressing).
-The view **mutates nothing** (verified: `Session.Current` is unchanged by reading the map).
-
-Session `GetModuleAddressMap` scans every product's `dataline_input`/`dataline_output` pin, decoding `address_dataline`
-via the existing `DatalineAddressing.TryDecode` (16 input / 8 output terminals per line). Records
-`ModuleAddressMap`/`ModuleAddressEntry`; `IDialogService.ShowModuleMapAsync`; window bound directly to the model. No SDK
-change, so byte-fidelity `safe_project_tests` **663** stays green. Tests: 3 in `ModuleMapTests` (empty project → empty
-map; an addressed wired input appears with its product terminal and the read is non-mutating; the menu command opens the
-view) + 1 headless window smoke (`SmokeTests`). Suites: `safe_visual_tests` **156** green. OpenObserve 0 errors.
+**Implementation status:** ✅ Implemented. Epic E9 complete.
 
 **Readiness:** Ready.
 

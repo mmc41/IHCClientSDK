@@ -37,7 +37,7 @@ Most other projects in the repository -- examples, utilities, GUI applications, 
     - `editing/` -- `ProjectEditor`, the mutable edit session opened via `project.Edit()`, plus `InsertTransform` and link/copy policies;
     - `projects/` -- `Project`, `NewProjectBuilder`, and the File-New template;
     - `validation/` -- `ProjectValidator` and its findings model;
-    - `reporting/` -- `ReportBuilder` and the render-ready, immutable-record report model (`InstallationReport`, `EndUserReport`, plus the placeholder `FunctionBlockReport`); all report business logic lives here so a GUI transforms the result 1-to-1 into HTML.
+    - `reporting/` -- `ReportBuilder` and the render-ready, immutable-record report model (`InstallationReport`, `EndUserReport`, `FunctionBlockReport`); all report business logic lives here so a GUI transforms the result 1-to-1 into HTML.
   - `src/config/` -- `IhcSettings`, settings-encryption metadata, assembly metadata, and `Telemetry` (the SDK-wide `ActivitySource`). Controller API services and most application facades receive `IhcSettings` at construction; `LabAppService` instead accepts it later in `Configure` and currently does not use it.
   - `src/security/` -- `SimpleSecret`, AES-256-GCM encryption used for passwords in settings files.
   - `src/util/` -- shared reflection metadata (`ServiceMetadata`) used by the lab's dynamic operation browser and recursive copy/transform infrastructure (`CopyUtil`) used by application models.

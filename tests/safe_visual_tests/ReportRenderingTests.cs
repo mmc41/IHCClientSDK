@@ -93,14 +93,14 @@ public class ReportRenderingTests
         });
     }
 
-    private static FbReport SampleFb() => new(
+    private static FunctionBlockReport SampleFb() => new(
         "Functionsblok dokumentation",
         ImmutableArray.Create(
-            new FbReportBlock("Kip block", ImmutableArray.Create(
-                new FbReportSection("Input", ImmutableArray.Create("Toggle", "On")),
-                new FbReportSection("Output", ImmutableArray.Create("Lamp")))),
-            new FbReportBlock("PIR block", ImmutableArray.Create(
-                new FbReportSection("Input", ImmutableArray.Create("Motion"))))));
+            new FunctionBlockReportEntry("Kip block", ImmutableArray.Create(
+                new FunctionBlockReportSection("Input", ImmutableArray.Create("Toggle", "On")),
+                new FunctionBlockReportSection("Output", ImmutableArray.Create("Lamp")))),
+            new FunctionBlockReportEntry("PIR block", ImmutableArray.Create(
+                new FunctionBlockReportSection("Input", ImmutableArray.Create("Motion"))))));
 
     // US-041: the FB report renders the heading and each block (in document order) with its sections and variables.
     [Test]

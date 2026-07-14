@@ -5,7 +5,9 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Linq;
 
+using Ihc.Vis.Addressing;
 using Ihc.Vis.Model;
+using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 
 namespace Ihc.Vis.Reporting
@@ -23,6 +25,7 @@ namespace Ihc.Vis.Reporting
         private const string BlankPlaceholder = "--";
         private const string InstallationHeading = "Installationsdokumentation";
         private const string EndUserHeading = "Funktionsdokumentation";
+        private const string FunctionBlockHeading = "Functionsblok dokumentation";
         private const string Unknown = "?";
         private static readonly ImmutableHashSet<string> DetailProductTags =
             ImmutableHashSet.Create(StringComparer.Ordinal, "product_dataline", "product_airlink", "product_rs485_led_dimmer");
@@ -53,12 +56,12 @@ namespace Ihc.Vis.Reporting
             ImmutableArray<DatalineCrossReferenceRow> inputs = all
                 .Where(e => e.Tag == "dataline_input")
                 .OrderBy(AddressSortKey, StringComparer.Ordinal)
-                .Select(t => BuildCrossReferenceRow(t, index, divider: 16))
+                .Select(t => BuildCrossReferenceRow(t, index, isOutput: false))
                 .ToImmutableArray();
             ImmutableArray<DatalineCrossReferenceRow> outputs = all
                 .Where(e => e.Tag == "dataline_output")
                 .OrderBy(AddressSortKey, StringComparer.Ordinal)
-                .Select(t => BuildCrossReferenceRow(t, index, divider: 8))
+                .Select(t => BuildCrossReferenceRow(t, index, isOutput: true))
                 .ToImmutableArray();
             ImmutableArray<SpecialProductRow> special = all
                 .Where(e => ModemTags.Contains(e.Tag))
@@ -94,6 +97,29 @@ namespace Ihc.Vis.Reporting
                 .Select(g => BuildEndUserLocality(g, index))
                 .ToImmutableArray();
             return new EndUserReport(EndUserHeading + Raw(project.Root.GetAttribute("name")), localities);
+        }
+
+        /// <summary>Builds the function-block ("Functionsblok dokumentation") report model (US-041): every function
+        /// block in Installation/Functions-pane document order, each with its variable sections and their variables.</summary>
+        public static FunctionBlockReport BuildFunctionBlock(Project project)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            var blocks = ImmutableArray.CreateBuilder<FunctionBlockReportEntry>();
+            foreach (ProjectElement group in project.Groups)
+            {
+                foreach (ProjectElement fb in group.ChildrenOrEmpty().Where(c => c.Tag == "functionblock"))
+                {
+                    var sections = ImmutableArray.CreateBuilder<FunctionBlockReportSection>();
+                    foreach ((string container, string label) in FunctionBlockSections.All)
+                    {
+                        ImmutableArray<string> vars = fb.FindChild(container)?.ChildrenOrEmpty()
+                            .Select(v => v.GetAttribute("name") ?? v.Tag).ToImmutableArray() ?? ImmutableArray<string>.Empty;
+                        sections.Add(new FunctionBlockReportSection(label, vars));
+                    }
+                    blocks.Add(new FunctionBlockReportEntry(fb.GetAttribute("name") ?? "block", sections.ToImmutable()));
+                }
+            }
+            return new FunctionBlockReport(FunctionBlockHeading, blocks.ToImmutable());
         }
 
         // ----- installation: masthead & section rows -----
@@ -158,18 +184,18 @@ namespace Ihc.Vis.Reporting
                 {
                     bool isInput = t.Tag == "dataline_input";
                     string direction = isInput ? "Indgang" : "Udgang";
-                    string address = DecodeAddress(t.GetAttribute("address_dataline"), isInput ? 16 : 8);
+                    string address = DatalineAddress.ToVendorLabel(t.GetAttribute("address_dataline"), isOutput: !isInput);
                     return new ReportTerminalRow(Ver(t.GetAttribute("name")), direction + " " + address, Ver(t.GetAttribute("cable_colour")));
                 })
                 .ToImmutableArray();
 
-        private static DatalineCrossReferenceRow BuildCrossReferenceRow(ProjectElement terminal, TreeIndex index, int divider)
+        private static DatalineCrossReferenceRow BuildCrossReferenceRow(ProjectElement terminal, TreeIndex index, bool isOutput)
         {
             ProjectElement? product = index.NearestProduct(terminal);
             string ProductAttr(string name) => product is null ? Unknown : Raw(product.GetAttribute(name));
             string locality = product is null ? Unknown : Raw(index.Parent(product)?.GetAttribute("name"));
             return new DatalineCrossReferenceRow(
-                DecodeAddress(terminal.GetAttribute("address_dataline"), divider),
+                DatalineAddress.ToVendorLabel(terminal.GetAttribute("address_dataline"), isOutput),
                 product is null ? Unknown : Raw(product.GetAttribute("name")),
                 Raw(terminal.GetAttribute("name")),
                 Raw(terminal.GetAttribute("note")),
@@ -256,12 +282,16 @@ namespace Ihc.Vis.Reporting
 
         // ----- shared helpers -----
 
-        private static ReportProductKind KindOf(string tag) => tag switch
+        // The report's section membership stays the closed DetailProductTags/ModemTags filters above; KindOf only
+        // LABELS an already-admitted element, delegating to the shared SDK classifier's exact result. An admitted
+        // element is always one of the five known tags, so the _ => Rs485Modem remnant is reachable only for the one
+        // closed-set product_rs485_modem tag, exactly as before (open-world Other never reaches a report section).
+        private static ReportProductKind KindOf(string tag) => ProductClassifier.Classify(tag) switch
         {
-            "product_dataline" => ReportProductKind.Dataline,
-            "product_airlink" => ReportProductKind.Airlink,
-            "product_rs485_led_dimmer" => ReportProductKind.Rs485LedDimmer,
-            "product_rs485_sms_modem" => ReportProductKind.Rs485SmsModem,
+            ProductFamily.Dataline => ReportProductKind.Dataline,
+            ProductFamily.Airlink => ReportProductKind.Airlink,
+            ProductFamily.Rs485LedDimmer => ReportProductKind.Rs485LedDimmer,
+            ProductFamily.Rs485SmsModem => ReportProductKind.Rs485SmsModem,
             _ => ReportProductKind.Rs485Modem,
         };
 
@@ -273,50 +303,6 @@ namespace Ihc.Vis.Reporting
             string hex = token.StartsWith("_0x", StringComparison.Ordinal) ? token.Substring(3) : string.Empty;
             return hex.Length < 4 ? hex.PadLeft(4, '0') : hex;
         }
-
-        // Decodes a data-line address token to "dataline.bit" (bit shown as 0n for bit≤7, else bit+3), or "?"
-        // when unassigned/zero — replicating the vendor get_address, which reads only the first two hex digits.
-        private static string DecodeAddress(string? addressToken, int divider)
-        {
-            string hex = addressToken is not null && addressToken.StartsWith("_0x", StringComparison.Ordinal)
-                ? addressToken.Substring(3)
-                : string.Empty;
-            int value;
-            if (hex.Length == 0)
-            {
-                value = 0;
-            }
-            else if (hex.Length < 2)
-            {
-                int d = HexDigit(hex[0]);
-                if (d < 0) { return Unknown; }
-                value = d;
-            }
-            else
-            {
-                int d0 = HexDigit(hex[0]);
-                int d1 = HexDigit(hex[1]);
-                if (d0 < 0 || d1 < 0) { return Unknown; }
-                value = d0 * 16 + d1;
-            }
-            if (value <= 0)
-            {
-                return Unknown;
-            }
-            int dataline = (value - 1) / divider + 1;
-            int bit = (value - 1) % divider;
-            string low = bit > 7
-                ? (bit + 3).ToString(CultureInfo.InvariantCulture)
-                : "0" + (bit + 1).ToString(CultureInfo.InvariantCulture);
-            return dataline.ToString(CultureInfo.InvariantCulture) + "." + low;
-        }
-
-        private static int HexDigit(char c) => c switch
-        {
-            >= '0' and <= '9' => c - '0',
-            >= 'a' and <= 'f' => c - 'a' + 10,
-            _ => -1,
-        };
 
         /// <summary>
         /// Parent pointers, id resolution and ancestor walks over an immutable project tree (which has no parent

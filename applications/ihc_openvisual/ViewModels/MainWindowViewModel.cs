@@ -9,7 +9,11 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ihc_openvisual.Configuration;
 using ihc_openvisual.Services;
+using Ihc.Vis.Addressing;
+using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
+using Ihc.Vis.Products;
+using Ihc.Vis.Programs;
 using Ihc.Vis.Projects;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -162,22 +166,12 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>The commands a selected variable can be driven by, offered on a program's Commands node (US-028).</summary>
     public ObservableCollection<ProductMenuItemViewModel> ProgramCommandMenu { get; } = new();
 
-    // Curated event triggers (US-028): menu verb, the stored vendor %P-template name, the method token (from the
-    // byte-fidelity oracle), and the note. The %P template keeps the event label live if the variable is renamed.
-    private static readonly (string Verb, string Name, string Method, string Note)[] EventOptions =
-    {
-        ("changes to ON", "%P -> ON", "_0xa", "Start program when %P changes to ON"),
-        ("changes state", "%P changes state", "_0x96", "Start program when %P changes state"),
-        ("is assigned", "%P is assigned", "_0x9b", "Start program when %P is assigned"),
-    };
-
-    // Curated single-operand commands (US-028): vendor tokens _0xa (= ON), _0x14 (= OFF), _0x23 (toggle).
-    private static readonly (string Verb, string Name, string Method, string Note)[] CommandOptions =
-    {
-        ("set to ON", "%P = ON", "_0xa", "Sets %P to ON"),
-        ("set to OFF", "%P = OFF", "_0x14", "Sets %P to OFF"),
-        ("toggled", "Toggle %P", "_0x23", "Sets %P to the opposite value"),
-    };
+    // The GUI-side presentation verbs for each program method (US-028/029), positionally aligned with the SDK
+    // ProgramMethodCatalog per-category lists (the SDK owns the tokens/names/notes/semantics; the app owns only the
+    // menu verb and which methods to surface). Same order as Events/Commands/Conditions below.
+    private static readonly string[] EventVerbs = { "changes to ON", "changes state", "is assigned" };
+    private static readonly string[] CommandVerbs = { "set to ON", "set to OFF", "toggled" };
+    private static readonly string[] ConditionVerbs = { "is ON", "is OFF", "is NOT ON" };
 
     /// <summary>The variable armed by <i>Use in program</i> to become the operand of the next event/command (US-028) —
     /// the testable substitute for dragging a variable onto Events/Commands.</summary>
@@ -208,15 +202,21 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         if (value is { IsEventsContainer: true, ElementId: { } eventsId })
         {
-            foreach ((string verb, string name, string method, string note) in EventOptions)
-                ProgramEventMenu.Add(new ProductMenuItemViewModel($"{varName} {verb}", method,
-                    new AsyncRelayCommand(() => AddProgramEventAsync(eventsId, varId, method, name, note))));
+            for (int i = 0; i < ProgramMethodCatalog.Events.Length; i++)
+            {
+                ProgramMethod m = ProgramMethodCatalog.Events[i];
+                ProgramEventMenu.Add(new ProductMenuItemViewModel($"{varName} {EventVerbs[i]}", m.Token,
+                    new AsyncRelayCommand(() => AddProgramEventAsync(eventsId, varId, m.Token, m.NameTemplate, m.Note))));
+            }
         }
         if (value is { IsCommandsContainer: true, ElementId: { } actionsId })
         {
-            foreach ((string verb, string name, string method, string note) in CommandOptions)
-                ProgramCommandMenu.Add(new ProductMenuItemViewModel($"{varName} {verb}", method,
-                    new AsyncRelayCommand(() => AddProgramCommandAsync(actionsId, varId, method, name, note))));
+            for (int i = 0; i < ProgramMethodCatalog.Commands.Length; i++)
+            {
+                ProgramMethod m = ProgramMethodCatalog.Commands[i];
+                ProgramCommandMenu.Add(new ProductMenuItemViewModel($"{varName} {CommandVerbs[i]}", m.Token,
+                    new AsyncRelayCommand(() => AddProgramCommandAsync(actionsId, varId, m.Token, m.NameTemplate, m.Note))));
+            }
             // A case can be built here when the armed variable is an eligible switch type (US-031).
             if (_session.Current?.FindById(varId)?.Tag is { } varTag && ProjectSession.EligibleCaseVariableTags.Contains(varTag))
                 ProgramCaseMenu.Add(new ProductMenuItemViewModel($"Case ({varName})", "case",
@@ -224,13 +224,12 @@ public partial class MainWindowViewModel : ViewModelBase
             // Arithmetic can be built here when the armed variable is a numeric target register (US-032).
             if (_session.Current?.FindById(varId)?.Tag is { } t && NumericTags.Contains(t))
             {
-                foreach ((string symbol, string method) in ArithmeticOps)
+                foreach (ProgramMethod op in ProgramMethodCatalog.Arithmetic)
                 {
-                    var opNode = new ProductMenuItemViewModel($"{varName} {symbol}= …");   // category
-                    string storedName = $"%P = %P {symbol} %S";
+                    var opNode = new ProductMenuItemViewModel($"{varName} {op.OperatorSymbol}= …");   // category
                     foreach ((string opName, ElementId opId) in NumericOperandsInBlock())
                         opNode.Children.Add(new ProductMenuItemViewModel(opName, "arith",
-                            new AsyncRelayCommand(() => AddArithmeticAsync(actionsId, varId, method, opId, storedName))));
+                            new AsyncRelayCommand(() => AddArithmeticAsync(actionsId, varId, op.Token, opId, op.NameTemplate))));
                     if (opNode.Children.Count > 0)
                         ProgramArithmeticMenu.Add(opNode);
                 }
@@ -238,9 +237,12 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         if (value is { IsConditionsContainer: true, ElementId: { } conditionsId })
         {
-            foreach ((string verb, string name, string method, string note) in ConditionOptions)
-                ProgramConditionMenu.Add(new ProductMenuItemViewModel($"{varName} {verb}", method,
-                    new AsyncRelayCommand(() => AddConditionAsync(conditionsId, varId, method, name, note))));
+            for (int i = 0; i < ProgramMethodCatalog.Conditions.Length; i++)
+            {
+                ProgramMethod m = ProgramMethodCatalog.Conditions[i];
+                ProgramConditionMenu.Add(new ProductMenuItemViewModel($"{varName} {ConditionVerbs[i]}", m.Token,
+                    new AsyncRelayCommand(() => AddConditionAsync(conditionsId, varId, m.Token, m.NameTemplate, m.Note))));
+            }
         }
     }
 
@@ -378,7 +380,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private Task ShowFunctionBlockReportAsync(bool print) => RunAsync(nameof(ShowFunctionBlockReportAsync), async () =>
     {
-        string html = ReportHtmlRenderer.RenderFunctionBlocks(_session.BuildFunctionBlockReport(), print);
+        if (_session.GenerateFunctionBlockReport() is not { } model)
+            return;   // no project open
+        string html = ReportHtmlRenderer.RenderFunctionBlocks(model, print);
         if (await _session.WriteReportHtmlAsync(print ? "functionblocks-print" : "functionblocks", html) is not { } path)
             return;
         await _dialogs.OpenExternalUrlAsync(new System.Uri(path).AbsoluteUri);
@@ -444,18 +448,8 @@ public partial class MainWindowViewModel : ViewModelBase
     /// a per-operator submenu of the block's numeric operands. One operation per command line.</summary>
     public ObservableCollection<ProductMenuItemViewModel> ProgramArithmeticMenu { get; } = new();
 
-    // Numeric variable types that can be an arithmetic target register or operand (US-032). Multiply/divide have no
-    // attested vendor method token, so only add (_0x5a) and subtract (_0x64) are offered.
+    // Numeric variable types that can be an arithmetic target register or operand (US-032).
     private static readonly string[] NumericTags = { "resource_floating_point", "resource_integer", "resource_counter" };
-    private static readonly (string Symbol, string Method)[] ArithmeticOps = { ("+", "_0x5a"), ("−", "_0x64") };
-
-    // Curated conditions (US-029): the byte-fidelity tokens _0xa (= ON), _0x14 (= OFF), _0x28 (<> — the NOT variant).
-    private static readonly (string Verb, string Name, string Method, string Note)[] ConditionOptions =
-    {
-        ("is ON", "%P = ON", "_0xa", "Condition that %P is ON"),
-        ("is OFF", "%P = OFF", "_0x14", "Condition that %P is OFF"),
-        ("is NOT ON", "%P <> ON", "_0x28", "Condition that %P is not ON"),
-    };
 
     /// <summary>Inserts a conditional sub-program (Conditions + true/false command branches) into a Commands
     /// group (US-029).</summary>
@@ -509,7 +503,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_session.Current is not { } project || _programmingBlockId is not { } blockId
             || project.FindById(blockId) is not { } block)
             yield break;
-        foreach ((string container, string _) in ProjectSession.FbVariableSections)
+        foreach ((string container, string _) in FunctionBlockSections.All)
         {
             if (block.FindChild(container) is not { } section)
                 continue;
@@ -590,7 +584,7 @@ public partial class MainWindowViewModel : ViewModelBase
         foreach (ProductMenuItemViewModel item in CatalogMenu.Build(products, "LK IHC Wireless produkter", Insert))
             WirelessProductsMenu.Add(item);
 
-        var modems = products.Where(p => ProductKinds.IsModem(p.Body.Tag));
+        var modems = products.Where(p => ProductClassifier.IsModem(p.Body.Tag));
         foreach (ProductMenuItemViewModel item in CatalogMenu.BuildLeaves(modems, Insert))
             SpecialProductsMenu.Add(item);
 
@@ -1023,9 +1017,9 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (_session.Current is not { } project || project.FindById(id) is not { } element)
             return;
-        if (ProductKinds.IsModem(element.Tag))
+        if (ProductClassifier.IsModem(element.Tag))
             await OpenModemPropertiesAsync(id);
-        else if (ProductKinds.IsProduct(element.Tag))
+        else if (ProductClassifier.IsProduct(element.Tag))
             await OpenProductPropertiesAsync(id);
         else if (element.Tag is "dataline_input" or "dataline_output")
             await OpenPinPropertiesAsync(id, element);
@@ -1040,16 +1034,16 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private async Task OpenSceneValuePropertiesAsync(ElementId memberId, ProjectElement member)
     {
-        bool isDimmer = member.Tag == "scene_dimmer";
-        int level = int.TryParse(member.GetAttribute("dimming_value"), out int lv) ? lv : 0;
-        int ms = int.TryParse(member.GetAttribute("ramptime_ms"), out int m) ? m : 0;
-        bool on = (member.GetAttribute("relay_value") ?? "off") == "on";
-        var input = new SceneValueInput("Scene value", isDimmer, on, level, ms / 60000, ms / 1000 % 60);
+        if (!SceneValue.TryParse(member, out SceneValue sv))
+            return;
+        bool isDimmer = sv.Kind == SceneValueKind.Dimmer;
+        int ms = (int)sv.RampTime.TotalMilliseconds;
+        var input = new SceneValueInput("Scene value", isDimmer, sv.On, sv.LevelPercent, ms / 60000, ms / 1000 % 60);
 
         SceneValueResult? result = await _dialogs.EditSceneValueAsync(input);
         if (result is null)
             return;
-        if (await _session.UpdateSceneValueAsync(memberId, result, isDimmer))
+        if (await _session.UpdateSceneValueAsync(memberId, result))
             StatusText = "Scene value updated.";
     }
 
@@ -1133,8 +1127,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private async Task OpenPinPropertiesAsync(ElementId pinId, ProjectElement pin)
     {
         bool isOutput = pin.Tag == "dataline_output";
-        int perLine = DatalineAddressing.TerminalsPerLine(isOutput);
-        DatalineAddressing.TryDecode(pin.GetAttribute("address_dataline"), perLine, out int dataLine, out int terminal);
+        int dataLine = 1, terminal = 0;
+        if (DatalineAddress.TryParse(pin.GetAttribute("address_dataline"), isOutput, out DatalineAddress addr))
+            (dataLine, terminal) = (addr.DataLine, addr.Terminal);
         var input = new PinPropertiesInput(
             $"{(isOutput ? "Output" : "Input")} '{pin.GetAttribute("name")}'",
             isOutput, dataLine, terminal,
@@ -1146,8 +1141,9 @@ public partial class MainWindowViewModel : ViewModelBase
         PinPropertiesResult? result = await _dialogs.EditPinPropertiesAsync(input);
         if (result is null)
             return;   // cancelled — the pin keeps its addressing
-        if (await _session.UpdatePinAsync(pinId, result))
-            StatusText = $"Addressed {pin.GetAttribute("name")} to data line {result.DataLine}, terminal {result.Terminal}.";
+        StatusText = await _session.UpdatePinAsync(pinId, result)
+            ? $"Addressed {pin.GetAttribute("name")} to data line {result.DataLine}, terminal {result.Terminal}."
+            : $"Data line {result.DataLine}, terminal {result.Terminal} is not a valid address.";
     }
 
     // The line.terminal addresses already used by other pins of the same direction (US-012 in-use indication).
@@ -1157,13 +1153,12 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_session.Current is not { } project)
             return used;
         string tag = isOutput ? "dataline_output" : "dataline_input";
-        int perLine = DatalineAddressing.TerminalsPerLine(isOutput);
         foreach (ProjectElement element in project.Root.DescendantsAndSelf())
         {
             if (element.Tag == tag && element.Id is { } eid && eid != except
-                && DatalineAddressing.TryDecode(element.GetAttribute("address_dataline"), perLine, out int line, out int term))
+                && DatalineAddress.TryParse(element.GetAttribute("address_dataline"), isOutput, out DatalineAddress a))
             {
-                used.Add($"{line}.{term}");
+                used.Add($"{a.DataLine}.{a.Terminal}");
             }
         }
         return used;
@@ -1198,7 +1193,7 @@ public partial class MainWindowViewModel : ViewModelBase
             product.GetAttribute("cablenumber") ?? string.Empty,
             product.GetAttribute("documentation_tag") ?? string.Empty,
             product.GetAttribute("power_group") ?? string.Empty,
-            localities, currentLocalityId, ProductKinds.IsWireless(product.Tag), IsWirelessDimmer(product));
+            localities, currentLocalityId, ProductClassifier.IsWireless(product.Tag), IsWirelessDimmer(product));
 
         ProductPropertiesResult? result = await _dialogs.EditProductPropertiesAsync(input);
         if (result is null)
@@ -1210,7 +1205,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     private static bool IsWirelessDimmer(ProjectElement product) =>
-        ProductKinds.IsWireless(product.Tag) && product.DescendantsAndSelf().Any(e => e.Tag == "dimmer_settings");
+        ProductClassifier.IsWireless(product.Tag) && product.DescendantsAndSelf().Any(e => e.Tag == "dimmer_settings");
 
     private async Task OpenAdvancedDimmerAsync(ElementId productId)
     {
@@ -1477,7 +1472,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (component.Tag == "functionblock")
             return BuildFunctionBlockNode(component, name);
 
-        bool unlinked = ProductKinds.IsUnlinkedWireless(component.Tag, component.GetAttribute("serialnumber"));
+        bool unlinked = ProductClassifier.IsUnlinkedWireless(component.Tag, component.GetAttribute("serialnumber"));
         var node = new TreeNodeViewModel(name, NodeIcons.For(component.Tag, component.GetAttribute("icon")),
             elementId: component.Id, isUnlinked: unlinked) { Tooltip = BuildTooltip(component) };
         foreach (ProjectElement resource in component.ChildrenOrEmpty())
@@ -1505,14 +1500,15 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private TreeNodeViewModel BuildSceneMemberNode(ProjectElement member)
     {
-        string value = member.Tag switch
-        {
-            "scene_relay" => (member.GetAttribute("relay_value") ?? "off") == "on" ? "ON" : "OFF",
-            "scene_dimmer" => $"{member.GetAttribute("dimming_value") ?? "0"}% / "
-                + $"{(int.TryParse(member.GetAttribute("ramptime_ms"), out int ms) ? ms : 0) / 1000.0:0.#}s",
-            "scene_shutter" => (member.GetAttribute("shutter_position") ?? "up") == "down" ? "down" : "up",
-            _ => string.Empty,
-        };
+        string value = SceneValue.TryParse(member, out SceneValue sv)
+            ? sv.Kind switch
+            {
+                SceneValueKind.Relay => sv.On ? "ON" : "OFF",
+                SceneValueKind.Dimmer => $"{sv.LevelPercent}% / {sv.RampTime.TotalSeconds:0.#}s",
+                SceneValueKind.Shutter => sv.ShutterUp ? "up" : "down",
+                _ => string.Empty,
+            }
+            : string.Empty;
         return new TreeNodeViewModel($"← {LinkOppositePath(member)} = {value}", "/Assets/link-from.svg",
             elementId: member.Id) { IsLinkRow = true };
     }
@@ -1528,7 +1524,7 @@ public partial class MainWindowViewModel : ViewModelBase
             IsFunctionBlock = true,
             Tooltip = BuildTooltip(fb),
         };
-        foreach ((string container, string label) in ProjectSession.FbVariableSections)
+        foreach ((string container, string label) in FunctionBlockSections.All)
         {
             ProjectElement? holder = fb.FindChild(container);
             var section = new TreeNodeViewModel(label, NodeIcons.For(container, null), elementId: holder?.Id)
@@ -1605,7 +1601,7 @@ public partial class MainWindowViewModel : ViewModelBase
         bool leaf = true;
         while (current is not null)
         {
-            bool significant = leaf || current.Tag is "group" or "functionblock" || ProductKinds.IsProduct(current.Tag);
+            bool significant = leaf || current.Tag is "group" or "functionblock" || ProductClassifier.IsProduct(current.Tag);
             if (significant && current.GetAttribute("name") is { } partName && partName.Length > 0)
                 parts.Insert(0, partName);
             current = current.Id is { } cid ? project.FindParent(cid) : null;

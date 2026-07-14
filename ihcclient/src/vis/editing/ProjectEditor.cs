@@ -755,6 +755,29 @@ namespace Ihc.Vis.Editing
                              new ScenesRef(scenes.GetAttribute("name") ?? string.Empty, scenesId), value);
         }
 
+        /// <summary>
+        /// Edits an existing scene member's stored value in place (US-058): rewrites only the member row's value
+        /// attributes from <paramref name="value"/> (<c>relay_value</c>, or <c>dimming_value</c>/<c>ramptime_ms</c>,
+        /// or <c>shutter_position</c>), so its <c>id</c>, <c>name</c>, <c>link</c> (the <c>IDREF #REQUIRED</c> back to
+        /// the scene_link) and any <c>delay_ms</c>/<c>note</c>/<c>udf</c> are preserved. The member's tag must match
+        /// <paramref name="value"/>'s kind — a mismatch throws, nothing is mutated. Returns <c>this</c> for chaining.
+        /// </summary>
+        public ProjectEditor SetSceneValue(ElementId memberId, SceneValue value)
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            ProjectElement member = Require(memberId);
+            if (member.Tag != value.MemberTag)
+            {
+                throw new InvalidOperationException(
+                    $"Scene member <{member.Tag}> (id {memberId.ToToken()}) cannot take a {value.MemberTag} value.");
+            }
+            foreach ((string Name, string Value) attr in value.Attributes)
+            {
+                SetAttributeById(memberId, attr.Name, attr.Value);
+            }
+            return this;
+        }
+
         /// <summary>Id-addressed <see cref="UnlinkScene(ResourceRef,ScenesRef)"/> — removes the scene membership pair
         /// between a scene output pin and a scenes container (US-057).</summary>
         public ProjectEditor UnlinkScene(ElementId sceneOutputId, ElementId scenesId)

@@ -2,9 +2,11 @@
 // test files need no per-file using for each level namespace (Model/Projects/Products/FunctionBlocks/
 // Catalog/Editing/Io/Schema/Validation) plus the Ihc.Vis facade.
 global using Ihc.Vis;
+global using Ihc.Vis.Addressing;
 global using Ihc.Vis.Model;
 global using Ihc.Vis.Projects;
 global using Ihc.Vis.Products;
+global using Ihc.Vis.Programs;
 global using Ihc.Vis.FunctionBlocks;
 global using Ihc.Vis.Catalog;
 global using Ihc.Vis.Editing;

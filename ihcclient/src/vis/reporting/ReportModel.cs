@@ -127,10 +127,19 @@ namespace Ihc.Vis.Reporting
         string Heading,
         ImmutableArray<EndUserLocality> Localities);
 
+    /// <summary>One variable section of a function block in the FB report (US-041): its label and the names of the
+    /// variables it holds (empty when the section is empty).</summary>
+    public sealed record FunctionBlockReportSection(string Label, ImmutableArray<string> Variables);
+
+    /// <summary>One function block in the FB report (US-041): its name and its variable sections in document order.</summary>
+    public sealed record FunctionBlockReportEntry(string Name, ImmutableArray<FunctionBlockReportSection> Sections);
+
     /// <summary>
-    /// Placeholder for the deferred function-block ("Functionsblok dokumentation") report (US-041). Its
-    /// per-field layout has not been transcribed from the vendor oracle yet, so this type is intentionally
-    /// unpopulated; do not add fields until the layout is specified.
+    /// The function-block ("Functionsblok dokumentation") report model (US-041): every function block in
+    /// Installation/Functions-pane document order, each with its variable sections. A minimal US-041 listing —
+    /// extend when the full vendor per-field internal layout is transcribed. The SDK owns the heading and the walk.
     /// </summary>
-    public sealed record FunctionBlockReport();
+    public sealed record FunctionBlockReport(
+        string Heading,
+        ImmutableArray<FunctionBlockReportEntry> Blocks);
 }

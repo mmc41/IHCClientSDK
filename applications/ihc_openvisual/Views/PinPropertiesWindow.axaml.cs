@@ -2,6 +2,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using ihc_openvisual.Services;
+using Ihc.Vis.Addressing;
 
 namespace ihc_openvisual.Views;
 
@@ -20,8 +21,9 @@ public partial class PinPropertiesWindow : ResultDialog<PinPropertiesResult>
     public static Task<PinPropertiesResult?> ShowAsync(Window owner, PinPropertiesInput input)
     {
         var window = new PinPropertiesWindow { Title = input.Title };
+        window.DataLineBox.Maximum = DatalineAddress.MaxDataLine(input.IsOutput);
         window.DataLineBox.Value = input.DataLine;
-        window.TerminalBox.Maximum = DatalineAddressing.TerminalsPerLine(input.IsOutput);
+        window.TerminalBox.Maximum = DatalineAddress.TerminalsPerLine(input.IsOutput);
         window.TerminalBox.Value = input.Terminal;
         window.CableColourBox.Text = input.CableColour;
         window.NoteBox.Text = input.Note;

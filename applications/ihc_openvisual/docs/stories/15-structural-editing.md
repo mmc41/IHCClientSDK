@@ -118,24 +118,7 @@ Scenario: Delete is equivalent across all three activation routes
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ **Implemented.** The **Delete** command now generalises to **any** deletable node —
-product, function block, variable/pin, and program element (event/action/condition/sub-program/case) — via
-`ProjectSession.DeleteNodeAsync`, alongside the existing link-row (US-057) and locality (US-009) paths. An
-**unreferenced** node is removed **silently** (no confirm). A **referenced** node — one that participates in a link or
-is used by a command/condition/event — is detected (a link-half in its subtree, or a dry-run `Strict` delete that
-throws) and **confirmed first**; on acceptance it deletes with the engine's `CascadeReferences` policy, which removes
-the reciprocal `link to`/`link from` halves and the referencing program rows **together** — and because the whole
-project is one snapshot (E14), it is **reversed as a single `Ctrl+Z`** (verified: deleting a linked product and one
-undo restores the product *and* the block's link half). **Declining** the confirm deletes nothing. When the engine
-**cannot safely cascade** a binding it throws and the app **refuses with the explanation** rather than leaving a broken
-reference. Structural containers (sections, event/command/conditions groups, programs) are **not** deletable (guarded).
-
-Delete is reachable identically **three ways** (US-044): the right-click *Delete* item, **Edit ▸ Delete**, and the
-**Delete key** (the key handler now fires for any `CanDelete` node, not just link rows) — all invoke the one
-`DeleteCommand`. Reuses the SDK `DeleteById`(`Strict`/`CascadeReferences`) only; no SDK change, so byte-fidelity
-`safe_project_tests` **663** stays green. Session traced; errors logged + surfaced. Tests: 4 in `DeletionTests`
-(unreferenced no-confirm; linked product confirm→cascade→one-step undo, and decline keeps it; structural container
-refused; the command deletes an unused variable). Suites: `safe_visual_tests` **179** green. OpenObserve 0 errors.
+**Implementation status:** ✅ Implemented.
 
 ---
 
@@ -193,20 +176,7 @@ Scenario: Move is available without drag
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ **Implemented (Cut/Paste move route).** `ProjectSession.MoveNodeAsync` re-parents a node
-via the SDK `ProjectEditor.MoveSubtree`, which **preserves identity** — the IHC resource ids do not change, so the
-node's documentation, terminal addressing and **every link it participates in survive** (verified: after moving a
-linked product between localities, its id is unchanged and the block's link half still resolves). The gesture is the
-non-drag **Cut (`Ctrl+X`) → Paste (`Ctrl+V`)** route (the story allows either; drag is not fixed): Cut stashes the
-selected node on a clipboard, Paste onto a target locality moves it there — reachable from **Edit ▸ Cut/Paste** and the
-shortcuts. **Illegal targets are refused**: a container that cannot hold the node (`CanContain` — a product/block
-belongs under a `group`), a **self/descendant** target (the engine's `MoveSubtree` guard throws → refused with its
-explanation), and a **no-op** move into the current parent. The move is **undoable as one step** (E14 snapshot). No SDK
-change (reuses `MoveSubtree`), so byte-fidelity `safe_project_tests` **663** stays green; session traced, errors logged.
-Tests: 4 in `MoveTests` (move preserves id + links; same-parent no-op; illegal target refused; Cut/Paste move + undo).
-Suites: `safe_visual_tests` **183** green. OpenObserve 0 errors. *(The drag affordance and moving a variable between
-sections are natural extensions of the same id-preserving `MoveSubtree`; the product/block-between-localities move and
-its Cut/Paste route are complete.)*
+**Implementation status:** ✅ Implemented (Cut/Paste move route).
 
 ---
 
@@ -256,18 +226,7 @@ Scenario: Reorder preserves identity and links
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ **Implemented (Move up / Move down non-drag route).** `ProjectSession.ReorderNodeAsync(id,
-delta)` reorders a node among its **same-tag** siblings (a locality past localities, a product past products, a variable
-past its section peers) by the id-preserving `MoveSubtree` with an in-container index — so **only the position changes**;
-ids and links are untouched. It translates the same-tag position to the absolute child index of the sibling swapped with,
-relying on `MoveSubtree`'s detach-then-insert so a move-down lands after the neighbour and a move-up before it. Moving
-past the **end of the list is a no-op**. Because US-040 documents products **in Installation-pane document order**, the
-reorder immediately drives report order (verified the products render in the new order with the report still listing
-them). The reorder is **undoable** (E14 snapshot). The non-drag route (US-044) is **Move up / Move down** context-menu
-items in both panes plus `Ctrl+Shift+Up`/`Ctrl+Shift+Down`. No SDK change (reuses `MoveSubtree`); byte-fidelity
-`safe_project_tests` **663** stays green; session traced. Tests: 4 in `ReorderTests` (locality down-then-up preserving
-id; end-of-list no-op both ways; product reorder reflected in tree + report; undoable). Suites: `safe_visual_tests`
-**187** green. OpenObserve 0 errors.
+**Implementation status:** ✅ Implemented (Move up / Move down non-drag route).
 
 ---
 
@@ -326,20 +285,7 @@ Scenario: Paste is available three ways
 
 **Readiness:** Ready (product/subtree paste); block/program paste carries the open item above.
 
-**Implementation status:** ✅ **Implemented. Epic E15 COMPLETE.** `ProjectSession.CopyNodeAsync` pastes an
-**independent duplicate** via the SDK `ProjectEditor.CopySubtree`, which deep-copies the subtree with **fresh IHC
-resource ids** and **drops any link half whose other end lies outside the copy** (verified: copying a linked product
-yields an unlinked copy while the original keeps its link; the copy's id differs and the original is untouched). The
-gesture completes the clipboard: **Copy (`Ctrl+C`)** stashes the node without the cut flag; **Paste (`Ctrl+V`)** onto a
-legal target duplicates it — and, unlike a cut, a copy is **not consumed**, so repeated pastes make repeated
-independent copies (verified two pastes → two copies). Reachable three ways (US-044): the **Edit ▸ Copy/Paste** menu,
-the shortcuts, and (via the shared `PasteCommand`) the same route Cut uses. **Illegal targets are refused** (`CanContain`
-— a product/block pastes under a `group`). Each paste is **undoable** (E14 snapshot). No SDK change (reuses
-`CopySubtree`), so byte-fidelity `safe_project_tests` **663** stays green; session traced, errors logged. Tests: 4 in
-`CopyPasteTests` (independent duplicate with fresh ids, original unchanged; external links dropped; illegal target
-refused; Copy/Paste twice + undo). Suites: `safe_visual_tests` **191** green. OpenObserve 0 errors. *(The open item —
-function-block / program-element paste — uses the identical `CopySubtree` path; product/subtree paste is the verified
-worked case.)*
+**Implementation status:** ✅ Implemented. Epic E15 complete.
 
 ---
 

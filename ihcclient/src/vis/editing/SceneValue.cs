@@ -1,11 +1,20 @@
 #nullable enable
 using System;
 using System.Collections.Immutable;
+using System.Globalization;
 
 using Ihc.Vis.Model;
 
 namespace Ihc.Vis.Editing
 {
+    /// <summary>The three scene-member kinds a <see cref="SceneValue"/> can carry (derived from its member tag).</summary>
+    public enum SceneValueKind
+    {
+        Relay,
+        Dimmer,
+        Shutter,
+    }
+
     /// <summary>
     /// The typed value payload of a scene membership (US-024): the state the member output assumes when the
     /// scenario fires. Factory-constructed per member kind — <see cref="Relay"/> (<c>scene_relay</c>),
@@ -27,6 +36,73 @@ namespace Ihc.Vis.Editing
 
         /// <summary>The value attributes the member row carries, in DTD attribute order.</summary>
         internal ImmutableArray<(string Name, string Value)> Attributes { get; }
+
+        /// <summary>The scene-member kind this value carries.</summary>
+        public SceneValueKind Kind => MemberTag switch
+        {
+            "scene_relay" => SceneValueKind.Relay,
+            "scene_dimmer" => SceneValueKind.Dimmer,
+            _ => SceneValueKind.Shutter,
+        };
+
+        /// <summary>A relay/socket member's on-state (<c>false</c> for any other kind).</summary>
+        public bool On => Attr("relay_value") == "on";
+
+        /// <summary>A dimmer member's target light level (0–100 %); 0 for any other kind or a malformed value.</summary>
+        public int LevelPercent =>
+            int.TryParse(Attr("dimming_value"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int v) ? v : 0;
+
+        /// <summary>A dimmer member's ramp time; <see cref="TimeSpan.Zero"/> for any other kind or a malformed value.</summary>
+        public TimeSpan RampTime =>
+            TimeSpan.FromMilliseconds(long.TryParse(Attr("ramptime_ms"), NumberStyles.Integer, CultureInfo.InvariantCulture, out long ms) && ms >= 0 ? ms : 0);
+
+        /// <summary>A shutter member's up-state (<c>true</c> unless explicitly <c>down</c>; <c>true</c> for other kinds).</summary>
+        public bool ShutterUp => Attr("shutter_position") != "down";
+
+        private string? Attr(string name)
+        {
+            foreach ((string Name, string Value) attr in Attributes)
+            {
+                if (attr.Name == name)
+                    return attr.Value;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Reads the typed value of an existing scene member row (US-024/US-058), <b>non-throwing</b> and tolerant of
+        /// malformed/absent values (matching the GUI's historic defaulting so previously-viewable projects still
+        /// render): a missing/non-numeric <c>dimming_value</c>/<c>ramptime_ms</c> reads as 0, an absent
+        /// <c>relay_value</c> as off, an absent <c>shutter_position</c> as up. Returns <c>false</c> only when the
+        /// element is not a scene member.
+        /// </summary>
+        public static bool TryParse(ProjectElement member, out SceneValue value)
+        {
+            ArgumentNullException.ThrowIfNull(member);
+            switch (member.Tag)
+            {
+                case "scene_relay":
+                    value = Relay(member.GetAttribute("relay_value") == "on");
+                    return true;
+                case "scene_dimmer":
+                    int level = int.TryParse(member.GetAttribute("dimming_value"),
+                        NumberStyles.Integer, CultureInfo.InvariantCulture, out int lv) ? lv : 0;
+                    long ms = long.TryParse(member.GetAttribute("ramptime_ms"),
+                        NumberStyles.Integer, CultureInfo.InvariantCulture, out long m) && m >= 0 ? m : 0;
+                    // Bypass the Dimmer factory's range validation — a tolerant read must never throw on a
+                    // malformed/out-of-range stored value.
+                    value = new("scene_dimmer", ImmutableArray.Create(
+                        ("dimming_value", DecToken.Format(level)),
+                        ("ramptime_ms", DecToken.Format(ms))));
+                    return true;
+                case "scene_shutter":
+                    value = Shutter(member.GetAttribute("shutter_position") != "down");
+                    return true;
+                default:
+                    value = null!;
+                    return false;
+            }
+        }
 
         /// <summary>A relay/socket member (<c>scene_relay</c>): the output switches <paramref name="on"/> or off.</summary>
         public static SceneValue Relay(bool on) =>

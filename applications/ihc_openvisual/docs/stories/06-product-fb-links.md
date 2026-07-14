@@ -6,10 +6,7 @@ status: draft
 
 # E6 — Product ↔ function‑block links
 
-> **Implementation status (2026-07-13):** ✅ **Implemented** — US-022/023 (create follow-links both directions),
-> US-024 (scenario links + value dialog), US-025 (F4 navigate), US-057 (remove link), US-058 (edit scene value) all
-> done and covered by `safe_visual_tests` (97 green). The pin drag gesture is realised as a testable two-step
-> "Link from here / Link to here" (Avalonia 12 drag API is not headless-testable). Per-story detail below.
+> **Implementation status:** ✅ Implemented.
 
 > **Current scope:** ✅ **In scope** — creating and navigating product↔function‑block links is
 > project CRUD.
@@ -80,20 +77,7 @@ Scenario: Unconfigured products remain flagged
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ **Implemented (link create + reciprocal rendering).** A product input pin is linked
-to a function‑block input pin through the **two‑step link gesture** — right‑click the source pin ▸ **Link from
-here**, then the target pin ▸ **Link to here** (a reliable, testable, keyboard‑accessible substitute for pin
-drag‑and‑drop, whose Avalonia 12 `DataTransfer` API is not headless‑testable — noted for a later pass). It commits
-via `ProjectSession.LinkPinsAsync` → the new id‑addressed `ProjectEditor.Link(ElementId,ElementId)` (the drop/target
-pin gets the `link_from_resource` half, the source the `link_to_resource` half — matching the vendor display), traced,
-marks dirty; status `Linked <source> to <target>.`. The link renders **reciprocally**: expanding the block input
-shows a **← <source locality> / <product> / <pin>** row and the product input a **→ …** row, each naming the opposite
-end's full path (`link-from.svg`/`link-to.svg` glyphs). Tested: `MainWindowViewModelTests` (reciprocal rows with each
-other's path; the LinkPins gesture links pins + ignores non‑pins; two‑step Start/LinkTo) and
-`SmokeTests.MainWindow_AfterLink_RendersReciprocalLinkRows`. SDK `Link(ElementId,ElementId)`/`Unlink(ElementId,ElementId)`
-overloads added; `safe_project_tests` green (663). Render verified (both panes show the ←/→ rows); live app +
-OpenObserve no errors. *(US-023 block‑output→product‑output uses the same gesture; US-024 scenario links, US-025 F4
-navigate, US-057 remove, US-058 edit scene value next.)*
+**Implementation status:** ✅ Implemented (link create + reciprocal rendering).
 
 ---
 
@@ -129,16 +113,7 @@ Scenario: End-to-end path through a block
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ **Implemented.** A function‑block output is linked to a product output with the same
-two‑step link gesture as US-022 (**Link from here** on the block output ▸ **Link to here** on the product output) —
-`ProjectSession.LinkPinsAsync` is generic over pins. The reciprocal rows render with the correct orientation: the
-**block output** shows a **→ <locality> / <product> / <pin>** (link‑to) row and the **product output** a
-**← <locality> / <block> / <pin>** (link‑from) row, forming the complete input→block→output chain (US-022 + US-023).
-Wireless products keep their yellow **!** after linking (linking never clears it; `IsUnlinkedWireless` is independent
-of links). Tested: `MainWindowViewModelTests.LinkBlockOutputToProductOutput_ShowsReciprocalRows` (block output →,
-product output ←, path names the block). Render verified (Functions ▸ block Output *Udgang* → *Diode / Lampe*;
-Installation ▸ *Lampe* ← *…Kip tænd sluk / Udgang*); live app + OpenObserve no errors. *(US-024 scenario links,
-US-025 F4 navigate, US-057 remove, US-058 edit scene value next.)*
+**Implementation status:** ✅ Implemented.
 
 ---
 
@@ -182,18 +157,7 @@ Scenario: Create a relay/socket scene link with a state
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ **Implemented.** A product's `scenes` container renders as a **scenario‑output** node
-(scenario icon, `IsSceneTarget`) under the product. Using the two‑step link gesture — **Link from here** on the FB's
-`resource_scene` output ▸ **Link to here** on the product's scenes container — a **scene value dialog** opens: the
-**dimmer** variant (bound output `airlink_dimming`) asks *Light level* (%) + *Ramp time* (min/sec); the **relay/socket**
-variant asks an *ON/OFF* state. OK commits via `ProjectSession.LinkSceneAsync` → the new id‑addressed
-`ProjectEditor.LinkScene(ElementId,ElementId,SceneValue)` (`SceneValue.Dimmer`/`SceneValue.Relay`), traced, marks
-dirty; status `Scene link created.`. The link renders reciprocally: the scenes container shows a
-**← <block path> = <value>** member row (ON/OFF or `80% / 1s`) and the FB scene output a **→ <product / Scenarier>**
-`scene_link` row. Tested: `MainWindowViewModelTests` (scene member + back‑reference created; two‑step gesture opens the
-dialog and shows the member row) and the render (socket *Stikkontakt / Scenarier* ← *…Scenarie Tænd = ON*; dimmer
-dialog light‑level/ramp). SDK `LinkScene`/`UnlinkScene` id overloads added; `safe_project_tests` green (663). Live app +
-OpenObserve no errors. *(US-025 F4 navigate, US-057 remove, US-058 edit scene value next.)*
+**Implementation status:** ✅ Implemented.
 
 ---
 
@@ -223,14 +187,7 @@ Scenario: Read a link's other end without jumping
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ **Implemented.** Selecting a link row (a "link to"/"link from"/scene row, `IsLinkRow`)
-and pressing **F4** jumps to the pin at the opposite end and selects it in whichever pane holds it. The code‑behind
-F4 handler routes to `MainWindowViewModel.NavigateLinkOppositeCommand`, which resolves the row's `link` IDREF → the
-partner row → the partner's parent pin, then selects it via `SelectedInstallationNode`/`SelectedFunctionsNode` (the
-per‑pane bindings that feed the active node); status `Jumped to <pin>.`. Reading the other end in place already works
-(the link row spells out the opposite's full path, US-022). Tested:
-`MainWindowViewModelTests.NavigateLinkOpposite_JumpsToTheOtherEnd` (both directions — from the block end selects the
-product input and vice‑versa). Live app + OpenObserve no errors. *(US-057 remove link, US-058 edit scene value next.)*
+**Implementation status:** ✅ Implemented.
 
 ---
 
@@ -293,15 +250,7 @@ Scenario: Remove is undoable
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ **Implemented.** Selecting a link row and choosing **Delete** (context menu) or pressing
-the **Delete** key removes it: `ProjectSession.RemoveLinkAsync` calls `ProjectEditor.DeleteById(linkRowId)`, whose
-reciprocal cascade deletes the partner half too — so both halves of exactly that link go together (follow‑link
-"link to"/"link from" pair, or a scene member + its `scene_link` back‑reference), while every other link on the two
-pins is left intact. Traced, marks dirty; status `Link removed.`. The `Delete` command dispatches a link row here and a
-locality to the confirm‑and‑cascade delete. Tested: `MainWindowViewModelTests` — a product input with two links loses
-exactly the removed one; a scene link removal clears both the member and the back‑reference. Live app + OpenObserve no
-errors. *(The "remove is undoable" scenario is Ctrl+Z / US-052, part of E14 edit‑history — deferred to that story.
-US-058 edit scene value next.)*
+**Implementation status:** ✅ Implemented.
 
 ---
 
@@ -347,12 +296,4 @@ Scenario: Re-open a relay/socket scene state
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ **Implemented.** Selecting a scene member row and opening **Properties** (F2 /
-right‑click) reopens the **same scene‑value dialog** (US-024), pre‑filled with the current value — a dimmer member's
-*Light level* + *Ramp time* (decoded from `dimming_value`/`ramptime_ms`) or a relay member's *ON/OFF* (from
-`relay_value`). Confirming stores the new value via `ProjectSession.UpdateSceneValueAsync` (rewrites the member's value
-attributes by id), traced, marks dirty; status `Scene value updated.`. The Properties route dispatches a
-`scene_relay`/`scene_dimmer` member to this dialog. Tested:
-`MainWindowViewModelTests.EditSceneValue_ReopensPrefilled_AndStoresNewValue` (dialog pre‑filled with the initial value;
-the new value stored — covering both the dimmer and relay variants). Live app + OpenObserve no errors. *(Ctrl+Z undo of
-the change is US-052 / E14, deferred there.)* **Epic E6 (US-022–US-025, US-057, US-058) complete.**
+**Implementation status:** ✅ Implemented. Epic E6 complete.

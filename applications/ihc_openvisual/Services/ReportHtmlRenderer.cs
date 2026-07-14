@@ -5,18 +5,6 @@ using Ihc.Vis.Reporting;
 
 namespace ihc_openvisual.Services;
 
-/// <summary>One variable section of a function block in the FB documentation report (US-041): its label and the
-/// names of the variables it holds.</summary>
-public sealed record FbReportSection(string Label, ImmutableArray<string> Variables);
-
-/// <summary>One function block in the FB documentation report (US-041): its name and its variable sections.</summary>
-public sealed record FbReportBlock(string Name, ImmutableArray<FbReportSection> Sections);
-
-/// <summary>The function-block ("Functionsblok dokumentation") report model (US-041). A minimal listing —
-/// blocks in Installation/Functions-pane document order, each with its variable sections — pending the SDK
-/// report model's deep per-field internal layout (intentionally unspecified; see the story's Readiness note).</summary>
-public sealed record FbReport(string Heading, ImmutableArray<FbReportBlock> Blocks);
-
 /// <summary>
 /// Transforms the SDK's render-ready report models (<see cref="InstallationReport"/>/<see cref="EndUserReport"/>)
 /// 1-to-1 into a self-contained HTML page for viewing/printing in a standard browser (US-040). This is a mechanical
@@ -114,16 +102,16 @@ public static class ReportHtmlRenderer
         return sb.ToString();
     }
 
-    public static string RenderFunctionBlocks(FbReport r, bool print)
+    public static string RenderFunctionBlocks(FunctionBlockReport r, bool print)
     {
         var sb = new StringBuilder();
         OpenDocument(sb, r.Heading, print);
         sb.Append("<h1 class=\"banner\">IHC OpenVisual</h1>");
         sb.Append("<h2>").Append(Esc(r.Heading)).Append("</h2>");
-        foreach (FbReportBlock block in r.Blocks)   // Installation/Functions-pane document order
+        foreach (FunctionBlockReportEntry block in r.Blocks)   // Installation/Functions-pane document order
         {
             sb.Append("<h3>").Append(Esc(block.Name)).Append("</h3>");
-            foreach (FbReportSection section in block.Sections)
+            foreach (FunctionBlockReportSection section in block.Sections)
             {
                 sb.Append("<table class=\"fb-section\"><caption>").Append(Esc(section.Label)).Append("</caption>");
                 if (section.Variables.Length == 0)

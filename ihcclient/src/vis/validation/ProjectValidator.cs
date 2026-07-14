@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
+using Ihc.Vis.Addressing;
 using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Schema;
@@ -425,10 +426,10 @@ namespace Ihc.Vis.Validation
                         $"address_dataline='{address}' on '{element.Tag}' is not a _0x hex token");
                     continue;
                 }
-                if (value is < 1 or > 128)
+                if (value < 1 || value > DatalineAddress.MaxAddressValue)
                 {
                     findings.Error("dataline-address", element,
-                        $"address_dataline='{address}' on '{element.Tag}' is outside the legal 1–128 module range");
+                        $"address_dataline='{address}' on '{element.Tag}' is outside the legal 1–{DatalineAddress.MaxAddressValue} module range");
                     continue;
                 }
                 (string Tag, long value) key = (element.Tag, value);

@@ -7,13 +7,7 @@ implementation-status: mostly-implemented
 
 # E1 — Application shell & project lifecycle
 
-> **Implementation status (verified 2026-07-13):** The epic is **implemented** and covered by
-> `tests/safe_visual_tests` (23 green). Project lifecycle (US-002/003/004/005/064), the View toggles
-> (US-051), the shell (US-001), the diagnostics/telemetry bootstrap (US-063) and the About dialog
-> (US-065) are done. The menu bar carries **eight** titles (no *Simulation*) and the toolbar has no
-> simulation Start/Stop pair — both correct, because simulation (E8) is out of scope. The window icon is
-> the new `IHC OpenVisual` house lockup (`Assets/openvisual.ico`, wired as `Window.Icon` and the exe
-> `ApplicationIcon`). Per-story details below.
+> **Implementation status:** ✅ Implemented.
 
 > **Current scope:** ✅ **In scope (foundational)** — this epic is the base every other epic plugs
 > into: the application's start‑up/shutdown, its configuration/logging/telemetry bootstrap, the
@@ -128,12 +122,7 @@ per‑menu command inventory beyond the top‑level menu titles.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ **Implemented.** Eight‑title menu bar (no *Simulation* — out of scope,
-E8), toolbar (New/Open/Save · Help · controller pair · Cut/Copy/Paste; no simulation Start/Stop),
-two‑pane workspace with blue pane headers, Localities‑rooted trees, status bar + Danish flag, splitter,
-light/dark theme, and the `IHC OpenVisual` house‑lockup window icon (`Assets/openvisual.ico`) are all
-in place and rendered by the headless smoke suite. (Checklist legend: `[x]` done · `[~]` partial ·
-`[ ]` not done.)
+**Implementation status:** ✅ Implemented.
 
 ---
 
@@ -171,10 +160,7 @@ Scenario: Only one project is open at a time
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ **Implemented.** `ProjectSession.NewAsync` creates the standard empty
-project via the SDK `CreateNew`, prompts to save when dirty, and enforces the single open document.
-Tested (`ProjectSessionTests`, `MainWindowViewModelTests`): ten‑locality tree in both panes, cancel
-keeps the project, discard creates a fresh one.
+**Implementation status:** ✅ Implemented.
 
 ---
 
@@ -217,10 +203,7 @@ Scenario: Recommended first step
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ **Implemented.** `Save` re‑writes the existing file (Ctrl+S) or falls
-through to `Save As` when unnamed; `Save As` uses the native picker (`.vis` default extension) and
-updates the title. Tested (`ProjectSessionTests`, `MainWindowViewModelTests`). `F2`‑for‑save remains
-unassigned, as the R‑note allows.
+**Implementation status:** ✅ Implemented.
 
 ---
 
@@ -252,10 +235,7 @@ Scenario: Opening replaces the current project
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ **Implemented.** `OpenWithPickerAsync` defaults the dialog to the
-last‑saved directory; the *File* menu lists the four most recent projects (capped, most‑recent‑first)
-under a *Recent projects* submenu; opening prompts to save the current project first. Tested
-(`ProjectSessionTests`, `RecentProjectsStoreTests`).
+**Implementation status:** ✅ Implemented.
 
 ---
 
@@ -296,13 +276,7 @@ crash or power loss does not cost me my recent work.
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 **Implemented, with one wiring gap.** `ProjectSession` runs the
-10‑minute timer and the every‑10th‑change backup, writes a recovery copy + JSON origin marker under
-`%LocalAppData%/IHC OpenVisual/recovery/`, offers recovery at start‑up, and deletes the backup on a
-clean Close/Quit — all tested (`ProjectSessionTests`). Gap: the every‑Nth‑change path (`MarkChanged`)
-has **no production caller yet** — it fires only from tests until the editing epics (E2+) invoke it; the
-timer path is live. The literal 10/10 defaults are code‑set but tests exercise the mechanism with N=3
-and a 1‑hour timer.
+**Implementation status:** 🟡 Implemented, with one wiring gap.
 
 ---
 
@@ -347,11 +321,7 @@ Scenario: Hide and show the status bar
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ **Implemented.** The *View* menu has checkbox items for *Toolbar* and
-*Status bar* bound to `IsToolbarVisible`/`IsStatusBarVisible`, which drive the strips' `IsVisible`.
-Toggle logic tested at the view‑model level (`MainWindowViewModelTests`). Note: the checkbox items both
-auto‑toggle (`ToggleType=CheckBox`) and invoke a command that flips the same property — worth a manual
-click‑path check for a possible double‑toggle, which the command‑level tests don't cover.
+**Implementation status:** ✅ Implemented.
 
 ---
 
@@ -424,13 +394,7 @@ foundation only.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ **Implemented (MUSTs), with two verification gaps.** The `ihc_lab`
-bootstrap is ported (`Program.cs`, `AppSetup.cs`, `AppConfiguration.cs`): single logger factory + single
-`TracerProvider` + single `ProjectAppService`, independent OTLP logs/traces endpoints with shared
-headers, local‑only fallback, background self‑check probe, Avalonia log bridging, and an `AppDomain`
-unhandled‑exception handler; *Help* exposes *Show settings* and *Telemetry diagnostics*. Gaps: the global
-error handler records via `Trace` rather than `ILogger`, and the "no `.vis`/no credentials in exports"
-and "no partial `.vis`" guarantees rest on omission and are not asserted by tests.
+**Implementation status:** ✅ Implemented (MUSTs), with two verification gaps.
 
 ---
 
@@ -470,11 +434,7 @@ Scenario: Cancel the quit
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ **Implemented.** The window `Closing` handler cancels, runs
-`ProjectSession.CanQuitAsync` (save prompt), then closes for real and deletes the crash backup on a
-clean/acknowledged exit; cancelling keeps the project and its unsaved changes. *Exit* is bound to
-Alt+F4 and the native close button follows the same path. Save/discard/cancel semantics tested
-(`ProjectSessionTests`).
+**Implementation status:** ✅ Implemented.
 
 ---
 
@@ -523,9 +483,4 @@ entry (US-063); this story covers only the About dialog and the *Help* menu comm
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ **Implemented.** `AboutWindow` is a fixed‑size, centred, modal dialog
-titled *About IHC OpenVisual* showing the heading, one‑line description, repository link, author, and
-app/SDK version lines (read from `VersionInfo` / `Ihc.VersionInfo`); *Close*/`Esc` dismiss it; the link
-opens in the OS browser and a launch failure is logged without closing the dialog. Title + version lines
-tested (`SmokeTests`). Note: the "source" link is the SDK repo `IHCClientSDK` — confirm that is the
-intended repository.
+**Implementation status:** ✅ Implemented.

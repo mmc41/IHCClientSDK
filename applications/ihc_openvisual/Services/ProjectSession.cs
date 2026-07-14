@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ihc_openvisual.Configuration;
 using Ihc.Vis;
+using Ihc.Vis.Addressing;
 using Ihc.Vis.Editing;
 using Ihc.Vis.FunctionBlocks;
 using Ihc.Vis.Model;
@@ -220,40 +221,10 @@ public sealed class ProjectSession : IDisposable
     public EndUserReport? GenerateEndUserReport() =>
         Current is { } project ? _service.GenerateEndUserReport(project) : null;
 
-    /// <summary>The function-block variable sections, in document order, with their display labels. Shared by the
-    /// FB report model and the Functions-pane tree/operand projection so both stay in lockstep.</summary>
-    public static readonly (string Container, string Label)[] FbVariableSections =
-    {
-        ("inputs", "Input"), ("outputs", "Output"), ("settings", "Settings"), ("internalsettings", "Internal variables"),
-    };
-
-    /// <summary>
-    /// Builds a minimal function-block documentation report model (US-041): every function block in Installation/
-    /// Functions-pane document order, each with its variable sections. A minimal listing pending the SDK model's deep
-    /// per-field internal layout (unspecified). Read-only; no controller.
-    /// </summary>
-    public FbReport BuildFunctionBlockReport()
-    {
-        var blocks = ImmutableArray.CreateBuilder<FbReportBlock>();
-        if (Current is { } project)
-        {
-            foreach (ProjectElement group in project.Groups)
-            {
-                foreach (ProjectElement fb in group.ChildrenOrEmpty().Where(c => c.Tag == "functionblock"))
-                {
-                    var sections = ImmutableArray.CreateBuilder<FbReportSection>();
-                    foreach ((string container, string label) in FbVariableSections)
-                    {
-                        var vars = fb.FindChild(container)?.ChildrenOrEmpty()
-                            .Select(v => v.GetAttribute("name") ?? v.Tag).ToImmutableArray() ?? ImmutableArray<string>.Empty;
-                        sections.Add(new FbReportSection(label, vars));
-                    }
-                    blocks.Add(new FbReportBlock(fb.GetAttribute("name") ?? "block", sections.ToImmutable()));
-                }
-            }
-        }
-        return new FbReport("Functionsblok dokumentation", blocks.ToImmutable());
-    }
+    /// <summary>Builds the render-ready function-block documentation report model for the open project (US-041), or
+    /// null when no project is open.</summary>
+    public FunctionBlockReport? GenerateFunctionBlockReport() =>
+        Current is { } project ? _service.GenerateFunctionBlockReport(project) : null;
 
     /// <summary>
     /// Writes a rendered report HTML page to a temp file (US-040) and returns its path for the browser to open;
@@ -356,7 +327,7 @@ public sealed class ProjectSession : IDisposable
             {
                 foreach (ProjectElement product in group.ChildrenOrEmpty())
                 {
-                    if (ProductKinds.IsUnlinkedWireless(product.Tag, product.GetAttribute("serialnumber")))
+                    if (ProductClassifier.IsUnlinkedWireless(product.Tag, product.GetAttribute("serialnumber")))
                         names.Add(product.GetAttribute("name") ?? product.Tag);
                 }
             }
@@ -386,11 +357,10 @@ public sealed class ProjectSession : IDisposable
                         bool isOutput = pin.Tag == "dataline_output";
                         if (pin.Tag != "dataline_input" && !isOutput)
                             continue;
-                        if (!DatalineAddressing.TryDecode(pin.GetAttribute("address_dataline"),
-                                DatalineAddressing.TerminalsPerLine(isOutput), out int line, out int terminal))
+                        if (!DatalineAddress.TryParse(pin.GetAttribute("address_dataline"), isOutput, out DatalineAddress addr))
                             continue;
-                        var entry = new ModuleAddressEntry($"{line}.{terminal}", productName, pin.GetAttribute("name") ?? pin.Tag);
-                        (isOutput ? outputs : inputs).Add((line, terminal, entry));
+                        var entry = new ModuleAddressEntry($"{addr.DataLine}.{addr.Terminal}", productName, pin.GetAttribute("name") ?? pin.Tag);
+                        (isOutput ? outputs : inputs).Add((addr.DataLine, addr.Terminal, entry));
                     }
                 }
             }
@@ -469,24 +439,23 @@ public sealed class ProjectSession : IDisposable
         });
 
     /// <summary>
-    /// Edits an existing scenario link's stored value (US-058): rewrites the scene member's value attributes by id —
-    /// <c>dimming_value</c>/<c>ramptime_ms</c> for a dimmer member, <c>relay_value</c> for a relay/socket member.
-    /// Commits, marks dirty. Returns false on failure.
+    /// Edits an existing scenario link's stored value (US-058): rebuilds the scene member's value from the dialog
+    /// result and rewrites it in place via <see cref="ProjectEditor.SetSceneValue"/> (member kind derived from the
+    /// row's tag, so id/name/link/note are preserved). Commits, marks dirty. Returns false when the target is not a
+    /// relay/dimmer scene member or the edit fails.
     /// </summary>
-    public Task<bool> UpdateSceneValueAsync(ElementId memberId, SceneValueResult r, bool isDimmer) =>
+    public Task<bool> UpdateSceneValueAsync(ElementId memberId, SceneValueResult r) =>
         RunEditAsync(nameof(UpdateSceneValueAsync), "Scene value update failed", (project, editor) =>
         {
-            if (!editor.TryResolve(memberId, out ElementRef? handle))
+            SceneValue? value = project.FindById(memberId)?.Tag switch
+            {
+                "scene_dimmer" => SceneValue.Dimmer(r.LevelPercent, TimeSpan.FromSeconds((r.RampMinutes * 60) + r.RampSeconds)),
+                "scene_relay" => SceneValue.Relay(r.On),
+                _ => null,
+            };
+            if (value is null)
                 return false;
-            if (isDimmer)
-            {
-                handle.SetAttribute("dimming_value", r.LevelPercent.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                handle.SetAttribute("ramptime_ms", (((r.RampMinutes * 60) + r.RampSeconds) * 1000).ToString(System.Globalization.CultureInfo.InvariantCulture));
-            }
-            else
-            {
-                handle.SetAttribute("relay_value", r.On ? "on" : "off");
-            }
+            editor.SetSceneValue(memberId, value);
             return true;
         });
 
@@ -909,7 +878,7 @@ public sealed class ProjectSession : IDisposable
                     .FirstOrDefault(p => p.ProductIdentifier == productIdentifier)
                     ?? throw new InvalidOperationException($"No catalog product with identifier '{productIdentifier}'.");
                 // At most one modem per project, regardless of type (US-013).
-                if (ProductKinds.IsModem(definition.Body.Tag) && HasModem(project))
+                if (ProductClassifier.IsModem(definition.Body.Tag) && HasModem(project))
                 {
                     Activity.Current?.SetTag("modem.blocked", true);
                     await _dialogs.ShowMessageAsync("Only one modem",
@@ -1241,7 +1210,7 @@ public sealed class ProjectSession : IDisposable
 
     /// <summary>Whether the project already contains a modem device root (the at-most-one-modem rule, US-013).</summary>
     public static bool HasModem(Project project) =>
-        project.Root.DescendantsAndSelf().Any(e => ProductKinds.IsModem(e.Tag));
+        project.Root.DescendantsAndSelf().Any(e => ProductClassifier.IsModem(e.Tag));
 
     /// <summary>
     /// Applies edited modem documentation (US-013): writes the modem's name/note/identification and the four RS485
@@ -1302,8 +1271,11 @@ public sealed class ProjectSession : IDisposable
             bool isOutput = pin.Tag == "dataline_output";
             if (!editor.TryResolve(pinId, out ElementRef? handle))
                 return false;
-            handle.SetAttribute("address_dataline",
-                DatalineAddressing.Encode(r.DataLine, r.Terminal, DatalineAddressing.TerminalsPerLine(isOutput)));
+            // A UI-unreachable out-of-range pick (belt-and-suspenders): abort without writing rather than clear the
+            // address to _0x0 — the caller surfaces the invalid combination.
+            if (!DatalineAddress.TryEncode(r.DataLine, r.Terminal, isOutput, out string addressToken))
+                return false;
+            handle.SetAttribute("address_dataline", addressToken);
             handle.SetAttribute("cable_colour", r.CableColour);
             handle.SetAttribute("note", r.Note);
             if (isOutput)
@@ -1330,7 +1302,7 @@ public sealed class ProjectSession : IDisposable
             handle.SetAttribute("documentation_tag", r.IdentificationCode);
             handle.SetAttribute("power_group", r.LightGroup);
             // Wireless (airlink) products declare no cabling attributes — only wired products carry them.
-            if (!ProductKinds.IsWireless(handle.Tag))
+            if (!ProductClassifier.IsWireless(handle.Tag))
             {
                 handle.SetAttribute("cabletype", r.CableType);
                 handle.SetAttribute("cablenumber", r.CableNumber);

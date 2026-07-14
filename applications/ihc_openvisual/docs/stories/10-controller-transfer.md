@@ -74,19 +74,7 @@ Scenario: Auto-close on success
 - [R4] External dependency: requires a connected controller; the exact upload‑status dialog layout is
   described in prose only and not yet confirmed against a running installation.
 
-**Implementation status:** ◑ **Offline slice implemented; the controller transfer itself deferred (no-controller
-constraint).** The actual send-to-EPROM, overwrite confirmation, upload-status/progress dialog and *Close on success*
-are **live-controller** behaviours (epic-level "Deferred — needs a live controller"; verification is Demonstration
-against a live controller), which this build must not perform — it never contacts a controller (no controller side
-effects). What **is** delivered, controller-free: **Controller ▸ Send project** (and **F5**) runs the offline
-pre-flight — `ProjectSession.GetUnlinkedWirelessProducts` scans the project and, when wireless products are not yet
-linked, shows the **unlinked-wireless warning** listing them ("they can be linked later"); declining cancels,
-accepting proceeds. The command then reports that the transfer requires a connected controller and stops (no
-controller contact). Traced via `RunAsync`; errors logged + surfaced. Tests: 3 in `ControllerTransferTests`
-(unlinked-wireless detection; decline cancels; accept → controller-required notice). Suites: `safe_visual_tests`
-**160**, byte-fidelity `safe_project_tests` **663** green. OpenObserve 0 errors. *(Deferred to a controller-enabled
-build: the transfer, overwrite confirm, status/progress dialog, Close-on-success — all require a live controller and
-the SDK `ProjectAppService.UploadTo` bridge.)*
+**Implementation status:** ◑ Offline slice implemented; controller transfer deferred.
 
 ---
 
@@ -132,13 +120,4 @@ Scenario: Auto-close on success
 - [R4] External dependency: requires a connected controller with a stored project; the retrieve dialog
   contents are documented in prose only.
 
-**Implementation status:** ◑ **Menu present; the retrieve transfer deferred (no-controller constraint).** Retrieving a
-project stored in the controller's EPROM is a **live-controller** operation (epic "Deferred — needs a live controller";
-verification is Demonstration against a live controller) with no offline part — there is nothing to pre-flight locally.
-This build never contacts a controller (no controller side effects). **Controller ▸ Retrieve project** is present and,
-when invoked, reports that a connected controller is required and performs no transfer (no controller contact). The
-`F5` open-discrepancy is resolved conservatively — F5 is bound to **Send project** only (matching the keyboard-shortcut
-set), not Retrieve. Traced via `RunAsync`. Test: 1 in `ControllerTransferTests` (reports controller-required). Suites:
-`safe_visual_tests` **160**, byte-fidelity `safe_project_tests` **663** green. OpenObserve 0 errors. *(Deferred to a
-controller-enabled build: the retrieve, the in-controller project metadata dialog, Get enable/disable, Close-on-success —
-all require a live controller and the SDK `ProjectAppService.DownloadFrom` bridge.)*
+**Implementation status:** ◑ Menu present; retrieve transfer deferred.

@@ -89,26 +89,7 @@ switches, toolbar/status‑bar toggles, simulation) which do not enter the edit 
 - [R3] Undo/redo **depth** (single‑ vs multi‑level; number of steps retained) is `[TBD]` — confirm
   during implementation.
 
-**Implementation status:** ✅ **Implemented (multi-level).** Every project-mutating operation now commits through a
-single `ProjectSession.CommitAsync` path, which pushes the pre-edit **immutable `Project` snapshot** onto an undo list
-and clears the redo list before swapping in the new project — so **every** edit across E2–E9 (locality add/rename/
-delete, product insert/configure/address/delete, block insert/unlock/save, links, variable/program authoring,
-enumerators, project-info/data-table edits) is captured with **no per-command wiring** (the ~30 mutation sites were
-refactored to the shared commit; the existing per-epic tests all still pass, proving the refactor is behaviour-
-preserving). **Edit ▸ Undo (`Ctrl+Z`)** restores the previous snapshot and pushes the current one onto the redo list;
-**Edit ▸ Redo (`Ctrl+Y`)** is the mirror. Because the whole project is a snapshot, undo/redo restore the exact state
-**reflected identically in both panes** (via `StateChanged` → tree rebuild) and a **cascading delete reverses as one
-step** (verified: deleting a non-empty locality is undone with its block in a single `Ctrl+Z`). A **new edit after an
-undo clears the redo** history; **undo with an empty history is a no-op**; a **load (New/Open/Close) resets** the
-history. Depth (the `[R3]` `[TBD]`) is resolved as **multi-level**, capped at 100 steps. Non-mutating actions
-(programming-mode enter/leave, chrome toggles) never call `CommitAsync`, so they stay off the history.
-
-Undo/redo are traced via `ActivitySource`. *(The status bar shows a generic "Undid the last change." / "Redid the
-change." — a per-action description was intentionally not threaded through all ~30 mutation sites to keep the
-centralized commit path safe and uniform; naming the specific action is a small future enhancement.)* Tests: 6 in
-`EditHistoryTests` (insert undo/redo reflected in both panes; empty-history no-op; redo cleared by a new edit; cascading
-delete reversed as one step; undo/redo spanning an E7 variable-authoring edit; New resets the history). Suites:
-`safe_visual_tests` **175**, byte-fidelity `safe_project_tests` **663** green. OpenObserve 0 errors.
+**Implementation status:** ✅ Implemented (multi-level).
 
 ---
 

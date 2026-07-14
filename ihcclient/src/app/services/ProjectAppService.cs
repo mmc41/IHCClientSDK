@@ -698,9 +698,30 @@ namespace Ihc.Vis
             }
         }
 
-        // The third report type — function-block documentation (US-041) — is deferred: its per-field layout is
-        // not transcribed yet. Only the placeholder Ihc.Vis.Reporting.FunctionBlockReport type exists; no builder
-        // is wired here until the layout is specified.
+        /// <summary>
+        /// Builds the render-ready function-block ("Functionsblok dokumentation") report model from a loaded
+        /// project (US-041): every function block in Installation/Functions-pane document order, each with its
+        /// variable sections and their variables. A minimal US-041 listing (extend when the full vendor per-field
+        /// layout is transcribed); all logic lives in the SDK — a GUI transforms the result 1-to-1 into HTML.
+        /// </summary>
+        public FunctionBlockReport GenerateFunctionBlockReport(Project project)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            using (var activity = StartActivity(nameof(GenerateFunctionBlockReport)))
+            {
+                try
+                {
+                    FunctionBlockReport report = ReportBuilder.BuildFunctionBlock(project);
+                    activity?.SetReturnValue(report.Blocks.Length);
+                    return report;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
 
         /// <summary>Validates a project against the pre-serialize checklist.</summary>
         public ProjectValidationResult Validate(Project project)
