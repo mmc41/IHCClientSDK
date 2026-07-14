@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="440" d:DesignHeight="560"
         x:Class="ihc_openvisual.Views.ProjectInfoWindow"
         Title="Project information"
@@ -27,48 +28,48 @@
                 </StackPanel.Styles>
 
                 <TextBlock Classes="section" Text="Project"/>
-                <TextBlock Classes="label" Text="Description"/>
-                <TextBox Name="ProjDescriptionBox"/>
-                <TextBlock Classes="label" Text="Number"/>
-                <TextBox Name="ProjNumberBox"/>
-                <TextBlock Classes="label" Text="Programmer"/>
-                <TextBox Name="ProjProgrammerBox"/>
+                <TextBlock Name="ProjDescriptionLabel" Classes="label" Text="Description"/>
+                <TextBox Name="ProjDescriptionBox" a:AutomationProperties.LabeledBy="{Binding #ProjDescriptionLabel}"/>
+                <TextBlock Name="ProjNumberLabel" Classes="label" Text="Number"/>
+                <TextBox Name="ProjNumberBox" a:AutomationProperties.LabeledBy="{Binding #ProjNumberLabel}"/>
+                <TextBlock Name="ProjProgrammerLabel" Classes="label" Text="Programmer"/>
+                <TextBox Name="ProjProgrammerBox" a:AutomationProperties.LabeledBy="{Binding #ProjProgrammerLabel}"/>
 
                 <TextBlock Classes="section" Text="Customer"/>
-                <TextBlock Classes="label" Text="Name"/>
-                <TextBox Name="CustNameBox"/>
-                <TextBlock Classes="label" Text="Address"/>
-                <TextBox Name="CustAddressBox"/>
-                <TextBlock Classes="label" Text="City"/>
-                <TextBox Name="CustCityBox"/>
-                <TextBlock Classes="label" Text="Zip code"/>
-                <TextBox Name="CustZipBox"/>
-                <TextBlock Classes="label" Text="Country"/>
-                <TextBox Name="CustCountryBox"/>
-                <TextBlock Classes="label" Text="Phone"/>
-                <TextBox Name="CustPhoneBox"/>
-                <TextBlock Classes="label" Text="Mobile"/>
-                <TextBox Name="CustMobileBox"/>
-                <TextBlock Classes="label" Text="Email"/>
-                <TextBox Name="CustEmailBox"/>
+                <TextBlock Name="CustNameLabel" Classes="label" Text="Name"/>
+                <TextBox Name="CustNameBox" a:AutomationProperties.LabeledBy="{Binding #CustNameLabel}"/>
+                <TextBlock Name="CustAddressLabel" Classes="label" Text="Address"/>
+                <TextBox Name="CustAddressBox" a:AutomationProperties.LabeledBy="{Binding #CustAddressLabel}"/>
+                <TextBlock Name="CustCityLabel" Classes="label" Text="City"/>
+                <TextBox Name="CustCityBox" a:AutomationProperties.LabeledBy="{Binding #CustCityLabel}"/>
+                <TextBlock Name="CustZipLabel" Classes="label" Text="Zip code"/>
+                <TextBox Name="CustZipBox" a:AutomationProperties.LabeledBy="{Binding #CustZipLabel}"/>
+                <TextBlock Name="CustCountryLabel" Classes="label" Text="Country"/>
+                <TextBox Name="CustCountryBox" a:AutomationProperties.LabeledBy="{Binding #CustCountryLabel}"/>
+                <TextBlock Name="CustPhoneLabel" Classes="label" Text="Phone"/>
+                <TextBox Name="CustPhoneBox" a:AutomationProperties.LabeledBy="{Binding #CustPhoneLabel}"/>
+                <TextBlock Name="CustMobileLabel" Classes="label" Text="Mobile"/>
+                <TextBox Name="CustMobileBox" a:AutomationProperties.LabeledBy="{Binding #CustMobileLabel}"/>
+                <TextBlock Name="CustEmailLabel" Classes="label" Text="Email"/>
+                <TextBox Name="CustEmailBox" a:AutomationProperties.LabeledBy="{Binding #CustEmailLabel}"/>
 
                 <TextBlock Classes="section" Text="Installer"/>
-                <TextBlock Classes="label" Text="Name"/>
-                <TextBox Name="InstNameBox"/>
-                <TextBlock Classes="label" Text="Address"/>
-                <TextBox Name="InstAddressBox"/>
-                <TextBlock Classes="label" Text="City"/>
-                <TextBox Name="InstCityBox"/>
-                <TextBlock Classes="label" Text="Zip code"/>
-                <TextBox Name="InstZipBox"/>
-                <TextBlock Classes="label" Text="Country"/>
-                <TextBox Name="InstCountryBox"/>
-                <TextBlock Classes="label" Text="Phone"/>
-                <TextBox Name="InstPhoneBox"/>
-                <TextBlock Classes="label" Text="Mobile"/>
-                <TextBox Name="InstMobileBox"/>
-                <TextBlock Classes="label" Text="Email"/>
-                <TextBox Name="InstEmailBox"/>
+                <TextBlock Name="InstNameLabel" Classes="label" Text="Name"/>
+                <TextBox Name="InstNameBox" a:AutomationProperties.LabeledBy="{Binding #InstNameLabel}"/>
+                <TextBlock Name="InstAddressLabel" Classes="label" Text="Address"/>
+                <TextBox Name="InstAddressBox" a:AutomationProperties.LabeledBy="{Binding #InstAddressLabel}"/>
+                <TextBlock Name="InstCityLabel" Classes="label" Text="City"/>
+                <TextBox Name="InstCityBox" a:AutomationProperties.LabeledBy="{Binding #InstCityLabel}"/>
+                <TextBlock Name="InstZipLabel" Classes="label" Text="Zip code"/>
+                <TextBox Name="InstZipBox" a:AutomationProperties.LabeledBy="{Binding #InstZipLabel}"/>
+                <TextBlock Name="InstCountryLabel" Classes="label" Text="Country"/>
+                <TextBox Name="InstCountryBox" a:AutomationProperties.LabeledBy="{Binding #InstCountryLabel}"/>
+                <TextBlock Name="InstPhoneLabel" Classes="label" Text="Phone"/>
+                <TextBox Name="InstPhoneBox" a:AutomationProperties.LabeledBy="{Binding #InstPhoneLabel}"/>
+                <TextBlock Name="InstMobileLabel" Classes="label" Text="Mobile"/>
+                <TextBox Name="InstMobileBox" a:AutomationProperties.LabeledBy="{Binding #InstMobileLabel}"/>
+                <TextBlock Name="InstEmailLabel" Classes="label" Text="Email"/>
+                <TextBox Name="InstEmailBox" a:AutomationProperties.LabeledBy="{Binding #InstEmailLabel}"/>
             </StackPanel>
         </ScrollViewer>
     </DockPanel>

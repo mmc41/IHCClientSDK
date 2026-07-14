@@ -101,10 +101,17 @@ public sealed class ProjectSession : IDisposable
     public event EventHandler? StateChanged;
 
     /// <summary>Start-up entry point: offer to recover a crash backup if one exists (US-005), otherwise open a
-    /// fresh empty project (US-002); then begin the auto-backup timer.</summary>
-    public async Task StartAsync()
+    /// fresh empty project (US-002); then begin the auto-backup timer.
+    /// <para>When <paramref name="skipRecovery"/> is set (the <c>--skip-recovery</c> launch flag), the recovery
+    /// prompt is bypassed entirely and any stale crash backup is discarded, so an unattended UI-automation
+    /// session always opens a deterministic fresh project instead of blocking on a modal dialog.</para></summary>
+    public async Task StartAsync(bool skipRecovery = false)
     {
-        if (_backup.HasRecovery())
+        if (skipRecovery)
+        {
+            _backup.Delete();
+        }
+        else if (_backup.HasRecovery())
         {
             RecoveryInfo? info = _backup.ReadMarker();
             string when = info is { } i ? $" from {i.SavedAtUtc.ToLocalTime():g}" : string.Empty;

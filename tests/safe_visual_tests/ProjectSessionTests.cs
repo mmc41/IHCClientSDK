@@ -160,6 +160,32 @@ public class ProjectSessionTests
         Assert.That(harness.Backup.HasRecovery(), Is.True, "the 3rd change triggers a recovery backup");
     }
 
+    // Automation needs a deterministic launch: the --skip-recovery flag must open a fresh project and discard
+    // any stale crash backup WITHOUT ever showing the "Recover project?" dialog that would otherwise block an
+    // unattended (UI-automation) session.
+    [Test]
+    public async Task StartAsync_SkipRecovery_DiscardsBackup_WithoutPrompting()
+    {
+        using var harness = ShellHarness.Create();
+        await harness.Session.StartAsync();
+        await harness.Session.AutoBackupAsync();
+        Assert.That(harness.Backup.HasRecovery(), Is.True, "precondition: a crash backup exists");
+
+        // A fresh session over the same backup directory (as if the app relaunched), started with recovery skipped.
+        using var restarted = ShellHarness.Restart(harness.TempDir);
+        restarted.Dialogs.ConfirmResult = true;   // it would recover if it were ever asked
+
+        await restarted.Session.StartAsync(skipRecovery: true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(restarted.Dialogs.ConfirmCalls, Is.EqualTo(0), "the recovery dialog is never shown");
+            Assert.That(restarted.Backup.HasRecovery(), Is.False, "the stale crash backup is discarded up front");
+            Assert.That(restarted.Session.DocumentName, Is.EqualTo("Untitled"), "a fresh empty project is opened");
+            Assert.That(restarted.Session.Current!.Groups.Count, Is.EqualTo(10));
+        });
+    }
+
     [Test]
     public async Task Close_DeletesRecoveryBackup()
     {

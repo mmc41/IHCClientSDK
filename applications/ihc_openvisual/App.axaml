@@ -23,12 +23,17 @@
                     <SolidColorBrush x:Key="StatusBarBackgroundBrush" Color="#FFF0F0F0"/>
                     <SolidColorBrush x:Key="ToolbarBackgroundBrush" Color="#FFF7F7F7"/>
                     <SolidColorBrush x:Key="SecondaryTextBrush" Color="#FF666666"/>
+                    <!-- Warning ink (e.g. the "!" unlinked marker). A dark amber that clears WCAG 4.5:1 on the
+                         light window background, unlike the former inline #E0A800 which did not. -->
+                    <SolidColorBrush x:Key="WarningBrush" Color="#FFB45309"/>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <Color x:Key="IconColor">#FFE0E0E0</Color>
                     <SolidColorBrush x:Key="StatusBarBackgroundBrush" Color="#FF2A2A2A"/>
                     <SolidColorBrush x:Key="ToolbarBackgroundBrush" Color="#FF2D2D2D"/>
                     <SolidColorBrush x:Key="SecondaryTextBrush" Color="#FFAAAAAA"/>
+                    <!-- Brighter amber for the dark background — high contrast on the dark surfaces. -->
+                    <SolidColorBrush x:Key="WarningBrush" Color="#FFFBBF24"/>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 

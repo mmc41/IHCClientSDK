@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics;
 using Avalonia.Controls;
-using Avalonia.Input;
 using Avalonia.Interactivity;
 using ihc_openvisual.Configuration;
 using Microsoft.Extensions.Logging;
@@ -20,13 +19,13 @@ public partial class AboutWindow : Window
         _logger = (Program.LoggerFactory ?? NullLoggerFactory.Instance).CreateLogger<AboutWindow>();
 
         AppDescription.Text = Constants.AppDescription;
-        RepoLink.Text = Constants.SdkRepoLink;
+        RepoLinkText.Text = Constants.SdkRepoLink;
         RepoAuthors.Text = Constants.Authors;
         AppVersionText.Text = $"App Version: {VersionInfo.GetAppVersionStr()}";
         SdkVersionText.Text = $"SDK Version: {Ihc.VersionInfo.GetSdkVersionStr()}";
     }
 
-    private void OnRepoLinkClick(object? sender, PointerPressedEventArgs e)
+    private void OnRepoLinkClick(object? sender, RoutedEventArgs e)
     {
         using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(AboutWindow)}.{nameof(OnRepoLinkClick)}", ActivityKind.Internal);
         try

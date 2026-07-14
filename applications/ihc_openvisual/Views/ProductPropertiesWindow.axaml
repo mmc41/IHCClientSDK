@@ -3,6 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:svc="using:ihc_openvisual.Services"
+        xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="440" d:DesignHeight="480"
         x:Class="ihc_openvisual.Views.ProductPropertiesWindow"
         Title="Product properties"
@@ -18,11 +19,12 @@
             </Style>
         </StackPanel.Styles>
 
-        <TextBlock Classes="label" Text="Name"/>
-        <TextBox Name="NameBox"/>
+        <TextBlock Name="NameLabel" Classes="label" Text="Name"/>
+        <TextBox Name="NameBox" a:AutomationProperties.LabeledBy="{Binding #NameLabel}"/>
 
-        <TextBlock Classes="label" Text="Location"/>
-        <ComboBox Name="LocationCombo" HorizontalAlignment="Stretch">
+        <TextBlock Name="LocationLabel" Classes="label" Text="Location"/>
+        <ComboBox Name="LocationCombo" HorizontalAlignment="Stretch"
+                  a:AutomationProperties.LabeledBy="{Binding #LocationLabel}">
             <ComboBox.ItemTemplate>
                 <DataTemplate x:DataType="svc:LocalityChoice">
                     <TextBlock Text="{Binding Name}"/>
@@ -30,22 +32,23 @@
             </ComboBox.ItemTemplate>
         </ComboBox>
 
-        <TextBlock Classes="label" Text="Note"/>
-        <TextBox Name="NoteBox" AcceptsReturn="True" TextWrapping="Wrap" Height="70" VerticalContentAlignment="Top"/>
+        <TextBlock Name="NoteLabel" Classes="label" Text="Note"/>
+        <TextBox Name="NoteBox" AcceptsReturn="True" TextWrapping="Wrap" Height="70" VerticalContentAlignment="Top"
+                 a:AutomationProperties.LabeledBy="{Binding #NoteLabel}"/>
 
         <StackPanel Name="CablingPanel" Spacing="6">
-            <TextBlock Classes="label" Text="Cable type"/>
-            <TextBox Name="CableTypeBox"/>
+            <TextBlock Name="CableTypeLabel" Classes="label" Text="Cable type"/>
+            <TextBox Name="CableTypeBox" a:AutomationProperties.LabeledBy="{Binding #CableTypeLabel}"/>
 
-            <TextBlock Classes="label" Text="Cable numbering"/>
-            <TextBox Name="CableNumberBox"/>
+            <TextBlock Name="CableNumberLabel" Classes="label" Text="Cable numbering"/>
+            <TextBox Name="CableNumberBox" a:AutomationProperties.LabeledBy="{Binding #CableNumberLabel}"/>
         </StackPanel>
 
-        <TextBlock Classes="label" Text="Identification code"/>
-        <TextBox Name="IdentificationBox"/>
+        <TextBlock Name="IdentificationLabel" Classes="label" Text="Identification code"/>
+        <TextBox Name="IdentificationBox" a:AutomationProperties.LabeledBy="{Binding #IdentificationLabel}"/>
 
-        <TextBlock Classes="label" Text="Light group"/>
-        <TextBox Name="LightGroupBox"/>
+        <TextBlock Name="LightGroupLabel" Classes="label" Text="Light group"/>
+        <TextBox Name="LightGroupBox" a:AutomationProperties.LabeledBy="{Binding #LightGroupLabel}"/>
 
         <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,14,0,0">
             <Button Grid.Column="0" Name="AdvancedButton" Content="Advanced…" MinWidth="96"

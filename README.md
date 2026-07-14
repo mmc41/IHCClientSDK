@@ -254,6 +254,39 @@ OpenObserve setup:
     },
 ```
 
+## Developer skills (Claude Code)
+
+The `.claude/skills/` folder contains two [Claude Code](https://claude.ai/code) skills that assist with **development and testing only**. They are not part of the shipped SDK, are not required to build or use the library, and never run in production. When working in this repo with Claude Code they are consulted automatically (or you can invoke them by name); the underlying scripts can also be run by hand as described below.
+
+### `openobserve` — runtime error lookup & diagnosis
+
+Queries this repo's OpenObserve logs and traces to tell you whether a run actually failed and why — after running any app/example/utility, or when investigating a reported bug, exception, silent failure, timeout or slow span. Much of what goes wrong at runtime (controller/SOAP failures, dropped telemetry, unhandled exceptions) is only visible in telemetry, not in the console.
+
+- Cross-platform, Python-standard-library only (no extra packages).
+- Requires OpenObserve running and the `telemetry` section configured in `ihcsettings.json` (see [OpenTelemetry using OpenObserve details](#opentelemetry-using-openobserve-details) above).
+- In Claude Code, ask it to "check OpenObserve for errors" after a run; it reads the settings and queries the collector, accounting for the short indexing delay.
+
+### `aui-openvisual` — UI automation for the IHC OpenVisual app (Windows only)
+
+Drives the **IHC OpenVisual** desktop app (`applications/ihc_openvisual`) through Windows UI Automation for scripted GUI testing: launching it, navigating the locality/function trees, invoking toolbar/menu/context commands, expanding/collapsing and clicking nodes, reading tooltips, capturing the window, and checking a uniform JSON result. Useful for verifying a GUI change end-to-end in the real app rather than only in the headless test suites.
+
+- **Windows only** — it uses the Windows UI Automation API and errors with `Code=PlatformUnsupported` on macOS/Linux.
+- No install required: it uses the built-in `System.Windows.Automation` client via PowerShell (Windows PowerShell 5.1 or PowerShell 7).
+- Exposes a stable `domain.verb` command vocabulary with label-path node addressing; every command prints one JSON result and sets an exit code, so multi-step runs are scriptable and diffable.
+
+Run the driver directly (build the app first with `dotnet build applications/ihc_openvisual/ihc_openvisual.csproj`):
+
+```bash
+# from the repository root
+pwsh .claude/skills/aui-openvisual/scripts/aui.ps1 catalog commands        # list the command vocabulary
+pwsh .claude/skills/aui-openvisual/scripts/aui.ps1 doctor --launch          # launch the app, then readiness check
+pwsh .claude/skills/aui-openvisual/scripts/aui.ps1 tree select "Localities/Kitchen"
+pwsh .claude/skills/aui-openvisual/scripts/aui.ps1 node expand "Localities"
+pwsh .claude/skills/aui-openvisual/scripts/aui.ps1 capture window
+```
+
+`doctor --launch` starts the app with `--skip-recovery` so no crash-recovery prompt can block an unattended run. See `.claude/skills/aui-openvisual/SKILL.md` and its `references/` for the full command list, node addressing, result/exit-code contract, and how to extend the vocabulary.
+
 ## FAQ
 
 **Q**: Do I need to configure my IHC before running the examples or using the API from my own code?

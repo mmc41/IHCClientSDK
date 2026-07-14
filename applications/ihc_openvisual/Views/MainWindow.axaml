@@ -5,6 +5,8 @@
         xmlns:vm="using:ihc_openvisual.ViewModels"
         xmlns:svc="using:ihc_openvisual.Services"
         xmlns:conv="using:ihc_openvisual.Converters"
+        xmlns:controls="using:ihc_openvisual.Controls"
+        xmlns:a="using:Avalonia.Automation"
         xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
         mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="680"
         x:Class="ihc_openvisual.Views.MainWindow"
@@ -126,7 +128,7 @@
     <DockPanel>
         <!-- ============ Menu bar: the stable title hosts ============ -->
         <Menu DockPanel.Dock="Top">
-            <MenuItem Header="_File">
+            <MenuItem Header="_File" a:AutomationProperties.AutomationId="MenuFile">
                 <MenuItem Header="_New project" Command="{Binding NewCommand}" InputGesture="Ctrl+N"/>
                 <MenuItem Header="_Open project…" Command="{Binding OpenCommand}" InputGesture="Ctrl+O"/>
                 <Separator/>
@@ -153,7 +155,7 @@
             </MenuItem>
 
             <!-- Edit is owned by later epics (E14–E15); present as a stable host. -->
-            <MenuItem Header="_Edit">
+            <MenuItem Header="_Edit" a:AutomationProperties.AutomationId="MenuEdit">
                 <MenuItem Header="_Undo" Command="{Binding UndoCommand}" InputGesture="Ctrl+Z"/>
                 <MenuItem Header="_Redo" Command="{Binding RedoCommand}" InputGesture="Ctrl+Y"/>
                 <Separator/>
@@ -163,7 +165,7 @@
                 <MenuItem Header="_Delete" Command="{Binding DeleteCommand}" CommandParameter="{Binding SelectedNode}" InputGesture="Delete"/>
             </MenuItem>
 
-            <MenuItem Header="_View">
+            <MenuItem Header="_View" a:AutomationProperties.AutomationId="MenuView">
                 <MenuItem Header="_Toolbar" ToggleType="CheckBox"
                           IsChecked="{Binding IsToolbarVisible}" Command="{Binding ToggleToolbarCommand}"/>
                 <MenuItem Header="_Status bar" ToggleType="CheckBox"
@@ -183,7 +185,7 @@
             </MenuItem>
 
             <!-- Insert: Products submenu is E3; the rest are owned by later epics. -->
-            <MenuItem Header="_Insert">
+            <MenuItem Header="_Insert" a:AutomationProperties.AutomationId="MenuInsert">
                 <MenuItem Header="_Products">
                     <MenuItem Header="_Wired products" ItemsSource="{Binding WiredProductsMenu}"
                               ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
@@ -193,18 +195,18 @@
                               ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
                 </MenuItem>
             </MenuItem>
-            <MenuItem Header="_Library">
+            <MenuItem Header="_Library" a:AutomationProperties.AutomationId="MenuLibrary">
                 <MenuItem Header="Insert _function block" ItemsSource="{Binding FunctionBlocksMenu}"
                           ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
                 <Separator/>
                 <MenuItem Header="_Import catalog file…" Command="{Binding ImportCatalogFileCommand}"/>
                 <MenuItem Header="Import catalog f_older…" Command="{Binding ImportCatalogFolderCommand}"/>
             </MenuItem>
-            <MenuItem Header="_Controller">
+            <MenuItem Header="_Controller" a:AutomationProperties.AutomationId="MenuController">
                 <MenuItem Header="_Send project" Command="{Binding SendProjectCommand}" InputGesture="F5"/>
                 <MenuItem Header="_Retrieve project" Command="{Binding RetrieveProjectCommand}"/>
             </MenuItem>
-            <MenuItem Header="Doc_umentation">
+            <MenuItem Header="Doc_umentation" a:AutomationProperties.AutomationId="MenuDocumentation">
                 <MenuItem Header="_Project info…" Command="{Binding ProjectInfoCommand}"/>
                 <MenuItem Header="_Data tables…" Command="{Binding DataTablesCommand}"/>
                 <MenuItem Header="_Wired module map…" Command="{Binding ModuleMapCommand}"/>
@@ -219,7 +221,7 @@
                 </MenuItem>
             </MenuItem>
 
-            <MenuItem Header="_Help">
+            <MenuItem Header="_Help" a:AutomationProperties.AutomationId="MenuHelp">
                 <MenuItem Header="Help for _selection" Command="{Binding HelpCommand}" CommandParameter="{Binding SelectedNode}" InputGesture="F1"/>
                 <Separator/>
                 <MenuItem Header="Show settings" Command="{Binding ShowSettingsCommand}"/>
@@ -247,6 +249,9 @@
                     <Style Selector="svg|Svg.toolicon">
                         <Setter Property="Width" Value="18"/>
                         <Setter Property="Height" Value="18"/>
+                        <!-- Icons are decorative; the accessible name lives on the parent Button. Keep the glyph
+                             out of the automation tree so it is not announced separately. -->
+                        <Setter Property="a:AutomationProperties.AccessibilityView" Value="Raw"/>
                     </Style>
                     <Style Selector="Rectangle.toolsep">
                         <Setter Property="Width" Value="1"/>
@@ -255,37 +260,46 @@
                     </Style>
                 </StackPanel.Styles>
 
-                <Button Classes="tool" Command="{Binding NewCommand}" ToolTip.Tip="New project (Ctrl+N)">
+                <Button Classes="tool" Command="{Binding NewCommand}" ToolTip.Tip="New project (Ctrl+N)"
+                        a:AutomationProperties.Name="New project" a:AutomationProperties.AutomationId="ToolbarNew">
                     <svg:Svg Classes="toolicon" Path="/Assets/toolbar_new.svg" CurrentColor="{DynamicResource IconColor}"/>
                 </Button>
-                <Button Classes="tool" Command="{Binding OpenCommand}" ToolTip.Tip="Open project (Ctrl+O)">
+                <Button Classes="tool" Command="{Binding OpenCommand}" ToolTip.Tip="Open project (Ctrl+O)"
+                        a:AutomationProperties.Name="Open project" a:AutomationProperties.AutomationId="ToolbarOpen">
                     <svg:Svg Classes="toolicon" Path="/Assets/toolbar_open.svg" CurrentColor="{DynamicResource IconColor}"/>
                 </Button>
-                <Button Classes="tool" Command="{Binding SaveCommand}" ToolTip.Tip="Save project (Ctrl+S)">
+                <Button Classes="tool" Command="{Binding SaveCommand}" ToolTip.Tip="Save project (Ctrl+S)"
+                        a:AutomationProperties.Name="Save project" a:AutomationProperties.AutomationId="ToolbarSave">
                     <svg:Svg Classes="toolicon" Path="/Assets/toolbar_save.svg" CurrentColor="{DynamicResource IconColor}"/>
                 </Button>
 
                 <Rectangle Classes="toolsep"/>
-                <Button Classes="tool" Command="{Binding AboutCommand}" ToolTip.Tip="Help / About">
+                <Button Classes="tool" Command="{Binding AboutCommand}" ToolTip.Tip="Help / About"
+                        a:AutomationProperties.Name="Help and About" a:AutomationProperties.AutomationId="ToolbarHelp">
                     <svg:Svg Classes="toolicon" Path="/Assets/toolbar_help.svg" CurrentColor="{DynamicResource IconColor}"/>
                 </Button>
 
                 <Rectangle Classes="toolsep"/>
-                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Retrieve from controller (E10)">
+                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Retrieve from controller (E10)"
+                        a:AutomationProperties.Name="Retrieve from controller" a:AutomationProperties.AutomationId="ToolbarRetrieve">
                     <svg:Svg Classes="toolicon" Path="/Assets/toolbar_retrieve.svg" CurrentColor="{DynamicResource IconColor}"/>
                 </Button>
-                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Send to controller (E10)">
+                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Send to controller (E10)"
+                        a:AutomationProperties.Name="Send to controller" a:AutomationProperties.AutomationId="ToolbarSend">
                     <svg:Svg Classes="toolicon" Path="/Assets/toolbar_send.svg" CurrentColor="{DynamicResource IconColor}"/>
                 </Button>
 
                 <Rectangle Classes="toolsep"/>
-                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Cut (E14)">
+                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Cut (E14)"
+                        a:AutomationProperties.Name="Cut" a:AutomationProperties.AutomationId="ToolbarCut">
                     <svg:Svg Classes="toolicon" Path="/Assets/toolbar_cut.svg" CurrentColor="{DynamicResource IconColor}"/>
                 </Button>
-                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Copy (E14)">
+                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Copy (E14)"
+                        a:AutomationProperties.Name="Copy" a:AutomationProperties.AutomationId="ToolbarCopy">
                     <svg:Svg Classes="toolicon" Path="/Assets/toolbar_copy.svg" CurrentColor="{DynamicResource IconColor}"/>
                 </Button>
-                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Paste (E14)">
+                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Paste (E14)"
+                        a:AutomationProperties.Name="Paste" a:AutomationProperties.AutomationId="ToolbarPaste">
                     <svg:Svg Classes="toolicon" Path="/Assets/toolbar_paste.svg" CurrentColor="{DynamicResource IconColor}"/>
                 </Button>
             </StackPanel>
@@ -300,7 +314,8 @@
                 <TextBlock Grid.Column="0" Text="{Binding StatusText}" VerticalAlignment="Center"
                            FontSize="{StaticResource CaptionFontSize}"/>
                 <!-- Locale indicator: Danish flag -->
-                <Border Grid.Column="1" Width="20" Height="14" Background="#C8102E" ToolTip.Tip="Danish project locale">
+                <Border Grid.Column="1" Width="20" Height="14" Background="#C8102E" ToolTip.Tip="Danish project locale"
+                        a:AutomationProperties.Name="Danish project locale">
                     <Canvas>
                         <Rectangle Canvas.Left="6" Canvas.Top="0" Width="2.5" Height="14" Fill="White"/>
                         <Rectangle Canvas.Left="0" Canvas.Top="5.75" Width="20" Height="2.5" Fill="White"/>
@@ -316,28 +331,34 @@
                     <TextBlock Text="{Binding InstallationPaneHeader}" Foreground="{DynamicResource PaneHeaderForegroundBrush}"
                                FontWeight="SemiBold" FontSize="{StaticResource BodyFontSize}"/>
                 </Border>
-                <TreeView x:Name="InstallationTree" ItemsSource="{Binding InstallationNodes}" KeyDown="OnTreeKeyDown"
+                <controls:AccessibleTreeView x:Name="InstallationTree" ItemsSource="{Binding InstallationNodes}" KeyDown="OnTreeKeyDown"
                           SelectedItem="{Binding SelectedInstallationNode, Mode=TwoWay}"
                           ContextFlyout="{StaticResource NodeContextMenu}">
                     <TreeView.Styles>
-                        <Style Selector="TreeViewItem" x:DataType="vm:TreeNodeViewModel">
+                        <Style Selector=":is(TreeViewItem)" x:DataType="vm:TreeNodeViewModel">
                             <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
+                            <!-- Publish the row's accessible name on the container itself so a UIA client reading
+                                 TreeItem.Name gets the label directly (not blank, with the name on an inner peer). -->
+                            <Setter Property="a:AutomationProperties.Name" Value="{Binding AccessibleName}"/>
                         </Style>
                     </TreeView.Styles>
                     <TreeView.ItemTemplate>
                         <TreeDataTemplate x:DataType="vm:TreeNodeViewModel" ItemsSource="{Binding Children}">
-                            <StackPanel Orientation="Horizontal" Spacing="6" ToolTip.Tip="{Binding Tooltip}">
-                                <svg:Svg Width="16" Height="16" Path="{Binding IconAsset}" CurrentColor="{DynamicResource IconColor}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="6" ToolTip.Tip="{Binding Tooltip}"
+                                        a:AutomationProperties.Name="{Binding AccessibleName}"
+                                        a:AutomationProperties.HelpText="{Binding Tooltip}">
+                                <svg:Svg Width="16" Height="16" Path="{Binding IconAsset}" CurrentColor="{DynamicResource IconColor}"
+                                         a:AutomationProperties.AccessibilityView="Raw"/>
                                 <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"
                                            FontWeight="{Binding IsBold, Converter={x:Static conv:BoolToFontWeightConverter.Instance}}"/>
                                 <!-- Unlinked wireless product marker (US-014) -->
-                                <TextBlock Text="!" FontWeight="Bold" Foreground="#E0A800" VerticalAlignment="Center"
+                                <TextBlock Text="!" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"
                                            IsVisible="{Binding IsUnlinked}"
                                            ToolTip.Tip="Not yet linked to the controller"/>
                             </StackPanel>
                         </TreeDataTemplate>
                     </TreeView.ItemTemplate>
-                </TreeView>
+                </controls:AccessibleTreeView>
             </DockPanel>
 
             <GridSplitter Grid.Column="1" Width="4" ResizeDirection="Columns"
@@ -348,28 +369,34 @@
                     <TextBlock Text="{Binding FunctionsPaneHeader}" Foreground="{DynamicResource PaneHeaderForegroundBrush}"
                                FontWeight="SemiBold" FontSize="{StaticResource BodyFontSize}"/>
                 </Border>
-                <TreeView x:Name="FunctionsTree" ItemsSource="{Binding FunctionNodes}" KeyDown="OnTreeKeyDown"
+                <controls:AccessibleTreeView x:Name="FunctionsTree" ItemsSource="{Binding FunctionNodes}" KeyDown="OnTreeKeyDown"
                           SelectedItem="{Binding SelectedFunctionsNode, Mode=TwoWay}"
                           ContextFlyout="{StaticResource NodeContextMenu}">
                     <TreeView.Styles>
-                        <Style Selector="TreeViewItem" x:DataType="vm:TreeNodeViewModel">
+                        <Style Selector=":is(TreeViewItem)" x:DataType="vm:TreeNodeViewModel">
                             <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
+                            <!-- Publish the row's accessible name on the container itself so a UIA client reading
+                                 TreeItem.Name gets the label directly (not blank, with the name on an inner peer). -->
+                            <Setter Property="a:AutomationProperties.Name" Value="{Binding AccessibleName}"/>
                         </Style>
                     </TreeView.Styles>
                     <TreeView.ItemTemplate>
                         <TreeDataTemplate x:DataType="vm:TreeNodeViewModel" ItemsSource="{Binding Children}">
-                            <StackPanel Orientation="Horizontal" Spacing="6" ToolTip.Tip="{Binding Tooltip}">
-                                <svg:Svg Width="16" Height="16" Path="{Binding IconAsset}" CurrentColor="{DynamicResource IconColor}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="6" ToolTip.Tip="{Binding Tooltip}"
+                                        a:AutomationProperties.Name="{Binding AccessibleName}"
+                                        a:AutomationProperties.HelpText="{Binding Tooltip}">
+                                <svg:Svg Width="16" Height="16" Path="{Binding IconAsset}" CurrentColor="{DynamicResource IconColor}"
+                                         a:AutomationProperties.AccessibilityView="Raw"/>
                                 <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"
                                            FontWeight="{Binding IsBold, Converter={x:Static conv:BoolToFontWeightConverter.Instance}}"/>
                                 <!-- Unlinked wireless product marker (US-014) -->
-                                <TextBlock Text="!" FontWeight="Bold" Foreground="#E0A800" VerticalAlignment="Center"
+                                <TextBlock Text="!" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"
                                            IsVisible="{Binding IsUnlinked}"
                                            ToolTip.Tip="Not yet linked to the controller"/>
                             </StackPanel>
                         </TreeDataTemplate>
                     </TreeView.ItemTemplate>
-                </TreeView>
+                </controls:AccessibleTreeView>
             </DockPanel>
         </Grid>
     </DockPanel>

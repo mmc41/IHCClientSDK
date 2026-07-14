@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="380" d:DesignHeight="260"
         x:Class="ihc_openvisual.Views.SceneValueWindow"
         Title="Scene value"
@@ -19,21 +20,25 @@
 
         <!-- Dimmer variant: light level + ramp time -->
         <StackPanel Name="DimmerPanel" Spacing="6">
-            <TextBlock Classes="label" Text="Light level (%)"/>
-            <NumericUpDown Name="LevelBox" Minimum="0" Maximum="100" Increment="5" FormatString="0"/>
+            <TextBlock Name="LevelLabel" Classes="label" Text="Light level (%)"/>
+            <NumericUpDown Name="LevelBox" Minimum="0" Maximum="100" Increment="5" FormatString="0"
+                           a:AutomationProperties.LabeledBy="{Binding #LevelLabel}"/>
             <TextBlock Classes="label" Text="Ramp time"/>
             <Grid ColumnDefinitions="*,Auto,*,Auto" ColumnSpacing="6">
-                <NumericUpDown Grid.Column="0" Name="RampMinutesBox" Minimum="0" Maximum="59" Increment="1" FormatString="0"/>
+                <NumericUpDown Grid.Column="0" Name="RampMinutesBox" Minimum="0" Maximum="59" Increment="1" FormatString="0"
+                               a:AutomationProperties.Name="Ramp time minutes"/>
                 <TextBlock Grid.Column="1" Text="min" VerticalAlignment="Center"/>
-                <NumericUpDown Grid.Column="2" Name="RampSecondsBox" Minimum="0" Maximum="59" Increment="1" FormatString="0"/>
+                <NumericUpDown Grid.Column="2" Name="RampSecondsBox" Minimum="0" Maximum="59" Increment="1" FormatString="0"
+                               a:AutomationProperties.Name="Ramp time seconds"/>
                 <TextBlock Grid.Column="3" Text="sec" VerticalAlignment="Center"/>
             </Grid>
         </StackPanel>
 
         <!-- Relay/socket variant: ON/OFF -->
         <StackPanel Name="RelayPanel" Spacing="6">
-            <TextBlock Classes="label" Text="State"/>
-            <ComboBox Name="StateCombo" HorizontalAlignment="Stretch">
+            <TextBlock Name="StateLabel" Classes="label" Text="State"/>
+            <ComboBox Name="StateCombo" HorizontalAlignment="Stretch"
+                      a:AutomationProperties.LabeledBy="{Binding #StateLabel}">
                 <ComboBoxItem>OFF</ComboBoxItem>
                 <ComboBoxItem>ON</ComboBoxItem>
             </ComboBox>

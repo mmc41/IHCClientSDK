@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="380" d:DesignHeight="320"
         x:Class="ihc_openvisual.Views.EnumDefinitionWindow"
         Title="Enumerator"
@@ -17,12 +18,13 @@
             </Style>
         </StackPanel.Styles>
 
-        <TextBlock Classes="label" Text="Enumerator type"/>
-        <TextBox Name="TypeNameBox"/>
+        <TextBlock Name="TypeNameLabel" Classes="label" Text="Enumerator type"/>
+        <TextBox Name="TypeNameBox" a:AutomationProperties.LabeledBy="{Binding #TypeNameLabel}"/>
 
-        <TextBlock Classes="label" Text="States (one per line, in order)"/>
+        <TextBlock Name="StatesLabel" Classes="label" Text="States (one per line, in order)"/>
         <TextBox Name="StatesBox" AcceptsReturn="True" TextWrapping="NoWrap"
-                 Height="140" VerticalContentAlignment="Top"/>
+                 Height="140" VerticalContentAlignment="Top"
+                 a:AutomationProperties.LabeledBy="{Binding #StatesLabel}"/>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,14,0,0">
             <Button Name="OkButton" Content="OK" MinWidth="84" IsDefault="True" Click="OnOk"/>

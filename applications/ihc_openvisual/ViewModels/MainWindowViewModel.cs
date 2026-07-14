@@ -655,7 +655,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
     }
 
-    public Task InitializeAsync() => _session.StartAsync();
+    public Task InitializeAsync(bool skipRecovery = false) => _session.StartAsync(skipRecovery);
 
     /// <summary>Runs the window-close save prompt (US-064); returns false to cancel the quit.</summary>
     public Task<bool> CanCloseAsync() => _session.CanQuitAsync();

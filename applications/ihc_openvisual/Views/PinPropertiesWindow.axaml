@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="420"
         x:Class="ihc_openvisual.Views.PinPropertiesWindow"
         Title="Terminal addressing"
@@ -17,26 +18,29 @@
             </Style>
         </StackPanel.Styles>
 
-        <TextBlock Classes="label" Text="Data line"/>
-        <NumericUpDown Name="DataLineBox" Minimum="1" Increment="1" FormatString="0"/>
+        <TextBlock Name="DataLineLabel" Classes="label" Text="Data line"/>
+        <NumericUpDown Name="DataLineBox" Minimum="1" Increment="1" FormatString="0"
+                       a:AutomationProperties.LabeledBy="{Binding #DataLineLabel}"/>
 
-        <TextBlock Classes="label" Text="Terminal"/>
-        <NumericUpDown Name="TerminalBox" Minimum="1" Increment="1" FormatString="0"/>
+        <TextBlock Name="TerminalLabel" Classes="label" Text="Terminal"/>
+        <NumericUpDown Name="TerminalBox" Minimum="1" Increment="1" FormatString="0"
+                       a:AutomationProperties.LabeledBy="{Binding #TerminalLabel}"/>
 
         <TextBlock Text="Terminals already in use:" Margin="0,6,0,0"
                    Foreground="{DynamicResource SecondaryTextBrush}"/>
         <TextBlock Name="InUseText" TextWrapping="Wrap"
                    Foreground="{DynamicResource SecondaryTextBrush}"/>
 
-        <TextBlock Classes="label" Text="Cable colour"/>
-        <TextBox Name="CableColourBox"/>
+        <TextBlock Name="CableColourLabel" Classes="label" Text="Cable colour"/>
+        <TextBox Name="CableColourBox" a:AutomationProperties.LabeledBy="{Binding #CableColourLabel}"/>
 
-        <TextBlock Classes="label" Text="Note"/>
-        <TextBox Name="NoteBox"/>
+        <TextBlock Name="NoteLabel" Classes="label" Text="Note"/>
+        <TextBox Name="NoteBox" a:AutomationProperties.LabeledBy="{Binding #NoteLabel}"/>
 
         <StackPanel Name="InitialValuePanel">
-            <TextBlock Classes="label" Text="Initial value"/>
-            <ComboBox Name="InitialValueCombo" HorizontalAlignment="Stretch">
+            <TextBlock Name="InitialValueLabel" Classes="label" Text="Initial value"/>
+            <ComboBox Name="InitialValueCombo" HorizontalAlignment="Stretch"
+                      a:AutomationProperties.LabeledBy="{Binding #InitialValueLabel}">
                 <ComboBoxItem>OFF — normally-open (NO)</ComboBoxItem>
                 <ComboBoxItem>ON — normally-closed (NC)</ComboBoxItem>
             </ComboBox>

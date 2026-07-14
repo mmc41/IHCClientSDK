@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Linq;
 using Avalonia;
 using Avalonia.Logging;
 using ihc_openvisual.Configuration;
@@ -16,6 +17,11 @@ internal sealed class Program
     /// <summary>The shared logger factory (OpenTelemetry-wired); set once in <see cref="Main"/>.</summary>
     public static ILoggerFactory? LoggerFactory { get; private set; }
 
+    /// <summary>True when launched with <c>--skip-recovery</c> (alias <c>--no-recover</c>): the crash-recovery
+    /// prompt is bypassed so an unattended UI-automation session opens a deterministic fresh project. Set once
+    /// in <see cref="Main"/>.</summary>
+    public static bool SkipRecovery { get; private set; }
+
     // Initialization code. Don't use any Avalonia, third-party APIs or any SynchronizationContext-reliant
     // code before AppMain is called: things aren't initialized yet and stuff might break.
     [STAThread]
@@ -25,6 +31,9 @@ internal sealed class Program
         {
             // Order matters: capture unhandled errors first, then config, then the telemetry pipeline.
             AppDomain.CurrentDomain.UnhandledException += AppSetup.UnhandledExceptionHandler;
+            SkipRecovery = args.Any(a =>
+                string.Equals(a, "--skip-recovery", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(a, "--no-recover", StringComparison.OrdinalIgnoreCase));
             Config = new AppConfiguration();
             LoggerFactory = AppSetup.SetupTelemetryAndLoggingFactory(Config);
 

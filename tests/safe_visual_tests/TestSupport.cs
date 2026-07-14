@@ -55,7 +55,8 @@ public sealed class FakeDialogService : IDialogService
         return Task.FromResult(SaveChangesResult);
     }
 
-    public Task<bool> ConfirmAsync(string title, string message) => Task.FromResult(ConfirmResult);
+    public int ConfirmCalls { get; private set; }
+    public Task<bool> ConfirmAsync(string title, string message) { ConfirmCalls++; return Task.FromResult(ConfirmResult); }
     public Task ShowMessageAsync(string title, string message) { LastMessage = message; return Task.CompletedTask; }
     public string? SaveBlockPath { get; set; }
     public Task<string?> PickOpenProjectAsync(string? initialDirectory) => Task.FromResult(OpenPath);

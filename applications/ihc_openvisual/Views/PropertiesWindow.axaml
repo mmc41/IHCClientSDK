@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="260"
         x:Class="ihc_openvisual.Views.PropertiesWindow"
         Title="Edit properties"
@@ -10,12 +11,13 @@
         CanResize="False"
         ShowInTaskbar="False">
     <StackPanel Margin="20" Spacing="8">
-        <TextBlock Text="Name" FontWeight="SemiBold"/>
-        <TextBox Name="NameBox"/>
+        <TextBlock Name="NameLabel" Text="Name" FontWeight="SemiBold"/>
+        <TextBox Name="NameBox" a:AutomationProperties.LabeledBy="{Binding #NameLabel}"/>
 
-        <TextBlock Text="Note" FontWeight="SemiBold" Margin="0,6,0,0"/>
+        <TextBlock Name="NoteLabel" Text="Note" FontWeight="SemiBold" Margin="0,6,0,0"/>
         <TextBox Name="NoteBox" AcceptsReturn="True" TextWrapping="Wrap"
-                 Height="110" VerticalContentAlignment="Top"/>
+                 Height="110" VerticalContentAlignment="Top"
+                 a:AutomationProperties.LabeledBy="{Binding #NoteLabel}"/>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,10,0,0">
             <Button Name="OkButton" Content="OK" MinWidth="84" IsDefault="True" Click="OnOk"/>

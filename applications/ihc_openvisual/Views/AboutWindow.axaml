@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="280"
         x:Class="ihc_openvisual.Views.AboutWindow"
         Title="About IHC OpenVisual"
@@ -9,6 +10,20 @@
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         ShowInTaskbar="False">
+    <Window.Styles>
+        <!-- A hyperlink rendered as a Button so it is keyboard-focusable and activatable with Enter/Space
+             (accessibility), while still looking like an inline link. -->
+        <Style Selector="Button.link">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="{DynamicResource LinkBrush}"/>
+        </Style>
+        <Style Selector="Button.link:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+    </Window.Styles>
     <StackPanel Margin="24" Spacing="10">
         <TextBlock Text="IHC OpenVisual"
                    FontSize="{StaticResource TitleFontSize}" FontWeight="Bold"
@@ -22,11 +37,12 @@
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
             <TextBlock Text="Source:" VerticalAlignment="Center"/>
-            <TextBlock Name="RepoLink"
-                       Foreground="{DynamicResource LinkBrush}"
-                       TextDecorations="Underline" Cursor="Hand"
-                       PointerPressed="OnRepoLinkClick"
-                       VerticalAlignment="Center"/>
+            <Button Name="RepoLink" Classes="link"
+                    Click="OnRepoLinkClick"
+                    a:AutomationProperties.Name="Open source repository in browser"
+                    VerticalAlignment="Center">
+                <TextBlock Name="RepoLinkText" TextDecorations="Underline"/>
+            </Button>
         </StackPanel>
 
         <TextBlock Name="RepoAuthors"

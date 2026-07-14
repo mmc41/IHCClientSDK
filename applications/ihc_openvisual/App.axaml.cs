@@ -44,7 +44,7 @@ public partial class App : Application
 
             // Open the standard empty project (or offer crash recovery) once the window is shown, so any
             // recovery prompt has a visible owner.
-            window.Opened += async (_, _) => await viewModel.InitializeAsync();
+            window.Opened += async (_, _) => await viewModel.InitializeAsync(Program.SkipRecovery);
         }
 
         base.OnFrameworkInitializationCompleted();

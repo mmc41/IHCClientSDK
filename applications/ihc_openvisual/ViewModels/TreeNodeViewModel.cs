@@ -98,6 +98,11 @@ public sealed class TreeNodeViewModel
 
     public string DisplayName { get; }
 
+    /// <summary>The name a screen reader announces for this row. It folds the visible label together with the
+    /// unlinked state (which is otherwise conveyed only by the "!" glyph and tooltip), so assistive technology
+    /// hears the status too (accessibility — Avalonia <c>AutomationProperties.Name</c>).</summary>
+    public string AccessibleName => IsUnlinked ? $"{DisplayName}, not linked to the controller" : DisplayName;
+
     /// <summary>The stable id of the project element this node stands for (a locality's <c>group</c> id, later a
     /// product/FB id); null for the synthetic <c>Localities</c> root, which addresses no element.</summary>
     public ElementId? ElementId { get; }

@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="420"
         x:Class="ihc_openvisual.Views.AdvancedDimmerWindow"
         Title="Advanced dimmer properties"
@@ -17,23 +18,29 @@
             </Style>
         </StackPanel.Styles>
 
-        <TextBlock Classes="label" Text="Soft on-time (ms)"/>
-        <NumericUpDown Name="SoftOnBox" Minimum="200" Maximum="60000" Increment="100" FormatString="0"/>
+        <TextBlock Name="SoftOnLabel" Classes="label" Text="Soft on-time (ms)"/>
+        <NumericUpDown Name="SoftOnBox" Minimum="200" Maximum="60000" Increment="100" FormatString="0"
+                       a:AutomationProperties.LabeledBy="{Binding #SoftOnLabel}"/>
 
-        <TextBlock Classes="label" Text="Soft off-time (ms)"/>
-        <NumericUpDown Name="SoftOffBox" Minimum="200" Maximum="60000" Increment="100" FormatString="0"/>
+        <TextBlock Name="SoftOffLabel" Classes="label" Text="Soft off-time (ms)"/>
+        <NumericUpDown Name="SoftOffBox" Minimum="200" Maximum="60000" Increment="100" FormatString="0"
+                       a:AutomationProperties.LabeledBy="{Binding #SoftOffLabel}"/>
 
-        <TextBlock Classes="label" Text="Manual ramp time (s)"/>
-        <NumericUpDown Name="ManualRampBox" Minimum="2" Maximum="10" Increment="1" FormatString="0"/>
+        <TextBlock Name="ManualRampLabel" Classes="label" Text="Manual ramp time (s)"/>
+        <NumericUpDown Name="ManualRampBox" Minimum="2" Maximum="10" Increment="1" FormatString="0"
+                       a:AutomationProperties.LabeledBy="{Binding #ManualRampLabel}"/>
 
-        <TextBlock Classes="label" Text="Minimum value (%)"/>
-        <NumericUpDown Name="MinimumBox" Minimum="0" Maximum="100" Increment="1" FormatString="0"/>
+        <TextBlock Name="MinimumLabel" Classes="label" Text="Minimum value (%)"/>
+        <NumericUpDown Name="MinimumBox" Minimum="0" Maximum="100" Increment="1" FormatString="0"
+                       a:AutomationProperties.LabeledBy="{Binding #MinimumLabel}"/>
 
-        <TextBlock Classes="label" Text="Maximum value (%)"/>
-        <NumericUpDown Name="MaximumBox" Minimum="0" Maximum="100" Increment="1" FormatString="0"/>
+        <TextBlock Name="MaximumLabel" Classes="label" Text="Maximum value (%)"/>
+        <NumericUpDown Name="MaximumBox" Minimum="0" Maximum="100" Increment="1" FormatString="0"
+                       a:AutomationProperties.LabeledBy="{Binding #MaximumLabel}"/>
 
-        <TextBlock Classes="label" Text="Load characteristic"/>
-        <ComboBox Name="LoadModeCombo" HorizontalAlignment="Stretch">
+        <TextBlock Name="LoadModeLabel" Classes="label" Text="Load characteristic"/>
+        <ComboBox Name="LoadModeCombo" HorizontalAlignment="Stretch"
+                  a:AutomationProperties.LabeledBy="{Binding #LoadModeLabel}">
             <ComboBoxItem>Inductive</ComboBoxItem>
             <ComboBoxItem>Capacitive</ComboBoxItem>
             <ComboBoxItem>Auto</ComboBoxItem>

@@ -225,6 +225,9 @@ public sealed class AvaloniaDialogService : IDialogService
         var content = selectable
             ? (Control)new SelectableTextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap }
             : new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap };
+        // Expose the message as the content's accessible name so screen readers announce it (this dialog is
+        // built in code and has no XAML LabeledBy plumbing). The buttons carry their own text content.
+        Avalonia.Automation.AutomationProperties.SetName(content, message);
 
         var buttonPanel = new StackPanel
         {
