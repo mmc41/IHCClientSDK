@@ -1,6 +1,6 @@
 ---
-version: 0.1.0
-last-updated: 2026-07-13
+version: 0.1.1
+last-updated: 2026-07-17
 status: draft
 ---
 
@@ -38,8 +38,11 @@ component; and any controller‑side catalog (E10).
 **Readiness:** Ready.
 - Design decisions taken: the import commands live in the **Library** menu; persisted files are copied
   to an **app‑data** catalog folder that loads on startup (US-061); a folder import **stops at the
-  first unreadable file** (US-062). Residual implementation details (exact command labels, exact
-  app‑data subpath, file‑name collision handling) are non‑blocking R‑notes on the stories.
+  first unreadable file** (US-062). The former residual R‑notes are **closed as of 2026‑07‑17**: the
+  command labels are shipped and measured (`Import catalog file…` / `Import catalog folder…`, F‑042) and
+  the app‑data subpath is settled in source (`%APPDATA%\IHC OpenVisual\catalog`, US-061). **One open item
+  remains, and it is a ruling, not an implementation detail:** the file‑name collision policy —
+  overwrite vs keep both — **R‑7** (US-061).
 
 ---
 
@@ -48,8 +51,7 @@ component; and any controller‑side catalog (E10).
 **As an** IHC installer, **I want** to import a single product or function‑block definition
 file from the *Library* menu, **so that** the component becomes available to place in my project.
 
-**Scope excludes:** importing a whole folder (US-060); persisting the import (US-061); the exact label
-of the *Library*‑menu import command (an R‑note below).
+**Scope excludes:** importing a whole folder (US-060); persisting the import (US-061).
 
 ### Acceptance criteria (Given‑When‑Then)
 
@@ -84,9 +86,12 @@ Scenario: A file that cannot be read leaves the menus unchanged
 
 - Verification method — **Demonstration** that a product definition and a function‑block definition each
   import and then appear in the matching insertion menu.
-- R‑note (R1): the import command lives in the *Library* menu (decided); its exact label and whether
-  it opens a native OS file picker are to be confirmed at implementation. The AC are stated as
-  observable outcomes so they hold regardless of the label chosen.
+- **R1 closed (2026‑07‑17)** — both halves are answered from the record, not pending at implementation.
+  The import commands live in the *Library* menu and ship as **`Import catalog file…`** and **`Import
+  catalog folder…`** (US-060), captured in a live IHC OpenVisual *Library*‑menu walk: `RESULTS.md`
+  **F‑042**. They **do** open a **native OS picker** — `AvaloniaDialogService.cs:97` calls Avalonia's
+  `StorageProvider.OpenFilePickerAsync` (`:110`, `OpenFolderPickerAsync` for the folder route). The AC
+  remain stated as observable outcomes, so they hold regardless of the label chosen.
 
 **Readiness:** Ready.
 
@@ -151,8 +156,7 @@ Scenario: A non-existent folder is reported, not silently ignored
 into IHC OpenVisual's app‑data catalog folder — **so that** the imported components are available
 every time I start the application, not only in the session where I imported them.
 
-**Scope excludes:** the import mechanics themselves (US-059, US-060); the exact app‑data folder path
-(an R‑note below).
+**Scope excludes:** the import mechanics themselves (US-059, US-060).
 
 ### Acceptance criteria (Given‑When‑Then)
 
@@ -187,9 +191,17 @@ Scenario: Decline persistence for a one-off import
 
 - Verification method — **Test** that a persisted import is still available after an application
   restart, and that a declined import is absent after restart.
-- R‑note (R1): the catalog folder is an app‑data directory (decided); its exact subpath, and how a
-  persisted file that collides by file name with an existing persisted file is handled (overwrite the
-  file vs keep both), are to be settled at implementation.
+- **Settled — the subpath.** The catalog folder is an app‑data directory, and its subpath is no longer
+  open: `ProjectSession.cs:67-68` resolves it as `Environment.SpecialFolder.ApplicationData` +
+  `IHC OpenVisual` + `catalog` — i.e. **`%APPDATA%\IHC OpenVisual\catalog`** on Windows. The constructor
+  loads it on startup (`ProjectSession.cs:63`), which is this story's second AC. An override is accepted
+  via the `catalogDir` constructor argument (tests use it).
+- ⚠ **Open ruling (R‑7) — the file‑name collision policy.** How a persisted file that collides by file
+  name with an existing persisted file is handled — **overwrite the file vs keep both** — is **not an
+  implementation detail** and must not be settled by whoever writes the code. **No vendor can arbitrate
+  it**: runtime catalog import is an IHC OpenVisual‑only capability, so there is nothing to measure. **No
+  AC above covers the collision case.** It is a **product‑owner ruling**, tracked as **R‑7**
+  (`tmp\research3.md` §7 — recorded there as *"E16's only true ruling"*). Decide it, then give it an AC.
 
 **Readiness:** Ready.
 

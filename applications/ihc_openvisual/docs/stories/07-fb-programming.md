@@ -1,6 +1,6 @@
 ---
-version: 0.2.0
-last-updated: 2026-07-16
+version: 0.3.0
+last-updated: 2026-07-17
 status: draft
 ---
 
@@ -68,6 +68,25 @@ Scenario: Switch focus between the two panes
 - MUST: Leaving programming mode re‑roots **both** panes back to *Localities*.
 - MUST: The pane roots are what tell the two modes apart — configuration mode roots at *Localities*,
   programming mode roots at the block's name.
+- MUST: **`Internal variables` is a programming‑mode section.** It appears when the block's program is open
+  and **not** in the configuration view (E5, US-018) — internals are the block author's business, not the
+  installer's.
+
+> **Flagged 2026‑07‑17 — this story's rule is right and the app breaks it, but one capture is still open.**
+> The *Functions* pane was diffed deep against IHC Visual for the first time, and the vendor renders
+> `Internal variables` **0 times out of 117 blocks** in configuration mode while IHC OpenVisual renders it
+> **117 of 117** — **+495 rows**, the single biggest divergence in that pane. So the app contradicts a rule
+> its own story has carried since it was written.
+>
+> ⚠ **Do not fix it from this story alone.** The rule above says *where* the section appears, and it was
+> written from the vendor's documentation — the same class of source that turned out to be **wrong** about
+> the arrow keys (US-045, F‑013). What is **measured** is only the configuration‑mode half (the vendor never
+> shows it there). The programming‑mode half could not be driven: IHC Visual's *Vis program* command would
+> not fire from the automation harness (`RESULTS.md` **F‑069**, an open **E** with a diagnosed next step).
+> **If the vendor shows internals in programming mode**, the fix is *hide the section in configuration mode*
+> and this rule stands as written. **If it never shows them anywhere**, the section should not exist in IHC
+> OpenVisual at all — a different and much larger change. Measure F‑069 first. Evidence: `RESULTS.md`
+> **F‑068**, **F‑069**.
 
 > **Confirmed 2026‑07‑16 — aligned.** Both apps re‑root **both** panes identically: IHC Visual to
 > `Input`/`Output`/`Indstillinger`/`Interne variable` + `Programmer`, IHC OpenVisual to
@@ -100,8 +119,9 @@ Scenario: Switch focus between the two panes
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented — the mode transition is measured **aligned** with IHC Visual
-(F‑034).
+**Implementation status:** 🟡 Implemented — the mode **transition** is measured **aligned** with IHC Visual
+(F‑034). ⚠ **Except the `Internal variables` rule**: the section is shown in configuration mode too, where
+IHC Visual never shows it (F‑068) — pending the F‑069 capture that decides the shape of the fix.
 
 ---
 
@@ -446,21 +466,62 @@ Scenario: Link a variable from one block to a variable in another block
 Scenario: Compatible endpoints
   Given I am linking variables between two blocks
   Then a flag or output of one block may be linked to a flag or an input of another block
+
+Scenario: An incompatible pair is refused
+  Given I link a source variable onto a target the rule does not allow (e.g. an output onto an output)
+  Then no link is created and the app tells me the link is incompatible
 ```
+
+### Business rules (legality)
+
+- MUST: A block‑to‑block variable link is legal when the **source** is an output or a flag, the **target**
+  is an input or a flag, and the two are in **different** blocks. Anything else is refused and explained.
+- MUST: This is the **same predicate** US-022 applies to the other link families — one rule, three families,
+  not three parallel rules. US-022 owns the statement of it; this story is the block↔block case of it.
+
+> **Confirmed 2026‑07‑17 — aligned, and this rule became the template for the whole epic.** ⭐ This story's
+> rule was **already exactly right**: every measured cell matches IHC Visual — an output→input link is
+> accepted, and output→output, input→input and input→output are all refused, with IHC OpenVisual's
+> *Incompatible link* message where the vendor just declines the drop. It is corroborated by the measured
+> project's own wiring, where a block's `Indgang` is fed by another block's output.
+>
+> **What makes this notable is the contrast**: block↔block was the **one link family IHC OpenVisual
+> checked**, and the other two were unchecked entirely — so this correct rule sat next to a product‑to‑
+> product link with no function block in between (US-022, F‑058/F‑059). The A‑16 fix **extended this
+> predicate** to the other families rather than writing a second one. Evidence: `RESULTS.md` **F‑060**.
+>
+> ⚠ **The flag half is unmeasured.** This story admits `Flag` at **both** ends and the vendor's flag
+> behaviour was **never driven** — no flag link exists in the measured corpus either. That is a **gap, not a
+> known divergence**: the rule is kept as written, and the SDK deliberately leaves flags permissive rather
+> than guessing. Measure before tightening it.
 
 ### AC illustrations
 
 - Linking block A's `Output` to block B's `Input` (or a `Flag` in each) lets block A drive block B
   directly, with no physical product in between — the function‑block‑to‑function‑block linking case.
+- Dragging block A's `Output` onto block B's `Output` is refused with an *Incompatible link* message —
+  **both are "outputs", and that is not what makes it illegal**: the rule is about which end produces a
+  signal and which consumes one (US-022).
 
 ### Constraints
 
 - Verification method — **Demonstration** that a variable link between two blocks propagates the source
-  value to the target.
-- IHC OpenVisual supports linking variables directly between compatible endpoints (a flag or output of
-  one block to a flag or an input of another block), but does not fix the exact drag gesture or any
-  dialog; confirm the interaction detail during implementation. (R‑note.)
+  value to the target, and **Test** of the refusals (the measured matrix lives in US-022).
+- IHC OpenVisual supports linking variables directly between compatible endpoints, but does not fix the
+  exact drag gesture or any dialog; confirm the interaction detail during implementation. (R‑note.)
+- ⚠ Whether a block's output may feed **its own** input is **unmeasured**; the different‑blocks rule above
+  is kept meanwhile.
+- The *Incompatible link* message is a **granted exception** — IHC Visual refuses silently. It stays
+  (US-069's ruling); only its ergonomics are in scope for fixing. **The ergonomic defect is measured and
+  named**: the modal has an **OK button only** and **ignores `Esc`** (`RESULTS.md` **F‑060**,
+  `RESULTS.md:218` — `dialog.cancel` fails on it, `dialog.click --button OK` works). That is the **same
+  Esc‑inert signature** as the *Delete* confirm (**F‑018**, **F‑024**), so it is not a quirk of this dialog.
+  Fix it under **A‑9** (let `Esc` dismiss) and **A‑10** (focus the safe button) applied **across every modal,
+  not per‑dialog** — the backlog's own instruction is *"Check every confirm dialog, not just Delete."*
+  ⚠ Do not fix this one in isolation: a one‑dialog fix leaves the class defect in place and re‑spends the
+  measurement.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented. Epic E7 complete.
+**Implementation status:** ✅ Implemented — and measured **aligned** with IHC Visual on every cell driven
+(F‑060). Epic E7 complete.

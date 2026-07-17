@@ -182,9 +182,11 @@ namespace Ihc.Vis.Tests
             string room = project.Groups[0].GetAttribute("name")!;             // read the diacritic room name from the model
 
             ProjectEditor editor = project.Edit();
-            // project3's only follow-links are the three FUGA→AND wires, so these two outputs are unlinked. Link
+            // project3's only follow-links are the three FUGA→AND wires, so both of these are unlinked. Link
             // allocates exactly two halves; unlink must remove exactly those two — a structural inverse, N = 2.
-            ResourceRef a = editor.Group(room).Product("Diode").Output("Lampe");
+            // The pair is the vendor's most common wire (a block result driving a product output, 83× in the
+            // authored corpus); two product outputs would not be linkable at all — see LinkLegalityTests.
+            ResourceRef a = editor.Group(room).FunctionBlock("1.1.01.e. Kip tænd sluk").Output("Udgang");
             ResourceRef b = editor.Group(room).Product("Lampeudtag").Output("Udgang");
             editor.Link(a, b).Unlink(a, b);
             Project after = editor.ToProject();

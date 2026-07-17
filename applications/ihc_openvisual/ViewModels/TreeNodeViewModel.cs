@@ -96,6 +96,24 @@ public sealed class TreeNodeViewModel
     /// tooltip is shown (e.g. the Localities root or an empty locality).</summary>
     public string? Tooltip { get; init; }
 
+    /// <summary>
+    /// What KIND of thing this row is, independent of what it is called. Surfaced to automation as the row's
+    /// <c>AutomationProperties.AutomationId</c>; never rendered, never announced as content.
+    /// <para>It exists because in programming mode a label cannot identify a node — the labels ARE user data.
+    /// "Kip Udgang" is a command, "Kip ved kort tryk -&gt; ON" an event, "Input Timer &gt;= 00:00:01,000" a
+    /// condition; all three are just what someone named their wiring. The comparison census has to partition
+    /// rows by type, and no existing property can do it: the container flags below cover only containers, and
+    /// the two obvious shortcuts are both traps — the ICON is not a 1:1 kind map (<c>NodeIcons</c> maps
+    /// <c>program_sub</c> and <c>program_case</c> to the same glyph), and PARENT-LABEL inference breaks on a
+    /// case branch, whose label is user data and which is itself an <see cref="IsCommandsContainer"/>.</para>
+    /// <para>Defaults to <see cref="UnknownKind"/> rather than null or empty: an absent value must read as
+    /// "nobody classified this row", never as a kind in its own right.</para>
+    /// </summary>
+    public string NodeKind { get; init; } = UnknownKind;
+
+    /// <summary>The <see cref="NodeKind"/> of a row no construction site has classified.</summary>
+    public const string UnknownKind = "unknown";
+
     public string DisplayName { get; }
 
     /// <summary>The name a screen reader announces for this row. It folds the visible label together with the

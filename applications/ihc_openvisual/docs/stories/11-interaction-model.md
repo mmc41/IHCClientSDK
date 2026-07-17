@@ -1,6 +1,6 @@
 ---
-version: 0.2.0
-last-updated: 2026-07-16
+version: 0.3.0
+last-updated: 2026-07-17
 status: draft
 ---
 
@@ -35,12 +35,18 @@ commands (documented in their own epics) and the *content* of the properties dia
 
 **Readiness:** Ready.
 
-> **Vendor‑alignment note (2026‑07‑16).** US-067, US-068 and US-069 were added, and US-045's arrow‑key
-> constraint resolved, from the measured side‑by‑side comparison with IHC Visual — which is the
-> authoritative spec for this epic. Before that measurement this epic specified activation *routes*
+> **Vendor‑alignment note (2026‑07‑16, extended 2026‑07‑17).** US-067, US-068 and US-069 were added, and
+> US-045's arrow‑key constraint resolved, from the measured side‑by‑side comparison with IHC Visual — which
+> is the authoritative spec for this epic. Before that measurement this epic specified activation *routes*
 > (US-044/US-045) but never what a double‑click does, what each context menu contains, or how a dialog
 > behaves under the keyboard. Evidence: `RESULTS.md` **F‑006**–**F‑013**, **F‑018**, **F‑024**; backlog
 > **A‑4**, **A‑5**, **A‑9**, **A‑10**.
+>
+> **2026‑07‑17: US-068's two open captures are closed and the epic is Ready.** The vendor's *Functions*-pane
+> locality menu (**F‑048**) and its output‑pin / scene‑container menus (**F‑063**) were dumped, adding the
+> **pane** and **pin** dimensions to US-068 — including the one context‑menu defect that reaches the file
+> rather than the screen (**F‑067**, *Delete* on a catalog‑owned pin). US-067 also shipped in that window
+> (**A‑4** — double‑click now opens properties without toggling).
 
 ---
 
@@ -57,6 +63,17 @@ bar, and shortcut — **so that** I can work whichever way suits the moment.
 - [ ] MUST: The **menu bar** offers the same actions (e.g. *Insert > Products > …* mirrors the
   right‑click insertion); `F10` activates the menu bar at *File*, after which the arrow keys navigate
   it.
+- [ ] SHOULD: The **menu bar is not filtered by which pane has focus**, and not by what is selected. It
+  offers the whole vocabulary at all times — unlike a context menu, which is tailored to the node clicked
+  (US-068). The two are deliberately different surfaces: the context menu answers *"what can I do to
+  this?"*, the menu bar answers *"what can this app do?"*.
+
+  > **Added 2026‑07‑17 — recorded because the spec assumed neither branch, and US-068's pane rule invites
+  > the wrong generalisation.** IHC Visual's *Insert* menu is **item‑for‑item identical with focus in either
+  > pane, with nothing disabled**, and identical across a working, a mis‑targeting and a refusing caret. So
+  > **the pane split is a context‑menu rule only** — do not carry it into the menu bar. ⚠ IHC OpenVisual's
+  > menu bar has **not** been dumped per‑pane‑focus, so this is specified from the vendor with the app side
+  > unmeasured; it is a SHOULD until that comparison runs. Evidence: `RESULTS.md` **F‑049** (an open **E**).
 - [ ] MUST: **Keyboard shortcuts** trigger functions directly (e.g. `Ctrl+S` to save); the app’s
   guidance presents the "most obvious" method first and the alternative(s) in brackets.
 - [ ] MUST: `F1` shows help text for the selected element; `F2` shows the properties of the selected
@@ -84,10 +101,10 @@ bar, and shortcut — **so that** I can work whichever way suits the moment.
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Implemented — ⚠ **except the clipboard route parity**: *Cut*/*Copy*/*Paste*
-are missing from every context menu (F‑009), and the properties route exists on `F2` but not on
-double‑click (F‑006). Backlog **A‑5** and **A‑4** close these; the rules are specified in US-068 and
-US-067.
+**Implementation status:** 🟡 Implemented — ✅ the **double‑click route now exists** (US-067, backlog
+**A‑4**). ⚠ **Except the clipboard route parity**: *Cut*/*Copy*/*Paste* are missing from every context menu
+(F‑009), so they are reachable only by toolbar and shortcut. Backlog **A‑5** closes it; the inventory is
+specified in US-068.
 
 ---
 
@@ -150,8 +167,19 @@ conditions):
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented (in-scope shortcuts; clipboard/undo and simulation bindings
-deferred). The arrow‑key quadrants are implemented and measured aligned (F‑013).
+**Implementation status:** ✅ Implemented (in‑scope shortcuts). The arrow‑key quadrants are implemented and
+measured aligned (F‑013). **`Ctrl+C` / `Ctrl+X` / `Ctrl+V` are bound and measured working**, and undo/redo
+is effect‑verified.
+
+> **Corrected 2026‑07‑17 (was: "clipboard/undo and simulation bindings deferred").** The "deferred" claim
+> contradicted **this file's own `:88‑92`** (US-044), which records `Ctrl+C` as measured working — *the
+> status bar confirms "Copied Lampeudtag"* — and the ledger backs `:88‑92`: **F‑009** (`RESULTS.md:168`)
+> measured *Cut*/*Copy*/*Paste* working **on the toolbar and on `Ctrl+C`**, and **F‑045**
+> (`RESULTS.md:193`) effect‑verified undo/redo. **The contradiction is resolved in favour of `:88‑92`.**
+> ⇒ ⭐ **The gap is the context‑menu route (backlog A‑5), not the binding** — it is US-044's route‑parity
+> MUST, not a missing shortcut. Residue: `Ctrl+I` / `Ctrl+U` remain **unverified**; the **simulation** half
+> is ⛔ **E8 / out of scope** — specified for completeness, not for implementation, exactly as the
+> simulation criterion above states.
 
 ---
 
@@ -216,9 +244,22 @@ the expander caret, which continues to toggle expansion when clicked directly.
 
 **Readiness:** Ready.
 
-**Implementation status:** ⛔ **Not implemented** — IHC OpenVisual has no double‑click handler on any node
-type; every expandable node toggles instead, and no node opens its properties. Backlog **A‑4** implements
-this story.
+**Implementation status:** ✅ **Implemented** (backlog **A‑4**, 2026‑07‑16) — the per‑node‑type matrix is
+live, the toggle is suppressed, and the scene‑container dialog the matrix needed was built. Verified against
+the real application, not only headlessly.
+
+> ⚠ **One open question, and it needs a vendor measurement — do not "fix" it from this side.** IHC
+> OpenVisual binds activation to the item template's content, which sizes to **icon + text**, so a
+> double‑click on the blank strip *right of a short label* falls through to the toolkit and toggles. Whether
+> **IHC Visual activates on the whole row** or only on the label strip is **unmeasured** — its automation
+> harness clicks the label rect, so the blank area was never tested. If the vendor activates on the full
+> row, IHC OpenVisual's hit area is a defect and the handler should move to the template root. Evidence:
+> `RESULTS.md` **F‑052** (an open **E**); scheduled as **C16** in `tmp\compare3.md` §6.2, where it is gated
+> on a click‑by‑point primitive the drivers do not yet have.
+>
+> ⚠ **Two implementation traps are recorded in backlog A‑4 and are worth reading before touching this** —
+> handling the pointer event does *not* stop the toggle, and a handler on the TreeView is too late. This
+> story's second MUST is only satisfiable at one point in the event chain.
 
 ---
 
@@ -241,7 +282,25 @@ toolbar for a command the menu omits.
 **Inventory rules:**
 - MUST: A node's context menu contains the commands valid for **its own node type** — the menu is not one
   generic list reused across node types. In particular, a command that cannot apply to the clicked node
-  (e.g. *Insert product* on a link row) is **absent**, not merely disabled.
+  (e.g. *Insert product* on a link row, or on a **pin**) is **absent**, not merely disabled.
+- MUST: The **insert vocabulary is split by pane**: *Insert product* appears on a locality in the
+  *Installation* pane only; *Insert function block* and *Empty function block* on a locality in the
+  *Functions* pane only. Each appears in exactly one pane — mirroring the split the **tree itself already
+  makes**, which shows products on the left and blocks on the right.
+- MUST: **A pin is not a container and not a sibling.** A product's pins come from its catalog type, so a
+  pin's menu offers **no insert command, no *Move up*/*Move down*, and no *Delete*.**
+
+  > **Added 2026‑07‑17 — this is the one inventory gap that corrupts the project, not just the menu.** IHC
+  > OpenVisual offers *Delete* on a product pin and **it works**: deleting an unlinked pin is **silent** (no
+  > confirm — the delete guard is link‑triggered, so it does not fire) and drops the product from 9 pins to
+  > 8. The saved file then holds a `LK FUGA Tryk 6 tast 3 dioder` — a **six**-button switch — carrying
+  > **five** `dataline_input`s. The sixth physical button has no element at all, so it can never be addressed
+  > or wired, and **the tree cannot show the discrepancy** (the row is simply absent). IHC Visual offers no
+  > such command on any pin. ✅ Link integrity does survive (the SDK cascades both halves — 740 halves, 0
+  > dangling); what does not survive is **catalog conformance**. ⚠ The *unlinked* case is the dangerous one
+  > precisely because it is silent: an accidental `Delete` removes a button with no feedback at all.
+  > **Consider an SDK guard as well as this menu gate** — the gate only protects this one GUI. Evidence:
+  > `RESULTS.md` **F‑067**; see also US-053.
 - MUST: *Cut*, *Copy* and *Paste* appear in the context menu of every node type that supports them
   (locality, product, function block), satisfying the US-044 route‑parity MUST.
 - MUST: *Paste* is shown **conditionally on clipboard state** — it is absent when the clipboard is empty and
@@ -249,45 +308,100 @@ toolbar for a command the menu omits.
   full one; the delta is exactly `&Indsæt`.)
 - MUST: A **link row**'s menu offers exactly two commands: *jump to the opposite end of the link* (US-025)
   and *Delete* (US-057). It offers no properties item.
-- MUST: A **function block**'s menu includes a *show program* command — a context‑menu route into
-  programming mode (US-026).
+- MUST: An **unlocked function block**'s menu includes a *show program* command — a context‑menu route into
+  programming mode (US-026). IHC OpenVisual offers no such route today.
+- MUST: A **locked** function block's menu offers **both** *show program* **and** *Unlock* — they are
+  **additive, not alternatives**. The locked menu is the unlocked one **plus** *Unlock* (8 items vs 7);
+  *show program* is on both. ⇒ **A locked library block's program CAN be opened for reading**: the lock
+  gates *editing*, never *viewing*, and no unlock is needed to read a block's program.
+
+  > **Closed 2026‑07‑17 (was a `[TBD]` calling this "contested between two records").** Settled at the desk
+  > from a stored vendor dump — no drive needed; see the closure note under the inventory table. Evidence:
+  > `out\P1-census\vendor-gesture-findings.md:90‑91` (**8 items**, carrying both `&Oplås` **24766** *and*
+  > `&Vis program` **24768**); `RESULTS.md` **F‑011**.
+- MUST: A **product pin**'s menu offers a **log mark** toggle — the command behind the `Log …` state rows
+  US-010 renders. IHC OpenVisual has no such command **on any route**.
+
+  > **Added 2026‑07‑17.** A missing *feature*, not just a missing menu entry: `&Logmærke` is on the vendor's
+  > 3‑item output‑pin menu, and IHC OpenVisual offers no equivalent anywhere. Raise it as its own backlog
+  > item rather than smuggling it in with the inventory fix. Evidence: `RESULTS.md` **F‑063**.
+
+- MUST: A **scene container**'s menu offers *Copy*. IHC OpenVisual's scene container currently offers eight
+  commands and *Copy* is **not** among them, so a scene container is the one node type where the clipboard
+  gap (US-044) is a missing route to a command the vendor **does** have here.
 - SHOULD: *Move up* / *Move down* remain on the node types that can be reordered (locality, product,
-  function block) and are **absent** from a link row.
+  function block) and are **absent** from a link row **and from a pin**.
 
   > **Deliberate addition, not a divergence to remove.** *Move up*/*Move down* have no counterpart in IHC
   > Visual, whose reorder gesture is a **drag**. They are IHC OpenVisual's non‑drag substitute and are
-  > **kept** — US-055 requires at least one non‑drag reorder route (US-044). They simply do not belong on a
-  > link row, which cannot be reordered.
+  > **kept** — US-055 requires at least one non‑drag reorder route (US-044). But the exception is for
+  > *reorderable* nodes: they do not belong on a link row, and they do not belong on a **pin**, whose order
+  > is its catalog type's (F‑067).
 
 **Target inventories** (IHC Visual's, as the authoritative spec; IHC OpenVisual's wording is its own
 English — the *language* is an allowed difference, the *inventory* is not).
 
-> ⚠ **These inventories are *Installation*-pane (TV1) samples — do not read them as pane-independent.**
-> Every vendor menu below was dumped on **TV1** except the function block, which was dumped on **TV2**. The
-> vendor's **TV2 locality** menu — the one place a *function-block* insert would live — **has never been
-> dumped on either app**. So "the vendor's locality menu offers no function-block insert" is **not** an
-> established fact; what is established is *"no function-block insert **on the left tree**"*.
->
-> **This matters for exactly one rule:** do **not** conclude from this table that *Insert function block* /
-> *Empty function block* should be removed from the locality menu outright — that would strip them from
-> **both** panes on a one-pane sample. The live hypothesis is that the vendor **splits the insert vocabulary
-> by pane** (products left, function blocks right), which is also what IHC OpenVisual's *tree* already does
-> (`BuildTree` filters products to *Installation* and blocks to *Functions*) while its *menu* does not — it
-> gates those two items on a pane-blind condition, so they appear on a locality in both panes.
->
-> **TBD (pending capture):** whether the vendor's TV2 locality menu offers a function-block insert.
-> `tmp\compare2.md` **C11** is that capture and rewrites this rule from the answer: if the split holds,
-> **pane-gate** the two items (mirroring `BuildTree`); if TV2 offers no FB insert either, drop them from the
-> context menu (the *Library* menu keeps the capability, and it is already vendor-aligned — F‑042).
-> Evidence: `census.md` §G3 (per-pane attribution); `RESULTS.md` **F‑008**/**F‑011**.
+**A locality's menu depends on which pane it is in. Every other node type's does not.**
 
-| Node type | Commands |
-|---|---|
-| Installation root | insert locality — **1 item** *(already aligned — F‑016, regression baseline)* |
-| Locality | insert product (submenu), Cut, Copy, Delete, separator, Properties — **6 items**; **+ Paste** when the clipboard is full |
-| Product | Cut, Copy, Delete, separator, Properties — **5 items** |
-| Link row | jump to opposite end, Delete — **exactly 2 items** |
-| Function block | Save block…, Cut, Copy, Unlock, Delete, show program, separator, Properties — **8 items** |
+| Node type | Pane | Commands |
+|---|---|---|
+| Installation root | **both** (identical) | insert locality — **1 item** *(already aligned — F‑016, regression baseline)* |
+| Locality | *Installation* | **insert product** (submenu), Cut, Copy, Delete, separator, Properties — **6 items**; **+ Paste** when the clipboard is full |
+| Locality | *Functions* | **insert function block** (submenu), Cut, Copy, Delete, **empty function block**, separator, Properties — **7 items** |
+| Product | *Installation* | Cut, Copy, Delete, separator, Properties — **5 items** |
+| Product pin (input or output) | *Installation* | **log mark**, separator, Properties — **exactly 3 items** |
+| Scene container (*Scenarier*) | *Installation* | Copy, separator, Properties — **exactly 3 items** |
+| Link row | either | jump to opposite end, Delete — **exactly 2 items** |
+| Function block (unlocked) | *Functions* | Save block…, Cut, Copy, Delete, **show program**, separator, Properties — **7 items** |
+| Function block (locked) | *Functions* | Save block…, Cut, Copy, **Unlock**, Delete, **show program**, separator, Properties — **8 items** — the unlocked row **plus** *Unlock* |
+
+> **Closed 2026‑07‑17 — the two records were never in conflict: they measure DIFFERENT NODE TYPES.**
+> *(Was: a warning not to implement this node type until a re‑dump settled "7 items vs 8".)* The note's
+> premise — *"no vendor dump for this node type is stored anywhere"* — was **wrong**. It was verified by
+> grepping **filenames** for `ov-*`, which misses the file. **`out\P1-census\vendor-gesture-findings.md`
+> IS the vendor record**: Win32 command ids + `&`‑prefixed Danish labels (IHC OpenVisual's menus are English
+> and carry no command ids), taken with an **empty clipboard** — the file says so at `:82`. At **`:90‑91`**
+> it dumps the **function block** `Lamper v. hoveddør` (TV2) as **8 items**: `&Gem...` 24765 · `&Klip` 24583
+> · `&Kopier` 24584 · **`&Oplås` 24766** · `&Slet` 24586 · **`&Vis program` 24768** · sep ·
+> `&Egenskaber...` 30503. That block is **locked** — verified in the project itself, not inferred from its
+> menu: `realprj-VisCopy.vis` holds `<functionblock id="_0x3de328" name="Lamper v. hoveddør" … locked="yes"
+> …>`. *(The project carries **117** `functionblock` tags — **109 `locked="yes"`, 8 with the attribute
+> absent** ⇒ resolved against the project's inline DTD default `no` ⇒ unlocked.)* F‑069's bycatch measured
+> the **other arm**: **N7, the UNLOCKED block — 7 items**, also carrying `&Vis program`.
+>
+> | Node | Items | `&Oplås`? | `&Vis program`? |
+> |---|---|---|---|
+> | **N6 locked FB** | **8** | ✅ 24766 | ✅ **24768** |
+> | **N7 unlocked FB** | **7** | — *(nothing to unlock)* | ✅ **24768** |
+>
+> ⭐ **The delta is exactly `&Oplås`, and *show program* is present in BOTH.** 8 − 1 = 7 — the two dumps
+> agree perfectly. ⇒ **F‑011 (`RESULTS.md:170`) and A‑5's 8‑item table (`alignment-backlog.md:297`) are
+> CORRECT and ship as written.** The one wrong statement is **F‑069's parenthetical** — that the locked
+> variant carries `&Oplås` *instead of* `&Vis program` — which is an **inference, not a dump**, and is
+> hereby **retracted**. ⛔ **`tmp\compare3.md` §6.1's C13.1–C13.3 are struck: no vendor run is needed.**
+>
+> **Corroborated from a third direction:** **F‑043** (`RESULTS.md:207`) later unlocked *this same block* and
+> watched **`&Oplås` vanish** from its context menu — the 8→7 transition, measured by effect.
+>
+> ⭐ **This also corroborates `tmp\compare3.md` §4.3's C12 hypothesis — that a locked block is *view‑only*
+> in programming mode.** The vendor offers *Vis program* on a locked block **on purpose**.
+>
+> ⚠ **One honest residual: n=1 per arm.** A second block of each kind would harden the rule — free while any
+> FB menu is open, and blocking nothing.
+
+> **[R5] closed 2026‑07‑16 — the pane split HOLDS, and the naive reading was measurably wrong.**
+> *(Was: a TV1-only sample plus a warning not to act on it.)* The vendor's *Functions*-pane locality menu was
+> dumped and it carries **both** function‑block routes, mapping 1:1 onto IHC OpenVisual's existing items —
+> *Insert function block* ↔ `&FunktionsBlokke`, *Empty function block* ↔ `&Tom Funktionsblok`. The root menu
+> is **pane‑independent** (1 item in both).
+>
+> ⭐ **So the fix is to PANE‑GATE, not to delete** — and the caution the old note carried earned its keep:
+> reading *"the vendor's locality menu has no function‑block insert"* off a one‑pane sample would have
+> **stripped the capability from both panes**. The vendor's locality menu is not *"products but no function
+> blocks"*; it is *"products **on the left tree**"*. Evidence: `RESULTS.md` **F‑048**.
+>
+> **[R5] closed 2026‑07‑17 — the output pin and scene container are dumped**, and both are **3 items**: far
+> smaller than IHC OpenVisual's 11 and 8. Evidence: `RESULTS.md` **F‑063**.
 
 **Output:**
 - Every node type's right‑click menu is a valid, minimal command set for that node, and no command is
@@ -302,25 +416,35 @@ English — the *language* is an allowed difference, the *inventory* is not).
 
 ### Constraints
 
-- Verification method — **Test** (headless UI, `safe_visual_tests`): one inventory assertion per node type,
-  including the **clipboard‑state‑dependent** *Paste* item — which needs a test that copies something first.
+- Verification method — **Test** (headless UI, `safe_visual_tests`): one inventory assertion per node type
+  **× pane**. **The pane axis is the part that matters** — a single‑pane assertion cannot see the defect this
+  story exists to fix, which is exactly how it survived the first comparison. Include the
+  **clipboard‑state‑dependent** *Paste* item (which needs a test that copies something first) and a case
+  asserting that a **pin** offers no *Delete*.
 - The per‑node‑type mechanism already exists: the installation root's 1‑item menu is measured **aligned**
   today, so this story generalises a working mechanism rather than introducing one.
-- Two node types' vendor inventories are **not yet measured** — the output pin and the scene container
-  (`RESULTS.md` **E‑1**). IHC OpenVisual's current menus there (11 and 8 items) are not specified by this
-  story and are left as they are pending that capture.
+- **The gate to replace is a pane‑blind, type‑blind "can this node be edited?" condition.** That single
+  condition is why the same list appears on a locality in both panes *and* on a pin — the two defects have
+  one cause, and the pin case (F‑067) shows it is not a cosmetic one.
 
-**Readiness:** Not Ready — the five measured node types are specified and unblocked; two points wait on a
-capture, and neither blocks the rest:
-- [R5] The **pane dimension** is **TBD (pending capture)** — whether the vendor splits the insert vocabulary
-  between the panes, which decides only the locality menu's function‑block items (`compare2` **C11**).
-- [R5] The **output‑pin (N5)** and **scene‑container (N10)** inventories have no vendor side to specify
-  from (`RESULTS.md` **E‑1**; `compare2` **C1** captures them).
+**Readiness:** Ready.
 
-**Implementation status:** ⛔ **Not implemented** — IHC OpenVisual shows one generic 7‑item menu
-(*Insert product, Insert function block, Empty function block, Move up, Move down, Delete, Properties*) on
-locality, product and link row alike, with no clipboard commands anywhere and no jump/show‑program routes.
-The root's 1‑item menu is the one aligned case. Backlog **A‑5** implements this story.
+> **Both [R5] captures are closed** — the **pane split** on 2026‑07‑16 (**F‑048**: it holds; pane‑gate, do
+> not delete) and the **output‑pin / scene‑container** inventories on 2026‑07‑17 (**F‑063**: 3 items each).
+> Every node type in the table above now has a measured vendor side.
+>
+> **The `[R3]` is closed 2026‑07‑17 — and it was never a conflict.** The function block's "7 vs 8" was two
+> records measuring **different node types**: the **locked** block (8) and the **unlocked** one (7), the
+> delta being exactly *Unlock*. Settled from the stored vendor dump at the desk — **no re‑dump was needed**;
+> see the closure note by the table. **Every node type in this story now ships on a measured vendor
+> inventory.**
+
+**Implementation status:** ⛔ **Not implemented** — IHC OpenVisual shows one generic menu on locality,
+product, link row **and pin** alike: no clipboard commands anywhere, no jump/show‑program/log‑mark routes,
+the function‑block items unfiltered by pane, and *Insert product* / *Delete* / *Move up* / *Move down*
+offered on a pin. The root's 1‑item menu is the one aligned case. Backlog **A‑5** implements this story.
+⚠ Its **pin** half is the highest‑priority part: it is the only inventory gap that writes a project IHC
+Visual cannot (F‑067).
 
 ---
 
@@ -380,6 +504,6 @@ raise a confirmation at all (US-009, US-053).
 |----|-------|-----------|--------------|----------|--------------|
 | US-044 | Activate functions via right‑click, menu, or shortcut | Ready | E11 | Must | -- |
 | US-045 | Navigate and edit the tree with the keyboard | Ready | E11 | Must | -- |
-| US-067 | Open a node's properties by double‑clicking it | Ready | E11 | Must | US-007, US-011, US-044 |
-| US-068 | Offer a context menu tailored to the node type | Ready | E11 | Must | US-025, US-026, US-044, US-055 |
+| US-067 | Open a node's properties by double‑clicking it | Ready | E11 | Must | US-007, US-011, US-012, US-044 |
+| US-068 | Offer a context menu tailored to the node type | Ready | E11 | Must | US-025, US-026, US-044, US-053, US-055 |
 | US-069 | Dismiss and default dialogs from the keyboard | Ready | E11 | Must | US-053 |

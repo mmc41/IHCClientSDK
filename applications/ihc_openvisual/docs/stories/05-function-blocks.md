@@ -1,14 +1,15 @@
 ---
-version: 0.2.0
-last-updated: 2026-07-16
+version: 0.3.0
+last-updated: 2026-07-17
 status: draft
 ---
 
 # E5 — Function blocks: insert & structure
 
-> **Implementation status:** ✅ Implemented — the embedded FB catalog is measured **aligned** with IHC
-> Visual (F‑042). ⚠ One open measurement: whether *Unlock* warns before it irreversibly unlocks (US-020,
-> F‑043).
+> **Implementation status:** 🟡 Mostly implemented — the embedded FB catalog is measured **aligned** with
+> IHC Visual (F‑042) and *Unlock* is now measured aligned too (US-020, F‑064/F‑065; its old open
+> measurement is closed). ⚠ One divergence remains: the *Functions* pane **renders containers IHC Visual
+> hides** (US-018).
 
 > **Current scope:** ✅ **In scope** — inserting, structuring and unlocking function blocks and
 > managing FB folders is project CRUD.
@@ -26,8 +27,10 @@ actual logic authoring inside a block (E7) and product↔block links (E6).
 **Acceptance criteria (epic level):**
 - MUST: The installer can insert a preprogrammed library block or an empty block into a selected locality in
   the *Functions* pane, confirmed in the status bar.
-- MUST: A function block exposes four variable sections (Input, Output, Settings, Internal variables)
-  and a program subtree (Programs > Program > Events / Commands).
+- MUST: A function block **owns** four variable sections (Input, Output, Settings, Internal variables) and a
+  program subtree (Programs > Program > Events / Commands). **Which of them the tree draws depends on the
+  mode and on whether the section is empty** — see US-018's rendering rules; do not read this criterion as
+  "all four are always visible".
 - SHOULD: Library blocks are marked with a library badge and must be *unlocked* before their internals can be
   edited; custom (own) folders persist across software updates.
 
@@ -79,6 +82,39 @@ Scenario: A block bundles its variables and program
 > ⚠ Not a leaf‑exact match — the vendor's Insert‑FB **menu** categories were not dumped and the 72 blocks
 > were not diffed leaf‑for‑leaf.
 
+### Business rules — which of a block's sections the tree draws
+
+In **configuration mode** (the *Functions* pane's normal view), IHC Visual does not draw every section a
+block owns. Two rules decide it:
+
+- MUST: A section with **no members is not drawn at all**. An `Input` or `Settings` section that holds no
+  pins is absent from the tree, not shown empty.
+- MUST: **`Internal variables` is not drawn in configuration mode**, whether or not it holds members. It is
+  a programming‑mode section (US-026, US-027) — internals are the block author's business, not the
+  installer's.
+- MUST: Suppression is **display‑only** — every hidden section stays in the `.vis` and is written back
+  verbatim on save. This is the same discipline US-010's hidden product rows follow.
+
+> **Added 2026‑07‑17.** ⭐ **The data underneath is perfect and the divergence is 100% chrome** — worth
+> stating plainly, because a **+525‑row** difference reads like a modelling bug and is not one. The two
+> panes were dumped deep and diffed for the first time: **24/24 localities match, every locality's block
+> count matches, and of 321 section pairs present on both there are 0 pin‑count mismatches.** Every one of
+> the 525 extra rows is accounted for by exactly these two rules — the empty‑section rule at **30/30 cases,
+> 0 falsifications** (+30 rows), and `Internal variables` at **0 of 117** on the vendor against 117 of 117
+> in IHC OpenVisual (+495 rows). Same family as US-010's hidden product rows: *the vendor hides; IHC
+> OpenVisual renders the file faithfully.* Evidence: `RESULTS.md` **F‑068** (which closes **F‑062**).
+>
+> ⚠ **One open measurement, and it decides the shape of the second rule — do not implement past it.**
+> Whether IHC Visual shows `Internal variables` **inside programming mode** could not be driven (the
+> vendor's *Vis program* command would not fire from the automation harness — `RESULTS.md` **F‑069**, an
+> open **E** with a diagnosed next step). If it does, the fix is *hide the section in configuration mode*,
+> as written above. If it never shows internals anywhere, the section should not exist in IHC OpenVisual at
+> all. US-026 already specs the former — *"Internal variables (visible only in programming mode)"* — and
+> that rule predates the comparison, so it is **corroboration, not proof**: it was written from the vendor's
+> documentation, and this workstream has already caught that documentation contradicting the app (US-045's
+> arrow keys). **Measure F‑069 before touching the section.** The empty‑section rule is independent and can
+> ship now.
+
 ### AC illustrations
 
 - Inserting a `<function block>` under `Room` gives a block whose **Input** section holds its
@@ -87,10 +123,15 @@ Scenario: A block bundles its variables and program
 - Inserting a `<function block>` under `Utility room` shows its catalog-defined **Input**, **Output**
   and **Settings** pins (`<pin>`), each Settings pin carrying its catalog default value; the
   status bar reads `Function block '<block>' has been inserted under Utility room`.
+- A block with no input pins shows only `Output` and `Settings` — no empty `Input` row — and shows no
+  `Internal variables` row until its program is opened (US-026).
 
-**Readiness:** Ready.
+**Readiness:** Ready — the empty‑section rule is measured and unblocked. The `Internal variables` rule waits
+on one capture (F‑069) that does not block it.
 
-**Implementation status:** ✅ Implemented.
+**Implementation status:** 🟡 Implemented (insert + catalog, both measured aligned — F‑042) — ⚠ **except the
+section‑rendering rules**: IHC OpenVisual draws all four sections on every block including empty ones and
+including `Internal variables`, which IHC Visual never shows in configuration mode (F‑068).
 
 ---
 
@@ -109,7 +150,7 @@ Scenario: Insert an empty block into a locality
   And the status bar reads: Empty block was inserted under <locality>
 
 Scenario: An empty block exposes the four variable sections
-  Given an empty block exists
+  Given an empty block is open in programming mode
   When I expand it
   Then it shows exactly: "Input", "Output", "Settings" and "Internal variables",
     each with its own icon
@@ -128,86 +169,119 @@ Scenario: Editing the block enters programming mode
   `Empty block`; the left pane shows `Empty block > {Input, Output, Settings, Internal variables}` and the
   right shows `Empty block > Programs > Program > {Events, Commands}`.
 
+### Constraints
+
+- ⚠ **Open, and deliberately not answered here: what a *brand‑new empty* block looks like in configuration
+  mode.** US-018's empty‑section rule says IHC Visual omits a section with no members — and an empty block's
+  sections are *all* empty, so read literally the rule says such a block shows no sections at all. That may
+  well be right, but it is **an extrapolation, not a measurement**: the rule was measured on 117 populated
+  library blocks, and no empty block was inserted on the vendor. The scenario above is scoped to
+  **programming mode**, where the four sections are the authoring surface and the question does not arise.
+  **Measure an empty block on the vendor before making the configuration‑mode view follow the rule.**
+
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented.
+**Implementation status:** ✅ Implemented (programming‑mode structure). ⚠ Its configuration‑mode view
+inherits US-018's section‑rendering divergence (F‑068).
 
 ---
 
 ## US-020 — Unlock a library function block for editing
 
-**As an** IHC installer, **I want** to unlock a supplied library block — after being told the unlock cannot
-be taken back — **so that** I can modify a tested block instead of starting from an empty one, without
-discovering too late that I cannot restore it.
+**As an** IHC installer, **I want** to unlock a supplied library block, **so that** I can modify a tested
+block instead of starting from an empty one — and undo the unlock if I did not mean it.
 
 ### Acceptance criteria (Given‑When‑Then)
 
 ```gherkin
 Scenario: Unlock a library block
   Given a block carrying the library function-block icon is selected
-  When I right-click it and choose "Unlock" and accept the warning
-  Then the icon changes to the editable function-block icon
+  When I right-click it and choose "Unlock"
+  Then the block is unlocked immediately, with no warning dialog
+  And the icon changes to the editable function-block icon
   And I can now work with the block as with any custom block (edit variables and program)
   And "Unlock" no longer appears on the block's context menu
 
-Scenario: The unlock is warned about first, because it cannot be undone
-  Given a locked library block is selected
-  When I choose "Unlock"
-  Then a warning states that unlocking the block cannot be reversed, and I must accept it to proceed
-
-Scenario: Decline the warning
-  Given the unlock warning is shown
-  When I decline it
-  Then the block stays locked
+Scenario: An unlock can be taken back
+  Given I have just unlocked a library block
+  When I press Ctrl+Z (US-052)
+  Then the block is locked again, its library icon returns, and "Unlock" reappears on its context menu
+  And the application keeps running normally
 
 Scenario: Locked blocks resist internal edits
   Given a library block that has not been unlocked
   Then its internals are treated as read-only until "Unlock" is applied
 ```
 
-### Business rules (irreversibility)
+### Business rules (reversibility)
 
-- MUST: Unlocking is **irreversible** — *Undo* does not restore the lock. Because the edit history cannot
-  reverse it, the warning is the only protection the installer gets.
-- MUST: Attempting to undo an unlock **degrades gracefully** — the application stays running and says the
-  action cannot be reversed (US-052).
+- MUST: Unlocking is an **ordinary undoable edit** — one *Undo* restores the lock completely (US-052). It is
+  not a one‑way door.
+- MUST: Unlocking raises **no warning**. It needs none: undo is the protection, and it is a better one than
+  a dialog because it also covers the installer who meant to unlock and changed their mind afterwards.
 
-> **Added 2026‑07‑16 (was: unlock with no warning specified).** **IHC Visual unlocks silently** — no
-> dialog — and the action is **irreversible**: undo does not restore the lock. That combination is a
-> candidate quirk, and it is not copied. Per the ruling's exception #1, IHC OpenVisual **warns first** where
-> the vendor is silent: the warning changes nothing about what a confirmed unlock does, and this is exactly
-> the case the exception exists for — an irreversible destruction of state with no other guard. ⚠ Undoing
-> the unlock is also what **crashed IHC Visual outright** during the comparison (US-052, F‑046), which is
-> why the graceful‑degradation MUST is here too. Evidence: `RESULTS.md` **F‑043** (vendor silent, verified
-> by effect: `&Oplås` vanished from the context menu) and **F‑046**.
+> **⭐ Rewritten 2026‑07‑17 — this story specced a warning that should never be built, and the spec is
+> deleted rather than implemented.** *(Was: "the unlock is warned about first, because it cannot be undone",
+> plus a *Decline the warning* scenario and an irreversibility MUST — granted as deliberate exception #1,
+> "IHC OpenVisual keeps its guards where the vendor is silent".)*
 >
-> **TBD (pending capture): whether IHC OpenVisual warns today is unmeasured.** Its FB context menu has an
-> *Unlock* item, but the measured unlock attempt reported success while the block **stayed locked**, so no
-> warning could be observed either way — a driver limitation, not a known app defect (`RESULTS.md` F‑043 is
-> an open **E**). This story specs the **intent**; drive the unlock through a reliable route and record
-> what the app actually does before treating its current behaviour as known.
+> **The exception's whole rationale was `an irreversible action with no other guard deserves a warning` —
+> and the premise is false for this application.** Two measurements, taken together, dismantle it:
+> - **F‑065 — the unlock IS reversible in IHC OpenVisual.** `Ctrl+Z` immediately after an unlock reported
+>   *"Undid the last change"*, raised no modal, left the process alive and responding, and **fully re‑locked
+>   the block** (its context menu went 7 → 8 items with *Unlock* restored). The irreversibility this story
+>   was built on is IHC Visual's property, not IHC OpenVisual's — the earlier pass inherited it from the
+>   vendor without checking whether it held here.
+> - **F‑064 — IHC OpenVisual does not warn today**, and that is now the *measured* answer to the old TBD,
+>   not an unknown: `fb.unlock` produced *"Unlocked Lamper v. hoveddør."* with **no dialog**, verified by
+>   effect (the menu dropped 8 → 7 items and *Unlock* disappeared). So the app already matches the vendor's
+>   silence, and the story was the only thing asking for a warning.
+>
+> ⭐ **So the gap here was story‑vs‑app, and the story was wrong.** Building the warning would have added a
+> dialog nobody needs, in front of an action that is already safe, on the strength of a property the app
+> does not have. Exception #1 still stands as a principle — it is why the delete confirmations survive
+> (US-053) — it simply does not reach this case.
+>
+> ✅ **And IHC OpenVisual is strictly better than the vendor here, not merely equal:** the same undo that
+> works cleanly here **crashed IHC Visual outright** (`RESULTS.md` **F‑046**), which is why US-052's
+> graceful‑degradation rule exists and why the vendor's behaviour is class **D** — a defect, not a spec.
+>
+> Evidence: `RESULTS.md` **F‑064** and **F‑065** (both effect‑verified on the same block in one session).
+> **F‑043**'s open **OpenVisual** half — its *"Undetermined"* column, which is what made it a class **E** — is
+> what **F‑064**/**F‑065** closed. Its **vendor** half was never open: the silent unlock was measured in
+> **F‑043 itself** (`RESULTS.md:207`).
+>
+> ⚠ **One honest caveat about the weakest link.** The vendor's *silence* is asserted in F‑043's vendor column,
+> but that row's evidence column cites only the **menu‑item removal** (`&Oplås` vanishing) — which proves the
+> unlock **fired**, not that **no dialog appeared**. It is the least‑supported claim in this chain, and the
+> "delete the specced warning rather than build it" conclusion rests on it. Note it does not rest on it
+> *alone*: **F‑065** independently removes exception #1's rationale by showing the unlock is undoable here, so
+> the conclusion survives even if the vendor turns out to warn.
 
 ### AC illustrations
 
 - A library block shows a distinct library badge (a red‑outlined square marker in the tree). Choosing
-  *Unlock* warns that the block cannot be re‑locked; accepting switches the badge to the plain
-  function‑block icon, signalling it is now editable, and removes *Unlock* from its context menu.
+  *Unlock* switches the badge to the plain function‑block icon, signalling it is now editable, and removes
+  *Unlock* from its context menu. `Ctrl+Z` puts the badge and the menu item back.
+- In this project **109 of 117** blocks ship locked, so unlock is a routine step on the way to editing a
+  library block — not a rare, dangerous one.
 
 ### Constraints
 
-- Verification method — **Demonstration** that the warning appears, that declining leaves the block locked,
-  and that accepting unlocks it and removes the *Unlock* route.
-- The warning is a **deliberate divergence** from IHC Visual's silence, granted by the 2026‑07‑16 ruling —
-  do not remove it to match the vendor.
+- Verification method — **Test** (`safe_visual_tests`): unlock a locked block, assert it unlocked with **no
+  dialog**, then `Ctrl+Z` and assert the block is **locked again** and the application is still running.
+  That last assertion is the regression guard for the sequence that kills IHC Visual (US-052, F‑046).
+- **Do not add a warning to "protect" this action.** It was specced once and deleted on measurement — the
+  unlock is undoable, so a confirmation would guard nothing. See the rewrite note above before re‑proposing
+  one.
 
-**Readiness:** Ready — the target behaviour is fully specified. (What IHC OpenVisual does *today* is
-unmeasured, but that is an implementation question, not a gap in this story.)
+**Readiness:** Ready.
 
-**Implementation status:** 🟡 Implemented (unlock itself) — ⚠ whether it **warns** first is **TBD (pending
-capture)**: the unlock could not be driven through a reliable route during the comparison, so no warning
-could be observed either way (F‑043, an open **E**). Confirm against the app before treating either answer
-as known. ⚠ Also unverified: that undo‑after‑unlock **degrades gracefully** — the path was unreachable for
-the same reason, and it is what crashed IHC Visual (US-052, F‑046).
+**Implementation status:** ✅ Implemented — and **measured aligned** with IHC Visual: the unlock is silent on
+both apps (**F‑043** for the vendor half, **F‑064** for the IHC OpenVisual half — F‑064 measures only the
+latter). IHC OpenVisual's undo of it is **verified good** and better than the vendor's: the block re‑locks and
+the app survives, where IHC Visual crashes (F‑065 / F‑046). The story's former "does it warn?" TBD is closed:
+**it does not, by design.**
 
 ---
 

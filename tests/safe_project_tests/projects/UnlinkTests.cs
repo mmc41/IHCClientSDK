@@ -32,9 +32,11 @@ namespace Ihc.Vis.Tests
             GroupRef stue = editor.Group("Stue");
             GroupRef entre = editor.Group("Entré");
 
+            // A button feeding two block inputs: the only multi-link-owner shape IHC Visual can actually
+            // produce (a product pin never links to another product pin — LinkLegalityTests).
             ResourceRef a = stue.Product("LK FUGA Tryk 2 tast").Input("Tryk (venstre)");   // wired to Kip in the oracle
-            ResourceRef b = stue.Product("Lampeudtag").Output("Udgang");                   // wired from Kip in the oracle
-            ResourceRef c = entre.Product("Stikkontakt").Output("Udgang");                 // wired from PIR FB in the oracle
+            ResourceRef b = stue.FunctionBlock("1.1.01.e. Kip tænd sluk").Input("Sluk");   // wired from Tryk (højre) in the oracle
+            ResourceRef c = entre.FunctionBlock("1.4.02.a. PIR styring ").Input("PIR");    // wired from the PIR product in the oracle
 
             editor.Link(a, b).Link(a, c);   // a now owns three from-halves (oracle + b + c)
             editor.Unlink(a, b);
@@ -74,7 +76,7 @@ namespace Ihc.Vis.Tests
             var app = new ProjectAppService(Settings);
             ProjectEditor editor = project.Edit();
             ResourceRef a = editor.Group("Stue").Product("LK FUGA Tryk 2 tast").Input("Tryk (venstre)");
-            ResourceRef b = editor.Group("Stue").Product("Lampeudtag").Output("Udgang");
+            ResourceRef b = editor.Group("Stue").FunctionBlock("1.1.01.e. Kip tænd sluk").Input("Sluk");
 
             editor.Link(a, b);
             editor.Unlink(a, b);
@@ -133,7 +135,7 @@ namespace Ihc.Vis.Tests
             Project project = await LoadOracle();
             ProjectEditor editor = project.Edit();
             ResourceRef a = editor.Group("Stue").Product("LK FUGA Tryk 2 tast").Input("Tryk (venstre)");
-            ResourceRef b = editor.Group("Stue").Product("Lampeudtag").Output("Udgang");
+            ResourceRef b = editor.Group("Stue").FunctionBlock("1.1.01.e. Kip tænd sluk").Input("Sluk");
             editor.Link(a, b);
 
             Assert.That(() => editor.Unlink(b, a), Throws.InvalidOperationException,

@@ -1,6 +1,6 @@
 ---
 version: 0.2.0
-last-updated: 2026-07-16
+last-updated: 2026-07-17
 status: draft
 ---
 
@@ -9,8 +9,9 @@ status: draft
 > **Current scope:** ◑ **Partly in scope.** Entering project information (US-039), editing
 > user‑defined data‑table texts (US-049) and viewing the Wired module address map (US-050) are
 > project‑metadata / read‑only CRUD → **✅ in scope**. Report generation (US-040 installation + end‑user;
-> US-041 function‑block) reads the project to produce output → **✅ implemented**, output format fully
-> specified (see the US-040 appendix).
+> US-041 function‑block) reads the project to produce output → **✅ implemented**. The **US-040** reports'
+> output format is **fully specified** (see the US-040 appendix); **US-041's** function‑block report ships
+> as a **minimal listing** and its per‑field layout is **not yet specified** — the epic's one open blocker.
 
 **Goal:** Let an IHC installer capture project‑ and product‑level documentation and generate
 installation and end‑user reports, so the delivered installation is properly documented.
@@ -33,7 +34,11 @@ text on function‑block inputs (authored in E7), which *feed* these reports.
   **installation report** lists every product and renders un‑filled fields as blank placeholders
   (omission is end‑user‑report‑only; see the US-040 appendix).
 
-**Readiness:** Ready.
+**Readiness:** ◑ Ready except **US-041**. US-039, US-040, US-049 and US-050 are Ready, and the two US-040
+reports' output format is fully specified. **US-041 is Not Ready** — its per‑field internal table layout is
+not itemised (the mechanism, menu placement, ordering and print‑variant behaviour are settled).
+⭐ **This is E9's only Not‑Ready blocker**, scheduled for measurement as **C24** in `tmp\research3.md` §4
+(generate *Functionsblok dokumentation* on the vendor and itemise its sections / columns / per‑field rows).
 
 ---
 
@@ -97,7 +102,12 @@ Scenario: Project info feeds the reports
 
 ## US-040 — Generate installation and end‑user reports
 
-**Status:** 🕒 **Deferred** — report generation reads the project to produce output; not project CRUD.
+**Status:** ✅ **In scope** — report generation reads the project to produce output; both report types
+are implemented.
+
+> **Corrected 2026‑07‑17 — the Deferred flag was stale.** This story read "🕒 **Deferred** … not project
+> CRUD" while its own **Implementation status** below reads ✅ **Implemented**, and the epic header counts
+> report generation as "**✅ implemented**". Both US-040 reports shipped and nobody cleared the flag.
 
 **As an** IHC installer, **I want** to generate the technical installation report and the end‑user
 function report, **so that** I can hand over complete documentation.
@@ -183,9 +193,10 @@ propagation) fully specify each report's output.
 **Output mechanism / view.** *Documentation ▸ Reports* presents a small menu ("Projekt dokumentation")
 listing report choices, each in a **screen** and a **printer** variant. Three report types exist:
 **Installationsdokumentation** (technical), **Funktionsdokumentation** (end‑user), and a third
-**Functionsblok dokumentation** (function‑block listing) — the latter is out of the initial two‑type
-scope (US-041); include or drop it explicitly. There is **no on‑screen‑preview vs. direct‑print vs. export
-distinction** — every choice renders an HTML page; printing is the browser's own Ctrl+P. No app‑supplied
+**Functionsblok dokumentation** (function‑block listing) — the latter is **included**, owned by **US-041**
+(beyond this story's two‑type scope) and ✅ implemented as a minimal listing. There is **no
+on‑screen‑preview vs. direct‑print vs. export distinction** — every choice renders an HTML page; printing
+is the browser's own Ctrl+P. No app‑supplied
 page header/footer/page‑number/date; the only app page‑break hint is "avoid breaking inside a table".
 
 **Installation report — structure (top→bottom) and columns.**
@@ -230,8 +241,13 @@ page header/footer/page‑number/date; the only app page‑break hint is "avoid 
 
 ## US-041 — Generate the function‑block documentation report
 
-**Status:** 🕒 **Deferred** — report generation reads the project to produce output; not project CRUD.
-Identified as a **third** report type beyond the initial US-040 scope.
+**Status:** ✅ **In scope** — report generation reads the project to produce output; the **third** report
+type beyond the initial US-040 scope, shipped as a **minimal listing**.
+
+> **Corrected 2026‑07‑17 — the Deferred flag was stale.** This story read "🕒 **Deferred** … not project
+> CRUD" while its own **Implementation status** below reads ✅ **Implemented (minimal listing; deep
+> per-field layout deferred)**. What is deferred is the report's **per‑field internal layout**, not the
+> story — see **Readiness** below, and ⭐ **C24** at the epic head.
 
 **As an** IHC installer, **I want** to generate a report that lists the project's function blocks and
 their internals, **so that** I can hand over documentation of the control logic alongside the
@@ -375,7 +391,12 @@ in one place instead of opening each product.
 - Note: the input/output module‑map view (*Documentation* module list) is a fixed requirement; the
   precise columns shown are to be confirmed during implementation. (R‑note.)
 
-**Implementation status:** ✅ Implemented. Epic E9 complete.
+**Implementation status:** ✅ Implemented.
+
+> **Corrected 2026‑07‑17 — "Epic E9 complete" was not true.** Every E9 story is **implemented**, but the
+> epic is **not complete**: **US-041** is `**Readiness:** Not Ready` (its per‑field internal table layout is
+> unspecified, and it ships as a minimal listing). ⭐ **That is E9's one open blocker** — see **Readiness**
+> at the epic head and **C24** in `tmp\research3.md` §4.
 
 **Readiness:** Ready.
 

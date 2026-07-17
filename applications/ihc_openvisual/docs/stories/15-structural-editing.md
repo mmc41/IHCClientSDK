@@ -1,6 +1,6 @@
 ---
-version: 0.2.0
-last-updated: 2026-07-16
+version: 0.3.0
+last-updated: 2026-07-17
 status: draft
 ---
 
@@ -27,8 +27,10 @@ is the general E14 guarantee (US-052); and the placement‑legality rules that g
 targets (surfaced by the engine's `CanInsert`/`GetInsertableAt`, noted where relevant).
 
 **Acceptance criteria (epic level):**
-- MUST: Any project node can be deleted; deleting a node that other logic references is confirmed first
+- MUST: Any **deletable** node can be deleted; deleting a node that other logic references is confirmed first
   and cascades the dependent link halves and program rows as **one** undoable step, generalising US-009.
+  **Not every node is deletable** — a product's pins come from its catalog type and are not the installer's
+  to remove (US-053).
 - MUST: A delete confirmation is triggered by **contents**, not by node type: an empty container deletes
   silently, a container with contents is guarded, and declining aborts the whole delete.
 - MUST: Any node can be moved to another legal container, and siblings can be reordered within a
@@ -94,6 +96,33 @@ Scenario: Delete is equivalent across all three activation routes
   Then "Delete" is reachable by right-click, by "Edit" > "Delete", and by the Delete key,
     with identical results (US-044)
 ```
+
+### Business rules (what is deletable at all)
+
+- MUST: **A product's pins are not deletable.** A pin exists because the product's catalog type declares it,
+  so it is not the installer's to remove — *Delete* is **absent** from a pin's context menu (US-068), and the
+  `Delete` key on a pin does nothing. This holds whether or not the pin is linked.
+- MUST: The engine **refuses** to remove a catalog‑declared pin even when asked directly, so a project
+  written by any route stays conformant with its own catalog. The menu gate protects one GUI; the engine
+  guard protects the file.
+
+> **Added 2026‑07‑17 — the one structural edit that writes a project IHC Visual cannot.** IHC OpenVisual
+> currently deletes a product pin on request, and for an **unlinked** pin it does so **silently** — the
+> delete confirmation is link‑triggered, so nothing fires. The result is a `LK FUGA Tryk 6 tast 3 dioder`
+> whose catalog type declares **six** inputs carrying **five**: a six‑button switch with five buttons. The
+> sixth physical button then has **no element**, so it can never be addressed (US-012) or wired (US-022) —
+> and **the tree cannot show the problem**, because the row is simply absent. IHC Visual offers no delete on
+> any pin; its whole pin menu is three items.
+>
+> ✅ **This is not file corruption, and the distinction matters for how it is fixed.** Link integrity holds
+> — the cascade below correctly removes both halves of the deleted pin's link (measured: 740 halves, 0
+> dangling). What breaks is **catalog conformance**, which nothing currently checks. So the fix is a *gate*,
+> not a repair of the cascade.
+>
+> ⚠ **The silent case is the dangerous one** — an accidental keystroke removes a button with no feedback at
+> all. Note this is also the one place where US-069's confirm‑everything instinct would have *helped* and
+> the link‑triggered guard did not: the right answer is still to refuse the operation, not to confirm it.
+> Evidence: `RESULTS.md` **F‑067**; menu inventory in US-068.
 
 ### Business rules (reference policy)
 
@@ -176,10 +205,11 @@ ruling. They are **deliberate and justified — do not "align" them away**:
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented — the guard's trigger and cascade are measured aligned with IHC
+**Implementation status:** 🟡 Implemented — the guard's trigger and cascade are measured aligned with IHC
 Visual for containers (F‑023/F‑038), and the linked‑product confirm is the granted exception (F‑017/F‑033).
-⚠ Two route/ergonomics gaps sit outside this story: *Delete* is reachable from the context menu but the
-confirm cannot be answered by keyboard (US-069).
+⚠ **Except the deletability rule**: a product **pin** can be deleted, silently when unlinked, producing a
+product that contradicts its own catalog type (F‑067). ⚠ Two route/ergonomics gaps sit outside this story:
+*Delete* is reachable from the context menu but the confirm cannot be answered by keyboard (US-069).
 
 ---
 
@@ -197,8 +227,7 @@ locality or section, **so that** I can correct where something lives without del
 ```gherkin
 Scenario: Move a product to another locality
   Given a product sits under one locality in the "Installation" pane
-  When I move it onto another locality
-    (drag it onto the target locality, or Cut it with Ctrl+X and Paste with Ctrl+V onto the target)
+  When I Cut it with Ctrl+X and Paste it with Ctrl+V onto another locality
   Then the product is re-parented under the target locality, keeping its documentation, terminal
     addressing and every link it participates in
   And the same relocation is reflected in the "Functions" pane
@@ -209,15 +238,16 @@ Scenario: Identity is preserved on a move
   Then its resource id is unchanged after the move, so existing links and controller cross-references
     still resolve
 
-Scenario: Illegal targets are not accepted
-  Given I am moving a node
-  Then I cannot drop it into itself or into one of its own descendants, and I cannot drop it into a
-    container that may not hold that node type (the target does not accept the drop)
+Scenario: Illegal paste targets are not accepted
+  Given a node is on the clipboard after a Cut
+  When I paste it onto itself, onto one of its own descendants, or onto a container that may not
+    hold that node type
+  Then nothing is moved, and the app says so rather than failing silently (US-056)
 
-Scenario: Move is available without drag
+Scenario: The move route is reachable without drag
   Given a node is selected
-  Then Cut (Ctrl+X) then Paste (Ctrl+V) onto a legal target performs the same move as dragging,
-    so the operation is not drag-only (US-044)
+  Then Cut and Paste are each reachable by right-click, by the "Edit" menu, and by Ctrl+X / Ctrl+V,
+    with identical results (US-044, US-068)
 ```
 
 ### AC illustrations
@@ -225,19 +255,32 @@ Scenario: Move is available without drag
 - Moving a `<product>` from `Living room` to `Kitchen` leaves its two input pins, their terminal addressing
   and the block link on `<pin>` intact; the block's `link from` row still reads the button's
   path, now under `Kitchen`.
-- Dragging a locality onto itself is rejected; the tree does not change.
+- Cutting a locality and pasting it onto itself is rejected; the tree does not change.
 
 ### Constraints
 
-- Verification method — **Demonstration** of both the drag route and the Cut/Paste route, that ids and
-  links survive the move, and that self/descendant and illegal‑container targets are refused.
+- Verification method — **Demonstration** of the Cut/Paste move route, that ids and links survive the
+  move, and that self/descendant and illegal‑container paste targets are refused.
 - Note: id‑preserving reparent and the self/descendant guard are grounded in the engine's move
-  contract ("ids never change on a move"); the drag affordance and drop‑target highlighting are to be
-  confirmed during implementation. (R‑note.)
+  contract ("ids never change on a move"). The guard applies to the **paste target**.
+
+> **Corrected 2026‑07‑17 — there is no drag route to specify, and the ACs above no longer ask for one.**
+> The earlier R‑note left "the drag affordance and drop‑target highlighting" to be confirmed at
+> implementation, and the ACs named a drag route and presupposed a drop. Nothing is pending: **IHC
+> OpenVisual implements no drag at all** — a recorded **structural divergence** (`RESULTS.md` **E‑5**;
+> `tmp\compare.md` §1 #2), with **Cut/Paste** here and *Move up*/*Move down* (US-055) as the deliberate
+> non‑drag substitutes for the vendor's drag; the backlog rules they **stay**
+> (`alignment-backlog.md`). Verified in source: **zero drag handlers exist in the app**. With no drop
+> there is **no drop‑target highlighting to specify**. This is a deliberate divergence, **not debt** —
+> do not "align" a drag route in. ⚠ The old verification method demanded a *"Demonstration of **both**
+> the drag route and the Cut/Paste route"*: **unsatisfiable as written**, and it could never have
+> passed. An AC that demands a demonstration of a route the app does not have is worse than an open
+> item. Residual (narrow, and **not** this story's): the vendor's drag has never been driven against
+> OpenVisual's Cut/Paste route — `RESULTS.md` **E‑5** is undriven.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented (Cut/Paste move route).
+**Implementation status:** ✅ Implemented (Cut/Paste move route — the only move route, by design).
 
 ---
 
@@ -255,8 +298,7 @@ appear* in the *Installation* pane).
 ```gherkin
 Scenario: Reorder siblings by moving one up or down
   Given several siblings under one container (e.g. the ten default localities under "Localities")
-  When I move one sibling to a new position among its siblings
-    (drag it above/below another sibling, or Cut and Paste it at the target position)
+  When I move one sibling to a new position among its siblings with "Move up" / "Move down"
   Then the sibling takes the new position and the others close up around it
   And the new order is reflected identically in both panes
   And the status bar confirms the reorder
@@ -281,13 +323,25 @@ Scenario: Reorder preserves identity and links
 - Verification method — **Demonstration** that a reorder changes sibling position in both panes and in
   report output, and preserves ids/links.
 - Note: sibling reordering is the same id‑preserving move as US-054 with an in‑container target
-  index; whether reorder is offered by drag, by a *Move up/down* command, or both is to be
-  confirmed during implementation. IHC OpenVisual SHOULD offer at least one non‑drag route
-  (US-044). (R‑note.)
+  index. Reorder is offered by ***Move up* / *Move down***, and the US-044 non‑drag requirement is
+  **met**.
+
+> **Corrected 2026‑07‑17 — "both" was never a live option.** The earlier R‑note left it open whether
+> reorder is offered "by drag, by a *Move up/down* command, or **both**", and asked for at least one
+> non‑drag route. Same evidence as US-054: **IHC OpenVisual implements no drag at all** (`RESULTS.md`
+> **E‑5**; `tmp\compare.md` §1 #2), so *drag* and *both* were never available to choose. ***Move up* /
+> *Move down* is the deliberate non‑drag substitute for the vendor's drag‑reorder**, and the backlog
+> rules it **stays** — *"Move up/Move down are OpenVisual‑only and should stay … Keep them, but they
+> do not belong on a link row"* (`alignment-backlog.md`, backlog **A‑5**). The US-044 requirement is
+> satisfied, not outstanding.
+>
+> One honest residual remains, and it is **not** an unknown about the vendor: *should* a drag reorder
+> route ever be **added** alongside *Move up*/*Move down*? That is a **product decision** — tracked as
+> ruling **R‑4** (`tmp\research3.md` §7), not an implementation detail to confirm here.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented (Move up / Move down non-drag route).
+**Implementation status:** ✅ Implemented (*Move up* / *Move down* — the non‑drag reorder route, by design).
 
 ---
 
@@ -382,9 +436,28 @@ Scenario: Paste is available three ways
 **Readiness:** Ready (product/subtree paste, measured aligned); block/program paste carries the open item
 above.
 
-**Implementation status:** ✅ Implemented — paste placement, link‑dropping and scene handling are measured
+**Implementation status:** 🟡 Implemented — paste placement, link‑dropping and scene handling are measured
 **aligned** with IHC Visual (F‑035), and the *Cannot paste* refusal is the granted exception (F‑036). ⚠ The
-*Paste* command is not yet reachable from any context menu (US-068, backlog **A‑5**). Epic E15 complete.
+*Paste* command is not yet reachable from any context menu (US-068, backlog **A‑5**) — which **fails this
+story's own "Paste is available three ways" AC**.
+
+> **Corrected 2026‑07‑17 — E15 is not complete; this line used to claim it was.** The claim sat directly on
+> top of the exception it admits in its own sentence, and on two more. **Three MUSTs are unmet across the
+> epic:**
+>
+> 1. **Paste's context‑menu route** — *Paste* is reachable from neither context menu, failing US-056's
+>    *"Paste is reachable by right-click, by "Edit" > "Paste", and by Ctrl+V"* AC and US-044. Backlog
+>    **A‑5** (show *Paste* conditionally on clipboard state, as the vendor does).
+> 2. **The pin‑deletability gate** (US-053, 🟡) — a product pin is deletable, **silently** when unlinked,
+>    producing a product that contradicts its own catalog type. Both of US-053's deletability MUSTs (menu
+>    gate **and** engine refusal) are unbuilt. Evidence: `RESULTS.md` **F‑067**.
+> 3. **The keyboard‑inert destructive confirm** — the `Delete` confirm ignores `Esc` and focuses no button,
+>    failing US-053's own *"Dismissing the confirmation with `Esc` has the same effect as declining it"*
+>    MUST. Backlog **A‑9**/**A‑10**.
+>
+> What is true: **E15's stories are written and its mainline is measured aligned with IHC Visual.** That is
+> not the same claim. ⚠ *"Epic complete"* must not mean *"stories written and mainline measured"* — the
+> three gaps above are exactly what such a label hides.
 
 ---
 

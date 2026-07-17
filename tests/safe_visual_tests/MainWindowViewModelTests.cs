@@ -985,13 +985,16 @@ public class MainWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(ok, Is.True);
-            Assert.That(blockInputAfter.Children, Has.Count.EqualTo(1), "the block input shows a link-from row");
+            // Orientation is the vendor's (F-066): the button drives the block, so the PRODUCT INPUT owns the
+            // from-half and the BLOCK INPUT the to-half — never the reverse. In every vendor-authored file a
+            // dataline_input owns a link_from half (160/160) and a resource_input a link_to half (314/314).
+            Assert.That(productInputAfter.Children, Has.Count.EqualTo(1), "the product input shows its link row");
             // Direction is carried by the icon, not an arrow in the label text (F-020).
-            Assert.That(blockInputAfter.Children[0].IconAsset, Is.EqualTo("/Assets/link-from.svg"));
-            Assert.That(blockInputAfter.Children[0].DisplayName, Does.Contain(productNode.DisplayName), "names the source product path");
-            Assert.That(productInputAfter.Children, Has.Count.EqualTo(1), "the product input shows a link-to row");
-            Assert.That(productInputAfter.Children[0].IconAsset, Is.EqualTo("/Assets/link-to.svg"));
+            Assert.That(productInputAfter.Children[0].IconAsset, Is.EqualTo("/Assets/link-from.svg"), "the button is the source");
             Assert.That(productInputAfter.Children[0].DisplayName, Does.Contain(fbNode.DisplayName), "names the target block path");
+            Assert.That(blockInputAfter.Children, Has.Count.EqualTo(1), "the block input shows its link row");
+            Assert.That(blockInputAfter.Children[0].IconAsset, Is.EqualTo("/Assets/link-to.svg"), "the block input is the sink");
+            Assert.That(blockInputAfter.Children[0].DisplayName, Does.Contain(productNode.DisplayName), "names the source product path");
             Assert.That(harness.Session.IsDirty, Is.True);
         });
     }
@@ -1075,11 +1078,14 @@ public class MainWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(ok, Is.True);
-            Assert.That(blockOutputNode.Children, Has.Count.EqualTo(1), "the block output shows a link-to row");
+            // Orientation is the vendor's (F-066): the block result drives the product output, so the BLOCK
+            // OUTPUT owns the from-half and the PRODUCT OUTPUT the to-half — the corpus's most common wire
+            // (resource_output → dataline_output, 83×).
+            Assert.That(blockOutputNode.Children, Has.Count.EqualTo(1), "the block output shows its link row");
             // Direction is carried by the icon, not an arrow in the label text (F-020).
-            Assert.That(blockOutputNode.Children[0].IconAsset, Is.EqualTo("/Assets/link-to.svg"));
-            Assert.That(productOutputNode.Children, Has.Count.EqualTo(1), "the product output shows a link-from row");
-            Assert.That(productOutputNode.Children[0].IconAsset, Is.EqualTo("/Assets/link-from.svg"));
+            Assert.That(blockOutputNode.Children[0].IconAsset, Is.EqualTo("/Assets/link-from.svg"), "the block output is the source");
+            Assert.That(productOutputNode.Children, Has.Count.EqualTo(1), "the product output shows its link row");
+            Assert.That(productOutputNode.Children[0].IconAsset, Is.EqualTo("/Assets/link-to.svg"), "the product output is the sink");
             Assert.That(productOutputNode.Children[0].DisplayName, Does.Contain(fbName), "the link-from row names the block path");
         });
     }
@@ -1673,6 +1679,91 @@ public class MainWindowViewModelTests
         });
     }
 
+    // ── NodeKind: the row's TYPE, for automation (surfaced as AutomationProperties.AutomationId) ──────
+    // A label cannot identify a programming-mode row: the labels ARE user data ("Kip Udgang" is a command,
+    // "Kip ved kort tryk -> ON" an event). These lock the two traps that make the cheap workarounds wrong.
+
+    // Trap 1: the ICON is not a 1:1 kind map — NodeIcons maps program_sub AND program_case to the same
+    // glyph, so a kind derived from the icon would merge a case switch into the sub-programs.
+    [Test]
+    public async Task NodeKind_SeparatesCaseFromSubProgram_WhichShareOneIcon()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        await harness.Session.AddVariableAsync(vm.InstallationNodes[0].Children[3].ElementId!.Value, "resource_counter", "Cleanings");
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[3].Children[0]);   // arm the counter
+        vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+        await ((IAsyncRelayCommand)vm.ProgramCaseMenu.First(m => m.Header == "Case (Cleanings)").Command!).ExecuteAsync(null);
+        await vm.AddSubProgramCommand.ExecuteAsync(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+
+        var caseNode = FindByFlag(vm.FunctionNodes, n => n.IsCaseNode)!;
+        var subNode  = FindByFlag(vm.FunctionNodes, n => n.NodeKind == "subProgram");
+        Assert.Multiple(() =>
+        {
+            Assert.That(caseNode.NodeKind, Is.EqualTo("case"));
+            Assert.That(subNode, Is.Not.Null, "the sub-program must be findable by kind");
+            Assert.That(subNode!.IconAsset, Is.EqualTo(caseNode.IconAsset),
+                "guard: these two DO share an icon — that is why the icon cannot be the kind");
+        });
+    }
+
+    // Trap 2: PARENT-LABEL inference breaks on a case value branch — its label is user data AND it is
+    // itself an IsCommandsContainer, so neither the label nor the flag tells it from a real Commands row.
+    [Test]
+    public async Task NodeKind_SeparatesCaseValueBranch_FromARealCommandsContainer()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        await harness.Session.AddVariableAsync(vm.InstallationNodes[0].Children[3].ElementId!.Value, "resource_counter", "Cleanings");
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[3].Children[0]);
+        vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+        await ((IAsyncRelayCommand)vm.ProgramCaseMenu.First(m => m.Header == "Case (Cleanings)").Command!).ExecuteAsync(null);
+        harness.Dialogs.PropertiesResult = new PropertiesResult("100", string.Empty);   // the branch's criterion
+        await vm.NewCaseValueCommand.ExecuteAsync(FindByFlag(vm.FunctionNodes, n => n.IsCaseNode));
+
+        var caseNode  = FindByFlag(vm.FunctionNodes, n => n.IsCaseNode)!;
+        var valueNode = caseNode.Children.First(c => c.NodeKind == "caseValue");
+        var elseNode  = caseNode.Children.First(c => c.NodeKind == "caseElse");
+        Assert.Multiple(() =>
+        {
+            Assert.That(valueNode.IsCommandsContainer, Is.True,
+                "guard: a value branch IS a commands container — that is why the flag cannot be the kind");
+            Assert.That(elseNode.IsCommandsContainer, Is.True);
+            Assert.That(valueNode.NodeKind, Is.Not.EqualTo(elseNode.NodeKind),
+                "a value branch and the Else branch are different rows and must not share a kind");
+        });
+    }
+
+    // The rows the census has to tell apart are exactly the ones whose labels are user data.
+    [Test]
+    public async Task NodeKind_SeparatesEventFromCommandFromCondition()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        await harness.Session.AddVariableAsync(vm.InstallationNodes[0].Children[3].ElementId!.Value, "resource_flag", "Away");
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[3].Children[0]);
+
+        vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsEventsContainer)!);
+        await ((IAsyncRelayCommand)vm.ProgramEventMenu.First().Command!).ExecuteAsync(null);
+        vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+        await ((IAsyncRelayCommand)vm.ProgramCommandMenu.First().Command!).ExecuteAsync(null);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(FindByFlag(vm.FunctionNodes, n => n.NodeKind == "event"), Is.Not.Null);
+            Assert.That(FindByFlag(vm.FunctionNodes, n => n.NodeKind == "command"), Is.Not.Null);
+        });
+    }
+
     // US-031: an ineligible variable (a boolean flag) offers no Case option.
     [Test]
     public async Task Case_NotOffered_ForIneligibleVariable()
@@ -1968,8 +2059,9 @@ public class MainWindowViewModelTests
             Assert.That(incoming.DisplayName, Does.Not.StartWith("←"));
             Assert.That(outgoing.DisplayName, Is.EqualTo("Living room / Empty block / InB"));
             Assert.That(incoming.DisplayName, Is.EqualTo("Living room / Empty block / OutA"));
-            Assert.That(outgoing.IconAsset, Is.EqualTo("/Assets/link-to.svg"), "the icon still distinguishes direction");
-            Assert.That(incoming.IconAsset, Is.EqualTo("/Assets/link-from.svg"));
+            // OutA drives InB, so OutA's row is the from-half and InB's the to-half (F-066).
+            Assert.That(outgoing.IconAsset, Is.EqualTo("/Assets/link-from.svg"), "the icon still distinguishes direction");
+            Assert.That(incoming.IconAsset, Is.EqualTo("/Assets/link-to.svg"));
         });
     }
 

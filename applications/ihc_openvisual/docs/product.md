@@ -6,17 +6,17 @@
 
 ## Vision and Purpose
 
-This application exist to allow  yet the only way to that owners and installers of IHC installations can keep
-maintaining them for the long term — on any modern desktop OS, in English, with an open codebase.
+This application exist to allow owners and installers of IHC installations to keep
+maintaining them for the long term — on any modern desktop OS, in English using an open codebase.
 
 ## Key Features
 
 | Feature | Benefit | Status |
 |---------|---------|--------|
 | Binary-compatible open/save of `.vis` projects | Files can move freely between This project and the vendor tool with zero risk of corruption — byte-identical round-trips are enforced by an automated oracle test suite (measured, SDK engine) | Available (SDK engine) |
-| Full project editing: localities, products, function blocks, links | The complete authoring workflow — model rooms, place wired/wireless devices, add logic blocks, wire inputs to outputs — in one two-pane workspace: **what is installed on the left, what it does on the right**, linked across the middle | Planned |
-| Function-block programming | Author control logic (typed variables, events, conditions, commands, enums, case structures) so installations do exactly what the household needs | Planned |
-| Built-in component catalog | The stock products and function blocks are embedded in the SDK — no vendor installation is required to create or extend a project | Available (SDK engine); the function-block half is measured complete and verbatim, the product catalog has known category gaps (F-028) |
+| Full project editing: localities, products, function blocks, links | The complete authoring workflow — model rooms, place wired/wireless devices, add logic blocks, wire inputs to outputs — in one two-pane workspace: **what is installed on the left, what it does on the right**, linked across the middle | Available; **aligning** — measured against the vendor side by side, with the divergences tracked in `stories/` |
+| Function-block programming | Author control logic (typed variables, events, conditions, commands, enums, case structures) so installations do exactly what the household needs | Available; the mode transition and structure are measured aligned, the **authoring surfaces inside it are not yet compared** to the vendor |
+| Built-in component catalog | The stock products and function blocks are embedded in the SDK — no vendor installation is required to create or extend a project | Available (SDK engine); **both halves are measured complete** — 72 function blocks and all 100 products. The gap is in the app's *insert menu*, which surfaces 88 of the 100 (F-055) |
 | Modern flat-line SVG icon language + English help | A themeable (light/dark), accessible UI that new users can actually read: 44 purpose-designed glyphs plus context-sensitive English help | Icons available; help planned |
 
 ## Architecture Overview
@@ -68,8 +68,9 @@ maintain their installations without legacy Windows software.
 |--------|--------|-------------------|
 | Round-trip fidelity | 100% byte-identical preserve-mode save across the committed oracle corpus, at app level | Automated byte-comparison tests (already green at SDK level — measured) |
 | Vendor interop | Projects created/edited in This project load and re-save cleanly in the vendor tool | Per-release acceptance check against the vendor application |
-| Cross-platform health | Build + headless UI test suite green on Windows, macOS, Linux | CI workflow (pending: app not yet wired into solution/CI) |
+| Cross-platform health | Build + headless UI test suite green on Windows, macOS, Linux | CI workflow — the app is in the solution and `safe_visual_tests` runs on Windows (measured); the **headless UI suite is Windows-only** and `safe_project_tests` is **not yet in CI** (both are the remaining gaps) |
 | Authoring coverage | Core epics (project lifecycle, localities, products, function blocks, links, programming) fully usable in the UI | Feature checklist per milestone + UI test coverage |
+| Vendor behavioural parity | Every measured divergence from IHC Visual is either fixed, or granted as a deliberate exception by a story that cites the ruling | Side-by-side census against the live vendor tool; ledger in `tmp/comptest/out/RESULTS.md`, backlog A-1…A-16 *(added 2026-07-17: byte compatibility was already a metric, behavioural parity was not — and it is where the real gaps turned out to be)* |
 
 ---
 
@@ -86,11 +87,21 @@ downloading/uploading projects from/to a live controller. The repository also sh
 Avalonia GUI for exercising individual controller APIs, which established the repo's MVVM and
 headless-UI-testing conventions that This project follows.
 
-The application itself is currently an incubating skeleton: the Avalonia project, MVVM scaffolding,
-the complete 44-glyph icon set with design guidelines, an icon-to-element mapping for `.vis`
-content, and a headless smoke-test suite (`tests/safe_visual_tests`) exist; the editing UI does
-not yet. It targets .NET 10 and is not yet part of `IHCClientSDK.sln` or CI. This document defines
-the product it is being built into.
+The application has an **authoring UI in place across all sixteen epics** — project lifecycle,
+localities, products, function blocks, links, programming mode, clipboard, undo/redo, reports and
+catalog import — alongside the Avalonia project, MVVM scaffolding, the complete 44-glyph icon set with
+design guidelines, an icon-to-element mapping for `.vis` content, and a headless test suite
+(`tests/safe_visual_tests`). It targets .NET 10, **is** in `IHCClientSDK.sln`, and `safe_visual_tests`
+**runs in CI** on Windows. What remains is **alignment, not construction**: this document and
+`stories/` record the measured divergences from IHC Visual, and `RESULTS.md`'s backlog tracks them.
+
+> *(**Corrected 2026-07-17**, was: "an incubating skeleton … the editing UI does not yet [exist] …
+> not yet part of `IHCClientSDK.sln` or CI".* All three claims are stale, and **the vendor comparison
+> is itself the disproof** — its two census phases drove IHC OpenVisual's real UI through product
+> inserts, property dialogs, deletes with cascade confirmation, link drags, clipboard round-trips,
+> programming-mode transitions and undo/redo. A skeleton cannot be censused. The solution/CI half was
+> verified directly. Left uncorrected, this paragraph reads as *"nothing is built yet"* to anyone
+> planning work.)*
 
 ## User Classes and Characteristics
 
@@ -113,6 +124,13 @@ the product it is being built into.
 ### Design and Implementation Constraints
 
 - **Binary compatibility is a hard contract.** Every file the app writes must be accepted by the vendor toolchain. All persistence goes through the SDK's serializer; the UI must never hand-roll XML. Preserve-mode saves of unchanged content must stay byte-identical; default saves re-stamp metadata exactly the way the vendor tool does.
+- **The vendor application is the authoritative behavioural spec — with three bounded exceptions.** Where IHC Visual's observed behaviour and an IHC OpenVisual story disagree, **the story is the thing to fix**. The exceptions, set explicitly by the product owner on 2026-07-16:
+  1. **IHC OpenVisual keeps its safety guards and error feedback** where the vendor is silent — they change nothing about *what* happens, only warn or explain. The vendor's silent linked-product delete and its silent illegal-paste are quirks **not** to copy. ⚠ **The exception is not a licence to add dialogs**: it covers *feedback*, and it does not reach an action that is already reversible — which is why US-020's specced unlock warning was deleted rather than built (FR-5.2).
+  2. **Simulation stays out of scope** (F10), and is not re-litigated on parity grounds.
+  3. **Vendor defects are not authoritative.** Its undo-of-unlock crash and its self-contradictory arrow-key help are not specs; IHC OpenVisual must degrade gracefully, not replicate them.
+
+  *(**Added 2026-07-17.** This ruling governs every story in `stories/` and each one cites it, but it had never been recorded at product level — so the principle deciding what counts as a defect lived only in working notes. ⚠ Note it cuts **both** ways: it is why the delete confirmations survive, **and** why a story asserting something the vendor contradicts gets rewritten. Several already have.)*
+- **A claim about the vendor must come from a measurement, not from its documentation or from symmetry.** Both have been caught wrong: the vendor's own help contradicts its app on the arrow keys, and reasoning "wireless products have no cables, so their dialog has no cable fields" was falsified by opening the dialog. Where a rule is unmeasured, stories say so and the code stays **permissive** rather than guessing.
 - **All project mutations go through `ProjectAppService` / `ProjectEditor` sessions** on the SDK's immutable model; the UI holds element ids, not object references.
 - **MVVM with compiled bindings; view-models contain no Avalonia types** where feasible, so logic tests can run without a UI session.
 - **English is the product language** for UI text and help. Project file content (user's own names/notes, vendor catalog text) is data and is preserved verbatim, whatever language it is in.
@@ -123,7 +141,7 @@ the product it is being built into.
 
 - Users have `.vis` files from existing installations and/or an IHC v3.0 controller.
 - One project open per window (single-project model, matching user expectations from the legacy workflow).
-- The embedded catalog is intended to be equivalent to the vendor's stock catalog; genuinely custom components can be imported from `.def`/`.ifb` files. *(Corrected 2026-07-16, was asserted as fact: equivalence is the **goal**, not yet the measured state. The **function-block** half is embedded verbatim, categories and all — 72 blocks, measured. The **product** catalog is not yet equivalent: it has no `Bus Produkter` category, `IHC LED Dimmer 2 kanaler` appears nowhere, and `Special products` holds only the SMS modem against the vendor's three sub-categories plus four loose specials. Leaves were never diffed, so more may be missing. Evidence: `RESULTS.md` F-028 and F-042, open item E-7; backlog A-11. See US-010.)*
+- The embedded catalog **is** equivalent to the vendor's stock catalog; genuinely custom components can be imported from `.def`/`.ifb` files. *(**Re-corrected 2026-07-17 — and the 2026-07-16 correction below was itself wrong.** Equivalence is the **measured state, not merely the goal**: the product half holds **all 100** of the vendor's products, including every one of the 12 the note below calls missing — verified directly in `BuiltInCatalog.Products.g.cs`. ⭐ **The defect was never in the catalog; it is in the app's menu builder**, which constructs three categories where the vendor has four and reaches the modem through a product-type filter instead of a category, so only 88 of the 100 surface in the *Insert* menu. The earlier note read a **menu walk** as a **catalog inventory** — a misattribution that would have sent someone to regenerate a catalog that was already complete. **E-7 is closed**; the fix is `MainWindowViewModel.BuildProductMenu()`, not the catalog. The **function-block** half was already measured verbatim — 72 blocks, categories and all. Evidence: `RESULTS.md` **F-055** (supersedes **F-028**, whose category-only walk produced the superseded claim that the product catalog "has no `Bus Produkter` category" and that "`IHC LED Dimmer 2 kanaler` appears nowhere") and F-042; backlog A-11. See US-010.)*
 
 ### Dependencies
 
@@ -173,7 +191,8 @@ exists and is tested today; the work is UI.
 **Functional Requirements**:
 
 - FR-2.1: Two tree panes — **Installation** (left: localities → products → pins) and **Functions** (right: localities → function blocks → pins) — over one shared locality structure, with a draggable splitter; a change to a locality reflects in both panes immediately.
-- FR-2.1a: **Pane ownership of the insert vocabulary.** Products are inserted **only** from the Installation pane and function blocks **only** from the Functions pane; each pane offers exactly its own half, on the node's context menu and on the menu bar. A pane never offers an insert whose result it could not show. *(This mirrors IHC Visual. The tree split is measured and implemented; the exact per-pane **context-menu** inventory — specifically whether the vendor's Functions-pane locality menu carries the function-block insert — is pending capture `tmp\compare2.md` §3 **C11**, backlog **A-5**. Until C11 lands, do not read this FR as licence to delete a route: the vendor's locality menu was only ever dumped on the **left** pane.)*
+- FR-2.1a: **Pane ownership of the insert vocabulary.** Products are inserted **only** from the Installation pane and function blocks **only** from the Functions pane; each pane offers exactly its own half **on the node's context menu**. A pane never offers a *context-menu* insert whose result it could not show. *(**Confirmed 2026-07-17 — the capture landed and the rule holds.** The vendor's Functions-pane locality menu was dumped and carries **both** function-block routes, mapping 1:1 onto IHC OpenVisual's existing items; its root menu is pane-**independent**. So the fix is to **pane-gate, not to delete** — and the earlier caution earned its keep, since reading the left pane's menu alone would have stripped the capability from **both** panes. Evidence: `RESULTS.md` **F-048**; backlog **A-5**. See US-068.)*
+- FR-2.1b: **The menu bar is deliberately NOT pane-gated.** It offers the whole vocabulary regardless of which pane has focus or what is selected. The two surfaces answer different questions: a context menu answers *"what can I do to this?"*, the menu bar *"what can this app do?"*. *(**Added 2026-07-17** — FR-2.1a previously said "and on the menu bar", which measurement contradicts: IHC Visual's *Insert* menu is item-for-item identical with focus in either pane, with **nothing disabled**. The pane split is a **context-menu rule only**; do not generalise it. ⚠ IHC OpenVisual's own menu bar has not been dumped per-pane-focus, so the vendor side is measured and the app side is not. Evidence: `RESULTS.md` **F-049**, an open **E**. See US-044.)*
 - FR-2.2: Every node renders a type icon from the flat-line set (per the icon-mapping doc) plus decorations for state (e.g. unconfigured/unlinked warning, locked block badge); variables show inline `name = value`.
 - FR-2.3: Every command is reachable three equivalent ways: menu bar, context menu on the target node, and (where assigned) a keyboard shortcut; a documented keymap covers navigation, editing, properties, link-jumping, and pane switching.
 - FR-2.4: A status bar confirms the result of the last action in a short sentence.
@@ -196,9 +215,9 @@ them, and address wired terminals.
 **Functional Requirements**:
 
 - FR-4.1: Insert any catalog product into a locality selected **in the Installation (left) pane** from categorized menus; the product appears there with its pins/sub-resources and their default values, and does **not** appear in the Functions pane (FR-2.1a). *(Engine: available — insert transform)*
-- FR-4.2: Edit product documentation properties (name, placement, note, cable data, identification code, light group where applicable) in a properties dialog opened on demand, from the tree — inserting a product opens no dialog, matching IHC Visual. *(Corrected 2026-07-16, was "opened automatically on insert": the vendor was measured **not** to auto-open — `RESULTS.md` F-027, backlog A-14. The name field's editability is gated by product type, and the placement field is the vendor's `Placering` descriptor, not a room selector — F-031/F-032. See US-011.)*
-- FR-4.3: Configure wired input/output terminal addressing (data line + module terminal) with in-use indication, and output initial values (normally-open/normally-closed semantics).
-- FR-4.4: Wireless products can be inserted and documented; products that are not yet fully configured/commissioned carry a visible warning decoration. (RF linking itself is out of scope — see Constraints.)
+- FR-4.2: Edit product documentation properties (name, placement, note, cable data, identification code, light group where applicable, and inclusion in the end-user report) in a properties dialog titled with the **product type**, opened on demand from the tree — inserting a product opens no dialog, matching IHC Visual. The **name** field is disabled when the placed element's `locked` attribute resolves to `yes`; the **placement** field is the vendor's `Placering` descriptor (free text with suggestions), **not** a room selector — a product's room is its position in the tree. *(Corrected 2026-07-16, was "opened automatically on insert": the vendor was measured **not** to auto-open — `RESULTS.md` F-027, backlog A-14. **Re-corrected 2026-07-17**: the name gate was stated as "gated by product **type**", which is the one implementation that gets it wrong — the two DTDs disagree on `locked`'s default, so a catalog-by-type lookup greys every product whose element omits the attribute. Read it off the **element**, resolved via the **project's** inline DTD — F-054, backlog A-15. `Placering` was also stated as "one of a fixed list"; it is an editable MRU combo with no fixed list to reproduce — F-054/F-056, backlog A-13. See US-011.)*
+- FR-4.3: Configure input/output terminal addressing (data line + module terminal) with in-use indication, output initial values (normally-open/normally-closed semantics), per-terminal wire colour, and power-fail save-current-value behaviour. The address editor opens by **double-clicking a terminal row** or from a *Configure* button — two routes onto one sub-dialog. *(**Clarified 2026-07-17.** The row gesture is measured (**double**-click; single click only selects) — F-056, closing US-012's open `[R3]`. ⚠ **The word "wired" was removed deliberately**: the vendor's wireless product dialog **is** the wired dialog, and its terminal grids are enabled by the product's **shape** — whether it has inputs and/or outputs — not by its family. An input-only wireless sensor has an enabled `Indgange` grid. F-057. See US-012/US-014.)*
+- FR-4.4: Wireless products can be inserted and documented **through the same properties dialog and the same field set as wired products** (FR-4.2/FR-4.3); products that are not yet fully configured/commissioned carry a visible warning decoration. (RF linking itself is out of scope — see Constraints.)
 - FR-4.5: Catalog/project constraints are enforced at edit time via the validator (e.g. at most one modem product per project).
 
 ### F5 — Function blocks and library (M2)
@@ -209,7 +228,7 @@ block; manage a personal library.
 **Functional Requirements**:
 
 - FR-5.1: Insert stock function blocks from the categorized built-in library, or an empty block, into a locality selected **in the Functions (right) pane** — and only there; a block does **not** appear in the Installation pane (FR-2.1a). *(Engine: available)*
-- FR-5.2: Stock (locked) blocks show a distinct badge and are read-only internally until explicitly unlocked, after which they behave like user blocks.
+- FR-5.2: Stock (locked) blocks show a distinct badge and are read-only internally until explicitly unlocked, after which they behave like user blocks. **The unlock is silent and undoable** — no warning, and one *Undo* re-locks the block. *(**Clarified 2026-07-17.** IHC Visual also unlocks silently, but there the unlock is a **one-way door that crashes the application if you try to reverse it**. IHC OpenVisual's is an ordinary undoable edit, which is why it needs no warning — and why US-020's specced warning was **deleted rather than built**: its whole rationale was an irreversibility this app does not have. Evidence: `RESULTS.md` **F-064**, **F-065**, F-046. See US-020.)*
 - FR-5.3: Save own blocks for reuse and maintain a favourites collection; import external component definitions (`.def`/`.ifb`) into the session catalog. *(Engine: available — catalog reader/composition)*
 
 ### F6 — Product ↔ function-block linking (M2)
@@ -219,7 +238,9 @@ block; manage a personal library.
 **Functional Requirements**:
 
 - FR-6.1: Create links by dragging one pin onto another (product input → block input; block output → product output); invalid targets are rejected with feedback.
-- FR-6.2: Links display reciprocally: each end shows a link child naming the full path of the opposite end.
+- FR-6.1a: **Link legality is a data-flow rule, enforced in the SDK.** A link is legal iff the **source** produces a signal, the **target** consumes one, and **at least one end is a function-block pin** — two product pins never link directly, because routing product logic through a block *is* the IHC programming model. The rule is keyed on the pin's element kind and the **roles in the drag**, never on "kind matching". *(**Added 2026-07-17** — this product had no legality rule, and that was the gap: FR-6.1 said "invalid targets are rejected" without ever defining invalid, and the app checked **one of the three link families**, silently accepting a button wired straight to a lamp with no block in between. Measured over **15 cells / 3 families / 0 falsifications**. ⚠ **Do not restate this as "inputs↔inputs, outputs↔outputs"** — that mispredicts 3 of the 15 cells; the *same pin pair* is accepted one drag direction and refused the other. Enforced in the SDK, not the view-model, so a `.vis` stays valid whoever drives the editor. Evidence: `RESULTS.md` **F-058**/**F-059**/**F-060**; backlog **A-16**. See US-022.)*
+- FR-6.2: Links display reciprocally: each end shows a link child naming the full path of the opposite end, with **direction carried by the row's icon** and the label left bare.
+- FR-6.2a: **A link's halves are written in the direction the drag implies** — the dragged pin (the source) receives the *link-to* half; the pin dropped on (the target) receives the *link-from* half. The check and the write must agree on which end is which. *(**Added 2026-07-17 after IHC OpenVisual was found writing every link's two halves backwards** — a shape absent from all 397 links across the 21 authored vendor projects. It survived because the SDK primitive was correct and byte-tested, the inversion lived only in the untested app layer, and **removing the redundant `→`/`←` label prefix (FR-6.2) made both orientations render identically in the tree** — so every tree-based check was blind to it by construction. Only saving the file and reading the XML could see it. Independently confirmed by IHC Visual's own link-row arrow icons. Evidence: `RESULTS.md` **F-066**, **F-070**. See US-022.)*
 - FR-6.3: Dropping onto a scene-capable output opens a dialog for the scene value (light level + ramp time for dimmers; on/off for relays) before the link is created.
 - FR-6.4: A single action jumps from a link row to its opposite end in the other pane.
 
@@ -229,7 +250,7 @@ block; manage a personal library.
 
 **Functional Requirements**:
 
-- FR-7.1: A per-block programming mode shows the block's variable sections (inputs, outputs, settings, internal variables) beside its program tree; entering/leaving it is a single action.
+- FR-7.1: A per-block programming mode shows the block's variable sections (inputs, outputs, settings, internal variables) beside its program tree; entering/leaving it is a single action. **The configuration-mode view shows less**: a section with no members is not drawn, and **internal variables are a programming-mode section only**. *(**Clarified 2026-07-17.** The first deep diff of the Functions pane found IHC OpenVisual drawing **+525 rows** the vendor does not — and ⭐ **the data underneath is perfect** (24/24 localities, every block count matching, 0 pin-count mismatches across 321 section pairs): the whole delta is chrome, accounted for exactly by these two rules. The empty-section rule is measured 30/30. ⚠ The internal-variables rule is measured only for **configuration** mode (vendor: 0 of 117 blocks); whether the vendor shows them **inside** programming mode could not be driven, and it decides the fix's shape — hide the section, or do not model it at all. Evidence: `RESULTS.md` **F-068**; **F-069** (open). See US-018/US-026.)*
 - FR-7.2: Add typed variables across the full resource palette (on/off, counters, integers, decimals, timers, time/date/weekday, temperature, light, humidity, energy, enumerations), with section placement rules enforced and per-variable name/note/initial value/persist-on-power-loss properties.
 - FR-7.3: Build programs by dragging variables onto event/condition/command groups and picking the applicable operation: events are OR-combined; condition groups support AND/OR/NOT and nesting; commands execute in order, with separate true/false branches for conditional sub-programs.
 - FR-7.4: Define project-global enumeration types with ordered named values; use case structures keyed on eligible variable types, with an else branch.
@@ -242,8 +263,9 @@ block; manage a personal library.
 **Functional Requirements**:
 
 - FR-8.1: Validate on demand and before save/transfer; findings are listed with severity and one-click navigation to the offending element. *(Engine: available — `ProjectAppService.Validate`)*
-- FR-8.2: Unlimited undo/redo across all edit operations within a session.
+- FR-8.2: Unlimited undo/redo across all edit operations within a session. **Prefer making an irreversible action undoable over guarding it with a dialog** — no project mutation currently needs the guard. *(**Clarified 2026-07-17**: unlocking a stock block was the one action believed irreversible, and it is not — see FR-5.2. IHC OpenVisual survives the exact sequence that closes IHC Visual. Evidence: `RESULTS.md` **F-065**, F-046. See US-052.)*
 - FR-8.3: Ids of existing elements are never renumbered or reused; deletions leave holes, matching vendor semantics. *(Engine: available — allocator invariants)*
+- FR-8.4: **Catalog-owned structure is not editable.** A product's pins exist because its catalog type declares them, so they cannot be deleted, reordered, or inserted into — the commands are absent, and the engine refuses them whatever route asks. *(**Added 2026-07-17.** IHC OpenVisual currently deletes a product pin on request, **silently** when the pin is unlinked (the delete guard is link-triggered, so nothing fires), producing a six-button switch carrying five `dataline_input`s. The sixth physical button then has no element — unaddressable, unwireable, and **invisible in the tree**, since the row is simply absent. ✅ Link integrity survives (the cascade is correct: 740 halves, 0 dangling); what breaks is **catalog conformance**, which nothing checks today. IHC Visual offers no delete on any pin. Evidence: `RESULTS.md` **F-067**. See US-053/US-068.)*
 
 ### F9 — Controller transfer (M4)
 
@@ -339,11 +361,12 @@ compiled-in data.
 | Functions pane | The **right** tree: localities → function blocks → pins. The logic view — what the installation does. **Function blocks are inserted here, and only here** (FR-2.1a). |
 | Product | A physical device definition (switch, lamp output, sensor, …) instantiated from the catalog into a locality. Lives in the **Installation (left)** pane. |
 | Function block | A reusable logic component with typed pins, variables, and programs. Lives in the **Functions (right)** pane. |
-| Pin / resource | An addressable input/output/variable on a product or block; the endpoint of links. |
-| Link | A connection between a product pin and a block pin (or scene target) that routes signals. |
-| Scene / scenario link | A link carrying a preset (light level + ramp, or on/off) recalled by one trigger. |
-| Catalog | The library of stock product and function-block definitions; embedded in the SDK. |
-| Locked (stock) block | A catalog-supplied block that is read-only until explicitly unlocked. |
+| Pin / resource | An addressable input/output/variable on a product or block; the endpoint of links. A **product's** pins are declared by its catalog type and are **not** independently editable — not deletable, not reorderable (FR-8.4). A **block's** variables are authored (F7). |
+| Link | A **directed** connection routing a signal from a **source** pin to a **target** pin. Its two halves record the direction: the source carries the *link-to* half, the target the *link-from* half. Legality is a data-flow rule, not a kind match (FR-6.1a). |
+| Scene / scenario link | A link carrying a preset (light level + ramp, or on/off) recalled by one trigger. A **distinct link family** — the data-flow rule in FR-6.1a is measured over the other three and does not cover it. |
+| Catalog | The library of stock product and function-block definitions; embedded in the SDK. Distinct from the **insert menu**, which is the app's *presentation* of the catalog and can differ from it — as it does today (see Assumptions). |
+| Locked (stock) block | A catalog-supplied block that is read-only until explicitly unlocked. The unlock is silent and **undoable** (FR-5.2). |
+| `locked` (product attribute) | Per-element flag deciding whether a placed product's *Name* is editable. Resolved against the **project's own inline DTD** (default `no`), **not** the catalog's (default `yes`) — the catalog value is only the seed written at insert time (FR-4.2). |
 | Preserve save | The byte-identical save mode for unchanged content; default save re-stamps metadata like the vendor tool. |
 
 ---
@@ -360,15 +383,18 @@ before the fix.
 mocking (only low-level `IIHCApiService` services may be mocked — application services are always
 real), CsCheck for property-based tests in the unit suite.
 **CI/CD**: GitHub Actions (`build-validation.yml`) builds the solution on Ubuntu/Windows/macOS and
-runs the unit suite everywhere plus the lab UI suite on Windows. **Gap (planned work):**
-`ihc_openvisual` and `safe_visual_tests` are not yet in the solution or CI; wiring them in — including
-the engine-level project suite — is part of milestone M1.
+runs the unit suite everywhere, plus the lab UI suite and `safe_visual_tests` on Windows.
+**Remaining gap:** `safe_project_tests` — the engine-level byte-fidelity suite, and the regression gate
+for every `.vis` change — **is still not in CI** and runs locally only. *(Corrected 2026-07-17, was:
+"`ihc_openvisual` and `safe_visual_tests` are not yet in the solution or CI" — both are, verified
+directly in `IHCClientSDK.sln` and `build-validation.yml`. The engine suite's absence is the real
+gap, and it is the more consequential one: it is what guards binary compatibility.)*
 
 | Test Level | Suite | Scope | Automation | Execution Frequency |
 |-----------|-------|-------|-----------|-------------------|
 | Engine (project files) | `tests/safe_project_tests` | Byte fidelity, editing, catalog, validation against oracle corpus | Automated | Locally on every change; CI inclusion planned |
 | Unit | `tests/safe_unit_tests` | SDK + app-service/view-model logic, controller-free, mocked API services | Automated | Every PR, all three OSes (CI) |
-| UI (headless) | `tests/safe_visual_tests` | This project windows/view-models under headless Avalonia | Automated | Locally today; CI planned (M1) |
+| UI (headless) | `tests/safe_visual_tests` | This project windows/view-models under headless Avalonia | Automated | Every PR, Windows (CI) |
 | Controller integration | `tests/safe_integration_tests` | SDK against a real controller, state-safe operations only | Automated, on demand | Manual, before releases |
 | Vendor interop acceptance | manual procedure | Open/re-save app-authored projects in the vendor tool | Manual | Per release |
 
@@ -420,6 +446,8 @@ use faked services behind a reserved mock endpoint scheme.
 
 | Document | Location | Status |
 |----------|----------|--------|
+| **Epics & user stories (E1–E16, US-NNN)** — the implementation spec; **start here for any feature** | `applications/ihc_openvisual/docs/stories/` | Current (2026-07-17) |
+| **Vendor comparison ledger** — every measured IHC Visual ↔ IHC OpenVisual divergence, classified, with the alignment backlog A-1…A-16 | `tmp/comptest/out/RESULTS.md`, `alignment-backlog.md` | Current (2026-07-17); working notes, not a deliverable |
 | Repository architecture overview | `ARCHITECTURE.md` | Current (2026-07-10) |
 | Icon design guidelines (flat-line SVG family) | `applications/ihc_openvisual/docs/icons_design.md` | Current |
 | Icon selection reference (`.vis` element → SVG) | `applications/ihc_openvisual/docs/icon_codes.md` | Current |

@@ -1,6 +1,6 @@
 ---
-version: 0.2.0
-last-updated: 2026-07-16
+version: 0.3.0
+last-updated: 2026-07-17
 status: draft
 ---
 
@@ -31,7 +31,8 @@ switches, chrome toggles, simulation) which do not enter the history.
 - SHOULD: A destructive, cascading edit (e.g. deleting a non‑empty locality, US-009) is reversed as a
   single step.
 
-**Readiness:** Not Ready — the undo history **depth** (single‑ vs multi‑level) is unresolved; see US-052.
+**Readiness:** Not Ready — the undo history **depth** is unresolved: **the vendor's** retention (a measure),
+plus IHC OpenVisual's own cap. *(Not "single‑ vs multi‑level" — this app is **multi‑level**.)* See US-052.
 
 ---
 
@@ -71,8 +72,17 @@ switches, toolbar/status‑bar toggles, simulation) which do not enter the edit 
 - [ ] SHOULD: A destructive edit that required confirmation or cascaded (e.g. deleting a non‑empty
   locality, US-009) is reversed **as one step**, restoring the locality, its products, and the
   dependent commands/conditions together.
-- [ ] SHOULD: An action that cannot be reversed is either **made undoable** or **guarded before it happens**
-  — unlocking a library function block (US-020) is the known instance, and it is guarded by a warning.
+- [ ] SHOULD: An action that cannot be reversed is either **made undoable** or **guarded before it happens**.
+  **Prefer making it undoable** — a guard interrupts everyone to protect the few, an undo protects everyone
+  and interrupts nobody. **No project‑mutating action in IHC OpenVisual currently needs the guard branch.**
+
+  > **Corrected 2026‑07‑17 (was: "unlocking a library function block (US-020) is the known instance, and it
+  > is guarded by a warning").** The one action this criterion cited as irreversible **is not irreversible
+  > here**: `Ctrl+Z` after an unlock fully re‑locks the block and the application keeps running (F‑065). So
+  > IHC OpenVisual already took the first branch, and US-020's warning — specced but never built — has been
+  > **deleted rather than implemented**. The example is removed rather than replaced because there is no
+  > longer a known instance to name; if one appears, this criterion is where it lands. Evidence:
+  > `RESULTS.md` **F‑064**, **F‑065**.
 - [ ] SHOULD: Non‑mutating actions (entering/leaving programming mode, US-026; toolbar/status‑bar
   toggles, US-051) do **not** appear on the undo history.
 
@@ -86,6 +96,14 @@ switches, toolbar/status‑bar toggles, simulation) which do not enter the edit 
 >   replicate the crash**, which is why the MUST above exists. ⚠ The crash's cause is inferred from the
 >   sequence, not isolated by a minimal repro; the *requirement* on IHC OpenVisual stands regardless of
 >   what exactly broke in the vendor. Evidence: `RESULTS.md` **F‑045**, **F‑046**.
+>
+> **Closed 2026‑07‑17 — and the outcome was better than "degrades gracefully".** The unlock‑then‑undo path
+> was finally driven on IHC OpenVisual and it does not degrade at all: it **works**. No modal, no warning,
+> the block re‑locked, the process alive. So the MUST is satisfied by the strongest possible means — the
+> action simply is not irreversible here — and this app **survives the exact sequence that kills the
+> vendor**. ⭐ **Worth a standing regression test** (`safe_visual_tests`: unlock → undo → the block is locked
+> again and the app lives): it is cheap, and it guards the one sequence known to be fatal in the tool this
+> app replaces. Evidence: `RESULTS.md` **F‑065**.
 
 ### AC illustrations
 
@@ -96,28 +114,42 @@ switches, toolbar/status‑bar toggles, simulation) which do not enter the edit 
   as a unit.
 - After undoing an insertion, dragging a new link instead of redoing leaves the earlier insertion
   unredoable.
-- Unlocking a library block and then pressing `Ctrl+Z` reports that the unlock cannot be undone and leaves
-  the block unlocked and the application running — the same sequence closes IHC Visual outright.
+- Unlocking a library block and then pressing `Ctrl+Z` **re‑locks the block** and leaves the application
+  running — **the same sequence closes IHC Visual outright.**
+
+  > **Corrected 2026‑07‑17 (was: "reports that the unlock cannot be undone and leaves the block unlocked").**
+  > The illustration described the vendor's constraint, not this app's behaviour, and it is measurably wrong:
+  > IHC OpenVisual's undo reverses the unlock completely. Evidence: `RESULTS.md` **F‑065**.
 
 ### Constraints
 
 - Verification method — **Demonstration** that a representative edit from each editing epic (E2–E9)
   undoes and redoes; that a cascading delete reverses as one step; that redo is invalidated by a
   new edit; and that undoing an unlock degrades gracefully rather than crashing.
-- **Open item — undo depth:** whether the history is single‑step or multi‑step, and how many steps it
-  retains, is not yet established; confirm during implementation before fixing
-  it. Treat as `[TBD]`. (R‑note.) ⚠ The vendor comparison did **not** close this: it measured
-  one‑action‑one‑step **granularity** (F‑045), which is a different question, and explicitly did **not**
-  stress‑test multi‑level depth or redo‑invalidation. Do not read F‑045 as resolving the depth.
+- **Open item — undo depth:** ⚠ **"single‑ vs multi‑level" is NOT open for IHC OpenVisual** — this app is
+  **multi‑level**, already implemented (see *Implementation status*). What remains `[TBD]` (R‑note) is two
+  narrower halves: **(a) the VENDOR's depth — a MEASURE:** how many steps does IHC Visual retain, and does a
+  second consecutive `Ctrl+Z` undo a second step? **(b) the SELF half:** IHC OpenVisual's own retention cap
+  — whether its history is bounded at all, and at what. ⚠ The vendor comparison did **not** close either: it
+  measured one‑action‑one‑step **granularity** (F‑045), which is a **different question**, and explicitly
+  did **not** stress‑test multi‑level depth or redo‑invalidation. **Do not read F‑045 as resolving the
+  depth.** ⚠ **Redo‑invalidation under depth was never stress‑tested on either app.** Owned by **C9** in
+  `tmp\compare3.md` §5.
 
 **Readiness:** Not Ready.
-- [R3] Undo/redo **depth** (single‑ vs multi‑level; number of steps retained) is `[TBD]` — confirm
-  during implementation. Granularity (one action = one step) is measured and closed (F‑045).
+- [R3] Undo/redo **depth** is `[TBD]` — **re‑scoped 2026‑07‑17, not closed**; this remains E14's only
+  blocker. *(Was: "single‑ vs multi‑level; number of steps retained" — but the *Implementation status* line
+  below already answers the first half for **this** app: it is **multi‑level**.)* The open question is
+  therefore **the VENDOR's depth** — a measure: how many steps IHC Visual retains, and whether a second
+  consecutive `Ctrl+Z` undoes a second step — plus the narrower **self** half, IHC OpenVisual's own
+  retention cap. Granularity (one action = one step) is measured and closed (F‑045) and **must not be read
+  as closing depth**. Owned by **C9** (`tmp\compare3.md` §5).
 
-**Implementation status:** 🟡 Implemented (multi-level) — granularity is measured **aligned** with IHC
-Visual (F‑045). ⚠ **The graceful‑degradation rule for irreversible actions is unverified**: IHC OpenVisual's
-undo‑after‑unlock could not be driven during the comparison (F‑043 blocked it), so whether it degrades or
-crashes like the vendor is **not known**. Reach that path and confirm it.
+**Implementation status:** 🟡 Implemented (multi-level) — granularity is measured **aligned** with IHC Visual
+(F‑045), and the **graceful‑degradation rule is now verified good** (F‑065): the exact sequence that closes
+IHC Visual — unlock a library block, then `Ctrl+Z` — runs cleanly here, re‑locking the block with the process
+alive and responding. **IHC OpenVisual is strictly better than the vendor on this path**, not merely equal.
+⚠ Only the depth `[R3]` is outstanding, and it is an unknown rather than a defect.
 
 ---
 

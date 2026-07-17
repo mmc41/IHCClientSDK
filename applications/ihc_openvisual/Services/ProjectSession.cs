@@ -222,10 +222,11 @@ public sealed class ProjectSession : IDisposable
     public const string NewLocalityName = "Locality";
 
     /// <summary>
-    /// Creates a reciprocal follow-link between two pins (US-022/US-023): the <paramref name="dropTargetPinId"/>
-    /// (the pin dragged <i>onto</i>) receives the <c>link_from_resource</c> half and the
-    /// <paramref name="draggedPinId"/> the <c>link_to_resource</c> half, each naming the other's full path. Commits,
-    /// marks dirty. Returns false (with a diagnostic) when a pin is missing or the link would be invalid.
+    /// Creates a reciprocal follow-link between two pins (US-022/US-023): <paramref name="draggedPinId"/> is the
+    /// SOURCE and receives the <c>link_from_resource</c> half, <paramref name="dropTargetPinId"/> is the SINK and
+    /// receives the <c>link_to_resource</c> half, each naming the other's full path — the orientation IHC Visual
+    /// writes in every authored file. Commits, marks dirty. Returns false (with a diagnostic) when a pin is
+    /// missing or the pair is one the vendor refuses (see <c>ProjectEditor.CanLink</c>).
     /// </summary>
     /// <summary>Builds the render-ready installation report model for the open project (US-040), or null if none.</summary>
     public InstallationReport? GenerateInstallationReport() =>
@@ -432,23 +433,27 @@ public sealed class ProjectSession : IDisposable
         {
             if (draggedPinId == dropTargetPinId)
                 return false;
-            // A direct function-block-to-function-block variable link (US-033b) only joins compatible endpoints: a
-            // flag/output source of one block to a flag/input target of another block. (Product↔block links, where at
-            // most one endpoint is an FB variable, keep their existing behaviour.)
-            if (OwningFunctionBlock(draggedPinId) is { } sourceBlock && OwningFunctionBlock(dropTargetPinId) is { } targetBlock)
+            // The dragged pin is the link's SOURCE and the drop target its SINK — the orientation IHC Visual
+            // writes: in every vendor-authored file the driving pin owns the link_from half and the driven pin
+            // the link_to half (never the reverse). ProjectEditor.CanLink applies the vendor's data-flow rule to
+            // every pin pair, so a crossed wire is refused here rather than written and shipped to a controller.
+            if (!editor.CanLink(draggedPinId, dropTargetPinId))
             {
-                string sourceTag = project.FindById(draggedPinId)?.Tag ?? string.Empty;
-                string targetTag = project.FindById(dropTargetPinId)?.Tag ?? string.Empty;
-                if (sourceBlock.Id == targetBlock.Id
-                    || sourceTag is not ("resource_flag" or "resource_output")
-                    || targetTag is not ("resource_flag" or "resource_input"))
-                {
-                    await _dialogs.ShowMessageAsync("Incompatible link",
-                        "Link a flag or output of one block to a flag or input of another block.");
-                    return false;
-                }
+                await _dialogs.ShowMessageAsync("Incompatible link",
+                    "Link a signal source to a signal target: a product input or a function-block output can drive "
+                    + "a function-block input or a product output. Two product pins must be joined through a "
+                    + "function block.");
+                return false;
             }
-            editor.Link(dropTargetPinId, draggedPinId);   // drop target = link_from (destination), dragged = link_to (source)
+            // Two variables of the same block are a loop, not a link (US-033b).
+            if (OwningFunctionBlock(draggedPinId) is { } sourceBlock && OwningFunctionBlock(dropTargetPinId) is { } targetBlock
+                && sourceBlock.Id == targetBlock.Id)
+            {
+                await _dialogs.ShowMessageAsync("Incompatible link",
+                    "Link a flag or output of one block to a flag or input of another block.");
+                return false;
+            }
+            editor.Link(draggedPinId, dropTargetPinId);
             return true;
         });
 

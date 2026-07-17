@@ -340,6 +340,11 @@
                             <!-- Publish the row's accessible name on the container itself so a UIA client reading
                                  TreeItem.Name gets the label directly (not blank, with the name on an inner peer). -->
                             <Setter Property="a:AutomationProperties.Name" Value="{Binding AccessibleName}"/>
+                            <!-- Publish the row's KIND for automation. AutomationId is never rendered and is not
+                                 announced as content, so this is invisible to a user — unlike HelpText, which is
+                                 already the tooltip the user sees. It exists because a row's LABEL is user data
+                                 and cannot identify it (see TreeNodeViewModel.NodeKind). -->
+                            <Setter Property="a:AutomationProperties.AutomationId" Value="{Binding NodeKind}"/>
                         </Style>
                     </TreeView.Styles>
                     <TreeView.ItemTemplate>
@@ -383,6 +388,11 @@
                             <!-- Publish the row's accessible name on the container itself so a UIA client reading
                                  TreeItem.Name gets the label directly (not blank, with the name on an inner peer). -->
                             <Setter Property="a:AutomationProperties.Name" Value="{Binding AccessibleName}"/>
+                            <!-- Publish the row's KIND for automation. AutomationId is never rendered and is not
+                                 announced as content, so this is invisible to a user — unlike HelpText, which is
+                                 already the tooltip the user sees. It exists because a row's LABEL is user data
+                                 and cannot identify it (see TreeNodeViewModel.NodeKind). -->
+                            <Setter Property="a:AutomationProperties.AutomationId" Value="{Binding NodeKind}"/>
                         </Style>
                     </TreeView.Styles>
                     <TreeView.ItemTemplate>

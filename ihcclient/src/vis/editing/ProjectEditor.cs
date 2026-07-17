@@ -609,8 +609,12 @@ namespace Ihc.Vis.Editing
             ArgumentNullException.ThrowIfNull(to);
             ElementId fromId = RequireId(from);
             ElementId toId = RequireId(to);
-            Require(fromId);   // both ends must exist before any id is allocated or a half appended:
-            Require(toId);     // a stale handle must fail here, not half-write a link
+            ProjectElement fromEl = Require(fromId);   // both ends must exist before any id is allocated or a half
+            ProjectElement toEl = Require(toId);       // appended: a stale handle must fail here, not half-write a link
+
+            if (!LinkRoles.CanLink(fromEl.Tag, toEl.Tag))
+                throw new InvalidOperationException(
+                    $"Cannot link '{fromEl.GetAttribute("name")}' to '{toEl.GetAttribute("name")}': {LinkRoles.Explain(fromEl.Tag, toEl.Tag)}.");
 
             ElementId linkFromId = allocator.Allocate(TypeCode.RequireForTag("link_from_resource"));   // from-half allocated first
             ElementId linkToId = allocator.Allocate(TypeCode.RequireForTag("link_to_resource"));
@@ -626,10 +630,25 @@ namespace Ihc.Vis.Editing
         }
 
         /// <summary>
+        /// Whether <see cref="Link(ElementId,ElementId)"/> would accept these two pins — the check a GUI runs before
+        /// offering the gesture, so it can refuse with its own message instead of catching. <paramref name="fromId"/>
+        /// is the source end (it would receive the <c>link_from_resource</c> half), <paramref name="toId"/> the sink.
+        /// False when either id does not resolve, when the two are the same pin, or when the shape is one IHC Visual
+        /// refuses (see <see cref="Ihc.Vis.Schema.LinkRoles"/>).
+        /// </summary>
+        public bool CanLink(ElementId fromId, ElementId toId)
+        {
+            ProjectElement? from = FindById(root, fromId);
+            ProjectElement? to = FindById(root, toId);
+            return from is not null && to is not null && fromId != toId && LinkRoles.CanLink(from.Tag, to.Tag);
+        }
+
+        /// <summary>
         /// Id-addressed <see cref="Link(ResourceRef,ResourceRef)"/> — the entry a GUI drives from two selected pins
         /// (it holds element ids, not the internal <see cref="ResourceRef"/> handles). <paramref name="fromId"/>
         /// receives the <c>link_from_resource</c> half, <paramref name="toId"/> the <c>link_to_resource</c> half.
-        /// Both ids must resolve to existing elements. Returns <c>this</c> for optional chaining.
+        /// Both ids must resolve to existing elements, and the pair must satisfy <see cref="CanLink"/> — an illegal
+        /// shape throws before anything is mutated. Returns <c>this</c> for optional chaining.
         /// </summary>
         public ProjectEditor Link(ElementId fromId, ElementId toId)
         {

@@ -1369,29 +1369,30 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         bool locked = (block.GetAttribute("locked") ?? "no") == "yes";
         var blockNode = new TreeNodeViewModel(name, locked ? "/Assets/fb-lk.svg" : "/Assets/fb-editable.svg",
-            isExpanded: true, elementId: block.Id);
+            isExpanded: true, elementId: block.Id) { NodeKind = "functionBlock" };
         ProjectElement? programs = block.FindChild("programs");
         var programsNode = new TreeNodeViewModel("Programs", NodeIcons.For("programs", null),
-            isExpanded: true, elementId: programs?.Id);
+            isExpanded: true, elementId: programs?.Id) { NodeKind = "programs" };
         if (programs is not null)
         {
             foreach (ProjectElement program in programs.ChildrenOrEmpty().Where(p => p.Tag is "program_simple" or "program_sub"))
             {
                 var programNode = new TreeNodeViewModel(program.GetAttribute("name") ?? "Program",
-                    NodeIcons.For("program_simple", null), isExpanded: true, elementId: program.Id);
+                    NodeIcons.For("program_simple", null), isExpanded: true, elementId: program.Id)
+                    { NodeKind = "program" };
                 if (program.FindChild("events") is { } events)
                 {
                     var eventsNode = new TreeNodeViewModel("Events", NodeIcons.For("events", null),
-                        isExpanded: true, elementId: events.Id) { IsEventsContainer = true };
+                        isExpanded: true, elementId: events.Id) { IsEventsContainer = true, NodeKind = "events" };
                     foreach (ProjectElement ev in events.ChildrenOrEmpty().Where(e => e.Tag is "event" or "event_power"))
                         eventsNode.Children.Add(new TreeNodeViewModel(EventCommandLabel(ev),
-                            NodeIcons.For(ev.Tag, null), elementId: ev.Id));
+                            NodeIcons.For(ev.Tag, null), elementId: ev.Id) { NodeKind = "event" });
                     programNode.Children.Add(eventsNode);
                 }
                 if (program.FindChild("actions") is { } actions)
                 {
                     var commandsNode = new TreeNodeViewModel("Commands", NodeIcons.For("actions", null),
-                        isExpanded: true, elementId: actions.Id) { IsCommandsContainer = true };
+                        isExpanded: true, elementId: actions.Id) { IsCommandsContainer = true, NodeKind = "commands" };
                     RenderActionsInto(commandsNode, actions);
                     programNode.Children.Add(commandsNode);
                 }
@@ -1412,7 +1413,7 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 case "action":
                     commandsNode.Children.Add(new TreeNodeViewModel(EventCommandLabel(child),
-                        NodeIcons.For("action", null), elementId: child.Id));
+                        NodeIcons.For("action", null), elementId: child.Id) { NodeKind = "command" });
                     break;
                 case "program_sub":
                     commandsNode.Children.Add(BuildSubProgramNode(child));
@@ -1427,8 +1428,10 @@ public partial class MainWindowViewModel : ViewModelBase
     // Renders a conditional sub-program (US-029): its Conditions group and true/false command branches.
     private TreeNodeViewModel BuildSubProgramNode(ProjectElement sub)
     {
+        // NodeKind "subProgram", NOT the icon: NodeIcons maps program_sub and program_case to the SAME
+        // glyph, so an icon-derived kind would merge these with case switches.
         var node = new TreeNodeViewModel("Sub-program", NodeIcons.For("program_sub", null),
-            isExpanded: true, elementId: sub.Id);
+            isExpanded: true, elementId: sub.Id) { NodeKind = "subProgram" };
         if (sub.FindChild("conditions") is { } conditions)
             node.Children.Add(BuildConditionsNode(conditions));
         foreach (ProjectElement branch in sub.ChildrenOrEmpty().Where(a => a.Tag == "actions"))
@@ -1436,7 +1439,8 @@ public partial class MainWindowViewModel : ViewModelBase
             bool isTrue = (branch.GetAttribute("type") ?? "") == "_0x1";
             var branchNode = new TreeNodeViewModel(
                 isTrue ? "Commands when conditions true" : "Commands when conditions false",
-                NodeIcons.For("actions", null), isExpanded: true, elementId: branch.Id) { IsCommandsContainer = true };
+                NodeIcons.For("actions", null), isExpanded: true, elementId: branch.Id)
+                { IsCommandsContainer = true, NodeKind = isTrue ? "commandsWhenTrue" : "commandsWhenFalse" };
             RenderActionsInto(branchNode, branch);
             node.Children.Add(branchNode);
         }
@@ -1450,12 +1454,13 @@ public partial class MainWindowViewModel : ViewModelBase
         bool or = (conditions.GetAttribute("type") ?? "and") == "or";
         string label = $"{(nested ? "Logic group" : "Conditions")} ({(or ? ">=1" : "&")})";
         var node = new TreeNodeViewModel(label, NodeIcons.For(or ? "conditions-or" : "conditions", null),
-            isExpanded: true, elementId: conditions.Id) { IsConditionsContainer = true, IsOrGroup = or };
+            isExpanded: true, elementId: conditions.Id)
+            { IsConditionsContainer = true, IsOrGroup = or, NodeKind = nested ? "logicGroup" : "conditions" };
         foreach (ProjectElement child in conditions.ChildrenOrEmpty())
         {
             if (child.Tag == "condition")
                 node.Children.Add(new TreeNodeViewModel(EventCommandLabel(child),
-                    NodeIcons.For("condition", null), elementId: child.Id));
+                    NodeIcons.For("condition", null), elementId: child.Id) { NodeKind = "condition" });
             else if (child.Tag == "conditions")
                 node.Children.Add(BuildConditionsNode(child, nested: true));
         }
@@ -1468,20 +1473,24 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         string switchName = ResolveOperandName(kase.GetAttribute("link"));
         var node = new TreeNodeViewModel($"Case ({switchName})", NodeIcons.For("program_case", null),
-            isExpanded: true, elementId: kase.Id) { IsCaseNode = true };
+            isExpanded: true, elementId: kase.Id) { IsCaseNode = true, NodeKind = "case" };
         foreach (ProjectElement child in kase.ChildrenOrEmpty())
         {
             if (child.Tag == "case_action")
             {
+                // "caseValue", not "commands": this row's LABEL is user data and it is ALSO an
+                // IsCommandsContainer, so neither the label nor the flag can tell it from a real
+                // Commands container — it needs a kind of its own or the two merge in the census.
                 var valueNode = new TreeNodeViewModel(child.GetAttribute("name") ?? "value",
-                    NodeIcons.For("case_action", null), isExpanded: true, elementId: child.Id) { IsCommandsContainer = true };
+                    NodeIcons.For("case_action", null), isExpanded: true, elementId: child.Id)
+                    { IsCommandsContainer = true, NodeKind = "caseValue" };
                 RenderActionsInto(valueNode, child);   // the embedded criterion operand is skipped (not a command)
                 node.Children.Add(valueNode);
             }
             else if (child.Tag == "actions")
             {
                 var elseNode = new TreeNodeViewModel("Else", NodeIcons.For("actions", null),
-                    isExpanded: true, elementId: child.Id) { IsCommandsContainer = true };
+                    isExpanded: true, elementId: child.Id) { IsCommandsContainer = true, NodeKind = "caseElse" };
                 RenderActionsInto(elseNode, child);
                 node.Children.Add(elseNode);
             }
@@ -1508,7 +1517,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private void BuildTree(ObservableCollection<TreeNodeViewModel> target, bool functions)
     {
         target.Clear();
-        var root = new TreeNodeViewModel("Localities", LocalityIcon, isExpanded: true, isLocalitiesRoot: true);
+        var root = new TreeNodeViewModel("Localities", LocalityIcon, isExpanded: true, isLocalitiesRoot: true)
+            { NodeKind = "localitiesRoot" };
         if (_session.Current is { } project)
         {
             foreach (ProjectElement group in project.Groups)
@@ -1522,7 +1532,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 }
                 // A locality that holds components opens by default so they are visible (US-006 container reveal).
                 var locality = new TreeNodeViewModel(name, LocalityIcon, isExpanded: components.Count > 0,
-                    isBold: true, elementId: group.Id) { Tooltip = BuildTooltip(group) };
+                    isBold: true, elementId: group.Id) { Tooltip = BuildTooltip(group), NodeKind = "locality" };
                 foreach (ProjectElement child in components)
                     locality.Children.Add(BuildComponentNode(child));
                 root.Children.Add(locality);
@@ -1551,7 +1561,8 @@ public partial class MainWindowViewModel : ViewModelBase
         bool unlinked = ProductClassifier.IsUnlinkedWireless(component.Tag, component.GetAttribute("serialnumber"));
         var node = new TreeNodeViewModel(ProductLabel(name, component.GetAttribute("position")),
             NodeIcons.For(component.Tag, component.GetAttribute("icon")),
-            elementId: component.Id, isUnlinked: unlinked) { Tooltip = BuildTooltip(component) };
+            elementId: component.Id, isUnlinked: unlinked)
+            { Tooltip = BuildTooltip(component), NodeKind = "product" };
         foreach (ProjectElement resource in component.ChildrenOrEmpty())
         {
             if (resource.Tag == "scenes")
@@ -1567,7 +1578,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private TreeNodeViewModel BuildScenesNode(ProjectElement scenes)
     {
         var node = new TreeNodeViewModel(scenes.GetAttribute("name") ?? "Scenarier", "/Assets/scenario.svg",
-            elementId: scenes.Id) { IsSceneTarget = true };
+            elementId: scenes.Id) { IsSceneTarget = true, NodeKind = "scenes" };
         foreach (ProjectElement member in scenes.ChildrenOrEmpty())
         {
             if (IsSceneMember(member.Tag))
@@ -1599,7 +1610,7 @@ public partial class MainWindowViewModel : ViewModelBase
         (string value, string ramp) = SceneMemberValue(member);
         string text = ramp.Length > 0 ? $"{value} / {ramp}" : value;
         return new TreeNodeViewModel($"{LinkOppositePath(member)} = {text}", "/Assets/link-from.svg",
-            elementId: member.Id) { IsLinkRow = true };
+            elementId: member.Id) { IsLinkRow = true, NodeKind = "sceneMember" };
     }
 
 
@@ -1612,6 +1623,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             IsFunctionBlock = true,
             Tooltip = BuildTooltip(fb),
+            NodeKind = "functionBlock",
         };
         foreach ((string container, string label) in FunctionBlockSections.All)
         {
@@ -1619,6 +1631,9 @@ public partial class MainWindowViewModel : ViewModelBase
             var section = new TreeNodeViewModel(label, NodeIcons.For(container, null), elementId: holder?.Id)
             {
                 SectionTag = holder is not null ? container : null,
+                // The section's own .vis container tag (inputs/outputs/settings/internalsettings) — these
+                // four rows are siblings that differ only by label, so the kind must keep them apart.
+                NodeKind = $"section:{container}",
             };
             if (holder is not null)
             {
@@ -1673,7 +1688,14 @@ public partial class MainWindowViewModel : ViewModelBase
         // still surfaces as the checked state of the "Save current value" menu item bound to IsValueSaved.
         string label = string.IsNullOrEmpty(value) ? name : $"{name} = {value}";   // fixed sub-resource default (US-010)
         var node = new TreeNodeViewModel(label, NodeIcons.For(resource.Tag, resource.GetAttribute("icon")),
-            elementId: resource.Id) { IsPin = true, IsOutputPin = isOutput, IsValueSaved = saved, Tooltip = BuildTooltip(resource) };
+            elementId: resource.Id)
+            {
+                IsPin = true, IsOutputPin = isOutput, IsValueSaved = saved, Tooltip = BuildTooltip(resource),
+                // The pin's own .vis tag IS its kind, and it is what the label cannot say: these trees are
+                // full of same-named siblings ("Udgang", "Spot", "Tryk (øverst venstre)") under nearly
+                // every product.
+                NodeKind = $"pin:{resource.Tag}",
+            };
         // A linked pin reveals its follow-link / scene-link rows, each naming the opposite end's full path (US-022/025).
         foreach (ProjectElement child in resource.ChildrenOrEmpty())
         {
@@ -1689,9 +1711,14 @@ public partial class MainWindowViewModel : ViewModelBase
     // duplicate the glyph already on the same row and eat width in the pane that matters most.
     private TreeNodeViewModel BuildLinkNode(ProjectElement linkRow)
     {
-        bool incoming = linkRow.Tag == "link_from_resource";
-        string icon = incoming ? "/Assets/link-from.svg" : "/Assets/link-to.svg";
-        return new TreeNodeViewModel(LinkOppositePath(linkRow), icon, elementId: linkRow.Id) { IsLinkRow = true };
+        bool isSourceEnd = linkRow.Tag == "link_from_resource";   // a from-half means THIS pin drives the other end
+        string icon = isSourceEnd ? "/Assets/link-from.svg" : "/Assets/link-to.svg";
+        // The link's DIRECTION, which the label deliberately does not carry: F-019 removed the →/← markers
+        // because the icon already says it, and that left every tree-based check blind to direction — which
+        // is how F-066 (every link written with its halves swapped) survived a tree diff and three visual
+        // tests. The direction is back where a machine can read it, without putting an arrow back on screen.
+        return new TreeNodeViewModel(LinkOppositePath(linkRow), icon, elementId: linkRow.Id)
+            { IsLinkRow = true, NodeKind = linkRow.Tag == "scene_link" ? "sceneLink" : isSourceEnd ? "linkFrom" : "linkTo" };
     }
 
     // The full path (locality / product-or-block / pin) of the pin at the opposite end of a link row.

@@ -1,6 +1,6 @@
 ---
-version: 0.2.0
-last-updated: 2026-07-16
+version: 0.2.2
+last-updated: 2026-07-17
 status: draft
 ---
 
@@ -44,9 +44,19 @@ menus, dialogs).
 
 - [ ] MUST: Hovering the mouse pointer over a tree node whose model carries a non‑empty documentation note
   shows a tooltip containing that note text, preserving the note's line breaks.
-- [ ] MUST: The tooltip requires **no modifier key** — plain hover is sufficient. (Plain hover shows the
-  note on a function block with no modifier — see the note under US-048; any `Ctrl`‑hover requirement
-  is an unverified observation.)
+- [ ] MUST: The tooltip requires **no modifier key** — plain hover is sufficient. ⚠ **The evidence is a
+  single node kind:** plain hover was measured showing the note on a **function‑block group node** (see the
+  note under US-048), and this MUST generalises that to **every** node kind — **products, product
+  inputs/outputs and function‑block pins are unmeasured**. Scheduled as **C23** in `tmp\research3.md` §4 —
+  the vendor hover/tooltip census, the last unowned piece of `RESULTS.md`'s **E‑5**. (R‑note.)
+
+  > **Corrected 2026‑07‑17 (was: "… see the note under US-048; any `Ctrl`‑hover requirement is an
+  > unverified observation").** The `Ctrl`‑hover clause is struck — it was this file's **last** mention of a
+  > behaviour the spec does not have. The epic scope (`:18-19`), this MUST and US-048's (`:88`) all mandate
+  > **no modifier key**, so there was no `Ctrl`‑hover requirement to verify *or* deny; the clause denied one
+  > that never existed, which is why every gap‑sweep kept re‑finding it. Same remnant as the one struck
+  > under US-048 the same day (`:116-127`). ⭐ **The evidentiary caveat is the half that mattered and it
+  > stays** — sharpened to name what is actually unmeasured, which is the node kinds, not the modifier.
 - [ ] MUST: Hovering a node that has **no** documentation note and **no** resource ID (for example the
   *Localities* root or an empty locality) shows **no** tooltip.
 - [ ] SHOULD: The tooltip is available for nodes in both the *Installation* and *Functions* panes.
@@ -99,9 +109,22 @@ holding a modifier key or opening a dialog.
   group node, with no modifier key. **For a product, the note is what the hover shows** — it is *not* in the
   tree label; the parenthetical in a product's label is its **`Placering`**, a different field (US-010,
   US-011). The note also appears in reports (US-040). Notes on hover for product inputs/outputs and the IHC
-  resource‑ID tooltip are IHC OpenVisual enhancements. The `Ctrl`‑hover behaviour and the resource‑ID
-  tooltip are IHC OpenVisual's own design; verify them during implementation before treating
-  them as fixed requirements. (R‑note.)
+  resource‑ID tooltip are IHC OpenVisual enhancements. The **resource‑ID tooltip** is IHC OpenVisual's own
+  design; verify it before treating it as a fixed requirement — it is scheduled as **C21.5** in
+  `tmp\research3.md` §3. (R‑note.)
+
+  > **Corrected 2026‑07‑17 (was: "The `Ctrl`‑hover behaviour and the resource‑ID tooltip are IHC OpenVisual's
+  > own design; verify them during implementation").** The `Ctrl`‑hover clause **contradicted this story's own
+  > MUSTs** and is struck. The epic scope (`13-tooltips.md:18-19`) and **both** MUSTs — US-047's (`:47`) and
+  > US-048's (`:88`) — mandate **no modifier key**; plain hover is sufficient. So there was no `Ctrl`‑hover
+  > behaviour left to verify, and anyone verifying it literally would have been verifying **something the
+  > spec forbids**. This was an unswept remnant of the 2026‑07‑16 correction below, which fixed a different,
+  > adjacent error (the `note`‑vs‑`position` label mix‑up, **F‑003**) and left this clause standing.
+  >
+  > **The resource‑ID half stays as the live open question.** It is an IHC OpenVisual enhancement the vendor
+  > does not have, so **no vendor measurement can settle it** — the census has nothing to say here. It is
+  > answerable only by driving IHC OpenVisual, which is what **C21.5** does. ⚠ Per `:47`/`:88`, **no modifier
+  > path should exist**; if C21.5 finds one, the **code** is wrong, not the MUSTs.
 
   > **Corrected 2026‑07‑16 (was: "For products the note is shown inline in the tree label, in parentheses
   > after *Name*").** That attribution was **wrong**, and load‑bearing: it was labelled a vendor‑derived

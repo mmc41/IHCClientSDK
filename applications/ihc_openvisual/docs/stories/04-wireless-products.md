@@ -1,6 +1,6 @@
 ---
-version: 0.2.0
-last-updated: 2026-07-16
+version: 0.3.0
+last-updated: 2026-07-17
 status: draft
 ---
 
@@ -24,6 +24,10 @@ function‑block links (E6), and controller project transfer (E10).
 **Acceptance criteria (epic level):**
 - MUST: A wireless product can be inserted into a locality and is shown with a yellow **!** until it is
   linked to the controller.
+- MUST: A wireless product's properties dialog **is the wired product's dialog** (US-011) — same field set,
+  same terminal grids (US-012) — with each part enabled or disabled by the **product's shape**, not by its
+  family. E4 owns only what is genuinely wireless‑specific: the unlinked marker, the advanced dimmer
+  properties (US-015), and commissioning (US-016/US-017).
 - MUST: The technician can link all products in sequence or one at a time from *Controller > Link
   Wireless products*, using the product’s programming button, with per‑attempt success/error sound.
 - SHOULD: The technician can unlink products and read live signal strength and battery level via *Test*.
@@ -66,9 +70,40 @@ Scenario: Wireless categories come from the catalog
 - Inserting a wireless product (`<product>`) under `Bedroom` yields a product node named by the catalog
   and exposing the pins IHC Visual shows for it (`<pin>`, per US-010's row rules); the status bar reads
   `Product '<product>' inserted under Bedroom`, and **no dialog opens**.
-- The wireless properties dialog carries **Name, Placering, Note, Identification code, Light group**
-  (light group MAY be absent for some products) — and **no cable/terminal addressing**, since wireless
-  products talk directly to the controller rather than through an I/O module terminal.
+- Opening a `Bevægelsessensor 1873 Bobby-AM`'s properties shows the **same dialog a wired product opens**,
+  with its `Indgange` grid and *Configure input* button **enabled** (the sensor has an input) and its
+  `Udgange` grid and *Configure output* button **disabled** (it has no output) — the exact mirror of
+  `Lampeudtag`, which has an output and no input.
+
+### Business rules (the wireless properties dialog)
+
+- MUST: A wireless product opens **the same properties dialog as a wired product**, with the **same field
+  set** — *Name*, *Placering*, *Note*, *Cable type*, *Cable numbering*, *Identification code*, *Light group*
+  — under **US-011's rules**, including the `locked` gate on *Name*. This story adds no fields of its own
+  and removes none.
+- MUST: The dialog carries **US-012's `Indgange` / `Udgange` terminal grids and their *Configure* buttons**
+  for wireless products too. Each grid and its button are enabled or disabled by **the product's own shape
+  — whether it has inputs and/or outputs — not by whether it is wired or wireless.**
+
+> **Corrected 2026‑07‑17 (was: "the dialog carries Name, Placering, Note, Identification code, Light group
+> — and **no cable/terminal addressing**, since wireless products talk directly to the controller").**
+> ⚠⚠ **Both halves of that claim are now measured false.** The comparison finally opened a *wireless*
+> product's dialog and found **it is the wired dialog** — the same template, **39 controls, identical ids,
+> identical visibility flags**. Two consequences this story had wrong:
+> 1. **The field set is US-011's seven, not five.** *Cable type* and *Cable numbering* are present on a
+>    wireless product too — the story had dropped them on the reasonable‑sounding but wrong theory that a
+>    product with no cable has no cable fields.
+> 2. **The terminal grids are there, and for a wireless sensor the input half is ENABLED.** What varies is
+>    `enabled`, and it tracks the product's **shape**: an input‑only sensor enables `Indgange`/*Configure
+>    input* and disables `Udgange`/*Configure output*. So "wireless ⇒ no terminal addressing" is not a rule
+>    the vendor has; the previous note's instruction *"do not extend F‑030 to this epic without measuring
+>    it"* was the right caution, and measuring it reversed the answer.
+>
+> ✅ **This also confirms the `Location` → `Placering` correction below rather than reverting it.** That
+> correction was made **by consistency** with US-011 — an inference the earlier pass explicitly flagged as
+> revertible *"if the wireless dialog turns out to have no `Placering`"*. It has one. **Keep the correction.**
+> Evidence: `RESULTS.md` **F‑057** (`S46-wireless-dialog.json` vs `F032-lampeudtag-dialog.json`, diffed
+> control by control).
 
 > **Corrected 2026‑07‑16 (two false claims, both inherited from E3's).**
 > 1. **The insert no longer implies an auto‑opened dialog.** The old Given read *"I have just inserted a
@@ -80,16 +115,19 @@ Scenario: Wireless categories come from the catalog
 >    by tree position. The same correction as US-011, applied consistently. Evidence: `RESULTS.md` **F‑031**;
 >    backlog **A‑13**.
 >
-> ⚠ **"No cable/terminal addressing" is retained and is not contradicted.** US-012's terminal grids were
-> measured on a **wired** product; the comparison never opened a *wireless* product's dialog, and wireless
-> products address to the controller rather than to a module terminal. Do not extend F‑030 to this epic
-> without measuring it.
+> ⚠ **A third claim — "no cable/terminal addressing" — was retained on 2026‑07‑16 as "not contradicted",
+> and 2026‑07‑17 contradicted it.** See the correction above. It is left recorded here because the reasoning
+> that kept it was sound and still failed: the comparison genuinely had not opened a wireless dialog, so the
+> claim was *unmeasured*, not *supported* — and an unmeasured claim in a story reads exactly like a measured
+> one. The lesson is the caution the note itself gave.
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Implemented — ⚠ **except two corrected rules**, shared with US-011: the code
-still auto‑opens the dialog on insert (backlog **A‑14**), and still shows a `Location` room dropdown instead
-of `Placering` (backlog **A‑13**).
+**Implementation status:** 🟡 Implemented (the insert) — ⚠ **except the rules shared with US-011/US-012**:
+the code still auto‑opens the dialog on insert (backlog **A‑14**), still shows a `Location` room dropdown
+instead of `Placering` (backlog **A‑13**), leaves *Name* ungated (backlog **A‑15**), and — now that the
+wireless dialog is known to be the wired one — is **also missing the terminal grids here** (backlog
+**A‑12**), which the story previously said were not needed for wireless at all.
 
 ---
 

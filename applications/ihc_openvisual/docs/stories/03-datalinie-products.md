@@ -1,13 +1,24 @@
 ---
-version: 0.2.0
-last-updated: 2026-07-16
+version: 0.3.1
+last-updated: 2026-07-17
 status: draft
 ---
 
 # E3 — Wired (data-line) products
 
-> **Implementation status:** 🟡 Partly implemented — insertion works; **terminal addressing (US-012) does
-> not exist**, and four product‑dialog rules diverge from the vendor (US-011). See each story.
+> **Implementation status:** 🟡 Partly implemented — **three divergences, not one**: the **insert menu is
+> 12 products short** (US-010 — IHC Visual offers 21 categories / 100 leaves against IHC OpenVisual's
+> 17 / 88, a **strict subset: 12 missing, 0 extras**; `RESULTS.md` **F‑055** → backlog **A‑11**);
+> **terminal addressing does not exist** (US-012 → **A‑12**, the largest single gap the comparison found);
+> and **six product‑dialog rules diverge** from the vendor (US-011). ⭐ **A‑11 is a menu‑building gap, not a
+> catalog gap** — the SDK's embedded catalog already carries all 100 products, including all 12 missing
+> ones, so no catalog work is implied. See each story.
+>
+> **Corrected 2026‑07‑17 (was: "insertion works; terminal addressing (US-012) does not exist, and six
+> product‑dialog rules diverge from the vendor (US-011)").** ⚠ *"Insertion works"* is falsified: **US-010's
+> status went ✅ → 🟡 the same day**, when the insert menu was re‑walked to the leaves and measured a strict
+> subset of the vendor's (**F‑055**). The header named the two divergent stories and US-010 was not one of
+> them — it is now.
 
 > **Current scope:** ✅ **In scope** — inserting, documenting and addressing wired products is
 > project CRUD.
@@ -31,9 +42,20 @@ third‑party and misc products) beyond that `<product>`.
 - SHOULD: The status bar confirms each insertion by product name and target locality.
 - MUST: At most one modem can exist in a project.
 
-**Readiness:** Not Ready — two open measurements, neither blocking the bulk of the epic:
-- [R3] US-012 — the terminal‑row open **gesture** (single‑ vs double‑click) is TBD (pending capture).
-- [R5] US-011 — **which product types lock the *Name* field** is TBD (pending capture).
+**Readiness:** Ready.
+
+> **Both open measurements are now closed (2026‑07‑17).** This epic was *Not Ready* on two captures; the
+> second comparison session drove both, so every rule below is specified from a measurement rather than a
+> guess:
+> - **[R3] US-012 — the terminal‑row open gesture is DOUBLE‑click**, and the *Configure* button opens the
+>   **same** sub‑dialog: two routes, one dialog. Evidence: `RESULTS.md` **F‑056**.
+> - **[R5] US-011 — the *Name* lock predicate is the `locked` attribute on the project element**, resolved
+>   against the project's own inline DTD. Confirmed 9 captures / 0 falsifications. Evidence: `RESULTS.md`
+>   **F‑054**.
+>
+> The same session also closed the epic's leaf‑parity gap (**E‑7** → **F‑055**) and found two dialog
+> divergences nobody had recorded — the vendor's MRU combo boxes and its *end‑user report* checkbox
+> (**F‑056**). Both are written into US-011.
 
 ---
 
@@ -74,22 +96,39 @@ The insert menu's categories are IHC Visual's, and the vendor's structure is the
 - MUST: The **special‑products** category holds the vendor's full set — `Modificeret Wireless produkter`,
   `Vinduer` and `Udgaet produkter` (discontinued), plus the loose specials `S0 Device`,
   `Controller Link OUT`, `Controller Link IN` and the signal‑strength test equipment.
-- MUST: Category names are presented in **one** language throughout the menu — a category name is not left
-  in the vendor's Danish among otherwise‑translated siblings.
+- **[TBD — needs a product ruling, do not decide it while implementing]** Whether the category names read
+  as the vendor's **Danish** throughout or are **translated** into IHC OpenVisual's English is **not
+  settled**. Today IHC OpenVisual translates the **three top‑level** names only (`Datalinie produkter` →
+  *Wired products*) and carries every subcategory and leaf in the vendor's Danish; the vendor‑is‑spec
+  principle argues for Danish throughout, the rest of the UI being English argues the other way. This is a
+  **B‑or‑C call**: pick one, then apply it to the whole menu. **The structural rules above are independent
+  of it and can be implemented first.**
+
+  > **Corrected 2026‑07‑17 (was: a MUST that category names be in one language, on the reading that
+  > "`Generelle` is untranslated among English siblings — a localisation slip").** ⚠ **That reading was a
+  > misdiagnosis, and walking the menu to the leaves disproved it.** The vendor's *own* subcategories under
+  > `Datalinie produkter` are literally `Input`, `Output`, `Dimmer`, **`Generelle`** — so `Generelle`'s
+  > siblings are not "otherwise‑translated" at all; IHC OpenVisual carries all four **verbatim**, exactly as
+  > the function‑block catalog does (US-018). There is no slip to fix. What *is* real is the inconsistency
+  > one level up, and it is a **decision, not a defect** — which is why the MUST is demoted to a ruling.
+  > Evidence: `RESULTS.md` **F‑055**.
 
 > **Corrected 2026‑07‑16 (was: "it offers the product categories the catalog defines", which asserted
-> nothing checkable).** Walking both menus found three concrete gaps: (1) **no `Bus Produkter` category** —
-> IHC OpenVisual re‑homes `SMS Modem` under *Special products*, and **`IHC LED Dimmer 2 kanaler` appears
-> nowhere at all**; (2) **`Special products` holds only `SMS Modem`**, missing the three sub‑categories and
-> the four loose specials; (3) **`Generelle` is untranslated** among English siblings (*Input*/*Output*/
-> *Dimmer*) — a localisation slip, not a vendor‑parity issue (Danish‑vs‑English wording is otherwise an
-> allowed difference). `Wired products` ↔ `Datalinie produkter` and the whole wireless subtree already
+> nothing checkable).** Walking both menus found two concrete structural gaps: (1) **no `Bus Produkter`
+> category** — IHC OpenVisual re‑homes `SMS Modem` under *Special products*, and **`IHC LED Dimmer 2
+> kanaler` appears nowhere at all**; (2) **`Special products` holds only `SMS Modem`**, missing the three
+> sub‑categories and the four loose specials. `Wired products` ↔ `Datalinie produkter` and the whole wireless subtree already
 > match. Evidence: `RESULTS.md` **F‑028** (vendor `catalog.products` = **100** products with category
 > paths); backlog **A‑11**.
 >
-> ⚠ **Leaf‑level parity is unverified** — the menu walk was bounded at depth 3, so the vendor's 100
-> products were never matched leaf‑for‑leaf (`RESULTS.md` **E‑7**). The missing categories imply missing
-> products, so expect this rule to grow once the leaves are diffed; size **A‑11** after E‑7, not before.
+> **Leaf parity is now measured — the gap is exact, and it is smaller than feared (2026‑07‑17).** The menu
+> was re‑walked to the leaves on both apps: IHC Visual offers **21 categories / 100 leaves**, IHC OpenVisual
+> **17 / 88** — a **strict subset: 12 products missing, 0 extras**, and the 12 are exactly the four
+> categories above (1 bus + 11 special). ✅ `Wired products` and `IHC Wireless products` are **structurally
+> identical** to the vendor's, subcategory for subcategory — **do not touch them**. ⭐ **This is a
+> menu‑building gap, not a catalog gap**: the SDK's embedded catalog already carries all 100 products,
+> including all 12 missing ones, so no catalog work is implied. Evidence: `RESULTS.md` **F‑055** (supersedes
+> F‑028's category‑only reading and closes **E‑7**); backlog **A‑11**.
 
 ### Business rules — how the tree renders a product
 
@@ -115,6 +154,16 @@ Visual deliberately does **not** draw. The tree shows the vendor's row set, by t
 - MUST: A shutter product's `airlink_shutter_up` / `airlink_shutter_down` pins (*Op* / *Ned*) are
   **not shown**. They are identified by **element tag alone** — they carry no distinguishing
   attribute and reuse their first `airlink_input` sibling's `address_channel`.
+
+  > ⚠ **Two rules fit this evidence equally well, and the app implements one of them. Read before
+  > extending it.** The hidden pins are identified here **by tag**, but they *also* **duplicate a sibling's
+  > `address_channel`** — and no measured case separates the two rules. The tag rule shipped because it is
+  > what was measured; the duplicate-channel rule was noted and not adopted. **The discriminator is a
+  > product that hides a pin *without* a duplicate channel (or the reverse)** — until one is found, this is
+  > a coin-flip that happens to be green. ⚠ Relatedly, the rule was **deliberately not generalised** to
+  > `airlink_shutter_lock` (the *Lås* pin on `Jalousi 2 tast`): there is no vendor evidence either way, so
+  > the measured tag list is implemented **literally**. Both are raised for measurement as **C19a/C19b** in
+  > `tmp\compare3.md` §6.2; backlog **A-1**.
 - MUST: A resource carrying **`setting="yes"`** (a sensor/thermostat calibration row such as
   *Kalibrering af temperaturføler*) is **not shown**. Tag cannot decide this one: it shares its
   `resource_temperature` tag with the *visible* *Temperatur* / *Dugpunkt* rows of the same product.
@@ -129,8 +178,38 @@ Visual deliberately does **not** draw. The tree shows the vendor's row set, by t
   `enum_value` its `inivalue` points at** — e.g. `Tilstand = Ukendt`, `Log Fugt = Off`.
 - MUST: This is the **initial** value (the enum's index‑0 member), read through the project's enum
   definitions — **not** live controller state. OpenVisual reads no controller here.
-- MUST: Only `resource_enum` does this. `inivalue` is also used as a **literal** elsewhere
-  (`resource_flag` `on`/`off`, the hidden calibration rows' `0.00`); those rows stay bare.
+- MUST: `resource_enum` is **not the only** row kind that does this. The vendor renders the literal on a
+  function block's **`Indstillinger`** (settings) rows too — `Timertid = 00:10:00`,
+  `Sluk Tidspunkt = 00:00:00` — and neither of those is an enum. ⚠ **IHC OpenVisual renders those rows
+  bare, so it is short a value there**; backlog **A‑21**.
+- MUST: A row the tree **hides** carries no label either way — the calibration rows' `0.00` never reaches
+  one, because the row itself is suppressed (the `setting="yes"` rule above). On a **product** the
+  `resource_flag` `on`/`off` literal does stay bare; ⚠ the same tag's **function‑block** behaviour is
+  **unmeasured** — do not extend the rule to it on inference.
+
+> **Corrected 2026‑07‑17 (was: "Only `resource_enum` does this … those rows stay bare").** ⚠ **The scope
+> was too narrow — the vendor's rule reaches rows that are not enums at all.** The deep TV2 diff measured
+> IHC Visual rendering `Timertid = 00:10:00` and `Sluk Tidspunkt = 00:00:00` on a **non‑enum**
+> function‑block `Indstillinger` row in configuration mode, with **IHC OpenVisual rendering the same rows
+> bare** — measured on build `b2f1933`, i.e. **after A‑3 shipped**, so this is a live divergence and not a
+> pre‑A‑3 artefact. `Timertid` **cannot** be a `resource_enum`: A‑3 renders every one of those as
+> `name = value`, and this row came out bare. ⇒ IHC OpenVisual is **short a value** on FB variable/settings
+> rows — an **unrecorded B**, now tracked as backlog **A‑21**. Evidence: `RESULTS.md` **F‑062**
+> (`RESULTS.md:220`).
+>
+> **Why nobody noticed — and this is the instructive part.** F‑062 is closed in the ledger as *"✅ RESOLVED
+> 2026‑07‑17 by F‑068"*, but **F‑068 resolved only the row‑COUNT delta** (+525 = 30 empty containers + 495
+> `Internal variables`) and reports *"0 pin‑count mismatches"*. **A label difference does not move a node
+> count**, so F‑062's label observation was carried into a closure that never covered it — F‑062's own
+> adjudication walks three candidates (a)/(b)/(c), and the bare state rows are none of them.
+>
+> ✅ **The product side is unaffected — do not "fix" it.** Across TV1's 640‑node label sweep IHC OpenVisual
+> matched the vendor **639/639**, its one exception being F‑051's link‑path leak — **not** a state row. That
+> is the positive evidence that on a product `resource_enum` really is the only row kind that takes a value,
+> and that the literal‑carrying rows really do stay bare (`RESULTS.md` **F‑051**). The falsified word is
+> *"Only"*. ⚠ **Residual — the exact cell the note below names is still open**: an **enum** variable in
+> **programming** mode remains uncensused (`RESULTS.md` **E‑4**), scheduled as **C1.2** in
+> `tmp\compare3.md` §3.3. F‑062 measured **configuration** mode.
 
 > **Added 2026‑07‑16 (was: state rows rendered the bare name).** Evidence: `RESULTS.md` **F‑004**;
 > backlog **A‑3**. The vendor's two examples (*Tilstand*, *Log Indgang*) turn out to be **one** row kind,
@@ -161,7 +240,14 @@ Visual deliberately does **not** draw. The tree shows the vendor's row set, by t
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented.
+**Implementation status:** 🟡 **Partly implemented** — insertion, the `(position)` label and the
+row‑suppression rules work, but **two of this story's own MUSTs are measured unmet**: there is **no
+`Bus Produkter` category** and `Special products` holds 1 leaf against the vendor's 7, so IHC OpenVisual's
+menu is a **strict subset — 21 categories / 100 leaves on the vendor vs 17 / 88; 12 products missing, 0
+extras** (`RESULTS.md` **F‑055**); backlog **A‑11**. ⭐ **A menu‑building gap, not a catalog gap** — the SDK's
+embedded catalog already carries all 100 products, including all 12 missing ones; the root cause is
+`MainWindowViewModel.BuildProductMenu()`'s modem‑only filter. (The FB‑side `= <value>` gap above,
+**A‑21**, is a third.)
 
 ---
 
@@ -191,22 +277,48 @@ later via properties), **so that** the generated reports (E9) describe the insta
   > thing distinguishing two open dialogs. Evidence: `RESULTS.md` **F‑015**; backlog **A‑8**.
 
 **Input fields (each a labelled control; free‑text unless a list is noted):**
-- MUST: **Name** — the product type name; shown pre‑filled. **Editability is gated by product type:** for
-  types whose name is fixed to the type, the field is **disabled** (shown, greyed, not editable); for the
-  rest it is editable.
+- MUST: **Name** — shown pre‑filled. **Editability is gated by the placed product's own `locked`
+  attribute**, not by its type: the field is **disabled** (shown, greyed, not editable) exactly when the
+  `locked` attribute **on that product's element in the project** resolves to `yes`, and editable
+  otherwise. When it is disabled, the name shown equals the catalog's type name.
+- MUST: `locked` is resolved against **the project's own inline DTD**, which defaults it to **`no`** — so a
+  product element that simply **omits** `locked` is **editable**. The attribute is only *seeded* onto an
+  element from the catalog when the product is first inserted; from then on the element is the truth.
 
-  > **Corrected 2026‑07‑16 (was: Name always editable).** IHC Visual **disables** Navn for `Lampeudtag` —
-  > the name is fixed to the product type for that type — while IHC OpenVisual offers an editable textbox
-  > for every product. Per the 2026‑07‑16 ruling the vendor is authoritative, so the gate is adopted.
-  > Evidence: `RESULTS.md` **F‑032**; backlog **A‑15**.
+  > **Corrected 2026‑07‑16 (was: Name always editable), predicate closed 2026‑07‑17 (was: "gated by product
+  > type — TBD which types").** IHC Visual **disables** Navn for `Lampeudtag` while IHC OpenVisual offers an
+  > editable textbox for every product. Per the 2026‑07‑16 ruling the vendor is authoritative, so the gate is
+  > adopted — and the second comparison session named the predicate outright, so **no sampling is needed and
+  > nothing here is a guess**: `Navn` is disabled ⟺ the element's `locked` resolves to `yes`, confirmed over
+  > **9 live captures with 0 falsifications**. Evidence: `RESULTS.md` **F‑032** → **F‑054**; backlog **A‑15**.
   >
-  > **TBD (pending capture):** *which* product types lock the name. Only one type (`Lampeudtag`, locked)
-  > was sampled, so the rule behind the gate is unknown — do not guess it. Sample 2–3 further types on the
-  > vendor (one expected editable) before implementing, and derive the predicate from what they show.
+  > ⚠⚠ **"Gated by product type" — the rule this story used to state — is the one implementation that gets
+  > it wrong.** The project's inline DTD defaults `locked` to **`no`**; the *catalog's* grammar defaults it
+  > to **`yes`**. They disagree, so a catalog lookup by type greys every product whose element omits the
+  > attribute — in the measured project that is **all the wireless sensors**. Measured both ways:
+  > `Lampeudtag`'s element carries `locked="yes"` explicitly → **greyed**; `Bevægelsessensor 1873 Bobby-AM`'s
+  > element omits it → inherits the project default `no` → **editable**. The two datasets agree only for
+  > *freshly inserted* products, which is why the type‑based reading survived the first session.
+  >
+  > ⚠ **Do not "fix" the vendor's typo.** Four catalog products (`Mini Modul 1/2/3 tryk`, `Diode`) carry a
+  > misspelled `loced="no"`. It is undeclared in every DTD and therefore **inert**, so they are
+  > *accidentally* `locked="yes"` and IHC Visual greys them **against their author's plain intent** — verified
+  > live. Resolving `locked` through the DTD reproduces the vendor exactly; correcting the typo would diverge.
+  >
+  > **Rivals falsified — do not re‑litigate.** `enduser_report`: the decisive same‑grammar pair shares its
+  > value yet differs in editability. `category`: `S0 Device` (greyed) and `Controller Link OUT` (editable)
+  > sit in the *same* category.
 
 - MUST: **Placering** — the product's **placement descriptor**: where in the room it physically sits, e.g.
-  `i loft` ("in the ceiling"). One of a fixed list. This is **not** the parent room — the room is implied
-  by the product's position in the tree and is not shown in the dialog.
+  `i loft` ("in the ceiling"). This is **not** the parent room — the room is implied by the product's
+  position in the tree and is not shown in the dialog. It is **free text with suggestions**, not a fixed
+  list (see the combo‑box rule below).
+
+  > **Corrected 2026‑07‑17 (was: "One of a fixed list").** ⚠ **The fixed‑list claim was wrong, and building
+  > to it would have been a divergence in its own right.** `Placering` is an **editable combo box** whose
+  > drop‑down is a *most‑recently‑used* list, not an enumeration: IHC Visual backs it with a machine‑local
+  > `Data\*.txt` file that accumulates whatever installers have typed on that PC. **No fixed list exists to
+  > reproduce.** Evidence: `RESULTS.md` **F‑054**/**F‑056**.
 
   > **Corrected 2026‑07‑16 (was: "Location — drop‑down of localities or free text").** Two divergences in
   > one field. IHC OpenVisual **dropped** the vendor's `Placering` placement descriptor (so the placement
@@ -226,8 +338,41 @@ later via properties), **so that** the generated reports (E9) describe the insta
 - SHOULD: **Identification code** — free text; the unique product number.
 - SHOULD: **Light group** — drop‑down; **MAY be absent** for products with no light‑group
   relationship.
+- SHOULD: **Include this product in the end‑user report** — a **checkbox**, shown only for product types
+  that can appear in that report and hidden for the rest. It is the UI for the product's `enduser_report`
+  attribute and it feeds US-040's end‑user report.
+
+  > **Added 2026‑07‑17 (was: absent from this story, and from the app).** The vendor's dialog carries a
+  > checkbox *"Inkluder produktet i slutbruger rapport"* which **no story had ever recorded** and IHC
+  > OpenVisual has **no equivalent of** — so the `enduser_report` attribute round‑trips through the file
+  > with no way to set it. It is **hidden** (not merely disabled) for `Lampeudtag`, so its visibility is
+  > itself per‑type. ⚠ Its exact visibility predicate is **unmeasured** — one product was observed hiding
+  > it. Do not invent one; measure before gating. Evidence: `RESULTS.md` **F‑056**. **Scheduled:
+  > `tmp\compare3.md` §6.2 (C15)** — reading control `303`'s visibility on a handful of product dialogs
+  > that plan already opens.
+
 - MUST: The dialog also carries the product's **terminal‑addressing section** — the `Indgange` / `Udgange`
   grids and their per‑terminal address editor, specified in **US-012**.
+
+**How the text fields behave — the drop‑down question:**
+
+- **[TBD — needs a product ruling]** In IHC Visual **all seven** of the fields above (*Placering*, *Note*,
+  *Kabeltype*, *Kabelnummer*, *Identifikationskode*, *Lysgruppe*, and *Navn* when unlocked) are **editable
+  combo boxes with a drop‑down**; **every IHC OpenVisual equivalent is a plain textbox**, so the app offers
+  no suggestions anywhere in this dialog. **IHC OpenVisual cannot reproduce the vendor's lists** — they are
+  machine‑local MRU files on the IHC Visual install, not data in the `.vis`, so there is nothing to read
+  them from. Two defensible answers, and this story must not pick one silently:
+  1. **Offer an MRU built from the project's own values** — collect each field's existing distinct values
+     across the open project and offer them as suggestions. Same affordance, portable source.
+  2. **Accept plain textboxes as a granted exception (C)** — recording that the affordance is dropped
+     because its data source does not exist outside a vendor install.
+
+  > **Added 2026‑07‑17.** A whole class of affordance — **7 fields × every product** — that neither this
+  > story nor the backlog had noticed: the earlier comparison read the field *set* and never the field
+  > *kind*. It is recorded as a ruling rather than a MUST precisely because option 1 is an **invention**
+  > (the vendor's list is not the project's values) and option 2 is a **loss**; both diverge, so someone has
+  > to choose. Evidence: `RESULTS.md` **F‑056** (the lists are IHC Visual's machine‑local `Data\*.txt` MRU
+  > files — cumulative, per‑PC, and absent from the project file).
 
 **Output:**
 - The product node carries the entered documentation, which later feeds the installation and end‑user
@@ -235,30 +380,45 @@ later via properties), **so that** the generated reports (E9) describe the insta
 
 ### AC illustrations
 
-- For a `Lampeudtag`, the dialog is titled `Lampeudtag`, shows *Name* = `Lampeudtag` **greyed and not
-  editable**, *Placering* = `i loft` chosen from a fixed list, the note/cable/identification/light‑group
-  fields, and an `Udgange` terminal grid (US-012). No room dropdown appears — the product's room is `Entré/Gang`
-  because that is where it sits in the tree.
+- For a `Lampeudtag` (whose element carries `locked="yes"`), the dialog is titled `Lampeudtag`, shows *Name*
+  = `Lampeudtag` **greyed and not editable**, *Placering* = `i loft`, the note/cable/identification/
+  light‑group fields, and an `Udgange` terminal grid (US-012). No room dropdown appears — the product's room
+  is `Entré/Gang` because that is where it sits in the tree.
+- For a `Bevægelsessensor 1873 Bobby-AM` in the same project — whose element **omits** `locked` — the very
+  same dialog shows *Name* **editable**. The two products differ in nothing but that attribute, which is why
+  the gate reads the element and not the type.
 - Setting *Placering* = `i loft` documents where in the room the product sits, and the tree row becomes
   `Lampeudtag (i loft) ` (US-010).
 
 ### Constraints
 
-- Verification method — **Inspection** of the dialog fields in the application.
-- Data‑type note: the free‑text fields have no length limit or validation specified, so IHC OpenVisual
-  should accept free text and treat list options as suggestions, not constraints — **except** `Placering`,
-  which the vendor offers as a **fixed list**, and *Name*, whose editability is gated by type. (R‑note.)
+- Verification method — **Inspection** of the dialog fields in the application, and **Test**
+  (`safe_visual_tests`) of the *Name* gate — three cases, each pinning a different failure: an element
+  carrying `locked="yes"` → Name **disabled**; an element that **omits** `locked` → Name **enabled** (*this
+  is the case a catalog‑by‑type implementation fails*); and a freshly **inserted** `Mini Modul 1 tryk` →
+  Name **disabled** (the `loced` typo is inert, so the catalog seeds `locked="yes"`), which pins both the
+  insert‑seed path and the typo's inertness.
+- Data‑type note: none of the free‑text fields has a length limit or validation specified, so IHC OpenVisual
+  should accept free text and treat any offered list as **suggestions, not constraints** — `Placering`
+  included (its vendor list is an MRU, not an enumeration). *Name*'s editability is gated by `locked`.
+  (R‑note.)
 
-**Readiness:** Not Ready.
-- [R5] **Which product types lock the *Name* field** is **TBD (pending capture)** — one type sampled
-  (F‑032). The gate itself is specified; only its predicate waits on the vendor capture.
+**Readiness:** Ready.
+
+> **[R5] closed 2026‑07‑17.** The *Name* gate's predicate is measured, not sampled — see the `locked` rule
+> above (`RESULTS.md` **F‑054**). Two **product rulings** are open (the combo‑box question and US-010's
+> category language), but neither blocks building the story: both are choices about an affordance, not
+> unknowns about the vendor.
 
 **Implementation status:** 🟡 Partly implemented — the note/cable/identification/light‑group fields exist,
-but four corrected rules do not:
+but six rules do not:
 - ⚠ the **auto‑open** on insert is still in the code (the old behaviour); backlog **A‑14** removes it;
 - ⚠ the dialog is still titled generically *Product properties*; backlog **A‑8**;
 - ⚠ **`Placering` is absent** and a **`Location` room dropdown** is present instead; backlog **A‑13**;
-- ⚠ **Name is always editable**, ungated; backlog **A‑15**;
+- ⚠ **Name is always editable**, ungated — and `locked` is currently a round‑trip‑only attribute that
+  **nothing reads**, so this gate is its first consumer; backlog **A‑15**;
+- ⚠ **every field is a plain textbox** where the vendor offers a drop‑down (pending the ruling above);
+- ⚠ the **end‑user‑report checkbox has no equivalent**, so `enduser_report` cannot be set;
 - ⛔ the **terminal section does not exist at all** (US-012); backlog **A‑12**.
 
 ---
@@ -290,22 +450,63 @@ the controller and carry no terminal addressing (E4).
 - MUST: Each terminal row shows four columns: **name**, **address**, **wire colour** and **note**.
 - MUST: A terminal that has not been addressed shows an empty address cell, so the installer can see at a
   glance which terminals still need wiring.
+- MUST: A terminal's address editor opens by **double‑clicking its grid row** *and* from a *Configure input*
+  / *Configure output* button — **two routes onto the same sub‑dialog** (US-044 route equivalence). A
+  **single** click only selects the row.
+- MUST: Each *Configure* button is **disabled when its grid is empty** — a product with no inputs offers no
+  way to configure one.
 - SHOULD: Each grid carries a hint that its rows are configurable — IHC Visual heads each grid with the
-  literal text `<klik for at konfigurere>` ("click to configure") — and a *Configure input* / *Configure
-  output* button that opens the address editor for the selected row.
+  literal text `<klik for at konfigurere>` ("click to configure").
+
+  > **[R3] closed 2026‑07‑17 (was: "TBD — single‑ or double‑click?").** Both routes were driven on the
+  > vendor and they converge on the same `Udgang` dialog: the grid is a list view that opens its row on
+  > **double**‑click, and `Konfigurer udgang` opens the identical dialog. The `<klik for at konfigurere>`
+  > header hint — the affordance the first session reasoned from — is **corroboration, not a measurement**,
+  > and taken alone it points at single‑click, which is wrong. Evidence: `RESULTS.md` **F‑056**.
+  >
+  > ✅ **Updated 2026‑07‑17 (was: "the double‑click route only works once US-067 exists, so US-012's primary
+  > gesture depends on E11's double‑click handler landing first").** **The handler landed, and it is measured
+  > at parity — this route is not blocked.** Backlog **A‑4** shipped 2026‑07‑16
+  > (`MainWindowViewModel.ActivateNodeCommand` + `OnNodeDoubleTapped` on the item template's root
+  > `StackPanel`; 6 VM matrix cases + 1 headless effect‑verified case; visual **216** green —
+  > `alignment-backlog.md:139`), US-067 now reads ✅ Implemented, and **F‑052** — an F‑048+ row, i.e. one
+  > measuring **today's** build — records **A‑4 itself is PARITY**: a live product double‑click opens
+  > `Product properties` on a fresh app. Evidence: `RESULTS.md` **F‑052** (`RESULTS.md:199`).
+  >
+  > ⚠ **Residual, and it is a real one.** Activation is bound to the item template's **icon+text**
+  > `StackPanel`, so a double‑click **right of a short label** falls through and **toggles** instead of
+  > activating (reproduced live on 3 localities of 10/30/35 chars). Whether IHC Visual activates on the
+  > **full row** is **unmeasured** — its harness clicks the label rect, so the blank strip was never tested —
+  > leaving F‑052 an open **E**, scheduled as **C16** in `tmp\compare3.md` §6.2. ⚠ F‑052's own warning
+  > stands: *"Do not 'fix' this from the OV side on inference — that is how F‑027's false MUST was born."*
+  >
+  > ⚠ Note what this story's dependency actually is: the terminal **grid row is in the properties dialog**,
+  > not the tree, so E11's node handler was never the thing gating it. The blocker is that **the terminal
+  > section does not exist at all** — backlog **A‑12**.
 
 **Address editor — a sub‑dialog, one terminal at a time:**
 - MUST: The editor offers an **address picker of two lists**: the **data line / module** (module 1–16, each
   shown with its module type, e.g. *Output 230/10*) and the **terminal** on that module (port 1–8).
   Choosing one from each addresses the terminal.
-- MUST: The editor offers the terminal's **name**, **note** and **wire colour** (`Ledningsfarve`).
+- MUST: The module list offers an explicit **not‑configured** entry (`ikke konfigureret`), so an addressed
+  terminal can be returned to unaddressed rather than only ever moved to another port.
+- MUST: The editor offers the terminal's **name**, **note** and **wire colour** (`Ledningsfarve`). The
+  terminal's **name is read‑only** — it comes from the product's catalog type.
 - MUST: An **output** terminal's editor offers an **initial value** (`Initial værdi`): `OFF` configures the
   output as normally‑open (NO), `ON` as normally‑closed (NC).
 - MUST: An **output** terminal's editor offers a **power‑fail behaviour** — whether the output's current
   value is saved and restored after a power failure (`Ved strømsvigt` → `Gem aktuel værdi`). This is the
   same save‑current‑value flag US-033 backs up.
-- SHOULD: The editor shows which terminals of the chosen module are **already in use**, so a port is not
-  double‑booked.
+- MUST: The terminal list marks which ports of the chosen module are **already in use** (IHC Visual renders
+  them `1 (i brug)` … `8 (i brug)`), so a port is not double‑booked.
+
+  > **Raised from SHOULD to MUST 2026‑07‑17.** The in‑use indication was a SHOULD written from the report
+  > data; the vendor's list was then read control‑by‑control and it marks **every** port's occupancy inline.
+  > It is how the installer avoids double‑booking a port, and the information is already in the project.
+  > Evidence: `RESULTS.md` **F‑056**.
+
+- SHOULD: The editor offers **Apply** alongside OK/Cancel, and OK stays **disabled until something changes**
+  — so an editor opened to read an address cannot accidentally rewrite it.
 - MAY: The same editor is reachable from the tree by selecting the pin and opening its properties.
 
 **Output:**
@@ -330,16 +531,12 @@ the controller and carry no terminal addressing (E4).
 - **This is a UI‑surface gap, not an engine gap.** The `.vis` model already carries terminal addresses —
   they render in the installation report today — so this story adds a dialog surface over data the engine
   already holds.
-- **TBD (pending capture):** whether IHC Visual opens a terminal's address editor on a **single** or a
-  **double** click of the grid row. The affordances actually measured were the `<klik for at konfigurere>`
-  hint and the *Configure* button; the row gesture itself was not pinned down (`RESULTS.md` F‑030). The
-  *Configure* button and the pin‑properties routes are specified and unblocked; settle the row gesture
-  against the vendor before fixing it. ⚠ Note the intersection with US-067: the old text specced a
-  double‑click here, and IHC OpenVisual has no double‑click handler at all today (F‑006).
 
-**Readiness:** Not Ready.
-- [R3] The terminal‑row open **gesture** (single‑ vs double‑click) is **TBD (pending capture)**. It does not
-  block the grids, the address editor, or the *Configure*‑button route.
+**Readiness:** Ready.
+
+> **[R3] closed 2026‑07‑17** — the row gesture is a **double**‑click and the *Configure* button is its
+> equivalent route (`RESULTS.md` **F‑056**). The whole story is now specified from the vendor's dialog
+> captured **control by control**, so there is nothing left to guess at build time.
 
 **Implementation status:** ⛔ **Not implemented.** IHC OpenVisual's *Product properties* dialog carries only
 Name / Location / Note / Cable type / Cable numbering / Identification code / Light group — **no terminal
@@ -417,4 +614,15 @@ rule.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented (SMS modem). Epic E3 complete.
+**Implementation status:** 🟡 **Partly implemented (SMS modem)** — the dialog fields and the one‑modem rule
+exist, but **this story's own insert route does not**: *Products* > **`Bus Produkter`** > `<product>` is
+**unbuildable until A‑11 lands**, because IHC OpenVisual has no `Bus Produkter` category and re‑homes the
+modem under *Special products* (the corrected MUST above; `RESULTS.md` **F‑055**). The modem can be inserted
+today — just not by the route this story specs.
+
+> **Corrected 2026‑07‑17 (was: "✅ Implemented (SMS modem). Epic E3 complete.").** ⚠ **"Epic E3 complete" was
+> false on this document's own evidence** — the epic header reads 🟡, US-011 reads 🟡 and US-012 reads ⛔ *"the
+> largest single gap the vendor comparison found"*. It appears to be a per‑story sign‑off copied from
+> `02-localities.md:220`, where it **was** true. **E3 remains 🟡**, pending **A‑11** (the menu, which this
+> story's route waits on), **A‑12** (terminal addressing), **A‑13** (`Placering`), **A‑14** (auto‑open) and
+> **A‑15** (the `Name` gate).

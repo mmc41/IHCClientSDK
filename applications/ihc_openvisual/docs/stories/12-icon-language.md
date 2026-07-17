@@ -1,6 +1,6 @@
 ---
-version: 0.2.0
-last-updated: 2026-07-16
+version: 0.3.1
+last-updated: 2026-07-17
 status: draft
 ---
 
@@ -38,7 +38,16 @@ This story stays at the "which categories / what they mean" level.
 
 - MUST: Every node category listed below is rendered with a distinct, consistent icon so its type is
   identifiable without reading the label.
-- MUST: In simulation mode, input/output state is shown by colour: **red = OFF, green = ON**.
+- MUST *(⛔ **catalogued but out of scope pending E8**)*: In **simulation mode**, input/output state is
+  shown by colour: **red = OFF, green = ON**.
+
+  > **Ruling R‑5, 2026‑07‑17 — catalogued, not exercisable.** ⛔ **E8 (simulation) is out of scope** by the
+  > 2026‑07‑16 ruling, **exception #2**, so there is no simulation mode in which to show a colour and this
+  > MUST cannot be exercised. It is the **epic‑level twin** of US-046's simulation MUST (`:106-108`), which
+  > carries the same marker; the two must agree, or the epic re‑imposes at epic level exactly what the story
+  > sheds. The glyph documentation **stays** — here, in US-046 and in the *Simulation* row of the reference
+  > table — as the **catalogue for when/if E8 is ever built**. Tracked as ruling **R‑5** in
+  > `tmp\research3.md` §7.
 - SHOULD: State/decoration markers (unlinked "!", library badge, breakpoint) are visually distinct
   from type icons.
 
@@ -63,14 +72,28 @@ colour, **so that** I can read the installation, function and program trees at a
 - [ ] MUST: **Link rows** are distinct: **Link to…** ("link to", source side) and **Link from…** ("link
   from", target side), appearing in both panes. Each row's **icon** carries the direction and its **label
   is the bare full path** of the other end (US-022).
+- [ ] MUST: The direction the icon states is the link's **real** direction: a **`→` (outgoing) glyph means
+  the row's own pin is the signal's SOURCE**, and **`←` (incoming) means it is the SINK**. The icon is the
+  only thing that says so — so if the underlying orientation is wrong, the icon is wrong and **nothing else
+  on screen contradicts it** (US-022).
 
-  > **Corrected 2026‑07‑16 (was: the "link from" row "rendered with a leading `←` and the other end's full
-  > path").** This epic **mandated the defect**: IHC Visual renders the bare path and puts direction in the
-  > icon only, while IHC OpenVisual renders `→ Entré/Gang / … / Udgang` — an arrow prefix in the **label
-  > text** *on top of* a direction icon on the same row. An implementer building from this criterion would
-  > have been told to duplicate the direction. The `→`/`←` in this story mean the **glyph**; the label is
-  > bare. (Icon *artwork* remains an allowed difference — this is label text, and the glyph semantics are
-  > unaffected.) Evidence: `RESULTS.md` **F‑020**; backlog **A‑7**; the rule lives in US-022.
+  > **Confirmed 2026‑07‑16, and it earned its keep 2026‑07‑17.** *(Was: the "link from" row "rendered with a
+  > leading `←` and the other end's full path".)* This epic once **mandated the defect**: IHC Visual renders
+  > the bare path and puts direction in the icon only, while IHC OpenVisual rendered `→ Entré/Gang / … /
+  > Udgang` — an arrow prefix in the **label text** *on top of* a direction icon on the same row. An
+  > implementer building from that criterion would have been told to duplicate the direction. The `→`/`←`
+  > here mean the **glyph**; the label is bare. (Icon *artwork* remains an allowed difference — that was
+  > label text, and the glyph semantics are unaffected.) Evidence: `RESULTS.md` **F‑020**; backlog **A‑7**
+  > (done); the rule lives in US-022.
+  >
+  > ⭐ **IHC Visual's own link rows were later read and they carry exactly this mapping** — a button shows
+  > `→` (it is the source), a product output shows `←` (it is the sink), mirrored in the *Functions* pane.
+  > That reading arrived from a screenshot, owing nothing to the file format, and it **independently
+  > confirmed a serious defect found the same day**: IHC OpenVisual had been writing every link's two halves
+  > backwards (US-022, F‑066), so **before that fix these icons would have pointed the wrong way** — with no
+  > label text left to contradict them, precisely because A‑7 removed it. The second MUST above exists to
+  > name that dependency: dropping the redundant prefix was right, and it made the icon load‑bearing.
+  > Evidence: `RESULTS.md` **F‑070**.
 - [ ] MUST: **Variable types** each have a distinct icon: Input, Output, Flag, Date, Weekday,
   Time of day, Counter, Integer, Decimal, Timer, Timer value, Enumerator, Light level, Temperature, Holiday,
   Humidity, Light, and the S0 power/energy type *Energy / Power* (kW/kWh/W/Wh).
@@ -80,9 +103,16 @@ colour, **so that** I can read the installation, function and program trees at a
   (single command).
 - [ ] MUST: **Scenario** pins carry the scenario icon (used to identify scenario‑capable outputs,
   US-024) in both *Installation* and *Functions*.
-- [ ] MUST: In **simulation mode**, input/output state is coloured **red = OFF** and **green = ON**
-  (shown as red/green arrows in the program view); a **Breakpoint** shows a full‑stop icon
-  at the start of a line.
+- [ ] MUST *(⛔ **catalogued but out of scope pending E8** — not part of US-046's implemented scope)*: In
+  **simulation mode**, input/output state is coloured **red = OFF** and **green = ON** (shown as red/green
+  arrows in the program view); a **Breakpoint** shows a full‑stop icon at the start of a line.
+
+  > **Ruling R‑5, 2026‑07‑17 — catalogued, not exercisable.** ⛔ **E8 (simulation) is out of scope** by the
+  > 2026‑07‑16 ruling, **exception #2**. There is therefore no simulation mode to inspect, so this MUST can
+  > never be exercised by this story's **Inspection** verification — and a ✅ **Implemented** story must not
+  > carry an obligation that cannot be met. The glyph documentation **stays** (here and in the *Simulation*
+  > row of the reference table) as the **catalogue for when/if E8 is ever built**; it is not a live
+  > requirement on US-046. Tracked as ruling **R‑5** in `tmp\research3.md` §7.
 - [ ] SHOULD: An **unlinked wireless product** shows a leading yellow **!**; an unconfigured product
   keeps the **!** until configured — this decoration is distinct from the product’s type icon.
 - [ ] SHOULD: A variable node shows its value inline as `Name = <value>` next to its type icon (e.g.
@@ -113,8 +143,13 @@ colour, **so that** I can read the installation, function and program trees at a
 ### Constraints
 
 - Verification method — **Inspection** of the rendered node icons in the application.
-- The **artwork itself is not specified** beyond the descriptions above; IHC OpenVisual must
-  provide the *distinctions and meanings*, choosing equivalent glyphs. (R‑note, not a blocker.)
+- **Settled exclusion — the artwork is an allowed difference.** The **artwork itself is not specified**
+  beyond the descriptions above; IHC OpenVisual must provide the *distinctions and meanings*, choosing
+  equivalent glyphs. This is a **ruling, not a deferred confirmation** — it needs no closing and should not
+  be re‑raised as an open item. ⚠ **The exception covers artwork only.** By the **division of labour fixed
+  2026‑07‑16** (see the epic head), direction / type / state markers are the **icon's** job and the label
+  carries text only — *"neither is an icon‑artwork question, so neither is covered by this epic's artwork
+  exception"*. Dropping the marker does not widen the exception.
 
 **Readiness:** Ready.
 

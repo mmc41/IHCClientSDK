@@ -1,14 +1,16 @@
 ---
-version: 0.2.0
-last-updated: 2026-07-16
+version: 0.3.0
+last-updated: 2026-07-17
 status: draft
 ---
 
 # E6 — Product ↔ function‑block links
 
-> **Implementation status:** 🟡 Partly implemented — link create/remove and reciprocal rendering work, but
-> **`F4` does not actually jump** (US-025) and the link/pin **labels diverge** from the vendor (US-022). The
-> vendor comparison found the link model the weakest area in the app.
+> **Implementation status:** 🟡 Partly implemented — link create/remove, reciprocal rendering, **legality**
+> and **half orientation** work (the last two landed 2026‑07‑17 — US-022), but **`F4` does not actually
+> jump** (US-025) and the link/pin **labels diverge** from the vendor (US-022). The vendor comparison found
+> the link model the weakest area in the app, and the two worst defects it found — links with no legality
+> check at all, and **every link written backwards** — were both here.
 
 > **Current scope:** ✅ **In scope** — creating and navigating product↔function‑block links is
 > project CRUD.
@@ -28,6 +30,9 @@ function‑block‑to‑function‑block variable links (covered in E7’s progr
 **Acceptance criteria (epic level):**
 - MUST: The installer can create a product‑input→block‑input link and a block‑output→product‑output
   link by dragging one pin onto another.
+- MUST: **Only a legal link can be created.** A drag that would produce a link IHC Visual cannot produce is
+  refused, and the refusal is explained. The rule is specified once, in US-022, and governs **every** link
+  this epic and US-033b create.
 - MUST: A created link is shown reciprocally: the source pin shows a "link to" child and the target pin
   a "link from" child, each naming the **bare** full path of the other end — direction is carried by the
   row's icon, not by a prefix in the label (US-022).
@@ -38,6 +43,14 @@ function‑block‑to‑function‑block variable links (covered in E7’s progr
   between the two ends of a link.
 
 **Readiness:** Ready.
+
+> **Vendor‑alignment note (2026‑07‑17) — this epic had no legality rule at all, and that was the gap.**
+> Every story here specified how to *make* a link and none specified which links are **possible**. IHC
+> Visual's rule was measured over **15 drag cells across 3 families with 0 falsifications** and is now
+> written into US-022. It found two real divergences (**F‑058**, **F‑059**) and — while they were being
+> fixed — a third that no tree‑based comparison could ever have seen (**F‑066**: IHC OpenVisual wrote every
+> link's two halves **backwards**). Evidence: `RESULTS.md` **F‑058**–**F‑061**, **F‑066**, **F‑070**;
+> backlog **A‑16**.
 
 ---
 
@@ -64,7 +77,99 @@ Scenario: The link is shown reciprocally
 Scenario: Unconfigured products remain flagged
   Given a product involved in a link has not been fully configured/linked
   Then it keeps its leading yellow "!" until configuration is complete (linking does not clear it)
+
+Scenario: An illegal drag is refused and explained
+  Given I drag a pin onto a pin the link rule does not allow (e.g. a button onto a lamp output,
+    with no function block in between)
+  When I release
+  Then no link is created, in either pane
+  And the app tells me the link is not allowed
 ```
+
+### Business rules (which links are legal)
+
+A link is **legal if and only if all three hold**. The rule is about **roles in the drag** — what is dragged
+is the source, what it is dropped on is the target — and it is keyed on the pin's **element kind**, never on
+its tree label, its pane, or its name:
+
+1. **The source produces a signal** — a product input (`dataline_input`, `airlink_input`), a product output
+   (`dataline_output`), or a function‑block output (`resource_output`).
+2. **The target consumes a signal** — a function‑block input (`resource_input`) or a product output
+   (`dataline_output`).
+3. **At least one end is a function‑block pin.** **Two product pins never link directly** — routing product
+   logic through a function block *is* the IHC programming model.
+
+| Pin kind | May be a source? | May be a target? | Why, physically |
+|---|---|---|---|
+| Product input (`dataline_input` — a button, `Tryk`) | ✅ | ❌ | driven by the world, never by software |
+| Product output (`dataline_output` — `Udgang`, `LED`) | ✅ | ✅ | **the only both**: drivable, *and* its state is readable |
+| Block input (`resource_input` — `Kip`) | ❌ | ✅ | a block's trigger |
+| Block output (`resource_output` — `ON puls`) | ✅ | ❌ | a block's result |
+
+- MUST: A drag that fails any clause is **refused — nothing is written to the project** — and the refusal
+  says so. IHC Visual simply declines the drop silently; IHC OpenVisual's *Incompatible link* message is a
+  **granted exception** under the 2026‑07‑16 ruling (feedback where the vendor is silent) and **stays**.
+- MUST: The rule lives in **the SDK**, not in the view‑model, so a `.vis` stays valid whoever drives the
+  editor — the GUI asks it before offering the drop, and the editor enforces it before writing anything.
+- MUST: Where a pin kind has **not been measured**, the rule stays **permissive** rather than guessing. It
+  refuses only what IHC Visual was seen to refuse.
+
+> **⚠⚠ Do NOT implement this as "inputs link to inputs, outputs link to outputs".** That is the intuitive
+> reading, it was the pre‑measurement hypothesis, **and IHC Visual falsifies it** — kind‑matching mispredicts
+> **3 of the 15** measured cells: a product output → block input is **legal** (an output's state is a valid
+> signal source); product output → block **output** is **refused** though both are "outputs"; and block input
+> → product input is **refused** though both are "inputs".
+>
+> ⭐ **The cell that settles it: the *same pin pair* is accepted one drag direction and refused the other.**
+> `LED` ↔ `ON puls` links when dragged block→product and is refused when dragged product→block. **Direction
+> decides; the pair alone does not.** Any rule that looks only at the two pins' kinds — without asking which
+> one was dragged — is wrong by construction.
+
+> **Added 2026‑07‑17 (was: no legality rule anywhere in this epic).** IHC OpenVisual checked **one of the
+> three link families** — block↔block (US-033b) — and let the other two through unchecked, so it silently
+> accepted links IHC Visual cannot make, including **a button wired straight to a lamp with no function
+> block in between**. Measured: **15 cells / 3 families / 0 falsifications**. Evidence: `RESULTS.md`
+> **F‑058** (product↔block), **F‑059** (product↔product), **F‑060** (block↔block — **already correct, and
+> the template the other two were extended from**); backlog **A‑16**.
+>
+> ✅ **Implemented 2026‑07‑17** — the predicate is in the SDK (`Ihc.Vis.Schema.LinkRoles` + `ProjectEditor.
+> CanLink`), the app asks it for all three families, and the 15‑cell matrix is the test oracle.
+>
+> ⚠ **Three cases are deliberately unencoded because they are unmeasured** — do not "complete" the rule
+> from symmetry: the vendor's treatment of **flags** (`resource_flag`, which US-033b admits at both ends);
+> **scene links** (US-024, a fourth family this rule does not cover); and whether a block's output may feed
+> **its own** input. Measure before encoding, and keep US-033b's existing behaviour meanwhile.
+> **All three are scheduled: `tmp\compare3.md` §6.2 (C14a–c)**, driven together off the same 15‑cell matrix
+> that produced the rule.
+
+### Business rules (which half is which)
+
+- MUST: A link's two halves are written in the direction the drag implies: **the dragged pin — the source —
+  receives the *link‑to* half; the pin it is dropped on — the target — receives the *link‑from* half.**
+  Equivalently: a *link‑from* row on a pin means **that pin is fed by** the path it names; a *link‑to* row
+  means **that pin drives** it.
+- MUST: The **same** orientation the legality rule reads is the orientation the file is written in. Source
+  and target must not be allowed to mean one thing to the check and the opposite to the write.
+
+> **⭐ Added 2026‑07‑17 — IHC OpenVisual had every link's two halves inverted, and nothing in this epic said
+> which way round they go.** The app called the editor with the drop target as the source and the dragged pin
+> as the target, so a **button** was written as the *sink* and a **block's trigger** as the *source* — a shape
+> that occurs **0 times in 397 links across the 21 authored vendor projects**, where the orientation is
+> unanimous (product inputs own a *from*‑half 160/160 and a *to*‑half never; block inputs 314/314 *to*; block
+> outputs 237/237 *from*; **no pin kind is ever seen in both roles**).
+>
+> **Why nothing caught it, and why this rule is now written down.** The SDK's link primitive was correct and
+> byte‑fidelity tested; the inversion lived only in the app layer, which had no test. And US-022's own label
+> rule below — *drop the `→`/`←` prefix, the icon carries direction* — meant **both orientations render
+> identically in the tree**, so every tree‑based check was blind to it by construction. It took saving the
+> file and reading the XML to see. ⚠ **Take the lesson, not just the fix**: a check and a write that disagree
+> *inside one method* is not a rare bug, and "the tree looks right" was never evidence here.
+>
+> ✅ **Independently confirmed from a source that owes nothing to the file format**: IHC Visual's own link
+> rows carry a direction **arrow icon**, and it reads `→` (outgoing, *this pin is the source*) on a button
+> and `←` (incoming, *this pin is the sink*) on a product output — exactly the mapping above. **Before the
+> fix IHC OpenVisual would have drawn these arrows backwards.** Evidence: `RESULTS.md` **F‑066** (fixed and
+> verified by effect) and **F‑070**.
 
 ### Business rules (how a link row and its pins read)
 
@@ -74,6 +179,31 @@ Scenario: Unconfigured products remain flagged
 - MUST: A pin's label is the **bare pin name**. It carries no state suffix — in particular no `(saved)`
   marker for the save‑current‑value flag (US-033), which the tooltip and the terminal editor (US-012)
   surface instead.
+- MUST: The path's product segment renders **exactly as US-010 renders that product in the tree** — i.e.
+  `name (position) ` when the product carries a `position`. This applies in **both panes**: a link row in
+  the *Functions* pane names its product the same way the *Installation* pane does.
+- MUST: **Every segment of a link path is bare.** The `= <value>` decoration US-010 puts on a state row
+  belongs to the *state row itself*, never to a path segment that happens to name one. A path segment also
+  renders the **node's own name** as the project holds it — never a translated or derived value token.
+
+> **Added 2026‑07‑17 — two narrow label rules, one of which makes rows genuinely ambiguous.**
+> - **The `(position)` rule did not reach the link‑path renderer.** US-010's product label rule was
+>   implemented and tested on the *Installation* pane only, so *Functions*-pane link rows still name products
+>   bare. **This is not cosmetic**: the measured project has `Entré/Gang` holding **two** products named
+>   exactly `LK FUGA Tryk 6 tast 3 dioder`, distinguished **only** by `position` — so an IHC OpenVisual user
+>   reading a link row **cannot tell which of the two it points at**. Evidence: `RESULTS.md` **F‑061**.
+> - **The `= <value>` rule leaked *into* a link path.** In 640 *Installation*-pane nodes exactly **one**
+>   label diverges from the vendor's, and it is a link row under `Scenarier/regulering`: IHC Visual renders
+>   the bare 4‑segment path `… / Regulering / Op`, IHC OpenVisual renders 3 segments with the last decorated
+>   — `… / Regulering = up`. It breaks both rules at once: a segment is decorated, and the value token `up`
+>   is rendered where the vendor shows the node's own name `Op`. ⚠ Also decide whether IHC OpenVisual points
+>   one level **short** (at `Regulering`) or merely renders it that way — the vendor's path has one more
+>   segment. Evidence: `RESULTS.md` **F‑051**.
+>
+> ⚠ **Note these two rules pull in opposite directions, and that is correct.** One says *put more in the
+> label* (the product's position); the other says *put less* (no value token). There is **no single rule**
+> about who renders state into a label — US-010's note says the same thing from the other side. Take each
+> row kind from the measured oracle; do not generalise in either direction.
 
 > **Corrected 2026‑07‑16 (was: link labels specced *with* a leading `<-`, and pins rendering `(saved)`).**
 > Two label divergences, both measured, both "IHC OpenVisual renders things into the label that IHC Visual
@@ -101,14 +231,25 @@ Scenario: Unconfigured products remain flagged
 
 - Link-row glyphs and path rendering are cross-checked against the icon/artwork evidence in
   [`../icon_codes.md`](../icon_codes.md) (§4 Links).
-- Verification method — **Test**: assert a link row's label is the bare path (no arrow character) and a
-  pin's label is the bare name (no `(saved)`), against the vendor's rendering of the same project.
+- Verification method — **Test**, at two levels:
+  - *Legality* (`safe_project_tests` for the engine, `safe_unit_tests` for the view‑model): the **15‑cell
+    matrix** is the oracle — 4 accepts, 11 refusals. The three kind‑matching counter‑examples and the
+    product↔product case are the regression guards; **a naive rule passes the other eleven cells.**
+  - *Orientation* (`safe_project_tests`): assert the **written file**, not the tree. A tree assertion cannot
+    fail here — that is exactly how the inversion survived. Read the halves back from the saved `.vis`.
+  - *Labels*: assert a link row's label is the bare path (no arrow character, no `= value` on any segment,
+    product segment carrying its `(position)`) and a pin's label is the bare name (no `(saved)`), against
+    the vendor's rendering of the same project — **in both panes**.
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Implemented (link create + reciprocal rendering) — ⚠ **except the corrected
-label rules**: link rows still carry a `→`/`←` prefix in the label text and pins still carry a `(saved)`
-suffix. Backlog **A‑7** removes both.
+**Implementation status:** 🟡 Implemented — link create, reciprocal rendering, **legality across all three
+families**, and the **correct half orientation** (F‑058/F‑059/F‑066, shipped 2026‑07‑17 with a 17‑case test
+suite). ✅ The two corrected label rules are **done** (backlog **A‑7**): the `→`/`←` prefix and the
+`(saved)` suffix are both gone, and five existing tests that had **encoded the divergence as spec** were
+flipped rather than deleted. ⚠ **Two narrower label gaps remain**: the *Functions*-pane path drops the
+product's `(position)`, making same‑named products ambiguous (F‑061), and the `Scenarier/regulering` path
+renders a value token instead of the vendor's node name (F‑051).
 
 ---
 
@@ -142,9 +283,18 @@ Scenario: End-to-end path through a block
   `<product>`’s `<pin>`, forms a complete input→block→output chain even though the lamp still shows a
   `!` until addressed.
 
+### Constraints
+
+- **This story's direction is the legal one; its reverse is not.** Dragging a block **output** onto a product
+  **output** is legal (US-022 clause 1+2: a block output produces, a product output consumes). Dragging the
+  **product output onto the block output** is **refused** — the same two pins, the other way round. That
+  asymmetry is IHC Visual's, it is measured, and it is why US-022's rule is keyed on the drag's roles rather
+  than on the pair of kinds. Evidence: `RESULTS.md` **F‑058**.
+
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented.
+**Implementation status:** ✅ Implemented — and now **gated by US-022's legality rule**, which previously did
+not exist for this family (F‑058).
 
 ---
 
@@ -185,6 +335,15 @@ Scenario: Create a relay/socket scene link with a state
 - A "Go-to-bed light" scene set on a `<product>` with *Light level* = `0 %` and *Ramp time* = 0 min
   1 s dims the ceiling light off over one second; the same block’s scene link to a `<product>` set to
   `ON` turns the bedside socket on — one button press recalls both.
+
+### Constraints
+
+- ⚠ **Scene links are a FOURTH link family, and US-022's legality rule does not cover them.** That rule was
+  measured over product↔block, product↔product and block↔block drags; the scene family (a scenario output
+  onto a scenes container) was **never driven on the vendor**, so its legality is **unmeasured**. The
+  "valid scene targets" scenario above — scenario‑marked outputs only — is this story's own rule and is
+  unaffected; what is unknown is whether IHC Visual refuses anything *within* that set. **Do not extend
+  US-022's predicate here by symmetry.** Evidence: `RESULTS.md` **F‑058** (scope note); backlog **A‑16**.
 
 **Readiness:** Ready.
 
@@ -315,8 +474,23 @@ Scenario: Remove is undoable
 - Verification method — **Demonstration** that removing a link from either end deletes exactly its pair,
   leaves sibling links intact, and undoes/redoes cleanly.
 - Note: pair‑exact removal (never "first half of the tag") and the throw‑when‑not‑linked guard are
-  grounded in the engine's unlink contract; the tree gesture (select the link row and *Delete* vs. a
-  dedicated *Remove link* command) is to be confirmed during implementation. (R‑note.)
+  grounded in the engine's unlink contract. **The tree gesture is confirmed**: a link is removed by
+  **selecting the link row and deleting it**. IHC Visual offers **no** dedicated *Remove link* command,
+  and **IHC OpenVisual's shipped gesture matches**.
+
+  > **Corrected 2026‑07‑17 (was: "the tree gesture … is to be confirmed during implementation. (R‑note.)").**
+  > The ledger had already answered it — this was never an open question. IHC Visual's link‑row context menu
+  > is **exactly 2 items**: `&Hop til modsat link` (**30504**) and **`&Slet`** (**24586**), with no properties
+  > item. That is decisive rather than merely suggestive: a 2‑item menu has **room for exactly two commands
+  > and neither of them is a *Remove link***. So *Delete* on the selected link row **is** the vendor's removal
+  > gesture, and IHC OpenVisual already matches it. Evidence: `RESULTS.md` **F‑010** (`RESULTS.md:169`); the
+  > stored vendor dump — Win32 command ids with `&`‑prefixed Danish labels, taken with an **empty clipboard**
+  > — is `out\P1-census\vendor-gesture-findings.md:87-88`.
+  >
+  > ⚠ **The gesture matches; the *route* to it still diverges.** IHC OpenVisual's link row currently shows the
+  > generic **7‑item** menu (`RESULTS.md` **F‑008**, `RESULTS.md:167`) — including `Insert product` on a link
+  > row, where it is meaningless — where the vendor shows its 2, and it offers no jump‑to‑opposite‑end command
+  > at all. Backlog **A‑5** fixes the menu; it does not change the removal gesture specced here.
 
 **Readiness:** Ready.
 
