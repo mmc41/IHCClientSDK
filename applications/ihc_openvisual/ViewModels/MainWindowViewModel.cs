@@ -15,6 +15,7 @@ using Ihc.Vis.Model;
 using Ihc.Vis.Products;
 using Ihc.Vis.Programs;
 using Ihc.Vis.Projects;
+using Ihc.Vis.Schema;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -858,6 +859,44 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private Task Properties(TreeNodeViewModel? node) => RunAsync(nameof(Properties), () => OpenPropertiesAsync(node));
 
+    /// <summary>
+    /// Activates a tree node — the double-click route (US-044). IHC Visual opens a per-node-type properties dialog
+    /// on double-click and handles the gesture on <em>every</em> node type, which is also what suppresses the
+    /// toolkit's expand/collapse default everywhere; the caller must mark the event handled to match.
+    /// <para>This is deliberately NOT <see cref="PropertiesCommand"/>. Two cells differ: a <b>pin</b> activates its
+    /// <b>parent product's</b> dialog, because the vendor has no per-pin dialog at all — a terminal is configured
+    /// from inside the product dialog — whereas F2 on a pin opens OpenVisual's own pin dialog; and the
+    /// installation root and a link row open <b>nothing</b>.</para>
+    /// </summary>
+    [RelayCommand]
+    private Task ActivateNode(TreeNodeViewModel? node) => RunAsync(nameof(ActivateNode), () => ActivateNodeAsync(node));
+
+    private Task ActivateNodeAsync(TreeNodeViewModel? node)
+    {
+        if (node is null || node.IsLocalitiesRoot || node.IsLinkRow || node.ElementId is not { } id
+            || _session.Current is not { } project || project.FindById(id) is not { } element)
+        {
+            return Task.CompletedTask;
+        }
+        // A pin is configured through its owner, so activation walks up to the product it belongs to. Only a pin
+        // redirects: the scenes container is a product child too, but it has its own dialog.
+        ElementId target = node.IsPin && IsPinOfProduct(project, element, out ElementId productId) ? productId : id;
+        return OpenPropertiesForIdAsync(target);
+    }
+
+    // True when the element is a resource child of a product (so activating it should open that product's dialog).
+    private static bool IsPinOfProduct(Project project, ProjectElement element, out ElementId productId)
+    {
+        productId = default;
+        if (element.Id is not { } id || project.FindParent(id) is not { } parent || parent.Id is not { } parentId
+            || !ProductClassifier.IsProduct(parent.Tag))
+        {
+            return false;
+        }
+        productId = parentId;
+        return true;
+    }
+
     private static TreeNodeViewModel? FindNode(IEnumerable<TreeNodeViewModel> nodes, ElementId id)
     {
         foreach (TreeNodeViewModel node in nodes)
@@ -1023,6 +1062,8 @@ public partial class MainWindowViewModel : ViewModelBase
             await OpenProductPropertiesAsync(id);
         else if (element.Tag is "dataline_input" or "dataline_output")
             await OpenPinPropertiesAsync(id, element);
+        else if (element.Tag == "scenes")
+            await OpenSceneContainerAsync(id, element);   // the product's Scenarier dialog (US-024)
         else if (element.Tag is "scene_relay" or "scene_dimmer")
             await OpenSceneValuePropertiesAsync(id, element);   // edit a scenario link's value (US-058)
         else if (element.Tag == "resource_enum")
@@ -1030,6 +1071,33 @@ public partial class MainWindowViewModel : ViewModelBase
         else if (element.Tag is "group" or "functionblock")
             // A function block renames through the same Name/Note dialog as a locality (US-007/US-019).
             await OpenLocalityPropertiesAsync(id, element.GetAttribute("name") ?? string.Empty);
+    }
+
+    // The product's scene container (US-024): its fixed name, its note, and a row per membership naming the
+    // scenario, the function block driving it and that block's locality — the same triple the membership's link row
+    // shows as a path, split into columns.
+    private async Task OpenSceneContainerAsync(ElementId scenesId, ProjectElement scenes)
+    {
+        var rows = new List<SceneContainerRow>();
+        foreach (ProjectElement member in scenes.ChildrenOrEmpty())
+        {
+            if (!IsSceneMember(member.Tag))
+                continue;
+            IReadOnlyList<string> parts = LinkOppositeParts(member);
+            (string value, string ramp) = SceneMemberValue(member);
+            rows.Add(new SceneContainerRow(
+                SceneName: parts.Count > 2 ? parts[2] : string.Empty,
+                FunctionBlock: parts.Count > 1 ? parts[1] : string.Empty,
+                Locality: parts.Count > 0 ? parts[0] : string.Empty,
+                Value: value, RampTime: ramp));
+        }
+        string name = scenes.GetAttribute("name") ?? "Scenarier";
+        SceneContainerResult? result = await _dialogs.EditSceneContainerAsync(
+            new SceneContainerInput(name, scenes.GetAttribute("note") ?? string.Empty, rows));
+        if (result is null)
+            return;
+        if (await _session.UpdateSceneContainerAsync(scenesId, result.Note))
+            StatusText = $"'{name}' updated.";
     }
 
     private async Task OpenSceneValuePropertiesAsync(ElementId memberId, ProjectElement member)
@@ -1463,6 +1531,14 @@ public partial class MainWindowViewModel : ViewModelBase
         target.Add(root);
     }
 
+    // A product's tree label carries its placement descriptor: "name (position) " — the trailing space included —
+    // and the bare name when position is absent, with no empty parens (F-003). The source is `position`, NOT the
+    // `note` the same element also carries: a note holds a long description IHC Visual never puts in the label.
+    // The trailing space is the vendor's and is reproduced deliberately: it is invisible on screen, and keeping it
+    // lets a label-mode tree diff against IHC Visual stay exact instead of flagging every product row forever.
+    private static string ProductLabel(string name, string? position) =>
+        string.IsNullOrEmpty(position) ? name : $"{name} ({position}) ";
+
     // A product / function block node. A product flattens its resource (pin) children (structural containers are
     // omitted); a function block shows its four variable sections (Input/Output/Settings/Internal variables), each
     // holding its typed pins (US-018/US-019).
@@ -1473,14 +1549,16 @@ public partial class MainWindowViewModel : ViewModelBase
             return BuildFunctionBlockNode(component, name);
 
         bool unlinked = ProductClassifier.IsUnlinkedWireless(component.Tag, component.GetAttribute("serialnumber"));
-        var node = new TreeNodeViewModel(name, NodeIcons.For(component.Tag, component.GetAttribute("icon")),
+        var node = new TreeNodeViewModel(ProductLabel(name, component.GetAttribute("position")),
+            NodeIcons.For(component.Tag, component.GetAttribute("icon")),
             elementId: component.Id, isUnlinked: unlinked) { Tooltip = BuildTooltip(component) };
         foreach (ProjectElement resource in component.ChildrenOrEmpty())
         {
             if (resource.Tag == "scenes")
                 node.Children.Add(BuildScenesNode(resource));   // a product's scenario output (scene link target, US-024)
-            else if (!IsStructuralChild(resource.Tag))
-                node.Children.Add(BuildPinNode(resource));
+            else if (!ProductRows.IsStructuralChild(resource.Tag)
+                     && !ProductRows.IsHiddenFromTree(resource.Tag, resource.GetAttribute("setting")))
+                node.Children.Add(BuildPinNode(resource));      // the rows IHC Visual draws (F-001/F-002)
         }
         return node;
     }
@@ -1492,24 +1570,35 @@ public partial class MainWindowViewModel : ViewModelBase
             elementId: scenes.Id) { IsSceneTarget = true };
         foreach (ProjectElement member in scenes.ChildrenOrEmpty())
         {
-            if (member.Tag is "scene_relay" or "scene_dimmer" or "scene_shutter")
+            if (IsSceneMember(member.Tag))
                 node.Children.Add(BuildSceneMemberNode(member));
         }
         return node;
     }
 
+    // The value-carrying rows inside a product's scenes container — its memberships of the scenarios FBs drive.
+    private static bool IsSceneMember(string tag) => tag is "scene_relay" or "scene_dimmer" or "scene_shutter";
+
+    // A scene membership's stored value and, for a dimmer, its ramp time — the two columns the scene-container
+    // dialog shows separately. The tree row joins them into one label instead.
+    private static (string Value, string RampTime) SceneMemberValue(ProjectElement member)
+    {
+        if (!SceneValue.TryParse(member, out SceneValue sv))
+            return (string.Empty, string.Empty);
+        return sv.Kind switch
+        {
+            SceneValueKind.Relay => (sv.On ? "ON" : "OFF", string.Empty),
+            SceneValueKind.Dimmer => ($"{sv.LevelPercent}%", $"{sv.RampTime.TotalSeconds:0.#}s"),
+            SceneValueKind.Shutter => (sv.ShutterUp ? "up" : "down", string.Empty),
+            _ => (string.Empty, string.Empty),
+        };
+    }
+
     private TreeNodeViewModel BuildSceneMemberNode(ProjectElement member)
     {
-        string value = SceneValue.TryParse(member, out SceneValue sv)
-            ? sv.Kind switch
-            {
-                SceneValueKind.Relay => sv.On ? "ON" : "OFF",
-                SceneValueKind.Dimmer => $"{sv.LevelPercent}% / {sv.RampTime.TotalSeconds:0.#}s",
-                SceneValueKind.Shutter => sv.ShutterUp ? "up" : "down",
-                _ => string.Empty,
-            }
-            : string.Empty;
-        return new TreeNodeViewModel($"← {LinkOppositePath(member)} = {value}", "/Assets/link-from.svg",
+        (string value, string ramp) = SceneMemberValue(member);
+        string text = ramp.Length > 0 ? $"{value} / {ramp}" : value;
+        return new TreeNodeViewModel($"{LinkOppositePath(member)} = {text}", "/Assets/link-from.svg",
             elementId: member.Id) { IsLinkRow = true };
     }
 
@@ -1557,15 +1646,32 @@ public partial class MainWindowViewModel : ViewModelBase
         return parts.Count > 0 ? string.Join("\n\n", parts) : null;
     }
 
+    // A state row renders its value into the label — "Tilstand = Ukendt", "Log Indgang = Off" (F-004). The only row
+    // kind that does so is resource_enum: its `inivalue` is an IDREF to an enum_value whose `name` is the label the
+    // vendor shows. Both of the vendor's examples are this one kind — a product's "Log …" rows are resource_enum
+    // over the "Logning" enum, not a separate log-row type.
+    // This is the INITIAL value (the enum's index-0 member), not live controller state — OpenVisual has no
+    // controller in the picture here. Scoped to resource_enum deliberately: `inivalue` is also used as a LITERAL
+    // elsewhere (resource_flag "on"/"off", the hidden calibration rows' "0.00"), and the vendor was never observed
+    // rendering a value on those, so they stay bare rather than being generalised into.
+    private string? StateValue(ProjectElement resource) =>
+        resource.Tag == "resource_enum"
+        && _session.Current is { } project
+        && ElementId.TryParse(resource.GetAttribute("inivalue"), out ElementId valueId)
+        && project.FindById(valueId)?.GetAttribute("name") is { Length: > 0 } state
+            ? state
+            : null;
+
     private TreeNodeViewModel BuildPinNode(ProjectElement resource)
     {
         string name = resource.GetAttribute("name") ?? resource.Tag;
-        string? value = resource.GetAttribute("value");
+        string? value = StateValue(resource) ?? resource.GetAttribute("value");
         bool isOutput = resource.Tag is "resource_output" or "dataline_output" or "airlink_relay";
         bool saved = isOutput && (resource.GetAttribute("backup") ?? "no") == "yes";
+        // The label carries the pin's name and, for a state row, its value — nothing else. The save-current-value
+        // flag (US-033) is deliberately NOT decorated in: IHC Visual renders the bare name (F-019), and the flag
+        // still surfaces as the checked state of the "Save current value" menu item bound to IsValueSaved.
         string label = string.IsNullOrEmpty(value) ? name : $"{name} = {value}";   // fixed sub-resource default (US-010)
-        if (saved)
-            label += " (saved)";   // persisted across power loss (US-033)
         var node = new TreeNodeViewModel(label, NodeIcons.For(resource.Tag, resource.GetAttribute("icon")),
             elementId: resource.Id) { IsPin = true, IsOutputPin = isOutput, IsValueSaved = saved, Tooltip = BuildTooltip(resource) };
         // A linked pin reveals its follow-link / scene-link rows, each naming the opposite end's full path (US-022/025).
@@ -1577,24 +1683,30 @@ public partial class MainWindowViewModel : ViewModelBase
         return node;
     }
 
-    // A "link from" (←) or "link to" (→) row under a pin, labelled with the full path of the opposite end. A
-    // scene_link is the FB scene output's outgoing (→) reference to the product's scene member.
+    // A "link from" or "link to" row under a pin, labelled with the bare full path of the opposite end. A
+    // scene_link is the FB scene output's outgoing reference to the product's scene member.
+    // The direction is carried by the icon alone — no arrow in the label text (F-020): an arrow there would
+    // duplicate the glyph already on the same row and eat width in the pane that matters most.
     private TreeNodeViewModel BuildLinkNode(ProjectElement linkRow)
     {
         bool incoming = linkRow.Tag == "link_from_resource";
-        string arrow = incoming ? "← " : "→ ";
         string icon = incoming ? "/Assets/link-from.svg" : "/Assets/link-to.svg";
-        return new TreeNodeViewModel(arrow + LinkOppositePath(linkRow), icon, elementId: linkRow.Id) { IsLinkRow = true };
+        return new TreeNodeViewModel(LinkOppositePath(linkRow), icon, elementId: linkRow.Id) { IsLinkRow = true };
     }
 
     // The full path (locality / product-or-block / pin) of the pin at the opposite end of a link row.
-    private string LinkOppositePath(ProjectElement linkRow)
+    private string LinkOppositePath(ProjectElement linkRow) =>
+        LinkOppositeParts(linkRow) is { Count: > 0 } parts ? string.Join(" / ", parts) : "(unresolved)";
+
+    // The opposite end's path as its separate parts, outermost first: [locality, product-or-block, pin]. The link
+    // row's label joins them; the scene-container dialog shows them as three columns. Empty when unresolvable.
+    private IReadOnlyList<string> LinkOppositeParts(ProjectElement linkRow)
     {
         if (_session.Current is not { } project
             || !ElementId.TryParse(linkRow.GetAttribute("link"), out ElementId partnerId)
             || project.FindParent(partnerId) is not { } oppositePin)
         {
-            return "(unresolved)";
+            return Array.Empty<string>();
         }
         var parts = new List<string>();
         ProjectElement? current = oppositePin;
@@ -1607,14 +1719,8 @@ public partial class MainWindowViewModel : ViewModelBase
             current = current.Id is { } cid ? project.FindParent(cid) : null;
             leaf = false;
         }
-        return string.Join(" / ", parts);
+        return parts;
     }
-
-    // Mirrors ProductDefinition.IsStructuralChild: a product's non-pin containers (scenes / embedded enum / any
-    // settings container) are not resources and stay out of the pin preview.
-    private static bool IsStructuralChild(string tag) =>
-        tag is "scenes" or "enum_definition" or "settings"
-        || tag.EndsWith("_settings", StringComparison.Ordinal);
 
     private void RefreshRecent()
     {

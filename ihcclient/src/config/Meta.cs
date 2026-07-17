@@ -1,7 +1,6 @@
 using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.Configuration;
 
 namespace Ihc
 {
@@ -73,17 +72,6 @@ namespace Ihc
         /// Gets the fully qualified type name of the serialized model
         /// </summary>
         public string TypeFullName { get; init; }
-
-        /// <summary>
-        /// Reads encryption configuration from IConfiguration
-        /// </summary>
-        /// <param name="config">The configuration root to read from</param>
-        /// <returns>EncryptionConfiguration from the "meta" section, or a default instance with IsEncrypted=false if not found</returns>
-        public static EncryptionConfiguration GetFromConfiguration(IConfigurationRoot config)
-        {
-            return config.GetSection("meta").Get<EncryptionConfiguration>()
-                    ?? new EncryptionConfiguration { IsEncrypted = false };
-        }
 
         /// <summary>
         /// Returns metadata for the specified type using the current assembly version

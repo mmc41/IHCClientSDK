@@ -75,10 +75,17 @@ namespace Ihc {
       /// Creates a safe copy of this user definition without a password.
       /// </summary>
       /// <returns>Safe user</returns>
-      public IhcUser RedactPasword()
+      public IhcUser RedactPassword()
       {
         return this with { Password = UserConstants.REDACTED_PASSWORD };
       }
+
+      /// <summary>
+      /// Creates a safe copy of this user definition without a password.
+      /// </summary>
+      /// <returns>Safe user</returns>
+      [Obsolete("Misspelled; use " + nameof(RedactPassword) + " instead. This forwarder will be removed at the next version boundary.")]
+      public IhcUser RedactPasword() => RedactPassword();
 
       /// <summary>
       /// This default ToString method should not be used! Use alternative with bool parameter.

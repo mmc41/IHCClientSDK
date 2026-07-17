@@ -1,6 +1,6 @@
 ---
-version: 0.1.0
-last-updated: 2026-07-03
+version: 0.2.0
+last-updated: 2026-07-16
 status: draft
 ---
 
@@ -52,8 +52,9 @@ Scenario: Insert a wireless product via the context menu
   And the status bar reads: Product '<product>' inserted under <locality>
 
 Scenario: A newly inserted wireless product shows an unlinked marker
-  Given I have just inserted a wireless product and closed its properties with "OK"
+  Given I have just inserted a wireless product
   Then the product is marked with a yellow "!" indicating it is not yet linked to the controller
+  And no properties dialog has opened
 
 Scenario: Wireless categories come from the catalog
   Given the "IHC Wireless products" submenu is open
@@ -63,15 +64,32 @@ Scenario: Wireless categories come from the catalog
 ### AC illustrations
 
 - Inserting a wireless product (`<product>`) under `Bedroom` yields a product node named by the catalog
-  and exposing its catalog-defined pins (`<pin>`); the status bar reads
-  `Product '<product>' inserted under Bedroom`.
-- The wireless properties dialog is the same for all wireless products and has **Name, Location, Note,
-  Identification code, Light group** (light group MAY be absent for some products) — note there is **no
-  cable/terminal addressing**, since wireless products talk directly to the controller.
+  and exposing the pins IHC Visual shows for it (`<pin>`, per US-010's row rules); the status bar reads
+  `Product '<product>' inserted under Bedroom`, and **no dialog opens**.
+- The wireless properties dialog carries **Name, Placering, Note, Identification code, Light group**
+  (light group MAY be absent for some products) — and **no cable/terminal addressing**, since wireless
+  products talk directly to the controller rather than through an I/O module terminal.
+
+> **Corrected 2026‑07‑16 (two false claims, both inherited from E3's).**
+> 1. **The insert no longer implies an auto‑opened dialog.** The old Given read *"I have just inserted a
+>    wireless product **and closed its properties with OK**"*, which baked the auto‑open into this story the
+>    way US-011's MUST did. IHC Visual does **not** open a dialog on insert. Evidence: `RESULTS.md`
+>    **F‑027**; backlog **A‑14**.
+> 2. **`Location` → `Placering`.** The dialog listed a `Location` field; IHC Visual's product dialog has
+>    **no room selector** — it has a `Placering` **placement descriptor** (`i loft`), and the room is implied
+>    by tree position. The same correction as US-011, applied consistently. Evidence: `RESULTS.md` **F‑031**;
+>    backlog **A‑13**.
+>
+> ⚠ **"No cable/terminal addressing" is retained and is not contradicted.** US-012's terminal grids were
+> measured on a **wired** product; the comparison never opened a *wireless* product's dialog, and wireless
+> products address to the controller rather than to a module terminal. Do not extend F‑030 to this epic
+> without measuring it.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented.
+**Implementation status:** 🟡 Implemented — ⚠ **except two corrected rules**, shared with US-011: the code
+still auto‑opens the dialog on insert (backlog **A‑14**), and still shows a `Location` room dropdown instead
+of `Placering` (backlog **A‑13**).
 
 ---
 

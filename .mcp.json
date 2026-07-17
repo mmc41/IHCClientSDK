@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "ihcvisual": {
-      "command": "/repos/IHCReverseEnginneredInfo/tools/IHCVisualAutomation/.artifacts/mcp/mcp.exe",
+      "command": "D:\\repos\\IHCReverseEnginneredInfo\\tools\\IHCVisualAutomation\\.artifacts\\mcp\\mcp.exe",
       "args": []
     }
   }

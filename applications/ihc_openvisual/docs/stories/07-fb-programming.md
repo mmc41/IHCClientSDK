@@ -1,6 +1,6 @@
 ---
-version: 0.1.0
-last-updated: 2026-07-03
+version: 0.2.0
+last-updated: 2026-07-16
 status: draft
 ---
 
@@ -60,15 +60,48 @@ Scenario: Switch focus between the two panes
   Then keyboard focus moves between the left (function) window and the right (program) window
 ```
 
+### Business rules (what a mode transition changes)
+
+- MUST: Entering programming mode **re‑roots both panes to the function block's own name** — the left pane
+  to its variable sections (*Input* / *Output* / *Settings* / *Internal variables*), the right pane to
+  *Programs*.
+- MUST: Leaving programming mode re‑roots **both** panes back to *Localities*.
+- MUST: The pane roots are what tell the two modes apart — configuration mode roots at *Localities*,
+  programming mode roots at the block's name.
+
+> **Confirmed 2026‑07‑16 — aligned.** Both apps re‑root **both** panes identically: IHC Visual to
+> `Input`/`Output`/`Indstillinger`/`Interne variable` + `Programmer`, IHC OpenVisual to
+> `Input`/`Output`/`Settings`/`Internal variables` + `Programs` — byte‑for‑byte the same sections,
+> translated (language is an allowed difference). Esc exits and re‑roots both back on both apps. IHC
+> OpenVisual additionally reports the transition in the status bar, which the vendor does not — a harmless
+> addition. Evidence: `RESULTS.md` **F‑034** (`S06\20-programming-mode-vis.png` vs
+> `20-programming-mode-ov.png`; pane‑root reads on both, verified by effect).
+>
+> Two notes worth keeping: (1) IHC OpenVisual starts the block's node **collapsed** where IHC Visual shows
+> its four sections expanded — a default‑expansion nicety, not a divergence to chase. (2) The pane root is
+> also the **only** reliable way to read which mode an app is in — there is no other passive signal, on
+> either app.
+
 ### AC illustrations
 
 - Pressing `F3` on an empty block named `Empty block` shows both headers as `Empty block`, left pane
   `Empty block > {Input, Output, Settings, Internal variables}`, right pane
   `Empty block > Programs > Program > {Events, Commands}`.
 
+### Constraints
+
+- Verification method — **Demonstration** that entering re‑roots both panes to the block name and leaving
+  restores both to *Localities*.
+- ⚠ The per‑node interaction census **inside** programming mode (variables, programs, events, conditions,
+  enum types, case nodes) has **not** been run against the vendor (`RESULTS.md` **E‑4**), nor has the deep
+  authoring comparison — notably IHC OpenVisual's two‑step *Use in program* popup versus the vendor's drag
+  + method popup. The mode **transition** is aligned; the authoring surfaces inside it are unmeasured, so
+  do not read this story's confirmation as covering them.
+
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented.
+**Implementation status:** ✅ Implemented — the mode transition is measured **aligned** with IHC Visual
+(F‑034).
 
 ---
 

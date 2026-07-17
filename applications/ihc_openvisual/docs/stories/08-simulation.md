@@ -1,6 +1,6 @@
 ---
-version: 0.1.0
-last-updated: 2026-07-13
+version: 0.2.0
+last-updated: 2026-07-16
 status: out-of-scope
 ---
 
@@ -11,6 +11,16 @@ status: out-of-scope
 > Kept as documentation, not slated for implementation.
 
 > **Implementation status:** ⛔ Out of scope.
+
+> **This exclusion is the grant for IHC OpenVisual's missing Simulation UI (2026‑07‑16).** The vendor
+> comparison measured the shell delta precisely, and it is **exactly this epic and nothing else**: IHC
+> Visual's menu bar has **9** titles to IHC OpenVisual's **8** — the delta is exactly `Simulering`, with the
+> same set and the same order otherwise — and its toolbar has 11 buttons to IHC OpenVisual's 9, the delta
+> being exactly the Play/Stop pair. Both are **deliberate**, granted by this epic's out‑of‑scope ruling and
+> by `product.md`; the ruling of 2026‑07‑16 explicitly declined to re‑litigate simulation on vendor parity.
+> Recorded here so the delta reads as a decision rather than an oversight. Evidence: `RESULTS.md` **F‑021**;
+> the eight‑title menu bar is specified in **US-001**, and US-045 documents the simulation key bindings for
+> completeness without implementing them.
 
 **Goal:** Let a commissioning technician or programmer validate the project offline — driving inputs
 and outputs, watching red/green states, setting breakpoints, stepping, simulating clock/date, and

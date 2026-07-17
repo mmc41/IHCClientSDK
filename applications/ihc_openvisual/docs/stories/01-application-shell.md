@@ -1,6 +1,6 @@
 ---
-version: 0.3.0
-last-updated: 2026-07-13
+version: 0.4.0
+last-updated: 2026-07-16
 status: draft
 implementation-status: mostly-implemented
 ---
@@ -68,6 +68,15 @@ per‑menu command inventory beyond the top‑level menu titles.
   `Untitled` before the first save and the file name (e.g. `project3.vis`) afterwards; the
   IHC OpenVisual application icon appears as the window icon, with standard Minimize/Maximize/Close buttons at top‑right.
   *(Title logic done and tested; the window icon is the `IHC OpenVisual` house lockup `Assets/openvisual.ico`; min/max/close use the default Avalonia chrome.)*
+- [x] MUST: The title bar shows **no dirty marker** — no `*` or equivalent — even when the open project has
+  unsaved changes. Dirty state is tracked internally and surfaced by the unsaved‑changes guard (US-002),
+  not by the title.
+
+  > **Confirmed 2026‑07‑16 — regression baseline, both apps aligned.** Neither app surfaces a title‑bar
+  > dirty indicator, though both track dirty (each guard fires on a pending edit, which proves it).
+  > Recorded so nobody adds a marker to IHC OpenVisual unilaterally — **if a marker is ever wanted it should
+  > go on both**, and it is not a divergence today. Evidence: `RESULTS.md` **F‑041** (both titles read with a
+  > pending edit present).
 - [x] MUST: A single menu bar shows exactly these **eight** titles, left to right: **File, Edit, View,
   Insert, Library, Controller, Documentation, Help** — *Simulation* is out of scope (E8) and is
   omitted (amended from the original nine‑title requirement).
@@ -152,15 +161,40 @@ Scenario: Only one project is open at a time
   Then the previously open project is closed (it is not shown alongside the new one)
 ```
 
+### Business rules (the unsaved‑changes guard)
+
+This guard is raised wherever the open project would be discarded — *New*, *Open*, *Close* (US-004) and
+*Exit* (US-064). It is specified once here.
+
+- MUST: The prompt **names the file** whose changes are at stake, so a user with several projects in mind
+  knows which one is being discarded.
+- MUST: It offers **three** outcomes — save and continue, discard and continue, or cancel and stay.
+- MUST: The three outcomes are labelled by what they **do**: **`Save`** / **`Don't save`** / **`Cancel`**.
+
+  > **Deliberate divergence (C), granted 2026‑07‑16 under US-045 (follow platform convention).** IHC Visual
+  > labels the same three outcomes **`Yes` / `No` / `Cancel`** on a MessageBox titled `LK IHC Visual ®`. The
+  > two guards are **functionally aligned** — both name the file, both offer save/discard/cancel — and
+  > `Save`/`Don't save` is the modern Windows convention, which is unambiguous where *Yes*/*No* requires the
+  > user to re‑read the question to know what *No* discards. IHC OpenVisual keeps its labels. **Cited here
+  > so nobody "aligns" them back to Yes/No.** Evidence: `RESULTS.md` **F‑039** (`S01\60-dirty-guard-vis.png`
+  > vs `60-dirty-guard-ov.png`, both raised by File▸New with unsaved edits).
+
+- MUST: `Esc` cancels the prompt and leaves the project open, and the **`Cancel`** option is focused when it
+  opens (US-069).
+
 ### AC illustrations
 
 - The standard empty project contains ten localities — Living room, Hall, Kitchen, Bedroom, Room,
   Bathroom, Utility room, Garage, Basement, Outdoors — in both panes, plus two built‑in enumerator
   types available to programming (Alarm state, Home simulation; see US-030).
+- Choosing *File > New project* with unsaved edits to `StandardHouse_1.vis` raises a prompt naming
+  `StandardHouse_1.vis` and offering `Save` / `Don't save` / `Cancel`; `Cancel` returns to the project with
+  its edits intact.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented.
+**Implementation status:** ✅ Implemented — the guard is measured **functionally aligned** with IHC Visual,
+with its button labels as the granted platform‑convention exception (F‑039).
 
 ---
 
@@ -189,10 +223,28 @@ Scenario: Recommended first step
   Then the application's guidance is to save it under a suitable name before configuring
 ```
 
+### Business rules (what a save stamps)
+
+- MUST: Saving stamps the project's **`<modified>` timestamp** with the current date and time, and
+  regenerates the document's **save id**. Both are the app's own bookkeeping, not project content.
+- MUST: A save writes no other change of its own — the head, the tail and the project's id allocation are
+  untouched, and no data is rewritten.
+
+> **Confirmed 2026‑07‑16 — a no‑op save legitimately changes the file.** Loading a project and saving it
+> with **no edits** grows the file by **+2 bytes**, from exactly these two stamps (`<modified>` set to now,
+> and `id2` regenerated). This is **correct editor behaviour, not a bug**: IHC Visual's save is likewise
+> non‑idempotent (it stamps its own modified time and re‑hoists catalog enums). Recorded because it looks
+> alarming and had been carried as an open question. Note the distinction from the SDK's byte‑fidelity
+> oracles, which round‑trip **exactly** — they preserve bytes and deliberately **don't** stamp; only the
+> *app's* save stamps, as it should. Evidence: `RESULTS.md` **F‑047** (byte‑diff: first diff at offset
+> 18324 = `id2`, second at 18392 = `<modified>`).
+
 ### AC illustrations
 
 - Saving an untitled project as `project3.vis` changes the title bar from `Untitled - IHC OpenVisual`
   to `project3.vis - IHC OpenVisual`; the two panes and their content are unchanged.
+- Opening a project and immediately saving it without editing produces a file that differs from the
+  original in exactly two places — the modified timestamp and the save id.
 
 ### Constraints
 
@@ -233,9 +285,17 @@ Scenario: Opening replaces the current project
   Then the application first prompts to save the open project (single-project constraint, US-002)
 ```
 
+### Constraints
+
+- **Confirmed 2026‑07‑16 — regression baseline, both apps aligned.** The recent‑projects area holds
+  **4 slots** on both apps, and the *File* menu's command set matches. Evidence: `RESULTS.md` **F‑040**
+  (vendor's recent list = 4 entries; IHC OpenVisual's *File ▸ Recent projects* submenu = 4 slots).
+  ⚠ **Ordering and count with a populated list are not measured** — no project was opened through the recent
+  mechanism during the comparison, so only the slot capacity is a baseline, not the MRU ordering.
+
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented.
+**Implementation status:** ✅ Implemented — the 4‑slot recent area is measured aligned (F‑040).
 
 ---
 

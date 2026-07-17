@@ -72,8 +72,8 @@ dotnet build utilities/ihc_settings_encrypt/ihc_settings_encrypt.csproj
 
 # Use the built executable
 export IHC_ENCRYPT_PASSPHRASE="your-secure-passphrase"
-dotnet utilities/ihc_settings_encrypt/bin/Debug/net9.0/ihc_settings_encrypt.dll encrypt ihcsettings.json
-dotnet utilities/ihc_settings_encrypt/bin/Debug/net9.0/ihc_settings_encrypt.dll decrypt ihcsettings.json
+dotnet utilities/ihc_settings_encrypt/bin/Debug/net10.0/ihc_settings_encrypt.dll encrypt ihcsettings.json
+dotnet utilities/ihc_settings_encrypt/bin/Debug/net10.0/ihc_settings_encrypt.dll decrypt ihcsettings.json
 ```
 
 ## Examples

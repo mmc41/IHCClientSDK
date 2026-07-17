@@ -153,7 +153,8 @@ The `ihcclient` project follows a layered architecture:
 
 - **Stack**: .NET 10, Avalonia 12 (Fluent theme, Inter fonts, compiled bindings), CommunityToolkit.Mvvm; in-process `ihcclient` project reference (no version skew).
 - **Status**: incubating — app shell, MVVM scaffolding, the 44-glyph SVG icon set, and a headless smoke suite exist; the authoring UI is being built out against the epics/stories in `docs/`. Now in `IHCClientSDK.sln`, and `safe_visual_tests` runs in CI (Windows).
-- **Layering/test rule**: view-models avoid Avalonia types so logic is testable headlessly — view-model/logic tests go in `safe_unit_tests`, headless-UI tests in `safe_visual_tests`, engine byte-fidelity in `safe_project_tests`. Follows the `ihc_lab` MVVM + headless-test + telemetry-bootstrap conventions.
+- **Layering/test rule**: view-models avoid Avalonia types so logic is testable headlessly — view-model/logic tests go in `safe_unit_tests`, headless-UI tests in `safe_visual_tests`, engine byte-fidelity in `safe_project_tests`. Shares the `ihc_lab` headless-test and telemetry-bootstrap conventions (the bootstrap is currently duplicated rather than shared).
+- **MVVM differs from `ihc_lab` — follow OpenVisual's, not the Lab's**: OpenVisual uses CommunityToolkit.Mvvm (`ObservableObject`/`[ObservableProperty]`/`[RelayCommand]`), thin code-behind, and an `IDialogService` abstraction so dialogs are fakeable in headless tests. `ihc_lab` predates this: hand-rolled `INotifyPropertyChanged`, an 833-line `MainWindow.axaml.cs`, and dialogs constructed inline. Do not copy Lab's MVVM into OpenVisual.
 
 **Documentation** lives in `applications/ihc_openvisual/docs/` — read the relevant doc before implementing an app feature:
 

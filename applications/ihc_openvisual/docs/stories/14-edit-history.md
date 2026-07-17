@@ -1,6 +1,6 @@
 ---
-version: 0.1.0
-last-updated: 2026-07-12
+version: 0.2.0
+last-updated: 2026-07-16
 status: draft
 ---
 
@@ -26,6 +26,8 @@ switches, chrome toggles, simulation) which do not enter the history.
   re‑applicable with *Redo* (`Ctrl+Y`), across all editing epics (E2–E9).
 - MUST: Undo/redo restores the exact prior/post state, reflected identically in both panes, and the
   status bar names the action reversed or re‑applied.
+- MUST: One user action is one undo step, and undoing an action that cannot be reversed degrades
+  gracefully rather than crashing.
 - SHOULD: A destructive, cascading edit (e.g. deleting a non‑empty locality, US-009) is reversed as a
   single step.
 
@@ -60,11 +62,30 @@ switches, toolbar/status‑bar toggles, simulation) which do not enter the edit 
   longer be redone.
 - [ ] MUST: Invoking *Undo* with nothing to undo (a freshly opened/saved project with no edits
   since) is a no‑op that changes nothing.
+- [ ] MUST: **One user action is one undo step.** A single action taken in the UI is reversed by a single
+  *Undo* and re‑applied by a single *Redo* — the history's granularity is the user's action, not the
+  internal edits it performs.
+- [ ] MUST: Undoing an action the application **cannot reverse** (see below) **degrades gracefully**: the
+  application says the action cannot be undone and stays running with the project intact. It never crashes,
+  and never leaves the project half‑reverted.
 - [ ] SHOULD: A destructive edit that required confirmation or cascaded (e.g. deleting a non‑empty
   locality, US-009) is reversed **as one step**, restoring the locality, its products, and the
   dependent commands/conditions together.
+- [ ] SHOULD: An action that cannot be reversed is either **made undoable** or **guarded before it happens**
+  — unlocking a library function block (US-020) is the known instance, and it is guarded by a warning.
 - [ ] SHOULD: Non‑mutating actions (entering/leaving programming mode, US-026; toolbar/status‑bar
   toggles, US-051) do **not** appear on the undo history.
+
+> **Added 2026‑07‑16 — granularity confirmed, and one vendor defect explicitly not copied.**
+> - **Granularity is measured aligned on both apps** (F‑045): on IHC Visual, inserting a locality
+>   (24→25) undid to 24 and redid to 25; on IHC OpenVisual the same one‑action‑one‑step behaviour was
+>   effect‑verified for a move. This is a regression baseline.
+> - **IHC Visual crashes** when undoing an irreversible action: `edit.undo` after unlocking a function block
+>   **closed the application outright**, while a normal insert undo/redo is stable (F‑046). Per the ruling's
+>   exception #3 a vendor defect is not authoritative — IHC OpenVisual must **degrade gracefully, not
+>   replicate the crash**, which is why the MUST above exists. ⚠ The crash's cause is inferred from the
+>   sequence, not isolated by a minimal repro; the *requirement* on IHC OpenVisual stands regardless of
+>   what exactly broke in the vendor. Evidence: `RESULTS.md` **F‑045**, **F‑046**.
 
 ### AC illustrations
 
@@ -75,21 +96,28 @@ switches, toolbar/status‑bar toggles, simulation) which do not enter the edit 
   as a unit.
 - After undoing an insertion, dragging a new link instead of redoing leaves the earlier insertion
   unredoable.
+- Unlocking a library block and then pressing `Ctrl+Z` reports that the unlock cannot be undone and leaves
+  the block unlocked and the application running — the same sequence closes IHC Visual outright.
 
 ### Constraints
 
 - Verification method — **Demonstration** that a representative edit from each editing epic (E2–E9)
-  undoes and redoes; that a cascading delete reverses as one step; and that redo is invalidated by a
-  new edit.
+  undoes and redoes; that a cascading delete reverses as one step; that redo is invalidated by a
+  new edit; and that undoing an unlock degrades gracefully rather than crashing.
 - **Open item — undo depth:** whether the history is single‑step or multi‑step, and how many steps it
   retains, is not yet established; confirm during implementation before fixing
-  it. Treat as `[TBD]`. (R‑note.)
+  it. Treat as `[TBD]`. (R‑note.) ⚠ The vendor comparison did **not** close this: it measured
+  one‑action‑one‑step **granularity** (F‑045), which is a different question, and explicitly did **not**
+  stress‑test multi‑level depth or redo‑invalidation. Do not read F‑045 as resolving the depth.
 
 **Readiness:** Not Ready.
 - [R3] Undo/redo **depth** (single‑ vs multi‑level; number of steps retained) is `[TBD]` — confirm
-  during implementation.
+  during implementation. Granularity (one action = one step) is measured and closed (F‑045).
 
-**Implementation status:** ✅ Implemented (multi-level).
+**Implementation status:** 🟡 Implemented (multi-level) — granularity is measured **aligned** with IHC
+Visual (F‑045). ⚠ **The graceful‑degradation rule for irreversible actions is unverified**: IHC OpenVisual's
+undo‑after‑unlock could not be driven during the comparison (F‑043 blocked it), so whether it degrades or
+crashes like the vendor is **not known**. Reach that path and confirm it.
 
 ---
 

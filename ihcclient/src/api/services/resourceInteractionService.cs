@@ -5,6 +5,7 @@ using System.Linq;
 using Ihc.Soap.Resourceinteraction;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Ihc {
     /// <summary>
@@ -257,7 +258,7 @@ namespace Ihc {
             }
         }
 
-        private readonly SoapImpl impl;
+        private readonly Ihc.Soap.Resourceinteraction.ResourceInteractionService impl;
 
         private DatalineResource mapDatalineResource(WSDatalineResource r)
         {
@@ -299,6 +300,14 @@ namespace Ihc {
         {
             this.authService = authService;
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
+        }
+
+        /// <summary>Test seam: inject a fake SOAP layer (used by unit tests only).</summary>
+        internal ResourceInteractionService(IAuthenticationService authService, Ihc.Soap.Resourceinteraction.ResourceInteractionService impl)
+            : base(authService.IhcSettings)
+        {
+            this.authService = authService;
+            this.impl = impl;
         }
 
         public async Task<bool> DisableInitialValueNotifactions(IReadOnlyList<int> resourceIds)
@@ -741,35 +750,34 @@ namespace Ihc {
             }
         }
 
-        public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(IReadOnlyList<int> resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15)
+        public async IAsyncEnumerable<ResourceValue> GetResourceValueChanges(
+            IReadOnlyList<int> resourceIds,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default,
+            int timeout_between_waits_in_seconds = 15)
         {
-            using (var activity = StartActivity(nameof(GetResourceValueChanges)))
+            // Deliberately an async iterator, so the activity spans the iteration rather than the call that
+            // creates it. Returning the stream from a plain method would stop and export the activity before the
+            // polling loop had run at all, and every error the loop reports would land on a dead span.
+            using var activity = StartActivity(nameof(GetResourceValueChanges));
+
+            activity?.SetParameters(
+                (nameof(resourceIds), resourceIds),
+                (nameof(cancellationToken), cancellationToken),
+                (nameof(timeout_between_waits_in_seconds), timeout_between_waits_in_seconds));
+
+            IAsyncEnumerable<ResourceValue> changes = ServiceHelpers.GetResourceValueChanges(
+                activity,
+                resourceIds,
+                EnableRuntimeValueNotifications,
+                WaitForResourceValueChanges,
+                DisableRuntimeValueNotifactions,
+                settings.AsyncContinueOnCapturedContext,
+                cancellationToken,
+                timeout_between_waits_in_seconds);
+
+            await foreach (var change in changes.ConfigureAwait(settings.AsyncContinueOnCapturedContext))
             {
-                try
-                {
-                    activity?.SetParameters(
-                        (nameof(resourceIds), resourceIds),
-                        (nameof(cancellationToken), cancellationToken),
-                        (nameof(timeout_between_waits_in_seconds), timeout_between_waits_in_seconds));
-
-                    var retv = ServiceHelpers.GetResourceValueChanges(
-                        activity,
-                        resourceIds,
-                        EnableRuntimeValueNotifications,
-                        WaitForResourceValueChanges,
-                        DisableRuntimeValueNotifactions,
-                        settings.AsyncContinueOnCapturedContext,
-                        cancellationToken,
-                        timeout_between_waits_in_seconds);
-
-                    activity?.SetReturnValue(retv);
-                    return retv;
-                }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
+                yield return change;
             }
         }
     }

@@ -286,7 +286,7 @@ public class IhcFakeSetup
             .ReturnsLazily((bool includePassword) =>
             {
                 var users = mockUsers.Values
-                    .Select(u => includePassword ? u : u.RedactPasword())
+                    .Select(u => includePassword ? u : u.RedactPassword())
                     .ToHashSet();
                 return Task.FromResult<IReadOnlySet<IhcUser>>(users);
             });

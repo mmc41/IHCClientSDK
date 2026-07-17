@@ -99,7 +99,7 @@ namespace Ihc
 
         public override string ToString()
         {
-            return $"IhcSettings: Endpoint={Endpoint}, UserName={UserName}, Password={(string.IsNullOrEmpty(Password) ? "<not set>" : "<set>")}, Application={Application}, LogSensitiveData={LogSensitiveData}, AllowDangerousInternTestCalls={AllowDangerousInternTestCalls}, AasyncContinueOnCapturedContext={AsyncContinueOnCapturedContext}";
+            return $"IhcSettings: Endpoint={Endpoint}, UserName={UserName}, Password={(string.IsNullOrEmpty(Password) ? "<not set>" : "<set>")}, Application={Application}, LogSensitiveData={LogSensitiveData}, AllowDangerousInternTestCalls={AllowDangerousInternTestCalls}, AsyncContinueOnCapturedContext={AsyncContinueOnCapturedContext}";
         }
 
         /// <summary>

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+
+  <!--
+    Central Package Management: one version per package for the whole repository.
+
+    Package versions used to live in the 17 individual project files, where nothing compared them.
+    Six packages had forked across the test suites by the time this file was written — NUnit ran at
+    three versions and coverlet at three, and FakeItEasy differed by a MAJOR version between the two
+    suites that use it. A version stated once cannot drift.
+
+    Adding a version here is the only supported way to introduce one. A project that must pin a
+    different version uses VersionOverride, which makes the exception greppable rather than silent.
+    There are currently none, and that is the intended steady state.
+
+    NUnit and NUnit.Analyzers are a matched pair: bump them together. Framework 4.6.1 against
+    analyzer 4.10.0 raises a spurious NUnit2021 ("EqualTo always fails") on a correct assertion.
+  -->
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup Label="Microsoft.Extensions / BCL">
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.9" />
+    <PackageVersion Include="System.Configuration.ConfigurationManager" Version="10.0.9" />
+  </ItemGroup>
+
+  <ItemGroup Label="WCF / SOAP (consumed by ihcclient's generated proxies)">
+    <PackageVersion Include="System.ServiceModel.Duplex" Version="6.0.0" />
+    <PackageVersion Include="System.ServiceModel.Http" Version="8.1.2" />
+    <PackageVersion Include="System.ServiceModel.NetTcp" Version="8.1.2" />
+    <!-- Was a floating '8.*' in ihcclient.csproj, resolving to 8.1.2. Pinned: a floating version is
+         a restore-time drift source of exactly the kind this file exists to remove. -->
+    <PackageVersion Include="System.ServiceModel.Primitives" Version="8.1.2" />
+    <PackageVersion Include="System.ServiceModel.Security" Version="6.0.0" />
+    <!-- Overrides the vulnerable 8.0.2 pulled in transitively by System.ServiceModel.Primitives
+         (advisories GHSA-37gx-xxp4-5rgx and GHSA-w3x6-4m5h-cxqf). 8.0.3 is the patched 8.x release. -->
+    <PackageVersion Include="System.Security.Cryptography.Xml" Version="8.0.3" />
+  </ItemGroup>
+
+  <ItemGroup Label="Avalonia / GUI">
+    <PackageVersion Include="Avalonia" Version="12.1.0" />
+    <PackageVersion Include="Avalonia.Desktop" Version="12.1.0" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.1.0" />
+    <PackageVersion Include="Avalonia.Headless" Version="12.1.0" />
+    <PackageVersion Include="Avalonia.Headless.NUnit" Version="12.1.0" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.0" />
+    <PackageVersion Include="Avalonia.Themes.Simple" Version="12.1.0" />
+    <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.1" />
+    <PackageVersion Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.13" />
+  </ItemGroup>
+
+  <ItemGroup Label="Telemetry">
+    <PackageVersion Include="OpenTelemetry" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.16.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Test">
+    <PackageVersion Include="CompareNETObjects" Version="4.84.0" />
+    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
+    <PackageVersion Include="CsCheck" Version="4.7.0" />
+    <PackageVersion Include="FakeItEasy" Version="9.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
+    <PackageVersion Include="NetArchTest.Rules" Version="1.3.2" />
+    <PackageVersion Include="NUnit" Version="4.6.1" />
+    <PackageVersion Include="NUnit.Analyzers" Version="4.14.0" />
+    <PackageVersion Include="NUnit3TestAdapter" Version="6.2.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Tooling">
+    <PackageVersion Include="AspNetCore.Proxy" Version="4.5.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+  </ItemGroup>
+
+</Project>

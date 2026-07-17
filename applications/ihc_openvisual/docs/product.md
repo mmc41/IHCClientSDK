@@ -14,9 +14,9 @@ maintaining them for the long term — on any modern desktop OS, in English, wit
 | Feature | Benefit | Status |
 |---------|---------|--------|
 | Binary-compatible open/save of `.vis` projects | Files can move freely between This project and the vendor tool with zero risk of corruption — byte-identical round-trips are enforced by an automated oracle test suite (measured, SDK engine) | Available (SDK engine) |
-| Full project editing: localities, products, function blocks, links | The complete authoring workflow — model rooms, place wired/wireless devices, add logic blocks, wire inputs to outputs — in one two-pane workspace | Planned |
+| Full project editing: localities, products, function blocks, links | The complete authoring workflow — model rooms, place wired/wireless devices, add logic blocks, wire inputs to outputs — in one two-pane workspace: **what is installed on the left, what it does on the right**, linked across the middle | Planned |
 | Function-block programming | Author control logic (typed variables, events, conditions, commands, enums, case structures) so installations do exactly what the household needs | Planned |
-| Built-in component catalog | All stock products and function blocks are embedded in the SDK — no vendor installation is required to create or extend a project | Available (SDK engine) |
+| Built-in component catalog | The stock products and function blocks are embedded in the SDK — no vendor installation is required to create or extend a project | Available (SDK engine); the function-block half is measured complete and verbatim, the product catalog has known category gaps (F-028) |
 | Modern flat-line SVG icon language + English help | A themeable (light/dark), accessible UI that new users can actually read: 44 purpose-designed glyphs plus context-sensitive English help | Icons available; help planned |
 
 ## Architecture Overview
@@ -123,7 +123,7 @@ the product it is being built into.
 
 - Users have `.vis` files from existing installations and/or an IHC v3.0 controller.
 - One project open per window (single-project model, matching user expectations from the legacy workflow).
-- The embedded catalog is equivalent to the vendor's stock catalog; genuinely custom components can be imported from `.def`/`.ifb` files.
+- The embedded catalog is intended to be equivalent to the vendor's stock catalog; genuinely custom components can be imported from `.def`/`.ifb` files. *(Corrected 2026-07-16, was asserted as fact: equivalence is the **goal**, not yet the measured state. The **function-block** half is embedded verbatim, categories and all — 72 blocks, measured. The **product** catalog is not yet equivalent: it has no `Bus Produkter` category, `IHC LED Dimmer 2 kanaler` appears nowhere, and `Special products` holds only the SMS modem against the vendor's three sub-categories plus four loose specials. Leaves were never diffed, so more may be missing. Evidence: `RESULTS.md` F-028 and F-042, open item E-7; backlog A-11. See US-010.)*
 
 ### Dependencies
 
@@ -154,9 +154,26 @@ exists and is tested today; the work is UI.
 **Description**: The main window presents the installation (physical) view and the functions
 (logic) view side by side over the same locality structure.
 
+> **The two panes are not two views of one menu model — each pane owns half the authoring vocabulary.**
+> This is the workspace's central rule, inherited from IHC Visual, and it decides where every insert
+> command belongs:
+>
+> | | **LEFT pane — Installation** | **RIGHT pane — Functions** |
+> |---|---|---|
+> | Shows | localities → **products** → pins | localities → **function blocks** → pins |
+> | Owns the insert of | **products** (wired, wireless, special) | **function blocks** (library and empty) |
+> | Answers | *what is physically installed, and where* | *what the installation does* |
+>
+> **The locality structure is shared** — every locality appears in **both** panes, in the same order, and
+> a rename/add/delete shows up in both at once. What differs is what hangs beneath it, and therefore what
+> each pane lets you insert: **a product is never inserted on the right, a function block never on the
+> left.** Links are the one operation that deliberately spans the panes (F6), which is why the two are
+> shown side by side rather than as tabs.
+
 **Functional Requirements**:
 
-- FR-2.1: Two tree panes — **Installation** (localities → products → pins) and **Functions** (localities → function blocks → pins) — with a draggable splitter; selection-relevant changes reflect in both panes immediately.
+- FR-2.1: Two tree panes — **Installation** (left: localities → products → pins) and **Functions** (right: localities → function blocks → pins) — over one shared locality structure, with a draggable splitter; a change to a locality reflects in both panes immediately.
+- FR-2.1a: **Pane ownership of the insert vocabulary.** Products are inserted **only** from the Installation pane and function blocks **only** from the Functions pane; each pane offers exactly its own half, on the node's context menu and on the menu bar. A pane never offers an insert whose result it could not show. *(This mirrors IHC Visual. The tree split is measured and implemented; the exact per-pane **context-menu** inventory — specifically whether the vendor's Functions-pane locality menu carries the function-block insert — is pending capture `tmp\compare2.md` §3 **C11**, backlog **A-5**. Until C11 lands, do not read this FR as licence to delete a route: the vendor's locality menu was only ever dumped on the **left** pane.)*
 - FR-2.2: Every node renders a type icon from the flat-line set (per the icon-mapping doc) plus decorations for state (e.g. unconfigured/unlinked warning, locked block badge); variables show inline `name = value`.
 - FR-2.3: Every command is reachable three equivalent ways: menu bar, context menu on the target node, and (where assigned) a keyboard shortcut; a documented keymap covers navigation, editing, properties, link-jumping, and pane switching.
 - FR-2.4: A status bar confirms the result of the last action in a short sentence.
@@ -178,8 +195,8 @@ them, and address wired terminals.
 
 **Functional Requirements**:
 
-- FR-4.1: Insert any catalog product into a selected locality from categorized menus; the product appears with its pins/sub-resources and their default values. *(Engine: available — insert transform)*
-- FR-4.2: Edit product documentation properties (name, placement, note, cable data, identification code, light group where applicable) in a properties dialog opened automatically on insert and on demand thereafter.
+- FR-4.1: Insert any catalog product into a locality selected **in the Installation (left) pane** from categorized menus; the product appears there with its pins/sub-resources and their default values, and does **not** appear in the Functions pane (FR-2.1a). *(Engine: available — insert transform)*
+- FR-4.2: Edit product documentation properties (name, placement, note, cable data, identification code, light group where applicable) in a properties dialog opened on demand, from the tree — inserting a product opens no dialog, matching IHC Visual. *(Corrected 2026-07-16, was "opened automatically on insert": the vendor was measured **not** to auto-open — `RESULTS.md` F-027, backlog A-14. The name field's editability is gated by product type, and the placement field is the vendor's `Placering` descriptor, not a room selector — F-031/F-032. See US-011.)*
 - FR-4.3: Configure wired input/output terminal addressing (data line + module terminal) with in-use indication, and output initial values (normally-open/normally-closed semantics).
 - FR-4.4: Wireless products can be inserted and documented; products that are not yet fully configured/commissioned carry a visible warning decoration. (RF linking itself is out of scope — see Constraints.)
 - FR-4.5: Catalog/project constraints are enforced at edit time via the validator (e.g. at most one modem product per project).
@@ -191,7 +208,7 @@ block; manage a personal library.
 
 **Functional Requirements**:
 
-- FR-5.1: Insert stock function blocks from the categorized built-in library, or an empty block, into a locality in the Functions pane. *(Engine: available)*
+- FR-5.1: Insert stock function blocks from the categorized built-in library, or an empty block, into a locality selected **in the Functions (right) pane** — and only there; a block does **not** appear in the Installation pane (FR-2.1a). *(Engine: available)*
 - FR-5.2: Stock (locked) blocks show a distinct badge and are read-only internally until explicitly unlocked, after which they behave like user blocks.
 - FR-5.3: Save own blocks for reuse and maintain a favourites collection; import external component definitions (`.def`/`.ifb`) into the session catalog. *(Engine: available — catalog reader/composition)*
 
@@ -267,9 +284,10 @@ document if the capability is ever scheduled.
 
 ### User Interfaces
 
-Single main window with menu bar, toolbar, two tree panes, and status bar; modal dialogs for
-properties and confirmations. Keyboard-first: complete tasks are achievable without a mouse
-(three-route command activation, FR-2.3). Accessibility: icons are decorative and always
+Single main window with menu bar, toolbar, two tree panes — **Installation on the left** (products)
+and **Functions on the right** (function blocks), over one shared locality structure (F2) — and a
+status bar; modal dialogs for properties and confirmations. Keyboard-first: complete tasks are
+achievable without a mouse (three-route command activation, FR-2.3). Accessibility: icons are decorative and always
 accompanied by text labels; state is never signaled by color alone; both themes maintain
 readable contrast at 16 px tree-row icon size.
 
@@ -316,9 +334,11 @@ compiled-in data.
 |------|-----------|
 | IHC controller | The physical unit running a home installation; executes the deployed project. |
 | `.vis` file | The XML project file (with inline DTD) holding a controller's complete configuration. |
-| Locality | A room/place node organizing products and function blocks. |
-| Product | A physical device definition (switch, lamp output, sensor, …) instantiated from the catalog into a locality. |
-| Function block | A reusable logic component with typed pins, variables, and programs. |
+| Locality | A room/place node organizing products and function blocks. Localities are the **shared spine of both panes** — the same locality appears in each, holding its products on the left and its blocks on the right. |
+| Installation pane | The **left** tree: localities → products → pins. The physical view — what is installed and where. **Products are inserted here, and only here** (FR-2.1a). |
+| Functions pane | The **right** tree: localities → function blocks → pins. The logic view — what the installation does. **Function blocks are inserted here, and only here** (FR-2.1a). |
+| Product | A physical device definition (switch, lamp output, sensor, …) instantiated from the catalog into a locality. Lives in the **Installation (left)** pane. |
+| Function block | A reusable logic component with typed pins, variables, and programs. Lives in the **Functions (right)** pane. |
 | Pin / resource | An addressable input/output/variable on a product or block; the endpoint of links. |
 | Link | A connection between a product pin and a block pin (or scene target) that routes signals. |
 | Scene / scenario link | A link carrying a preset (light level + ramp, or on/off) recalled by one trigger. |

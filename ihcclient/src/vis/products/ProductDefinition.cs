@@ -5,6 +5,7 @@ using System.Linq;
 
 using Ihc.Vis.Catalog;
 using Ihc.Vis.Model;
+using Ihc.Vis.Schema;
 namespace Ihc.Vis.Products
 {
     /// <summary>
@@ -54,22 +55,6 @@ namespace Ihc.Vis.Products
         /// </summary>
         public ProductDocumentation Documentation { get; init; } = ProductDocumentation.Empty;
 
-        // A product body's direct children are its I/O pins and family resources plus a few STRUCTURAL blocks that are
-        // not resources and must be kept out of the resource preview: the scenes container, an embedded enum_definition
-        // (a "med logning" product's typedef block — see ProductDefinitionBuilder.RawChild), and any settings/config
-        // container. The last covers the generic dataline "settings" AND every family-specific variant (dimmer_settings
-        // on airlink dimmers, sms_modem_settings on rs485 modems, …); matching the "_settings" suffix keeps a new
-        // family's settings block from leaking in as a bogus resource, where a hardcoded list would silently miss it.
-        // (The function-block projections sidestep this by reading named containers, so they never meet these at the
-        // body root; "internalsettings" is a function-block-only container and never a product-body child.)
-        // A nested sub-product container that is itself a family resource — the rs485_led_dimmer_channel of a
-        // channel-based dimmer, which nests its own increase/decrease/dimming pins — is deliberately NOT structural:
-        // it is a resource in its own right and surfaces as one Resources entry; the shallow direct-children preview
-        // simply does not descend into it (its inner pins and its own settings/scenes stay below the preview).
-        private static bool IsStructuralChild(string tag) =>
-            tag is "scenes" or "enum_definition" or "settings"
-            || tag.EndsWith("_settings", StringComparison.Ordinal);
-
         /// <summary>
         /// A decoded, read-only view of the product's direct resource children (I/O pins and family-specific
         /// resources), excluding structural children (the <c>scenes</c> container, an embedded <c>enum_definition</c>,
@@ -85,7 +70,7 @@ namespace Ihc.Vis.Products
         /// </summary>
         public IReadOnlyList<ResourceSummary> Resources =>
             Body.ChildrenOrEmpty()
-                .Where(c => !IsStructuralChild(c.Tag))
+                .Where(c => !ProductRows.IsStructuralChild(c.Tag))
                 .Select(c => new ResourceSummary(c.Tag, c.GetAttribute("name") ?? string.Empty, c.Id))
                 .ToArray();
 

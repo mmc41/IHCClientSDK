@@ -139,6 +139,13 @@ public sealed class AvaloniaDialogService : IDialogService
         return await ProductPropertiesWindow.ShowAsync(Owner, input);
     }
 
+    public async Task<SceneContainerResult?> EditSceneContainerAsync(SceneContainerInput input)
+    {
+        if (Owner is null)
+            return null;
+        return await SceneContainerWindow.ShowAsync(Owner, input);
+    }
+
     public async Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input)
     {
         if (Owner is null)

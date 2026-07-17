@@ -1,24 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NUnit" Version="4.6.1" />
-    <PackageReference Include="NUnit3TestAdapter" Version="6.2.0" />
-    <PackageReference Include="NUnit.Analyzers" Version="4.14.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
-    <PackageReference Include="CompareNETObjects" Version="4.84.0" />
-    <PackageReference Include="CsCheck" Version="4.7.0" />
-
-    <PackageReference Include="coverlet.collector" Version="10.0.1" />
-    <PackageReference Include="FakeItEasy" Version="9.0.1" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="NUnit.Analyzers" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="CompareNETObjects" />
+    <PackageReference Include="CsCheck" />
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="FakeItEasy" />
+    <!-- Architecture tests: IL-level dependency rules that prose comments cannot enforce (designfix P3/C5). -->
+    <PackageReference Include="NetArchTest.Rules" />
   </ItemGroup>
 
     <ItemGroup>

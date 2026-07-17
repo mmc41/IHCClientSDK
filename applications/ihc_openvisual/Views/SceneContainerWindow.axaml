@@ -1,0 +1,56 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:a="using:Avalonia.Automation"
+        xmlns:svc="using:ihc_openvisual.Services"
+        mc:Ignorable="d" d:DesignWidth="660" d:DesignHeight="420"
+        x:Class="ihc_openvisual.Views.SceneContainerWindow"
+        Title="Scenarier"
+        Width="660" Height="420"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <Window.Resources>
+        <!-- One shared column layout keeps the header row and the data rows aligned. -->
+        <x:String x:Key="SceneCols">2*,2*,2*,Auto,Auto</x:String>
+    </Window.Resources>
+    <DockPanel Margin="20" LastChildFill="True">
+        <StackPanel DockPanel.Dock="Top" Spacing="8">
+            <TextBlock Name="NameLabel" Text="Name" FontWeight="SemiBold"/>
+            <!-- The container's name comes from the product's catalog definition, so it is not editable here. -->
+            <TextBox Name="NameBox" IsReadOnly="True" a:AutomationProperties.LabeledBy="{Binding #NameLabel}"/>
+
+            <TextBlock Name="NoteLabel" Text="Note" FontWeight="SemiBold" Margin="0,6,0,0"/>
+            <TextBox Name="NoteBox" AcceptsReturn="True" TextWrapping="Wrap"
+                     Height="64" VerticalContentAlignment="Top"
+                     a:AutomationProperties.LabeledBy="{Binding #NoteLabel}"/>
+
+            <Grid ColumnDefinitions="{StaticResource SceneCols}" Margin="0,10,0,4">
+                <TextBlock Grid.Column="0" Text="Scenario name" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="Function block" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                <TextBlock Grid.Column="2" Text="Locality" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                <TextBlock Grid.Column="3" Text="Scenario value" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                <TextBlock Grid.Column="4" Text="Ramp time" FontWeight="SemiBold" Margin="8,0,0,0"/>
+            </Grid>
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right"
+                    Spacing="8" Margin="0,12,0,0">
+            <Button Name="OkButton" Content="OK" MinWidth="84" IsDefault="True" Click="OnOk"/>
+        </StackPanel>
+
+        <ListBox Name="ScenesList" a:AutomationProperties.Name="Scenarios">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="svc:SceneContainerRow">
+                    <Grid ColumnDefinitions="{StaticResource SceneCols}">
+                        <TextBlock Grid.Column="0" Text="{Binding SceneName}" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Column="1" Text="{Binding FunctionBlock}" Margin="8,0,0,0" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Locality}" Margin="8,0,0,0" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Column="3" Text="{Binding Value}" Margin="8,0,0,0"/>
+                        <TextBlock Grid.Column="4" Text="{Binding RampTime}" Margin="8,0,0,0"/>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
+</Window>

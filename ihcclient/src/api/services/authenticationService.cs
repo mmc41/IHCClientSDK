@@ -65,7 +65,7 @@ namespace Ihc {
                 var result = soapPost<outputMessageName2, inputMessageName2>("authenticate", request, resp =>
                 {
                     // Use side-effect to capture cookie sice our post call only captures xml response.
-                    cookie = resp.Headers.GetValues("Set-Cookie").FirstOrDefault();
+                    cookie = SetCookieHeader.FirstOrNull(resp);
                 });
 
                 return result.ContinueWith((r) =>

@@ -1,9 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <Nullable>enable</Nullable>
     <RootNamespace>Ihc.Vis.CatalogCodegen</RootNamespace>
     <AssemblyName>ihc_catalog_codegen</AssemblyName>
   </PropertyGroup>
@@ -12,6 +9,6 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Syntax gate only (CSharpSyntaxTree.ParseText): rendered .g.cs must parse before it is published. -->
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
   </ItemGroup>
 </Project>

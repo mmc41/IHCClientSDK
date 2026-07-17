@@ -1,6 +1,6 @@
 ---
-version: 0.1.0
-last-updated: 2026-07-03
+version: 0.2.0
+last-updated: 2026-07-16
 status: draft
 ---
 
@@ -15,9 +15,19 @@ and the program view are legible at a glance. This epic is cross‑cutting and c
 icon set is a first‑class part of the UI that IHC OpenVisual must provide to keep the trees readable.
 
 **Scope:** the distinct icon per node category (localities, function blocks, product pins, links,
-variable types, program elements, scenario, breakpoint) and the simulation state colours. **Scope
+variable types, program elements, scenario, breakpoint) and the simulation state colours; and the boundary
+between what an **icon** carries and what a **label** carries. **Scope
 excludes:** the exact bitmap artwork (IHC OpenVisual supplies equivalent glyphs); this story fixes *which
-categories are visually distinguished and what each means*.
+categories are visually distinguished and what each means*. The **text of a tree row** — which rows are
+drawn at all, and what each label reads — belongs to the stories that own those rows: **US-010** (a
+product's row set, its `name (position) ` label, and `name = value` state rows) and **US-022** (link‑row and
+pin labels).
+
+> **Division of labour, fixed 2026‑07‑16.** Direction, type and state markers are the **icon's** job; the
+> **label** carries text only. IHC OpenVisual had drifted across that line in both directions — rendering a
+> `→` and a `(saved)` into labels the vendor keeps bare (F‑019/F‑020), while omitting the `(position)` and
+> `= value` text the vendor does render (F‑003/F‑004). Neither is an icon‑artwork question, so neither is
+> covered by this epic's artwork exception.
 
 > **Artwork‑level spec:** the visual style, technical construction and functional behaviour of the actual
 > icons — enough to build the whole set in a modern style — is documented separately in
@@ -47,12 +57,20 @@ colour, **so that** I can read the installation, function and program trees at a
   vs. editable **function block** (two different icons — the library badge signals a locked, supplied block),
   the four block sections *Input*, *Output*, *Settings*, *Internal variables* each with their own
   icon, and the *RS485 modules* container node.
-- [ ] MUST: **Product pins** are distinct by direction: a **product input** (arrow pointing into the
-  block, shown as `→` at the pin) and a **product output** (arrow pointing out, `←`), in the
-  *Installation* pane.
+- [ ] MUST: **Product pins** are distinct by direction: a **product input** (an *icon* of an arrow pointing
+  into the block) and a **product output** (an *icon* of an arrow pointing out), in the *Installation*
+  pane. The direction is the **glyph**, not a character in the label text.
 - [ ] MUST: **Link rows** are distinct: **Link to…** ("link to", source side) and **Link from…** ("link
-  from", target side, rendered with a leading `←` and the other end’s full path), appearing in both
-  panes.
+  from", target side), appearing in both panes. Each row's **icon** carries the direction and its **label
+  is the bare full path** of the other end (US-022).
+
+  > **Corrected 2026‑07‑16 (was: the "link from" row "rendered with a leading `←` and the other end's full
+  > path").** This epic **mandated the defect**: IHC Visual renders the bare path and puts direction in the
+  > icon only, while IHC OpenVisual renders `→ Entré/Gang / … / Udgang` — an arrow prefix in the **label
+  > text** *on top of* a direction icon on the same row. An implementer building from this criterion would
+  > have been told to duplicate the direction. The `→`/`←` in this story mean the **glyph**; the label is
+  > bare. (Icon *artwork* remains an allowed difference — this is label text, and the glyph semantics are
+  > unaffected.) Evidence: `RESULTS.md` **F‑020**; backlog **A‑7**; the rule lives in US-022.
 - [ ] MUST: **Variable types** each have a distinct icon: Input, Output, Flag, Date, Weekday,
   Time of day, Counter, Integer, Decimal, Timer, Timer value, Enumerator, Light level, Temperature, Holiday,
   Humidity, Light, and the S0 power/energy type *Energy / Power* (kW/kWh/W/Wh).

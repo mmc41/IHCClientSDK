@@ -1,6 +1,6 @@
 ---
-version: 0.1.0
-last-updated: 2026-07-12
+version: 0.2.0
+last-updated: 2026-07-16
 status: draft
 ---
 
@@ -29,15 +29,25 @@ targets (surfaced by the engine's `CanInsert`/`GetInsertableAt`, noted where rel
 **Acceptance criteria (epic level):**
 - MUST: Any project node can be deleted; deleting a node that other logic references is confirmed first
   and cascades the dependent link halves and program rows as **one** undoable step, generalising US-009.
+- MUST: A delete confirmation is triggered by **contents**, not by node type: an empty container deletes
+  silently, a container with contents is guarded, and declining aborts the whole delete.
 - MUST: Any node can be moved to another legal container, and siblings can be reordered within a
   container; a move/reorder preserves the node's identity (its IHC resource ids do not change).
 - SHOULD: Any node subtree can be copied and pasted elsewhere in the project as an independent duplicate
-  with fresh resource ids; links whose other end lies outside the copy are not carried into the paste.
+  with fresh resource ids, appended last; links whose other end lies outside the copy are not carried into
+  the paste, and the copy keeps its scenes.
 - MUST: Every operation here confirms in the status bar and is reversible via *Undo* (`Ctrl+Z`,
   US-052).
 
-**Readiness:** Ready — with one open item on paste's cross‑epic reach (see US-056) and the delete
-reference‑policy confirmation copy (US-053), both flagged below.
+> **Vendor‑alignment note (2026‑07‑16).** This epic's destructive semantics were measured against IHC
+> Visual. The **delete trigger** and the **copy/paste semantics** came back **aligned on both apps** and are
+> recorded here as regression baselines (F‑023, F‑038, F‑035). Two rules are **deliberate divergences**
+> where the vendor is silent and IHC OpenVisual is not — its linked‑product delete confirm (F‑017/F‑033) and
+> its `Cannot paste` refusal (F‑036). Both are granted by the 2026‑07‑16 ruling, written into US-053 and
+> US-056 as such, and **must not be "aligned" away**.
+
+**Readiness:** Ready — with one open item on paste's cross‑epic reach (see US-056). The delete
+reference‑policy confirmation copy (US-053) is now measured and closed.
 
 ---
 
@@ -98,6 +108,51 @@ Scenario: Delete is equivalent across all three activation routes
   cascade does not cover (e.g. a *scenes* binding or an enumerator type still in use), the app **refuses
   the delete and explains what to rewire first**, rather than leaving a broken reference.
 
+### Business rules (when the confirmation appears)
+
+- MUST: The confirmation is **triggered by contents, not by node type**. A container with **no** contents
+  deletes **silently** — no dialog. A container **with** contents raises the confirmation.
+- MUST: Declining the confirmation **aborts the whole delete** — nothing is removed, including the
+  container itself. Declining is not a "delete the container but keep its contents" choice.
+- MUST: Dismissing the confirmation with `Esc` has the same effect as declining it (US-069).
+
+> **Confirmed 2026‑07‑16 — regression baseline, both apps measured aligned.** Deleting an **empty**
+> locality is silent on both; deleting a locality **with contents** raises a guard on both, and declining
+> aborts on both. So the guard's **trigger condition matches at the boundary** — a fact worth pinning,
+> because IHC Visual's guard is *not* uniform: it deletes a **linked product** silently (see the deliberate
+> exception below). Evidence: `RESULTS.md` **F‑038** (empty → both silent) and **F‑023** (with contents →
+> both guard); `RESULTS.md` **E‑6** notes the products‑only vs blocks‑only sub‑case is not isolated.
+
+### Business rules (deliberate exceptions — IHC OpenVisual keeps its guards)
+
+IHC Visual is the authoritative spec for this epic, with one bounded exception the user set explicitly on
+**2026‑07‑16**: *IHC OpenVisual keeps its safety guards and error feedback even where the vendor is silent
+— they change nothing about **what** happens, only warn or explain.* Two rules here are granted by that
+ruling. They are **deliberate and justified — do not "align" them away**:
+
+- MUST: Deleting a product that other logic references **raises a confirmation naming the cascade** —
+  which links and commands will also go — and proceeds only on acceptance.
+
+  > **Deliberate divergence (C), granted 2026‑07‑16.** **IHC Visual deletes a linked product silently — no
+  > confirmation whatsoever** (verified by effect: the locality went 5 → 4 children with no dialog). That
+  > silent destruction is a **vendor quirk not to copy**: the guard changes nothing about what a confirmed
+  > delete does, it only warns first, and the cascade it names is exactly the surprising part. Read this
+  > with the contents rule above — the vendor's silence is **product‑specific**, since it *does* guard a
+  > locality delete (F‑023), so this is a narrow quirk rather than a policy. Evidence: `RESULTS.md`
+  > **F‑017** (vendor silent, verified by effect + undo) and **F‑033** (IHC OpenVisual's confirm, `S03\
+  > 12-delete-product-confirm-ov.png`). **Not a backlog item** — only the confirm's *ergonomics* are
+  > (US-069: it ignores `Esc` and focuses no button — backlog **A‑9**/**A‑10**). Fix those; never remove
+  > the confirm.
+
+- SHOULD: The confirmation's wording states the cascade as a **consequence** of the delete ("*deleting it
+  also removes …*"), matching what declining actually does.
+
+  > **Deliberate divergence (D→ours), 2026‑07‑16.** IHC Visual asks *"Skal funktionsblokke slettes?"*
+  > ("should the function blocks be deleted?") — phrased as a **cascade choice**, but **No aborts the entire
+  > delete** rather than deleting the locality without its blocks. **The question it asks is not the question
+  > it answers.** IHC OpenVisual's phrasing matches its behaviour and is kept. Recorded so nobody "aligns"
+  > the text later. Evidence: `RESULTS.md` **F‑026**.
+
 ### AC illustrations
 
 - Deleting a `<product>` whose `<pin>` a block drove removes the product **and** the block's
@@ -112,13 +167,19 @@ Scenario: Delete is equivalent across all three activation routes
   confirm the confirm‑gate, the cascade of link halves + program rows, the single‑step undo, and the
   three‑route equivalence.
 - Note: the confirm‑and‑cascade behaviour and the "refuse when a binding cannot be cascaded" guard
-  are grounded in the project engine's delete contract (the US-009 cascade generalised); the exact
-  confirmation‑dialog wording per node type is to be confirmed during implementation. (R‑note —
-  does not block the story.)
+  are grounded in the project engine's delete contract (the US-009 cascade generalised). The
+  confirmation's **trigger** is now measured (contents, not node type — F‑023/F‑038) and its wording is
+  settled as the deliberate exception above (F‑026); the earlier "wording to be confirmed" note is closed.
+- ⚠ **The `Delete` confirm is keyboard‑inert today** — it ignores `Esc` and focuses neither button, so a
+  destructive dialog can only be answered with the mouse. That is US-069's defect, not this story's, and it
+  is fixed **without** weakening the guard (backlog **A‑9**/**A‑10**).
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented.
+**Implementation status:** ✅ Implemented — the guard's trigger and cascade are measured aligned with IHC
+Visual for containers (F‑023/F‑038), and the linked‑product confirm is the granted exception (F‑017/F‑033).
+⚠ Two route/ergonomics gaps sit outside this story: *Delete* is reachable from the context menu but the
+confirm cannot be answered by keyboard (US-069).
 
 ---
 
@@ -248,44 +309,82 @@ disk‑level copy); moving a node (US-054/US-055).
 Scenario: Copy a product and paste it into another locality
   Given a configured product is selected
   When I Copy it (Ctrl+C or toolbar Copy) and Paste (Ctrl+V or toolbar Paste) onto a target locality
-  Then an independent duplicate is inserted under the target, carrying the source's documentation and
-    structure, but with its own fresh IHC resource ids (the original is left unchanged)
+  Then an independent duplicate is appended as the LAST child of the target, carrying the source's
+    documentation and structure, but with its own fresh IHC resource ids (the original is left unchanged)
   And the status bar confirms the paste
 
 Scenario: Paste target must be legal
   Given something is on the clipboard
   When I paste onto a container that may not hold that node type
-  Then the paste is refused (or the Paste action is disabled for that target)
+  Then nothing is pasted, and the app says so rather than failing silently
 
 Scenario: Links to nodes outside the copy are not carried over
   Given the copied node had a link whose other end lies outside the copied subtree
   When I paste the copy
   Then the paste does not include that external link half (the duplicate starts unlinked on that pin);
     links wholly inside the copied subtree are duplicated and remain connected within the copy
+  And the copy keeps its scene container
 
 Scenario: Paste is available three ways
   Given a node is on the clipboard and a legal target is selected
-  Then Paste is reachable by toolbar, by "Edit" > "Paste", and by Ctrl+V (US-044)
+  Then Paste is reachable by right-click, by "Edit" > "Paste", and by Ctrl+V (US-044, US-068)
 ```
+
+### Business rules (paste placement and link handling)
+
+- MUST: The pasted copy is **appended last** among the target's children — not inserted at the caret or
+  sorted into position.
+- MUST: A link whose other end lies **outside** the copied subtree is **dropped** — the duplicate starts
+  unlinked on that pin. Links wholly **inside** the subtree are duplicated and stay connected within the
+  copy.
+- MUST: The copy keeps its **scene container**.
+- MUST: An illegal‑target paste **changes nothing** and **tells the user why** (see the exception below).
+
+> **Confirmed 2026‑07‑16 — regression baseline, both apps measured aligned.** Copy a product, paste it into
+> another locality: on **both** apps the copy is appended last, its output pin's **from‑side link row is
+> dropped**, and `Scenarier` is kept. This also matches the byte‑verified copy oracle the engine was built
+> against. The only differences are the already‑recorded label renderings (F‑019, F‑003), not the
+> semantics. Evidence: `RESULTS.md` **F‑035** (both driven live; pasted subtrees dumped and compared).
+
+- MUST: Pasting onto a container that cannot hold the clipboard's node type shows an **explicit refusal**
+  message; the *Paste* command may instead be absent for that target (US-068), but a paste that is attempted
+  and cannot proceed is never a silent no‑op.
+
+  > **Deliberate divergence (C), granted 2026‑07‑16.** **IHC Visual's illegal paste is a silent no‑op** —
+  > pasting a product onto another product added nothing and showed no dialog, leaving the user with no way
+  > to tell "refused" from "nothing happened". IHC OpenVisual's explicit *Cannot paste — "That container
+  > cannot hold this node."* **stays**, under the ruling's exception #1: it changes nothing about *what*
+  > happens, it only explains. Recorded so nobody removes it to 'match' the vendor. Evidence: `RESULTS.md`
+  > **F‑036** (`S07\40-cannot-paste-ov.png`; vendor node count unchanged 643→643, no modal).
 
 ### AC illustrations
 
 - Copying a `<product>` configured under `Living room` and pasting it under `Room` yields a
-  second, independent button with its own resource ids; editing the copy does not affect the original,
-  and the copy shows no `link from`/`link to` rows for links the original had to blocks outside the copy.
+  second, independent button with its own resource ids, **appended after `Room`'s existing children**;
+  editing the copy does not affect the original, and the copy shows no `link from`/`link to` rows for links
+  the original had to blocks outside the copy — but it does keep its scene container.
+- Pasting that product onto **another product** pastes nothing and raises *Cannot paste*; the tree is
+  unchanged.
 
 ### Constraints
 
 - Verification method — **Demonstration** that a paste produces an independent duplicate with fresh ids,
-  refuses illegal targets, and drops external links.
-- **Open item — cross‑epic paste reach:** copy/paste of a single product/subtree is engine‑verified;
-  copy/paste of a **function block** and of **program elements** is exercised less and its exact
-  behaviour there is not fully pinned. Confirm block/program paste during implementation before
-  treating it as fixed. (R‑note.)
+  appends it last, drops external links, keeps scenes, and refuses illegal targets with a message.
+- ⚠ **Verify a Cut by the status bar, not by a tree diff.** *Cut* only **stages** a move — the tree is
+  deliberately unchanged until *Paste* — so a tree diff proves nothing about whether Cut acted on the right
+  node. The status bar names the node acted on.
+- **Open item — cross‑epic paste reach:** copy/paste of a single product/subtree is engine‑verified **and
+  now measured against the vendor** (F‑035); copy/paste of a **function block** and of **program elements**
+  is exercised less and its exact behaviour there is not fully pinned (`RESULTS.md` S07 marks FB‑subtree
+  copy as deferred). Confirm block/program paste during implementation before treating it as fixed.
+  (R‑note.)
 
-**Readiness:** Ready (product/subtree paste); block/program paste carries the open item above.
+**Readiness:** Ready (product/subtree paste, measured aligned); block/program paste carries the open item
+above.
 
-**Implementation status:** ✅ Implemented. Epic E15 complete.
+**Implementation status:** ✅ Implemented — paste placement, link‑dropping and scene handling are measured
+**aligned** with IHC Visual (F‑035), and the *Cannot paste* refusal is the granted exception (F‑036). ⚠ The
+*Paste* command is not yet reachable from any context menu (US-068, backlog **A‑5**). Epic E15 complete.
 
 ---
 

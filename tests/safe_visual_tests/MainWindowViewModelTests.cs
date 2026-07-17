@@ -986,10 +986,11 @@ public class MainWindowViewModelTests
         {
             Assert.That(ok, Is.True);
             Assert.That(blockInputAfter.Children, Has.Count.EqualTo(1), "the block input shows a link-from row");
-            Assert.That(blockInputAfter.Children[0].DisplayName, Does.StartWith("←"));
+            // Direction is carried by the icon, not an arrow in the label text (F-020).
+            Assert.That(blockInputAfter.Children[0].IconAsset, Is.EqualTo("/Assets/link-from.svg"));
             Assert.That(blockInputAfter.Children[0].DisplayName, Does.Contain(productNode.DisplayName), "names the source product path");
             Assert.That(productInputAfter.Children, Has.Count.EqualTo(1), "the product input shows a link-to row");
-            Assert.That(productInputAfter.Children[0].DisplayName, Does.StartWith("→"));
+            Assert.That(productInputAfter.Children[0].IconAsset, Is.EqualTo("/Assets/link-to.svg"));
             Assert.That(productInputAfter.Children[0].DisplayName, Does.Contain(fbNode.DisplayName), "names the target block path");
             Assert.That(harness.Session.IsDirty, Is.True);
         });
@@ -1074,11 +1075,12 @@ public class MainWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(ok, Is.True);
-            Assert.That(blockOutputNode.Children, Has.Count.EqualTo(1), "the block output shows a link-to (→) row");
-            Assert.That(blockOutputNode.Children[0].DisplayName, Does.StartWith("→"));
-            Assert.That(productOutputNode.Children, Has.Count.EqualTo(1), "the product output shows a link-from (←) row");
-            Assert.That(productOutputNode.Children[0].DisplayName, Does.StartWith("←"));
-            Assert.That(productOutputNode.Children[0].DisplayName, Does.Contain(fbName), "the ← row names the block path");
+            Assert.That(blockOutputNode.Children, Has.Count.EqualTo(1), "the block output shows a link-to row");
+            // Direction is carried by the icon, not an arrow in the label text (F-020).
+            Assert.That(blockOutputNode.Children[0].IconAsset, Is.EqualTo("/Assets/link-to.svg"));
+            Assert.That(productOutputNode.Children, Has.Count.EqualTo(1), "the product output shows a link-from row");
+            Assert.That(productOutputNode.Children[0].IconAsset, Is.EqualTo("/Assets/link-from.svg"));
+            Assert.That(productOutputNode.Children[0].DisplayName, Does.Contain(fbName), "the link-from row names the block path");
         });
     }
 
@@ -1882,7 +1884,11 @@ public class MainWindowViewModelTests
         {
             Assert.That(harness.Session.Current!.FindById(outputId)!.GetAttribute("backup"), Is.EqualTo("yes"));
             Assert.That(savedNode.IsValueSaved, Is.True);
-            Assert.That(savedNode.DisplayName, Does.Contain("(saved)"), "the saved output is marked in the tree");
+            // F-019 (A-7): IHC Visual renders the bare pin name — the backup flag is NOT decorated into the label.
+            // The state still surfaces, via the "Save current value" checkbox menu item bound to IsValueSaved.
+            Assert.That(savedNode.DisplayName, Does.Not.Contain("(saved)"),
+                "the vendor puts no (saved) suffix in the tree label");
+            Assert.That(savedNode.DisplayName, Is.EqualTo("Light"));
         });
 
         await vm.ToggleSaveValueCommand.ExecuteAsync(savedNode);
@@ -1933,6 +1939,37 @@ public class MainWindowViewModelTests
             Assert.That(ok, Is.True);
             Assert.That(FindNodeById(vm.FunctionNodes, outA)!.Children.Any(c => c.IsLinkRow), Is.True, "the source pin shows a link row");
             Assert.That(FindNodeById(vm.FunctionNodes, inB)!.Children.Any(c => c.IsLinkRow), Is.True, "the target pin shows a reciprocal row");
+        });
+    }
+
+    // F-020 (A-7): a link row's label is the bare path of the opposite end — "Room / Product pin / FB pin" — with
+    // NO arrow prefix. The direction is already carried by the row's own link-from/link-to icon, so an arrow in the
+    // text is redundant and eats width in the pane that matters most.
+    [Test]
+    public async Task LinkRowLabel_HasNoArrowPrefix_LikeVendor()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        await harness.Session.AddEmptyFunctionBlockAsync(loc);
+        await harness.Session.AddEmptyFunctionBlockAsync(loc);
+        var blocks = harness.Session.Current!.FindById(loc)!.ChildrenOrEmpty().Where(c => c.Tag == "functionblock").ToList();
+        var outA = (await harness.Session.AddVariableAsync(blocks[0].FindChild("outputs")!.Id!.Value, "resource_output", "OutA"))!.Value;
+        var inB = (await harness.Session.AddVariableAsync(blocks[1].FindChild("inputs")!.Id!.Value, "resource_input", "InB"))!.Value;
+        await harness.Session.LinkPinsAsync(outA, inB);
+
+        var outgoing = FindNodeById(vm.FunctionNodes, outA)!.Children.Single(c => c.IsLinkRow);
+        var incoming = FindNodeById(vm.FunctionNodes, inB)!.Children.Single(c => c.IsLinkRow);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(outgoing.DisplayName, Does.Not.StartWith("→"), "direction is the icon's job, not the label's");
+            Assert.That(incoming.DisplayName, Does.Not.StartWith("←"));
+            Assert.That(outgoing.DisplayName, Is.EqualTo("Living room / Empty block / InB"));
+            Assert.That(incoming.DisplayName, Is.EqualTo("Living room / Empty block / OutA"));
+            Assert.That(outgoing.IconAsset, Is.EqualTo("/Assets/link-to.svg"), "the icon still distinguishes direction");
+            Assert.That(incoming.IconAsset, Is.EqualTo("/Assets/link-from.svg"));
         });
     }
 
@@ -2180,5 +2217,295 @@ public class MainWindowViewModelTests
         vm.SetThemeCommand.Execute(AppTheme.Dark);
 
         Assert.That(vm.CurrentTheme, Is.EqualTo(AppTheme.Dark));
+    }
+
+    // Inserts a built-in catalog product by display name into "Living room" and returns its tree row labels —
+    // the vendor-comparison oracle for which of a product's children the Installation pane shows (A-1/A-2/A-3).
+    private static async Task<string[]> ProductRowLabelsAsync(ShellHarness harness, MainWindowViewModel vm, string displayName)
+    {
+        ProductDefinition product = harness.Session.GetAvailableProducts().First(p => p.DisplayName == displayName);
+        ElementId localityId = vm.InstallationNodes[0].Children[0].ElementId!.Value;   // "Living room"
+        await harness.Session.AddProductAsync(localityId, product.ProductIdentifier);
+        return vm.InstallationNodes[0].Children[0].Children[0].Children.Select(c => c.DisplayName).ToArray();
+    }
+
+    // F-001 (A-1): IHC Visual hides a shutter product's airlink_shutter_up/_down pins ("Op"/"Ned") from the tree.
+    // They carry no distinguishing attribute — they are structurally identical to their visible airlink_input
+    // siblings (same address_channel as "Tryk (øverst venstre)"), so only the element TAG identifies them.
+    // Vendor oracle: Jalousi 4 tast shows 6 rows — Tryk x4, Tilstand, Scenarier/regulering.
+    [Test]
+    public async Task ProductRows_ShutterProduct_HidesUpAndDownPins_LikeVendor()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+
+        string[] rows = await ProductRowLabelsAsync(harness, vm, "Jalousi 4 tast");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(rows, Has.None.EqualTo("Op"), "airlink_shutter_up is hidden by tag (F-001)");
+            Assert.That(rows, Has.None.EqualTo("Ned"), "airlink_shutter_down is hidden by tag (F-001)");
+            Assert.That(rows, Has.Length.EqualTo(6), "the vendor shows Tryk x4 + Tilstand + Scenarier/regulering");
+            Assert.That(rows.Count(r => r.StartsWith("Tryk (", StringComparison.Ordinal)), Is.EqualTo(4),
+                "the four airlink_input siblings stay visible — the tag rule must not over-reach");
+        });
+    }
+
+    // F-002 (A-1): a different rule at the same call site — IHC Visual hides a resource carrying setting="yes"
+    // (a configuration row, not a pin). Tag alone cannot decide it: "Kalibrering af temperaturføler" shares its
+    // resource_temperature tag with the VISIBLE "Temperatur"/"Dugpunkt" rows.
+    // Vendor oracle: Fugt / Temperatur sensor shows 4 rows — Fugt, Temperatur, Dugpunkt, Alarm.
+    [Test]
+    public async Task ProductRows_SettingResource_IsHidden_LikeVendor()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+
+        string[] rows = await ProductRowLabelsAsync(harness, vm, "Fugt / Temperatur sensor");
+
+        Assert.That(rows, Is.EqualTo(new[] { "Fugt", "Temperatur", "Dugpunkt", "Alarm" }),
+            "setting=\"yes\" hides the calibration row while its resource_temperature siblings stay (F-002)");
+    }
+
+    // F-004 (A-3): IHC Visual renders a state row's value into the label — "Tilstand = Ukendt". The value is the
+    // INITIAL one, read through the enum definition (resource_enum.inivalue is an IDREF to an enum_value, whose
+    // name resolves to "Ukendt" via the project's enum block), NOT live controller state.
+    [Test]
+    public async Task PinLabel_EnumStateRow_RendersInitialValue_LikeVendor()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+
+        string[] rows = await ProductRowLabelsAsync(harness, vm, "Jalousi 4 tast");
+
+        Assert.That(rows, Has.One.EqualTo("Tilstand = Ukendt"),
+            "the Persienne-tilstand enum's initial value _0x11 resolves to \"Ukendt\"");
+    }
+
+    // F-004 (A-3) second row kind + F-002 (A-1) together on one product: the "med logning" sensor's Log rows are
+    // themselves resource_enum (typedef -> the "Logning" enum), so they render "= Off"; its calibration row stays
+    // hidden. The vendor's two F-004 examples ("Tilstand", "Log Indgang") are therefore ONE row kind, not two.
+    [Test]
+    public async Task PinLabel_LogRows_RenderOff_AndCalibrationStaysHidden()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+
+        string[] rows = await ProductRowLabelsAsync(harness, vm, "Fugt / Temperatur sensor med logning");
+
+        Assert.That(rows, Is.EqualTo(new[]
+        {
+            "Fugt", "Temperatur", "Dugpunkt", "Alarm",
+            "Log Fugt = Off", "Log Temperatur = Off", "Log Dugpunkt = Off",
+        }));
+    }
+
+    // ---- A-4 / F-006 + F-007: the double-click (node activation) matrix ----
+    //
+    // IHC Visual opens a per-node-type properties dialog on double-click. OpenVisual had NO double-click handler at
+    // all, so Avalonia's expand-toggle default fired instead and no node ever opened its properties. The vendor's
+    // matrix: root -> nothing; locality -> its edit dialog; product -> the product-type dialog; pin -> its PARENT
+    // PRODUCT's dialog; scene container -> Scenarier; FB -> its properties; link row -> nothing.
+
+    // Inserts "Lampeudtag" under "Living room" and returns (productNode, its "Udgang" output pin node).
+    private static async Task<(TreeNodeViewModel Product, TreeNodeViewModel Pin)> InsertLampeudtagAsync(
+        ShellHarness harness, MainWindowViewModel vm)
+    {
+        ProductDefinition definition = harness.Session.GetAvailableProducts().First(p => p.DisplayName == "Lampeudtag");
+        ElementId localityId = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        await harness.Session.AddProductAsync(localityId, definition.ProductIdentifier);
+        var product = vm.InstallationNodes[0].Children[0].Children[0];
+        return (product, product.Children.First(c => c.IsPin));
+    }
+
+    [Test]
+    public async Task Activate_Locality_OpensItsEditDialog()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+
+        await vm.ActivateNodeCommand.ExecuteAsync(vm.InstallationNodes[0].Children[0]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(harness.Dialogs.EditPropertiesCalls, Is.EqualTo(1));
+            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Edit Living room properties"));
+        });
+    }
+
+    [Test]
+    public async Task Activate_Product_OpensProductPropertiesDialog()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var (product, _) = await InsertLampeudtagAsync(harness, vm);
+
+        await vm.ActivateNodeCommand.ExecuteAsync(product);
+
+        Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(1));
+    }
+
+    // The sharpest cell in the matrix: the vendor has NO pin dialog — a terminal is configured from inside the
+    // product's own dialog (F-030) — so double-clicking a pin opens its PARENT PRODUCT's dialog.
+    [Test]
+    public async Task Activate_Pin_OpensParentProductDialog_NotAPinDialog()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var (_, pin) = await InsertLampeudtagAsync(harness, vm);
+
+        await vm.ActivateNodeCommand.ExecuteAsync(pin);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(1), "the parent product's dialog opens");
+            Assert.That(harness.Dialogs.LastProductPropertiesInput!.Name, Is.EqualTo("Lampeudtag"));
+            Assert.That(harness.Dialogs.EditPinPropertiesCalls, Is.Zero, "the vendor has no per-pin dialog");
+        });
+
+        // Contrast (and proof this assertion is not vacuous): F2 on the SAME pin still opens OpenVisual's own pin
+        // dialog. The two routes deliberately differ — only the double-click cell is measured against the vendor.
+        await vm.PropertiesCommand.ExecuteAsync(pin);
+        Assert.That(harness.Dialogs.EditPinPropertiesCalls, Is.EqualTo(1), "F2 on a pin is unchanged");
+    }
+
+    [Test]
+    public async Task Activate_FunctionBlock_OpensItsPropertiesDialog()
+    {
+        using ShellHarness harness = await BuildHarnessWithNonEmptyLivingRoomAsync();
+        var vm = harness.CreateViewModel();
+        var block = vm.FunctionNodes[0].Children.First(c => c.DisplayName == "Living room").Children[0];
+
+        await vm.ActivateNodeCommand.ExecuteAsync(block);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(block.IsFunctionBlock, Is.True);
+            Assert.That(harness.Dialogs.EditPropertiesCalls, Is.EqualTo(1));
+        });
+    }
+
+    // The one cell that needed new UI: the vendor opens a "Scenarier" dialog on the scene container — name
+    // read-only, note editable, and a table of the product's scene memberships.
+    [Test]
+    public async Task Activate_SceneContainer_OpensScenarierDialog()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var (product, _) = await InsertLampeudtagAsync(harness, vm);
+        var scenes = product.Children.Single(c => c.IsSceneTarget);
+        harness.Dialogs.SceneContainerResult = new SceneContainerResult("a scenario note");
+
+        await vm.ActivateNodeCommand.ExecuteAsync(scenes);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(harness.Dialogs.EditSceneContainerCalls, Is.EqualTo(1));
+            Assert.That(harness.Dialogs.LastSceneContainerInput!.Name, Is.EqualTo("Scenarier"));
+            Assert.That(harness.Dialogs.LastSceneContainerInput!.Rows, Is.Empty, "an unlinked product is in no scenario yet");
+            Assert.That(harness.Session.Current!.FindById(scenes.ElementId!.Value)!.GetAttribute("note"),
+                Is.EqualTo("a scenario note"), "the note is the dialog's one editable field and it round-trips");
+        });
+    }
+
+    // Both ends of the matrix that must stay inert — the vendor opens nothing on either.
+    [Test]
+    public async Task Activate_RootAndLinkRow_OpenNothing()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        await harness.Session.AddEmptyFunctionBlockAsync(loc);
+        await harness.Session.AddEmptyFunctionBlockAsync(loc);
+        var blocks = harness.Session.Current!.FindById(loc)!.ChildrenOrEmpty().Where(c => c.Tag == "functionblock").ToList();
+        var outA = (await harness.Session.AddVariableAsync(blocks[0].FindChild("outputs")!.Id!.Value, "resource_output", "OutA"))!.Value;
+        var inB = (await harness.Session.AddVariableAsync(blocks[1].FindChild("inputs")!.Id!.Value, "resource_input", "InB"))!.Value;
+        await harness.Session.LinkPinsAsync(outA, inB);
+        var linkRow = FindNodeById(vm.FunctionNodes, outA)!.Children.Single(c => c.IsLinkRow);
+
+        await vm.ActivateNodeCommand.ExecuteAsync(vm.InstallationNodes[0]);   // the Localities root
+        await vm.ActivateNodeCommand.ExecuteAsync(linkRow);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.InstallationNodes[0].IsLocalitiesRoot, Is.True);
+            Assert.That(harness.Dialogs.EditPropertiesCalls, Is.Zero, "the installation root opens nothing");
+            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.Zero, "a link row opens nothing");
+            Assert.That(harness.Dialogs.EditPinPropertiesCalls, Is.Zero);
+        });
+    }
+
+    // Authors a project whose "Living room" holds three products reproducing the F-003 label oracle: two carrying a
+    // `position` placement descriptor (one of which ALSO carries a long `note`, the attribute the vendor never
+    // renders) and one with no position at all.
+    private static async Task<ShellHarness> BuildHarnessWithPositionedProductsAsync()
+    {
+        var harness = ShellHarness.Create();
+        var service = new ProjectAppService(new IhcSettings());
+        Project project = service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty));
+        project = DefaultLocalities.ApplyEnglish(project);
+        var catalog = new BuiltInCatalog();
+        ProjectEditor editor = project.Edit();
+        GroupRef room = editor.Group("Living room");
+        room.AddProduct(catalog.Product("_0x2202"))          // Lampeudtag
+            .Position("i loft på langs i rummet, 2 stk")
+            .Note("Til styring af Silent Gliss 4760/10522 gardin (sort ledning åbne, brun lukke)");
+        room.AddProduct(catalog.Product("_0x2202")).Name("Magnetkontaktsæt").Position("Hoveddør");
+        room.AddProduct(catalog.Product("_0x2202")).Name("Ventilator");
+        string path = harness.TempPath("positioned.vis");
+        await service.Save(editor.ToProject(), path);
+        await harness.Session.OpenAsync(path);
+        return harness;
+    }
+
+    // F-003 (A-2): IHC Visual renders a product's `position` placement descriptor into the tree label as
+    // "name (position) " — WITH a trailing space — and a bare "name" when position is absent (no empty parens).
+    // The source is `position`, NOT `note`: the same element carries a long note= description the vendor never
+    // puts in the label, and reaching for the obvious attribute name yields the wrong string.
+    [Test]
+    public async Task ProductLabel_RendersPosition_NotNote_LikeVendor()
+    {
+        using ShellHarness harness = await BuildHarnessWithPositionedProductsAsync();
+        var vm = harness.CreateViewModel();
+
+        var room = vm.InstallationNodes[0].Children.First(c => c.DisplayName == "Living room");
+        string[] labels = room.Children.Select(c => c.DisplayName).ToArray();
+
+        Assert.That(labels, Is.EqualTo(new[]
+        {
+            "Lampeudtag (i loft på langs i rummet, 2 stk) ",
+            "Magnetkontaktsæt (Hoveddør) ",
+            "Ventilator",
+        }));
+    }
+
+    // A-1 guardrail: hiding a row also removes it as a link target (BuildPinNode marks pins IsPin for the US-022
+    // drag/link routes). That is the vendor's behaviour, but it is a change beyond row count, so pin it.
+    [Test]
+    public async Task ProductRows_HiddenRows_AreNotLinkTargets()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+
+        string[] rows = await ProductRowLabelsAsync(harness, vm, "Jalousi 4 tast");
+        var pins = vm.InstallationNodes[0].Children[0].Children[0].Children.Where(c => c.IsPin).ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(rows, Has.None.EqualTo("Op"));
+            Assert.That(pins.Select(p => p.DisplayName), Has.None.EqualTo("Op"),
+                "a hidden shutter row is not offered as a link source/target either");
+            Assert.That(pins.Select(p => p.DisplayName), Has.None.EqualTo("Ned"));
+        });
     }
 }

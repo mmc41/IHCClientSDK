@@ -17,6 +17,7 @@ public sealed class NullDialogService : IDialogService
     public Task OpenExternalUrlAsync(string url) => Task.CompletedTask;
     public Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note) => Task.FromResult<PropertiesResult?>(null);
     public Task<ProductPropertiesResult?> EditProductPropertiesAsync(ProductPropertiesInput input) => Task.FromResult<ProductPropertiesResult?>(null);
+    public Task<SceneContainerResult?> EditSceneContainerAsync(SceneContainerInput input) => Task.FromResult<SceneContainerResult?>(null);
     public Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input) => Task.FromResult<PinPropertiesResult?>(null);
     public Task<ModemPropertiesResult?> EditModemPropertiesAsync(ModemPropertiesInput input) => Task.FromResult<ModemPropertiesResult?>(null);
     public Task<AdvancedDimmerResult?> EditAdvancedDimmerAsync(AdvancedDimmerInput input) => Task.FromResult<AdvancedDimmerResult?>(null);

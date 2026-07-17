@@ -36,6 +36,21 @@ public partial class MainWindow : Window
         }
     }
 
+    // Double-click activates the node under the pointer (US-044) — bound on the item template's root in XAML.
+    // Marking it handled for EVERY node type (including the ones that open nothing) is what stops the expansion
+    // toggle: IHC Visual handles the gesture everywhere and so never toggles on a double-click (F-006/F-007).
+    // Suppressing it from PointerPressed does NOT work — Avalonia synthesises the DoubleTapped from the pointer
+    // stream regardless of whether the pointer event was handled.
+    private void OnNodeDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is not Control { DataContext: TreeNodeViewModel node } source)
+            return;
+        if (source.FindAncestorOfType<TreeView>() is { } tree)
+            tree.SelectedItem = node;
+        _viewModel?.ActivateNodeCommand.Execute(node);
+        e.Handled = true;
+    }
+
     private void HookViewModel()
     {
         if (_viewModel is not null)

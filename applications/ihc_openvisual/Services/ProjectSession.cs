@@ -82,6 +82,13 @@ public sealed class ProjectSession : IDisposable
     private readonly List<Project> _undo = new();
     private readonly List<Project> _redo = new();
 
+    // The snapshot the document was last known to match: what a Save wrote, or the state a New/Open started from.
+    // Dirtiness is "Current is not this snapshot", so undoing back to a saved state clears the flag rather than
+    // latching it and prompting to save a project identical to its file. Null when no clean state exists (a
+    // recovered project). Projects are immutable and the history stores the very same instances, so reference
+    // identity is the comparison — a value comparison would walk the whole tree on every edit.
+    private Project? _savePoint;
+
     /// <summary>Whether there is an edit to undo (US-052).</summary>
     public bool CanUndo
     {
@@ -1264,6 +1271,17 @@ public sealed class ProjectSession : IDisposable
             return true;
         });
 
+    /// <summary>Applies the edited note to a product's scene container (US-024) — the only editable field of the
+    /// Scenarier dialog; the container's name is fixed by the product's catalog definition.</summary>
+    public Task<bool> UpdateSceneContainerAsync(ElementId scenesId, string note) =>
+        RunEditAsync(nameof(UpdateSceneContainerAsync), "Update failed", (project, editor) =>
+        {
+            if (!editor.TryResolve(scenesId, out ElementRef? handle))
+                return false;
+            handle.SetAttribute("note", note);
+            return true;
+        });
+
     /// <summary>
     /// Applies edited terminal addressing to a product input/output pin (US-012): encodes (data line, terminal) into
     /// <c>address_dataline</c> and writes <c>cable_colour</c>, <c>note</c>, and — for an output — the <c>inivalue</c>
@@ -1430,6 +1448,7 @@ public sealed class ProjectSession : IDisposable
     public async Task<bool> UndoAsync()
     {
         using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(UndoAsync)}");
+        bool dirty;
         lock (_gate)
         {
             if (_undo.Count == 0 || Current is null)
@@ -1437,8 +1456,9 @@ public sealed class ProjectSession : IDisposable
             _redo.Add(Current);
             Current = _undo[^1];
             _undo.RemoveAt(_undo.Count - 1);
+            dirty = !ReferenceEquals(Current, _savePoint);
         }
-        await MarkChangedAsync();
+        await NotifyChangedAsync(dirty);
         return true;
     }
 
@@ -1447,6 +1467,7 @@ public sealed class ProjectSession : IDisposable
     public async Task<bool> RedoAsync()
     {
         using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(RedoAsync)}");
+        bool dirty;
         lock (_gate)
         {
             if (_redo.Count == 0 || Current is null)
@@ -1454,17 +1475,26 @@ public sealed class ProjectSession : IDisposable
             _undo.Add(Current);
             Current = _redo[^1];
             _redo.RemoveAt(_redo.Count - 1);
+            dirty = !ReferenceEquals(Current, _savePoint);
         }
-        await MarkChangedAsync();
+        await NotifyChangedAsync(dirty);
         return true;
     }
 
-    internal async Task MarkChangedAsync()
+    /// <summary>Records an edit: the document now differs from the file, so it is dirty by definition.</summary>
+    internal Task MarkChangedAsync() => NotifyChangedAsync(dirty: true);
+
+    /// <summary>
+    /// The shared tail of every change: set the flag, advance the change counter, notify, and take a crash backup
+    /// every Nth change. Undo/redo pass a <paramref name="dirty"/> derived from the save point rather than a
+    /// constant, because navigating the history can land back on the saved snapshot.
+    /// </summary>
+    private async Task NotifyChangedAsync(bool dirty)
     {
         bool backup;
         lock (_gate)
         {
-            IsDirty = true;
+            IsDirty = dirty;
             ChangeCount++;
             backup = ChangeCount % _changeBackupThreshold == 0;
         }
@@ -1514,6 +1544,7 @@ public sealed class ProjectSession : IDisposable
             {
                 FilePath = path;
                 IsDirty = false;
+                _savePoint = Current;   // this snapshot is now what the file holds
             }
             _recent.Add(path);
             // The work is now safely persisted, so the crash backup is stale and the change counter starts
@@ -1558,6 +1589,8 @@ public sealed class ProjectSession : IDisposable
             Current = project;
             FilePath = path;
             IsDirty = dirty;
+            // A project loaded clean can be returned to; a recovered one (dirty) has no clean state to return to.
+            _savePoint = dirty ? null : project;
             _undo.Clear();   // a load starts a fresh, empty edit history (US-052)
             _redo.Clear();
         }

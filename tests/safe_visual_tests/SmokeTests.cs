@@ -2,9 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using CommunityToolkit.Mvvm.Input;
 using ihc_openvisual.Services;
@@ -205,7 +208,8 @@ public class SmokeTests : AvaloniaTestBase
         });
     }
 
-    // US-022: after linking, the two panes render reciprocal "← / →" link rows under the linked pins.
+    // US-022: after linking, the two panes render reciprocal link rows under the linked pins — each labelled with
+    // the bare path of the OTHER end (no arrow prefix; direction is the icon's job — F-020).
     [AvaloniaTest]
     [CaptureScreenshotOnFailure]
     public async Task MainWindow_AfterLink_RendersReciprocalLinkRows()
@@ -234,10 +238,12 @@ public class SmokeTests : AvaloniaTestBase
         }
 
         var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        // A link row is the only row labelled with a locality-rooted path, so the prefix identifies them.
+        var linkRows = labels.Where(t => t?.StartsWith("Living room / ") == true).ToList();
         Assert.Multiple(() =>
         {
-            Assert.That(labels.Any(t => t?.StartsWith("←") == true), Is.True, "a link-from (←) row renders");
-            Assert.That(labels.Any(t => t?.StartsWith("→") == true), Is.True, "a link-to (→) row renders");
+            Assert.That(linkRows, Has.Count.EqualTo(2), "both panes render a reciprocal link row");
+            Assert.That(linkRows.Distinct().Count(), Is.EqualTo(2), "each row names the OTHER end");
         });
     }
 
@@ -344,7 +350,9 @@ public class SmokeTests : AvaloniaTestBase
         window.CaptureRenderedFrame();
 
         var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
-        Assert.That(labels, Does.Contain("Mode"), "the enum variable renders under Settings");
+        // A resource_enum row renders its initial state (F-004/A-3) — here the first declared state, "Direct".
+        // The rule is per element type, so it reaches an FB's enum variable as well as a product's state row.
+        Assert.That(labels, Does.Contain("Mode = Direct"), "the enum variable renders under Settings");
     }
 
     // US-031: an inserted case with a value branch renders "Case (<var>)", the criterion branch, and Else.
@@ -450,11 +458,15 @@ public class SmokeTests : AvaloniaTestBase
         Assert.Multiple(() =>
         {
             Assert.That(labels, Does.Contain("Powerup"), "the Powerup event renders");
-            Assert.That(labels, Does.Contain("Light (saved)"), "the saved output is marked");
+            // The vendor renders the bare pin name — no "(saved)" suffix (F-019). The backup flag surfaces on the
+            // "Save current value" menu item instead.
+            Assert.That(labels, Does.Contain("Light"), "the output renders under its section");
+            Assert.That(labels, Does.Not.Contain("Light (saved)"), "no (saved) suffix in the tree label");
         });
     }
 
-    // US-033b: a function-block-to-function-block variable link renders reciprocal ← / → rows in the Functions pane.
+    // US-033b: a function-block-to-function-block variable link renders reciprocal rows in the Functions pane,
+    // each labelled with the bare path of the other end (no arrow prefix — F-020).
     [AvaloniaTest]
     [CaptureScreenshotOnFailure]
     public async Task MainWindow_AfterFbToFbLink_RendersReciprocalRows()
@@ -483,10 +495,70 @@ public class SmokeTests : AvaloniaTestBase
         window.CaptureRenderedFrame();
 
         var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        // A link row is the only row labelled with a locality-rooted path, so the prefix identifies them.
+        var linkRows = labels.Where(t => t?.StartsWith("Living room / ") == true).ToList();
         Assert.Multiple(() =>
         {
-            Assert.That(labels.Any(t => t?.StartsWith("←") == true), Is.True, "a link-from (←) row renders");
-            Assert.That(labels.Any(t => t?.StartsWith("→") == true), Is.True, "a link-to (→) row renders");
+            Assert.That(linkRows, Has.Count.EqualTo(2), "both linked pins render a reciprocal link row");
+            Assert.That(linkRows.Distinct().Count(), Is.EqualTo(2), "each row names the OTHER end");
+        });
+    }
+
+    // Drives a real left double-click at a control's centre through the headless input pipeline. It must go through
+    // the pipeline rather than a synthetic RaiseEvent: Avalonia's TreeViewItem toggles from OnHeaderDoubleTapped,
+    // i.e. from a DoubleTapped the input manager SYNTHESISES out of the pointer stream. A hand-built PointerPressed
+    // never produces that, so a RaiseEvent-based test cannot observe the toggle at all and passes vacuously.
+    private static void DoubleClick(Window window, Avalonia.Visual target)
+    {
+        Avalonia.Point centre = target.TranslatePoint(
+            new Avalonia.Point(target.Bounds.Width / 2, target.Bounds.Height / 2), window)!.Value;
+        for (int i = 0; i < 2; i++)
+        {
+            window.MouseDown(centre, MouseButton.Left);
+            window.MouseUp(centre, MouseButton.Left);
+        }
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+    }
+
+    // F-006 + F-007 (A-4), effect-verified through the real window: double-clicking a locality opens its properties
+    // dialog AND leaves the expansion state alone. The second half is the whole point of marking the gesture
+    // handled — before this, Avalonia's default toggled every expandable node under the user, which IHC Visual
+    // never does (it handles the gesture on every node type and so suppresses the default everywhere).
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task MainWindow_DoubleClickLocality_OpensProperties_AndDoesNotToggleExpansion()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        // The locality must actually HOLD something, or it is a leaf and there is no toggle to suppress — the
+        // expansion half of this assertion would pass vacuously.
+        var product = harness.Session.GetAvailableProducts().First(p => p.DisplayName == "Lampeudtag");
+        await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier);
+
+        var window = new MainWindow { DataContext = vm };
+        CurrentTestWindow = window;
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        var tree = window.FindControl<TreeView>("InstallationTree")!;
+        var localityNode = vm.InstallationNodes[0].Children[0];
+        var item = window.GetVisualDescendants().OfType<TreeViewItem>()
+            .First(i => ReferenceEquals(i.DataContext, localityNode));
+
+        Assert.That(localityNode.Children, Is.Not.Empty, "guard: the node is expandable, so a toggle is possible");
+        Assert.That(item.IsExpanded, Is.True, "a locality holding a product opens by default (US-006)");
+
+        // Click the node's OWN label, not the item's bounds centre: a TreeViewItem's bounds enclose its whole
+        // expanded subtree, so the centre lands on a descendant row (the same trap the UIA driver hit).
+        var label = item.GetVisualDescendants().OfType<TextBlock>().First(t => t.Text == localityNode.DisplayName);
+        DoubleClick(window, label);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(harness.Dialogs.EditPropertiesCalls, Is.EqualTo(1), "the locality's properties dialog opens");
+            Assert.That(item.IsExpanded, Is.True, "the double-click must not collapse it — the toggle stays suppressed");
+            Assert.That(tree.SelectedItem, Is.SameAs(localityNode), "the activated node becomes the selection");
         });
     }
 

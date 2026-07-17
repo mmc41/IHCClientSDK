@@ -1,6 +1,6 @@
 ---
-version: 0.1.0
-last-updated: 2026-07-12
+version: 0.2.0
+last-updated: 2026-07-16
 status: draft
 ---
 
@@ -96,11 +96,22 @@ holding a modifier key or opening a dialog.
   resource ID and confirm the ID appears on plain hover; hover a node with no resource ID and confirm no
   resource‑ID line appears.
 - Note (design basis): a documentation *note* appears on **plain** mouse‑hover for a function‑block
-  group node, with no modifier key. For products the note is shown inline in the tree label, in
-  parentheses after *Name* (and in reports). Notes on hover for product inputs/outputs and the IHC
+  group node, with no modifier key. **For a product, the note is what the hover shows** — it is *not* in the
+  tree label; the parenthetical in a product's label is its **`Placering`**, a different field (US-010,
+  US-011). The note also appears in reports (US-040). Notes on hover for product inputs/outputs and the IHC
   resource‑ID tooltip are IHC OpenVisual enhancements. The `Ctrl`‑hover behaviour and the resource‑ID
   tooltip are IHC OpenVisual's own design; verify them during implementation before treating
   them as fixed requirements. (R‑note.)
+
+  > **Corrected 2026‑07‑16 (was: "For products the note is shown inline in the tree label, in parentheses
+  > after *Name*").** That attribution was **wrong**, and load‑bearing: it was labelled a vendor‑derived
+  > design basis, so it would have been trusted. IHC Visual renders the **`position`** attribute in the
+  > parentheses — `Lampeudtag (i loft på langs i rummet, 2 stk) ` — and never puts the `note` in the label,
+  > even though the same element carries one (a long description such as *"Til styring af Silent Gliss
+  > 4760/10522 gardin…"*). The note surfaces on **hover**, which is this story. Getting these two backwards
+  > is the exact trap the tree‑label rule warns about: an implementer reaching for the obvious attribute
+  > name gets the wrong string. Evidence: `RESULTS.md` **F‑003** (verified byte‑for‑byte against 4
+  > products); the label rule lives in **US-010**.
 
 **Readiness:** Ready.
 

@@ -1,6 +1,6 @@
 ---
-version: 0.1.0
-last-updated: 2026-07-13
+version: 0.2.0
+last-updated: 2026-07-16
 status: draft
 ---
 
@@ -59,23 +59,39 @@ Scenario: Project info feeds the reports
   Then the installation report's installer and customer section (name, address, phone) reflects what I entered
 ```
 
+### Business rules (the dialog's field set)
+
+- MUST: The dialog carries a **Project** group — *Description*, *Number* and *Programmer* — and a
+  **Customer** group — *Name*, *Address*, *City*, *Zip code* and *Country* — with OK/Cancel.
+- MUST: It is reachable from the *Documentation* menu.
+
+> **Confirmed 2026‑07‑16 — aligned by construction.** IHC OpenVisual's *Project information* dialog was
+> **built to IHC Visual's field set** (traced field‑by‑field to the vendor's report XSLTs when US-039 was
+> written), and the comparison found no divergence. Evidence: `RESULTS.md` **F‑044**
+> (`S09\80-project-info-ov.png`). ⚠ **The vendor's dialog was not captured live** — it opens only via menu
+> navigation the driver could not script — so this is aligned *by construction and by the XSLT trace*,
+> not by a side‑by‑side screenshot. Closing the loop means opening the vendor's dialog from its menu and
+> diffing field labels and order.
+
 ### AC illustrations
 
 - The installation report’s header lists installer and customer information (name, address, telephone)
   drawn from *Project info*.
+- *Documentation ▸ Project info…* opens a dialog whose **Project** group holds `Description`, `Number` and
+  `Programmer`, and whose **Customer** group holds `Name`, `Address`, `City`, `Zip code` and `Country`.
 
 ### Constraints
 
 - A *Project info* dialog exists and precedes report generation. The **reports** render only the
   installer/customer **Navn / Adresse / Telefon** (name / address / phone) — the other project‑info fields
   (city, zip, country, mobile, email, udf) are captured by the dialog but appear in **no** report (see the
-  US-040 appendix). The full field set of the *dialog itself* is not itemised here, so IHC OpenVisual
-  should cover installer + customer identity and treat the remaining dialog fields as
-  to‑be‑confirmed. (Note — minor; does not block the story.)
+  US-040 appendix). This asymmetry is deliberate: the dialog is the project's record, the report is a
+  subset of it.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented.
+**Implementation status:** ✅ Implemented — the dialog's field set is confirmed against IHC Visual's
+(F‑044); a live vendor capture would close the last of the loop.
 
 ---
 
@@ -152,6 +168,17 @@ propagation) fully specify each report's output.
 >   template — no business logic), applies the print CSS variant, and opens it in the user's **default /
 >   standard browser** for viewing and printing. The only runtime dependency is a standard browser able to
 >   display static HTML.
+
+> **Deliberate divergence (C) — the rendering mechanism, granted by design decision, reaffirmed
+> 2026‑07‑16.** IHC Visual generates its reports by copying the whole `.vis` to `%TEMP%` and rendering it
+> through **XSLT stylesheets from its install directory into Internet Explorer**. IHC OpenVisual renders
+> **in‑app HTML into the standard browser** instead. This is an **intentional exception, not a gap**: the
+> vendor's mechanism depends on legacy MSXML behaviour that is **dead in modern Chromium‑based browsers**
+> (reproduced offline — the vendor's own XSLTs no longer render there), and on a vendor installation the
+> app deliberately does not require (US-063). The **content** is what must match, and it is: the report
+> model was traced field‑by‑field to the vendor's XSLTs. Compare **entry points and scope** against the
+> vendor, never the rendering technology. Evidence: `RESULTS.md` **F‑044**; the capture that established the
+> vendor's mechanism and this decision.
 
 **Output mechanism / view.** *Documentation ▸ Reports* presents a small menu ("Projekt dokumentation")
 listing report choices, each in a **screen** and a **printer** variant. Three report types exist:

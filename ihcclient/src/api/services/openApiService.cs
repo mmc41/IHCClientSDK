@@ -174,7 +174,7 @@ namespace Ihc {
                 var result = soapPost<outputMessageName13, inputMessageName13>("authenticate", request, resp =>
                 {
                     // Use side-effect to capture cookie sice our post call only captures xml response.
-                    cookie = resp.Headers.GetValues("Set-Cookie").FirstOrDefault();
+                    cookie = SetCookieHeader.FirstOrNull(resp);
                 });
 
                 return result.ContinueWith<outputMessageName13>((r) =>
@@ -877,35 +877,34 @@ namespace Ihc {
         /// <param name="resourceIds">Array of resource IDs to monitor</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <param name="timeout_between_waits_in_seconds">Timeout between waits in seconds</param>
-        public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(IReadOnlyList<int> resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15)
+        public async IAsyncEnumerable<ResourceValue> GetResourceValueChanges(
+            IReadOnlyList<int> resourceIds,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default,
+            int timeout_between_waits_in_seconds = 15)
         {
-            using (var activity = StartActivity(nameof(GetResourceValueChanges)))
+            // Deliberately an async iterator, so the activity spans the iteration rather than the call that
+            // creates it. Returning the stream from a plain method would stop and export the activity before the
+            // polling loop had run at all, and every error the loop reports would land on a dead span.
+            using var activity = StartActivity(nameof(GetResourceValueChanges));
+
+            activity?.SetParameters(
+                (nameof(resourceIds), resourceIds),
+                (nameof(cancellationToken), cancellationToken),
+                (nameof(timeout_between_waits_in_seconds), timeout_between_waits_in_seconds));
+
+            IAsyncEnumerable<ResourceValue> changes = ServiceHelpers.GetResourceValueChanges(
+                activity,
+                resourceIds,
+                EnableSubscription,
+                async (timeout) => (await WaitForEvents(timeout).ConfigureAwait(settings.AsyncContinueOnCapturedContext)).ResourceValueEvents,
+                DisableSubscription,
+                settings.AsyncContinueOnCapturedContext,
+                cancellationToken,
+                timeout_between_waits_in_seconds);
+
+            await foreach (var change in changes.ConfigureAwait(settings.AsyncContinueOnCapturedContext))
             {
-                try
-                {
-                    activity?.SetParameters(
-                        (nameof(resourceIds), resourceIds),
-                        (nameof(cancellationToken), cancellationToken),
-                        (nameof(timeout_between_waits_in_seconds), timeout_between_waits_in_seconds));
-
-                    var retv = ServiceHelpers.GetResourceValueChanges(
-                        activity,
-                        resourceIds,
-                        EnableSubscription,
-                        async (timeout) => (await WaitForEvents(timeout).ConfigureAwait(settings.AsyncContinueOnCapturedContext)).ResourceValueEvents,
-                        DisableSubscription,
-                        settings.AsyncContinueOnCapturedContext,
-                        cancellationToken,
-                        timeout_between_waits_in_seconds);
-
-                    activity?.SetReturnValue(retv);
-                    return retv;
-                }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
+                yield return change;
             }
         }
 

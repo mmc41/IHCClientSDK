@@ -85,7 +85,7 @@ namespace Ihc.Tests
             };
 
             // Act
-            var redactedUser = user.RedactPasword();
+            var redactedUser = user.RedactPassword();
 
             // Assert
             Assert.That(redactedUser.Password, Is.EqualTo(UserConstants.REDACTED_PASSWORD));

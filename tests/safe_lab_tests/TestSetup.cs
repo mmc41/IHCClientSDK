@@ -66,7 +66,7 @@ namespace Ihc.Tests
     /// </para>
     ///
     /// <para>
-    /// Screenshots are saved to: <c>tests/safe_lab_tests/bin/Debug/net9.0/TestFailureScreenshots/</c>
+    /// Screenshots are saved to: <c>tests/safe_lab_tests/bin/Debug/net10.0/TestFailureScreenshots/</c>
     /// with format: <c>{TestName}_{Timestamp}.png</c>
     /// </para>
     /// </summary>

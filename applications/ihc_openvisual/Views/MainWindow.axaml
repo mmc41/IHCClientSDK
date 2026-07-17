@@ -344,7 +344,12 @@
                     </TreeView.Styles>
                     <TreeView.ItemTemplate>
                         <TreeDataTemplate x:DataType="vm:TreeNodeViewModel" ItemsSource="{Binding Children}">
+                            <!-- DoubleTapped is handled HERE, on the row's own content, and not on the TreeView:
+                                 the event only bubbles, and TreeViewItem toggles expansion from a handler on its
+                                 header presenter — this StackPanel's ancestor. Handling it here is therefore the
+                                 last point that still runs BEFORE the toggle (US-044, F-006/F-007). -->
                             <StackPanel Orientation="Horizontal" Spacing="6" ToolTip.Tip="{Binding Tooltip}"
+                                        DoubleTapped="OnNodeDoubleTapped"
                                         a:AutomationProperties.Name="{Binding AccessibleName}"
                                         a:AutomationProperties.HelpText="{Binding Tooltip}">
                                 <svg:Svg Width="16" Height="16" Path="{Binding IconAsset}" CurrentColor="{DynamicResource IconColor}"
@@ -382,7 +387,12 @@
                     </TreeView.Styles>
                     <TreeView.ItemTemplate>
                         <TreeDataTemplate x:DataType="vm:TreeNodeViewModel" ItemsSource="{Binding Children}">
+                            <!-- DoubleTapped is handled HERE, on the row's own content, and not on the TreeView:
+                                 the event only bubbles, and TreeViewItem toggles expansion from a handler on its
+                                 header presenter — this StackPanel's ancestor. Handling it here is therefore the
+                                 last point that still runs BEFORE the toggle (US-044, F-006/F-007). -->
                             <StackPanel Orientation="Horizontal" Spacing="6" ToolTip.Tip="{Binding Tooltip}"
+                                        DoubleTapped="OnNodeDoubleTapped"
                                         a:AutomationProperties.Name="{Binding AccessibleName}"
                                         a:AutomationProperties.HelpText="{Binding Tooltip}">
                                 <svg:Svg Width="16" Height="16" Path="{Binding IconAsset}" CurrentColor="{DynamicResource IconColor}"

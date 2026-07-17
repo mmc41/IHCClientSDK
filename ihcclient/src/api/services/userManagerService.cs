@@ -90,7 +90,7 @@ namespace Ihc {
             {
                 case "text.usermanager.group_administrators": return IhcUserGroup.Administrators;
                 case "gtext.users": return IhcUserGroup.Users;
-                default: throw new Exception("Unkown user group " + wsGroupType);
+                default: throw new ArgumentException("Unknown user group " + wsGroupType, nameof(wsGroupType));
             }
         }
 
@@ -186,7 +186,7 @@ namespace Ihc {
                     var retv = new HashSet<IhcUser>(resp.getUsers1.Where((v) => v != null).Select((u) => mapUser(u, includePassword)));
 
                     // Register activity - note that regardless of if password is included, any password will be also not be logged/observed unless LogSensitiveData allows it.
-                    activity?.SetReturnValue(IhcSettings.LogSensitiveData ? retv.Select(r => r.RedactPasword()).ToArray() : retv.ToArray());
+                    activity?.SetReturnValue(IhcSettings.LogSensitiveData ? retv.Select(r => r.RedactPassword()).ToArray() : retv.ToArray());
                     return retv;
                 }
                 catch (Exception ex)
@@ -207,7 +207,7 @@ namespace Ihc {
             {
                 try
                 {
-                    activity?.SetParameters((nameof(user), IhcSettings.LogSensitiveData ? user : user.RedactPasword()));
+                    activity?.SetParameters((nameof(user), IhcSettings.LogSensitiveData ? user : user.RedactPassword()));
 
                     ValidationHelper.ValidateDataAnnotations(user, nameof(user));
 
@@ -257,7 +257,7 @@ namespace Ihc {
             {
                 try
                 {
-                    activity?.SetParameters((nameof(user), IhcSettings.LogSensitiveData ? user : user.RedactPasword()));
+                    activity?.SetParameters((nameof(user), IhcSettings.LogSensitiveData ? user : user.RedactPassword()));
 
                     ValidationHelper.ValidateDataAnnotations(user, nameof(user));
 

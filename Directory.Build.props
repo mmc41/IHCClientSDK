@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+
+  <!--
+    Repo-wide build policy, imported automatically into every project under the repository root.
+
+    Before this file existed, each of these properties was copy-pasted into all 17 project files.
+    Nothing compared the copies, so they drifted silently: the same divergence is what let six
+    package versions fork across the test suites (see Directory.Packages.props).
+
+    A project that genuinely needs a different value overrides it locally — project files are
+    evaluated after this one, so a local <Nullable>disable</Nullable> still wins. Overrides are
+    therefore visible as deliberate exceptions rather than invisible as copies.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Overridden to 'disable' by ihcclient and four of its consumers; tracked as designfix P3/C4. -->
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

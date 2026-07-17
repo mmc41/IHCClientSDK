@@ -733,7 +733,7 @@ namespace Ihc.App
         /// </summary>
         public void Dispose()
         {
-            if (ownedServices & authService!=null)
+            if (ownedServices && authService!=null)
             {
                 authService.Dispose();
             }

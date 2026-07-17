@@ -1,12 +1,14 @@
 ---
-version: 0.1.0
-last-updated: 2026-07-03
+version: 0.2.0
+last-updated: 2026-07-16
 status: draft
 ---
 
 # E6 — Product ↔ function‑block links
 
-> **Implementation status:** ✅ Implemented.
+> **Implementation status:** 🟡 Partly implemented — link create/remove and reciprocal rendering work, but
+> **`F4` does not actually jump** (US-025) and the link/pin **labels diverge** from the vendor (US-022). The
+> vendor comparison found the link model the weakest area in the app.
 
 > **Current scope:** ✅ **In scope** — creating and navigating product↔function‑block links is
 > project CRUD.
@@ -27,7 +29,8 @@ function‑block‑to‑function‑block variable links (covered in E7’s progr
 - MUST: The installer can create a product‑input→block‑input link and a block‑output→product‑output
   link by dragging one pin onto another.
 - MUST: A created link is shown reciprocally: the source pin shows a "link to" child and the target pin
-  a "link from" child, each naming the full path of the other end.
+  a "link from" child, each naming the **bare** full path of the other end — direction is carried by the
+  row's icon, not by a prefix in the label (US-022).
 - MUST: The installer can **remove** an existing link from either end, deleting both reciprocal halves as
   one undoable step (US-057).
 - SHOULD: Dragging onto a scenario output opens a dialog to set the scene’s level/ramp (dimmer) or state
@@ -55,7 +58,7 @@ Scenario: Drag a product input onto a block input
 Scenario: The link is shown reciprocally
   Given the link has been created
   Then expanding the block input <pin> shows a "link from" child naming the source's full path,
-    e.g. "<- Living room & Kitchen \"open\" / <product> / <pin>"
+    e.g. "Living room & Kitchen \"open\" / <product> / <pin>"
   And the product input correspondingly shows a "link to" child pointing at the block input
 
 Scenario: Unconfigured products remain flagged
@@ -63,21 +66,49 @@ Scenario: Unconfigured products remain flagged
   Then it keeps its leading yellow "!" until configuration is complete (linking does not clear it)
 ```
 
+### Business rules (how a link row and its pins read)
+
+- MUST: A link row's label is the **bare path** of the opposite end — `<locality> / <product-or-block> /
+  <pin>`. It carries **no `→`/`←` prefix**: the link's direction is shown by the row's **icon** (US-046),
+  and must not be duplicated in the label text.
+- MUST: A pin's label is the **bare pin name**. It carries no state suffix — in particular no `(saved)`
+  marker for the save‑current‑value flag (US-033), which the tooltip and the terminal editor (US-012)
+  surface instead.
+
+> **Corrected 2026‑07‑16 (was: link labels specced *with* a leading `<-`, and pins rendering `(saved)`).**
+> Two label divergences, both measured, both "IHC OpenVisual renders things into the label that IHC Visual
+> does not":
+> - **F‑020** — IHC OpenVisual renders `→ Entré/Gang / Lampeudtag … / Udgang`, an arrow prefix **in the
+>   label text** *in addition to* a direction icon on the same row (both glyphs are visible together in
+>   `00-shell-and-locality-ctxmenu-ov.png`). It is redundant **and** it eats horizontal width in the pane
+>   that matters most. This is **not** covered by the icon‑artwork exception — it is label text, and the
+>   glyph semantics are unaffected. The old AC baked the prefix in, so the story specced the defect.
+> - **F‑019** — IHC OpenVisual renders `Udgang (saved)`, `LED (øverst) (saved)`; IHC Visual renders
+>   `Udgang`, `LED (øverst)`.
+>
+> ⚠ **These cut *against* US-010's label rules**, where the *vendor* renders state into a label (`Lampeudtag
+> (i loft) `, `Tilstand = Ukendt`) and IHC OpenVisual does not. So **there is no single rule about who puts
+> state in labels** — take each row kind from the oracle rather than generalising in either direction.
+> Evidence: `RESULTS.md` **F‑019**, **F‑020**; backlog **A‑7**.
+
 ### AC illustrations
 
 - Under the `<function block>` block, `Input > <pin>` shows a child
-  `<- Living room & Kitchen "open" / <product> / <pin>`, and `<pin>` shows
-  `<- Living room & Kitchen "open" / <product> / <pin>` — the "link from" rows read as
-  `<source locality> / <product> / <pin>`.
+  `Living room & Kitchen "open" / <product> / <pin>` — the bare source path, with the "link from"
+  direction carried by the row's icon.
 
 ### Constraints
 
 - Link-row glyphs and path rendering are cross-checked against the icon/artwork evidence in
   [`../icon_codes.md`](../icon_codes.md) (§4 Links).
+- Verification method — **Test**: assert a link row's label is the bare path (no arrow character) and a
+  pin's label is the bare name (no `(saved)`), against the vendor's rendering of the same project.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented (link create + reciprocal rendering).
+**Implementation status:** 🟡 Implemented (link create + reciprocal rendering) — ⚠ **except the corrected
+label rules**: link rows still carry a `→`/`←` prefix in the label text and pins still carry a `(saved)`
+suffix. Backlog **A‑7** removes both.
 
 ---
 
@@ -172,22 +203,61 @@ follow a signal path across the two panes without hunting for the matching pin.
 Scenario: Jump to the opposite end of a link
   Given a "link to" or "link from" row is selected (e.g. under a block input or a product output)
   When I press F4
-  Then the selection moves to the pin at the other end of the link (in the other pane)
+  Then the caret in the OTHER pane lands on the pin at the other end of the link
+  And that pin's collapsed ancestors are expanded and it is scrolled into view, so the caret is visible
+  And the status bar names the pin it jumped to
+
+Scenario: Jump to a target that is not yet realised
+  Given the opposite pin lies under collapsed ancestors that have never been expanded
+  When I press F4 on the link row
+  Then the jump still lands on it — the ancestor chain is expanded first
 
 Scenario: Read a link's other end without jumping
   Given a linked pin is expanded
   Then its "link to"/"link from" child spells out the full path of the opposite pin
     (locality / product-or-block / pin), so the connection is legible in place
+
+Scenario: The jump is reachable from the link row's context menu
+  Given a link row is selected
+  Then "jump to the opposite end" is offered on its context menu as well as on F4 (US-068)
 ```
+
+### Business rules (what a jump must actually do)
+
+- MUST: The jump **expands the target's ancestor chain, scrolls the target into view, moves the caret onto
+  it, and focuses that pane**. Setting a selection alone is not sufficient — a target that cannot be
+  realised leaves the caret where it was.
+- MUST: The status bar names **the pin jumped to**. It never reports a successful jump that did not happen.
+
+> **Corrected 2026‑07‑16 (was: "the selection moves to the pin at the other end", which the app satisfies on
+> paper and not in fact).** Measured: IHC OpenVisual's `F4` produces **no visible jump** — the source pane's
+> caret is unchanged, the **other pane's selection is cleared**, neither pane expands or scrolls, and the
+> status bar nevertheless claims *"Jumped to …"*. **A no‑op that reports success is the worst part of this**:
+> it is why the defect survived, and it is why the status‑bar rule above is now a MUST. Reproduced with the
+> target both unrealized **and** pre‑expanded/visible. IHC Visual gets this free — Win32's
+> `TVM_SELECTITEM(TVGN_CARET)` expands ancestors and ensures visibility implicitly. Evidence: `RESULTS.md`
+> **F‑012**; backlog **A‑6**. ⚠ Note the jump command currently has **no context‑menu or menu‑bar route at
+> all** (F‑010), so with F4 broken it is unreachable by *any* working route — US-068 restores the route.
 
 ### AC illustrations
 
-- Selecting the `<- … / <product> / <pin>` row under a block input and pressing `F4`
-  selects the `<pin>` pin of that push‑button in the *Installation* pane.
+- Selecting the `… / <product> / <pin>` row under a block input and pressing `F4`
+  selects the `<pin>` pin of that push‑button in the *Installation* pane, expanding and scrolling to it if
+  needed; the status bar reads the **pin's** name, not the link row's.
+
+### Constraints
+
+- Verification method — **Test** (`safe_visual_tests`): assert the **other pane's** selection lands on the
+  opposite pin, **and** that the status text names *that pin*. A single‑pane assertion cannot see this
+  defect — the measuring driver had the identical blind spot until it was fixed to report every pane's
+  selection.
+- Reproduce the **false success message** first: it is the tell, and the cheapest regression guard.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented.
+**Implementation status:** ⛔ **Not implemented** — `F4` sets the selection properties but never expands the
+ancestor chain or scrolls the target into view, so the jump silently does nothing while the status bar
+reports success (F‑012). Backlog **A‑6** implements this story.
 
 ---
 
@@ -236,7 +306,7 @@ Scenario: Remove is undoable
 
 ### AC illustrations
 
-- Under an `<function block>` input `<pin>`, selecting the `<- … / <product> / <pin>`
+- Under an `<function block>` input `<pin>`, selecting the `… / <product> / <pin>`
   row and pressing `Delete` removes both that row and the `<pin>` pin's matching "link to"
   row; `<pin>`'s link to `<pin>` is untouched.
 

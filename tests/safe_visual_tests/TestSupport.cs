@@ -27,6 +27,9 @@ public sealed class FakeDialogService : IDialogService
     public ProductPropertiesInput? LastProductPropertiesInput { get; private set; }
     public int EditProductPropertiesCalls { get; private set; }
     public Func<ProductPropertiesInput, ProductPropertiesResult?>? ProductPropertiesResponder { get; set; }
+    public SceneContainerResult? SceneContainerResult { get; set; }
+    public SceneContainerInput? LastSceneContainerInput { get; private set; }
+    public int EditSceneContainerCalls { get; private set; }
     public PinPropertiesResult? PinPropertiesResult { get; set; }
     public PinPropertiesInput? LastPinPropertiesInput { get; private set; }
     public int EditPinPropertiesCalls { get; private set; }
@@ -85,6 +88,13 @@ public sealed class FakeDialogService : IDialogService
         EditProductPropertiesCalls++;
         LastProductPropertiesInput = input;
         return Task.FromResult(ProductPropertiesResponder is not null ? ProductPropertiesResponder(input) : ProductPropertiesResult);
+    }
+
+    public Task<SceneContainerResult?> EditSceneContainerAsync(SceneContainerInput input)
+    {
+        EditSceneContainerCalls++;
+        LastSceneContainerInput = input;
+        return Task.FromResult(SceneContainerResult);
     }
 
     public Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input)

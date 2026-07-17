@@ -33,6 +33,20 @@ public sealed record ProductPropertiesResult(
     string Name, string LocalityId, string Note, string CableType, string CableNumber,
     string IdentificationCode, string LightGroup, bool OpenAdvanced = false);
 
+/// <summary>One row of the scene-container dialog's table: the scene membership seen from the product's side. The
+/// first three columns are the opposite end of the membership's link (the function block's scene pin, the block, and
+/// the block's locality); the last two are the member's own stored value.</summary>
+public sealed record SceneContainerRow(
+    string SceneName, string FunctionBlock, string Locality, string Value, string RampTime);
+
+/// <summary>The scene container (<c>Scenarier</c>) dialog's contents (US-024): the container's read-only name, its
+/// editable note, and one row per scene membership. Returned as <see cref="SceneContainerResult"/>, or null when
+/// dismissed.</summary>
+public sealed record SceneContainerInput(string Name, string Note, IReadOnlyList<SceneContainerRow> Rows);
+
+/// <summary>The edited scene-container note (US-024) — the only editable field in the dialog.</summary>
+public sealed record SceneContainerResult(string Note);
+
 /// <summary>The current values shown by the advanced wireless-dimmer dialog (US-015). Times in ms/s, levels in %,
 /// <c>LoadMode</c> is the stored token (<c>auto</c>/<c>rc</c>/<c>rl</c>).</summary>
 public sealed record AdvancedDimmerInput(
@@ -140,6 +154,10 @@ public interface IDialogService
     /// <summary>Opens the modal product-documentation Properties dialog (US-011); returns the edited documentation,
     /// or null when the installer cancels.</summary>
     Task<ProductPropertiesResult?> EditProductPropertiesAsync(ProductPropertiesInput input);
+
+    /// <summary>Shows a product's scene container (<c>Scenarier</c>) — its name (read-only), note, and the table of
+    /// its scene memberships (US-024). Resolves to the edited note, or null when dismissed.</summary>
+    Task<SceneContainerResult?> EditSceneContainerAsync(SceneContainerInput input);
 
     /// <summary>Opens the modal terminal-addressing dialog for a product input/output pin (US-012); returns the
     /// edited addressing, or null when the installer cancels.</summary>

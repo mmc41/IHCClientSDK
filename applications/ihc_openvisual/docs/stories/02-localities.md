@@ -1,12 +1,15 @@
 ---
-version: 0.1.0
-last-updated: 2026-07-03
+version: 0.2.0
+last-updated: 2026-07-16
 status: draft
 ---
 
 # E2 — Locality management
 
-> **Implementation status:** ✅ Implemented.
+> **Implementation status:** ✅ Implemented — and measured **fully aligned** with IHC Visual across insert
+> (F‑025), the rename/note dialog (F‑037), and both delete paths (F‑023, F‑038). **This epic is the
+> comparison's regression baseline**: it is the one editing area where every measured cell came back
+> aligned, so a future change that diverges here is a regression, not a decision.
 
 > **Current scope:** ✅ **In scope** — locality create / rename / delete is project CRUD.
 
@@ -92,6 +95,22 @@ Scenario: Cancel discards the edit
   Then the locality keeps its original name and note
 ```
 
+### Business rules (the dialog's field set)
+
+- MUST: The dialog carries **exactly two** fields — **Name** and **Note** — plus its OK/Cancel buttons.
+  Nothing else: a locality has no placement, no addressing and no type of its own.
+- MUST: The dialog title follows the pattern `Edit <current name> properties`.
+- MUST: `F2` on a selected locality opens it, and so does double‑click (US-067) and right‑click >
+  *Properties*.
+
+> **Confirmed 2026‑07‑16 — regression baseline, fully aligned.** IHC Visual's `Rediger <name> egenskaber`
+> is exactly Navn + Note + OK/Annuller, and IHC OpenVisual's *Edit `<name>` properties* is exactly Name +
+> Note + OK/Cancel — **same field set, same title pattern**, translated (language is an allowed difference).
+> This is the epic's regression baseline: it is worth stating as a measured fact because the **product**
+> dialog, which looks like the same kind of dialog, diverges hard (US-011/US-012) — so the divergence there
+> is product‑specific, not a general dialog problem. Evidence: `RESULTS.md` **F‑037**
+> (`S02b\50-locality-props-vis.png` vs `50-locality-props-ov.png`, F2 on the same locality) and **F‑014**.
+
 ### AC illustrations
 
 - Renaming `Living room` to `Living room & Kitchen "open"` with a note updates the node in both panes to
@@ -101,7 +120,7 @@ Scenario: Cancel discards the edit
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented.
+**Implementation status:** ✅ Implemented — measured **fully aligned** with IHC Visual (F‑037).
 
 ---
 
@@ -132,15 +151,30 @@ Scenario: Insertion targets the current selection
     currently selected container
 ```
 
+### Business rules (what an insert does, and does not, do)
+
+- MUST: The new locality is appended **last** among its siblings — not inserted at the caret, not sorted
+  into place.
+- MUST: It is created with a **default name**, ready to rename.
+- MUST: **No properties dialog opens** on insert. The installer renames it on demand via US-007.
+
+> **Confirmed 2026‑07‑16 — regression baseline, fully aligned.** Insert on both apps appends at the same
+> index (24 of 24), gives the new node a default name (IHC Visual `Lokalitet`, IHC OpenVisual `Locality` —
+> language is an allowed difference), and opens **no dialog**. Evidence: `RESULTS.md` **F‑025** (placement
+> verified by index probe on both). ⚠ The **no‑dialog‑on‑insert** rule is the one to hold on to: the
+> equivalent *product* story asserted the opposite and was wrong (US-011's corrected auto‑open MUST, F‑027)
+> — localities were right all along.
+
 ### AC illustrations
 
 - With `Localities` selected, inserting a locality yields a new node named `Locality` at the bottom
-  of the tree (below `Outdoors`), selected, with the status bar showing
+  of the tree (below `Outdoors`), selected, with **no dialog opening**, and the status bar showing
   `Locality was inserted under Localities`.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented.
+**Implementation status:** ✅ Implemented — placement, default name and the no‑dialog rule are measured
+**aligned** with IHC Visual (F‑025).
 
 ---
 
