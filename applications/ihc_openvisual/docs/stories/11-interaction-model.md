@@ -167,9 +167,9 @@ conditions):
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented (in‑scope shortcuts). The arrow‑key quadrants are implemented and
-measured aligned (F‑013). **`Ctrl+C` / `Ctrl+X` / `Ctrl+V` are bound and measured working**, and undo/redo
-is effect‑verified.
+**Implementation status:** 🟡 Implemented (in‑scope shortcuts) — **except `F6`, which is bound but dead**
+(backlog **A‑28**). The arrow‑key quadrants are implemented and measured aligned (F‑013). **`Ctrl+C` /
+`Ctrl+X` / `Ctrl+V` are bound and measured working**, and undo/redo is effect‑verified.
 
 > **Corrected 2026‑07‑17 (was: "clipboard/undo and simulation bindings deferred").** The "deferred" claim
 > contradicted **this file's own `:88‑92`** (US-044), which records `Ctrl+C` as measured working — *the
@@ -180,6 +180,15 @@ is effect‑verified.
 > MUST, not a missing shortcut. Residue: `Ctrl+I` / `Ctrl+U` remain **unverified**; the **simulation** half
 > is ⛔ **E8 / out of scope** — specified for completeness, not for implementation, exactly as the
 > simulation criterion above states.
+
+> **Added 2026‑07‑17 (F‑083).** `F6` (switch panes) is **bound but dead**: the handler at
+> `MainWindow.axaml.cs:71‑76` calls `.Focus()` on the sibling `TreeView`, but focus does not take —
+> `focusedPane` is unchanged across two sessions and before/after screenshots are pixel‑identical (the probe
+> is not blind). So `F6` is a **measured‑unmet MUST** → backlog **A‑28**. Two positives came out of the same
+> measurement: (a) the rest of the non‑simulation shortcut set is **parity** with the vendor; and (b) IHC
+> OpenVisual **adds** `Ctrl+Shift+Up` / `Ctrl+Shift+Down` (*Move up* / *Move down*) — shortcuts the vendor
+> has no equivalent for — a **granted C**, consistent with the non‑drag reorder exception in US-055/US-068.
+> Evidence: `RESULTS.md` **F‑083**.
 
 ---
 
@@ -248,14 +257,11 @@ the expander caret, which continues to toggle expansion when clicked directly.
 live, the toggle is suppressed, and the scene‑container dialog the matrix needed was built. Verified against
 the real application, not only headlessly.
 
-> ⚠ **One open question, and it needs a vendor measurement — do not "fix" it from this side.** IHC
-> OpenVisual binds activation to the item template's content, which sizes to **icon + text**, so a
-> double‑click on the blank strip *right of a short label* falls through to the toolkit and toggles. Whether
-> **IHC Visual activates on the whole row** or only on the label strip is **unmeasured** — its automation
-> harness clicks the label rect, so the blank area was never tested. If the vendor activates on the full
-> row, IHC OpenVisual's hit area is a defect and the handler should move to the template root. Evidence:
-> `RESULTS.md` **F‑052** (an open **E**); scheduled as **C16** in `tmp\compare3.md` §6.2, where it is gated
-> on a click‑by‑point primitive the drivers do not yet have.
+> ✅ **Resolved 2026‑07‑17 (F‑084) — measured parity, no defect.** C16 was driven with an explicit
+> x‑offset: **both** IHC Visual and IHC OpenVisual activate on the **label only**, and a double‑click in the
+> blank strip right of a short label is a **no‑op on both, with no accidental toggle**. The earlier concern —
+> that IHC OpenVisual falls through and toggles — is **superseded**, so **F‑052 is closed (E→A)** and this
+> route needs no change from this side. Evidence: `RESULTS.md` **F‑084**.
 >
 > ⚠ **Two implementation traps are recorded in backlog A‑4 and are worth reading before touching this** —
 > handling the pointer event does *not* stop the toggle, and a handler on the TreeView is too late. This
@@ -299,8 +305,10 @@ toolbar for a command the menu omits.
   > such command on any pin. ✅ Link integrity does survive (the SDK cascades both halves — 740 halves, 0
   > dangling); what does not survive is **catalog conformance**. ⚠ The *unlinked* case is the dangerous one
   > precisely because it is silent: an accidental `Delete` removes a button with no feedback at all.
-  > **Consider an SDK guard as well as this menu gate** — the gate only protects this one GUI. Evidence:
-  > `RESULTS.md` **F‑067**; see also US-053.
+  > **An SDK guard is required in addition to this menu gate** — the gate only protects this one GUI, while
+  > US-053 already mandates the engine refusal. The precedent is **A‑16**, which put link legality in the SDK
+  > (not the view‑model) on exactly this "valid whoever drives the editor" reasoning; the engine half here is
+  > backlog **A‑24**. Evidence: `RESULTS.md` **F‑067**; see also US-053.
 - MUST: *Cut*, *Copy* and *Paste* appear in the context menu of every node type that supports them
   (locality, product, function block), satisfying the US-044 route‑parity MUST.
 - MUST: *Paste* is shown **conditionally on clipboard state** — it is absent when the clipboard is empty and
@@ -324,7 +332,8 @@ toolbar for a command the menu omits.
 
   > **Added 2026‑07‑17.** A missing *feature*, not just a missing menu entry: `&Logmærke` is on the vendor's
   > 3‑item output‑pin menu, and IHC OpenVisual offers no equivalent anywhere. Raise it as its own backlog
-  > item rather than smuggling it in with the inventory fix. Evidence: `RESULTS.md` **F‑063**.
+  > item — backlog **A‑22** — rather than smuggling it in with the inventory fix. Evidence: `RESULTS.md`
+  > **F‑063**.
 
 - MUST: A **scene container**'s menu offers *Copy*. IHC OpenVisual's scene container currently offers eight
   commands and *Copy* is **not** among them, so a scene container is the one node type where the clipboard
@@ -383,8 +392,9 @@ English — the *language* is an allowed difference, the *inventory* is not).
 > **Corroborated from a third direction:** **F‑043** (`RESULTS.md:207`) later unlocked *this same block* and
 > watched **`&Oplås` vanish** from its context menu — the 8→7 transition, measured by effect.
 >
-> ⭐ **This also corroborates `tmp\compare3.md` §4.3's C12 hypothesis — that a locked block is *view‑only*
-> in programming mode.** The vendor offers *Vis program* on a locked block **on purpose**.
+> ⭐ **This also confirms `tmp\compare3.md` §4.3's C12 — a locked block is *view‑only* in programming
+> mode** (now measured, **F‑076**/**F‑077**): the vendor offers *Vis program* on a locked block **on
+> purpose** but refuses edits to it. The authoring gate is backlog **A‑27** (specified in US-026/US-020).
 >
 > ⚠ **One honest residual: n=1 per arm.** A second block of each kind would harden the rule — free while any
 > FB menu is open, and blocking nothing.
@@ -465,6 +475,8 @@ raise a confirmation at all (US-009, US-053).
 
 - [ ] MUST: Pressing `Esc` dismisses **any** modal dialog, taking the negative/cancelling outcome — the
   same result as clicking *Cancel* / *No*. This includes confirmation dialogs, not only editing dialogs.
+  (Standard caveat: if a field's combo/dropdown is open, the first `Esc` closes that popup and the next
+  closes the dialog — F‑079.)
 - [ ] MUST: A dialog that confirms a **destructive** action (delete, cascade, discard) opens with its
   **negative** button focused, so `Enter` cancels rather than destroys. IHC Visual focuses `&No`; IHC
   OpenVisual MUST likewise default to the safe option.

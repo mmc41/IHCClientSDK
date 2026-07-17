@@ -96,13 +96,14 @@ The insert menu's categories are IHC Visual's, and the vendor's structure is the
 - MUST: The **special‑products** category holds the vendor's full set — `Modificeret Wireless produkter`,
   `Vinduer` and `Udgaet produkter` (discontinued), plus the loose specials `S0 Device`,
   `Controller Link OUT`, `Controller Link IN` and the signal‑strength test equipment.
-- **[TBD — needs a product ruling, do not decide it while implementing]** Whether the category names read
-  as the vendor's **Danish** throughout or are **translated** into IHC OpenVisual's English is **not
-  settled**. Today IHC OpenVisual translates the **three top‑level** names only (`Datalinie produkter` →
-  *Wired products*) and carries every subcategory and leaf in the vendor's Danish; the vendor‑is‑spec
-  principle argues for Danish throughout, the rest of the UI being English argues the other way. This is a
-  **B‑or‑C call**: pick one, then apply it to the whole menu. **The structural rules above are independent
-  of it and can be implemented first.**
+- **Resolved 2026‑07‑17 (R‑1 — Full English).** Every **structural / chrome** label renders in English —
+  the three top‑level category names (`Datalinie produkter` → *Wired products*) **and** the subcategories
+  (`Generelle` → *General*; `Indgang`/`Udgang`/`Dimmer` → *Input*/*Output*/*Dimmer*). Only **user‑entered**
+  content (product names, notes, `Placering`, program names) stays Danish — as do the **function‑block
+  library** category names, which US-018 keeps verbatim as vendor‑catalog data. This **reopens F‑028** (the
+  earlier "no slip to fix" reading held under the *old* mixed policy; the ruling changes the policy) →
+  backlog **A‑29** (complete the subcategory label map). **The structural category rules above are
+  unaffected** — they define which categories exist; only the rendered labels change.
 
   > **Corrected 2026‑07‑17 (was: a MUST that category names be in one language, on the reading that
   > "`Generelle` is untranslated among English siblings — a localisation slip").** ⚠ **That reading was a
@@ -161,9 +162,14 @@ Visual deliberately does **not** draw. The tree shows the vendor's row set, by t
   > what was measured; the duplicate-channel rule was noted and not adopted. **The discriminator is a
   > product that hides a pin *without* a duplicate channel (or the reverse)** — until one is found, this is
   > a coin-flip that happens to be green. ⚠ Relatedly, the rule was **deliberately not generalised** to
-  > `airlink_shutter_lock` (the *Lås* pin on `Jalousi 2 tast`): there is no vendor evidence either way, so
-  > the measured tag list is implemented **literally**. Both are raised for measurement as **C19a/C19b** in
-  > `tmp\compare3.md` §6.2; backlog **A-1**.
+  > `airlink_shutter_lock` (the *Lås* pin on `Jalousi 2 tast`): the vendor **does show** the *Lås* pin, so
+  > the measured tag list is **confirmed correct** — inserting `Jalousi 2 tast (lokal lås)` renders
+  > *Tryk (venstre) · Tryk (højre) · Lås · Tilstand · Scenarier/regulering*, hiding only *Op*/*Ned*, so
+  > `airlink_shutter_lock` must **not** be added to the hide list (**C19a closed**). **C19b** (the
+  > duplicate‑`address_channel` rival) stays formally unfalsified but practically irrelevant: here *Op*/*Ned*
+  > reuse *Tryk (venstre)*'s `_0x01` while *Lås* carries a unique `_0x03`, so tag rule and channel rule
+  > agree and the discriminating case does not exist in the catalog. Measured 2026‑07‑17; evidence:
+  > `RESULTS.md` **F‑085**; backlog **A‑1** (confirmed correct).
 - MUST: A resource carrying **`setting="yes"`** (a sensor/thermostat calibration row such as
   *Kalibrering af temperaturføler*) is **not shown**. Tag cannot decide this one: it shares its
   `resource_temperature` tag with the *visible* *Temperatur* / *Dugpunkt* rows of the same product.
@@ -338,40 +344,40 @@ later via properties), **so that** the generated reports (E9) describe the insta
 - SHOULD: **Identification code** — free text; the unique product number.
 - SHOULD: **Light group** — drop‑down; **MAY be absent** for products with no light‑group
   relationship.
-- SHOULD: **Include this product in the end‑user report** — a **checkbox**, shown only for product types
-  that can appear in that report and hidden for the rest. It is the UI for the product's `enduser_report`
-  attribute and it feeds US-040's end‑user report.
+- SHOULD: **Include this product in the end‑user report** — a **checkbox** that is the UI for the product's
+  `enduser_report` attribute and feeds US-040's end‑user report. Its **visibility is a project‑level gate,
+  not per‑type**: control 303 was measured hidden on **7/7** sampled product types, so the end‑user‑report
+  feature is off project‑wide rather than per‑product. Ship the checkbox **unconditionally visible** pending
+  measurement of the project‑level control (backlog **A‑23**); do **not** gate it on product family.
 
   > **Added 2026‑07‑17 (was: absent from this story, and from the app).** The vendor's dialog carries a
   > checkbox *"Inkluder produktet i slutbruger rapport"* which **no story had ever recorded** and IHC
   > OpenVisual has **no equivalent of** — so the `enduser_report` attribute round‑trips through the file
-  > with no way to set it. It is **hidden** (not merely disabled) for `Lampeudtag`, so its visibility is
-  > itself per‑type. ⚠ Its exact visibility predicate is **unmeasured** — one product was observed hiding
-  > it. Do not invent one; measure before gating. Evidence: `RESULTS.md` **F‑056**. **Scheduled:
-  > `tmp\compare3.md` §6.2 (C15)** — reading control `303`'s visibility on a handful of product dialogs
-  > that plan already opens.
+  > with no way to set it. **Updated 2026‑07‑17 — visibility is NOT per‑type.** Control 303 was measured
+  > `visible=False` on **7/7** sampled types (`Lampeudtag`×3, `LK FUGA Tryk 6 tast`, `Stikkontakt`,
+  > `Ventilator`, and wireless `Bevægelsessensor`), so the gate is **project‑wide**, not per‑product — do
+  > **not** gate on product family (the twice‑burned F‑027‑class wrong predicate). Ship it always‑visible;
+  > the next step (**C15**) is to find the project‑level control that flips 303. Evidence: `RESULTS.md`
+  > **F‑078** (class **E**), superseding the earlier one‑product reading.
 
 - MUST: The dialog also carries the product's **terminal‑addressing section** — the `Indgange` / `Udgange`
   grids and their per‑terminal address editor, specified in **US-012**.
 
 **How the text fields behave — the drop‑down question:**
 
-- **[TBD — needs a product ruling]** In IHC Visual **all seven** of the fields above (*Placering*, *Note*,
-  *Kabeltype*, *Kabelnummer*, *Identifikationskode*, *Lysgruppe*, and *Navn* when unlocked) are **editable
-  combo boxes with a drop‑down**; **every IHC OpenVisual equivalent is a plain textbox**, so the app offers
-  no suggestions anywhere in this dialog. **IHC OpenVisual cannot reproduce the vendor's lists** — they are
-  machine‑local MRU files on the IHC Visual install, not data in the `.vis`, so there is nothing to read
-  them from. Two defensible answers, and this story must not pick one silently:
-  1. **Offer an MRU built from the project's own values** — collect each field's existing distinct values
-     across the open project and offer them as suggestions. Same affordance, portable source.
-  2. **Accept plain textboxes as a granted exception (C)** — recording that the affordance is dropped
-     because its data source does not exist outside a vendor install.
+- **Resolved 2026‑07‑17 (R‑2 — plain textboxes, granted exception C).** In IHC Visual **all seven** fields
+  above (*Placering*, *Note*, *Kabeltype*, *Kabelnummer*, *Identifikationskode*, *Lysgruppe*, and *Navn*
+  when unlocked) are **editable combo boxes with a drop‑down** backed by machine‑local MRU files
+  (`Data\*.txt`) on the vendor install — **not data in the `.vis`**, so there is nothing portable to read
+  them from. The ruling: **IHC OpenVisual keeps plain textboxes** for all seven fields, as a granted **C**.
+  The MRU affordance is dropped because its data source does not exist outside a vendor install, and a
+  project‑derived MRU was rejected as an invention (one PC's accumulated list is not a spec).
 
   > **Added 2026‑07‑17.** A whole class of affordance — **7 fields × every product** — that neither this
   > story nor the backlog had noticed: the earlier comparison read the field *set* and never the field
-  > *kind*. It is recorded as a ruling rather than a MUST precisely because option 1 is an **invention**
-  > (the vendor's list is not the project's values) and option 2 is a **loss**; both diverge, so someone has
-  > to choose. Evidence: `RESULTS.md` **F‑056** (the lists are IHC Visual's machine‑local `Data\*.txt` MRU
+  > *kind*. It was recorded as a ruling because option 1 (a project‑derived MRU) is an **invention**
+  > and option 2 (plain textboxes) is a **loss** — both diverge, so it needed a decision. **Decided
+  > 2026‑07‑17: option 2 — plain textboxes, granted C.** Evidence: `RESULTS.md` **F‑056** (the lists are IHC Visual's machine‑local `Data\*.txt` MRU
   > files — cumulative, per‑PC, and absent from the project file).
 
 **Output:**
@@ -406,19 +412,19 @@ later via properties), **so that** the generated reports (E9) describe the insta
 **Readiness:** Ready.
 
 > **[R5] closed 2026‑07‑17.** The *Name* gate's predicate is measured, not sampled — see the `locked` rule
-> above (`RESULTS.md` **F‑054**). Two **product rulings** are open (the combo‑box question and US-010's
-> category language), but neither blocks building the story: both are choices about an affordance, not
-> unknowns about the vendor.
+> above (`RESULTS.md` **F‑054**). Both earlier **product rulings** are now resolved — the combo‑box
+> affordance is **R‑2** (plain textboxes, granted C) and US-010's category language is **R‑1** (Full
+> English) — so nothing here blocks building the story.
 
 **Implementation status:** 🟡 Partly implemented — the note/cable/identification/light‑group fields exist,
-but six rules do not:
+but several rules do not:
 - ⚠ the **auto‑open** on insert is still in the code (the old behaviour); backlog **A‑14** removes it;
 - ⚠ the dialog is still titled generically *Product properties*; backlog **A‑8**;
 - ⚠ **`Placering` is absent** and a **`Location` room dropdown** is present instead; backlog **A‑13**;
 - ⚠ **Name is always editable**, ungated — and `locked` is currently a round‑trip‑only attribute that
   **nothing reads**, so this gate is its first consumer; backlog **A‑15**;
-- ⚠ **every field is a plain textbox** where the vendor offers a drop‑down (pending the ruling above);
-- ⚠ the **end‑user‑report checkbox has no equivalent**, so `enduser_report` cannot be set;
+- ✅ **plain textboxes** are the specified affordance (**R‑2**, granted exception C) — no longer a divergence to fix;
+- ⚠ the **end‑user‑report checkbox has no equivalent**, so `enduser_report` cannot be set; backlog **A‑23**;
 - ⛔ the **terminal section does not exist at all** (US-012); backlog **A‑12**.
 
 ---
@@ -429,8 +435,10 @@ but six rules do not:
 (and each output to an output‑module terminal, with an initial value), **so that** the model reflects
 the physical wiring and the controller can drive real hardware.
 
-**Scope excludes:** the product's documentation fields (US-011); wireless products, which talk directly to
-the controller and carry no terminal addressing (E4).
+**Scope excludes:** the product's documentation fields (US-011). ⚠ **Wireless products are *not* excluded on
+the grounds of "no terminal addressing"** — F‑057 measured the wireless dialog to be the *same* dialog with
+the *same* `Indgange`/`Udgange` grids, enabled by the product's shape. US-014 owns the wireless side; the
+grid and address spec below applies to both families.
 
 > **Extended 2026‑07‑16 (was: three scenarios referring to an "Inputs \<click to configure\>" section that
 > no story ever specified).** The old criteria named a UI that had never been described, so this story could
@@ -444,9 +452,13 @@ the controller and carry no terminal addressing (E4).
 ### Acceptance criteria (Business Rules)
 
 **Terminal grids — in the product properties dialog (US-011):**
-- MUST: The dialog lists the product's terminals in **two grids**, one for inputs (`Indgange`) and one for
-  outputs (`Udgange`), with one row per terminal the catalog defines for that product type. A product with
-  no inputs shows no input grid; likewise for outputs.
+- MUST: The dialog lists the product's terminals in **two grids that are both always present** — one for
+  inputs (`Indgange`) and one for outputs (`Udgange`) — with one row per terminal the catalog defines for
+  that product type. A product with no inputs shows an **empty** `Indgange` grid whose *Configure input*
+  button is **disabled** (never a *missing* grid); likewise for outputs. This holds for **wireless** products
+  too: F‑057 measured the wireless dialog to be the same dialog with the same two grids, enabled by the
+  product's shape (an input‑only wireless sensor has an enabled `Indgange` grid and a disabled `Udgange`
+  grid — US-014).
 - MUST: Each terminal row shows four columns: **name**, **address**, **wire colour** and **note**.
 - MUST: A terminal that has not been addressed shows an empty address cell, so the installer can see at a
   glance which terminals still need wiring.
@@ -473,12 +485,11 @@ the controller and carry no terminal addressing (E4).
   > measuring **today's** build — records **A‑4 itself is PARITY**: a live product double‑click opens
   > `Product properties` on a fresh app. Evidence: `RESULTS.md` **F‑052** (`RESULTS.md:199`).
   >
-  > ⚠ **Residual, and it is a real one.** Activation is bound to the item template's **icon+text**
-  > `StackPanel`, so a double‑click **right of a short label** falls through and **toggles** instead of
-  > activating (reproduced live on 3 localities of 10/30/35 chars). Whether IHC Visual activates on the
-  > **full row** is **unmeasured** — its harness clicks the label rect, so the blank strip was never tested —
-  > leaving F‑052 an open **E**, scheduled as **C16** in `tmp\compare3.md` §6.2. ⚠ F‑052's own warning
-  > stands: *"Do not 'fix' this from the OV side on inference — that is how F‑027's false MUST was born."*
+  > ✅ **Residual resolved 2026‑07‑17 (F‑084).** C16 was measured with an explicit x‑offset: **both** apps
+  > activate on the **label only**, and a double‑click in the blank strip right of the label is a **no‑op on
+  > both, with no accidental toggle** — parity. The earlier "OV falls through and toggles" concern is
+  > superseded, so **F‑052 is closed (E→A)** and this route carries no residual defect. Evidence:
+  > `RESULTS.md` **F‑084**.
   >
   > ⚠ Note what this story's dependency actually is: the terminal **grid row is in the properties dialog**,
   > not the tree, so E11's node handler was never the thing gating it. The blocker is that **the terminal
@@ -559,7 +570,8 @@ rule.
 
 **Insertion & constraint rules:**
 - MUST: A modem is inserted via right‑click a locality > *Products* > *Bus Produkter* > `<product>`
-  (US-010's corrected category structure). **No properties dialog opens on insert** (US-011).
+  (US-010's corrected category structure; the category label renders in English — *Bus Products* — under
+  the R‑1 Full‑English ruling). **No properties dialog opens on insert** (US-011).
 
   > **Corrected 2026‑07‑16 (was: "*Special products* > `<product>`; a properties dialog then opens").**
   > Two inherited errors: the modem is a **bus product**, which IHC OpenVisual re‑homes under *Special

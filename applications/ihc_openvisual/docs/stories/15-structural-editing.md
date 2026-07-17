@@ -322,9 +322,10 @@ Scenario: Reorder preserves identity and links
 
 - Verification method — **Demonstration** that a reorder changes sibling position in both panes and in
   report output, and preserves ids/links.
-- Note: sibling reordering is the same id‑preserving move as US-054 with an in‑container target
-  index. Reorder is offered by ***Move up* / *Move down***, and the US-044 non‑drag requirement is
-  **met**.
+- MUST (R‑4, decided 2026‑07‑17): reordering is offered by ***Move up* / *Move down*** (and cut/paste), and
+  **no drag‑to‑reorder route is provided** — IHC OpenVisual's deliberate no‑drag‑for‑structure stance. It is
+  the same id‑preserving move as US-054 with an in‑container target index, and the US-044 non‑drag
+  requirement is **met**.
 
 > **Corrected 2026‑07‑17 — "both" was never a live option.** The earlier R‑note left it open whether
 > reorder is offered "by drag, by a *Move up/down* command, or **both**", and asked for at least one
@@ -335,9 +336,11 @@ Scenario: Reorder preserves identity and links
 > do not belong on a link row"* (`alignment-backlog.md`, backlog **A‑5**). The US-044 requirement is
 > satisfied, not outstanding.
 >
-> One honest residual remains, and it is **not** an unknown about the vendor: *should* a drag reorder
-> route ever be **added** alongside *Move up*/*Move down*? That is a **product decision** — tracked as
-> ruling **R‑4** (`tmp\research3.md` §7), not an implementation detail to confirm here.
+> **Resolved 2026‑07‑17 (R‑4 — no drag reorder route).** The one residual — *should* a drag reorder route
+> ever be **added** alongside *Move up*/*Move down*? — was a **product decision**, now decided: **reorder
+> stays keyboard/menu only** (*Move up* / *Move down* + cut/paste), consistent with IHC OpenVisual's
+> deliberate no‑drag‑for‑structure stance. No drag‑reorder route will be built. (Ruling **R‑4**,
+> `tmp\research3.md` §7.)
 
 **Readiness:** Ready.
 

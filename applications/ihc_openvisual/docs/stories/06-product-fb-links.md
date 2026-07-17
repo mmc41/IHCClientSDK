@@ -88,16 +88,23 @@ Scenario: An illegal drag is refused and explained
 
 ### Business rules (which links are legal)
 
-A link is **legal if and only if all three hold**. The rule is about **roles in the drag** — what is dragged
-is the source, what it is dropped on is the target — and it is keyed on the pin's **element kind**, never on
-its tree label, its pane, or its name:
+A drag is **refused only when it hits a measured prohibition; every other shape — including pin kinds the
+corpus never exercised — is permitted.** The SDK's `LinkRoles` encodes the **negatives**, not an allow‑list,
+precisely so unmeasured kinds (`resource_flag`, the wireless‑output family `airlink_relay` / `airlink_dimming`
+/ …) stay legal rather than being silently forbidden (see the permissive MUST below). The rule is keyed on
+the pin's **role in the drag** — what is dragged is the source, what it is dropped on is the target — and its
+**element kind**, never its tree label, pane, or name. The three measured prohibitions:
 
-1. **The source produces a signal** — a product input (`dataline_input`, `airlink_input`), a product output
-   (`dataline_output`), or a function‑block output (`resource_output`).
-2. **The target consumes a signal** — a function‑block input (`resource_input`) or a product output
-   (`dataline_output`).
-3. **At least one end is a function‑block pin.** **Two product pins never link directly** — routing product
-   logic through a function block *is* the IHC programming model.
+1. **A consumer is never a source.** A function‑block input (`resource_input`) is a trigger the block
+   consumes, so it can never be the dragged pin (0 of 314 corpus halves).
+2. **A producer is never a sink.** A product input (`dataline_input` / `airlink_input` — a button the world
+   drives, 0 of 160) and a function‑block output (`resource_output` — the block's own result, 0 of 237) are
+   never a drop target.
+3. **Two product pins never link directly** — at least one end must be a function‑block pin, because routing
+   product logic through a function block *is* the IHC programming model.
+
+The table below is an **inventory of the measured pin kinds**, not an exhaustive type allow‑list: a kind
+absent from it is **unmeasured, therefore permitted**, not forbidden.
 
 | Pin kind | May be a source? | May be a target? | Why, physically |
 |---|---|---|---|
@@ -106,8 +113,9 @@ its tree label, its pane, or its name:
 | Block input (`resource_input` — `Kip`) | ❌ | ✅ | a block's trigger |
 | Block output (`resource_output` — `ON puls`) | ✅ | ❌ | a block's result |
 
-- MUST: A drag that fails any clause is **refused — nothing is written to the project** — and the refusal
-  says so. IHC Visual simply declines the drop silently; IHC OpenVisual's *Incompatible link* message is a
+- MUST: A drag that hits any of the three prohibitions above is **refused — nothing is written to the
+  project** — and the refusal says so. IHC Visual simply declines the drop silently; IHC OpenVisual's
+  *Incompatible link* message is a
   **granted exception** under the 2026‑07‑16 ruling (feedback where the vendor is silent) and **stays**.
 - MUST: The rule lives in **the SDK**, not in the view‑model, so a `.vis` stays valid whoever drives the
   editor — the GUI asks it before offering the drop, and the editor enforces it before writing anything.
@@ -135,19 +143,24 @@ its tree label, its pane, or its name:
 > ✅ **Implemented 2026‑07‑17** — the predicate is in the SDK (`Ihc.Vis.Schema.LinkRoles` + `ProjectEditor.
 > CanLink`), the app asks it for all three families, and the 15‑cell matrix is the test oracle.
 >
-> ⚠ **Three cases are deliberately unencoded because they are unmeasured** — do not "complete" the rule
-> from symmetry: the vendor's treatment of **flags** (`resource_flag`, which US-033b admits at both ends);
-> **scene links** (US-024, a fourth family this rule does not cover); and whether a block's output may feed
-> **its own** input. Measure before encoding, and keep US-033b's existing behaviour meanwhile.
-> **All three are scheduled: `tmp\compare3.md` §6.2 (C14a–c)**, driven together off the same 15‑cell matrix
-> that produced the rule.
+> ⚠ **One case is still unencoded because it is unmeasured** — do not "complete" the rule from symmetry. The
+> vendor's treatment of **flags** (`resource_flag`, which US-033b admits at both ends) was never driven
+> (**F‑082**, open **E**, next step **[P2]**); keep the SDK permissive on flags meanwhile. The other two
+> previously‑scheduled cells are now **closed**: a block's output feeding **its own** input — the vendor
+> **allows** it, so the same‑block refusal is dropped (**F‑080** amends A‑16, see US-033b); and **scene
+> links** (US-024) are a fourth family gated at the call site, not by this predicate — **no divergence**
+> (**F‑081**, see US-024). Evidence: `RESULTS.md` **F‑080**, **F‑081**, **F‑082**.
 
 ### Business rules (which half is which)
 
-- MUST: A link's two halves are written in the direction the drag implies: **the dragged pin — the source —
-  receives the *link‑to* half; the pin it is dropped on — the target — receives the *link‑from* half.**
-  Equivalently: a *link‑from* row on a pin means **that pin is fed by** the path it names; a *link‑to* row
-  means **that pin drives** it.
+- MUST: A link's two halves are written in the vendor's measured orientation, keyed on the pin's **role in
+  the drag**: the **source** (the dragged producer) owns the **`link_from_resource`** half; the **sink** (the
+  drop target consumer) owns the **`link_to_resource`** half. ⚠ **The element names read backwards from the
+  roles** — the producer owns the *from* half — so never derive the orientation from the intuitive meaning of
+  *from* / *to*; that misreading is exactly the F‑066 defect. The corpus is unanimous (product inputs own a
+  *from* half 160/160 and a *to* half never; block inputs 314/314 *to*; block outputs 237/237 *from*), and
+  the SDK's `LinkRoles` encodes it (a `resource_input` sink never owns a *from* half; a `dataline_input` /
+  `resource_output` source never owns a *to* half).
 - MUST: The **same** orientation the legality rule reads is the orientation the file is written in. Source
   and target must not be allowed to mean one thing to the check and the opposite to the write.
 
@@ -248,8 +261,8 @@ families**, and the **correct half orientation** (F‑058/F‑059/F‑066, shipp
 suite). ✅ The two corrected label rules are **done** (backlog **A‑7**): the `→`/`←` prefix and the
 `(saved)` suffix are both gone, and five existing tests that had **encoded the divergence as spec** were
 flipped rather than deleted. ⚠ **Two narrower label gaps remain**: the *Functions*-pane path drops the
-product's `(position)`, making same‑named products ambiguous (F‑061), and the `Scenarier/regulering` path
-renders a value token instead of the vendor's node name (F‑051).
+product's `(position)`, making same‑named products ambiguous (F‑061, backlog **A‑20**), and the
+`Scenarier/regulering` path renders a value token instead of the vendor's node name (F‑051, backlog **A‑19**).
 
 ---
 
@@ -300,9 +313,9 @@ not exist for this family (F‑058).
 
 ## US-024 — Create a scenario link
 
-**As an** IHC installer, **I want** to link a function block’s scenario output to a product’s scenario
-output and set the scene value in the dialog that appears, **so that** one press recalls a defined
-light setting across several outputs.
+**As an** IHC installer, **I want** to link a function block’s scenario output to a product’s Scenarier
+(scenes) container and set the scene value in the dialog that appears, **so that** one press recalls a
+defined light setting across several outputs.
 
 **Scope excludes:** authoring the block that provides the scenario output (E7).
 
@@ -318,15 +331,15 @@ Scenario: Only scenario-capable outputs accept a scene link
 
 Scenario: Create a dimmer scene link with level and ramp
   Given a function block with a scenario output and a dimmer product with a <pin> output
-  When I drag the block's scenario output onto the dimmer's scenario output
+  When I drag the block's scenario output (a `resource_scene` pin) onto the dimmer's Scenarier (scenes) container
   Then a dialog opens automatically for the scene value
   And I set "Light level" (light level, e.g. 0% for off, 80% for bright) and
     "Ramp time" (ramp time, minutes and seconds) and confirm
   Then the scene link is created
 
 Scenario: Create a relay/socket scene link with a state
-  Given a function block scenario output and a socket (<product>) scenario output
-  When I drag one onto the other
+  Given a function block scenario output (a `resource_scene` pin) and a socket (<product>) with a Scenarier container
+  When I drag the block's scene output onto the socket's Scenarier container
   Then the dialog asks for the socket state ON or OFF, and confirming creates the scene link
 ```
 
@@ -338,12 +351,13 @@ Scenario: Create a relay/socket scene link with a state
 
 ### Constraints
 
-- ⚠ **Scene links are a FOURTH link family, and US-022's legality rule does not cover them.** That rule was
-  measured over product↔block, product↔product and block↔block drags; the scene family (a scenario output
-  onto a scenes container) was **never driven on the vendor**, so its legality is **unmeasured**. The
-  "valid scene targets" scenario above — scenario‑marked outputs only — is this story's own rule and is
-  unaffected; what is unknown is whether IHC Visual refuses anything *within* that set. **Do not extend
-  US-022's predicate here by symmetry.** Evidence: `RESULTS.md` **F‑058** (scope note); backlog **A‑16**.
+- ✅ **Scene links are a FOURTH link family, resolved aligned at the call site (F‑081).** US-022's data‑flow
+  predicate does not cover them, and it does not need to: IHC OpenVisual constrains the scene family at the
+  **call site** — `CompleteSceneLinkAsync` is reached only from `LinkToHere` when the source tag is
+  `resource_scene` **and** the target `IsSceneTarget`; every other pairing falls through to `CanLink`. So an
+  illegal scene‑link shape **is not expressible**, there is **no divergence**, and no A‑16 extension or
+  vendor drive is needed. The lesson: *"no check inside method X"* ≠ *"ungated"* — check the callers.
+  Evidence: `RESULTS.md` **F‑081**.
 
 **Readiness:** Ready.
 
@@ -536,7 +550,7 @@ Scenario: Re-open a relay/socket scene state
 - Note: US-024 fixes the value dialog only at *creation*; whether a later edit
   of the stored scene value (vs. remove‑and‑recreate) is offered is to be confirmed during implementation.
   If no in‑place edit is offered, IHC OpenVisual SHOULD still provide one, as re‑dragging to change
-  a single value is a poor experience. (R‑note.)
+  a single value is a poor experience. (R‑note; the vendor side is unmeasured — next step **C29**.)
 
 **Readiness:** Ready.
 

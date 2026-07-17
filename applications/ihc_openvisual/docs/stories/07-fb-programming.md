@@ -71,22 +71,35 @@ Scenario: Switch focus between the two panes
 - MUST: **`Internal variables` is a programming‑mode section.** It appears when the block's program is open
   and **not** in the configuration view (E5, US-018) — internals are the block author's business, not the
   installer's.
+- MUST: **Programming mode on a *locked* (library) block is view‑only.** Its program **renders for reading**
+  — the lock never gates viewing — but **every authoring command is gated on the block being unlocked**:
+  variable / program / enum inserts and `Ctrl+I` / `Ctrl+U` pin inserts are **removed (not greyed)** on a
+  locked block, matching the vendor. Unlocking (US-020) is the separate, deliberate act that enables editing.
 
-> **Flagged 2026‑07‑17 — this story's rule is right and the app breaks it, but one capture is still open.**
-> The *Functions* pane was diffed deep against IHC Visual for the first time, and the vendor renders
-> `Internal variables` **0 times out of 117 blocks** in configuration mode while IHC OpenVisual renders it
-> **117 of 117** — **+495 rows**, the single biggest divergence in that pane. So the app contradicts a rule
-> its own story has carried since it was written.
+  > **Added 2026‑07‑17 (F‑076/F‑077, backlog A‑27).** The vendor lets you open a locked block's program to
+  > read it but **refuses to edit** it — the `&Program` insert command is **absent** from a locked FB's
+  > `Programmer` menu (2 items vs an unlocked FB's 3). IHC OpenVisual has **no such gate**: F3 → `Ctrl+I`
+  > inserted a pin into locked `_0x3de328` (11 → 12 pins) and `project save` **persisted a locked block the
+  > vendor could never produce** (an F‑077 D10 file‑integrity break). Implement it as a UI arm (remove the
+  > authoring commands) **and** an SDK guard (refuse mutating a `locked="yes"` block's internals, so the
+  > library block keeps matching its master whoever drives the editor). ⚠ Distinct from unlock — do **not**
+  > make unlock automatic, and viewing must still work. Evidence: `RESULTS.md` **F‑076**/**F‑077**; see
+  > US-020 (the FB‑structure arm) and US-068 (its menu already omits *Program* on a locked block).
+
+> **Closed 2026‑07‑17 — the rule is right; the app's breach is a plain implementation bug (A‑17).**
+> The *Functions* pane was diffed deep against IHC Visual, and the vendor renders `Internal variables`
+> **0 times out of 117 blocks** in configuration mode while IHC OpenVisual renders it **117 of 117** —
+> **+495 rows**, the single biggest divergence in that pane. So the app contradicts a rule its own story has
+> carried since it was written.
 >
-> ⚠ **Do not fix it from this story alone.** The rule above says *where* the section appears, and it was
-> written from the vendor's documentation — the same class of source that turned out to be **wrong** about
-> the arrow keys (US-045, F‑013). What is **measured** is only the configuration‑mode half (the vendor never
-> shows it there). The programming‑mode half could not be driven: IHC Visual's *Vis program* command would
-> not fire from the automation harness (`RESULTS.md` **F‑069**, an open **E** with a diagnosed next step).
-> **If the vendor shows internals in programming mode**, the fix is *hide the section in configuration mode*
-> and this rule stands as written. **If it never shows them anywhere**, the section should not exist in IHC
-> OpenVisual at all — a different and much larger change. Measure F‑069 first. Evidence: `RESULTS.md`
-> **F‑068**, **F‑069**.
+> ✅ **The remaining capture landed and the rule stands as written.** **F‑069** was measured **both** ways
+> (reclassified E→B): programming‑mode / TV1 shows **4 sections** including `Interne variable`
+> (`P01-TV1-programming-d5.json`), while configuration‑mode / TV2 shows **3** (`C10-TV2-config-d5.json`).
+> So the vendor **does** show internals in programming mode and **never** in configuration mode — exactly
+> this section rule. ⇒ the fix is *hide the section in configuration mode* (not "do not model it at all"),
+> which makes backlog **A‑17** an **implementation‑only** bug, not a spec gap. ⚠ The earlier caution — that
+> the rule came from vendor documentation (the F‑013 arrow‑key hazard class) — is retired: this is now
+> measured. Evidence: `RESULTS.md` **F‑068**, **F‑069** (driven in **F‑073**'s run).
 
 > **Confirmed 2026‑07‑16 — aligned.** Both apps re‑root **both** panes identically: IHC Visual to
 > `Input`/`Output`/`Indstillinger`/`Interne variable` + `Programmer`, IHC OpenVisual to
@@ -120,8 +133,10 @@ Scenario: Switch focus between the two panes
 **Readiness:** Ready.
 
 **Implementation status:** 🟡 Implemented — the mode **transition** is measured **aligned** with IHC Visual
-(F‑034). ⚠ **Except the `Internal variables` rule**: the section is shown in configuration mode too, where
-IHC Visual never shows it (F‑068) — pending the F‑069 capture that decides the shape of the fix.
+(F‑034). Two divergences remain: ⚠ the `Internal variables` section is shown in configuration mode too,
+where IHC Visual never shows it — now a settled implementation fix (**A‑17**; F‑068/F‑069 closed); and
+⚠ **there is no view‑only gate on a locked block** — authoring commands are not removed/refused on a
+`locked` block (**A‑27**; F‑076/F‑077).
 
 ---
 
@@ -277,9 +292,22 @@ Scenario: Nest a logic group for a compound expression
   the *true* commands, otherwise the *false* commands. Events and conditions are independent — a
   condition is only evaluated when an event occurs.
 
+### Business rules (tree label)
+
+- MUST: A conditional‑command node (`program_sub`, *"Betinget kommando"*) that carries a user‑set **`name`**
+  renders that name as its tree label — e.g. `Kip udgang`, `Tænd`, `Sluk` — falling back to the default
+  *Sub‑program* token (in English per the R‑1 ruling) **only when `name` is absent or default**. Today IHC
+  OpenVisual renders a fixed *Sub‑program* for every one, discarding the name and collapsing distinct
+  sub‑programs to indistinguishable rows.
+
+  > **Added 2026‑07‑17 (F‑075, backlog A‑26).** The vendor renders the stored name; IHC OpenVisual's
+  > `BuildSubProgramNode` (`MainWindowViewModel.cs:1433`) hard‑codes the default token. It is not cosmetic —
+  > it is the same failure family as F‑061 (a name that distinguishes siblings, dropped). Evidence:
+  > `RESULTS.md` **F‑075**.
+
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented (sub-program + conditions authoring; nested-branch sub-programs deferred).
+**Implementation status:** ✅ Implemented (sub-program + conditions authoring; nested-branch sub-programs deferred). ⚠ Sub‑program **name** rendering is a measured gap — backlog **A‑26** (F‑075).
 
 ---
 
@@ -447,9 +475,9 @@ Scenario: Persist a physical output's state
 
 ## US-033b — Link variables directly between function blocks
 
-**As an** IHC programmer, **I want** to link a variable in one function block directly to a variable in
-another function block, **so that** blocks can share state without routing every signal through physical
-product pins.
+**As an** IHC programmer, **I want** to link a variable in one function block directly to a variable in the
+same or another function block, **so that** blocks can share state — or a block can feed its own output back
+to its own input — without routing every signal through physical product pins.
 
 **Scope excludes:** product↔function‑block links (E6, US-022/US-023); the internal logic that consumes
 the linked variable (US-028/US-029).
@@ -463,9 +491,14 @@ Scenario: Link a variable from one block to a variable in another block
     target variable of block B (e.g. a "Flag" or "Input")
   Then a direct function‑block‑to‑function‑block variable link is created between them
 
+Scenario: Link a block's output back to its own input (self-link)
+  Given a function block whose output and input are both shown in the "Functions" pane
+  When I link the block's own output onto its own input (a feedback pattern)
+  Then the self-link is created — the same block at both ends is allowed
+
 Scenario: Compatible endpoints
-  Given I am linking variables between two blocks
-  Then a flag or output of one block may be linked to a flag or an input of another block
+  Given I am linking variables within the same block or between two blocks
+  Then a flag or output may be linked to a flag or an input of the same or another block
 
 Scenario: An incompatible pair is refused
   Given I link a source variable onto a target the rule does not allow (e.g. an output onto an output)
@@ -474,8 +507,9 @@ Scenario: An incompatible pair is refused
 
 ### Business rules (legality)
 
-- MUST: A block‑to‑block variable link is legal when the **source** is an output or a flag, the **target**
-  is an input or a flag, and the two are in **different** blocks. Anything else is refused and explained.
+- MUST: A block‑to‑block variable link is legal when the **source** is an output or a flag and the
+  **target** is an input or a flag — **including a block's output to its own input** (a legitimate feedback
+  pattern). Anything else is refused and explained.
 - MUST: This is the **same predicate** US-022 applies to the other link families — one rule, three families,
   not three parallel rules. US-022 owns the statement of it; this story is the block↔block case of it.
 
@@ -490,10 +524,11 @@ Scenario: An incompatible pair is refused
 > product link with no function block in between (US-022, F‑058/F‑059). The A‑16 fix **extended this
 > predicate** to the other families rather than writing a second one. Evidence: `RESULTS.md` **F‑060**.
 >
-> ⚠ **The flag half is unmeasured.** This story admits `Flag` at **both** ends and the vendor's flag
-> behaviour was **never driven** — no flag link exists in the measured corpus either. That is a **gap, not a
-> known divergence**: the rule is kept as written, and the SDK deliberately leaves flags permissive rather
-> than guessing. Measure before tightening it.
+> ⚠ **The flag half is unmeasured (F‑082, open E).** This story admits `Flag` at **both** ends and the
+> vendor's flag behaviour was **never driven** — no flag link exists in the measured corpus either. That is
+> a **gap, not a known divergence**: the rule is kept as written, and the SDK deliberately leaves flags
+> permissive rather than guessing. Next step **[P2]**: in programming mode, wire a flag as a link source and
+> as a target on the vendor and record whether any shape is refused. Evidence: `RESULTS.md` **F‑082**.
 
 ### AC illustrations
 
@@ -509,8 +544,10 @@ Scenario: An incompatible pair is refused
   value to the target, and **Test** of the refusals (the measured matrix lives in US-022).
 - IHC OpenVisual supports linking variables directly between compatible endpoints, but does not fix the
   exact drag gesture or any dialog; confirm the interaction detail during implementation. (R‑note.)
-- ⚠ Whether a block's output may feed **its own** input is **unmeasured**; the different‑blocks rule above
-  is kept meanwhile.
+- ✅ A block's output feeding **its own** input is **allowed** — measured on the vendor (`_0x511228`: output
+  *Udgang for åbne* → own input *Tryk for åbne*, undone cleanly), so the earlier different‑blocks refusal is
+  **dropped** (F‑080 amends A‑16). IHC OpenVisual's `ProjectSession.LinkPinsAsync` wrongly refuses it and the
+  SDK `CanLink` never carried the check. ⚠ Do **not** re‑tighten by symmetry.
 - The *Incompatible link* message is a **granted exception** — IHC Visual refuses silently. It stays
   (US-069's ruling); only its ergonomics are in scope for fixing. **The ergonomic defect is measured and
   named**: the modal has an **OK button only** and **ignores `Esc`** (`RESULTS.md` **F‑060**,
@@ -523,5 +560,9 @@ Scenario: An incompatible pair is refused
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented — and measured **aligned** with IHC Visual on every cell driven
-(F‑060). Epic E7 complete.
+**Implementation status:** 🟡 Implemented — the data‑flow legality rule is measured **aligned** on every
+cell driven (F‑060), **except** the self‑link case: IHC OpenVisual wrongly refuses a block's output → own
+input, which the vendor allows (F‑080) — dropping that refusal is a pending **A‑16** amendment; the flag end
+remains unmeasured (F‑082). Epic E7's authoring surfaces are now measured against the vendor (compare3), and
+the residual gaps are implementation‑level: **A‑17** (internal‑vars display), **A‑26** (sub‑program name)
+and **A‑27** (locked‑block gate).

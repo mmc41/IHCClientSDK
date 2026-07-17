@@ -336,7 +336,11 @@ crash or power loss does not cost me my recent work.
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Implemented, with one wiring gap.
+**Implementation status:** 🟡 Implemented, with one wiring gap — **but the gap is not yet named**. The three
+backup triggers (the 10‑minute timer, the every‑10th‑change event, and the delete‑on‑clean‑close rule) must
+be driven individually to name the one that is unwired — or the claim dropped if all three fire. This is an
+OpenVisual‑only self‑sweep with no vendor comparison to run (research3 §3 **C21.1**); an unnamed gap under a
+*Ready* story is unactionable.
 
 ---
 
@@ -410,11 +414,17 @@ foundation only.
   file.
   *(The `AppDomain` handler attaches the exception to the active `Activity` chain but records it via
   `Trace` only, not `ILogger`; command‑scoped errors do go through `ILogger`. Atomic write / no‑partial‑`.vis`
-  is provided by the SDK's atomic Save but is not asserted by an app‑level test.)*
+  is provided by the SDK's atomic Save but is not asserted by an app‑level test. Backlog **A‑25**: route
+  unhandled exceptions through `ILogger` and add an app‑level test asserting an injected error reaches
+  `ILogger` **and** leaves no partial `.vis`. A‑25 is app‑internal — neither a **B** nor a **C**, since a
+  vendor comparison can never surface it.)*
 - [~] MUST: Exported diagnostics and telemetry contain no `.vis` project content and no controller
   credentials.
   *(True by omission — the app tags no span with credentials or project content — but there is no active
-  scrubbing and no test asserting their absence; SDK span contents not independently verified.)*
+  scrubbing and no test asserting their absence; SDK span contents not independently verified. Next step —
+  research3 §3 **C21.2**: drive IHC OpenVisual and read the exported OTLP logs/spans via the `openobserve`
+  skill for `.vis` content or credentials; note that the SDK‑emitted spans the app does not author are the
+  half "by omission" cannot cover.)*
 - [x] SHOULD: When a telemetry self-check endpoint is configured, the application probes it once at
   start-up in the background (without delaying the workspace from opening) and reports an unreachable or
   rejecting endpoint to diagnostics, so a misconfigured collector fails visibly instead of dropping
@@ -454,7 +464,9 @@ foundation only.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented (MUSTs), with two verification gaps.
+**Implementation status:** 🟡 **Partly implemented** — the workspace/start‑up MUSTs are done, but **two
+MUSTs are only partial** (`[~]`): unhandled errors go via `Trace` not `ILogger` and no‑partial‑`.vis` is
+unasserted (backlog **A‑25**), and telemetry scrubbing has no active check or test (next step **C21.2**).
 
 ---
 

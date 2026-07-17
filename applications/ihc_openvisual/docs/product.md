@@ -1,4 +1,4 @@
-# This project
+# IHC OpenVisual
 
 > A modern, cross-platform, open-source desktop application called IHC OpenVisual for creating and editing IHC
 > home-automation project files (`.vis`) — tested to be binary compatible with the project files of
@@ -6,27 +6,27 @@
 
 ## Vision and Purpose
 
-This application exist to allow owners and installers of IHC installations to keep
+IHC OpenVisual exists to allow owners and installers of IHC installations to keep
 maintaining them for the long term — on any modern desktop OS, in English using an open codebase.
 
 ## Key Features
 
 | Feature | Benefit | Status |
 |---------|---------|--------|
-| Binary-compatible open/save of `.vis` projects | Files can move freely between This project and the vendor tool with zero risk of corruption — byte-identical round-trips are enforced by an automated oracle test suite (measured, SDK engine) | Available (SDK engine) |
+| Binary-compatible open/save of `.vis` projects | Files can move freely between IHC OpenVisual and the vendor tool with zero risk of corruption — byte-identical round-trips are enforced by an automated oracle test suite (measured, SDK engine) | Available (SDK engine) |
 | Full project editing: localities, products, function blocks, links | The complete authoring workflow — model rooms, place wired/wireless devices, add logic blocks, wire inputs to outputs — in one two-pane workspace: **what is installed on the left, what it does on the right**, linked across the middle | Available; **aligning** — measured against the vendor side by side, with the divergences tracked in `stories/` |
-| Function-block programming | Author control logic (typed variables, events, conditions, commands, enums, case structures) so installations do exactly what the household needs | Available; the mode transition and structure are measured aligned, the **authoring surfaces inside it are not yet compared** to the vendor |
+| Function-block programming | Author control logic (typed variables, events, conditions, commands, enums, case structures) so installations do exactly what the household needs | Available; mode transition and structure are measured aligned, and the **authoring surfaces inside it have now been compared** (compare3) — the divergences are tracked as A-17 (internal-variable display), A-26 (sub-program name) and A-27 (locked-block authoring gate) |
 | Built-in component catalog | The stock products and function blocks are embedded in the SDK — no vendor installation is required to create or extend a project | Available (SDK engine); **both halves are measured complete** — 72 function blocks and all 100 products. The gap is in the app's *insert menu*, which surfaces 88 of the 100 (F-055) |
 | Modern flat-line SVG icon language + English help | A themeable (light/dark), accessible UI that new users can actually read: 44 purpose-designed glyphs plus context-sensitive English help | Icons available; help planned |
 
 ## Architecture Overview
 
-This project is a thin Avalonia MVVM desktop front-end over the repository's `ihcclient` SDK; all
+IHC OpenVisual is a thin Avalonia MVVM desktop front-end over the repository's `ihcclient` SDK; all
 file parsing, editing, validation, catalog, and controller communication live in the SDK.
 
 ```mermaid
 graph LR
-    User["IHC installer /\ntechnical homeowner"] -->|edits projects| App["This project\n(Avalonia desktop app)"]
+    User["IHC installer /\ntechnical homeowner"] -->|edits projects| App["IHC OpenVisual\n(Avalonia desktop app)"]
     App -->|in-process API\nProjectAppService| SDK["ihcclient SDK\nIhc.Vis engine + controller services"]
     SDK -->|byte-faithful\nread/write| Vis[".vis project files"]
     SDK -.->|SOAP over HTTP/USB\noptional| Ctrl["IHC controller"]
@@ -41,13 +41,13 @@ live IHC controller access for project transfer via the SDK.
 
 ## Key Differentiators
 
-This project is the only open-source, cross-platform editor for IHC `.vis` project files that is
+IHC OpenVisual is the only open-source, cross-platform editor for IHC `.vis` project files that is
 tested to be binary compatible with the vendor's own tool, enabling installers and homeowners to
 maintain their installations without legacy Windows software.
 
 | Differentiator | How It Compares | Evidence |
 |---------------|----------------|----------|
-| Binary compatibility, proven | Generic XML editors break the format; This project's engine reproduces unchanged files byte-for-byte and mimics the vendor's save metadata | Committed oracle corpus incl. vendor-authored files; byte-fidelity test suites in `tests/safe_project_tests` (measured) |
+| Binary compatibility, proven | Generic XML editors break the format; IHC OpenVisual's engine reproduces unchanged files byte-for-byte and mimics the vendor's save metadata | Committed oracle corpus incl. vendor-authored files; byte-fidelity test suites in `tests/safe_project_tests` (measured) |
 | Cross-platform | The vendor tool runs on Windows only | .NET 10 + Avalonia; the underlying SDK already builds and tests on Windows/macOS/Linux in CI (measured for SDK; inferred for the app until it joins CI) |
 | No vendor install required | Legacy workflow needs the vendor product catalog on disk | Stock catalog embedded in the SDK (`BuiltInCatalog`), generated and byte-verified from vendor definitions (measured) |
 | Open source (Apache-2.0) | Vendor tool is closed and unsupported for extension | Public repository, permissive license |
@@ -67,10 +67,10 @@ maintain their installations without legacy Windows software.
 | Metric | Target | Measurement Method |
 |--------|--------|-------------------|
 | Round-trip fidelity | 100% byte-identical preserve-mode save across the committed oracle corpus, at app level | Automated byte-comparison tests (already green at SDK level — measured) |
-| Vendor interop | Projects created/edited in This project load and re-save cleanly in the vendor tool | Per-release acceptance check against the vendor application |
+| Vendor interop | Projects created/edited in IHC OpenVisual load and re-save cleanly in the vendor tool | Per-release acceptance check against the vendor application |
 | Cross-platform health | Build + headless UI test suite green on Windows, macOS, Linux | CI workflow — the app is in the solution and `safe_visual_tests` runs on Windows (measured); the **headless UI suite is Windows-only** and `safe_project_tests` is **not yet in CI** (both are the remaining gaps) |
 | Authoring coverage | Core epics (project lifecycle, localities, products, function blocks, links, programming) fully usable in the UI | Feature checklist per milestone + UI test coverage |
-| Vendor behavioural parity | Every measured divergence from IHC Visual is either fixed, or granted as a deliberate exception by a story that cites the ruling | Side-by-side census against the live vendor tool; ledger in `tmp/comptest/out/RESULTS.md`, backlog A-1…A-16 *(added 2026-07-17: byte compatibility was already a metric, behavioural parity was not — and it is where the real gaps turned out to be)* |
+| Vendor behavioural parity | Every measured divergence from IHC Visual is either fixed, or granted as a deliberate exception by a story that cites the ruling | Side-by-side census against the live vendor tool; ledger in `tmp/comptest/out/RESULTS.md`, backlog A-1…A-29 *(added 2026-07-17: byte compatibility was already a metric, behavioural parity was not — and it is where the real gaps turned out to be)* |
 
 ---
 
@@ -78,14 +78,14 @@ maintain their installations without legacy Windows software.
 
 ## Product Context
 
-This project lives in the IHCClientSDK mono-repository as `applications/ihc_openvisual` and is the
+IHC OpenVisual lives in the IHCClientSDK mono-repository as `applications/ihc_openvisual` and is the
 primary consumer of the SDK's project-edit capability. The heavy lifting already exists and is
 tested: the `Ihc.Vis` engine loads, validates, edits, creates, and saves `.vis` files with
 byte-exact fidelity; `BuiltInCatalog` embeds the stock product/function-block library;
 `ProjectAppService` is the application-facing facade and includes an optional bridge for
 downloading/uploading projects from/to a live controller. The repository also ships `ihc_lab`, an
 Avalonia GUI for exercising individual controller APIs, which established the repo's MVVM and
-headless-UI-testing conventions that This project follows.
+headless-UI-testing conventions that IHC OpenVisual follows.
 
 The application has an **authoring UI in place across all sixteen epics** — project lifecycle,
 localities, products, function blocks, links, programming mode, clipboard, undo/redo, reports and
@@ -240,7 +240,7 @@ block; manage a personal library.
 - FR-6.1: Create links by dragging one pin onto another (product input → block input; block output → product output); invalid targets are rejected with feedback.
 - FR-6.1a: **Link legality is a data-flow rule, enforced in the SDK.** A link is legal iff the **source** produces a signal, the **target** consumes one, and **at least one end is a function-block pin** — two product pins never link directly, because routing product logic through a block *is* the IHC programming model. The rule is keyed on the pin's element kind and the **roles in the drag**, never on "kind matching". *(**Added 2026-07-17** — this product had no legality rule, and that was the gap: FR-6.1 said "invalid targets are rejected" without ever defining invalid, and the app checked **one of the three link families**, silently accepting a button wired straight to a lamp with no block in between. Measured over **15 cells / 3 families / 0 falsifications**. ⚠ **Do not restate this as "inputs↔inputs, outputs↔outputs"** — that mispredicts 3 of the 15 cells; the *same pin pair* is accepted one drag direction and refused the other. Enforced in the SDK, not the view-model, so a `.vis` stays valid whoever drives the editor. Evidence: `RESULTS.md` **F-058**/**F-059**/**F-060**; backlog **A-16**. See US-022.)*
 - FR-6.2: Links display reciprocally: each end shows a link child naming the full path of the opposite end, with **direction carried by the row's icon** and the label left bare.
-- FR-6.2a: **A link's halves are written in the direction the drag implies** — the dragged pin (the source) receives the *link-to* half; the pin dropped on (the target) receives the *link-from* half. The check and the write must agree on which end is which. *(**Added 2026-07-17 after IHC OpenVisual was found writing every link's two halves backwards** — a shape absent from all 397 links across the 21 authored vendor projects. It survived because the SDK primitive was correct and byte-tested, the inversion lived only in the untested app layer, and **removing the redundant `→`/`←` label prefix (FR-6.2) made both orientations render identically in the tree** — so every tree-based check was blind to it by construction. Only saving the file and reading the XML could see it. Independently confirmed by IHC Visual's own link-row arrow icons. Evidence: `RESULTS.md` **F-066**, **F-070**. See US-022.)*
+- FR-6.2a: **A link's halves are written in the vendor's measured orientation** — the dragged pin (the source/producer) owns the `link_from_resource` half; the pin dropped on (the target/consumer) owns the `link_to_resource` half. ⚠ The element names read backwards from the roles (a producer owns the *from* half), which is why writing them the intuitive way round is exactly the F-066 defect. The check and the write must agree on which end is which. *(**Added 2026-07-17 after IHC OpenVisual was found writing every link's two halves backwards** — a shape absent from all 397 links across the 21 authored vendor projects. It survived because the SDK primitive was correct and byte-tested, the inversion lived only in the untested app layer, and **removing the redundant `→`/`←` label prefix (FR-6.2) made both orientations render identically in the tree** — so every tree-based check was blind to it by construction. Only saving the file and reading the XML could see it. Independently confirmed by IHC Visual's own link-row arrow icons. Evidence: `RESULTS.md` **F-066**, **F-070**. See US-022.)*
 - FR-6.3: Dropping onto a scene-capable output opens a dialog for the scene value (light level + ramp time for dimmers; on/off for relays) before the link is created.
 - FR-6.4: A single action jumps from a link row to its opposite end in the other pane.
 
@@ -250,7 +250,7 @@ block; manage a personal library.
 
 **Functional Requirements**:
 
-- FR-7.1: A per-block programming mode shows the block's variable sections (inputs, outputs, settings, internal variables) beside its program tree; entering/leaving it is a single action. **The configuration-mode view shows less**: a section with no members is not drawn, and **internal variables are a programming-mode section only**. *(**Clarified 2026-07-17.** The first deep diff of the Functions pane found IHC OpenVisual drawing **+525 rows** the vendor does not — and ⭐ **the data underneath is perfect** (24/24 localities, every block count matching, 0 pin-count mismatches across 321 section pairs): the whole delta is chrome, accounted for exactly by these two rules. The empty-section rule is measured 30/30. ⚠ The internal-variables rule is measured only for **configuration** mode (vendor: 0 of 117 blocks); whether the vendor shows them **inside** programming mode could not be driven, and it decides the fix's shape — hide the section, or do not model it at all. Evidence: `RESULTS.md` **F-068**; **F-069** (open). See US-018/US-026.)*
+- FR-7.1: A per-block programming mode shows the block's variable sections (inputs, outputs, settings, internal variables) beside its program tree; entering/leaving it is a single action. **The configuration-mode view shows less**: a section with no members is not drawn, and **internal variables are a programming-mode section only**. **Entering programming mode on a locked (stock) block is view-only**: the program renders for reading, but every authoring command is gated on the block being unlocked and is **removed, not greyed**, matching the vendor. *(**Clarified 2026-07-17.** The first deep diff of the Functions pane found IHC OpenVisual drawing **+525 rows** the vendor does not — and ⭐ **the data underneath is perfect** (24/24 localities, every block count matching, 0 pin-count mismatches across 321 section pairs): the whole delta is chrome, accounted for exactly by the display rules. The empty-section rule is measured 30/30. The internal-variables rule is now measured **both** ways: the vendor shows internal variables in programming mode (four sections) and never in configuration mode (three), so the rule stands as written — closing **F-069** (E→B) makes A-17 an implementation-only bug. The **view-only locked block** is F-076/F-077 → backlog **A-27**: the vendor drops the program-insert command from a locked block's menu, while IHC OpenVisual currently lets an edit through and can even save a locked block the vendor could never produce. Evidence: `RESULTS.md` **F-068**/**F-069**/**F-076**/**F-077**. See US-018/US-020/US-026.)*
 - FR-7.2: Add typed variables across the full resource palette (on/off, counters, integers, decimals, timers, time/date/weekday, temperature, light, humidity, energy, enumerations), with section placement rules enforced and per-variable name/note/initial value/persist-on-power-loss properties.
 - FR-7.3: Build programs by dragging variables onto event/condition/command groups and picking the applicable operation: events are OR-combined; condition groups support AND/OR/NOT and nesting; commands execute in order, with separate true/false branches for conditional sub-programs.
 - FR-7.4: Define project-global enumeration types with ordered named values; use case structures keyed on eligible variable types, with an else branch.
@@ -362,7 +362,7 @@ compiled-in data.
 | Product | A physical device definition (switch, lamp output, sensor, …) instantiated from the catalog into a locality. Lives in the **Installation (left)** pane. |
 | Function block | A reusable logic component with typed pins, variables, and programs. Lives in the **Functions (right)** pane. |
 | Pin / resource | An addressable input/output/variable on a product or block; the endpoint of links. A **product's** pins are declared by its catalog type and are **not** independently editable — not deletable, not reorderable (FR-8.4). A **block's** variables are authored (F7). |
-| Link | A **directed** connection routing a signal from a **source** pin to a **target** pin. Its two halves record the direction: the source carries the *link-to* half, the target the *link-from* half. Legality is a data-flow rule, not a kind match (FR-6.1a). |
+| Link | A **directed** connection routing a signal from a **source** pin to a **target** pin. Its two halves record the direction: the **source** carries the `link_from_resource` half, the **target** the `link_to_resource` half — the element names read backwards from the roles (FR-6.2a). Legality is a data-flow rule, not a kind match (FR-6.1a). |
 | Scene / scenario link | A link carrying a preset (light level + ramp, or on/off) recalled by one trigger. A **distinct link family** — the data-flow rule in FR-6.1a is measured over the other three and does not cover it. |
 | Catalog | The library of stock product and function-block definitions; embedded in the SDK. Distinct from the **insert menu**, which is the app's *presentation* of the catalog and can differ from it — as it does today (see Assumptions). |
 | Locked (stock) block | A catalog-supplied block that is read-only until explicitly unlocked. The unlock is silent and **undoable** (FR-5.2). |
@@ -394,7 +394,7 @@ gap, and it is the more consequential one: it is what guards binary compatibilit
 |-----------|-------|-------|-----------|-------------------|
 | Engine (project files) | `tests/safe_project_tests` | Byte fidelity, editing, catalog, validation against oracle corpus | Automated | Locally on every change; CI inclusion planned |
 | Unit | `tests/safe_unit_tests` | SDK + app-service/view-model logic, controller-free, mocked API services | Automated | Every PR, all three OSes (CI) |
-| UI (headless) | `tests/safe_visual_tests` | This project windows/view-models under headless Avalonia | Automated | Every PR, Windows (CI) |
+| UI (headless) | `tests/safe_visual_tests` | IHC OpenVisual windows/view-models under headless Avalonia | Automated | Every PR, Windows (CI) |
 | Controller integration | `tests/safe_integration_tests` | SDK against a real controller, state-safe operations only | Automated, on demand | Manual, before releases |
 | Vendor interop acceptance | manual procedure | Open/re-save app-authored projects in the vendor tool | Manual | Per release |
 
@@ -406,7 +406,7 @@ integration suite may talk to one at all.
 | Oracle Type | Application | Example |
 |------------|-------------|---------|
 | Committed reference files (byte comparison) | Round-trip and authoring fidelity | Loading an oracle `.vis` and preserve-saving must reproduce the file byte-for-byte; scripted edit sequences must reproduce vendor-saved result files exactly |
-| Vendor application as ultimate oracle | Interop acceptance | The vendor tool must open, accept, and cleanly re-save files This project wrote (oracle corpus files were authored/verified against the live vendor tool) |
+| Vendor application as ultimate oracle | Interop acceptance | The vendor tool must open, accept, and cleanly re-save files IHC OpenVisual wrote (oracle corpus files were authored/verified against the live vendor tool) |
 | Invariant checking | Editing semantics | Id allocation is monotonic and never reuses freed ids; links are always reciprocal; validator findings for known-bad inputs |
 | Known-answer tests | Templates and catalog | A new empty project equals the known template output; embedded catalog components byte-match their vendor definitions |
 | Property-based properties | Serialization robustness | Encode/decode round-trip properties over generated text (CsCheck) |
@@ -437,7 +437,7 @@ use faked services behind a reserved mock endpoint scheme.
 | Repository / Path | Purpose | Access |
 |-----------|---------|--------|
 | <https://github.com/mmc41/IHCClientSDK> | Mono-repo containing the app and SDK | Public GitHub |
-| `applications/ihc_openvisual/` | This application (Avalonia UI, assets, docs) | In repo |
+| `applications/ihc_openvisual/` | The IHC OpenVisual application (Avalonia UI, assets, docs) | In repo |
 | `ihcclient/` (`src/vis/`, `src/app/services/`) | Project-file engine, catalog, `ProjectAppService` backend | In repo |
 | `tests/safe_visual_tests/`, `tests/safe_project_tests/`, `tests/safe_unit_tests/` | App UI, engine, and unit test suites | In repo |
 | `utilities/ihc_lab/` | Sibling Avalonia app; established MVVM + headless-test conventions | In repo |
@@ -447,7 +447,7 @@ use faked services behind a reserved mock endpoint scheme.
 | Document | Location | Status |
 |----------|----------|--------|
 | **Epics & user stories (E1–E16, US-NNN)** — the implementation spec; **start here for any feature** | `applications/ihc_openvisual/docs/stories/` | Current (2026-07-17) |
-| **Vendor comparison ledger** — every measured IHC Visual ↔ IHC OpenVisual divergence, classified, with the alignment backlog A-1…A-16 | `tmp/comptest/out/RESULTS.md`, `alignment-backlog.md` | Current (2026-07-17); working notes, not a deliverable |
+| **Vendor comparison ledger** — every measured IHC Visual ↔ IHC OpenVisual divergence, classified, with the alignment backlog A-1…A-29 | `tmp/comptest/out/RESULTS.md`, `alignment-backlog.md` | Current (2026-07-17); working notes, not a deliverable |
 | Repository architecture overview | `ARCHITECTURE.md` | Current (2026-07-10) |
 | Icon design guidelines (flat-line SVG family) | `applications/ihc_openvisual/docs/icons_design.md` | Current |
 | Icon selection reference (`.vis` element → SVG) | `applications/ihc_openvisual/docs/icon_codes.md` | Current |
@@ -455,7 +455,7 @@ use faked services behind a reserved mock endpoint scheme.
 | Repo README (project status, disclaimers, setup) | `README.md` | Current |
 | Agent/contributor instructions | `CLAUDE.md` | Partially stale (predates some SDK changes) |
 | Simulation-engine design (out of scope, not slated — F10) | Not yet created | TBD |
-| Keymap specification (FR-2.3) | Not yet created | TBD |
+| Keymap specification (FR-2.3) | Not yet created | TBD — now higher priority (keyboard gaps A-6 F4-jump, A-9/A-10 confirm-dialog keys, A-28 F6 pane-switch) |
 
 ## Architecture Diagrams
 

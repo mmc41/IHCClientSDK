@@ -157,6 +157,13 @@ wireless dialog is known to be the wired one — is **also missing the terminal 
 - SHOULD: **Load characteristic** (load characteristic) — enumeration: **Inductive | Capacitive |
   Auto** (Auto detects the connected load).
 
+> ⚠ **Added 2026‑07‑17 — the ranges and defaults above are vendor‑*documentation*‑sourced, not measured
+> (C28).** Every value here (200–60000 ms / default 700; 2–10 s; 0–100 %; Inductive | Capacitive | Auto)
+> comes from the vendor's written spec — the same class of source that was caught **inverting the arrow
+> keys** (US-045, F‑013). Verify them against IHC Visual's **actual** advanced‑dimmer dialog before relying
+> on them; this needs no hardware (it is a properties dialog), which makes it the one E4 item that is **not**
+> blocked on the wireless API. Next step: research3 §4 **C28**.
+
 **Output:**
 - Dimmer behaviour parameters stored with the product and used at runtime.
 
@@ -173,7 +180,8 @@ wireless dialog is known to be the wired one — is **also missing the terminal 
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented.
+**Implementation status:** ✅ Implemented — ⚠ the field ranges/defaults are doc‑sourced and **unverified**
+against the vendor dialog (C28).
 
 ---
 

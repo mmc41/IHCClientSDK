@@ -178,6 +178,13 @@ Scenario: Decline persistence for a one-off import
   When I turn the "persist" option off before confirming
   Then the components are available in the current session only
   And nothing is copied into the app-data catalog folder, so they are absent after a restart
+
+Scenario: A file-name collision keeps both files (R-7)
+  Given a persisted catalog file named "MyDimmer.def" already exists in the app-data catalog folder
+  When I import another file named "MyDimmer.def" with persistence on
+  Then the existing persisted file is left untouched
+  And the incoming file is persisted under a disambiguating suffix (e.g. "MyDimmer (1).def")
+  And both definitions are available for insertion
 ```
 
 ### AC illustrations
@@ -196,12 +203,11 @@ Scenario: Decline persistence for a one-off import
   `IHC OpenVisual` + `catalog` — i.e. **`%APPDATA%\IHC OpenVisual\catalog`** on Windows. The constructor
   loads it on startup (`ProjectSession.cs:63`), which is this story's second AC. An override is accepted
   via the `catalogDir` constructor argument (tests use it).
-- ⚠ **Open ruling (R‑7) — the file‑name collision policy.** How a persisted file that collides by file
-  name with an existing persisted file is handled — **overwrite the file vs keep both** — is **not an
-  implementation detail** and must not be settled by whoever writes the code. **No vendor can arbitrate
-  it**: runtime catalog import is an IHC OpenVisual‑only capability, so there is nothing to measure. **No
-  AC above covers the collision case.** It is a **product‑owner ruling**, tracked as **R‑7**
-  (`tmp\research3.md` §7 — recorded there as *"E16's only true ruling"*). Decide it, then give it an AC.
+- **Resolved 2026‑07‑17 (R‑7 — keep both on file‑name collision).** When a persisted import collides by file
+  name with an existing persisted file, IHC OpenVisual **keeps both**: the incoming file is written under a
+  disambiguating suffix rather than overwriting the existing one, so an earlier import is **never silently
+  lost**. (Runtime catalog import is an IHC OpenVisual‑only capability, so no vendor arbitrates this — it was
+  a product‑owner ruling, `tmp\research3.md` §7.) The collision case now has its own AC scenario above.
 
 **Readiness:** Ready.
 

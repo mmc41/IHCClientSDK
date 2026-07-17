@@ -69,9 +69,11 @@ colour, **so that** I can read the installation, function and program trees at a
 - [ ] MUST: **Product pins** are distinct by direction: a **product input** (an *icon* of an arrow pointing
   into the block) and a **product output** (an *icon* of an arrow pointing out), in the *Installation*
   pane. The direction is the **glyph**, not a character in the label text.
-- [ ] MUST: **Link rows** are distinct: **Link to…** ("link to", source side) and **Link from…** ("link
-  from", target side), appearing in both panes. Each row's **icon** carries the direction and its **label
-  is the bare full path** of the other end (US-022).
+- [ ] MUST: **Link rows** are distinct by direction, carried by the row's **icon**: an **outgoing** row sits
+  on a **source** pin (which owns the `link_from_resource` half) and an **incoming** row on a **sink** pin
+  (which owns the `link_to_resource` half); both appear in both panes, and each row's **label is the bare
+  full path** of the other end (US-022). ⚠ The element names read backwards from the roles — a source owns
+  the *from* half — so never map "source" to the *to* half (the F‑066 trap).
 - [ ] MUST: The direction the icon states is the link's **real** direction: a **`→` (outgoing) glyph means
   the row's own pin is the signal's SOURCE**, and **`←` (incoming) means it is the SINK**. The icon is the
   only thing that says so — so if the underlying orientation is wrong, the icon is wrong and **nothing else

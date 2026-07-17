@@ -8,8 +8,9 @@ status: draft
 
 > **Implementation status:** 🟡 Mostly implemented — the embedded FB catalog is measured **aligned** with
 > IHC Visual (F‑042) and *Unlock* is now measured aligned too (US-020, F‑064/F‑065; its old open
-> measurement is closed). ⚠ One divergence remains: the *Functions* pane **renders containers IHC Visual
-> hides** (US-018).
+> measurement is closed). ⚠ Two divergences remain: the *Functions* pane **renders containers IHC Visual
+> hides** (US-018, backlog A‑17/A‑18), and IHC OpenVisual has **no view‑only gate on a locked block**
+> (US-020, backlog A‑27).
 
 > **Current scope:** ✅ **In scope** — inserting, structuring and unlocking function blocks and
 > managing FB folders is project CRUD.
@@ -61,7 +62,8 @@ Scenario: A block bundles its variables and program
   Given a library block has been inserted
   When I expand it
   Then it shows its Input/Output/Settings sections with typed pins carrying default values
-  And (after unlocking, US-020) its program can be opened in programming mode (US-026)
+  And its program can be opened for reading in programming mode while it is still locked (US-026)
+  And unlocking (US-020) is required only to edit it, not to view it
 ```
 
 ### Business rules (the function‑block catalog)
@@ -104,16 +106,15 @@ block owns. Two rules decide it:
 > in IHC OpenVisual (+495 rows). Same family as US-010's hidden product rows: *the vendor hides; IHC
 > OpenVisual renders the file faithfully.* Evidence: `RESULTS.md` **F‑068** (which closes **F‑062**).
 >
-> ⚠ **One open measurement, and it decides the shape of the second rule — do not implement past it.**
-> Whether IHC Visual shows `Internal variables` **inside programming mode** could not be driven (the
-> vendor's *Vis program* command would not fire from the automation harness — `RESULTS.md` **F‑069**, an
-> open **E** with a diagnosed next step). If it does, the fix is *hide the section in configuration mode*,
-> as written above. If it never shows internals anywhere, the section should not exist in IHC OpenVisual at
-> all. US-026 already specs the former — *"Internal variables (visible only in programming mode)"* — and
-> that rule predates the comparison, so it is **corroboration, not proof**: it was written from the vendor's
-> documentation, and this workstream has already caught that documentation contradicting the app (US-045's
-> arrow keys). **Measure F‑069 before touching the section.** The empty‑section rule is independent and can
-> ship now.
+> ✅ **Closed 2026‑07‑17 — the second rule is measured, and both A‑18 arms are settled.** Whether IHC Visual
+> shows `Internal variables` **inside programming mode** is now driven (**F‑069**, reclassified E→B): the
+> vendor shows it in programming mode (4 sections) and **never** in configuration mode (3), so the fix is
+> *hide the section in configuration mode* exactly as written above — backlog **A‑17** is
+> implementation‑only, not a spec choice. US-026's rule (*"visible only in programming mode"*) is therefore
+> confirmed by measurement, no longer resting on the vendor's documentation. The empty‑section suppression
+> (**A‑18**) also ships without its earlier one‑directional caveat: **F‑086** closed the two
+> previously‑untested arms (the converse *OV‑twin‑empty ⇒ vendor‑omits*, and the empty `Output` cell).
+> Evidence: `RESULTS.md` **F‑068**, **F‑069**, **F‑086**.
 
 ### AC illustrations
 
@@ -126,12 +127,14 @@ block owns. Two rules decide it:
 - A block with no input pins shows only `Output` and `Settings` — no empty `Input` row — and shows no
   `Internal variables` row until its program is opened (US-026).
 
-**Readiness:** Ready — the empty‑section rule is measured and unblocked. The `Internal variables` rule waits
-on one capture (F‑069) that does not block it.
+**Readiness:** Ready — both rendering rules are now measured (F‑068 / F‑069 / F‑086); the fixes are
+implementation‑only (A‑17, A‑18).
 
 **Implementation status:** 🟡 Implemented (insert + catalog, both measured aligned — F‑042) — ⚠ **except the
 section‑rendering rules**: IHC OpenVisual draws all four sections on every block including empty ones and
-including `Internal variables`, which IHC Visual never shows in configuration mode (F‑068).
+including `Internal variables`, which IHC Visual never shows in configuration mode (F‑068). The fixes are now
+fully specified — backlog **A‑17** (hide `Internal variables` in configuration mode) and **A‑18** (suppress
+empty containers).
 
 ---
 
@@ -147,6 +150,7 @@ Scenario: Insert an empty block into a locality
   Given a locality is selected in the "Functions" pane, in configuration mode
   When I right-click it and choose "Empty function block", or press Ctrl+Shift+B
   Then an empty block named "Empty block" is inserted under the locality
+  And the view enters programming mode on the new block (inserting an empty block auto-enters it)
   And the status bar reads: Empty block was inserted under <locality>
 
 Scenario: An empty block exposes the four variable sections
@@ -171,13 +175,12 @@ Scenario: Editing the block enters programming mode
 
 ### Constraints
 
-- ⚠ **Open, and deliberately not answered here: what a *brand‑new empty* block looks like in configuration
-  mode.** US-018's empty‑section rule says IHC Visual omits a section with no members — and an empty block's
-  sections are *all* empty, so read literally the rule says such a block shows no sections at all. That may
-  well be right, but it is **an extrapolation, not a measurement**: the rule was measured on 117 populated
-  library blocks, and no empty block was inserted on the vendor. The scenario above is scoped to
-  **programming mode**, where the four sections are the authoring surface and the question does not arise.
-  **Measure an empty block on the vendor before making the configuration‑mode view follow the rule.**
+- ✅ **Measured 2026‑07‑17 (F‑086) — a brand‑new empty block shows 0 sections in configuration mode, and
+  inserting one auto‑enters programming mode.** The all‑empty `Tom blok` renders **zero** sections in the
+  vendor's configuration‑mode tree — the empty‑section rule (US-018) applies to *every* container, including
+  the previously‑untested `Output` — so it is no longer an extrapolation. And `fb insert-empty` **auto‑enters
+  programming mode** (both panes re‑root to the block, all four sections shown); the separate `F3` is only
+  for *re‑entering* after leaving. Evidence: `RESULTS.md` **F‑086**.
 
 **Readiness:** Ready.
 
@@ -219,6 +222,17 @@ Scenario: Locked blocks resist internal edits
   not a one‑way door.
 - MUST: Unlocking raises **no warning**. It needs none: undo is the protection, and it is a better one than
   a dialog because it also covers the installer who meant to unlock and changed their mind afterwards.
+- MUST: **A locked (library) block is view‑only until unlocked, and the guard is real.** Its structure and
+  program **render for reading**, but every internal edit — inserting/removing pins or variables, editing the
+  program — is **refused** on a `locked="yes"` block, both by removing the authoring commands (US-068) and by
+  an **SDK guard**, so a library block keeps matching its master whoever drives the editor.
+
+  > **Added 2026‑07‑17 (F‑076/F‑077, backlog A‑27).** Measured: the vendor lets you *view* a locked block's
+  > program but **refuses to edit** it (its `Programmer` menu drops the `&Program` insert — 2 items vs 3).
+  > IHC OpenVisual has **no such gate today** — F3 → `Ctrl+I` inserted a pin into locked `_0x3de328` and the
+  > project **saved a locked block the vendor could never produce** (an F‑077 D10 file‑integrity break). This
+  > is the FB‑structure arm of A‑27; US-026 carries the programming‑mode arm. ⚠ Do **not** make unlock
+  > automatic — viewing must still work. Evidence: `RESULTS.md` **F‑076**/**F‑077**.
 
 > **⭐ Rewritten 2026‑07‑17 — this story specced a warning that should never be built, and the spec is
 > deleted rather than implemented.** *(Was: "the unlock is warned about first, because it cannot be undone",
@@ -277,11 +291,12 @@ Scenario: Locked blocks resist internal edits
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented — and **measured aligned** with IHC Visual: the unlock is silent on
+**Implementation status:** 🟡 Implemented — the *unlock* is **measured aligned** with IHC Visual: silent on
 both apps (**F‑043** for the vendor half, **F‑064** for the IHC OpenVisual half — F‑064 measures only the
 latter). IHC OpenVisual's undo of it is **verified good** and better than the vendor's: the block re‑locks and
 the app survives, where IHC Visual crashes (F‑065 / F‑046). The story's former "does it warn?" TBD is closed:
-**it does not, by design.**
+**it does not, by design.** ⚠ **But the read‑only gate is not enforced**: IHC OpenVisual currently lets an
+edit through into a `locked` block (US-068's pin insert, then saved) — backlog **A‑27** (F‑076/F‑077).
 
 ---
 
