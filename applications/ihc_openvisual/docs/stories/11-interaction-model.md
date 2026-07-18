@@ -96,6 +96,14 @@ bar, and shortcut — **so that** I can work whichever way suits the moment.
   > IHC Visual offers `&Klip`/`&Kopier` on locality, product and function block. This is a **route gap, not
   > a missing feature**, which is exactly what this criterion exists to prevent — so it is raised to MUST
   > and made explicit rather than left to inference. Evidence: `RESULTS.md` **F‑009**; backlog **A‑5**.
+  >
+  > **Added 2026‑07‑18 (comparereal, F‑088) — a second concrete violation of this MUST, now ✅ resolved
+  > (A‑35).** The tree context menu exposed an *Insert product > Bus products* category, but the menu‑bar
+  > *Insert > Products* submenu omitted it — so the bus products (`IHC LED Dimmer 2 kanaler`, `SMS Modem`)
+  > were insertable by right‑click only, exactly the "action in one route only" this criterion forbids.
+  > **A‑35** added the missing Bus `MenuItem` to the menu‑bar submenu (`BusProductsMenu`, after Wireless in
+  > `MainWindow.axaml`), so both routes now expose Bus — route‑equivalence restored. Evidence: **F‑088**
+  > (comparereal study); the product‑side detail is in `03-datalinie-products.md` US-010.
 
 ### AC illustrations
 

@@ -2219,6 +2219,39 @@ public class MainWindowViewModelTests
         });
     }
 
+    // A-36 / F-089 (comparereal): OpenVisual authors an enumerator *type* only as the typedef of a variable added to a
+    // Settings section — even an EMPTY (0-state) type like gold's bare `TestEnum` is created bound to a variable, never
+    // as a bare, unreferenced enum_definition. This matches the vendor, which the comparereal run likewise found produced
+    // no bare enum type (RESULTS.md T-28 / F-089), so the two apps stay aligned. Boundary case: zero states.
+    [Test]
+    public async Task CreateEmptyEnum_BindsTypeToVariable_NoBareType()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        var settingsSectionId = vm.InstallationNodes[0].Children[2].ElementId!.Value;   // "Settings"
+        harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("TestEnum", System.Array.Empty<string>());
+
+        vm.SelectNode(vm.InstallationNodes[0].Children[2]);
+        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Command!).ExecuteAsync(null);
+
+        var enumVar = harness.Session.Current!.FindById(settingsSectionId)!.ChildrenOrEmpty()
+            .FirstOrDefault(c => c.Tag == "resource_enum" && c.GetAttribute("name") == "TestEnum");
+        Assert.That(enumVar, Is.Not.Null, "an empty enum type is authored bound to a referencing variable, not as a bare type");
+        ElementId.TryParse(enumVar!.GetAttribute("typedef"), out var defId);
+        var def = harness.Session.Current!.FindById(defId)!;
+        Assert.Multiple(() =>
+        {
+            Assert.That(def.GetAttribute("name"), Is.EqualTo("TestEnum"));
+            Assert.That(def.ChildrenOrEmpty().Count(c => c.Tag == "enum_value"), Is.EqualTo(0),
+                "the empty type carries zero states, exactly like gold's TestEnum");
+            Assert.That(harness.Session.Current!.FindParent(defId)!.Tag, Is.EqualTo("enum_definitions"),
+                "the type lands in the global container but is reachable only via its variable's typedef — no bare-type authoring route (F-089)");
+        });
+    }
+
     // US-030: editing an enum variable's type appends only the newly-listed states (append-only, no duplicates).
     [Test]
     public async Task EditEnum_AppendsNewStatesOnly()

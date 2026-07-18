@@ -1,6 +1,6 @@
 ---
 version: 0.3.1
-last-updated: 2026-07-17
+last-updated: 2026-07-18
 status: draft
 ---
 
@@ -130,6 +130,14 @@ The insert menu's categories are IHC Visual's, and the vendor's structure is the
 > menu‑building gap, not a catalog gap**: the SDK's embedded catalog already carries all 100 products,
 > including all 12 missing ones, so no catalog work is implied. Evidence: `RESULTS.md` **F‑055** (supersedes
 > F‑028's category‑only reading and closes **E‑7**); backlog **A‑11**.
+>
+> **Refined 2026‑07‑18 (comparereal, F‑088).** The VM now builds `BusProductsMenu`, and the tree
+> **context menu** exposes the `Bus Produkter` category — `IHC LED Dimmer 2 kanaler` and `SMS Modem` are
+> reachable via right‑click, so the "appears nowhere at all" reading above is now closed for the
+> context‑menu route. ✅ **Closed 2026‑07‑18 (A‑35):** the **menu‑bar** *Insert > Products* submenu now
+> also binds `BusProductsMenu` after Wireless (`MainWindow.axaml`), so both routes expose the Bus category —
+> the route‑equivalence violation (US-044, `11-interaction-model.md`) is resolved. Evidence: **F‑088**
+> (comparereal study, `tmp\comparereal\out\RESULTS.md`); extends **F‑055** / backlog **A‑11**, **A‑35**.
 
 ### Business rules — how the tree renders a product
 
@@ -238,6 +246,9 @@ Visual deliberately does **not** draw. The tree shows the vendor's row set, by t
 - A sensor product with logging sub‑resources expands to its catalog-defined pins (`<pin>`), some
   carrying a catalog default value shown inline as `name = value` — i.e. a product’s fixed
   sub‑resources and their default values are displayed.
+- A scene‑capable product (e.g. `Lampeudtag`, `Stikkontakt`, `Dimmer Universal`) also auto‑creates a
+  **`Scenarier`** scene container (rendered `Scenarier/regulering` on dimmers) on insert — a node ready
+  to hold scenes, with no scene members until authored.
 
 ### Constraints
 
@@ -255,6 +266,11 @@ embedded catalog already carries all 100 products, including all 12 missing ones
 `MainWindowViewModel.BuildProductMenu()`'s modem‑only filter. (The FB‑side `= <value>` gap above,
 **A‑21**, is a third.)
 
+> **Update 2026‑07‑18 (F‑088):** the VM builds all four category menus and **both** the tree context menu
+> and the **menu‑bar** *Insert > Products* submenu now bind `BusProductsMenu` (LED dimmer + SMS modem
+> reachable via either route) — ✅ **A‑35** closed the menu‑bar omission. See the F‑088 note under
+> *Business rules* above. Evidence: **F‑088** (comparereal).
+
 ---
 
 ## US-011 — Fill product documentation properties
@@ -266,7 +282,7 @@ later via properties), **so that** the generated reports (E9) describe the insta
 
 **Presentation rules:**
 - MUST: When a product is inserted, it is added under the selected locality and **no dialog opens
-  automatically** — matching IHC Visual. The installer opens the *Product properties* dialog on demand
+  automatically**. The installer opens the *Product properties* dialog on demand
   by selecting the product and pressing `F2` (or right‑click > *Properties*).
 
   > **Corrected 2026‑07‑16 (was: dialog opens automatically on insert).** The earlier MUST required the
@@ -274,6 +290,13 @@ later via properties), **so that** the generated reports (E9) describe the insta
   > opposite — the vendor does **not** auto‑open on insert (product lands under the caret, no modal) — so
   > OpenVisual matches the vendor. Evidence: `RESULTS.md` **F‑027**; backlog **A‑14** tracks removing the
   > auto‑open from the implementation.
+  >
+  > **Corrected 2026‑07‑18 (comparereal, F‑088 run).** The vendor **does** auto‑open — every product insert
+  > raises a "Classic" properties dialog (its OK button id is 3, 436 or 1 by product family) that must be
+  > dismissed. IHC OpenVisual's silent insert is therefore an **intentional simplification** (an accepted,
+  > cleaner class‑C divergence), not a vendor‑match; the earlier F‑027 reading is superseded on the vendor
+  > point. The MUST above (no auto‑open) stands on its own merit. Evidence: **F‑088** run (comparereal),
+  > class‑C "Product‑insert UX".
 
 - MUST: The dialog is **titled with the product type** — e.g. `Lampeudtag` — not a generic *Product
   properties*. This is how two open product dialogs are told apart.
@@ -416,16 +439,16 @@ later via properties), **so that** the generated reports (E9) describe the insta
 > affordance is **R‑2** (plain textboxes, granted C) and US-010's category language is **R‑1** (Full
 > English) — so nothing here blocks building the story.
 
-**Implementation status:** 🟡 Partly implemented — the note/cable/identification/light‑group fields exist,
-but several rules do not:
-- ⚠ the **auto‑open** on insert is still in the code (the old behaviour); backlog **A‑14** removes it;
-- ⚠ the dialog is still titled generically *Product properties*; backlog **A‑8**;
-- ⚠ **`Placering` is absent** and a **`Location` room dropdown** is present instead; backlog **A‑13**;
-- ⚠ **Name is always editable**, ungated — and `locked` is currently a round‑trip‑only attribute that
-  **nothing reads**, so this gate is its first consumer; backlog **A‑15**;
+**Implementation status:** ✅ Implemented — the note/cable/identification/light‑group fields exist, and the
+previously‑pending rules have all landed:
+- ✅ insert is silent — no dialog auto‑opens (source `MainWindowViewModel.InsertProductAsync`; confirmed by
+  comparereal, 0 modals across 13 inserts); **A‑14** done;
+- ✅ the dialog is titled with the product type (source `OpenProductPropertiesAsync`, catalog `DisplayName`); **A‑8** done;
+- ✅ **`Placering`** is present as a plain `Placement` textbox, with **no** `Location` room dropdown (source `ProductPropertiesWindow.axaml`); **A‑13** done;
+- ✅ **Name is gated by the element's `locked`** (`NameBox.IsEnabled = !NameLocked`, fed from the `locked` attribute); **A‑15** done;
 - ✅ **plain textboxes** are the specified affordance (**R‑2**, granted exception C) — no longer a divergence to fix;
-- ⚠ the **end‑user‑report checkbox has no equivalent**, so `enduser_report` cannot be set; backlog **A‑23**;
-- ⛔ the **terminal section does not exist at all** (US-012); backlog **A‑12**.
+- ✅ the **end‑user‑report flag round‑trips** (`enduser_report`); the checkbox is hidden per **C15** to match the vendor; **A‑23** done;
+- ✅ the **input/output terminal grids exist** (US-012, `ProductPropertiesWindow.axaml`); **A‑12** done.
 
 ---
 

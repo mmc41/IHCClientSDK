@@ -1,6 +1,6 @@
 ---
 version: 0.3.0
-last-updated: 2026-07-17
+last-updated: 2026-07-18
 status: draft
 ---
 
@@ -120,14 +120,21 @@ Scenario: Wireless categories come from the catalog
 > that kept it was sound and still failed: the comparison genuinely had not opened a wireless dialog, so the
 > claim was *unmeasured*, not *supported* — and an unmeasured claim in a story reads exactly like a measured
 > one. The lesson is the caution the note itself gave.
+>
+> **Corrected 2026‑07‑18 (comparereal, F‑088 run).** The vendor **does** open a dialog on insert — every
+> product insert raises a "Classic" properties dialog (the same one US-011 describes; OK id 3, 436 or 1 by
+> family) that must be dismissed. So IHC OpenVisual's silent insert (the AC above) is an **intentional
+> simplification** (an accepted, cleaner class‑C divergence), not a vendor‑match; the F‑027 reading is
+> superseded on the vendor point. Evidence: **F‑088** run (comparereal), class‑C "Product‑insert UX".
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Implemented (the insert) — ⚠ **except the rules shared with US-011/US-012**:
-the code still auto‑opens the dialog on insert (backlog **A‑14**), still shows a `Location` room dropdown
-instead of `Placering` (backlog **A‑13**), leaves *Name* ungated (backlog **A‑15**), and — now that the
-wireless dialog is known to be the wired one — is **also missing the terminal grids here** (backlog
-**A‑12**), which the story previously said were not needed for wireless at all.
+**Implementation status:** ✅ Implemented (the insert **and** the rules shared with US-011/US-012): the
+insert is silent (**A‑14** done — source `InsertProductAsync`, confirmed by comparereal), shows `Placering`
+(a plain `Placement` textbox) instead of a `Location` dropdown (**A‑13** done), gates *Name* on the element's
+`locked` (**A‑15** done), and — now that the wireless dialog is known to be the wired one — also carries the
+input/output terminal grids here (**A‑12** done), which the story previously said were not needed for wireless
+at all.
 
 ---
 

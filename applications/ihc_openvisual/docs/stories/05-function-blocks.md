@@ -1,6 +1,6 @@
 ---
 version: 0.3.0
-last-updated: 2026-07-17
+last-updated: 2026-07-18
 status: draft
 ---
 
@@ -150,7 +150,7 @@ Scenario: Insert an empty block into a locality
   Given a locality is selected in the "Functions" pane, in configuration mode
   When I right-click it and choose "Empty function block", or press Ctrl+Shift+B
   Then an empty block named "Empty block" is inserted under the locality
-  And the view enters programming mode on the new block (inserting an empty block auto-enters it)
+  And the view stays in configuration mode: the block is inserted but not opened (press F3 to open it for programming, US-026)
   And the status bar reads: Empty block was inserted under <locality>
 
 Scenario: An empty block exposes the four variable sections
@@ -169,23 +169,32 @@ Scenario: Editing the block enters programming mode
 
 ### AC illustrations
 
-- After inserting an empty block under `Garage` and entering programming mode, both pane headers read
-  `Empty block`; the left pane shows `Empty block > {Input, Output, Settings, Internal variables}` and the
-  right shows `Empty block > Programs > Program > {Events, Commands}`.
+- After inserting an empty block under `Garage`, it appears under the locality in configuration mode with no
+  sections shown and the plain editable function‑block icon — **no library badge** (contrast US-020's locked
+  templates). Pressing `F3` then enters programming mode: both pane headers read `Empty block`; the left pane
+  shows `Empty block > {Input, Output, Settings, Internal variables}` and the right shows `Empty block >
+  Programs > Program > {Events, Commands}`.
 
 ### Constraints
 
-- ✅ **Measured 2026‑07‑17 (F‑086) — a brand‑new empty block shows 0 sections in configuration mode, and
-  inserting one auto‑enters programming mode.** The all‑empty `Tom blok` renders **zero** sections in the
-  vendor's configuration‑mode tree — the empty‑section rule (US-018) applies to *every* container, including
-  the previously‑untested `Output` — so it is no longer an extrapolation. And `fb insert-empty` **auto‑enters
-  programming mode** (both panes re‑root to the block, all four sections shown); the separate `F3` is only
-  for *re‑entering* after leaving. Evidence: `RESULTS.md` **F‑086**.
+- ✅ **Measured 2026‑07‑17 (F‑086) — a brand‑new empty block shows 0 sections in configuration mode.** The
+  all‑empty `Tom blok` renders **zero** sections in the vendor's configuration‑mode tree — the empty‑section
+  rule (US-018) applies to *every* container, including the previously‑untested `Output` — so it is no longer
+  an extrapolation. Evidence: `RESULTS.md` **F‑086**.
+
+  > **Corrected 2026‑07‑18 (comparereal + source).** Inserting an empty block does **not** auto‑enter
+  > programming mode — IHC OpenVisual stays in configuration mode with both panes rooted at the localities
+  > (`MainWindowViewModel.InsertEmptyFunctionBlock` commits the block; `Refresh` keeps configuration mode);
+  > `F3` opens it on demand (US-026). The **vendor**, by contrast, drops into programming mode on empty‑FB
+  > insert and needs Esc to leave — OV's config‑mode‑stay is the cleaner behaviour (class C). This supersedes
+  > F‑086's "auto‑enters programming mode" reading, which the current source refutes. Evidence: **F‑088**
+  > run (comparereal); source `MainWindowViewModel.cs` (`InsertEmptyFunctionBlock` / `Refresh`).
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented (programming‑mode structure). ⚠ Its configuration‑mode view
-inherits US-018's section‑rendering divergence (F‑068).
+**Implementation status:** ✅ Implemented (programming‑mode structure). ⚠ Its configuration‑mode view inherits
+US-018's section‑rendering divergence (F‑068). ✅ Insert leaves the app in **configuration mode** (no
+auto‑enter — source `InsertEmptyFunctionBlock` / `Refresh`); `F3` opens programming mode on demand.
 
 ---
 

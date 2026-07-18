@@ -1,6 +1,6 @@
 ---
 version: 0.3.0
-last-updated: 2026-07-17
+last-updated: 2026-07-18
 status: draft
 ---
 
@@ -359,6 +359,12 @@ Scenario: Edit an existing enumerator type's states
 - A `Mode` enum with states `Direct`, `With delay`, `Switched off` lets one block behave as a
   direct link, a delayed link, or off, selected by the enum’s value — testable with a cascade of
   conditional commands.
+
+> **Noted 2026‑07‑18 (comparereal, F‑089 — class E, open).** A **standalone / empty** custom enumerator *type*
+> (0 states, referenced by no variable) is **not** currently authorable in IHC OpenVisual — enumerator types
+> are created only while adding an enum variable to a *Settings* section (above), matching the vendor, which
+> likewise exposes no bare‑enum‑type route. Whether a bare empty enumerator type *should* be authorable is an
+> open question. Evidence: **F‑089** (comparereal study, `tmp\comparereal\out\RESULTS.md`).
 
 **Readiness:** Ready.
 

@@ -210,6 +210,8 @@
                               ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
                     <MenuItem Header="IHC _Wireless products" ItemsSource="{Binding WirelessProductsMenu}"
                               ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
+                    <MenuItem Header="_Bus products" ItemsSource="{Binding BusProductsMenu}"
+                              ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
                     <MenuItem Header="_Special products" ItemsSource="{Binding SpecialProductsMenu}"
                               ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
                 </MenuItem>
