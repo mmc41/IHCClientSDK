@@ -797,6 +797,48 @@ namespace Ihc.Vis.Editing
             return this;
         }
 
+        /// <summary>The vendor enum <c>typeid</c> of the "Logning" state type behind the "Log …" rows — the target of
+        /// <see cref="ToggleLogMark"/> and the signal a GUI uses to offer the &amp;Logmærke toggle (A-22/US-068).</summary>
+        public const string LogEnumTypeId = "_0x16";
+
+        /// <summary>Whether <paramref name="resource"/> is a "Log …" row — a <c>resource_enum</c> whose enum type is the
+        /// Logning type (<see cref="LogEnumTypeId"/>), resolved against <paramref name="project"/>. The signal a GUI
+        /// uses to offer the log-mark toggle only where the vendor does.</summary>
+        public static bool IsLogRow(ProjectElement resource, Project project)
+        {
+            ArgumentNullException.ThrowIfNull(resource);
+            ArgumentNullException.ThrowIfNull(project);
+            return resource.Tag == "resource_enum"
+                && ElementId.TryParse(resource.GetAttribute("typedef"), out ElementId defId)
+                && project.FindById(defId)?.GetAttribute("typeid") == LogEnumTypeId;
+        }
+
+        /// <summary>
+        /// Toggles a "Log …" row's log mark (US-068, the vendor's &amp;Logmærke): a Logning <c>resource_enum</c> flips
+        /// its <c>inivalue</c> between "Off" and its first logging mode. Throws when the target is not a Logning row,
+        /// so a mistaken toggle can never rewrite an ordinary enum's initial value. Returns <c>this</c> for chaining.
+        /// </summary>
+        public ProjectEditor ToggleLogMark(ElementId logRowId)
+        {
+            ProjectElement row = Require(logRowId);
+            if (row.Tag != "resource_enum" || !ElementId.TryParse(row.GetAttribute("typedef"), out ElementId defId)
+                || FindById(root, defId) is not { } def || def.GetAttribute("typeid") != LogEnumTypeId)
+            {
+                throw new InvalidOperationException($"{logRowId.ToToken()} is not a Logning 'Log …' row.");
+            }
+            System.Collections.Generic.List<ProjectElement> values =
+                def.ChildrenOrEmpty().Where(v => v.Tag == "enum_value").ToList();
+            ProjectElement? off = values.FirstOrDefault(v => v.GetAttribute("name") == "Off");
+            ProjectElement? on = values.FirstOrDefault(v => v.GetAttribute("name") != "Off");
+            if (off?.Id is not { } offId || on?.Id is not { } onId)
+            {
+                throw new InvalidOperationException($"The Logning type of {logRowId.ToToken()} lacks Off/on values.");
+            }
+            bool currentlyOff = row.GetAttribute("inivalue") == offId.ToToken();
+            SetAttributeById(logRowId, "inivalue", (currentlyOff ? onId : offId).ToToken());
+            return this;
+        }
+
         /// <summary>Id-addressed <see cref="UnlinkScene(ResourceRef,ScenesRef)"/> — removes the scene membership pair
         /// between a scene output pin and a scenes container (US-057).</summary>
         public ProjectEditor UnlinkScene(ElementId sceneOutputId, ElementId scenesId)

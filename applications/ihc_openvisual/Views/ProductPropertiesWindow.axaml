@@ -22,15 +22,10 @@
         <TextBlock Name="NameLabel" Classes="label" Text="Name"/>
         <TextBox Name="NameBox" a:AutomationProperties.LabeledBy="{Binding #NameLabel}"/>
 
-        <TextBlock Name="LocationLabel" Classes="label" Text="Location"/>
-        <ComboBox Name="LocationCombo" HorizontalAlignment="Stretch"
-                  a:AutomationProperties.LabeledBy="{Binding #LocationLabel}">
-            <ComboBox.ItemTemplate>
-                <DataTemplate x:DataType="svc:LocalityChoice">
-                    <TextBlock Text="{Binding Name}"/>
-                </DataTemplate>
-            </ComboBox.ItemTemplate>
-        </ComboBox>
+        <!-- A-13/US-011: the vendor's free-text placement descriptor ("i loft"); a plain textbox, no room dropdown
+             (moving a product between localities is a tree operation, not a dialog field). -->
+        <TextBlock Name="PlaceringLabel" Classes="label" Text="Placement"/>
+        <TextBox Name="PlaceringBox" a:AutomationProperties.LabeledBy="{Binding #PlaceringLabel}"/>
 
         <TextBlock Name="NoteLabel" Classes="label" Text="Note"/>
         <TextBox Name="NoteBox" AcceptsReturn="True" TextWrapping="Wrap" Height="70" VerticalContentAlignment="Top"
@@ -49,6 +44,67 @@
 
         <TextBlock Name="LightGroupLabel" Classes="label" Text="Light group"/>
         <TextBox Name="LightGroupBox" a:AutomationProperties.LabeledBy="{Binding #LightGroupLabel}"/>
+
+        <!-- A-23/US-012: the enduser_report flag. Shipped unconditionally visible — the vendor's visibility gate is
+             n=1 and unmeasured (§2 C15), so a wrong predicate would be an unbounded divergence; always-visible is a
+             known, bounded one. -->
+        <CheckBox Name="EndUserReportCheck" Margin="0,8,0,0"
+                  Content="Include product in end-user report"/>
+
+        <!-- US-012: input/output terminal addressing grids. Columns Name | Address | Cable colour | Note; a row is
+             addressed by double-tapping it (or selecting it and clicking Configure). -->
+        <StackPanel Name="TerminalsPanel" Spacing="4" IsVisible="False">
+            <StackPanel.Styles>
+                <Style Selector="TextBlock.thead">
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="FontSize" Value="12"/>
+                </Style>
+            </StackPanel.Styles>
+
+            <TextBlock Classes="label" Text="Inputs"/>
+            <Grid ColumnDefinitions="1.4*,1.3*,*,1.6*">
+                <TextBlock Grid.Column="0" Classes="thead" Text="Name"/>
+                <TextBlock Grid.Column="1" Classes="thead" Text="Address"/>
+                <TextBlock Grid.Column="2" Classes="thead" Text="Cable colour"/>
+                <TextBlock Grid.Column="3" Classes="thead" Text="Note"/>
+            </Grid>
+            <ListBox Name="InputsList" MaxHeight="120" DoubleTapped="OnTerminalActivated"
+                     a:AutomationProperties.Name="Inputs">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="svc:ProductTerminal">
+                        <Grid ColumnDefinitions="1.4*,1.3*,*,1.6*">
+                            <TextBlock Grid.Column="0" Text="{Binding Name}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Address}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding CableColour}"/>
+                            <TextBlock Grid.Column="3" Text="{Binding Note}"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <Button Name="ConfigInputButton" Content="Configure input" HorizontalAlignment="Left" Click="OnConfigureInput"/>
+
+            <TextBlock Classes="label" Text="Outputs"/>
+            <Grid ColumnDefinitions="1.4*,1.3*,*,1.6*">
+                <TextBlock Grid.Column="0" Classes="thead" Text="Name"/>
+                <TextBlock Grid.Column="1" Classes="thead" Text="Address"/>
+                <TextBlock Grid.Column="2" Classes="thead" Text="Cable colour"/>
+                <TextBlock Grid.Column="3" Classes="thead" Text="Note"/>
+            </Grid>
+            <ListBox Name="OutputsList" MaxHeight="120" DoubleTapped="OnTerminalActivated"
+                     a:AutomationProperties.Name="Outputs">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="svc:ProductTerminal">
+                        <Grid ColumnDefinitions="1.4*,1.3*,*,1.6*">
+                            <TextBlock Grid.Column="0" Text="{Binding Name}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Address}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding CableColour}"/>
+                            <TextBlock Grid.Column="3" Text="{Binding Note}"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <Button Name="ConfigOutputButton" Content="Configure output" HorizontalAlignment="Left" Click="OnConfigureOutput"/>
+        </StackPanel>
 
         <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,14,0,0">
             <Button Grid.Column="0" Name="AdvancedButton" Content="Advanced…" MinWidth="96"

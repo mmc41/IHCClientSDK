@@ -143,6 +143,60 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // A-22/US-068: toggling a "Log …" row's log mark flips its Logning state off the "Off" value and round-trips.
+        [Test]
+        public async Task LogMark_RoundTrips()
+        {
+            var app = new ProjectAppService(Settings);
+            Project project = app.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty));
+            ProductDefinition sensor = app.GetAvailableProducts()
+                .First(p => p.DisplayName.Contains("Temperatur sensor med logning"));
+            string room = project.Groups.First().GetAttribute("name")!;
+
+            ProjectEditor editor = project.Edit();
+            editor.Group(room).AddProduct(sensor);
+            ProjectElement logRow = editor.ToProject().Root.DescendantsAndSelf()
+                .First(e => e.Tag == "resource_enum" && (e.GetAttribute("name") ?? string.Empty).StartsWith("Log"));
+            ElementId logId = logRow.Id!.Value;
+            string offToken = logRow.GetAttribute("inivalue")!;
+
+            editor.ToggleLogMark(logId);
+            string markedToken = editor.ToProject().FindById(logId)!.GetAttribute("inivalue")!;
+
+            using var ms = new MemoryStream();
+            await app.Save(editor.ToProject(), ms);
+            ms.Position = 0;
+            Project reloaded = await app.Load(ms);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(markedToken, Is.Not.EqualTo(offToken), "toggling moves the log state off Off");
+                Assert.That(reloaded.FindById(logId)!.GetAttribute("inivalue"), Is.EqualTo(markedToken),
+                    "the log mark round-trips through save/reload");
+            });
+        }
+
+        // A-23/US-012: the product's end-user-report flag survives a save/reload round-trip.
+        [Test]
+        public async Task EndUserReport_RoundTrips()
+        {
+            Project project = await LoadOracle();
+            ProjectEditor editor = project.Edit();
+            ElementRef product = FirstProduct(editor, project);
+            ElementId pid = product.Id;
+
+            product.SetAttribute("enduser_report", "yes");
+
+            var app = new ProjectAppService(Settings);
+            using var ms = new MemoryStream();
+            await app.Save(editor.ToProject(), ms);
+            ms.Position = 0;
+            Project reloaded = await app.Load(ms);
+
+            Assert.That(reloaded.FindById(pid)!.GetAttribute("enduser_report"), Is.EqualTo("yes"),
+                "the end-user-report flag round-trips through save/reload");
+        }
+
         [Test]
         public async Task SetAttribute_SetThenRestore_RoundTripsByteIdentical()
         {

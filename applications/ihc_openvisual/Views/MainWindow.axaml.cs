@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -62,6 +63,16 @@ public partial class MainWindow : Window
 
     private void OnCloseRequested(object? sender, EventArgs e) => Close();
 
+    // Moves keyboard focus into a tree pane by focusing a real row — the selected row's container when realized,
+    // otherwise the first row. Focusing the bare TreeView does not move the caret (A-28).
+    private static void FocusPane(TreeView tree)
+    {
+        var rows = tree.GetVisualDescendants().OfType<TreeViewItem>();
+        Control? target = rows.FirstOrDefault(i => ReferenceEquals(i.DataContext, tree.SelectedItem))
+            ?? tree.GetVisualDescendants().OfType<TreeViewItem>().FirstOrDefault();
+        (target ?? (Control)tree).Focus();
+    }
+
     // Tree keyboard shortcuts (US-044/US-045): F6 switches panes; Shift+F10 opens the context menu; F2 Properties;
     // F4 jumps to a link's opposite end; Delete removes a selected link row. (Arrow keys use the TreeView's native
     // expand/collapse — Right=expand, Left=collapse, per the platform convention the R-note asks us to follow.)
@@ -70,7 +81,9 @@ public partial class MainWindow : Window
         TreeView? tree = sender as TreeView;
         if (e.Key == Key.F6)
         {
-            (ReferenceEquals(tree, InstallationTree) ? FunctionsTree : InstallationTree).Focus();
+            // Focus() on a bare TreeView does not take — keyboard focus must land on a focusable item (A-28). Move
+            // it to the sibling pane's selected row (or its first row) so the caret genuinely crosses panes.
+            FocusPane(ReferenceEquals(tree, InstallationTree) ? FunctionsTree : InstallationTree);
             e.Handled = true;
             return;
         }
@@ -89,6 +102,14 @@ public partial class MainWindow : Window
         else if (e.Key == Key.F4 && node.IsLinkRow)
         {
             _viewModel?.NavigateLinkOppositeCommand.Execute(node);
+            // Reveal the target in the opposite pane (A-6): the command expanded its ancestor chain and selected it;
+            // now scroll it into view and move keyboard focus to that pane.
+            TreeView target = _viewModel?.IsInstallationPaneActive == true ? InstallationTree : FunctionsTree;
+            if (target.SelectedItem is { } selected)
+            {
+                target.ScrollIntoView(selected);
+                target.Focus();
+            }
             e.Handled = true;
         }
         else if (e.Key == Key.Delete && node.CanDelete)

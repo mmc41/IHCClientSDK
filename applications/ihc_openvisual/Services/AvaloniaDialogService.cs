@@ -256,6 +256,7 @@ public sealed class AvaloniaDialogService : IDialogService
         };
 
         T defaultValue = buttons.Length > 0 ? buttons[^1].Value : default!;
+        Button? safeButton = null;
         foreach ((string label, T value) in buttons)
         {
             var button = new Button { Content = label, MinWidth = 84 };
@@ -265,7 +266,12 @@ public sealed class AvaloniaDialogService : IDialogService
                 dialog.Close();
             };
             buttonPanel.Children.Add(button);
+            safeButton = button;   // the last button is the safe (negative) default
         }
+
+        // Keyboard operability (A-9/A-10): the safe (last) button holds focus on open, and Escape dismisses the
+        // dialog — resolving, via the Closed handler below, to that same safe default.
+        WireKeyboardDismissal(dialog, safeButton);
 
         dialog.Content = new StackPanel
         {
@@ -286,5 +292,18 @@ public sealed class AvaloniaDialogService : IDialogService
             dialog.Show();
 
         return tcs.Task;
+    }
+
+    /// <summary>Makes a code-built dialog keyboard-operable (A-9/A-10): <paramref name="focusOnOpen"/> (the safe,
+    /// default control) takes focus when the dialog opens, and Escape closes it — the dialog's <c>Closed</c> handler
+    /// then resolves it to its safe default. Public so a headless test can verify the wiring on a real window.</summary>
+    public static void WireKeyboardDismissal(Window dialog, Control? focusOnOpen)
+    {
+        dialog.Opened += (_, _) => focusOnOpen?.Focus();
+        dialog.KeyDown += (_, e) =>
+        {
+            if (e.Key == Avalonia.Input.Key.Escape)
+                dialog.Close();
+        };
     }
 }

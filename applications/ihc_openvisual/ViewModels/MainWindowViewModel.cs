@@ -56,17 +56,49 @@ public partial class MainWindowViewModel : ViewModelBase
     /// Functions-pane node (a function block) can be the active node without fighting the Installation tree.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanInsertProduct))]
+    [NotifyPropertyChangedFor(nameof(CanInsertFunctionBlock))]
+    [NotifyPropertyChangedFor(nameof(CanPaste))]
+    [NotifyPropertyChangedFor(nameof(CanInsertVariable))]
+    [NotifyPropertyChangedFor(nameof(CanAddEvent))]
+    [NotifyPropertyChangedFor(nameof(CanAddCommand))]
+    [NotifyPropertyChangedFor(nameof(CanAddCaseValue))]
+    [NotifyPropertyChangedFor(nameof(CanAddCondition))]
     private TreeNodeViewModel? _selectedNode;
+
+    /// <summary>Whether the block currently being programmed is a locked (library) block. A locked block is
+    /// VIEW-ONLY: its program renders, but every authoring command is withdrawn (A-27/F-076) — the installer must
+    /// unlock it deliberately first. Unlock is a separate, irreversible action (F-046).</summary>
+    public bool IsProgrammingBlockLocked =>
+        IsProgrammingMode && _programmingBlockId is { } id
+        && (_session.Current?.FindById(id)?.GetAttribute("locked") ?? "no") == "yes";
+
+    // The programming-mode authoring context-menu gates: a container node's own kind AND an editable (unlocked)
+    // programming block. On a locked block every one is false, so the vendor's "missing, not greyed" affordance holds.
+    public bool CanInsertVariable => SelectedNode?.IsBlockSection == true && !IsProgrammingBlockLocked;
+    public bool CanAddEvent => SelectedNode?.IsEventsContainer == true && !IsProgrammingBlockLocked;
+    public bool CanAddCommand => SelectedNode?.IsCommandsContainer == true && !IsProgrammingBlockLocked;
+    public bool CanAddCaseValue => SelectedNode?.IsCaseNode == true && !IsProgrammingBlockLocked;
+    public bool CanAddCondition => SelectedNode?.IsConditionsContainer == true && !IsProgrammingBlockLocked;
+
+    /// <summary>Context-menu gate: <i>Paste</i> is offered on a locality only when the clipboard holds a cut/copied
+    /// node (A-5b/F-010) — the vendor shows it conditionally (6 items empty, 7 full).</summary>
+    public bool CanPaste => _clipboardId is not null && SelectedNode?.NodeKind == "locality";
 
     /// <summary>Whether the active selection lives in the <i>Installation</i> pane (vs the <i>Functions</i> pane). The
     /// shared node context menu uses this to offer product insertion only where products belong.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanInsertProduct))]
+    [NotifyPropertyChangedFor(nameof(CanInsertFunctionBlock))]
     private bool _isInstallationPaneActive;
 
     /// <summary>Context-menu gate: <i>Insert product</i> is offered only on an addressable node in the Installation
     /// pane — the Functions pane hosts function blocks, and the Localities root hosts localities (US-010).</summary>
     public bool CanInsertProduct => IsInstallationPaneActive && SelectedNode?.CanEditProperties == true;
+
+    /// <summary>Context-menu gate: <i>Insert function block</i> / <i>Empty function block</i> are offered only on an
+    /// addressable node in the <i>Functions</i> pane — function blocks belong there, products to the Installation pane
+    /// (A-5a/F-008). Mirrors <see cref="CanInsertProduct"/> on the opposite pane.</summary>
+    public bool CanInsertFunctionBlock => !IsInstallationPaneActive && SelectedNode?.CanEditProperties == true;
 
     /// <summary>The <i>Installation</i> pane's current selection (two-way bound); also set programmatically to
     /// highlight a just-inserted locality (US-008).</summary>
@@ -101,8 +133,13 @@ public partial class MainWindowViewModel : ViewModelBase
     /// selected locality.</summary>
     public ObservableCollection<ProductMenuItemViewModel> WiredProductsMenu { get; } = new();
 
-    /// <summary>The special-products insertion submenu (US-013) — the modem(s); subject to the one-modem rule.</summary>
+    /// <summary>The special-products insertion submenu (US-013): Controller Link, S0 Device, signal-strength tester,
+    /// and the Modified-wireless/Windows/Discontinued subcategories (A-11).</summary>
     public ObservableCollection<ProductMenuItemViewModel> SpecialProductsMenu { get; } = new();
+
+    /// <summary>The Bus-products insertion submenu (A-11): the SMS Modem and the IHC LED Dimmer, both subject to the
+    /// one-modem rule where applicable.</summary>
+    public ObservableCollection<ProductMenuItemViewModel> BusProductsMenu { get; } = new();
 
     /// <summary>The IHC Wireless products insertion submenu (US-014), built from the catalog.</summary>
     public ObservableCollection<ProductMenuItemViewModel> WirelessProductsMenu { get; } = new();
@@ -291,10 +328,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private Task InsertBlockPinAsync(string container, string tag, string label) => RunAsync(nameof(InsertBlockPinAsync), async () =>
     {
-        if (!IsProgrammingMode || _programmingBlockId is not { } blockId
+        if (!IsProgrammingMode || IsProgrammingBlockLocked || _programmingBlockId is not { } blockId
             || _session.Current?.FindById(blockId)?.FindChild(container) is not { Id: { } sectionId })
         {
-            StatusText = "Enter a block's programming mode to insert an input or output.";
+            StatusText = IsProgrammingBlockLocked
+                ? "This is a locked library block — unlock it to edit its program."
+                : "Enter a block's programming mode to insert an input or output.";
             return;
         }
         if (await _session.AddVariableAsync(sectionId, tag, label) is not null)
@@ -569,6 +608,7 @@ public partial class MainWindowViewModel : ViewModelBase
         WiredProductsMenu.Clear();
         WirelessProductsMenu.Clear();
         SpecialProductsMenu.Clear();
+        BusProductsMenu.Clear();
         FunctionBlocksMenu.Clear();
         BuildProductMenu();
     }
@@ -585,8 +625,12 @@ public partial class MainWindowViewModel : ViewModelBase
         foreach (ProductMenuItemViewModel item in CatalogMenu.Build(products, "LK IHC Wireless produkter", Insert))
             WirelessProductsMenu.Add(item);
 
-        var modems = products.Where(p => ProductClassifier.IsModem(p.Body.Tag));
-        foreach (ProductMenuItemViewModel item in CatalogMenu.BuildLeaves(modems, Insert))
+        // Bus and Special are built from their catalog top category (A-11) — the SDK already partitions all 100
+        // products into four (Datalinie/Wireless/Bus/Specielle). The SMS Modem lives under Bus, not Special.
+        foreach (ProductMenuItemViewModel item in CatalogMenu.Build(products, "Bus Produkter", Insert))
+            BusProductsMenu.Add(item);
+
+        foreach (ProductMenuItemViewModel item in CatalogMenu.Build(products, "Specielle produkter", Insert))
             SpecialProductsMenu.Add(item);
 
         foreach (ProductMenuItemViewModel item in CatalogMenu.BuildFunctionBlocks(
@@ -806,6 +850,7 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         _clipboardId = id;
         _clipboardIsCut = true;
+        OnPropertyChanged(nameof(CanPaste));
         StatusText = $"Cut {node.DisplayName} — paste onto a locality to move it.";
     }
 
@@ -817,6 +862,7 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         _clipboardId = id;
         _clipboardIsCut = false;
+        OnPropertyChanged(nameof(CanPaste));
         StatusText = $"Copied {node.DisplayName} — paste onto a locality to duplicate it.";
     }
 
@@ -832,6 +878,7 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 StatusText = "Moved.";
                 _clipboardId = null;   // a cut is consumed by its paste
+                OnPropertyChanged(nameof(CanPaste));
             }
         }
         else if (await _session.CopyNodeAsync(sourceId, targetId) is not null)
@@ -923,13 +970,23 @@ public partial class MainWindowViewModel : ViewModelBase
             ElementId? productId = await _session.AddProductAsync(localityId, productIdentifier);
             if (productId is not { } pid)
                 return;
+            // The product lands under the caret and NO dialog opens — the vendor does not auto-open on insert
+            // (A-14/F-027, US-011/US-013). The installer opens Properties (F2 / double-click) on demand.
             StatusText = $"Product '{productName}' inserted under {localityName}";
-            await OpenPropertiesForIdAsync(pid);   // the properties dialog opens automatically on insert (US-011/US-013)
         });
 
     /// <summary>Makes <paramref name="node"/> the active node — the insert/command target. Used by tests and by
     /// programmatic selection; the live trees feed the active node through their own two-way selection bindings.</summary>
     public void SelectNode(TreeNodeViewModel node) => SelectedNode = node;
+
+    /// <summary>Toggles a "Log …" row's log mark (US-068, the vendor's &amp;Logmærke): the SDK flips its Logning state
+    /// between Off and the first logging mode, and the tree re-renders the row's new state.</summary>
+    [RelayCommand]
+    private Task ToggleLogMark(TreeNodeViewModel? node) => RunAsync(nameof(ToggleLogMark), async () =>
+    {
+        if (node is { IsLogMarkPin: true, ElementId: { } id } && await _session.ToggleLogMarkAsync(id))
+            StatusText = $"Toggled the log mark on {node.DisplayName}.";
+    });
 
     /// <summary>Enters programming mode for the selected function block (US-026, F3): the panes switch to the block's
     /// variable sections (left) and its program subtree (right), both headed with the block's name.</summary>
@@ -941,8 +998,22 @@ public partial class MainWindowViewModel : ViewModelBase
             _programmingBlockId = id;
             IsProgrammingMode = true;
             Refresh();
-            StatusText = "Programming mode — press Esc to return to configuration.";
+            NotifyProgrammingAuthoringGates();
+            StatusText = node.IsLockedFunctionBlock
+                ? "Programming mode (read-only — the block is locked). Press Esc to return."
+                : "Programming mode — press Esc to return to configuration.";
         }
+    }
+
+    // The locked-block authoring gates depend on which block is being programmed; re-evaluate them when that changes.
+    private void NotifyProgrammingAuthoringGates()
+    {
+        OnPropertyChanged(nameof(IsProgrammingBlockLocked));
+        OnPropertyChanged(nameof(CanInsertVariable));
+        OnPropertyChanged(nameof(CanAddEvent));
+        OnPropertyChanged(nameof(CanAddCommand));
+        OnPropertyChanged(nameof(CanAddCaseValue));
+        OnPropertyChanged(nameof(CanAddCondition));
     }
 
     /// <summary>Leaves programming mode (US-026, Esc), restoring the two locality trees of configuration mode.</summary>
@@ -954,6 +1025,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IsProgrammingMode = false;
         _programmingBlockId = null;
         Refresh();
+        NotifyProgrammingAuthoringGates();
         StatusText = "Configuration mode.";
     }
 
@@ -1022,12 +1094,37 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
         if (FindNode(InstallationNodes, oppositeId) is { } installationNode)
+        {
+            ExpandAncestors(InstallationNodes, oppositeId);   // realize the target so the selection sticks (A-6)
             SelectedInstallationNode = installationNode;
+        }
         else if (FindNode(FunctionNodes, oppositeId) is { } functionsNode)
+        {
+            ExpandAncestors(FunctionNodes, oppositeId);
             SelectedFunctionsNode = functionsNode;
+        }
         else
+        {
             return;
+        }
         StatusText = $"Jumped to {SelectedNode?.DisplayName}.";
+    }
+
+    // Expands every ancestor on the path to the node with the given id (not the node itself), so the target is
+    // realized and scrolled into view when it is selected — the F4 jump's missing half (A-6/F-012).
+    private static bool ExpandAncestors(IEnumerable<TreeNodeViewModel> nodes, ElementId id)
+    {
+        foreach (TreeNodeViewModel node in nodes)
+        {
+            if (node.ElementId == id)
+                return true;
+            if (ExpandAncestors(node.Children, id))
+            {
+                node.IsExpanded = true;
+                return true;
+            }
+        }
+        return false;
     }
 
     private async Task CompleteSceneLinkAsync(ElementId sceneOutputId, ElementId scenesId)
@@ -1242,34 +1339,79 @@ public partial class MainWindowViewModel : ViewModelBase
             StatusText = $"Renamed to {result.Name}.";
     }
 
+    // The product documentation dialog (US-011) plus its terminal-addressing grids (US-012). Re-entrant: choosing to
+    // configure a terminal applies the documentation, opens the addressing sub-dialog for that terminal, then re-opens
+    // this dialog — the vendor's in-place "Konfigurer indgang/udgang" flow.
     private async Task OpenProductPropertiesAsync(ElementId productId)
     {
-        if (_session.Current is not { } project || project.FindById(productId) is not { } product)
-            return;
-        var localities = new List<LocalityChoice>();
-        foreach (ProjectElement group in project.Groups)
+        while (true)
         {
-            if (group.Id is { } gid)
-                localities.Add(new LocalityChoice(gid.ToToken(), group.GetAttribute("name") ?? string.Empty));
-        }
-        string currentLocalityId = project.FindParent(productId)?.Id?.ToToken() ?? string.Empty;
-        var input = new ProductPropertiesInput(
-            "Product properties",
-            product.GetAttribute("name") ?? string.Empty,
-            product.GetAttribute("note") ?? string.Empty,
-            product.GetAttribute("cabletype") ?? string.Empty,
-            product.GetAttribute("cablenumber") ?? string.Empty,
-            product.GetAttribute("documentation_tag") ?? string.Empty,
-            product.GetAttribute("power_group") ?? string.Empty,
-            localities, currentLocalityId, ProductClassifier.IsWireless(product.Tag), IsWirelessDimmer(product));
+            if (_session.Current is not { } project || project.FindById(productId) is not { } product)
+                return;
+            var localities = new List<LocalityChoice>();
+            foreach (ProjectElement group in project.Groups)
+            {
+                if (group.Id is { } gid)
+                    localities.Add(new LocalityChoice(gid.ToToken(), group.GetAttribute("name") ?? string.Empty));
+            }
+            string currentLocalityId = project.FindParent(productId)?.Id?.ToToken() ?? string.Empty;
+            // The dialog is titled with the product TYPE (the catalog name), not the generic "Product properties" —
+            // it is how the vendor tells two open product dialogs apart (A-8/F-015).
+            string productType = _session.GetAvailableProducts()
+                .FirstOrDefault(p => p.ProductIdentifier == product.GetAttribute("product_identifier"))?.DisplayName
+                ?? product.GetAttribute("name") ?? "Product properties";
+            var input = new ProductPropertiesInput(
+                productType,
+                product.GetAttribute("name") ?? string.Empty,
+                product.GetAttribute("note") ?? string.Empty,
+                product.GetAttribute("cabletype") ?? string.Empty,
+                product.GetAttribute("cablenumber") ?? string.Empty,
+                product.GetAttribute("documentation_tag") ?? string.Empty,
+                product.GetAttribute("power_group") ?? string.Empty,
+                localities, currentLocalityId, ProductClassifier.IsWireless(product.Tag), IsWirelessDimmer(product),
+                BuildTerminals(product), product.GetAttribute("position") ?? string.Empty,
+                // A locked (library) product's name is fixed to the catalog type name — greyed out (A-15/F-032).
+                // Read locked off the ELEMENT, resolved via the project's inline DTD (default "no"); never a catalog
+                // lookup (whose default is "yes" and would grey the wrong products).
+                NameLocked: (product.GetAttribute("locked") ?? "no") == "yes",
+                EndUserReport: (product.GetAttribute("enduser_report") ?? "no") == "yes");
 
-        ProductPropertiesResult? result = await _dialogs.EditProductPropertiesAsync(input);
-        if (result is null)
-            return;   // cancelled — the product keeps its documentation
-        if (await _session.UpdateProductAsync(productId, result))
-            StatusText = $"Updated {result.Name}.";
-        if (result.OpenAdvanced)
-            await OpenAdvancedDimmerAsync(productId);   // Properties ▸ Advanced (US-015)
+            ProductPropertiesResult? result = await _dialogs.EditProductPropertiesAsync(input);
+            if (result is null)
+                return;   // cancelled — the product keeps its documentation
+            if (await _session.UpdateProductAsync(productId, result))
+                StatusText = $"Updated {result.Name}.";
+            if (result.ConfigureTerminalPinId is { } pinToken && ElementId.TryParse(pinToken, out ElementId pinId)
+                && _session.Current?.FindById(pinId) is { Tag: "dataline_input" or "dataline_output" } pinEl)
+            {
+                await OpenPinPropertiesAsync(pinId, pinEl);
+                continue;   // re-open the product dialog after addressing the terminal (US-012)
+            }
+            if (result.OpenAdvanced)
+                await OpenAdvancedDimmerAsync(productId);   // Properties ▸ Advanced (US-015)
+            return;
+        }
+    }
+
+    // The product's input/output terminals for the addressing grids (US-012): each terminal's name, its
+    // vendor-formatted "Datalinie N.PP" address (blank when unassigned), cable colour and note. The SDK owns the
+    // address decode (DatalineAddress) — the view-model only formats the row.
+    private static IReadOnlyList<ProductTerminal> BuildTerminals(ProjectElement product)
+    {
+        var terminals = new List<ProductTerminal>();
+        foreach (ProjectElement t in product.DescendantsAndSelf().Where(e => e.Tag is "dataline_input" or "dataline_output"))
+        {
+            bool isOutput = t.Tag == "dataline_output";
+            string label = DatalineAddress.ToVendorLabel(t.GetAttribute("address_dataline"), isOutput);
+            terminals.Add(new ProductTerminal(
+                t.GetAttribute("name") ?? string.Empty,
+                label == "?" ? string.Empty : $"Datalinie {label}",
+                t.GetAttribute("cable_colour") ?? string.Empty,
+                t.GetAttribute("note") ?? string.Empty,
+                isOutput,
+                t.Id?.ToToken() ?? string.Empty));
+        }
+        return terminals;
     }
 
     private static bool IsWirelessDimmer(ProjectElement product) =>
@@ -1359,7 +1501,7 @@ public partial class MainWindowViewModel : ViewModelBase
         FunctionsPaneHeader = name;
 
         InstallationNodes.Clear();
-        InstallationNodes.Add(BuildFunctionBlockNode(block, name));   // block → Input/Output/Settings/Internal variables
+        InstallationNodes.Add(BuildFunctionBlockNode(block, name, programmingMode: true));   // block → Input/Output/Settings/Internal variables
 
         FunctionNodes.Clear();
         FunctionNodes.Add(BuildBlockProgramsNode(block, name));       // block → Programs → Program → Events/Commands
@@ -1430,7 +1572,12 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         // NodeKind "subProgram", NOT the icon: NodeIcons maps program_sub and program_case to the SAME
         // glyph, so an icon-derived kind would merge these with case switches.
-        var node = new TreeNodeViewModel("Sub-program", NodeIcons.For("program_sub", null),
+        // The label is the user's stored name (A-26/F-075); a never-renamed sub-program carries the vendor
+        // default "Under program", shown here as the English default token "Sub-program" (R-1 — the default is
+        // chrome, but a user name stays verbatim). "Under program" is FbGrammar.SubProgramName (internal).
+        string stored = sub.GetAttribute("name") ?? string.Empty;
+        string label = stored.Length == 0 || stored == "Under program" ? "Sub-program" : stored;
+        var node = new TreeNodeViewModel(label, NodeIcons.For("program_sub", null),
             isExpanded: true, elementId: sub.Id) { NodeKind = "subProgram" };
         if (sub.FindChild("conditions") is { } conditions)
             node.Children.Add(BuildConditionsNode(conditions));
@@ -1556,7 +1703,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         string name = component.GetAttribute("name") ?? component.Tag;
         if (component.Tag == "functionblock")
-            return BuildFunctionBlockNode(component, name);
+            return BuildFunctionBlockNode(component, name, programmingMode: false);
 
         bool unlinked = ProductClassifier.IsUnlinkedWireless(component.Tag, component.GetAttribute("serialnumber"));
         var node = new TreeNodeViewModel(ProductLabel(name, component.GetAttribute("position")),
@@ -1569,7 +1716,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 node.Children.Add(BuildScenesNode(resource));   // a product's scenario output (scene link target, US-024)
             else if (!ProductRows.IsStructuralChild(resource.Tag)
                      && !ProductRows.IsHiddenFromTree(resource.Tag, resource.GetAttribute("setting")))
-                node.Children.Add(BuildPinNode(resource));      // the rows IHC Visual draws (F-001/F-002)
+                node.Children.Add(BuildPinNode(resource, catalogDeclared: true));   // a product's pins are catalog-declared (A-24); the rows IHC Visual draws (F-001/F-002)
         }
         return node;
     }
@@ -1607,14 +1754,49 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private TreeNodeViewModel BuildSceneMemberNode(ProjectElement member)
     {
-        (string value, string ramp) = SceneMemberValue(member);
-        string text = ramp.Length > 0 ? $"{value} / {ramp}" : value;
-        return new TreeNodeViewModel($"{LinkOppositePath(member)} = {text}", "/Assets/link-from.svg",
+        // A shutter scene member renders the BARE opposite-end path plus the driven direction as the product's own
+        // shutter pin NAME (Op/Ned) — a 4th bare segment — never the "= up" value token (F-051/A-19). The value/ramp
+        // belong to the scene-container dialog, not this row. Only the shutter kind is measured, so relay/dimmer
+        // members keep their existing "= <value>" rendering (unmeasured — do not generalise either way).
+        string label;
+        if (member.Tag == "scene_shutter")
+        {
+            label = ShutterDirectionPinName(member) is { Length: > 0 } dir
+                ? $"{LinkOppositePath(member)} / {dir}"
+                : LinkOppositePath(member);
+        }
+        else
+        {
+            (string value, string ramp) = SceneMemberValue(member);
+            string text = ramp.Length > 0 ? $"{value} / {ramp}" : value;
+            label = $"{LinkOppositePath(member)} = {text}";
+        }
+        return new TreeNodeViewModel(label, "/Assets/link-from.svg",
             elementId: member.Id) { IsLinkRow = true, NodeKind = "sceneMember" };
     }
 
+    // A shutter scene member's direction, rendered as the product's own shutter pin name: airlink_shutter_up
+    // ("Op") for an up member, airlink_shutter_down ("Ned") for down. The product owns both the scenes container
+    // and these direction pins (F-001 hides them from the tree, but they still name the direction here).
+    private string? ShutterDirectionPinName(ProjectElement member)
+    {
+        if (_session.Current is not { } project || member.Id is not { } memberId)
+            return null;
+        bool up = (member.GetAttribute("shutter_position") ?? "up") == "up";
+        string pinTag = up ? "airlink_shutter_up" : "airlink_shutter_down";
+        ProjectElement? product = project.FindParent(memberId) is { Id: { } scenesId }
+            ? project.FindParent(scenesId)
+            : null;
+        return product?.ChildrenOrEmpty().FirstOrDefault(c => c.Tag == pinTag)?.GetAttribute("name");
+    }
 
-    private TreeNodeViewModel BuildFunctionBlockNode(ProjectElement fb, string name)
+
+    // A function block node. Which variable sections render depends on the mode (US-018/US-026):
+    //  - Configuration mode shows Input/Output/Settings only, and hides any of those whose container is empty
+    //    (IHC Visual omits an empty variable container — A-17/A-18, F-069/F-086).
+    //  - Programming mode is the authoring view: it adds the Internal variables section and keeps every section
+    //    (even an empty one) so a variable can still be added to it.
+    private TreeNodeViewModel BuildFunctionBlockNode(ProjectElement fb, string name, bool programmingMode)
     {
         // A locked library block shows the library icon; an unlocked/empty block the editable icon (US-018/US-020).
         bool locked = (fb.GetAttribute("locked") ?? "no") == "yes";
@@ -1627,7 +1809,11 @@ public partial class MainWindowViewModel : ViewModelBase
         };
         foreach ((string container, string label) in FunctionBlockSections.All)
         {
+            if (!programmingMode && container == "internalsettings")
+                continue;   // Internal variables is programming-mode-only (A-17)
             ProjectElement? holder = fb.FindChild(container);
+            if (!programmingMode && (holder is null || !holder.ChildrenOrEmpty().Any()))
+                continue;   // configuration mode hides an empty/childless container (A-18)
             var section = new TreeNodeViewModel(label, NodeIcons.For(container, null), elementId: holder?.Id)
             {
                 SectionTag = holder is not null ? container : null,
@@ -1638,7 +1824,7 @@ public partial class MainWindowViewModel : ViewModelBase
             if (holder is not null)
             {
                 foreach (ProjectElement pin in holder.ChildrenOrEmpty())
-                    section.Children.Add(BuildPinNode(pin));
+                    section.Children.Add(BuildPinNode(pin, inFunctionBlockSettings: container == "settings"));
             }
             node.Children.Add(section);
         }
@@ -1677,10 +1863,29 @@ public partial class MainWindowViewModel : ViewModelBase
             ? state
             : null;
 
-    private TreeNodeViewModel BuildPinNode(ProjectElement resource)
+    // A function block's Indstillinger (settings) rows carry a literal value the vendor renders in the label —
+    // "Timertid = 00:10:00", "Sluk Tidspunkt = 00:00:00" (A-21/F-062). Scoped to the vendor-measured settings
+    // context (see BuildPinNode's caller) and the time-carrying value kinds — the peers ResourceMaterialization
+    // lists with hour/minute/second. resource_flag, resource_date and the unmeasured calibration rows stay bare,
+    // and product rows (where only resource_enum takes a value — A-3) are untouched.
+    private static readonly HashSet<string> SettingsTimeKinds =
+        new(StringComparer.Ordinal) { "resource_timer", "resource_timertime", "resource_time" };
+
+    private static string? SettingsTimeLiteral(ProjectElement resource)
+    {
+        if (!SettingsTimeKinds.Contains(resource.Tag))
+            return null;
+        int Part(string attr) => int.TryParse(resource.GetAttribute(attr), out int v) ? v : 0;
+        return $"{Part("hour"):00}:{Part("minute"):00}:{Part("second"):00}";
+    }
+
+    private TreeNodeViewModel BuildPinNode(ProjectElement resource, bool inFunctionBlockSettings = false,
+        bool catalogDeclared = false)
     {
         string name = resource.GetAttribute("name") ?? resource.Tag;
-        string? value = StateValue(resource) ?? resource.GetAttribute("value");
+        string? value = StateValue(resource)
+                     ?? (inFunctionBlockSettings ? SettingsTimeLiteral(resource) : null)
+                     ?? resource.GetAttribute("value");
         bool isOutput = resource.Tag is "resource_output" or "dataline_output" or "airlink_relay";
         bool saved = isOutput && (resource.GetAttribute("backup") ?? "no") == "yes";
         // The label carries the pin's name and, for a state row, its value — nothing else. The save-current-value
@@ -1691,6 +1896,8 @@ public partial class MainWindowViewModel : ViewModelBase
             elementId: resource.Id)
             {
                 IsPin = true, IsOutputPin = isOutput, IsValueSaved = saved, Tooltip = BuildTooltip(resource),
+                IsCatalogPin = catalogDeclared,
+                IsLogMarkPin = _session.Current is { } logProject && ProjectEditor.IsLogRow(resource, logProject),
                 // The pin's own .vis tag IS its kind, and it is what the label cannot say: these trees are
                 // full of same-named siblings ("Udgang", "Spot", "Tryk (øverst venstre)") under nearly
                 // every product.
@@ -1742,7 +1949,11 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             bool significant = leaf || current.Tag is "group" or "functionblock" || ProductClassifier.IsProduct(current.Tag);
             if (significant && current.GetAttribute("name") is { } partName && partName.Length > 0)
-                parts.Insert(0, partName);
+                // The product segment renders name (position) exactly as the Installation pane does (US-010/A-2),
+                // so two same-named products differing only by position stay distinguishable in a link row (A-20).
+                parts.Insert(0, ProductClassifier.IsProduct(current.Tag)
+                    ? ProductLabel(partName, current.GetAttribute("position"))
+                    : partName);
             current = current.Id is { } cid ? project.FindParent(cid) : null;
             leaf = false;
         }

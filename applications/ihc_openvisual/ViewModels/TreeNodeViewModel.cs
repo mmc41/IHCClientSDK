@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using Ihc.Vis.Model;
 
 namespace ihc_openvisual.ViewModels;
@@ -8,7 +9,7 @@ namespace ihc_openvisual.ViewModels;
 /// root over the project's rooms); products, function blocks and pins are added by later epics, so children
 /// are exposed generically here.
 /// </summary>
-public sealed class TreeNodeViewModel
+public sealed class TreeNodeViewModel : ObservableObject
 {
     public TreeNodeViewModel(string displayName, string iconAsset, bool isExpanded = false, bool isBold = false,
         ElementId? elementId = null, bool isLocalitiesRoot = false, bool isUnlinked = false,
@@ -88,8 +89,26 @@ public sealed class TreeNodeViewModel
     /// <summary>Context-menu gate: <i>Properties</i> is offered on nodes that address a real element (a locality).</summary>
     public bool CanEditProperties => ElementId is not null;
 
-    /// <summary>Context-menu gate: <i>Delete</i> is offered on nodes that address a real element (a locality).</summary>
-    public bool CanDelete => ElementId is not null;
+    /// <summary>Whether this pin is declared by the product's catalog type — a product's pins exist because the
+    /// catalog type declares them, so they are not the installer's to remove (A-24/F-067, US-068).</summary>
+    public bool IsCatalogPin { get; init; }
+
+    /// <summary>Whether this is a "Log …" row (a Logning <c>resource_enum</c>) that offers the vendor's log-mark
+    /// toggle (A-22/&amp;Logmærke, US-068).</summary>
+    public bool IsLogMarkPin { get; init; }
+
+    /// <summary>Context-menu gate: <i>Delete</i> is offered on nodes that address a real element — except a
+    /// catalog-declared pin, which the type owns (A-24). This is the GUI gate; the SDK engine guard is deferred.</summary>
+    public bool CanDelete => ElementId is not null && !IsCatalogPin;
+
+    /// <summary>Context-menu gate: <i>Cut</i>/<i>Copy</i> are offered on the structural components — a locality, a
+    /// product or a function block (A-5b/F-009). Not on the Localities root, link rows, pins, sections or the
+    /// program-tree nodes.</summary>
+    public bool CanCutCopy => NodeKind is "locality" or "product" or "functionBlock";
+
+    /// <summary>Context-menu gate: <i>Move up</i>/<i>Move down</i> and <i>Properties</i> are offered on any addressable
+    /// node EXCEPT a link row — the link row's only items are <i>Jump to opposite</i> and <i>Delete</i> (A-5b).</summary>
+    public bool CanEditNonLink => ElementId is not null && !IsLinkRow;
 
     /// <summary>Hover tooltip (US-047/US-048): the node's documentation note and, for a resource-mapped node (input,
     /// output, function block), its IHC resource id — each on its own line(s). Null when the node has neither, so no
@@ -129,7 +148,15 @@ public sealed class TreeNodeViewModel
     public string IconAsset { get; }
 
     /// <summary>Whether the node is expanded by default (the <c>Localities</c> root is; rooms are collapsed).</summary>
-    public bool IsExpanded { get; }
+    private bool _isExpanded;
+
+    /// <summary>Whether the node is expanded. Settable and observable so a jump (F4/A-6) can expand the opposite
+    /// pin's ancestor chain to bring it into view; the tree binds this one-way to the container's IsExpanded.</summary>
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set => SetProperty(ref _isExpanded, value);
+    }
 
     /// <summary>Whether the label renders bold — locality nodes do (US-006).</summary>
     public bool IsBold { get; }

@@ -116,12 +116,17 @@ public static class AppSetup
         return builder;
     }
 
-    /// <summary>Attaches an unhandled exception to the whole active <see cref="Activity"/> chain so it is
-    /// captured in diagnostics rather than vanishing silently (US-063).</summary>
-    public static void UnhandledExceptionHandler(object source, UnhandledExceptionEventArgs args)
+    /// <summary>Builds the <see cref="AppDomain.UnhandledException"/> handler (US-063/A-25): the least-recoverable
+    /// failure is recorded through <paramref name="logger"/> — the same <see cref="ILogger"/> pipeline as
+    /// command-scoped errors, not a bare <c>Trace</c> — and attached to the whole active <see cref="Activity"/> chain
+    /// so it is captured in diagnostics rather than vanishing silently.</summary>
+    public static UnhandledExceptionEventHandler UnhandledExceptionHandler(ILogger logger) =>
+        (_, args) => LogUnhandledException(logger, (Exception)args.ExceptionObject);
+
+    // The handler body, callable directly so a test can assert against real logged output (ILogger is never mocked).
+    public static void LogUnhandledException(ILogger logger, Exception ex)
     {
-        var ex = (Exception)args.ExceptionObject;
-        Trace.WriteLine(ex.Message);
+        logger.LogCritical(ex, "Unhandled exception: {Message}", ex.Message);
 
         Activity? activity = Activity.Current;
         while (activity != null)

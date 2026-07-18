@@ -37,8 +37,22 @@ public static class CatalogMenu
         return BuildForest(
             products.Where(p => Segments(p.CategoryPath).FirstOrDefault() == topCategory),
             p => Segments(p.CategoryPath).Skip(1).ToArray(),   // drop the top category itself
-            p => p.DisplayName, leafCommand, p => p.ProductIdentifier);
+            p => p.DisplayName, leafCommand, p => p.ProductIdentifier,
+            // Product-catalog subcategories render in English (A-29/R-1); the FB library folders stay verbatim.
+            raw => TranslateSubcategory(Strip(raw)));
     }
+
+    // The product-catalog STRUCTURAL subcategories the vendor left Danish, mapped to English (R-1). Family/brand names
+    // (LK FUGA, Vinduer, IR fjernbetjeninger…) are vendor data and stay as-is, like the FB library categories.
+    private static readonly Dictionary<string, string> SubcategoryEnglish = new(StringComparer.Ordinal)
+    {
+        ["Generelle"] = "General",
+        ["Indgang"] = "Input",
+        ["Udgang"] = "Output",
+    };
+
+    private static string TranslateSubcategory(string label) =>
+        SubcategoryEnglish.TryGetValue(label, out string? english) ? english : label;
 
     /// <summary>Builds a flat, name-ordered list of product leaves (no category nesting) — e.g. the Special products
     /// modem list (US-013).</summary>
@@ -63,7 +77,8 @@ public static class CatalogMenu
         return BuildForest(
             blocks,
             b => Segments(b.CategoryPath),   // the whole path is the folder tree
-            b => b.DisplayName, leafCommand, b => b.MasterType);
+            b => b.DisplayName, leafCommand, b => b.MasterType,
+            Strip);   // FB library category names stay Danish verbatim (US-018)
     }
 
     private static string[] Segments(string? categoryPath) =>
@@ -71,7 +86,7 @@ public static class CatalogMenu
 
     private static IReadOnlyList<ProductMenuItemViewModel> BuildForest<T>(
         IEnumerable<T> items, Func<T, string[]> segments, Func<T, string> displayName,
-        Func<T, ICommand> leafCommand, Func<T, string> key)
+        Func<T, ICommand> leafCommand, Func<T, string> key, Func<string, string> folderLabel)
     {
         var root = new Node(string.Empty);
         foreach (T item in items)
@@ -81,7 +96,7 @@ public static class CatalogMenu
                 node = node.Child(segment);
             node.Leaves.Add(item!);
         }
-        return root.ToMenu(displayName, leafCommand, key);
+        return root.ToMenu(displayName, leafCommand, key, folderLabel);
     }
 
     // A mutable folder node keyed by the raw path segment (prefix kept for ordering; stripped for display).
@@ -107,13 +122,14 @@ public static class CatalogMenu
         }
 
         public IReadOnlyList<ProductMenuItemViewModel> ToMenu<T>(
-            Func<T, string> displayName, Func<T, ICommand> leafCommand, Func<T, string> key)
+            Func<T, string> displayName, Func<T, ICommand> leafCommand, Func<T, string> key,
+            Func<string, string> folderLabel)
         {
             var items = new List<ProductMenuItemViewModel>();
             foreach (Node child in Ordered.OrderBy(c => SortKey(c.RawSegment), StringComparer.Ordinal))
             {
-                var folder = new ProductMenuItemViewModel(Strip(child.RawSegment));
-                foreach (ProductMenuItemViewModel sub in child.ToMenu(displayName, leafCommand, key))
+                var folder = new ProductMenuItemViewModel(folderLabel(child.RawSegment));
+                foreach (ProductMenuItemViewModel sub in child.ToMenu(displayName, leafCommand, key, folderLabel))
                     folder.Children.Add(sub);
                 items.Add(folder);
             }

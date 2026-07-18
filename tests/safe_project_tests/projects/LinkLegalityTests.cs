@@ -110,6 +110,30 @@ namespace Ihc.Vis.Tests
                 "vendor cell 3: dataline_output → resource_input is accepted");
         }
 
+        // A-16amd/US-033b (F-080): a block output feeding its OWN input (both pins in one block) is a legitimate
+        // feedback pattern the vendor allows — the data-flow rule is the only gate, there is no same-block refusal.
+        // The measured negatives (a sink that cannot consume) still refuse.
+        [Test]
+        public void SelfLink_OutputToOwnInput_IsAllowed()
+        {
+            ProjectEditor editor = NewEditor();
+            Assert.Multiple(() =>
+            {
+                Assert.That(editor.CanLink(Id(OnPuls), Id(Kip)), Is.True,
+                    "a block output → its own input (feedback) is legal — OnPuls and Kip are the same block's pins");
+                Assert.That(editor.CanLink(Id(OnPuls), Id(Tryk)), Is.False,
+                    "the 3-clause rule still refuses a sink that cannot consume (a button)");
+            });
+
+            editor.Link(Id(OnPuls), Id(Kip));
+            Project after = editor.ToProject();
+            Assert.Multiple(() =>
+            {
+                Assert.That(HalvesOn(after, OnPuls, "link_from_resource"), Is.EqualTo(1), "the source end carries the from-half");
+                Assert.That(HalvesOn(after, Kip, "link_to_resource"), Is.EqualTo(1), "the sink end carries the to-half");
+            });
+        }
+
         // ----- the refusals: a sink that cannot consume, or a source that cannot produce -----
 
         [TestCase(OnPuls, Tryk, TestName = "FbOutput_ToProductInput_ButtonIsNotDrivable")]   // cell 4

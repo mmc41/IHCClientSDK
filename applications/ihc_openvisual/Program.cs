@@ -29,13 +29,15 @@ internal sealed class Program
     {
         try
         {
-            // Order matters: capture unhandled errors first, then config, then the telemetry pipeline.
-            AppDomain.CurrentDomain.UnhandledException += AppSetup.UnhandledExceptionHandler;
+            // Order matters: config and the telemetry pipeline first, then hook the ILogger-backed unhandled-error
+            // handler (A-25). Startup exceptions before this point are caught by Main's catch below.
             SkipRecovery = args.Any(a =>
                 string.Equals(a, "--skip-recovery", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(a, "--no-recover", StringComparison.OrdinalIgnoreCase));
             Config = new AppConfiguration();
             LoggerFactory = AppSetup.SetupTelemetryAndLoggingFactory(Config);
+            AppDomain.CurrentDomain.UnhandledException += AppSetup.UnhandledExceptionHandler(
+                LoggerFactory.CreateLogger("Ihc.OpenVisual.UnhandledException"));
 
             // Probe the configured OTLP endpoint so a wrong endpoint/token fails loudly instead of silently
             // dropping all telemetry. Runs in the background; never blocks the workspace from opening.

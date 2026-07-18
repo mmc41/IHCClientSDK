@@ -331,6 +331,171 @@ public class MainWindowViewModelTests
         Assert.That(vm.CanInsertProduct, Is.True);
     }
 
+    // A-5a (F-008): the two function-block insert items are offered only on the Functions pane (TV2) — the mirror of
+    // Insert product on the Installation pane. CanInsertFunctionBlock is the gate the shared MenuFlyout binds them to.
+    [Test]
+    public async Task ContextMenu_FbInsert_OnlyOnFunctionsPane()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+
+        vm.SelectedInstallationNode = vm.InstallationNodes[0].Children[0];   // Living room on the Installation pane (TV1)
+        Assert.That(vm.CanInsertFunctionBlock, Is.False, "function blocks are not inserted through the Installation pane");
+
+        vm.SelectedFunctionsNode = vm.FunctionNodes[0].Children[0];          // Living room on the Functions pane (TV2)
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.CanInsertFunctionBlock, Is.True, "FB-insert shows on a Functions-pane locality");
+            Assert.That(vm.CanInsertProduct, Is.False, "and product-insert does not (the panes are mutually exclusive)");
+        });
+    }
+
+    // A-5b (F-008/F-009/F-010/F-011): the shared context menu is node-type-specific. Each node type exposes the
+    // gates the MenuFlyout binds its items' IsVisible to; Paste is conditional on the clipboard. (Testing the gates
+    // directly — the single source of truth the axaml binds to — rather than realizing the flyout.)
+    [Test]
+    public async Task ContextMenu_InventoryPerNodeType()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        var product = harness.Session.GetAvailableProducts()
+            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
+        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
+        await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
+        var productPin = vm.InstallationNodes[0].Children[0].Children[0].Children.First(c => c.NodeKind == "pin:dataline_input");
+        var fbInput = vm.FunctionNodes[0].Children[0].Children[0].Children.First(s => s.NodeKind == "section:inputs").Children.First(p => p.IsPin);
+        await harness.Session.LinkPinsAsync(productPin.ElementId!.Value, fbInput.ElementId!.Value);
+
+        var root = vm.InstallationNodes[0];
+        var locality = vm.InstallationNodes[0].Children[0];
+        var productNode = vm.InstallationNodes[0].Children[0].Children[0];
+        var linkRow = productNode.Children.First(c => c.NodeKind == "pin:dataline_input").Children.First(c => c.IsLinkRow);
+        var fbNode = vm.FunctionNodes[0].Children[0].Children[0];
+
+        Assert.Multiple(() =>
+        {
+            // Root: only Insert locality.
+            Assert.That(root.CanInsertLocality, Is.True);
+            Assert.That(root.CanCutCopy || root.CanEditNonLink || root.CanDelete, Is.False, "root has no cut/copy/edit/delete");
+
+            // Locality: Cut/Copy, Delete, Properties (+ Insert product/FB by pane).
+            Assert.That(locality.CanCutCopy && locality.CanEditNonLink && locality.CanDelete, Is.True);
+            Assert.That(locality.NodeKind, Is.EqualTo("locality"));
+
+            // Wired product: Cut/Copy, Delete, Properties — not a paste target.
+            Assert.That(productNode.CanCutCopy && productNode.CanEditNonLink && productNode.CanDelete, Is.True);
+
+            // Link row: exactly Jump-to-opposite + Delete — no Move up/down, no Properties, no Cut/Copy.
+            Assert.That(linkRow.IsLinkRow && linkRow.CanDelete, Is.True);
+            Assert.That(linkRow.CanEditNonLink, Is.False, "no Move up/down or Properties on a link row");
+            Assert.That(linkRow.CanCutCopy, Is.False, "no Cut/Copy on a link row");
+
+            // Function block (locked library): Show program (IsFunctionBlock), Unlock, Cut/Copy, Delete, Properties.
+            Assert.That(fbNode.IsFunctionBlock && fbNode.IsLockedFunctionBlock, Is.True);
+            Assert.That(fbNode.CanCutCopy && fbNode.CanEditNonLink && fbNode.CanDelete, Is.True);
+        });
+
+        // Paste is clipboard-state-dependent (F-010): absent when empty, present on a locality once populated.
+        vm.SelectedInstallationNode = locality;
+        Assert.That(vm.CanPaste, Is.False, "no Paste with an empty clipboard");
+        vm.CopyCommand.Execute(productNode);
+        vm.SelectedInstallationNode = locality;
+        Assert.That(vm.CanPaste, Is.True, "Paste appears once the clipboard is non-empty");
+    }
+
+    // A-24 (F-067, US-068): Delete is absent from a catalog-declared product pin's context menu — a product's pins
+    // exist because its catalog type declares them. A deletable element (the product, a locality) keeps Delete.
+    [Test]
+    public async Task ContextMenu_Delete_AbsentOnCatalogPin()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        var product = harness.Session.GetAvailableProducts()
+            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
+        await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
+
+        var productNode = vm.InstallationNodes[0].Children[0].Children[0];
+        var catalogPin = productNode.Children.First(c => c.IsPin);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(catalogPin.IsCatalogPin, Is.True);
+            Assert.That(catalogPin.CanDelete, Is.False, "Delete is absent on a catalog-declared product pin");
+            Assert.That(productNode.CanDelete, Is.True, "the product itself stays deletable");
+            Assert.That(vm.InstallationNodes[0].Children[0].CanDelete, Is.True, "a locality stays deletable");
+        });
+    }
+
+    // A-22 (F-063, US-068): a "Log …" row offers the log-mark toggle (&Logmærke); toggling flips its rendered state
+    // off "Off". An ordinary pin does not offer it.
+    [Test]
+    public async Task ProductPin_OffersLogMarkToggle()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        var sensor = harness.Session.GetAvailableProducts().First(p => p.DisplayName.Contains("Temperatur sensor med logning"));
+        await harness.Session.AddProductAsync(loc, sensor.ProductIdentifier);
+        var productNode = vm.InstallationNodes[0].Children[0].Children[0];
+        var logPin = productNode.Children.First(c => c.DisplayName.StartsWith("Log "));
+        var otherPin = productNode.Children.First(c => c.IsPin && !c.DisplayName.StartsWith("Log "));
+
+        Assert.That(logPin.IsLogMarkPin, Is.True, "a Log row offers the log-mark toggle");
+        Assert.That(otherPin.IsLogMarkPin, Is.False, "an ordinary pin does not");
+        Assert.That(logPin.DisplayName, Does.EndWith("= Off"), "it starts Off");
+
+        await vm.ToggleLogMarkCommand.ExecuteAsync(logPin);
+
+        var logPinAfter = vm.InstallationNodes[0].Children[0].Children[0].Children.First(c => c.DisplayName.StartsWith("Log "));
+        Assert.That(logPinAfter.DisplayName, Does.Not.EndWith("= Off"),
+            "the Log row's rendered state follows the toggle");
+    }
+
+    // A-6 (F-012): F4 on a link row jumps the OTHER pane's caret to the reciprocal pin, expanding its ancestor
+    // chain, and the status names that pin — not the link row (a no-op that falsely reports success is the defect).
+    [Test]
+    public async Task F4_JumpsToOppositePin()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        var product = harness.Session.GetAvailableProducts()
+            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
+        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
+        await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
+        var productPin = vm.InstallationNodes[0].Children[0].Children[0].Children.First(c => c.NodeKind == "pin:dataline_input");
+        var fbInput = vm.FunctionNodes[0].Children[0].Children[0].Children.First(s => s.NodeKind == "section:inputs").Children.First(p => p.IsPin);
+        await harness.Session.LinkPinsAsync(productPin.ElementId!.Value, fbInput.ElementId!.Value);
+
+        var linkRow = vm.InstallationNodes[0].Children[0].Children[0].Children
+            .First(c => c.NodeKind == "pin:dataline_input").Children.First(c => c.IsLinkRow);
+        vm.SelectNode(linkRow);   // F4 acts on the selected link row
+        vm.NavigateLinkOppositeCommand.Execute(linkRow);
+
+        var fbNode = vm.FunctionNodes[0].Children[0].Children[0];   // the opposite pin's function-block ancestor
+        var inputSection = fbNode.Children.First(s => s.NodeKind == "section:inputs");
+        var fbInputAfter = inputSection.Children.First(p => p.IsPin);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.SelectedFunctionsNode, Is.SameAs(fbInputAfter), "the Functions pane selects the opposite pin");
+            Assert.That(vm.SelectedNode, Is.SameAs(fbInputAfter), "the opposite pin is the active node");
+            Assert.That(vm.StatusText, Is.EqualTo($"Jumped to {fbInputAfter.DisplayName}."),
+                "the status names the opposite pin");
+            Assert.That(fbNode.IsExpanded, Is.True, "the function-block ancestor is expanded so the pin is visible");
+            Assert.That(inputSection.IsExpanded, Is.True, "and its section too");
+        });
+    }
+
     // US-011: applying product documentation writes the mapped attributes on the product element.
     [Test]
     public async Task UpdateProduct_WritesDocumentationAttributes()
@@ -384,26 +549,171 @@ public class MainWindowViewModelTests
         });
     }
 
-    // US-011: inserting a product opens its properties dialog automatically, pre-filled.
+    // A-14/US-011 (F-027): inserting a product lands it under the caret and opens NO dialog (the vendor does not
+    // auto-open; the installer opens Properties on demand via F2 / double-click).
     [Test]
-    public async Task InsertProduct_AutoOpensProductProperties_PreFilled()
+    public async Task InsertProduct_OpensNoDialog()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        vm.SelectNode(vm.InstallationNodes[0].Children[0]);   // "Living room"
-        harness.Dialogs.ProductPropertiesResult = null;       // dismiss the auto-opened dialog
+        var locality = vm.InstallationNodes[0].Children[0];   // "Living room"
+        vm.SelectNode(locality);
 
         var leaf = FirstLeaf(vm.WiredProductsMenu);
         await ((IAsyncRelayCommand)leaf.Command!).ExecuteAsync(null);
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(1), "the dialog opens automatically on insert");
-            Assert.That(harness.Dialogs.LastProductPropertiesInput!.Title, Is.EqualTo("Product properties"));
-            Assert.That(harness.Dialogs.LastProductPropertiesInput!.Name, Is.EqualTo(leaf.Header), "Name is pre-filled");
-            Assert.That(harness.Dialogs.LastProductPropertiesInput!.Localities.Select(l => l.Name),
-                Does.Contain("Living room"), "Location offers the localities");
+            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(0), "no properties dialog auto-opens on insert");
+            Assert.That(vm.InstallationNodes[0].Children[0].Children, Has.Count.EqualTo(1),
+                "the product is inserted under the selected locality");
+        });
+    }
+
+    // A-8/US-011 (F-015): the product-properties dialog is titled with the product TYPE (the catalog name), not the
+    // generic "Product properties" — this is how the vendor tells two open product dialogs apart.
+    [Test]
+    public async Task ProductProperties_TitleIsProductType()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var lampeudtag = harness.Session.GetAvailableProducts().First(p => p.ProductIdentifier == "_0x2202");
+        await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, lampeudtag.ProductIdentifier);
+        var productNode = vm.InstallationNodes[0].Children[0].Children[0];
+
+        harness.Dialogs.ProductPropertiesResult = null;   // cancel — just capture the input
+        await vm.PropertiesCommand.ExecuteAsync(productNode);
+
+        Assert.That(harness.Dialogs.LastProductPropertiesInput!.Title, Is.EqualTo("Lampeudtag"),
+            "the title is the product type, not the generic 'Product properties'");
+    }
+
+    // A-12 (US-012): the product-properties dialog lists the product's input/output terminals with name, the
+    // vendor-formatted Datalinie N.PP address and cable colour.
+    [Test]
+    public async Task ProductProperties_ShowsTerminalGrids()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var product = harness.Session.GetAvailableProducts()
+            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
+        var productNode = vm.InstallationNodes[0].Children[0].Children[0];
+        var pinId = productNode.Children.First(c => c.NodeKind == "pin:dataline_input").ElementId!.Value;
+        await harness.Session.UpdatePinAsync(pinId, new PinPropertiesResult(2, 4, "brun", string.Empty, false));  // Datalinie 2.04
+
+        harness.Dialogs.ProductPropertiesResult = null;   // cancel — just capture the dialog input
+        await vm.PropertiesCommand.ExecuteAsync(productNode);
+
+        var terminals = harness.Dialogs.LastProductPropertiesInput!.Terminals!;
+        Assert.Multiple(() =>
+        {
+            Assert.That(terminals.Any(t => !t.IsOutput), "the input terminal grid is populated");
+            Assert.That(terminals.All(t => !string.IsNullOrEmpty(t.Name)), "each terminal shows its name");
+            Assert.That(terminals.Any(t => t.Address == "Datalinie 2.04" && t.CableColour == "brun"),
+                "an addressed terminal shows its Datalinie N.PP address and cable colour");
+        });
+    }
+
+    // A-13/US-011: the Placement descriptor round-trips through the dialog into the .vis and back (and renders in
+    // the tree label as "name (position)").
+    [Test]
+    public async Task ProductProperties_PlaceringRoundTrips()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var product = harness.Session.GetAvailableProducts()
+            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+        await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier);
+        var productNode = vm.InstallationNodes[0].Children[0].Children[0];
+
+        harness.Dialogs.ProductPropertiesResponder = i =>
+            new ProductPropertiesResult(i.Name, i.CurrentLocalityId, i.Note, i.CableType, i.CableNumber,
+                i.IdentificationCode, i.LightGroup, Position: "i loft");
+        await vm.PropertiesCommand.ExecuteAsync(productNode);
+
+        harness.Dialogs.ProductPropertiesResponder = null;
+        harness.Dialogs.ProductPropertiesResult = null;   // reopen and cancel — just capture the input
+        await vm.PropertiesCommand.ExecuteAsync(productNode);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(harness.Dialogs.LastProductPropertiesInput!.Position, Is.EqualTo("i loft"), "Placement round-trips");
+            Assert.That(vm.InstallationNodes[0].Children[0].Children[0].DisplayName, Does.Contain("(i loft)"),
+                "the placement renders in the tree label");
+        });
+    }
+
+    // A-15/US-011 [R5]: the Name box is disabled exactly when the ELEMENT's `locked` resolves to "yes" (project DTD
+    // default "no") — never a catalog lookup (whose default "yes" would grey the wrong products). Case (2) is the one
+    // a catalog-based impl fails: an element that omits `locked` stays editable.
+    [Test]
+    public async Task ProductName_DisabledWhenElementLocked()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+
+        async Task<bool> NameLockedFor(string productIdentifier)
+        {
+            var pid = (await harness.Session.AddProductAsync(loc, productIdentifier))!.Value;
+            var node = FindNodeById(vm.InstallationNodes, pid)!;
+            harness.Dialogs.ProductPropertiesResult = null;   // cancel — just capture the input
+            await vm.PropertiesCommand.ExecuteAsync(node);
+            return harness.Dialogs.LastProductPropertiesInput!.NameLocked;
+        }
+
+        bool lampeudtag = await NameLockedFor("_0x2202");   // (1) inserts with locked="yes"
+        bool userInput = await NameLockedFor("_0x2701");    // (2) omits locked → editable
+        bool miniModul = await NameLockedFor("_0x104");     // (3) Mini Modul 1 tryk: catalog seeds locked="yes"
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(lampeudtag, Is.True, "a locked element disables the Name box");
+            Assert.That(userInput, Is.False, "an element that omits locked stays editable (a catalog-based impl fails here)");
+            Assert.That(miniModul, Is.True, "Mini Modul 1 tryk materializes locked=yes on insert and is disabled (loced typo inert)");
+        });
+    }
+
+    // A-23/US-012: the end-user-report flag is exposed as a checkbox that reflects and writes the product's
+    // enduser_report attribute (shipped always-visible; the visibility gate is unmeasured — §2 C15).
+    [Test]
+    public async Task ProductProperties_HasEndUserReportCheckbox()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var product = harness.Session.GetAvailableProducts()
+            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+        await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier);
+        var productNode = vm.InstallationNodes[0].Children[0].Children[0];
+
+        // Reflects+writes both directions (the product's inserted default is not relied on).
+        async Task<bool> SetAndReopen(bool value)
+        {
+            harness.Dialogs.ProductPropertiesResponder = i =>
+                new ProductPropertiesResult(i.Name, i.CurrentLocalityId, i.Note, i.CableType, i.CableNumber,
+                    i.IdentificationCode, i.LightGroup, EndUserReport: value);
+            await vm.PropertiesCommand.ExecuteAsync(productNode);
+            harness.Dialogs.ProductPropertiesResponder = null;
+            harness.Dialogs.ProductPropertiesResult = null;   // reopen and cancel — capture the reflected input
+            await vm.PropertiesCommand.ExecuteAsync(productNode);
+            return harness.Dialogs.LastProductPropertiesInput!.EndUserReport;
+        }
+
+        bool turnedOn = await SetAndReopen(true);
+        bool turnedOff = await SetAndReopen(false);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(turnedOn, Is.True, "checking the box writes enduser_report=yes and reflects on reopen");
+            Assert.That(turnedOff, Is.False, "unchecking it writes enduser_report=no and reflects on reopen");
         });
     }
 
@@ -561,33 +871,40 @@ public class MainWindowViewModelTests
         });
     }
 
-    // US-013: inserting a modem opens the modem dialog (not the generic product dialog).
+    // A-14/US-013 (F-027): inserting a modem lands it under the caret and opens NO dialog (the vendor does not
+    // auto-open; neither the modem dialog nor the generic product dialog appears).
     [Test]
-    public async Task InsertModem_AutoOpensModemDialog()
+    public async Task InsertModem_OpensNoDialog()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         vm.SelectNode(vm.InstallationNodes[0].Children[0]);
-        harness.Dialogs.ModemPropertiesResult = null;
 
-        var modemLeaf = vm.SpecialProductsMenu[0];
+        var modemLeaf = vm.BusProductsMenu.First(m => m.Header == "SMS Modem");   // the modem is a Bus product (A-11)
         await ((IAsyncRelayCommand)modemLeaf.Command!).ExecuteAsync(null);
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.EditModemPropertiesCalls, Is.EqualTo(1), "the modem dialog opened");
-            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(0), "not the generic product dialog");
-            Assert.That(harness.Dialogs.LastModemPropertiesInput!.Title, Is.EqualTo("SMS modem properties"));
+            Assert.That(harness.Dialogs.EditModemPropertiesCalls, Is.EqualTo(0), "no modem dialog auto-opens on insert");
+            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(0), "nor the generic product dialog");
+            Assert.That(vm.InstallationNodes[0].Children[0].Children, Has.Count.EqualTo(1),
+                "the modem is inserted under the selected locality");
         });
     }
 
+    // A-11: the SMS Modem is a Bus product, not a Special one (the old IsModem filter miscategorised it).
     [Test]
-    public void SpecialProductsMenu_ContainsTheModem()
+    public void BusProductsMenu_ContainsTheModem()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
-        Assert.That(vm.SpecialProductsMenu.Select(m => m.Header), Does.Contain("SMS Modem"));
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.BusProductsMenu.Select(m => m.Header), Does.Contain("SMS Modem"));
+            Assert.That(vm.SpecialProductsMenu.Select(m => m.Header), Does.Not.Contain("SMS Modem"),
+                "the modem no longer lives under Special products");
+        });
     }
 
     // US-014: an inserted wireless product nests under its locality and shows the unlinked marker.
@@ -637,22 +954,27 @@ public class MainWindowViewModelTests
         });
     }
 
-    // US-014: inserting a wireless product opens the product dialog flagged as wireless (cabling hidden).
+    // A-14/US-014: inserting a wireless product opens no dialog; opening its properties on demand flags it wireless
+    // (so the cabling fields are hidden).
     [Test]
-    public async Task InsertWireless_AutoOpensProductDialog_MarkedWireless()
+    public async Task WirelessProduct_PropertiesFlaggedWireless()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         vm.SelectNode(vm.InstallationNodes[0].Children[0]);
-        harness.Dialogs.ProductPropertiesResult = null;
 
         var leaf = FirstLeaf(vm.WirelessProductsMenu);
         await ((IAsyncRelayCommand)leaf.Command!).ExecuteAsync(null);
+        Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(0), "no dialog auto-opens on insert (A-14)");
+
+        var productNode = vm.InstallationNodes[0].Children[0].Children[0];
+        harness.Dialogs.ProductPropertiesResult = null;
+        await vm.PropertiesCommand.ExecuteAsync(productNode);
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(1));
+            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(1), "opened on demand via Properties");
             Assert.That(harness.Dialogs.LastProductPropertiesInput!.IsWireless, Is.True, "the dialog is flagged wireless");
         });
     }
@@ -742,13 +1064,15 @@ public class MainWindowViewModelTests
     }
 
     // US-018: inserting a library function block nests it in the Functions pane with its variable sections and pins.
+    // Configuration mode shows Input/Output/Settings only — Internal variables is programming-mode-only (A-17/F-069).
     [Test]
     public async Task InsertFunctionBlock_NestsInFunctionsPane_WithSections()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var block = harness.Session.GetAvailableFunctionBlocks()
+            .First(f => f.Inputs.Count > 0 && f.Outputs.Count > 0 && f.Settings.Count > 0);
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;   // Living room
 
         var fbId = await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
@@ -759,10 +1083,39 @@ public class MainWindowViewModelTests
         {
             Assert.That(fbId, Is.Not.Null);
             Assert.That(fbNode.DisplayName, Is.EqualTo(block.DisplayName));
-            Assert.That(sectionLabels, Is.EqualTo(new[] { "Input", "Output", "Settings", "Internal variables" }));
+            Assert.That(sectionLabels, Is.EqualTo(new[] { "Input", "Output", "Settings" }));
             Assert.That(fbNode.Children[0].Children, Is.Not.Empty, "the Input section shows the block's pins");
             Assert.That(vm.InstallationNodes[0].Children[0].Children, Is.Empty, "a function block is not shown in the Installation pane");
             Assert.That(harness.Session.IsDirty, Is.True);
+        });
+    }
+
+    // A-17 (F-069): the Internal variables section is programming-mode-only. Configuration mode shows three sections
+    // (Input/Output/Settings); entering programming mode adds Internal variables. Both modes are asserted so neither
+    // half passes vacuously (a config-only assertion would still pass if the section were deleted outright).
+    [Test]
+    public async Task FunctionBlock_InternalVariables_OnlyInProgrammingMode()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var block = harness.Session.GetAvailableFunctionBlocks()
+            .First(f => f.Inputs.Count > 0 && f.Outputs.Count > 0 && f.Settings.Count > 0 && f.InternalVariables.Count > 0);
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
+
+        var configFb = vm.FunctionNodes[0].Children[0].Children[0];
+        var configSections = configFb.Children.Select(c => c.DisplayName).ToList();
+
+        vm.EnterProgrammingModeCommand.Execute(configFb);
+        var programmingSections = vm.InstallationNodes[0].Children.Select(c => c.DisplayName).ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(configSections, Is.EqualTo(new[] { "Input", "Output", "Settings" }),
+                "configuration mode omits Internal variables");
+            Assert.That(programmingSections, Is.EqualTo(new[] { "Input", "Output", "Settings", "Internal variables" }),
+                "programming mode adds Internal variables");
         });
     }
 
@@ -785,6 +1138,42 @@ public class MainWindowViewModelTests
         });
     }
 
+    // A-21 (F-062): a function block's Indstillinger (settings) rows render their literal value — a time-carrying
+    // setting shows HH:MM:SS. Scoped to the vendor-measured settings context: a resource_enum row keeps its A-3
+    // state decoration (not regressed), and resource_flag / resource_date rows stay bare.
+    [Test]
+    public async Task FunctionBlockSettingsRow_RendersLiteralValue()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc0 = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        var loc1 = vm.InstallationNodes[0].Children[1].ElementId!.Value;
+        var loc2 = vm.InstallationNodes[0].Children[2].ElementId!.Value;
+        await harness.Session.AddFunctionBlockAsync(loc0, "1.1.02");   // Puls — settings has a resource_timertime
+        await harness.Session.AddFunctionBlockAsync(loc1, "1.2.04");   // regulering — settings has a resource_enum
+        await harness.Session.AddFunctionBlockAsync(loc2, "2.1.04");   // Kalender — settings has resource_flag + resource_date
+
+        static string Row(TreeNodeViewModel fb, string rowNamePrefix) =>
+            fb.Children.First(s => s.NodeKind == "section:settings")
+              .Children.First(r => r.DisplayName.StartsWith(rowNamePrefix)).DisplayName;
+
+        var timeRow = Row(vm.FunctionNodes[0].Children[0].Children[0], "Indstilling af variabel tryktid");
+        var enumRow = Row(vm.FunctionNodes[0].Children[1].Children[0], "Kort reguleringstryk tænder");
+        var flagRow = Row(vm.FunctionNodes[0].Children[2].Children[0], "1 - Aktiv Dato");
+        var dateRow = Row(vm.FunctionNodes[0].Children[2].Children[0], "1 - Dato Start");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(timeRow, Is.EqualTo("Indstilling af variabel tryktid = 00:00:02"),
+                "a time-carrying settings row renders its literal HH:MM:SS value");
+            Assert.That(enumRow, Does.StartWith("Kort reguleringstryk tænder = "),
+                "a resource_enum settings row still renders its enum state (A-3 not regressed)");
+            Assert.That(flagRow, Is.EqualTo("1 - Aktiv Dato"), "a resource_flag settings row stays bare");
+            Assert.That(dateRow, Is.EqualTo("1 - Dato Start"), "an unmeasured resource_date settings row stays bare");
+        });
+    }
+
     [Test]
     public void FunctionBlocksMenu_HasLibraryFoldersFromCatalog()
     {
@@ -798,9 +1187,11 @@ public class MainWindowViewModelTests
         });
     }
 
-    // US-019: an empty function block is named "Empty block" and shows the four variable sections.
+    // US-019 / A-18 (F-086): a fresh empty function block's variable containers are all childless, so configuration
+    // mode renders NO section node (IHC Visual hides an empty container). The headers reappear in programming mode,
+    // where the block is authored — asserted by FunctionBlock_InternalVariables_OnlyInProgrammingMode.
     [Test]
-    public async Task InsertEmptyFunctionBlock_ShowsFourSections_InFunctionsPane()
+    public async Task FunctionBlock_EmptyVariableContainer_IsHidden()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
@@ -814,8 +1205,8 @@ public class MainWindowViewModelTests
         {
             Assert.That(fbId, Is.Not.Null);
             Assert.That(fbNode.DisplayName, Is.EqualTo("Empty block"));
-            Assert.That(fbNode.Children.Select(c => c.DisplayName),
-                Is.EqualTo(new[] { "Input", "Output", "Settings", "Internal variables" }));
+            Assert.That(fbNode.Children, Is.Empty,
+                "every variable container is empty, so configuration mode renders no section node");
             Assert.That(harness.Session.IsDirty, Is.True);
         });
     }
@@ -1090,6 +1481,109 @@ public class MainWindowViewModelTests
         });
     }
 
+    // A-19 (F-051): a scene member row renders the BARE opposite-end path; for a shutter member the driven
+    // direction is the product's own pin name (Op/Ned) — a 4th bare segment — never the "= up" value token. The
+    // app cannot author a shutter scene (LinkSceneAsync is relay/dimmer only), so the fixture is built via the SDK
+    // editor (SceneValue.Shutter) and loaded through the session.
+    [Test]
+    public async Task LinkPath_UsesBareNames_NotDecoratedLabels()
+    {
+        using var harness = ShellHarness.Create();
+        var service = new ProjectAppService(new IhcSettings());
+        Project project = service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty));
+        project = DefaultLocalities.ApplyEnglish(project);
+        var jalousi = service.GetAvailableProducts().First(p => p.DisplayName.Contains("Jalousi 4 tast"));
+        var fbDef = service.GetAvailableFunctionBlocks().First(f => f.MasterType == "3.1.03");
+
+        ProjectEditor editor = project.Edit();
+        editor.Group("Living room").AddProduct(jalousi);
+        editor.Group("Living room").AddFunctionBlock(fbDef);
+        Project mid = editor.ToProject();
+        ProjectElement room = mid.Groups.First(g => g.GetAttribute("name") == "Living room");
+        ElementId scenePinId = room.ChildrenOrEmpty().First(c => c.Tag == "functionblock")
+            .FindChild("outputs")!.ChildrenOrEmpty()
+            .First(c => c.Tag == "resource_scene" && c.GetAttribute("name") == "Regulering").Id!.Value;
+        ElementId scenesId = room.ChildrenOrEmpty().First(c => c.Tag == "product_airlink")
+            .ChildrenOrEmpty().First(c => c.Tag == "scenes").Id!.Value;
+        editor.LinkScene(scenePinId, scenesId, SceneValue.Shutter(up: true));
+
+        string path = harness.TempPath("shutter.vis");
+        await service.Save(editor.ToProject(), path);
+        var vm = harness.CreateViewModel();
+        await harness.Session.OpenAsync(path);
+
+        static IEnumerable<TreeNodeViewModel> Flatten(IEnumerable<TreeNodeViewModel> nodes)
+        {
+            foreach (var n in nodes)
+            {
+                yield return n;
+                foreach (var c in Flatten(n.Children))
+                    yield return c;
+            }
+        }
+        TreeNodeViewModel member = Flatten(vm.InstallationNodes).First(n => n.NodeKind == "sceneMember");
+        string[] segments = member.DisplayName.Split(" / ");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(member.DisplayName, Does.Not.Contain("="), "no '= value' decoration leaks into the scene link path");
+            Assert.That(segments, Has.Length.EqualTo(4), "the path has 4 bare segments (vendor), not 3 (one short)");
+            Assert.That(segments[^1], Is.EqualTo("Op"), "the last segment is the product's own shutter pin name, not the value token 'up'");
+        });
+    }
+
+    // A-20 (F-061): the TV2 link-path renderer names a product with name (position) — A-2 fixed this on the
+    // Installation pane only. Two same-named products distinguished only by position must be distinguishable in a
+    // link row. A single-name assertion cannot see this; the twins make the position load-bearing.
+    [Test]
+    public async Task LinkPath_DistinguishesSameNamedProductsByPosition()
+    {
+        using var harness = ShellHarness.Create();
+        var service = new ProjectAppService(new IhcSettings());
+        Project project = service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty));
+        project = DefaultLocalities.ApplyEnglish(project);
+        var product = service.GetAvailableProducts()
+            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
+        var fbDef = service.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+
+        ProjectEditor editor = project.Edit();
+        editor.Group("Living room").AddProduct(product).Position("i loft");    // twin A
+        editor.Group("Living room").AddProduct(product).Position("på væg");    // twin B — same name, other position
+        editor.Group("Living room").AddFunctionBlock(fbDef);
+
+        string path = harness.TempPath("twins.vis");
+        await service.Save(editor.ToProject(), path);
+        var vm = harness.CreateViewModel();
+        await harness.Session.OpenAsync(path);
+
+        // Link twin A's first pin to the FB's first input pin, so the FB-side (TV2) link row names the product.
+        TreeNodeViewModel living = vm.InstallationNodes[0].Children.First(c => c.DisplayName == "Living room");
+        TreeNodeViewModel twinA = living.Children.First(c => c.DisplayName.Contains("(i loft)"));
+        ElementId productPinId = twinA.Children.First(c => c.IsPin).ElementId!.Value;
+        TreeNodeViewModel fbNode = vm.FunctionNodes[0].Children.First(c => c.DisplayName == "Living room").Children[0];
+        ElementId fbInputPinId = fbNode.Children.First(s => s.NodeKind == "section:inputs")
+            .Children.First(p => p.IsPin).ElementId!.Value;
+        await harness.Session.LinkPinsAsync(productPinId, fbInputPinId);
+
+        static IEnumerable<TreeNodeViewModel> Flatten(IEnumerable<TreeNodeViewModel> nodes)
+        {
+            foreach (var n in nodes)
+            {
+                yield return n;
+                foreach (var c in Flatten(n.Children))
+                    yield return c;
+            }
+        }
+        TreeNodeViewModel fbLinkRow = Flatten(vm.FunctionNodes).First(n => n.IsLinkRow);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(fbLinkRow.DisplayName, Does.Contain("(i loft)"),
+                "the link path renders the product's position, distinguishing it from its same-named twin");
+            Assert.That(fbLinkRow.DisplayName, Does.Not.Contain("(på væg)"), "it names twin A, not twin B");
+        });
+    }
+
     // US-024: linking an FB scene output onto a product's scenes container adds a scene member + back-reference.
     [Test]
     public async Task LinkScene_CreatesSceneMembershipAndBackReference()
@@ -1329,6 +1823,38 @@ public class MainWindowViewModelTests
         });
     }
 
+    // A-27 (F-076): a locked (library) block's program is VIEW-ONLY in programming mode — it renders, but every
+    // authoring command is withdrawn/refused; the tree and the .vis stay unchanged.
+    [Test]
+    public async Task LockedFunctionBlock_ViewOnly_InProgrammingMode()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        var fbId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
+        var fbNode = vm.FunctionNodes[0].Children[0].Children[0];
+        Assert.That(fbNode.IsLockedFunctionBlock, Is.True, "a library block is locked");
+
+        vm.EnterProgrammingModeCommand.Execute(fbNode);
+
+        int inputsBefore = harness.Session.Current!.FindById(fbId)!.FindChild("inputs")!.ChildrenOrEmpty().Count();
+        await vm.InsertInputCommand.ExecuteAsync(null);   // Ctrl+I — must be refused on a locked block
+        int inputsAfter = harness.Session.Current!.FindById(fbId)!.FindChild("inputs")!.ChildrenOrEmpty().Count();
+
+        vm.SelectNode(vm.InstallationNodes[0].Children.First(s => s.NodeKind == "section:inputs"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.IsProgrammingMode, Is.True, "programming mode is entered — viewing works");
+            Assert.That(FindByFlag(vm.FunctionNodes, n => n.NodeKind == "programs"), Is.Not.Null, "the program subtree renders");
+            Assert.That(vm.IsProgrammingBlockLocked, Is.True);
+            Assert.That(inputsAfter, Is.EqualTo(inputsBefore), "Ctrl+I did not author the locked block");
+            Assert.That(vm.CanInsertVariable, Is.False, "the Insert-variable command is withdrawn on a locked block");
+        });
+    }
+
     // US-026: Esc leaves programming mode and restores the two locality trees.
     [Test]
     public async Task LeaveProgrammingMode_ReturnsToLocalities()
@@ -1514,6 +2040,40 @@ public class MainWindowViewModelTests
             Assert.That(sub!.Children.Any(c => c.IsConditionsContainer), Is.True, "it has a Conditions group");
             Assert.That(sub.Children.Any(c => c.DisplayName == "Commands when conditions true"), Is.True);
             Assert.That(sub.Children.Any(c => c.DisplayName == "Commands when conditions false"), Is.True);
+        });
+    }
+
+    // A-26 (F-075): a conditional command (program_sub, "Betinget kommando") renders its stored user name, not the
+    // fixed "Sub-program". Catalog block 1.2.04 has many distinctly-named sub-programs plus one never-renamed sub
+    // (carrying the vendor default "Under program"), which falls back to the English default token "Sub-program".
+    [Test]
+    public async Task SubProgram_RendersStoredName_NotFixedLabel()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        await harness.Session.AddFunctionBlockAsync(loc, "1.2.04");   // Trådløs / Bus lysdæmper — has named sub-programs
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+
+        static IEnumerable<TreeNodeViewModel> Flatten(IEnumerable<TreeNodeViewModel> nodes)
+        {
+            foreach (var n in nodes)
+            {
+                yield return n;
+                foreach (var c in Flatten(n.Children))
+                    yield return c;
+            }
+        }
+        var subNames = Flatten(vm.FunctionNodes).Where(n => n.NodeKind == "subProgram").Select(n => n.DisplayName).ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(subNames, Has.Count.GreaterThan(1), "the block has several sub-programs");
+            Assert.That(subNames, Does.Contain("Scenarie op"), "a stored user name renders verbatim");
+            Assert.That(subNames, Does.Contain("Scenarie ned"), "distinct stored names render distinctly");
+            Assert.That(subNames.Distinct().Count(), Is.GreaterThan(1), "they are not all the fixed 'Sub-program' label");
+            Assert.That(subNames, Does.Contain("Sub-program"), "a never-renamed sub-program falls back to the default token");
         });
     }
 
@@ -2088,9 +2648,10 @@ public class MainWindowViewModelTests
         });
     }
 
-    // US-033b: a variable link must cross two blocks — joining two variables of the same block is refused.
+    // A-16amd/US-033b (F-080): a block's output feeding its OWN input is a legitimate feedback pattern the vendor
+    // allows — the same-block refusal is dropped; only the data-flow rule (CanLink) gates the link.
     [Test]
-    public async Task FbToFbLink_WithinSameBlock_Rejected()
+    public async Task FbToFbLink_WithinSameBlock_IsAllowed()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
@@ -2099,11 +2660,11 @@ public class MainWindowViewModelTests
         await harness.Session.AddEmptyFunctionBlockAsync(loc);
         var block = harness.Session.Current!.FindById(loc)!.ChildrenOrEmpty().First(c => c.Tag == "functionblock");
         var output = (await harness.Session.AddVariableAsync(block.FindChild("outputs")!.Id!.Value, "resource_output", "O"))!.Value;
-        var flag = (await harness.Session.AddVariableAsync(block.FindChild("settings")!.Id!.Value, "resource_flag", "F"))!.Value;
+        var input = (await harness.Session.AddVariableAsync(block.FindChild("inputs")!.Id!.Value, "resource_input", "I"))!.Value;
 
-        var ok = await harness.Session.LinkPinsAsync(output, flag);
+        var ok = await harness.Session.LinkPinsAsync(output, input);
 
-        Assert.That(ok, Is.False, "a link must connect two different function blocks");
+        Assert.That(ok, Is.True, "an FB output → its own input (feedback) is allowed");
     }
 
     // US-039: project/customer/installer information is written into the project where the reports read it.

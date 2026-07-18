@@ -94,5 +94,37 @@ namespace Ihc.Vis.Tests
         [TestCase("_0x09", true, "2.01")]    // output divider 8 → data line increments sooner
         public void ToVendorLabel_MatchesVendorFormula(string token, bool isOutput, string expected) =>
             Assert.That(DatalineAddress.ToVendorLabel(token, isOutput), Is.EqualTo(expected));
+
+        // ----- A-12: a terminal address written onto a data-line pin survives a save/reload byte round-trip -----
+
+        [Test]
+        public async System.Threading.Tasks.Task TerminalAddress_RoundTrips()
+        {
+            var service = new ProjectAppService(TestSetup.Settings);
+            Project project = service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty));
+            ProductDefinition product = service.GetAvailableProducts()
+                .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
+            string room = project.Groups.First().GetAttribute("name")!;
+
+            ProjectEditor editor = project.Edit();
+            editor.Group(room).AddProduct(product);
+            ElementId pinId = editor.ToProject().Root.DescendantsAndSelf().First(e => e.Tag == "dataline_input").Id!.Value;
+            Assert.That(DatalineAddress.TryEncode(2, 4, isOutput: false, out string token), Is.True, "Datalinie 2.04");
+            Assert.That(editor.TryResolve(pinId, out ElementRef? handle), Is.True);
+            handle!.SetAttribute("address_dataline", token);
+
+            using var stream = new System.IO.MemoryStream();
+            await service.Save(editor.ToProject(), stream);
+            stream.Position = 0;
+            Project reloaded = await service.Load(stream);
+
+            ProjectElement reloadedPin = reloaded.FindById(pinId)!;
+            Assert.Multiple(() =>
+            {
+                Assert.That(reloadedPin.GetAttribute("address_dataline"), Is.EqualTo(token), "the address token round-trips");
+                Assert.That(DatalineAddress.ToVendorLabel(reloadedPin.GetAttribute("address_dataline"), isOutput: false),
+                    Is.EqualTo("2.04"), "and decodes to the vendor Datalinie N.PP label");
+            });
+        }
     }
 }

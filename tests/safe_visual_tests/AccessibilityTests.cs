@@ -282,6 +282,62 @@ public class AccessibilityTests : AvaloniaTestBase
         });
     }
 
+    // A-9/A-10: a code-built confirm dialog must be keyboard-operable — the safe (negative, last) button holds focus
+    // on open, and Escape closes the dialog (which its Closed handler resolves to that safe default). Exercises the
+    // exact wiring AvaloniaDialogService applies to every confirm dialog.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public void ConfirmDialog_EscClosesAndSafeButtonFocused()
+    {
+        bool closed = false;
+        var safeButton = new Button { Content = "No", MinWidth = 84 };
+        var dialog = new Window
+        {
+            Content = new StackPanel { Children = { new Button { Content = "Yes" }, safeButton } }
+        };
+        dialog.Closed += (_, _) => closed = true;
+        AvaloniaDialogService.WireKeyboardDismissal(dialog, safeButton);
+        CurrentTestWindow = dialog;
+        dialog.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        Assert.That(safeButton.IsFocused, Is.True, "the safe (negative) button holds keyboard focus on open");
+
+        dialog.KeyPress(Avalonia.Input.Key.Escape, Avalonia.Input.RawInputModifiers.None,
+            Avalonia.Input.PhysicalKey.Escape, null);
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        Assert.That(closed, Is.True, "Escape dismisses the dialog (which resolves to the safe default)");
+    }
+
+    // A-28 (F-083): F6 moves keyboard focus between the two tree panes — a real focus move, not a no-op.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task F6_SwitchesPaneFocus()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var window = new MainWindow { DataContext = vm };
+        CurrentTestWindow = window;
+        window.Show();
+        window.CaptureRenderedFrame();
+
+        var tv1 = window.FindControl<TreeView>("InstallationTree")!;
+        var tv2 = window.FindControl<TreeView>("FunctionsTree")!;
+        tv1.GetVisualDescendants().OfType<TreeViewItem>().First().Focus();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.That(tv1.IsKeyboardFocusWithin, Is.True, "the Installation pane starts focused");
+
+        window.KeyPress(Avalonia.Input.Key.F6, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.F6, null);
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.That(tv2.IsKeyboardFocusWithin, Is.True, "F6 moves keyboard focus to the Functions pane");
+
+        window.KeyPress(Avalonia.Input.Key.F6, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.F6, null);
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.That(tv1.IsKeyboardFocusWithin, Is.True, "F6 again returns focus to the Installation pane");
+    }
+
     // The About "source" link must be a real, keyboard-focusable and keyboard-activatable control with an
     // accessible name — not a TextBlock that only responds to a mouse click.
     [AvaloniaTest]

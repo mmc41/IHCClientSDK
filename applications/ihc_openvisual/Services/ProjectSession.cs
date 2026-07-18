@@ -421,13 +421,6 @@ public sealed class ProjectSession : IDisposable
 
     // The function block that owns a variable pin (block → section → pin), or null if the pin is not an FB variable
     // (e.g. a product pin). Used to detect and constrain function-block-to-function-block links (US-033b).
-    private ProjectElement? OwningFunctionBlock(ElementId pinId)
-    {
-        if (Current?.FindParent(pinId) is not { Id: { } sectionId })
-            return null;
-        return Current.FindParent(sectionId) is { Tag: "functionblock" } block ? block : null;
-    }
-
     public Task<bool> LinkPinsAsync(ElementId draggedPinId, ElementId dropTargetPinId) =>
         RunEditAsync(nameof(LinkPinsAsync), "Link failed", async (project, editor) =>
         {
@@ -445,14 +438,8 @@ public sealed class ProjectSession : IDisposable
                     + "function block.");
                 return false;
             }
-            // Two variables of the same block are a loop, not a link (US-033b).
-            if (OwningFunctionBlock(draggedPinId) is { } sourceBlock && OwningFunctionBlock(dropTargetPinId) is { } targetBlock
-                && sourceBlock.Id == targetBlock.Id)
-            {
-                await _dialogs.ShowMessageAsync("Incompatible link",
-                    "Link a flag or output of one block to a flag or input of another block.");
-                return false;
-            }
+            // A block's output feeding its OWN input is a legitimate feedback pattern the vendor allows (A-16amd/
+            // F-080) — the data-flow rule (CanLink) is the only gate; there is no same-block refusal.
             editor.Link(draggedPinId, dropTargetPinId);
             return true;
         });
@@ -1292,6 +1279,17 @@ public sealed class ProjectSession : IDisposable
     /// <c>address_dataline</c> and writes <c>cable_colour</c>, <c>note</c>, and — for an output — the <c>inivalue</c>
     /// (on = normally-closed, off = normally-open). Commits, marks dirty, records the change. Returns false on failure.
     /// </summary>
+    /// <summary>Toggles a "Log …" row's log mark (US-068, the vendor's &amp;Logmærke): flips its Logning state between
+    /// Off and the first logging mode. Commits, marks dirty. Returns false when the target is not a Logning row.</summary>
+    public Task<bool> ToggleLogMarkAsync(ElementId logRowId) =>
+        RunEditAsync(nameof(ToggleLogMarkAsync), "Log mark failed", (project, editor) =>
+        {
+            if (project.FindById(logRowId) is not { } row || !ProjectEditor.IsLogRow(row, project))
+                return false;
+            editor.ToggleLogMark(logRowId);
+            return true;
+        });
+
     public Task<bool> UpdatePinAsync(ElementId pinId, PinPropertiesResult r) =>
         RunEditAsync(nameof(UpdatePinAsync), "Addressing failed", (project, editor) =>
         {
@@ -1328,6 +1326,8 @@ public sealed class ProjectSession : IDisposable
                 return false;
             }
             handle.SetAttribute("name", r.Name);
+            handle.SetAttribute("position", r.Position);   // the free-text placement descriptor (A-13/US-011)
+            handle.SetAttribute("enduser_report", r.EndUserReport ? "yes" : "no");   // A-23/US-012
             handle.SetAttribute("note", r.Note);
             handle.SetAttribute("documentation_tag", r.IdentificationCode);
             handle.SetAttribute("power_group", r.LightGroup);

@@ -102,9 +102,10 @@ Scenario: Delete is equivalent across all three activation routes
 - MUST: **A product's pins are not deletable.** A pin exists because the product's catalog type declares it,
   so it is not the installer's to remove — *Delete* is **absent** from a pin's context menu (US-068), and the
   `Delete` key on a pin does nothing. This holds whether or not the pin is linked.
-- MUST: The engine **refuses** to remove a catalog‑declared pin even when asked directly, so a project
-  written by any route stays conformant with its own catalog. The menu gate protects one GUI; the engine
-  guard protects the file.
+- CONSIDER: an engine guard that **refuses** to remove a catalog‑declared pin even when asked directly, so a
+  project written by any route stays conformant with its own catalog. The menu gate protects one GUI; the
+  engine guard would protect the file. (Deferred per the 2026‑07‑17 GUI‑only decision — A‑24 ships the menu
+  gate; the SDK guard is parked. This aligns down to `11-interaction-model.md`'s "consider" wording.)
 
 > **Added 2026‑07‑17 — the one structural edit that writes a project IHC Visual cannot.** IHC OpenVisual
 > currently deletes a product pin on request, and for an **unlinked** pin it does so **silently** — the

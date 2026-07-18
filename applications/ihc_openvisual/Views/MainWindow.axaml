@@ -60,68 +60,87 @@
                           ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
                 <MenuItem Header="IHC _Wireless products" ItemsSource="{Binding WirelessProductsMenu}"
                           ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
+                <MenuItem Header="_Bus products" ItemsSource="{Binding BusProductsMenu}"
+                          ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
                 <MenuItem Header="_Special products" ItemsSource="{Binding SpecialProductsMenu}"
                           ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
             </MenuItem>
             <MenuItem Header="Insert _function block" ItemsSource="{Binding FunctionBlocksMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
-                      IsVisible="{Binding SelectedNode.CanEditProperties, FallbackValue=False}"/>
+                      IsVisible="{Binding CanInsertFunctionBlock, FallbackValue=False}"/>
             <MenuItem Header="_Empty function block" Command="{Binding InsertEmptyFunctionBlockCommand}"
                       InputGesture="Ctrl+Shift+B"
-                      IsVisible="{Binding SelectedNode.CanEditProperties, FallbackValue=False}"/>
+                      IsVisible="{Binding CanInsertFunctionBlock, FallbackValue=False}"/>
             <MenuItem Header="_Unlock" Command="{Binding UnlockCommand}" CommandParameter="{Binding SelectedNode}"
                       IsVisible="{Binding SelectedNode.IsLockedFunctionBlock, FallbackValue=False}"/>
             <MenuItem Header="_Save block…" Command="{Binding SaveFunctionBlockCommand}" CommandParameter="{Binding SelectedNode}"
                       InputGesture="Ctrl+G"
                       IsVisible="{Binding SelectedNode.IsFunctionBlock, FallbackValue=False}"/>
+            <MenuItem Header="Show _program" Command="{Binding EnterProgrammingModeCommand}" CommandParameter="{Binding SelectedNode}"
+                      InputGesture="F3"
+                      IsVisible="{Binding SelectedNode.IsFunctionBlock, FallbackValue=False}"/>
             <MenuItem Header="Insert _variable" ItemsSource="{Binding VariablePaletteMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
-                      IsVisible="{Binding SelectedNode.IsBlockSection, FallbackValue=False}"/>
+                      IsVisible="{Binding CanInsertVariable, FallbackValue=False}"/>
             <MenuItem Header="Link _from here" Command="{Binding StartLinkCommand}" CommandParameter="{Binding SelectedNode}"
                       IsVisible="{Binding SelectedNode.IsPin, FallbackValue=False}"/>
             <MenuItem Header="Link _to here" Command="{Binding LinkToHereCommand}" CommandParameter="{Binding SelectedNode}"
                       IsVisible="{Binding SelectedNode.IsLinkTarget, FallbackValue=False}"/>
             <MenuItem Header="_Use in program" Command="{Binding UseInProgramCommand}" CommandParameter="{Binding SelectedNode}"
                       IsVisible="{Binding SelectedNode.IsPin, FallbackValue=False}"/>
+            <MenuItem Header="_Log mark" Command="{Binding ToggleLogMarkCommand}" CommandParameter="{Binding SelectedNode}"
+                      IsVisible="{Binding SelectedNode.IsLogMarkPin, FallbackValue=False}"/>
             <MenuItem Header="Save current _value" Command="{Binding ToggleSaveValueCommand}" CommandParameter="{Binding SelectedNode}"
                       ToggleType="CheckBox" IsChecked="{Binding SelectedNode.IsValueSaved, Mode=OneWay, FallbackValue=False}"
                       IsVisible="{Binding SelectedNode.IsOutputPin, FallbackValue=False}"/>
             <MenuItem Header="Add _event" ItemsSource="{Binding ProgramEventMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
-                      IsVisible="{Binding SelectedNode.IsEventsContainer, FallbackValue=False}"/>
+                      IsVisible="{Binding CanAddEvent, FallbackValue=False}"/>
             <MenuItem Header="Add _Powerup event" Command="{Binding AddPowerEventCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding SelectedNode.IsEventsContainer, FallbackValue=False}"/>
+                      IsVisible="{Binding CanAddEvent, FallbackValue=False}"/>
             <MenuItem Header="Add _command" ItemsSource="{Binding ProgramCommandMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
-                      IsVisible="{Binding SelectedNode.IsCommandsContainer, FallbackValue=False}"/>
+                      IsVisible="{Binding CanAddCommand, FallbackValue=False}"/>
             <MenuItem Header="_Sub-program" Command="{Binding AddSubProgramCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding SelectedNode.IsCommandsContainer, FallbackValue=False}"/>
+                      IsVisible="{Binding CanAddCommand, FallbackValue=False}"/>
             <MenuItem Header="C_ase" ItemsSource="{Binding ProgramCaseMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
-                      IsVisible="{Binding SelectedNode.IsCommandsContainer, FallbackValue=False}"/>
+                      IsVisible="{Binding CanAddCommand, FallbackValue=False}"/>
             <MenuItem Header="Arith_metic" ItemsSource="{Binding ProgramArithmeticMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
-                      IsVisible="{Binding SelectedNode.IsCommandsContainer, FallbackValue=False}"/>
+                      IsVisible="{Binding CanAddCommand, FallbackValue=False}"/>
             <MenuItem Header="New case _value…" Command="{Binding NewCaseValueCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding SelectedNode.IsCaseNode, FallbackValue=False}"/>
+                      IsVisible="{Binding CanAddCaseValue, FallbackValue=False}"/>
             <MenuItem Header="Add co_ndition" ItemsSource="{Binding ProgramConditionMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
-                      IsVisible="{Binding SelectedNode.IsConditionsContainer, FallbackValue=False}"/>
+                      IsVisible="{Binding CanAddCondition, FallbackValue=False}"/>
             <MenuItem Header="Logic _group" Command="{Binding AddLogicGroupCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding SelectedNode.IsConditionsContainer, FallbackValue=False}"/>
+                      IsVisible="{Binding CanAddCondition, FallbackValue=False}"/>
             <MenuItem Header="Logical condition"
-                      IsVisible="{Binding SelectedNode.IsConditionsContainer, FallbackValue=False}">
+                      IsVisible="{Binding CanAddCondition, FallbackValue=False}">
                 <MenuItem Header="AND (_&amp;)" Command="{Binding SetConditionsAndCommand}" CommandParameter="{Binding SelectedNode}"/>
                 <MenuItem Header="OR (_&gt;=1)" Command="{Binding SetConditionsOrCommand}" CommandParameter="{Binding SelectedNode}"/>
             </MenuItem>
+            <MenuItem Header="Cu_t" Command="{Binding CutCommand}" CommandParameter="{Binding SelectedNode}"
+                      InputGesture="Ctrl+X"
+                      IsVisible="{Binding SelectedNode.CanCutCopy, FallbackValue=False}"/>
+            <MenuItem Header="_Copy" Command="{Binding CopyCommand}" CommandParameter="{Binding SelectedNode}"
+                      InputGesture="Ctrl+C"
+                      IsVisible="{Binding SelectedNode.CanCutCopy, FallbackValue=False}"/>
+            <MenuItem Header="_Paste" Command="{Binding PasteCommand}" CommandParameter="{Binding SelectedNode}"
+                      InputGesture="Ctrl+V"
+                      IsVisible="{Binding CanPaste, FallbackValue=False}"/>
+            <MenuItem Header="_Jump to opposite link" Command="{Binding NavigateLinkOppositeCommand}" CommandParameter="{Binding SelectedNode}"
+                      InputGesture="F4"
+                      IsVisible="{Binding SelectedNode.IsLinkRow, FallbackValue=False}"/>
             <MenuItem Header="Move _up" Command="{Binding MoveUpCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding SelectedNode.CanEditProperties, FallbackValue=False}"/>
+                      IsVisible="{Binding SelectedNode.CanEditNonLink, FallbackValue=False}"/>
             <MenuItem Header="Move dow_n" Command="{Binding MoveDownCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding SelectedNode.CanEditProperties, FallbackValue=False}"/>
+                      IsVisible="{Binding SelectedNode.CanEditNonLink, FallbackValue=False}"/>
             <MenuItem Header="_Delete" Command="{Binding DeleteCommand}" CommandParameter="{Binding SelectedNode}"
                       IsVisible="{Binding SelectedNode.CanDelete, FallbackValue=False}"/>
             <MenuItem Header="P_roperties" Command="{Binding PropertiesCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding SelectedNode.CanEditProperties, FallbackValue=False}"/>
+                      IsVisible="{Binding SelectedNode.CanEditNonLink, FallbackValue=False}"/>
         </MenuFlyout>
     </Window.Resources>
 

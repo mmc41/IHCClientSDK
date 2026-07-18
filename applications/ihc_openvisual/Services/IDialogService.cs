@@ -24,14 +24,25 @@ public sealed record ProductPropertiesInput(
     string Title, string Name, string Note, string CableType, string CableNumber,
     string IdentificationCode, string LightGroup,
     IReadOnlyList<LocalityChoice> Localities, string CurrentLocalityId,
-    bool IsWireless = false, bool IsWirelessDimmer = false);
+    bool IsWireless = false, bool IsWirelessDimmer = false,
+    IReadOnlyList<ProductTerminal>? Terminals = null, string Position = "", bool NameLocked = false,
+    bool EndUserReport = false);
+
+/// <summary>One input/output terminal row shown in the product-properties dialog's terminal grids (US-012). The
+/// <c>Address</c> is the vendor-formatted <c>Datalinie N.PP</c> (blank when unassigned); <c>PinId</c> is the
+/// terminal element's id token, used to open the terminal-addressing sub-dialog for that row.</summary>
+public sealed record ProductTerminal(
+    string Name, string Address, string CableColour, string Note, bool IsOutput, string PinId);
 
 /// <summary>The edited product documentation returned from the dialog (US-011); <c>LocalityId</c> is the chosen
 /// location's id token. <c>OpenAdvanced</c> is set when the installer clicked <i>Advanced…</i> on a wireless dimmer
-/// (US-015) — the caller applies the documentation then opens the advanced dimmer dialog.</summary>
+/// (US-015) — the caller applies the documentation then opens the advanced dimmer dialog. <c>ConfigureTerminalPinId</c>
+/// is the id token of a terminal the installer chose to address (US-012) — the caller applies the documentation, opens
+/// the terminal-addressing sub-dialog for that pin, then re-opens this dialog.</summary>
 public sealed record ProductPropertiesResult(
     string Name, string LocalityId, string Note, string CableType, string CableNumber,
-    string IdentificationCode, string LightGroup, bool OpenAdvanced = false);
+    string IdentificationCode, string LightGroup, bool OpenAdvanced = false,
+    string? ConfigureTerminalPinId = null, string Position = "", bool EndUserReport = false);
 
 /// <summary>One row of the scene-container dialog's table: the scene membership seen from the product's side. The
 /// first three columns are the opposite end of the membership's link (the function block's scene pin, the block, and

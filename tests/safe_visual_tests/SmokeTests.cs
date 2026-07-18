@@ -689,18 +689,22 @@ public class SmokeTests : AvaloniaTestBase
         });
     }
 
-    // US-011: the product-properties dialog exposes the documentation fields.
+    // A-13/US-011: the product-properties dialog exposes the documentation fields plus a free-text Placement field,
+    // and has NO Location room dropdown (moving a product is a tree operation, not a dialog field).
     [AvaloniaTest]
     [CaptureScreenshotOnFailure]
-    public void ProductPropertiesWindow_ShowsDocumentationFields()
+    public void ProductProperties_HasPlaceringTextBox_NoLocationDropdown()
     {
         var window = new ProductPropertiesWindow { Title = "Product properties" };
         var name = window.FindControl<TextBox>("NameBox");
+        var placering = window.FindControl<TextBox>("PlaceringBox");
         var location = window.FindControl<ComboBox>("LocationCombo");
+        var endUserReport = window.FindControl<CheckBox>("EndUserReportCheck");
         var cableType = window.FindControl<TextBox>("CableTypeBox");
         var identification = window.FindControl<TextBox>("IdentificationBox");
         var lightGroup = window.FindControl<TextBox>("LightGroupBox");
         if (name is not null) name.Text = "LK FUGA Tryk 2 tast";
+        if (placering is not null) placering.Text = "i loft";
         CurrentTestWindow = window;
         window.Show();
         window.CaptureRenderedFrame();
@@ -709,7 +713,11 @@ public class SmokeTests : AvaloniaTestBase
         {
             Assert.That(window.Title, Is.EqualTo("Product properties"));
             Assert.That(name?.Text, Is.EqualTo("LK FUGA Tryk 2 tast"));
-            Assert.That(location, Is.Not.Null, "the Location drop-down is present");
+            Assert.That(placering, Is.Not.Null, "an editable Placement text field is present");
+            Assert.That(placering!.Text, Is.EqualTo("i loft"), "Placement is a plain, editable textbox");
+            Assert.That(location, Is.Null, "the Location room dropdown is gone");
+            Assert.That(endUserReport, Is.Not.Null, "the end-user-report checkbox is present");
+            Assert.That(endUserReport!.IsVisible, Is.True, "and unconditionally visible (§2 C15 interim)");
             Assert.That(cableType, Is.Not.Null);
             Assert.That(identification, Is.Not.Null);
             Assert.That(lightGroup, Is.Not.Null);
