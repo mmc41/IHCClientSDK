@@ -1855,6 +1855,51 @@ public class MainWindowViewModelTests
         });
     }
 
+    // F-087 (M4/E-4, 2026-07-18 vendor census): a locked block is fully VIEW-ONLY. A-27 withdrew the Add/Insert
+    // commands but left Delete and Move up/down active on program nodes — so a user could delete or reorder a node
+    // INSIDE a locked library block and save a .vis the vendor can never produce. The vendor's locked-FB program
+    // menu offers Egenskaber (Properties) on every node and NEVER Delete/Move. Withdraw Delete + Move on a locked
+    // block; keep Properties (Egenskaber-everywhere is measured parity).
+    [Test]
+    public async Task LockedFunctionBlock_NoDeleteOrMove_InProgrammingMode()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+
+        // The gate is NOT over-broad: in configuration mode a locality stays deletable and movable.
+        vm.SelectNode(vm.InstallationNodes[0].Children[0]);
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.CanDeleteSelected, Is.True, "a config-mode locality stays deletable");
+            Assert.That(vm.CanMoveSelected, Is.True, "a config-mode locality stays movable");
+        });
+
+        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
+        var fbNode = vm.FunctionNodes[0].Children[0].Children[0];
+        Assert.That(fbNode.IsLockedFunctionBlock, Is.True, "a library block is locked");
+
+        vm.EnterProgrammingModeCommand.Execute(fbNode);
+
+        // A deletable-flagged program node: prefer a leaf (event/command/condition/sub-program), else a container.
+        var progNode =
+            FindByFlag(vm.FunctionNodes, n => n.CanDelete && n.NodeKind is "event" or "command" or "condition" or "subProgram")
+            ?? FindByFlag(vm.FunctionNodes, n => n.CanDelete && n.NodeKind is "program" or "programs" or "events" or "commands");
+        Assert.That(progNode, Is.Not.Null, "the locked block renders a deletable-flagged program node");
+
+        vm.SelectNode(progNode!);
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.IsProgrammingBlockLocked, Is.True);
+            Assert.That(progNode!.CanDelete, Is.True, "the node itself is deletable-flagged — this is why the raw menu showed Delete");
+            Assert.That(vm.CanDeleteSelected, Is.False, "Delete is withdrawn on a locked block's program node (F-087)");
+            Assert.That(vm.CanMoveSelected, Is.False, "Move up/down is withdrawn on a locked block (F-087)");
+            Assert.That(progNode!.CanEditNonLink, Is.True, "Properties stays available — the vendor shows Egenskaber on every locked node");
+        });
+    }
+
     // US-026: Esc leaves programming mode and restores the two locality trees.
     [Test]
     public async Task LeaveProgrammingMode_ReturnsToLocalities()

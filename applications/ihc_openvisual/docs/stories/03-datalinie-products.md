@@ -345,20 +345,20 @@ later via properties), **so that** the generated reports (E9) describe the insta
 - SHOULD: **Light group** — drop‑down; **MAY be absent** for products with no light‑group
   relationship.
 - SHOULD: **Include this product in the end‑user report** — a **checkbox** that is the UI for the product's
-  `enduser_report` attribute and feeds US-040's end‑user report. Its **visibility is a project‑level gate,
-  not per‑type**: control 303 was measured hidden on **7/7** sampled product types, so the end‑user‑report
-  feature is off project‑wide rather than per‑product. Ship the checkbox **unconditionally visible** pending
-  measurement of the project‑level control (backlog **A‑23**); do **not** gate it on product family.
+  `enduser_report` attribute and feeds US-040's end‑user report. The vendor **never shows this checkbox**
+  (measured C15, below), so IHC OpenVisual **hides it** to match — the attribute still round‑trips through
+  the (hidden) control, but there is no toggle affordance, exactly like the vendor.
 
   > **Added 2026‑07‑17 (was: absent from this story, and from the app).** The vendor's dialog carries a
   > checkbox *"Inkluder produktet i slutbruger rapport"* which **no story had ever recorded** and IHC
   > OpenVisual has **no equivalent of** — so the `enduser_report` attribute round‑trips through the file
-  > with no way to set it. **Updated 2026‑07‑17 — visibility is NOT per‑type.** Control 303 was measured
-  > `visible=False` on **7/7** sampled types (`Lampeudtag`×3, `LK FUGA Tryk 6 tast`, `Stikkontakt`,
-  > `Ventilator`, and wireless `Bevægelsessensor`), so the gate is **project‑wide**, not per‑product — do
-  > **not** gate on product family (the twice‑burned F‑027‑class wrong predicate). Ship it always‑visible;
-  > the next step (**C15**) is to find the project‑level control that flips 303. Evidence: `RESULTS.md`
-  > **F‑078** (class **E**), superseding the earlier one‑product reading.
+  > with no way to set it. **Resolved 2026‑07‑18 (C15 measured, elevated vendor session).** Control 303 is
+  > `visible=False` in the full product dialog and **absent entirely** from the compact (handheld) dialog —
+  > measured across **13 products / 6 families** (datalinie output/input, dimmer, window‑shutter, wireless,
+  > handheld), **0 showing it**. The vendor never exposes it (not a per‑product gate; the twice‑burned
+  > wrong predicate never existed). **User ruling: hide the checkbox to match the vendor** (`IsVisible=False`),
+  > keeping the `enduser_report` round‑trip. Evidence: `tmp\comptest\out\M\M1-enduser.json`, superseding the
+  > earlier 7/7 reading (`RESULTS.md` **F‑078**).
 
 - MUST: The dialog also carries the product's **terminal‑addressing section** — the `Indgange` / `Udgange`
   grids and their per‑terminal address editor, specified in **US-012**.

@@ -226,12 +226,18 @@ locality or section, **so that** I can correct where something lives without del
 ### Acceptance criteria (Given‑When‑Then)
 
 ```gherkin
-Scenario: Move a product to another locality
+Scenario: Move a product to another locality by dragging it (primary gesture)
   Given a product sits under one locality in the "Installation" pane
-  When I Cut it with Ctrl+X and Paste it with Ctrl+V onto another locality
+  When I drag the product onto another locality and release
   Then the product is re-parented under the target locality, keeping its documentation, terminal
     addressing and every link it participates in
   And the same relocation is reflected in the "Functions" pane
+  And the status bar confirms the move
+
+Scenario: Move a product to another locality with Cut/Paste (non-drag supplement)
+  Given a product sits under one locality in the "Installation" pane
+  When I Cut it with Ctrl+X and Paste it with Ctrl+V onto another locality
+  Then the same id-preserving re-parent happens, with results identical to the drag
   And the status bar confirms the move
 
 Scenario: Identity is preserved on a move
@@ -265,23 +271,31 @@ Scenario: The move route is reachable without drag
 - Note: id‑preserving reparent and the self/descendant guard are grounded in the engine's move
   contract ("ids never change on a move"). The guard applies to the **paste target**.
 
-> **Corrected 2026‑07‑17 — there is no drag route to specify, and the ACs above no longer ask for one.**
-> The earlier R‑note left "the drag affordance and drop‑target highlighting" to be confirmed at
-> implementation, and the ACs named a drag route and presupposed a drop. Nothing is pending: **IHC
-> OpenVisual implements no drag at all** — a recorded **structural divergence** (`RESULTS.md` **E‑5**;
-> `tmp\compare.md` §1 #2), with **Cut/Paste** here and *Move up*/*Move down* (US-055) as the deliberate
-> non‑drag substitutes for the vendor's drag; the backlog rules they **stay**
-> (`alignment-backlog.md`). Verified in source: **zero drag handlers exist in the app**. With no drop
-> there is **no drop‑target highlighting to specify**. This is a deliberate divergence, **not debt** —
-> do not "align" a drag route in. ⚠ The old verification method demanded a *"Demonstration of **both**
-> the drag route and the Cut/Paste route"*: **unsatisfiable as written**, and it could never have
-> passed. An AC that demands a demonstration of a route the app does not have is worse than an open
-> item. Residual (narrow, and **not** this story's): the vendor's drag has never been driven against
-> OpenVisual's Cut/Paste route — `RESULTS.md` **E‑5** is undriven.
+> **Decided 2026‑07‑18 (supersedes the 2026‑07‑17 "no drag" correction and ruling R‑4). Drag is a
+> first‑class move gesture — complete vendor alignment.** The goal is that an installer fluent in IHC
+> Visual meets **no UX surprise**: moving a product by **dragging it onto another locality** works exactly
+> as in the vendor tool. Cut/Paste (here) and *Move up*/*Move down* (US-055) are **supplements**, not
+> substitutes — they give US-044 route‑parity a reliable, testable, accessible non‑drag route and they
+> **stay** — but drag is the primary gesture and is **required**, not optional.
+>
+> - MUST: A product is **moved by dragging** it onto a target locality in either pane; the drop performs
+>   the **same id‑preserving re‑parent** as Cut/Paste, with identical results and status feedback.
+> - MUST: While a drag is in progress a **legal drop target is highlighted**; an illegal target — the node
+>   itself, one of its own descendants, or a container that may not hold it (the same rules as paste,
+>   US-056) — is **not** highlighted and **refuses** the drop, the app saying why rather than failing
+>   silently.
+> - Evidence the vendor's move gesture is a drag: `RESULTS.md` **E‑5**, `tmp\compare.md` §1 #2. ⚠ **E‑5 is
+>   undriven** — the vendor's exact drop affordance (highlight style, cursor) is matched against IHC Visual
+>   at implementation; the **behaviour** (what moves, the legality, the feedback) is specified here.
+> - ⚠ **Status:** the earlier note declared *"IHC OpenVisual implements no drag at all … do not align a
+>   drag route in."* That stance is **reversed**. Today only the Cut/Paste supplement ships, so
+>   **drag‑to‑move is outstanding work**, not done.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented (Cut/Paste move route — the only move route, by design).
+**Implementation status:** 🟡 Partial — the **Cut/Paste supplement is implemented and verified**; the
+**primary drag‑to‑move gesture is outstanding** (2026‑07‑18 decision above). Complete when a product can be
+moved by dragging it onto a locality, with drop‑target highlighting and the same id‑preserving result.
 
 ---
 
@@ -297,10 +311,17 @@ appear* in the *Installation* pane).
 ### Acceptance criteria (Given‑When‑Then)
 
 ```gherkin
-Scenario: Reorder siblings by moving one up or down
+Scenario: Reorder siblings by dragging one to a new position (primary gesture)
   Given several siblings under one container (e.g. the ten default localities under "Localities")
-  When I move one sibling to a new position among its siblings with "Move up" / "Move down"
+  When I drag one sibling to a new position among its siblings and release
   Then the sibling takes the new position and the others close up around it
+  And the new order is reflected identically in both panes, and in report output (US-040)
+  And the status bar confirms the reorder
+
+Scenario: Reorder siblings with Move up / Move down (non-drag supplement)
+  Given several siblings under one container (e.g. the ten default localities under "Localities")
+  When I move one sibling with "Move up" / "Move down" (or Ctrl+Shift+Up / Ctrl+Shift+Down)
+  Then the sibling takes the new position and the others close up around it, identically to the drag
   And the new order is reflected identically in both panes
   And the status bar confirms the reorder
 
@@ -323,29 +344,26 @@ Scenario: Reorder preserves identity and links
 
 - Verification method — **Demonstration** that a reorder changes sibling position in both panes and in
   report output, and preserves ids/links.
-- MUST (R‑4, decided 2026‑07‑17): reordering is offered by ***Move up* / *Move down*** (and cut/paste), and
-  **no drag‑to‑reorder route is provided** — IHC OpenVisual's deliberate no‑drag‑for‑structure stance. It is
-  the same id‑preserving move as US-054 with an in‑container target index, and the US-044 non‑drag
-  requirement is **met**.
+- MUST (decided 2026‑07‑18, supersedes R‑4): reordering is offered **primarily by dragging a sibling to a
+  new position**, matching IHC Visual, **with *Move up* / *Move down* (and cut/paste) as the non‑drag
+  supplements** that satisfy US-044 route‑parity. A drag reorder is the same id‑preserving move as US-054
+  with an in‑container target index; while dragging, the legal insertion position is indicated and a drop
+  outside the container's own sibling list is refused.
 
-> **Corrected 2026‑07‑17 — "both" was never a live option.** The earlier R‑note left it open whether
-> reorder is offered "by drag, by a *Move up/down* command, or **both**", and asked for at least one
-> non‑drag route. Same evidence as US-054: **IHC OpenVisual implements no drag at all** (`RESULTS.md`
-> **E‑5**; `tmp\compare.md` §1 #2), so *drag* and *both* were never available to choose. ***Move up* /
-> *Move down* is the deliberate non‑drag substitute for the vendor's drag‑reorder**, and the backlog
-> rules it **stays** — *"Move up/Move down are OpenVisual‑only and should stay … Keep them, but they
-> do not belong on a link row"* (`alignment-backlog.md`, backlog **A‑5**). The US-044 requirement is
-> satisfied, not outstanding.
->
-> **Resolved 2026‑07‑17 (R‑4 — no drag reorder route).** The one residual — *should* a drag reorder route
-> ever be **added** alongside *Move up*/*Move down*? — was a **product decision**, now decided: **reorder
-> stays keyboard/menu only** (*Move up* / *Move down* + cut/paste), consistent with IHC OpenVisual's
-> deliberate no‑drag‑for‑structure stance. No drag‑reorder route will be built. (Ruling **R‑4**,
-> `tmp\research3.md` §7.)
+> **Decided 2026‑07‑18 (supersedes R‑4). Reorder is offered by BOTH drag and *Move up*/*Move down*.**
+> The earlier R‑note asked whether reorder is offered "by drag, by a *Move up/down* command, or **both**",
+> and ruling R‑4 (2026‑07‑17) chose *Move up*/*Move down* only, on the ground that IHC OpenVisual
+> "implements no drag at all". For **complete vendor alignment — no UX surprise for installers fluent in
+> IHC Visual — the answer is now BOTH**: drag reorder is the primary, vendor‑matching gesture, and
+> *Move up* / *Move down* (+ cut/paste) remain as the reliable, testable, accessible **supplements**
+> (`RESULTS.md` **E‑5**; `tmp\compare.md` §1 #2). *Move up*/*Move down* are still kept and still **off the
+> link row** and **off a pin** (backlog **A‑5**, F‑067); what changes is that the drag route is **now
+> required**, not declined.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented (*Move up* / *Move down* — the non‑drag reorder route, by design).
+**Implementation status:** 🟡 Partial — the ***Move up* / *Move down* supplement is implemented**; the
+**primary drag‑to‑reorder gesture is outstanding** (2026‑07‑18 decision above).
 
 ---
 

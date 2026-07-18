@@ -59,6 +59,13 @@ function‑block‑to‑function‑block variable links (covered in E7’s progr
 **As an** IHC installer, **I want** to drag a product’s input pin onto a function‑block input, **so
 that** actuating the sensor/button triggers the block.
 
+> **Gesture (2026‑07‑18) — drag is primary, the two‑step is its supplement.** The link is created by
+> **dragging one pin onto another**, matching IHC Visual so vendor‑experienced installers meet no surprise.
+> IHC OpenVisual also offers a non‑drag **supplement** — *Link from here* on the source pin, then
+> *Link to here* on the target (context menu, US-044 route‑parity) — reaching the identical result. Both use
+> the same legality rule and orientation specified below; neither is a substitute for the other. ⚠ Today
+> only the two‑step supplement ships; the **drag gesture itself is outstanding work**.
+
 ### Acceptance criteria (Given‑When‑Then)
 
 ```gherkin
@@ -143,13 +150,18 @@ absent from it is **unmeasured, therefore permitted**, not forbidden.
 > ✅ **Implemented 2026‑07‑17** — the predicate is in the SDK (`Ihc.Vis.Schema.LinkRoles` + `ProjectEditor.
 > CanLink`), the app asks it for all three families, and the 15‑cell matrix is the test oracle.
 >
-> ⚠ **One case is still unencoded because it is unmeasured** — do not "complete" the rule from symmetry. The
-> vendor's treatment of **flags** (`resource_flag`, which US-033b admits at both ends) was never driven
-> (**F‑082**, open **E**, next step **[P2]**); keep the SDK permissive on flags meanwhile. The other two
-> previously‑scheduled cells are now **closed**: a block's output feeding **its own** input — the vendor
+> ✅ **The flag case is resolved (F‑082, M2 measured 2026‑07‑18): flags are NOT follow‑link endpoints.**
+> `resource_flag` is a programming‑mode **internal variable** (the *Interne variable* section, rendered only in
+> programming mode), not one of the Input/Output pins the vendor's follow‑link mechanism connects — config‑mode
+> FB sections carry no flags, and the vendor corpus has **zero** flag links. There is no vendor flag‑link gesture
+> to accept or refuse, so `LinkRoles`' permissive treatment of `resource_flag` is **correct‑by‑omission** and
+> needs no negative (encoding one would be the guess this doc warns against). Keep the SDK permissive on flags.
+> The other two previously‑scheduled cells are also **closed**: a block's output feeding **its own** input — the vendor
 > **allows** it, so the same‑block refusal is dropped (**F‑080** amends A‑16, see US-033b); and **scene
-> links** (US-024) are a fourth family gated at the call site, not by this predicate — **no divergence**
-> (**F‑081**, see US-024). Evidence: `RESULTS.md` **F‑080**, **F‑081**, **F‑082**.
+> links** (US-024) are a fourth family gated at the call site, not by this predicate — no **legality** divergence
+> (**F‑081**). ⚠ But M3 (2026‑07‑18) measured one **authoring** gap in that family: the vendor authors **shutter**
+> scenes (`scene_shutter`) which OpenVisual renders but cannot create — recorded as a known gap in US-024, not built
+> (user ruling). Evidence: `RESULTS.md` **F‑080**/**F‑081**/**F‑082**; `tmp\comptest\out\M\M3-scenes.json`.
 
 ### Business rules (which half is which)
 
@@ -342,6 +354,15 @@ Scenario: Create a relay/socket scene link with a state
   When I drag the block's scene output onto the socket's Scenarier container
   Then the dialog asks for the socket state ON or OFF, and confirming creates the scene link
 ```
+
+> **Known gap — shutter scenes NOT authored (F‑081, M3 measured 2026‑07‑18).** The vendor supports a **third**
+> scene family: a shutter/blind product takes a `scene_shutter` member (`shutter_position` = up|down + `delay_ms`),
+> confirmed by a real member in `realprj`. IHC OpenVisual **renders** shutter scenes (A‑19) and the SDK **can build**
+> them (`SceneValue.Shutter`), but the authoring path (`ProjectSession.LinkSceneAsync` / `UpdateSceneValueAsync`,
+> and the value dialog) is **relay/dimmer‑only** — dragging onto a shutter product's Scenarier does not offer the
+> up/down + delay dialog. **User ruling (2026‑07‑18): record the gap, do not build shutter authoring yet.** To close
+> later: widen `LinkSceneAsync`/`UpdateSceneValueAsync` + add a shutter mode to the scene‑value dialog + extend
+> `SceneRules.PinnedMemberTagFor`. Evidence: `tmp\comptest\out\M\M3-scenes.json`.
 
 ### AC illustrations
 

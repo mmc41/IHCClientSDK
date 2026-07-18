@@ -716,8 +716,8 @@ public class SmokeTests : AvaloniaTestBase
             Assert.That(placering, Is.Not.Null, "an editable Placement text field is present");
             Assert.That(placering!.Text, Is.EqualTo("i loft"), "Placement is a plain, editable textbox");
             Assert.That(location, Is.Null, "the Location room dropdown is gone");
-            Assert.That(endUserReport, Is.Not.Null, "the end-user-report checkbox is present");
-            Assert.That(endUserReport!.IsVisible, Is.True, "and unconditionally visible (§2 C15 interim)");
+            Assert.That(endUserReport, Is.Not.Null, "the end-user-report control still exists (the value round-trips through it)");
+            Assert.That(endUserReport!.IsVisible, Is.False, "but is HIDDEN — the vendor never shows control 303 (C15 measured 2026-07-18: 0/13 products across 6 families)");
             Assert.That(cableType, Is.Not.Null);
             Assert.That(identification, Is.Not.Null);
             Assert.That(lightGroup, Is.Not.Null);

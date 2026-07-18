@@ -45,10 +45,11 @@
         <TextBlock Name="LightGroupLabel" Classes="label" Text="Light group"/>
         <TextBox Name="LightGroupBox" a:AutomationProperties.LabeledBy="{Binding #LightGroupLabel}"/>
 
-        <!-- A-23/US-012: the enduser_report flag. Shipped unconditionally visible — the vendor's visibility gate is
-             n=1 and unmeasured (§2 C15), so a wrong predicate would be an unbounded divergence; always-visible is a
-             known, bounded one. -->
-        <CheckBox Name="EndUserReportCheck" Margin="0,8,0,0"
+        <!-- A-23/US-012 + C15 (measured 2026-07-18): the enduser_report flag. The vendor NEVER shows this checkbox —
+             control 303 is hidden project-wide (13 products / 6 families measured, 0 showing it; absent entirely from
+             the compact handheld dialog). So it is hidden here to match. The value still round-trips (the control keeps
+             the loaded state and re-writes it) — only the toggle affordance is removed, exactly like the vendor. -->
+        <CheckBox Name="EndUserReportCheck" Margin="0,8,0,0" IsVisible="False"
                   Content="Include product in end-user report"/>
 
         <!-- US-012: input/output terminal addressing grids. Columns Name | Address | Cable colour | Note; a row is

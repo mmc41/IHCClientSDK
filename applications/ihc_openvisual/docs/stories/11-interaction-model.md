@@ -10,9 +10,12 @@ status: draft
 > CRUD interaction.
 
 **Goal:** Give every IHC OpenVisual user a consistent way to invoke functions — by right‑click, menu bar,
-double‑click or keyboard shortcut — and to navigate/edit the trees with the keyboard, so the same command is
-reachable several ways and power users can work quickly. This epic is cross‑cutting: it underlies every
-capability area (E1–E10).
+double‑click, keyboard shortcut **or drag‑and‑drop** — and to navigate/edit the trees with the keyboard, so
+the same command is reachable several ways and power users can work quickly. **Drag‑and‑drop is the primary,
+vendor‑aligned gesture** for creating links (US-022/US-023), moving and reordering nodes (US-054/US-055) and
+building programs (US-028); the keyboard and menu routes are **supplements** that keep every such command
+reachable without the mouse (route‑parity), so installers fluent in IHC Visual meet no surprise. This epic is
+cross‑cutting: it underlies every capability area (E1–E10).
 
 **Scope:** the activation methods and their equivalence; the context‑menu / menu‑bar / shortcut
 conventions; **what double‑clicking a node does, per node type**; **what each node type's context menu
@@ -187,8 +190,8 @@ conditions):
 > is not blind). So `F6` is a **measured‑unmet MUST** → backlog **A‑28**. Two positives came out of the same
 > measurement: (a) the rest of the non‑simulation shortcut set is **parity** with the vendor; and (b) IHC
 > OpenVisual **adds** `Ctrl+Shift+Up` / `Ctrl+Shift+Down` (*Move up* / *Move down*) — shortcuts the vendor
-> has no equivalent for — a **granted C**, consistent with the non‑drag reorder exception in US-055/US-068.
-> Evidence: `RESULTS.md` **F‑083**.
+> has no equivalent for — a **granted C**, consistent with the non‑drag reorder **supplement** in
+> US-055/US-068 (the keyboard route alongside the primary drag). Evidence: `RESULTS.md` **F‑083**.
 
 ---
 
@@ -322,6 +325,16 @@ toolbar for a command the menu omits.
   **additive, not alternatives**. The locked menu is the unlocked one **plus** *Unlock* (8 items vs 7);
   *show program* is on both. ⇒ **A locked library block's program CAN be opened for reading**: the lock
   gates *editing*, never *viewing*, and no unlock is needed to read a block's program.
+- MUST: **Inside a *locked* block's program (programming mode), every program node is view‑only.** Its context
+  menu offers *Properties* (Egenskaber) only; **Delete and *Move up*/*Move down* are removed**, matching the
+  vendor's fully view‑only locked‑block program menu. (The `!IsProgrammingBlockLocked` gate that A‑27 applied to
+  the insert/add commands is extended to Delete/Move — see `07-fb-programming.md`, F‑087.)
+
+  > **Added 2026‑07‑18 (F‑087, M4 census).** The vendor's locked‑FB program menu offers `&Egenskaber` on every
+  > node (leaf nodes add `&Logmærke`/`&Stoppunkt`; an internal variable adds `&Kopier`) but **never Delete or
+  > Move** — a locked library block cannot be mutated at all. OpenVisual had left *Delete* + *Move up/down* active
+  > on locked program nodes (each carries an ElementId ⇒ `CanDelete`/`CanEditNonLink` true), letting a user delete
+  > or reorder inside a locked block (a D10 file‑integrity break). Evidence: `tmp\comptest\out\M\M4-census.json`.
 
   > **Closed 2026‑07‑17 (was a `[TBD]` calling this "contested between two records").** Settled at the desk
   > from a stored vendor dump — no drive needed; see the closure note under the inventory table. Evidence:
@@ -341,11 +354,11 @@ toolbar for a command the menu omits.
 - SHOULD: *Move up* / *Move down* remain on the node types that can be reordered (locality, product,
   function block) and are **absent** from a link row **and from a pin**.
 
-  > **Deliberate addition, not a divergence to remove.** *Move up*/*Move down* have no counterpart in IHC
-  > Visual, whose reorder gesture is a **drag**. They are IHC OpenVisual's non‑drag substitute and are
-  > **kept** — US-055 requires at least one non‑drag reorder route (US-044). But the exception is for
-  > *reorderable* nodes: they do not belong on a link row, and they do not belong on a **pin**, whose order
-  > is its catalog type's (F‑067).
+  > **Deliberate addition, kept.** *Move up*/*Move down* have no counterpart in IHC Visual, whose reorder
+  > gesture is a **drag**. IHC OpenVisual supports **both**: drag reorder for vendor alignment (US-055) and
+  > *Move up*/*Move down* as the non‑drag **supplement** that gives US-044 a keyboard/menu route to the same
+  > result. They are **kept** — but the supplement is for *reorderable* nodes: it does not belong on a link
+  > row, and not on a **pin**, whose order is its catalog type's (F‑067).
 
 **Target inventories** (IHC Visual's, as the authoritative spec; IHC OpenVisual's wording is its own
 English — the *language* is an allowed difference, the *inventory* is not).

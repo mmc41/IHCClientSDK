@@ -73,8 +73,17 @@ Scenario: Switch focus between the two panes
   installer's.
 - MUST: **Programming mode on a *locked* (library) block is view‑only.** Its program **renders for reading**
   — the lock never gates viewing — but **every authoring command is gated on the block being unlocked**:
-  variable / program / enum inserts and `Ctrl+I` / `Ctrl+U` pin inserts are **removed (not greyed)** on a
-  locked block, matching the vendor. Unlocking (US-020) is the separate, deliberate act that enables editing.
+  variable / program / enum inserts and `Ctrl+I` / `Ctrl+U` pin inserts, **and the mutations *Delete* and
+  *Move up/down***, are **removed (not greyed)** on a locked block, matching the vendor. *Properties*
+  (Egenskaber) stays — the vendor offers it on every node. Unlocking (US-020) is the separate, deliberate
+  act that enables editing.
+
+  > **Extended 2026‑07‑18 (F‑087, C15/E‑4 measurement run).** The A‑27 UI arm originally withdrew only the
+  > *Insert/Add* commands and left **Delete** and **Move up/down** active on a locked block's program nodes —
+  > so a user could still delete or reorder a node inside a locked library block (the same D10 integrity break).
+  > The vendor's locked‑FB program menu was measured to offer **only Egenskaber** on every node (leaves add
+  > Logmærke/Stoppunkt; no Delete/Move anywhere). Fixed: `Delete`/`Move` now gate on `!IsProgrammingBlockLocked`
+  > too. Evidence: `tmp\comptest\out\M\M4-census.json`.
 
   > **Added 2026‑07‑17 (F‑076/F‑077, backlog A‑27).** The vendor lets you open a locked block's program to
   > read it but **refuses to edit** it — the `&Program` insert command is **absent** from a locked FB's
@@ -126,9 +135,10 @@ Scenario: Switch focus between the two panes
   restores both to *Localities*.
 - ⚠ The per‑node interaction census **inside** programming mode (variables, programs, events, conditions,
   enum types, case nodes) has **not** been run against the vendor (`RESULTS.md` **E‑4**), nor has the deep
-  authoring comparison — notably IHC OpenVisual's two‑step *Use in program* popup versus the vendor's drag
-  + method popup. The mode **transition** is aligned; the authoring surfaces inside it are unmeasured, so
-  do not read this story's confirmation as covering them.
+  authoring comparison — notably the **drag + method popup** the vendor uses to add events/commands, which
+  IHC OpenVisual must match, with its two‑step *Use in program* popup kept as the non‑drag **supplement**.
+  The mode **transition** is aligned; the authoring surfaces inside it are unmeasured, so do not read this
+  story's confirmation as covering them.
 
 **Readiness:** Ready.
 
@@ -542,8 +552,10 @@ Scenario: An incompatible pair is refused
 
 - Verification method — **Demonstration** that a variable link between two blocks propagates the source
   value to the target, and **Test** of the refusals (the measured matrix lives in US-022).
-- IHC OpenVisual supports linking variables directly between compatible endpoints, but does not fix the
-  exact drag gesture or any dialog; confirm the interaction detail during implementation. (R‑note.)
+- MUST: Linking variables between compatible endpoints is done **by dragging one pin onto another**,
+  matching IHC Visual (US-022's gesture and legality rule apply); the two‑step *Link from here* /
+  *Link to here* is the non‑drag **supplement**. The exact drop affordance is matched to the vendor at
+  implementation. (Was an R‑note deferring "the exact drag gesture"; drag is now **required** — 2026‑07‑18.)
 - ✅ A block's output feeding **its own** input is **allowed** — measured on the vendor (`_0x511228`: output
   *Udgang for åbne* → own input *Tryk for åbne*, undone cleanly), so the earlier different‑blocks refusal is
   **dropped** (F‑080 amends A‑16). IHC OpenVisual's `ProjectSession.LinkPinsAsync` wrongly refuses it and the

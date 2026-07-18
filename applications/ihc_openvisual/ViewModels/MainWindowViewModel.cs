@@ -63,6 +63,8 @@ public partial class MainWindowViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(CanAddCommand))]
     [NotifyPropertyChangedFor(nameof(CanAddCaseValue))]
     [NotifyPropertyChangedFor(nameof(CanAddCondition))]
+    [NotifyPropertyChangedFor(nameof(CanDeleteSelected))]
+    [NotifyPropertyChangedFor(nameof(CanMoveSelected))]
     private TreeNodeViewModel? _selectedNode;
 
     /// <summary>Whether the block currently being programmed is a locked (library) block. A locked block is
@@ -79,6 +81,14 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool CanAddCommand => SelectedNode?.IsCommandsContainer == true && !IsProgrammingBlockLocked;
     public bool CanAddCaseValue => SelectedNode?.IsCaseNode == true && !IsProgrammingBlockLocked;
     public bool CanAddCondition => SelectedNode?.IsConditionsContainer == true && !IsProgrammingBlockLocked;
+
+    /// <summary>Context-menu gates for the mutation commands <i>Delete</i> and <i>Move up/down</i>. Each reads the
+    /// node's own capability AND that the programming block is not locked: a locked (library) block is fully
+    /// view-only — the vendor offers <i>Egenskaber</i> on every node but NEVER Delete or Move (F-087, measured
+    /// 2026-07-18). A-27 withdrew only the Add/Insert commands; these complete the view-only affordance. Properties
+    /// stays on <see cref="TreeNodeViewModel.CanEditNonLink"/> — only the two mutations are withdrawn on a locked block.</summary>
+    public bool CanDeleteSelected => SelectedNode?.CanDelete == true && !IsProgrammingBlockLocked;
+    public bool CanMoveSelected => SelectedNode?.CanEditNonLink == true && !IsProgrammingBlockLocked;
 
     /// <summary>Context-menu gate: <i>Paste</i> is offered on a locality only when the clipboard holds a cut/copied
     /// node (A-5b/F-010) — the vendor shows it conditionally (6 items empty, 7 full).</summary>
@@ -901,6 +911,33 @@ public partial class MainWindowViewModel : ViewModelBase
             StatusText = delta < 0 ? "Moved up." : "Moved down.";
     });
 
+    // ── Wave 9 / A-P0 spike — drag-and-drop drop-target legality + mutation (product → locality move only). ──
+    // Per §0.3 the legality (CanDropOn) and the mutation (PerformDropAsync) live here in the view-model, so they are
+    // testable headlessly with no pointer/drag simulation; the code-behind's DragOver/Drop handlers read the dragged
+    // id from the DataTransfer and call these. This POC covers ONLY the simplest gesture — A-30/A-31 grow it into the
+    // full node-kind dispatcher and source the legality from the SDK; do NOT widen it here.
+
+    /// <summary>Whether the dragged node may be dropped onto the target to move it there (US-054): only a product onto
+    /// a <em>different</em> locality. The authoritative refusal (self/descendant, container-admissibility) still lives
+    /// in <see cref="ProjectSession.MoveNodeAsync"/>; this is the drag-over highlight hint. Avalonia-free (a plain
+    /// bool) so the view-model stays headlessly testable.</summary>
+    public bool CanDropOn(ElementId dragged, ElementId target)
+    {
+        if (dragged == target)
+            return false;
+        TreeNodeViewModel? draggedNode = FindNode(InstallationNodes, dragged) ?? FindNode(FunctionNodes, dragged);
+        TreeNodeViewModel? targetNode = FindNode(InstallationNodes, target) ?? FindNode(FunctionNodes, target);
+        return draggedNode?.NodeKind == "product" && targetNode?.NodeKind == "locality";
+    }
+
+    /// <summary>Performs a drop: re-parents the dragged product under the target locality via the same id-preserving
+    /// move as Cut/Paste (US-054). Refusals are handled (and messaged) by the SDK op.</summary>
+    public Task PerformDropAsync(ElementId dragged, ElementId target) => RunAsync(nameof(PerformDropAsync), async () =>
+    {
+        if (await _session.MoveNodeAsync(dragged, target))
+            StatusText = "Moved.";
+    });
+
     /// <summary>Opens the Properties dialog for a tree node to rename a locality (US-007). Invoked from the
     /// right-click <i>Properties</i> item (node passed in) and from F2 (the selected node passed in).</summary>
     [RelayCommand]
@@ -1014,6 +1051,8 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanAddCommand));
         OnPropertyChanged(nameof(CanAddCaseValue));
         OnPropertyChanged(nameof(CanAddCondition));
+        OnPropertyChanged(nameof(CanDeleteSelected));
+        OnPropertyChanged(nameof(CanMoveSelected));
     }
 
     /// <summary>Leaves programming mode (US-026, Esc), restoring the two locality trees of configuration mode.</summary>

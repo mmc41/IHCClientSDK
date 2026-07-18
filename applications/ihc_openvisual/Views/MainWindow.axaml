@@ -134,11 +134,11 @@
                       InputGesture="F4"
                       IsVisible="{Binding SelectedNode.IsLinkRow, FallbackValue=False}"/>
             <MenuItem Header="Move _up" Command="{Binding MoveUpCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding SelectedNode.CanEditNonLink, FallbackValue=False}"/>
+                      IsVisible="{Binding CanMoveSelected, FallbackValue=False}"/>
             <MenuItem Header="Move dow_n" Command="{Binding MoveDownCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding SelectedNode.CanEditNonLink, FallbackValue=False}"/>
+                      IsVisible="{Binding CanMoveSelected, FallbackValue=False}"/>
             <MenuItem Header="_Delete" Command="{Binding DeleteCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding SelectedNode.CanDelete, FallbackValue=False}"/>
+                      IsVisible="{Binding CanDeleteSelected, FallbackValue=False}"/>
             <MenuItem Header="P_roperties" Command="{Binding PropertiesCommand}" CommandParameter="{Binding SelectedNode}"
                       IsVisible="{Binding SelectedNode.CanEditNonLink, FallbackValue=False}"/>
         </MenuFlyout>
