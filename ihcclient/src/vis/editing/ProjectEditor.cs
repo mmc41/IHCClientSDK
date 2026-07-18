@@ -960,7 +960,7 @@ namespace Ihc.Vis.Editing
         {
             ProjectElement subtree = Require(sourceId);   // the exact node — ids preserved verbatim
             Require(targetParentId);
-            if (FindById(subtree, targetParentId) is not null)
+            if (!CanMoveSubtree(sourceId, targetParentId))
             {
                 throw new InvalidOperationException(
                     $"Cannot move {sourceId.ToToken()} into itself or its own descendant {targetParentId.ToToken()}.");
@@ -968,6 +968,42 @@ namespace Ihc.Vis.Editing
             root = RemoveById(root, sourceId);            // detach (ids untouched)
             InsertChildAt(targetParentId, subtree, index);
             return this;
+        }
+
+        /// <summary>
+        /// Whether <see cref="MoveSubtree(ElementId, ElementId, int?)"/> could relocate <paramref name="sourceId"/>
+        /// under <paramref name="targetParentId"/> — the non-mutating predicate a GUI reads for a drag-over hint
+        /// (mirrors <see cref="CanLink"/>). True iff both ids resolve and the target is neither the subtree itself nor
+        /// a node inside it (the structural cycle a move would create by detaching the target). Container-admissibility
+        /// is a grammar concern the caller applies, exactly as <see cref="MoveSubtree(ElementId, ElementId, int?)"/>
+        /// leaves it to the caller.
+        /// </summary>
+        public bool CanMoveSubtree(ElementId sourceId, ElementId targetParentId)
+        {
+            ProjectElement? subtree = FindById(root, sourceId);
+            return subtree is not null
+                && FindById(root, targetParentId) is not null
+                && FindById(subtree, targetParentId) is null;
+        }
+
+        /// <summary>
+        /// Reorders <paramref name="id"/> to position <paramref name="index"/> among its <b>same-tag siblings</b> within
+        /// its current parent — the id-preserving drag-reorder (US-055) and the primitive behind Move up/down.
+        /// <paramref name="index"/> is a same-tag position (a locality moves among localities, a product among
+        /// products), <b>clamped</b> to the sibling range so an out-of-range drop lands at the nearest end rather than
+        /// throwing. Ids and links are untouched (it is a <see cref="MoveSubtree"/> with no re-id). Throws if the node
+        /// has no parent. Returns <c>this</c> for chaining.
+        /// </summary>
+        public ProjectEditor ReorderSubtree(ElementId id, int index)
+        {
+            ProjectElement node = Require(id);
+            ProjectElement parent = FindParentOf(root, id)
+                ?? throw new InvalidOperationException($"Cannot reorder {id.ToToken()}: it has no parent.");
+            List<ProjectElement> sameTag = parent.ChildrenOrEmpty().Where(c => c.Tag == node.Tag).ToList();
+            int clamped = Math.Clamp(index, 0, sameTag.Count - 1);
+            // Translate the same-tag position to the absolute child index of the sibling currently sitting there.
+            int absolute = parent.ChildrenOrEmpty().ToList().FindIndex(c => c.Id == sameTag[clamped].Id);
+            return MoveSubtree(id, parent.Id!.Value, absolute);
         }
 
         private void InsertChildAt(ElementId parentId, ProjectElement child, int? index) =>

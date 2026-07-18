@@ -1,6 +1,6 @@
 ---
 version: 0.3.0
-last-updated: 2026-07-17
+last-updated: 2026-07-18
 status: draft
 ---
 
@@ -19,8 +19,9 @@ cross‑cutting: it underlies every capability area (E1–E10).
 
 **Scope:** the activation methods and their equivalence; the context‑menu / menu‑bar / shortcut
 conventions; **what double‑clicking a node does, per node type**; **what each node type's context menu
-contains**; the **modal‑dialog keyboard conventions** (dismissal and default focus); and the full keyboard
-shortcut set (navigation, edit, mode, simulation, help). **Scope excludes:** the semantics of the individual
+contains**; the **modal‑dialog keyboard conventions** (dismissal and default focus); the **preservation of
+the tree's expand/collapse state across edits** (US-070); and the full keyboard shortcut set (navigation,
+edit, mode, simulation, help). **Scope excludes:** the semantics of the individual
 commands (documented in their own epics) and the *content* of the properties dialogs each route opens
 (E2–E7).
 
@@ -35,6 +36,8 @@ commands (documented in their own epics) and the *content* of the properties dia
   and includes the clipboard commands (US-068).
 - MUST: Every modal dialog can be dismissed from the keyboard, and a destructive confirmation defaults to
   its safe option (US-069).
+- MUST: A project edit preserves the tree's expand/collapse state — only navigation or a mode switch moves
+  the tree, never a mutation (US-070).
 
 **Readiness:** Ready.
 
@@ -523,6 +526,94 @@ raise a confirmation at all (US-009, US-053).
 
 ---
 
+## US-070 — An edit keeps the tree's expansion state
+
+> **Added 2026‑07‑18** from a defect found while exercising the drag gestures. Every project mutation fires
+> `StateChanged`; the view‑model rebuilds both panes from scratch and the fresh nodes came up at their
+> build‑time defaults — so connecting two pins, deleting a link, or **any** edit **collapsed the whole tree**,
+> throwing the installer back to the top after every change. This story fixes that.
+
+**As an** IHC installer, **I want** the tree to stay expanded exactly as I left it when I edit the project,
+**so that** I keep my place while wiring — an edit changes *what* I edited, not *where I am* in the tree.
+
+> **Sibling of US-067.** US-067 says opening a node's *dialog* must not move the tree under you; this says the
+> same of an *edit*. Together they are one principle: **only a deliberate navigation or mode change moves the
+> tree — never a mutation.**
+
+**Scope excludes:** which gestures cause an edit (their own epics); the *selection* an edit may reset (not
+specified here); and the deliberate reveal defaults below, which are kept.
+
+### Acceptance criteria (Given‑When‑Then)
+
+```gherkin
+Scenario: Connecting two pins keeps the branches open
+  Given I have expanded a product and a function block down to their pins in order to wire them
+  When I connect two pins (by dragging one onto the other, or with the two-step Link supplement)
+  Then the product, the block and its section stay expanded exactly as they were
+  And I am not thrown back to a collapsed tree
+
+Scenario: Deleting a link keeps the branches open
+  Given I have expanded the branches around a link
+  When I delete the link (US-057)
+  Then the surrounding branches stay expanded
+
+Scenario: Any edit preserves each surviving node's state
+  Given nodes I have expanded and nodes I have deliberately collapsed
+  When I make any project edit (insert, delete, move, reorder, rename, link, program-build, undo/redo)
+  Then every node that still exists keeps the expand/collapse state I gave it
+  And a node I deliberately collapsed is not forced back open
+
+Scenario: A node revealing its first child still opens (US-006 kept)
+  Given an empty, collapsed locality
+  When I insert the first product into it
+  Then the locality opens to reveal the new product — its reveal default wins, it had no state to keep
+
+Scenario: A mode switch opens fresh
+  Given I am in configuration mode
+  When I enter a block's programming mode (or leave it)
+  Then that view opens at its own defaults (the program fully expanded), not carried over from the other mode
+```
+
+### Business rules
+
+- MUST: A project mutation preserves each **surviving** node's expand/collapse state — keyed by the node's
+  stable element id, and **per pane** (the same locality appears in both panes with independent expansion).
+- MUST: A node the edit **creates** takes its build‑time default; a node the edit **removes** drops out.
+  Preservation applies to the nodes that persist across the edit.
+- MUST: The **reveal‑on‑first‑child** default (US-006 — a locality with contents opens) is kept: a node that
+  gains its *first* child opens by default rather than inheriting a stale collapsed state. (Implementation:
+  expansion is carried only for nodes that already had children.)
+- MUST: A deliberate **mode switch** (configuration ⇄ a block's programming view) is **not** an in‑place edit
+  — it opens the target view at its defaults, not carried over from the other mode.
+- SHOULD: The state survives across the **binding**, so a node the installer expanded *in the UI* (not only
+  one expanded programmatically) is preserved — `TreeViewItem.IsExpanded` is two‑way bound to the view‑model,
+  which is the single source of truth for expansion.
+
+### AC illustrations
+
+- Expanding `Living room` ▸ `Lampeudtag` ▸ its output pin, then dragging that pin onto a block input, leaves
+  `Living room`, `Lampeudtag` and the block's `Input` section **still open** — the link appears in place.
+- Collapsing a locality that has products, then inserting a locality elsewhere, leaves the first locality
+  **still collapsed** — the rebuild restores state, it does not re‑apply defaults.
+
+### Constraints
+
+- Verification method — **Test** (headless UI, `safe_visual_tests` → `TreeExpansionTests`): an expanded node
+  survives a link and a link‑deletion, a collapsed node survives an unrelated edit, a first child still
+  reveals its parent, a mode switch opens fresh, and — through the real window — a UI‑driven expansion
+  survives an edit (pinning the two‑way binding).
+- The rebuild‑from‑scratch design (clear both panes, repopulate from the project on `StateChanged`) is kept;
+  the fix is a snapshot/restore around it, not a move to in‑place tree diffing.
+
+**Readiness:** Ready.
+
+**Implementation status:** ✅ **Implemented** — the view‑model snapshots expansion (per pane, by element id,
+for nodes that have children) before each rebuild and restores it after, guarded by a view key so a mode
+switch opens fresh; the `IsExpanded` binding is two‑way so UI expansions are captured. Regression‑covered by
+`TreeExpansionTests`.
+
+---
+
 ### Story collection
 
 | ID | Title | Readiness | Epic/Feature | Priority | Dependencies |
@@ -532,3 +623,4 @@ raise a confirmation at all (US-009, US-053).
 | US-067 | Open a node's properties by double‑clicking it | Ready | E11 | Must | US-007, US-011, US-012, US-044 |
 | US-068 | Offer a context menu tailored to the node type | Ready | E11 | Must | US-025, US-026, US-044, US-053, US-055 |
 | US-069 | Dismiss and default dialogs from the keyboard | Ready | E11 | Must | US-053 |
+| US-070 | An edit keeps the tree's expansion state | Ready | E11 | Must | US-006, US-067 |

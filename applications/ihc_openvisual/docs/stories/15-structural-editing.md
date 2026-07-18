@@ -293,9 +293,11 @@ Scenario: The move route is reachable without drag
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Partial — the **Cut/Paste supplement is implemented and verified**; the
-**primary drag‑to‑move gesture is outstanding** (2026‑07‑18 decision above). Complete when a product can be
-moved by dragging it onto a locality, with drop‑target highlighting and the same id‑preserving result.
+**Implementation status:** ✅ Done — the **primary drag‑to‑move gesture** ships (A‑31): dragging a product onto a
+locality re‑parents it with drop‑target highlighting and the **same id‑preserving result as the Cut/Paste
+supplement** (the same `MoveNodeAsync` op). An illegal target — the node itself, one of its descendants, or a
+container that cannot hold it — is not highlighted and the drop is refused with a reason. A move — like every
+edit — leaves the tree's expand/collapse state intact (US-070).
 
 ---
 
@@ -362,8 +364,10 @@ Scenario: Reorder preserves identity and links
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Partial — the ***Move up* / *Move down* supplement is implemented**; the
-**primary drag‑to‑reorder gesture is outstanding** (2026‑07‑18 decision above).
+**Implementation status:** ✅ Done — the **primary drag‑to‑reorder gesture** ships (A‑32): dragging a sibling onto
+another same‑tag sibling moves it to that position (the same id‑preserving move as US‑054, over a new SDK
+`ProjectEditor.ReorderSubtree(id, index)` primitive), reflected in both panes and in report order (US‑040). The
+***Move up* / *Move down*** and cut/paste routes **stay** as supplements.
 
 ---
 

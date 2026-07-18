@@ -419,6 +419,14 @@ public sealed class ProjectSession : IDisposable
         editor.SetMetadata(tag, ("name", c.Name), ("address", c.Address), ("city", c.City),
             ("zipcode", c.Zip), ("country", c.Country), ("phone", c.Phone), ("mobilephone", c.Mobile), ("email", c.Email));
 
+    /// <summary>Whether dragging <paramref name="draggedPin"/> onto <paramref name="dropTargetPin"/> would create a
+    /// link — the drag-over hint peer of <see cref="LinkPinsAsync"/>. Applies the SDK's data-flow rule and orientation
+    /// (<see cref="ProjectEditor.CanLink"/> / <see cref="Ihc.Vis.Schema.LinkRoles"/>): the dragged pin is the source, the
+    /// target the sink; a self-link (a block output onto its own input) is allowed, a crossed or same-family pair
+    /// refused. Non-mutating; no controller.</summary>
+    public bool CanLinkPins(ElementId draggedPin, ElementId dropTargetPin) =>
+        Current is { } project && project.Edit().CanLink(draggedPin, dropTargetPin);
+
     // The function block that owns a variable pin (block → section → pin), or null if the pin is not an FB variable
     // (e.g. a product pin). Used to detect and constrain function-block-to-function-block links (US-033b).
     public Task<bool> LinkPinsAsync(ElementId draggedPinId, ElementId dropTargetPinId) =>
@@ -1121,16 +1129,46 @@ public sealed class ProjectSession : IDisposable
     public Task<bool> ReorderNodeAsync(ElementId id, int delta) =>
         RunEditAsync(nameof(ReorderNodeAsync), "Reorder failed", (project, editor) =>
         {
-            if (delta == 0 || project.FindParent(id) is not { Id: { } parentId } parent || project.FindById(id) is not { } node)
+            if (delta == 0 || project.FindParent(id) is not { Id: { } } parent || project.FindById(id) is not { } node)
                 return false;
             var siblings = parent.ChildrenOrEmpty().Where(c => c.Tag == node.Tag).ToList();
             int here = siblings.FindIndex(c => c.Id == id);
             int there = here + delta;
             if (here < 0 || there < 0 || there >= siblings.Count)
                 return false;   // already at the end in that direction
-            // Translate the same-tag position to the absolute child index of the sibling we swap with.
-            int absoluteIndex = parent.ChildrenOrEmpty().ToList().FindIndex(c => c.Id == siblings[there].Id);
-            editor.MoveSubtree(id, parentId, absoluteIndex);
+            editor.ReorderSubtree(id, there);   // the same-tag → absolute mapping lives in the SDK now (A-32)
+            return true;
+        });
+
+    /// <summary>Whether <paramref name="dragged"/> and <paramref name="target"/> are distinct <b>same-parent, same-tag
+    /// siblings</b> — a reorder drop (US-055), the drag-over hint peer of <see cref="ReorderNodeToSiblingAsync"/>.
+    /// Non-mutating; no controller.</summary>
+    public bool CanReorderNode(ElementId dragged, ElementId target)
+    {
+        if (dragged == target
+            || Current is not { } project
+            || project.FindById(dragged) is not { } a
+            || project.FindById(target) is not { } b)
+            return false;
+        return a.Tag == b.Tag
+            && project.FindParent(dragged) is { Id: { } parentId }
+            && project.FindParent(target)?.Id == parentId;
+    }
+
+    /// <summary>Reorders <paramref name="dragged"/> to <paramref name="targetSibling"/>'s position among their shared
+    /// same-tag siblings — the drag-reorder drop (US-055). Id-preserving (the SDK <see cref="ProjectEditor.ReorderSubtree"/>),
+    /// undoable. Returns false when the two are not a reorderable pair (not same-parent, same-tag siblings). No controller.</summary>
+    public Task<bool> ReorderNodeToSiblingAsync(ElementId dragged, ElementId targetSibling) =>
+        RunEditAsync(nameof(ReorderNodeToSiblingAsync), "Reorder failed", (project, editor) =>
+        {
+            if (project.FindParent(dragged) is not { Id: { } parentId } parent
+                || project.FindById(dragged) is not { } node
+                || project.FindParent(targetSibling)?.Id != parentId)
+                return false;
+            int targetIndex = parent.ChildrenOrEmpty().Where(c => c.Tag == node.Tag).ToList().FindIndex(c => c.Id == targetSibling);
+            if (targetIndex < 0)
+                return false;   // the target is not a same-tag sibling
+            editor.ReorderSubtree(dragged, targetIndex);
             return true;
         });
 
@@ -1158,6 +1196,22 @@ public sealed class ProjectSession : IDisposable
             editor.MoveSubtree(sourceId, targetParentId);
             return true;
         }, refusalTitle: "Cannot move");   // self/descendant target
+
+    /// <summary>Whether <see cref="MoveNodeAsync"/> would move <paramref name="sourceId"/> under
+    /// <paramref name="targetParentId"/> — its non-mutating peer, read for the drag-over hint (A-31). Applies the SAME
+    /// legality as the move (and as paste): both ids resolve, the target admits the node's kind, the node is not already
+    /// there, and the target is not the node itself or one of its descendants (the SDK's move-contract guard,
+    /// <see cref="ProjectEditor.CanMoveSubtree"/>). No dialogs, no mutation, no controller.</summary>
+    public bool CanMoveNode(ElementId sourceId, ElementId targetParentId)
+    {
+        if (Current is not { } project
+            || project.FindById(sourceId) is not { } source
+            || project.FindById(targetParentId) is not { } target)
+            return false;
+        return CanContain(source.Tag, target.Tag)
+            && project.FindParent(sourceId)?.Id != targetParentId
+            && project.Edit().CanMoveSubtree(sourceId, targetParentId);
+    }
 
     /// <summary>
     /// Copies a node and pastes it as an **independent duplicate** under <paramref name="targetParentId"/> (US-056):

@@ -63,8 +63,11 @@ that** actuating the sensor/button triggers the block.
 > **dragging one pin onto another**, matching IHC Visual so vendor‑experienced installers meet no surprise.
 > IHC OpenVisual also offers a non‑drag **supplement** — *Link from here* on the source pin, then
 > *Link to here* on the target (context menu, US-044 route‑parity) — reaching the identical result. Both use
-> the same legality rule and orientation specified below; neither is a substitute for the other. ⚠ Today
-> only the two‑step supplement ships; the **drag gesture itself is outstanding work**.
+> the same legality rule and orientation specified below; neither is a substitute for the other. ✅ The
+> **drag gesture ships** (A‑33): dropping one pin onto another creates the link — equal to the two‑step
+> supplement, under the SDK's `LinkRoles`/`CanLink` legality and F‑066 orientation. Creating a link (and
+> deleting one, US-057) **leaves the tree expanded exactly as it was** — the installer keeps their place while
+> wiring (US-070).
 
 ### Acceptance criteria (Given‑When‑Then)
 

@@ -161,5 +161,16 @@ public sealed class TreeNodeViewModel : ObservableObject
     /// <summary>Whether the label renders bold — locality nodes do (US-006).</summary>
     public bool IsBold { get; }
 
+    private bool _isDropTarget;
+
+    /// <summary>Whether this row is the current drag-over drop target — the item template paints its background so the
+    /// user sees where a drop will land (A-30). Observable so the highlight follows the pointer as a drag moves across
+    /// rows; set by <see cref="MainWindowViewModel.HighlightDropTarget"/>, never bound to persisted state.</summary>
+    public bool IsDropTarget
+    {
+        get => _isDropTarget;
+        set => SetProperty(ref _isDropTarget, value);
+    }
+
     public ObservableCollection<TreeNodeViewModel> Children { get; } = new();
 }

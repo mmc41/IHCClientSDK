@@ -239,6 +239,18 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Arms <paramref name="variable"/> and surfaces the method popup on <paramref name="container"/> — the
+    /// drag gesture behind US-028. It selects the drop-target container so the two-step's shared menu-builder
+    /// (<see cref="RebuildProgramMenus"/>) populates that container's Add-event/Add-command menu for the armed variable;
+    /// the user then chooses a method, which builds the event/command exactly as the two-step <i>Use in program</i>
+    /// does. A-27's locked-block gate is applied upstream in <see cref="CanDropOn"/>.</summary>
+    private void UseVariableInProgram(TreeNodeViewModel variable, TreeNodeViewModel container)
+    {
+        PendingProgramVariable = variable;
+        SelectNode(container);
+        StatusText = $"Using {variable.DisplayName} — choose a method on {container.DisplayName}.";
+    }
+
     private void RebuildProgramMenus(TreeNodeViewModel? value)
     {
         ProgramEventMenu.Clear();
@@ -911,32 +923,117 @@ public partial class MainWindowViewModel : ViewModelBase
             StatusText = delta < 0 ? "Moved up." : "Moved down.";
     });
 
-    // ── Wave 9 / A-P0 spike — drag-and-drop drop-target legality + mutation (product → locality move only). ──
-    // Per §0.3 the legality (CanDropOn) and the mutation (PerformDropAsync) live here in the view-model, so they are
-    // testable headlessly with no pointer/drag simulation; the code-behind's DragOver/Drop handlers read the dragged
-    // id from the DataTransfer and call these. This POC covers ONLY the simplest gesture — A-30/A-31 grow it into the
-    // full node-kind dispatcher and source the legality from the SDK; do NOT widen it here.
+    // ── Wave 9 / A-30 — the shared drag-and-drop dispatcher (§0.3). The legality (CanDropOn), the mutation
+    // (PerformDropAsync) and the drop-target highlight (HighlightDropTarget) all live here in the view-model, so they
+    // are testable headlessly with no pointer/drag simulation; the code-behind's DragOver/Drop handlers read the
+    // dragged id from the DataTransfer and call these. A-30 ships the product→locality move route (the A-P0 slice);
+    // A-31…A-34 add the reorder / pin-link / program-build routes onto this same dispatcher and source their per-route
+    // grammar from the SDK — do NOT re-encode vendor grammar here.
 
-    /// <summary>Whether the dragged node may be dropped onto the target to move it there (US-054): only a product onto
-    /// a <em>different</em> locality. The authoritative refusal (self/descendant, container-admissibility) still lives
-    /// in <see cref="ProjectSession.MoveNodeAsync"/>; this is the drag-over highlight hint. Avalonia-free (a plain
-    /// bool) so the view-model stays headlessly testable.</summary>
-    public bool CanDropOn(ElementId dragged, ElementId target)
+    private TreeNodeViewModel? _dropTargetNode;
+
+    /// <summary>Whether — and how — the dragged node may drop onto the target: a <see cref="DropVerdict"/> of ok +
+    /// effect (Move/Link/None) + a reason when refused. Only the legality every route shares is decided here (a node
+    /// cannot drop onto itself); the per-route grammar (container-admissibility, link legality) belongs to the SDK op
+    /// the drop calls, so this is the drag-over hint, not the authoritative guard. Avalonia-free so it stays headlessly
+    /// testable.</summary>
+    public DropVerdict CanDropOn(ElementId dragged, ElementId target)
     {
         if (dragged == target)
-            return false;
+            return DropVerdict.Refused("Cannot drop a node onto itself.");
         TreeNodeViewModel? draggedNode = FindNode(InstallationNodes, dragged) ?? FindNode(FunctionNodes, dragged);
         TreeNodeViewModel? targetNode = FindNode(InstallationNodes, target) ?? FindNode(FunctionNodes, target);
-        return draggedNode?.NodeKind == "product" && targetNode?.NodeKind == "locality";
+        if (draggedNode is null || targetNode is null)
+            return DropVerdict.None;
+        // Link: dropping one pin onto another creates a link when the SDK's data-flow rule allows it (US-022/US-023).
+        // The 15-cell legality + orientation live in the SDK (LinkRoles/CanLink — A-16/A-16amd/F-066); ask, don't
+        // re-encode. This precedes reorder so two same-tag pins link (never silently reorder).
+        if (draggedNode.IsPin && targetNode.IsPin)
+        {
+            return _session.CanLinkPins(dragged, target)
+                ? DropVerdict.Linking()
+                : DropVerdict.Refused("Those two pins can't be linked in that direction.");
+        }
+        // Program build: dropping a variable/pin onto an events or commands container arms the method popup (US-028).
+        // The effect is Link (an authoring connection); PerformDropAsync routes it to the shared Use-in-program menu,
+        // not LinkPinsAsync. Gated on the A-27 locked-block rule — no authoring drop into a locked library block.
+        if (draggedNode.IsPin && (targetNode.IsEventsContainer || targetNode.IsCommandsContainer))
+        {
+            return IsProgrammingBlockLocked
+                ? DropVerdict.Refused("This block is locked — unlock it to edit its program.")
+                : DropVerdict.Linking();
+        }
+        // Reorder: dropping onto a same-parent, same-tag sibling moves the node to that position (US-055). The SDK owns
+        // the "same-tag sibling" rule; the view-model only asks.
+        if (_session.CanReorderNode(dragged, target))
+            return DropVerdict.Moving();
+        // A product can be dragged to re-parent it into another locality (US-054). Ask the SDK whether this exact
+        // target is a legal destination — it owns the self/descendant + container-admissibility rules (the same
+        // legality Cut/Paste uses); do not re-encode them here. A-33/A-34 add the pin-link / program-build routes.
+        if (draggedNode.NodeKind == "product")
+        {
+            return _session.CanMoveNode(dragged, target)
+                ? DropVerdict.Moving()
+                : DropVerdict.Refused("That location can't hold this item.");
+        }
+        return DropVerdict.None;
     }
 
-    /// <summary>Performs a drop: re-parents the dragged product under the target locality via the same id-preserving
-    /// move as Cut/Paste (US-054). Refusals are handled (and messaged) by the SDK op.</summary>
+    /// <summary>Performs a drop, routing by the verdict from <see cref="CanDropOn"/>. A-30 ships the product→locality
+    /// move (the same id-preserving re-parent as Cut/Paste, US-054); a refused drop surfaces its reason and mutates
+    /// nothing. A-31…A-34 add their routes here.</summary>
     public Task PerformDropAsync(ElementId dragged, ElementId target) => RunAsync(nameof(PerformDropAsync), async () =>
     {
-        if (await _session.MoveNodeAsync(dragged, target))
+        DropVerdict verdict = CanDropOn(dragged, target);
+        if (!verdict.Ok)
+        {
+            if (verdict.Reason is { } reason)
+                StatusText = reason;
+            return;
+        }
+        // Program build (US-028): a variable dropped onto an events/commands container arms the same method popup as
+        // Use-in-program — the user then picks the method. Handled before the pin-link route because it shares the Link
+        // effect but routes to the program menu, not LinkPinsAsync.
+        TreeNodeViewModel? draggedNode = FindNode(InstallationNodes, dragged) ?? FindNode(FunctionNodes, dragged);
+        TreeNodeViewModel? targetNode = FindNode(InstallationNodes, target) ?? FindNode(FunctionNodes, target);
+        if (draggedNode is { IsPin: true } && targetNode is { } container && (container.IsEventsContainer || container.IsCommandsContainer))
+        {
+            UseVariableInProgram(draggedNode, container);
+            return;
+        }
+        // Route by the verdict's effect: a pin-link (US-022/US-023), a reorder among same-tag siblings (US-055), or a
+        // re-parent (US-054). The effect already encodes which family; within Move, CanReorderNode splits the two.
+        if (verdict.Effect == DropEffect.Link)
+        {
+            if (await _session.LinkPinsAsync(dragged, target))
+                StatusText = "Linked.";
+        }
+        else if (_session.CanReorderNode(dragged, target))
+        {
+            if (await _session.ReorderNodeToSiblingAsync(dragged, target))
+                StatusText = "Reordered.";
+        }
+        else if (await _session.MoveNodeAsync(dragged, target))
+        {
             StatusText = "Moved.";
+        }
     });
+
+    /// <summary>Highlights (or clears) the current legal drop target so the tree shows where a drop will land (A-30):
+    /// sets <see cref="TreeNodeViewModel.IsDropTarget"/> on the node addressed by <paramref name="target"/> and clears
+    /// any previous one; pass <c>null</c> to clear. Avalonia-free — the item template binds a row background to
+    /// IsDropTarget.</summary>
+    public void HighlightDropTarget(ElementId? target)
+    {
+        TreeNodeViewModel? node = target is { } id ? FindNode(InstallationNodes, id) ?? FindNode(FunctionNodes, id) : null;
+        if (ReferenceEquals(node, _dropTargetNode))
+            return;
+        if (_dropTargetNode is not null)
+            _dropTargetNode.IsDropTarget = false;
+        _dropTargetNode = node;
+        if (_dropTargetNode is not null)
+            _dropTargetNode.IsDropTarget = true;
+    }
 
     /// <summary>Opens the Properties dialog for a tree node to rename a locality (US-007). Invoked from the
     /// right-click <i>Properties</i> item (node passed in) and from F2 (the selected node passed in).</summary>
@@ -1514,36 +1611,99 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    // The identity of the view last built into the panes. An in-place rebuild (every edit fires StateChanged →
+    // Refresh) keeps the same key, so the panes' expand/collapse state is carried across (US-070); a deliberate
+    // MODE switch (config ⇄ a block's programming view) changes the key, so that view opens fresh at its defaults.
+    private string? _lastBuiltViewKey;
+
     private void Refresh()
     {
         Title = $"{_session.DocumentName} - {Constants.AppName}";
         if (IsProgrammingMode && _programmingBlockId is { } blockId
             && _session.Current?.FindById(blockId) is { Tag: "functionblock" } block)
         {
-            BuildProgrammingTrees(block);
+            BuildProgrammingTrees(block, preserveExpansion: SameViewAsLastBuild("prog:" + blockId.ToToken()));
             return;
         }
         IsProgrammingMode = false;   // the block is gone (or never set) → configuration mode
         _programmingBlockId = null;
         InstallationPaneHeader = "Installation";
         FunctionsPaneHeader = "Functions";
-        BuildTree(InstallationNodes, functions: false);
-        BuildTree(FunctionNodes, functions: true);
+        bool preserve = SameViewAsLastBuild("config");
+        RebuildPreservingExpansion(InstallationNodes, preserve, () => BuildTree(InstallationNodes, functions: false));
+        RebuildPreservingExpansion(FunctionNodes, preserve, () => BuildTree(FunctionNodes, functions: true));
+    }
+
+    // Records the view about to be built and reports whether it is the SAME as the last build — i.e. whether this
+    // is an in-place refresh whose expansion should be carried across, rather than a mode switch that opens fresh.
+    private bool SameViewAsLastBuild(string key)
+    {
+        bool same = _lastBuiltViewKey == key;
+        _lastBuiltViewKey = key;
+        return same;
+    }
+
+    // Carries each surviving node's expand/collapse state across a full pane rebuild (US-070): every edit clears and
+    // repopulates the pane, so without this the fresh nodes snap back to their build-time defaults and the whole tree
+    // collapses on every change. Snapshot is taken BEFORE <paramref name="populate"/> clears the pane, and restored
+    // after; skipped (preserve=false) on a mode switch, where the fresh defaults ARE the wanted state.
+    private static void RebuildPreservingExpansion(ObservableCollection<TreeNodeViewModel> target, bool preserve, Action populate)
+    {
+        Dictionary<ElementId, bool>? previous = preserve ? SnapshotExpansion(target) : null;
+        populate();
+        if (previous is not null)
+            RestoreExpansion(target, previous);
+    }
+
+    private static Dictionary<ElementId, bool> SnapshotExpansion(IEnumerable<TreeNodeViewModel> nodes)
+    {
+        var map = new Dictionary<ElementId, bool>();
+        CollectExpansion(nodes, map);
+        return map;
+    }
+
+    // Records the expand/collapse state of every node that CURRENTLY HAS CHILDREN, keyed by element id. The
+    // "has children" gate is what lets a node revealing its FIRST child (an empty locality gaining a product,
+    // US-006) keep its open-by-default state rather than inherit a stale collapsed one, while a node that was
+    // already a parent carries the installer's expansion across the rebuild (US-070).
+    private static void CollectExpansion(IEnumerable<TreeNodeViewModel> nodes, Dictionary<ElementId, bool> into)
+    {
+        foreach (TreeNodeViewModel node in nodes)
+        {
+            if (node.ElementId is { } id && node.Children.Count > 0)
+                into[id] = node.IsExpanded;
+            CollectExpansion(node.Children, into);
+        }
+    }
+
+    private static void RestoreExpansion(IEnumerable<TreeNodeViewModel> nodes, IReadOnlyDictionary<ElementId, bool> previous)
+    {
+        foreach (TreeNodeViewModel node in nodes)
+        {
+            if (node.ElementId is { } id && previous.TryGetValue(id, out bool wasExpanded))
+                node.IsExpanded = wasExpanded;
+            RestoreExpansion(node.Children, previous);
+        }
     }
 
     // Programming mode (US-026): the left pane shows the block's variable sections, the right pane its program
     // subtree (Programs > Program > { Events, Commands }); both headers carry the block's name.
-    private void BuildProgrammingTrees(ProjectElement block)
+    private void BuildProgrammingTrees(ProjectElement block, bool preserveExpansion)
     {
         string name = block.GetAttribute("name") ?? "block";
         InstallationPaneHeader = name;
         FunctionsPaneHeader = name;
 
-        InstallationNodes.Clear();
-        InstallationNodes.Add(BuildFunctionBlockNode(block, name, programmingMode: true));   // block → Input/Output/Settings/Internal variables
-
-        FunctionNodes.Clear();
-        FunctionNodes.Add(BuildBlockProgramsNode(block, name));       // block → Programs → Program → Events/Commands
+        RebuildPreservingExpansion(InstallationNodes, preserveExpansion, () =>
+        {
+            InstallationNodes.Clear();
+            InstallationNodes.Add(BuildFunctionBlockNode(block, name, programmingMode: true));   // block → Input/Output/Settings/Internal variables
+        });
+        RebuildPreservingExpansion(FunctionNodes, preserveExpansion, () =>
+        {
+            FunctionNodes.Clear();
+            FunctionNodes.Add(BuildBlockProgramsNode(block, name));       // block → Programs → Program → Events/Commands
+        });
     }
 
     private TreeNodeViewModel BuildBlockProgramsNode(ProjectElement block, string name)

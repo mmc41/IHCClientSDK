@@ -106,5 +106,55 @@ namespace Ihc.Vis.Tests
             Assert.Throws<InvalidOperationException>(() => editor.MoveSubtree(group.Id!.Value, descendantId),
                 "a subtree cannot be moved inside itself");
         }
+
+        // The non-mutating peer of MoveSubtree (mirrors CanLink) — a GUI reads it for the drag-over hint (A-31): true
+        // for a legal relocation, false for exactly the structural cycle MoveSubtree throws on, and false for an
+        // unknown id.
+        [Test]
+        public async Task CanMoveSubtree_AllowsUnrelatedTarget_RefusesSelfDescendantAndUnknown()
+        {
+            Project project = await LoadOracle();
+            ProjectEditor editor = project.Edit();
+            (ProjectElement moved, _, ElementId targetGroupId) = WiredComponentAndOtherGroup(project);
+            ElementId ownDescendant = moved.Descendants().First(e => e.Id is not null).Id!.Value;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(editor.CanMoveSubtree(moved.Id!.Value, targetGroupId), Is.True, "an unrelated target is a legal move");
+                Assert.That(editor.CanMoveSubtree(moved.Id!.Value, moved.Id!.Value), Is.False, "a node cannot move into itself");
+                Assert.That(editor.CanMoveSubtree(moved.Id!.Value, ownDescendant), Is.False, "a node cannot move into its own descendant");
+                Assert.That(editor.CanMoveSubtree(moved.Id!.Value, new ElementId(999999, 0)), Is.False, "an unknown target is not movable");
+                // The predicate and the mutation agree: what CanMoveSubtree rejects, MoveSubtree throws on.
+                Assert.Throws<InvalidOperationException>(() => project.Edit().MoveSubtree(moved.Id!.Value, ownDescendant));
+            });
+        }
+
+        // A-32 (US-055) — reorder to an in-container position among the node's OWN same-tag siblings, id-preserving,
+        // with an out-of-range index clamped to the nearest end (rather than throwing).
+        [Test]
+        public async Task ReorderToIndex_MovesAmongSameTagSiblings_PreservingIds()
+        {
+            Project project = await LoadOracle();
+            var app = new ProjectAppService(Settings);
+            System.Collections.Generic.List<ElementId> groupIds = project.Groups.Select(g => g.Id!.Value).ToList();
+            ElementId moved = groupIds[2];
+
+            ProjectEditor toFront = project.Edit();
+            toFront.ReorderSubtree(moved, 0);
+            Project front = toFront.ToProject();
+
+            ProjectEditor toEnd = project.Edit();
+            toEnd.ReorderSubtree(moved, 999);   // out-of-range → clamps to the last same-tag position
+            Project end = toEnd.ToProject();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(front.Groups.First().Id!.Value, Is.EqualTo(moved), "reordered to the front (index 0)");
+                Assert.That(front.Groups.Select(g => g.Id!.Value), Is.EquivalentTo(groupIds), "same localities — none added or dropped");
+                Assert.That(front.LastUniqueId, Is.EqualTo(project.LastUniqueId), "a reorder allocates nothing");
+                Assert.That(app.Validate(front).IsValid, Is.True, "links survive the reorder: " + string.Join(" | ", app.Validate(front).Errors));
+                Assert.That(end.Groups.Last().Id!.Value, Is.EqualTo(moved), "an out-of-range index clamps to the last position");
+            });
+        }
     }
 }

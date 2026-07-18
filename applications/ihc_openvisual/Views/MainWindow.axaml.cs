@@ -37,34 +37,44 @@ public partial class MainWindow : Window
         InstallationTree.AddHandler(PointerPressedEvent, OnTreePointerPressed, RoutingStrategies.Tunnel);
         FunctionsTree.AddHandler(PointerPressedEvent, OnTreePointerPressed, RoutingStrategies.Tunnel);
 
-        // Wave 9 / A-P0 spike — drag SOURCE + drop TARGET on the Installation tree (product → locality move). These
-        // are separate Bubble handlers beside the Tunnel right-click router above, which stays untouched. The drop
-        // side reads the dragged id from the DataTransfer (never a captured source field) so window.DragDrop can
-        // exercise it headlessly (§0.3); legality + mutation live in the view-model (CanDropOn / PerformDropAsync).
-        // handledEventsToo: a TreeViewItem marks PointerPressed handled (for selection) before it bubbles to the
-        // TreeView, so a plain bubble handler here would never see the press that arms a drag — the source must opt
-        // into handled events. (The Tunnel right-click router above sidesteps this by running before the item.)
-        InstallationTree.AddHandler(PointerPressedEvent, OnTreeSourcePointerPressed, RoutingStrategies.Bubble, handledEventsToo: true);
-        InstallationTree.AddHandler(PointerMovedEvent, OnTreeSourcePointerMoved, RoutingStrategies.Bubble, handledEventsToo: true);
-        InstallationTree.AddHandler(PointerReleasedEvent, OnTreeSourcePointerReleased, RoutingStrategies.Bubble, handledEventsToo: true);
-        DragDrop.SetAllowDrop(InstallationTree, true);
-        // Handle DragEnter AND DragOver with one handler: the drag device raises DragEnter (not DragOver) the first
-        // time a drag reaches a new target, so the hover highlight must be computed on enter as well as on move.
-        DragDrop.AddDragEnterHandler(InstallationTree, OnTreeDragOver);
-        DragDrop.AddDragOverHandler(InstallationTree, OnTreeDragOver);
-        DragDrop.AddDropHandler(InstallationTree, OnTreeDrop);
+        // Wave 9 / A-30 — drag SOURCE + drop TARGET on BOTH trees (product→locality move today; A-31…A-34 add the
+        // reorder / pin-link / program-build routes). Wired beside the Tunnel right-click router above, which stays
+        // untouched. The drop side reads the dragged id from the DataTransfer (never a captured source field) so
+        // window.DragDrop can exercise it headlessly (§0.3); legality + mutation + highlight live in the view-model
+        // (CanDropOn / PerformDropAsync / HighlightDropTarget).
+        WireTreeDragDrop(InstallationTree);
+        WireTreeDragDrop(FunctionsTree);
     }
 
-    // ── Wave 9 / A-P0 spike: drag SOURCE. A left-press on a product arms a drag; a move past a small threshold
-    // starts it via DragDrop.DoDragDropAsync with the node's id in the DataTransfer (via the testable BuildDragData
-    // helper). Headless has no OS drag loop, so the started drag reaches no target — A-P0 test 3 records that, and it
-    // is why the source side is covered via BuildDragData rather than the DoDragDrop call (§0.3).
+    // Attaches the drag SOURCE and drop TARGET handlers to a tree (A-30 — both panes share this wiring).
+    // handledEventsToo: a TreeViewItem marks PointerPressed handled (for selection) before it bubbles to the TreeView,
+    // so a plain bubble handler would never see the press that arms a drag — the source must opt into handled events.
+    // (The Tunnel right-click router sidesteps this by running before the item.) DragEnter AND DragOver share one
+    // handler: the drag device raises DragEnter (not DragOver) the first time a drag reaches a new target, so the hover
+    // highlight must be computed on enter as well as on move.
+    private void WireTreeDragDrop(TreeView tree)
+    {
+        tree.AddHandler(PointerPressedEvent, OnTreeSourcePointerPressed, RoutingStrategies.Bubble, handledEventsToo: true);
+        tree.AddHandler(PointerMovedEvent, OnTreeSourcePointerMoved, RoutingStrategies.Bubble, handledEventsToo: true);
+        tree.AddHandler(PointerReleasedEvent, OnTreeSourcePointerReleased, RoutingStrategies.Bubble, handledEventsToo: true);
+        DragDrop.SetAllowDrop(tree, true);
+        DragDrop.AddDragEnterHandler(tree, OnTreeDragOver);
+        DragDrop.AddDragOverHandler(tree, OnTreeDragOver);
+        tree.AddHandler(DragDrop.DragLeaveEvent, OnTreeDragLeave);
+        DragDrop.AddDropHandler(tree, OnTreeDrop);
+    }
+
+    // ── Wave 9 / A-30: drag SOURCE. A left-press on any addressable node (one with an ElementId — a product, locality,
+    // pin or variable) arms a drag; a move past a small threshold starts it via DragDrop.DoDragDropAsync with the node's
+    // id in the DataTransfer (via the testable BuildDragData helper). The verdict at the target decides what actually
+    // happens. Headless has no OS drag loop, so the started drag reaches no target — A-P0 test 3 records that, and it is
+    // why the source side is covered via BuildDragData rather than the DoDragDrop call (§0.3).
     private void OnTreeSourcePointerPressed(object? sender, PointerPressedEventArgs e)
     {
         _dragCandidate = null;
         _dragTrigger = null;
         if (e.GetCurrentPoint(sender as Control).Properties.IsLeftButtonPressed
-            && (e.Source as Control)?.FindAncestorOfType<TreeViewItem>(includeSelf: true)?.DataContext is TreeNodeViewModel { NodeKind: "product" } node)
+            && (e.Source as Control)?.FindAncestorOfType<TreeViewItem>(includeSelf: true)?.DataContext is TreeNodeViewModel { ElementId: not null } node)
         {
             _dragCandidate = node;
             _dragTrigger = e;
@@ -84,7 +94,7 @@ public partial class MainWindow : Window
         if (TreeDragData.BuildDragData(node) is not { } data)
             return;
         DragInitiatedForTest = true;   // the source path was entered (Poc3 guards this — proves the handledEventsToo wiring)
-        try { await DragDrop.DoDragDropAsync(trigger, data, DragDropEffects.Move); }
+        try { await DragDrop.DoDragDropAsync(trigger, data, DragDropEffects.Move | DragDropEffects.Link); }
         catch (Exception ex) { DragSourceError = ex.GetType().Name; }
     }
 
@@ -94,21 +104,40 @@ public partial class MainWindow : Window
         _dragTrigger = null;
     }
 
-    // ── Wave 9 / A-P0 spike: drop TARGET. Reads the dragged id from the DataTransfer and the target node from the
-    // control under the pointer, then defers legality/mutation to the view-model.
+    // ── Wave 9 / A-30: drop TARGET. Reads the dragged id from the DataTransfer and the target node from the control
+    // under the pointer, then defers the verdict (effect + highlight) and the mutation to the view-model.
     private void OnTreeDragOver(object? sender, DragEventArgs e)
     {
         e.DragEffects = DragDropEffects.None;
         if (_viewModel is null || TreeDragData.TryGetElementId(e.DataTransfer) is not { } draggedId)
+        {
+            _viewModel?.HighlightDropTarget(null);
             return;
+        }
         if ((e.Source as Control)?.FindAncestorOfType<TreeViewItem>(includeSelf: true)?.DataContext is not TreeNodeViewModel { ElementId: { } targetId })
+        {
+            _viewModel.HighlightDropTarget(null);
             return;
-        e.DragEffects = _viewModel.CanDropOn(draggedId, targetId) ? DragDropEffects.Move : DragDropEffects.None;
+        }
+        DropVerdict verdict = _viewModel.CanDropOn(draggedId, targetId);
+        e.DragEffects = ToDragDropEffects(verdict.Effect);
+        _viewModel.HighlightDropTarget(verdict.Ok ? targetId : null);
         e.Handled = true;
     }
 
+    // The drag left a tree without dropping — drop any lingering highlight.
+    private void OnTreeDragLeave(object? sender, RoutedEventArgs e) => _viewModel?.HighlightDropTarget(null);
+
+    private static DragDropEffects ToDragDropEffects(DropEffect effect) => effect switch
+    {
+        DropEffect.Move => DragDropEffects.Move,
+        DropEffect.Link => DragDropEffects.Link,
+        _ => DragDropEffects.None,
+    };
+
     private async void OnTreeDrop(object? sender, DragEventArgs e)
     {
+        _viewModel?.HighlightDropTarget(null);
         if (_viewModel is null || TreeDragData.TryGetElementId(e.DataTransfer) is not { } draggedId)
             return;
         if ((e.Source as Control)?.FindAncestorOfType<TreeViewItem>(includeSelf: true)?.DataContext is not TreeNodeViewModel { ElementId: { } targetId })

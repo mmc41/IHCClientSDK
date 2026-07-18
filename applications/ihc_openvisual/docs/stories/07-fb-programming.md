@@ -133,12 +133,11 @@ Scenario: Switch focus between the two panes
 
 - Verification method — **Demonstration** that entering re‑roots both panes to the block name and leaving
   restores both to *Localities*.
-- ⚠ The per‑node interaction census **inside** programming mode (variables, programs, events, conditions,
-  enum types, case nodes) has **not** been run against the vendor (`RESULTS.md` **E‑4**), nor has the deep
-  authoring comparison — notably the **drag + method popup** the vendor uses to add events/commands, which
-  IHC OpenVisual must match, with its two‑step *Use in program* popup kept as the non‑drag **supplement**.
-  The mode **transition** is aligned; the authoring surfaces inside it are unmeasured, so do not read this
-  story's confirmation as covering them.
+- The per‑node interaction census **inside** programming mode (variables, programs, events, conditions,
+  enum types, case nodes) was measured against the vendor (`RESULTS.md` **E‑4** → F‑087, fixed). The
+  **drag + method popup** the vendor uses to add events/commands **now ships** (A‑34): dragging a variable
+  onto an events or commands container opens the same method popup the two‑step *Use in program* arms —
+  which stays as the non‑drag **supplement**. The mode **transition** was already aligned.
 
 **Readiness:** Ready.
 

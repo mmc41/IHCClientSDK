@@ -355,7 +355,9 @@
                           ContextFlyout="{StaticResource NodeContextMenu}">
                     <TreeView.Styles>
                         <Style Selector=":is(TreeViewItem)" x:DataType="vm:TreeNodeViewModel">
-                            <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
+                            <!-- TwoWay so a user's expander click reaches the view-model, which snapshots and
+                                 restores expansion across every edit's tree rebuild (US-070). -->
+                            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
                             <!-- Publish the row's accessible name on the container itself so a UIA client reading
                                  TreeItem.Name gets the label directly (not blank, with the name on an inner peer). -->
                             <Setter Property="a:AutomationProperties.Name" Value="{Binding AccessibleName}"/>
@@ -374,6 +376,7 @@
                                  last point that still runs BEFORE the toggle (US-044, F-006/F-007). -->
                             <StackPanel Orientation="Horizontal" Spacing="6" ToolTip.Tip="{Binding Tooltip}"
                                         DoubleTapped="OnNodeDoubleTapped"
+                                        Background="{Binding IsDropTarget, Converter={x:Static conv:BoolToBrushConverter.DropTarget}}"
                                         a:AutomationProperties.Name="{Binding AccessibleName}"
                                         a:AutomationProperties.HelpText="{Binding Tooltip}">
                                 <svg:Svg Width="16" Height="16" Path="{Binding IconAsset}" CurrentColor="{DynamicResource IconColor}"
@@ -403,7 +406,9 @@
                           ContextFlyout="{StaticResource NodeContextMenu}">
                     <TreeView.Styles>
                         <Style Selector=":is(TreeViewItem)" x:DataType="vm:TreeNodeViewModel">
-                            <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
+                            <!-- TwoWay so a user's expander click reaches the view-model, which snapshots and
+                                 restores expansion across every edit's tree rebuild (US-070). -->
+                            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
                             <!-- Publish the row's accessible name on the container itself so a UIA client reading
                                  TreeItem.Name gets the label directly (not blank, with the name on an inner peer). -->
                             <Setter Property="a:AutomationProperties.Name" Value="{Binding AccessibleName}"/>
@@ -422,6 +427,7 @@
                                  last point that still runs BEFORE the toggle (US-044, F-006/F-007). -->
                             <StackPanel Orientation="Horizontal" Spacing="6" ToolTip.Tip="{Binding Tooltip}"
                                         DoubleTapped="OnNodeDoubleTapped"
+                                        Background="{Binding IsDropTarget, Converter={x:Static conv:BoolToBrushConverter.DropTarget}}"
                                         a:AutomationProperties.Name="{Binding AccessibleName}"
                                         a:AutomationProperties.HelpText="{Binding Tooltip}">
                                 <svg:Svg Width="16" Height="16" Path="{Binding IconAsset}" CurrentColor="{DynamicResource IconColor}"
