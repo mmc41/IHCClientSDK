@@ -76,10 +76,20 @@ public sealed class ProjectSession : IDisposable
 
     public int ChangeCount { get; private set; }
 
+    private int _version;
+
+    /// <summary>A monotone counter bumped on every state transition (commit / undo / redo / load). A caller that
+    /// prepares an edit against a dialog can capture it and pass it back to <see cref="ApplyAsync(ProjectCommand,int?)"/>
+    /// as the base version; a mismatch means the project moved on and the stale edit is refused (W2-14).</summary>
+    public int Version
+    {
+        get { lock (_gate) { return _version; } }
+    }
+
     // The multi-level undo/redo history (US-052): immutable project snapshots. Every project-mutating commit goes
     // through CommitAsync, which pushes the pre-edit snapshot here and clears the redo list; loads (New/Open/Close)
     // reset the history. Capped so a long session can't grow the snapshot list without bound.
-    private const int MaxHistoryDepth = 100;
+    private const int MaxHistoryDepth = 1000;   // W2-14: the session's bounded-history cap
     // Each entry pairs the pre-edit snapshot to restore with the label of the edit that produced the newer state
     // (the command's Describe, surfaced as EditOutcome.Label — W2-14/E14), so Undo/Redo can name their action.
     private readonly List<(Project Snapshot, string Label)> _undo = new();
@@ -1100,35 +1110,91 @@ public sealed class ProjectSession : IDisposable
     // existing commit path so ProjectSession's Current/undo/dirty stay the source of truth. W2-14 contracts this to
     // one persistent session the VM drives directly. A fresh session per call is created on the calling thread,
     // sidestepping the session's thread-affinity guard; it is used once as a stateless command runner.
-    private async Task<EditOutcome> RouteAsync(ProjectCommand command, string failureTitle)
+    /// <summary>
+    /// Applies a command to the open project and commits it on success (W2-14): the single edit entry the VM drives.
+    /// Runs the command through a stateless document session over <see cref="Current"/>, then — only on
+    /// <see cref="EditStatus.Committed"/> — swaps in the result, snapshots for undo (labelled by the command) and
+    /// marks changed. Returns the raw <see cref="EditOutcome"/>; the caller maps it to status text / dialogs (the
+    /// single outcome→status/dialog rule). When <paramref name="baseVersion"/> is supplied and no longer matches
+    /// <see cref="Version"/>, the edit is refused as stale (a dialog prepared against an older project).
+    /// </summary>
+    public async Task<EditOutcome> ApplyAsync(ProjectCommand command, int? baseVersion = null)
+    {
+        if (StaleOrClosed(command, baseVersion) is { } refusal)
+            return refusal;
+        var document = new ProjectDocumentSession();
+        document.Open(Current!, startClean: true);
+        EditOutcome outcome = document.Apply(command);
+        if (outcome.Status == EditStatus.Committed)
+            await CommitAsync(document.Current!, outcome.Label);
+        return outcome;
+    }
+
+    /// <summary>The value-producing overload of <see cref="ApplyAsync(ProjectCommand,int?)"/> (e.g. a new element's id).</summary>
+    public async Task<EditOutcome<T>> ApplyAsync<T>(ProjectCommand<T> command, int? baseVersion = null)
+    {
+        if (StaleOrClosed(command, baseVersion) is { } refusal)
+            return new EditOutcome<T>(refusal.Status, refusal.Label, refusal.Reason, null, default);
+        var document = new ProjectDocumentSession();
+        document.Open(Current!, startClean: true);
+        EditOutcome<T> outcome = document.Apply(command);
+        if (outcome.Status == EditStatus.Committed)
+            await CommitAsync(document.Current!, outcome.Label);
+        return outcome;
+    }
+
+    // The shared no-project / stale-base-version guard: returns a Refused outcome to short-circuit, or null to proceed.
+    private EditOutcome? StaleOrClosed(ProjectCommand command, int? baseVersion)
+    {
+        if (Current is null)
+            return new EditOutcome(EditStatus.Refused, command.GetType().Name, "No project is open.", null);
+        if (baseVersion is { } expected && expected != Version)
+            return new EditOutcome(EditStatus.Refused, command.GetType().Name,
+                "The project changed since this edit was prepared.", null);
+        return null;
+    }
+
+    /// <summary>The command's legality verdict against the open project (cheap — no edit), for drag-over probes and
+    /// menu gates. Refused when no project is open.</summary>
+    public EditVerdict CanApply(ProjectCommand command)
     {
         if (Current is not { } current)
-            return new EditOutcome(EditStatus.Refused, command.GetType().Name, "No project is open.", null);
+            return EditVerdict.Refuse("No project is open.");
         var document = new ProjectDocumentSession();
         document.Open(current, startClean: true);
-        EditOutcome outcome = document.Apply(command);
-        await PersistAsync(document, outcome, failureTitle);
+        return document.CanApply(command);
+    }
+
+    /// <summary>The structural change set the command would produce if applied now, without committing — or null when
+    /// it would refuse, fail or make no change. Drives the Preview→confirm→Apply flow (W2-13).</summary>
+    public ProjectChangeSet? Preview(ProjectCommand command)
+    {
+        if (Current is not { } current)
+            return null;
+        var document = new ProjectDocumentSession();
+        document.Open(current, startClean: true);
+        return document.Preview(command);
+    }
+
+    // The failure-dialog half of the legacy per-op wrappers: the raw ApplyAsync no longer dialogs, so the wrappers
+    // report a Failed outcome the old way. Removed with the wrappers when the VM owns the outcome→dialog mapping.
+    private async Task<EditOutcome> RouteAsync(ProjectCommand command, string failureTitle)
+    {
+        EditOutcome outcome = await ApplyAsync(command);
+        await ReportFailureAsync(outcome, failureTitle);
         return outcome;
     }
 
     private async Task<EditOutcome<T>> RouteAsync<T>(ProjectCommand<T> command, string failureTitle)
     {
-        if (Current is not { } current)
-            return new EditOutcome<T>(EditStatus.Refused, command.GetType().Name, "No project is open.", null, default);
-        var document = new ProjectDocumentSession();
-        document.Open(current, startClean: true);
-        EditOutcome<T> outcome = document.Apply(command);
-        await PersistAsync(document, outcome, failureTitle);
+        EditOutcome<T> outcome = await ApplyAsync(command);
+        await ReportFailureAsync(outcome, failureTitle);
         return outcome;
     }
 
-    private async Task PersistAsync(ProjectDocumentSession document, EditOutcome outcome, string failureTitle)
+    private async Task ReportFailureAsync(EditOutcome outcome, string failureTitle)
     {
-        if (outcome.Status == EditStatus.Committed)
-        {
-            await CommitAsync(document.Current!, outcome.Label);
-        }
-        else if (outcome.Status == EditStatus.Failed)
+        if (outcome.Status == EditStatus.Failed)
         {
             _logger.LogError("Edit failed: {Reason}", outcome.Reason);
             await _dialogs.ShowMessageAsync(failureTitle, outcome.Reason ?? "The edit failed.");
@@ -1147,6 +1213,7 @@ public sealed class ProjectSession : IDisposable
             }
             _redo.Clear();
             Current = updated;
+            _version++;
         }
         await MarkChangedAsync();
     }
@@ -1228,6 +1295,7 @@ public sealed class ProjectSession : IDisposable
             _undo.RemoveAt(_undo.Count - 1);
             _redo.Add((Current, label));   // redo re-applies the same edit, so it carries the same label
             Current = snapshot;
+            _version++;
             dirty = !ReferenceEquals(Current, _savePoint);
         }
         await NotifyChangedAsync(dirty);
@@ -1248,6 +1316,7 @@ public sealed class ProjectSession : IDisposable
             _redo.RemoveAt(_redo.Count - 1);
             _undo.Add((Current, label));
             Current = snapshot;
+            _version++;
             dirty = !ReferenceEquals(Current, _savePoint);
         }
         await NotifyChangedAsync(dirty);
@@ -1366,6 +1435,7 @@ public sealed class ProjectSession : IDisposable
             _savePoint = dirty ? null : project;
             _undo.Clear();   // a load starts a fresh, empty edit history (US-052)
             _redo.Clear();
+            _version++;
         }
         RaiseChanged();
     }
