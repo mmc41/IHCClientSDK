@@ -344,6 +344,33 @@ public partial class MainWindowViewModel : ViewModelBase
             : "Nothing to redo.";
     });
 
+    // The single outcome→status/dialog rule (W2-14): Committed → success status; NoChange → silent (a no-op edit
+    // leaves the status alone); Refused → the refusal reason as status; Failed → an error dialog. Applying a command
+    // through the session and mapping its outcome here is how the VM drives every edit, replacing the per-op wrappers.
+    private async Task<EditOutcome> ReportOutcomeAsync(EditOutcome outcome, string? successStatus)
+    {
+        switch (outcome.Status)
+        {
+            case EditStatus.Committed when successStatus is not null: StatusText = successStatus; break;
+            case EditStatus.Refused when outcome.Reason is not null: StatusText = outcome.Reason; break;
+            case EditStatus.Failed: await _dialogs.ShowMessageAsync("Edit failed", outcome.Reason ?? "The edit failed."); break;
+        }
+        return outcome;
+    }
+
+    /// <summary>Applies a command through the session and maps its outcome (W2-14); returns whether it committed.</summary>
+    private async Task<bool> ApplyAsync(ProjectCommand command, string? successStatus = null) =>
+        (await ReportOutcomeAsync(await _session.ApplyAsync(command), successStatus)).Status == EditStatus.Committed;
+
+    /// <summary>Applies a value-producing command and maps its outcome; returns the produced id, or null when it did
+    /// not commit.</summary>
+    private async Task<ElementId?> ApplyAsync(ProjectCommand<ElementId> command, string? successStatus = null)
+    {
+        EditOutcome<ElementId> outcome = await _session.ApplyAsync(command);
+        await ReportOutcomeAsync(outcome, successStatus);
+        return outcome.Status == EditStatus.Committed ? outcome.Value : null;
+    }
+
     /// <summary>Shows help text for the selected element (US-044/US-045, F1) — the element's note, or a generic
     /// message when it has none.</summary>
     [RelayCommand]
@@ -713,8 +740,8 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
         string localityName = SelectedNode.DisplayName;
-        if (await _session.AddEmptyFunctionBlockAsync(localityId) is not null)
-            StatusText = $"{ProjectSession.EmptyBlockName} was inserted under {localityName}";
+        await ApplyAsync(_session.BuildAddEmptyFunctionBlock(localityId),
+            $"{ProjectSession.EmptyBlockName} was inserted under {localityName}");
     });
 
     /// <summary>Inserts a preprogrammed library function block (US-018) under the selected locality — shown in the
@@ -728,8 +755,12 @@ public partial class MainWindowViewModel : ViewModelBase
                 return;
             }
             string localityName = SelectedNode.DisplayName;
-            if (await _session.AddFunctionBlockAsync(localityId, masterType) is not null)
-                StatusText = $"Function block '{blockName}' has been inserted under {localityName}";
+            if (_session.BuildAddFunctionBlock(localityId, masterType) is not { } command)
+            {
+                await _dialogs.ShowMessageAsync("Insert failed", $"No library function block with master type '{masterType}'.");
+                return;
+            }
+            await ApplyAsync(command, $"Function block '{blockName}' has been inserted under {localityName}");
         });
 
     /// <summary>Parameterless constructor for the XAML designer / template smoke test only.</summary>
@@ -811,10 +842,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private Task InsertLocality() => RunAsync(nameof(InsertLocality), async () =>
     {
-        ElementId? newId = await _session.AddLocalityAsync();
-        if (newId is not { } id)
+        if (await ApplyAsync(new AddLocality(ProjectSession.NewLocalityName),
+                $"{ProjectSession.NewLocalityName} was inserted under Localities") is not { } id)
             return;
-        StatusText = $"{ProjectSession.NewLocalityName} was inserted under Localities";
         // Refresh already rebuilt the trees (StateChanged); highlight the new locality in the Installation pane
         // (which sets it as the active node).
         SelectedInstallationNode = FindNode(InstallationNodes, id);
