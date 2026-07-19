@@ -191,14 +191,17 @@ public sealed class ProjectTreeReconciler
     private bool ReconcileChildrenOf(ElementId parentId, Dictionary<NodeKey, TreeNodeViewModel> freshByKey)
     {
         NodeKey parentKey = NodeKey.ForElement(parentId);
-        if (_index.GetValueOrDefault(parentKey) is not { } oldParent)
-        {
-            // Not a row in this pane (or a just-added parent whose whole subtree already arrived with its ancestor's
-            // merge) — nothing to do here.
-            return true;
-        }
         if (freshByKey.GetValueOrDefault(parentKey) is not { } freshParent)
         {
+            // The changed parent is not a row in the FRESH projection of this pane — it belongs to the other pane, so
+            // this pane is unaffected by the edit at this level.
+            return true;
+        }
+        if (_index.GetValueOrDefault(parentKey) is not { } oldParent)
+        {
+            // The parent is a row in the fresh tree but had no node before: the projection's conditional visibility
+            // changed (e.g. an FB section revealed by its first variable, US-018). Its rendered ancestor gained a
+            // child the change set can't name at that level, so rebuild this pane (safe, re-seeds the reconciler).
             return false;
         }
         return MergeChildren(oldParent, freshParent);
@@ -206,6 +209,7 @@ public sealed class ProjectTreeReconciler
 
     private bool MergeChildren(TreeNodeViewModel oldParent, TreeNodeViewModel freshParent)
     {
+        bool wasEmpty = oldParent.Children.Count == 0;
         var oldByKey = new Dictionary<NodeKey, TreeNodeViewModel>();
         foreach (TreeNodeViewModel child in oldParent.Children)
         {
@@ -236,6 +240,13 @@ public sealed class ProjectTreeReconciler
         }
         // oldByKey now holds the vanished children; they simply drop out of the ordered list.
         ApplyChildOrder(oldParent.Children, ordered);
+        // US-006: a node revealing its FIRST child opens to show it — adopt the projector's reveal default (true for
+        // a locality gaining contents, false for a product gaining a pin) rather than inheriting the stale collapsed
+        // state. A node that already had children keeps the installer's expansion by identity (US-070).
+        if (wasEmpty && oldParent.Children.Count > 0)
+        {
+            oldParent.IsExpanded = freshParent.IsExpanded;
+        }
         return true;
     }
 

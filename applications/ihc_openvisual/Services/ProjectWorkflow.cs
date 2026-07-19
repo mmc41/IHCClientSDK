@@ -136,6 +136,12 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>Raised whenever the current project, file path or dirty flag changes.</summary>
     public event EventHandler? StateChanged;
 
+    /// <summary>The structural change set of the most recent committed edit — the delta the GUI reconciler (W3-4)
+    /// applies to the tree in place — or null when the last transition was NOT a single incremental edit (a load,
+    /// undo, redo, save or close), which the GUI handles with a full rebuild. Set immediately before
+    /// <see cref="StateChanged"/> fires, so the refresh that event triggers reads the change that caused it.</summary>
+    public ProjectChangeSet? LastChange { get; private set; }
+
     /// <summary>Start-up entry point: offer to recover a crash backup if one exists (US-005), otherwise open a
     /// fresh empty project (US-002); then begin the auto-backup timer.
     /// <para>When <paramref name="skipRecovery"/> is set (the <c>--skip-recovery</c> launch flag), the recovery
@@ -744,7 +750,7 @@ public sealed class ProjectWorkflow : IDisposable
         document.Open(Current!, startClean: true);
         EditOutcome outcome = document.Apply(command);
         if (outcome.Status == EditStatus.Committed)
-            await CommitAsync(document.Current!, outcome.Label);
+            await CommitAsync(document.Current!, outcome.Label, outcome.Changes);
         return outcome;
     }
 
@@ -757,7 +763,7 @@ public sealed class ProjectWorkflow : IDisposable
         document.Open(Current!, startClean: true);
         EditOutcome<T> outcome = document.Apply(command);
         if (outcome.Status == EditStatus.Committed)
-            await CommitAsync(document.Current!, outcome.Label);
+            await CommitAsync(document.Current!, outcome.Label, outcome.Changes);
         return outcome;
     }
 
@@ -819,7 +825,7 @@ public sealed class ProjectWorkflow : IDisposable
         }
     }
 
-    private async Task CommitAsync(Project updated, string label = "Edit")
+    private async Task CommitAsync(Project updated, string label = "Edit", ProjectChangeSet? changes = null)
     {
         lock (_gate)
         {
@@ -833,7 +839,9 @@ public sealed class ProjectWorkflow : IDisposable
             Current = updated;
             _version++;
         }
-        await MarkChangedAsync();
+        // Carry the edit's change set to the GUI so it reconciles the tree in place (W3-6); a null change set (undo/
+        // redo/load/save) drives the full-rebuild fallback instead.
+        await NotifyChangedAsync(dirty: true, changes);
     }
 
     /// <summary>
@@ -949,7 +957,7 @@ public sealed class ProjectWorkflow : IDisposable
     /// every Nth change. Undo/redo pass a <paramref name="dirty"/> derived from the save point rather than a
     /// constant, because navigating the history can land back on the saved snapshot.
     /// </summary>
-    private async Task NotifyChangedAsync(bool dirty)
+    private async Task NotifyChangedAsync(bool dirty, ProjectChangeSet? change = null)
     {
         bool backup;
         lock (_gate)
@@ -958,7 +966,7 @@ public sealed class ProjectWorkflow : IDisposable
             ChangeCount++;
             backup = ChangeCount % _changeBackupThreshold == 0;
         }
-        RaiseChanged();
+        RaiseChanged(change);
         if (backup)
             await AutoBackupAsync();
     }
@@ -1074,7 +1082,13 @@ public sealed class ProjectWorkflow : IDisposable
         _timer ??= _timeProvider.CreateTimer(_ => _ = AutoBackupAsync(), null, _autoBackupInterval, _autoBackupInterval);
     }
 
-    private void RaiseChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
+    // Publishes the current state to the GUI. `change` is the incremental edit's change set (reconcile in place) or
+    // null (full-rebuild fallback); it is set on LastChange before the event so the triggered refresh reads it.
+    private void RaiseChanged(ProjectChangeSet? change = null)
+    {
+        LastChange = change;
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
 
     public void Dispose()
     {

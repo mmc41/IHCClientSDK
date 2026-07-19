@@ -34,6 +34,16 @@ public partial class MainWindowViewModel : ViewModelBase
     private const string LocalityIcon = "/Assets/locality.svg";
 
     private readonly ProjectWorkflow _session;
+
+    // The keyed reconcilers for the two configuration-mode panes (W3-6): a committed edit updates the forest in
+    // place from the session's change set, preserving node identity (Avalonia keeps containers, selection and
+    // expansion) instead of clearing and rebuilding. A non-incremental transition (load/undo/redo/save/mode switch,
+    // or a reconcile that falls back) rebuilds through the same reconciler, which re-seeds it.
+    private readonly ProjectTreeReconciler _installationReconciler =
+        new(p => new ProjectTreeProjector(p).BuildLocalitiesRoot(functions: false));
+    private readonly ProjectTreeReconciler _functionsReconciler =
+        new(p => new ProjectTreeProjector(p).BuildLocalitiesRoot(functions: true));
+
     private readonly IDialogService _dialogs;
     private readonly RecentProjectsStore _recent;
     private readonly IThemeService _themeService;
@@ -1694,9 +1704,56 @@ public partial class MainWindowViewModel : ViewModelBase
         _programmingBlockId = null;
         InstallationPaneHeader = "Installation";
         FunctionsPaneHeader = "Functions";
-        bool preserve = SameViewAsLastBuild("config");
-        RebuildPreservingExpansion(InstallationNodes, preserve, () => BuildTree(InstallationNodes, functions: false));
-        RebuildPreservingExpansion(FunctionNodes, preserve, () => BuildTree(FunctionNodes, functions: true));
+        bool sameView = SameViewAsLastBuild("config");
+        // Reconcile in place when this is an incremental edit on the SAME view whose panes still hold the
+        // reconcilers' roots; otherwise (load/undo/redo/mode switch/first build) rebuild through the reconciler,
+        // which re-seeds it — with expansion carried across as before (W3-6 keeps the fallback permanent).
+        if (sameView && _session.Current is { } current && _session.LastChange is { } changes
+            && PaneHoldsRoot(InstallationNodes, _installationReconciler)
+            && PaneHoldsRoot(FunctionNodes, _functionsReconciler))
+        {
+            ReconcilePane(InstallationNodes, _installationReconciler, current, changes);
+            ReconcilePane(FunctionNodes, _functionsReconciler, current, changes);
+        }
+        else
+        {
+            RebuildPaneFallback(InstallationNodes, _installationReconciler, preserve: sameView);
+            RebuildPaneFallback(FunctionNodes, _functionsReconciler, preserve: sameView);
+        }
+    }
+
+    // Whether the pane currently holds exactly the reconciler's root instance — the precondition for an in-place
+    // reconcile (a fallback rebuild or a mode switch leaves them out of sync until the next re-seed).
+    private static bool PaneHoldsRoot(ObservableCollection<TreeNodeViewModel> pane, ProjectTreeReconciler reconciler) =>
+        reconciler.Root is { } root && pane.Count == 1 && ReferenceEquals(pane[0], root);
+
+    // In-place reconcile: the root instance is preserved, so selection/expansion survive by identity. If the
+    // reconciler had to fall back internally (a new root), re-point the pane at it.
+    private static void ReconcilePane(ObservableCollection<TreeNodeViewModel> pane, ProjectTreeReconciler reconciler,
+        Project current, ProjectChangeSet changes)
+    {
+        TreeNodeViewModel root = reconciler.Reconcile(current, changes);
+        if (pane.Count != 1 || !ReferenceEquals(pane[0], root))
+        {
+            pane.Clear();
+            pane.Add(root);
+        }
+    }
+
+    // Full-rebuild fallback (US-070): rebuild the pane through the reconciler (which re-seeds it with the new root)
+    // and carry each surviving node's expand/collapse state across, unless this is a deliberate mode switch
+    // (preserve=false), where the fresh defaults ARE the wanted state.
+    private void RebuildPaneFallback(ObservableCollection<TreeNodeViewModel> pane, ProjectTreeReconciler reconciler,
+        bool preserve)
+    {
+        Dictionary<ElementId, bool>? expansion = preserve ? SnapshotExpansion(pane) : null;
+        TreeNodeViewModel root = _session.Current is { } project
+            ? reconciler.Rebuild(project)
+            : new TreeNodeViewModel("Localities", LocalityIcon, isExpanded: true, isLocalitiesRoot: true) { NodeKind = "localitiesRoot" };
+        pane.Clear();
+        pane.Add(root);
+        if (expansion is not null)
+            RestoreExpansion(pane, expansion);
     }
 
     // Records the view about to be built and reports whether it is the SAME as the last build — i.e. whether this
@@ -1771,18 +1828,6 @@ public partial class MainWindowViewModel : ViewModelBase
             // block → Programs → Program → Events/Commands (row projection extracted to ProjectTreeProjector, W3-1)
             FunctionNodes.Add(new ProjectTreeProjector(_session.Current!).BuildBlockProgramsNode(block, name));
         });
-    }
-
-    // Both panes share the Localities skeleton; the Installation pane nests each locality's products (with their
-    // pins), the Functions pane its function blocks (US-006/US-010).
-    private void BuildTree(ObservableCollection<TreeNodeViewModel> target, bool functions)
-    {
-        target.Clear();
-        // Row projection extracted to ProjectTreeProjector (W3-1); the VM keeps the pane fill + expansion (US-070).
-        target.Add(_session.Current is { } project
-            ? new ProjectTreeProjector(project).BuildLocalitiesRoot(functions)
-            : new TreeNodeViewModel("Localities", LocalityIcon, isExpanded: true, isLocalitiesRoot: true)
-                { NodeKind = "localitiesRoot" });
     }
 
     // A product's tree label carries its placement descriptor: "name (position) " — the trailing space included —
