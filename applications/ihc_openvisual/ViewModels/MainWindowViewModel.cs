@@ -1691,7 +1691,7 @@ public partial class MainWindowViewModel : ViewModelBase
     // subtree (Programs > Program > { Events, Commands }); both headers carry the block's name.
     private void BuildProgrammingTrees(ProjectElement block, bool preserveExpansion)
     {
-        string name = block.GetAttribute("name") ?? "block";
+        string name = NameOr(block, "block");
         InstallationPaneHeader = name;
         FunctionsPaneHeader = name;
 
@@ -1709,7 +1709,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private TreeNodeViewModel BuildBlockProgramsNode(ProjectElement block, string name)
     {
-        bool locked = (block.GetAttribute("locked") ?? "no") == "yes";
+        bool locked = View(block).Locked;
         var blockNode = new TreeNodeViewModel(name, locked ? "/Assets/fb-lk.svg" : "/Assets/fb-editable.svg",
             isExpanded: true, elementId: block.Id) { NodeKind = "functionBlock" };
         ProjectElement? programs = block.FindChild("programs");
@@ -1719,7 +1719,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             foreach (ProjectElement program in programs.ChildrenOrEmpty().Where(p => p.Tag is "program_simple" or "program_sub"))
             {
-                var programNode = new TreeNodeViewModel(program.GetAttribute("name") ?? "Program",
+                var programNode = new TreeNodeViewModel(NameOr(program, "Program"),
                     NodeIcons.For("program_simple", null), isExpanded: true, elementId: program.Id)
                     { NodeKind = "program" };
                 if (program.FindChild("events") is { } events)
@@ -1828,7 +1828,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 // "caseValue", not "commands": this row's LABEL is user data and it is ALSO an
                 // IsCommandsContainer, so neither the label nor the flag can tell it from a real
                 // Commands container — it needs a kind of its own or the two merge in the census.
-                var valueNode = new TreeNodeViewModel(child.GetAttribute("name") ?? "value",
+                var valueNode = new TreeNodeViewModel(NameOr(child, "value"),
                     NodeIcons.For("case_action", null), isExpanded: true, elementId: child.Id)
                     { IsCommandsContainer = true, NodeKind = "caseValue" };
                 RenderActionsInto(valueNode, child);   // the embedded criterion operand is skipped (not a command)
@@ -1870,11 +1870,11 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             foreach (ProjectElement group in project.Groups)
             {
-                string name = group.GetAttribute("name") ?? "(unnamed)";
+                string name = NameOr(group, "(unnamed)");
                 var components = new List<ProjectElement>();
                 foreach (ProjectElement child in group.ChildrenOrEmpty())
                 {
-                    if ((child.Tag == "functionblock") == functions)
+                    if ((child.Kind == ElementKind.FunctionBlock) == functions)
                         components.Add(child);
                 }
                 // A locality that holds components opens by default so they are visible (US-006 container reveal).
@@ -1896,18 +1896,27 @@ public partial class MainWindowViewModel : ViewModelBase
     private static string ProductLabel(string name, string? position) =>
         string.IsNullOrEmpty(position) ? name : $"{name} ({position}) ";
 
+    // fablerefac W1-6: read element attributes through the SDK read surface (project.View) instead of raw
+    // GetAttribute. The projected element always belongs to the open project, so the schema context is _session.Current.
+    private ElementView View(ProjectElement element) => _session.Current!.View(element);
+
+    // The element's effective name, or the fallback when it is empty — preserving the old
+    // `GetAttribute("name") ?? fallback` (a canonicalized project omits an empty name, so it reads back as "").
+    private string NameOr(ProjectElement element, string fallback) =>
+        View(element).Name is { Length: > 0 } name ? name : fallback;
+
     // A product / function block node. A product flattens its resource (pin) children (structural containers are
     // omitted); a function block shows its four variable sections (Input/Output/Settings/Internal variables), each
     // holding its typed pins (US-018/US-019).
     private TreeNodeViewModel BuildComponentNode(ProjectElement component)
     {
-        string name = component.GetAttribute("name") ?? component.Tag;
-        if (component.Tag == "functionblock")
+        string name = NameOr(component, component.Tag);
+        if (component.Kind == ElementKind.FunctionBlock)
             return BuildFunctionBlockNode(component, name, programmingMode: false);
 
-        bool unlinked = ProductClassifier.IsUnlinkedWireless(component.Tag, component.GetAttribute("serialnumber"));
-        var node = new TreeNodeViewModel(ProductLabel(name, component.GetAttribute("position")),
-            NodeIcons.For(component.Tag, component.GetAttribute("icon")),
+        bool unlinked = View(component).IsUnlinkedWireless;
+        var node = new TreeNodeViewModel(ProductLabel(name, View(component).Position),
+            NodeIcons.For(component.Tag, View(component).Icon),
             elementId: component.Id, isUnlinked: unlinked)
             { Tooltip = BuildTooltip(component), NodeKind = "product" };
         foreach (ProjectElement resource in component.ChildrenOrEmpty())
@@ -1924,7 +1933,7 @@ public partial class MainWindowViewModel : ViewModelBase
     // A product's scenes container — a scenario-link target — showing its scene member rows (US-024).
     private TreeNodeViewModel BuildScenesNode(ProjectElement scenes)
     {
-        var node = new TreeNodeViewModel(scenes.GetAttribute("name") ?? "Scenarier", "/Assets/scenario.svg",
+        var node = new TreeNodeViewModel(NameOr(scenes, "Scenarier"), "/Assets/scenario.svg",
             elementId: scenes.Id) { IsSceneTarget = true, NodeKind = "scenes" };
         foreach (ProjectElement member in scenes.ChildrenOrEmpty())
         {
@@ -1999,7 +2008,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private TreeNodeViewModel BuildFunctionBlockNode(ProjectElement fb, string name, bool programmingMode)
     {
         // A locked library block shows the library icon; an unlocked/empty block the editable icon (US-018/US-020).
-        bool locked = (fb.GetAttribute("locked") ?? "no") == "yes";
+        bool locked = View(fb).Locked;
         string icon = locked ? "/Assets/fb-lk.svg" : "/Assets/fb-editable.svg";
         var node = new TreeNodeViewModel(name, icon, elementId: fb.Id, isLockedFunctionBlock: locked)
         {
@@ -2056,7 +2065,7 @@ public partial class MainWindowViewModel : ViewModelBase
     // elsewhere (resource_flag "on"/"off", the hidden calibration rows' "0.00"), and the vendor was never observed
     // rendering a value on those, so they stay bare rather than being generalised into.
     private string? StateValue(ProjectElement resource) =>
-        resource.Tag == "resource_enum"
+        resource.Kind == ElementKind.EnumResource
         && _session.Current is { } project
         && ElementId.TryParse(resource.GetAttribute("inivalue"), out ElementId valueId)
         && project.FindById(valueId)?.GetAttribute("name") is { Length: > 0 } state
@@ -2082,17 +2091,17 @@ public partial class MainWindowViewModel : ViewModelBase
     private TreeNodeViewModel BuildPinNode(ProjectElement resource, bool inFunctionBlockSettings = false,
         bool catalogDeclared = false)
     {
-        string name = resource.GetAttribute("name") ?? resource.Tag;
+        string name = NameOr(resource, resource.Tag);
         string? value = StateValue(resource)
                      ?? (inFunctionBlockSettings ? SettingsTimeLiteral(resource) : null)
                      ?? resource.GetAttribute("value");
         bool isOutput = resource.Tag is "resource_output" or "dataline_output" or "airlink_relay";
-        bool saved = isOutput && (resource.GetAttribute("backup") ?? "no") == "yes";
+        bool saved = isOutput && View(resource).Backup;
         // The label carries the pin's name and, for a state row, its value — nothing else. The save-current-value
         // flag (US-033) is deliberately NOT decorated in: IHC Visual renders the bare name (F-019), and the flag
         // still surfaces as the checked state of the "Save current value" menu item bound to IsValueSaved.
         string label = string.IsNullOrEmpty(value) ? name : $"{name} = {value}";   // fixed sub-resource default (US-010)
-        var node = new TreeNodeViewModel(label, NodeIcons.For(resource.Tag, resource.GetAttribute("icon")),
+        var node = new TreeNodeViewModel(label, NodeIcons.For(resource.Tag, View(resource).Icon),
             elementId: resource.Id)
             {
                 IsPin = true, IsOutputPin = isOutput, IsValueSaved = saved, Tooltip = BuildTooltip(resource),
