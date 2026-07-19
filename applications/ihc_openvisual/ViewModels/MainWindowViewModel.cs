@@ -912,11 +912,11 @@ public partial class MainWindowViewModel : ViewModelBase
             if (!await _dialogs.ConfirmAsync(title, message))
                 return;   // declined — nothing is deleted
         }
-        bool deleted = isLocality
-            ? await _session.DeleteLocalityAsync(id)     // the US-009 locality worked example
-            : await _session.DeleteNodeAsync(id);        // any other project node (US-053)
-        if (deleted)
-            StatusText = $"Deleted {name}.";
+        if (isLocality)
+            await ApplyAsync(new DeleteLocality(id), $"Deleted {name}.");   // the US-009 locality worked example
+        else
+            // impact.NeedsConfirm is the reference-cascade flag PreviewDelete computed for this node.
+            await ApplyAsync(new DeleteNode(id, impact.NeedsConfirm), $"Deleted {name}.");   // US-053
     });
 
     // The structural-editing clipboard (US-054/US-056): the id of the cut/copied node and whether it is a cut
@@ -978,8 +978,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private Task ReorderAsync(TreeNodeViewModel? node, int delta) => RunAsync(nameof(ReorderAsync), async () =>
     {
-        if (node?.ElementId is { } id && await _session.ReorderNodeAsync(id, delta))
-            StatusText = delta < 0 ? "Moved up." : "Moved down.";
+        if (node?.ElementId is { } id && _session.BuildReorderNode(id, delta) is { } command)
+            await ApplyAsync(command, delta < 0 ? "Moved up." : "Moved down.");
     });
 
     // ── Wave 9 / A-30 — the shared drag-and-drop dispatcher (§0.3). The legality (CanDropOn), the mutation
@@ -1064,17 +1064,16 @@ public partial class MainWindowViewModel : ViewModelBase
         // re-parent (US-054). The effect already encodes which family; within Move, CanReorderNode splits the two.
         if (verdict.Effect == DropEffect.Link)
         {
-            if (await _session.LinkPinsAsync(dragged, target))
-                StatusText = "Linked.";
+            await ApplyAsync(new LinkPins(dragged, target), "Linked.");
         }
         else if (_session.CanReorderNode(dragged, target))
         {
-            if (await _session.ReorderNodeToSiblingAsync(dragged, target))
-                StatusText = "Reordered.";
+            if (_session.BuildReorderNodeToSibling(dragged, target) is { } command)
+                await ApplyAsync(command, "Reordered.");
         }
-        else if (await _session.MoveNodeAsync(dragged, target))
+        else
         {
-            StatusText = "Moved.";
+            await ApplyAsync(new MoveNode(dragged, target), "Moved.");
         }
     });
 
@@ -1160,12 +1159,20 @@ public partial class MainWindowViewModel : ViewModelBase
                 return;
             }
             string localityName = SelectedNode.DisplayName;
-            ElementId? productId = await _session.AddProductAsync(localityId, productIdentifier);
-            if (productId is not { } pid)
+            if (_session.BuildAddProduct(localityId, productIdentifier) is not { } command)
+            {
+                await _dialogs.ShowMessageAsync("Insert failed", $"No catalog product with identifier '{productIdentifier}'.");
                 return;
+            }
+            if (_session.WouldExceedModemLimit(productIdentifier))   // at most one modem per project (US-013)
+            {
+                await _dialogs.ShowMessageAsync("Only one modem",
+                    "A project may contain at most one modem. Remove the existing modem before adding another.");
+                return;
+            }
             // The product lands under the caret and NO dialog opens — the vendor does not auto-open on insert
             // (A-14/F-027, US-011/US-013). The installer opens Properties (F2 / double-click) on demand.
-            StatusText = $"Product '{productName}' inserted under {localityName}";
+            await ApplyAsync(command, $"Product '{productName}' inserted under {localityName}");
         });
 
     /// <summary>Makes <paramref name="node"/> the active node — the insert/command target. Used by tests and by

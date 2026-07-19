@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using ihc_openvisual.Services;
 using Ihc.Vis;
 using Ihc.Vis.Model;
+using Ihc.Vis.Session;
 
 namespace ihc_openvisual.ViewModels;
 
@@ -51,7 +52,7 @@ public partial class DataTablesViewModel : ObservableObject
         PropertiesResult? result = await _dialogs.EditPropertiesAsync("New user-defined text", string.Empty, string.Empty);
         if (result is null || string.IsNullOrWhiteSpace(result.Name))
             return;
-        if (await _session.AddUserTextAsync(result.Name.Trim()))
+        if ((await _session.ApplyAsync(_session.BuildAddUserText(result.Name.Trim()))).Status == EditStatus.Committed)
             Reload();
     }
 
@@ -63,7 +64,7 @@ public partial class DataTablesViewModel : ObservableObject
         PropertiesResult? result = await _dialogs.EditPropertiesAsync("Edit user-defined text", selected.Text, string.Empty);
         if (result is null || string.IsNullOrWhiteSpace(result.Name))
             return;
-        if (await _session.UpdateUserTextAsync(id, result.Name.Trim()))
+        if ((await _session.ApplyAsync(new UpdateUserText(id, result.Name.Trim()))).Status == EditStatus.Committed)
             Reload();
     }
 
@@ -74,7 +75,7 @@ public partial class DataTablesViewModel : ObservableObject
             return;
         if (!await _dialogs.ConfirmAsync("Delete text", $"Delete the text '{selected.Text}'?"))
             return;
-        if (await _session.DeleteUserTextAsync(id))
+        if ((await _session.ApplyAsync(new DeleteUserText(id))).Status == EditStatus.Committed)
             Reload();
     }
 }

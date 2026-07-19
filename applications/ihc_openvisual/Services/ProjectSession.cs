@@ -330,13 +330,14 @@ public sealed class ProjectSession : IDisposable
         Current?.GetModuleAddressMap() ?? new ModuleAddressMap([], []);
 
     /// <summary>Appends a user-defined text (US-049), creating the user-texts table on first use. Returns false on failure.</summary>
-    public async Task<bool> AddUserTextAsync(string text)
-    {
-        bool exists = Current is { } project && project.Child("enum_definitions")?.ChildrenOrEmpty()
-            .Any(c => c.Tag == "enum_definition" && project.View(c).Name == UserTextsTableName) == true;
-        EditOutcome outcome = await RouteAsync(new AddUserText(text, exists), "Add text failed");
-        return outcome.Status is EditStatus.Committed or EditStatus.NoChange;
-    }
+    /// <summary>Builds the command to append a user-defined text (US-049), reporting whether the user-texts table
+    /// already exists so the command creates it on first use.</summary>
+    public ProjectCommand BuildAddUserText(string text) =>
+        new AddUserText(text, Current is { } project && project.Child("enum_definitions")?.ChildrenOrEmpty()
+            .Any(c => c.Tag == "enum_definition" && project.View(c).Name == UserTextsTableName) == true);
+
+    public async Task<bool> AddUserTextAsync(string text) =>
+        (await RouteAsync(BuildAddUserText(text), "Add text failed")).Status is EditStatus.Committed or EditStatus.NoChange;
 
     /// <summary>Renames a user-defined text by id (US-049 Edit). Returns false on failure.</summary>
     public async Task<bool> UpdateUserTextAsync(ElementId textId, string text) =>
@@ -725,27 +726,37 @@ public sealed class ProjectSession : IDisposable
     /// scenes materialized by the SDK), commits, marks dirty and records the change. Returns the new product's id, or
     /// null when there is no open project, the id is not a known catalog product, or the edit fails.
     /// </summary>
+    /// <summary>Builds the command to insert a catalog product by identifier into a locality (US-010), or null when
+    /// no such product is in the catalog. The at-most-one-modem rule (US-013) is a separate pre-check —
+    /// <see cref="WouldExceedModemLimit"/> — so the caller can surface it before applying.</summary>
+    public ProjectCommand<ElementId>? BuildAddProduct(ElementId localityId, string productIdentifier) =>
+        _service.GetAvailableProducts().FirstOrDefault(p => p.ProductIdentifier == productIdentifier) is { } definition
+            ? new AddProduct(localityId, definition)
+            : null;
+
+    /// <summary>Whether inserting the product would break the at-most-one-modem rule (US-013): the product is a modem
+    /// and the project already holds one.</summary>
+    public bool WouldExceedModemLimit(string productIdentifier) =>
+        Current is { } project
+        && _service.GetAvailableProducts().FirstOrDefault(p => p.ProductIdentifier == productIdentifier) is { } definition
+        && ProductClassifier.IsModem(definition.Body.Tag) && HasModem(project);
+
     public async Task<ElementId?> AddProductAsync(ElementId localityId, string productIdentifier)
     {
         Activity.Current?.SetTag("product.identifier", productIdentifier);
-        if (Current is not { } project)
-            return null;
-        ProductDefinition? definition = _service.GetAvailableProducts()
-            .FirstOrDefault(p => p.ProductIdentifier == productIdentifier);
-        if (definition is null)
+        if (BuildAddProduct(localityId, productIdentifier) is not { } command)
         {
             await _dialogs.ShowMessageAsync("Insert failed", $"No catalog product with identifier '{productIdentifier}'.");
             return null;
         }
-        // At most one modem per project, regardless of type (US-013).
-        if (ProductClassifier.IsModem(definition.Body.Tag) && HasModem(project))
+        if (WouldExceedModemLimit(productIdentifier))   // at most one modem per project, regardless of type (US-013)
         {
             Activity.Current?.SetTag("modem.blocked", true);
             await _dialogs.ShowMessageAsync("Only one modem",
                 "A project may contain at most one modem. Remove the existing modem before adding another.");
             return null;
         }
-        EditOutcome<ElementId> outcome = await RouteAsync(new AddProduct(localityId, definition), "Insert failed");
+        EditOutcome<ElementId> outcome = await RouteAsync(command, "Insert failed");
         return outcome.Status == EditStatus.Committed ? outcome.Value : null;
     }
 
@@ -960,19 +971,21 @@ public sealed class ProjectSession : IDisposable
     /// list ends. Reorders only same-tag siblings (so a locality moves past localities, a product past products).
     /// Undoable. No controller.
     /// </summary>
-    public async Task<bool> ReorderNodeAsync(ElementId id, int delta)
+    /// <summary>Builds the command to reorder a node <paramref name="delta"/> positions among its same-tag siblings
+    /// (US-055), or null at the list ends / for a rootless node.</summary>
+    public ProjectCommand? BuildReorderNode(ElementId id, int delta)
     {
         if (delta == 0 || Current is not { } project
             || project.FindParent(id) is not { Id: { } } parent || project.FindById(id) is not { } node)
-            return false;
+            return null;
         var siblings = parent.ChildrenOrEmpty().Where(c => c.Tag == node.Tag).ToList();
         int here = siblings.FindIndex(c => c.Id == id);
         int there = here + delta;
-        if (here < 0 || there < 0 || there >= siblings.Count)
-            return false;   // already at the end in that direction
-        EditOutcome outcome = await RouteAsync(new ReorderNode(id, there), "Reorder failed");
-        return outcome.Status == EditStatus.Committed;
+        return here < 0 || there < 0 || there >= siblings.Count ? null : new ReorderNode(id, there);
     }
+
+    public async Task<bool> ReorderNodeAsync(ElementId id, int delta) =>
+        BuildReorderNode(id, delta) is { } command && (await RouteAsync(command, "Reorder failed")).Status == EditStatus.Committed;
 
     /// <summary>Whether <paramref name="dragged"/> and <paramref name="target"/> are distinct <b>same-parent, same-tag
     /// siblings</b> — a reorder drop (US-055), the drag-over hint peer of <see cref="ReorderNodeToSiblingAsync"/>.
@@ -992,18 +1005,21 @@ public sealed class ProjectSession : IDisposable
     /// <summary>Reorders <paramref name="dragged"/> to <paramref name="targetSibling"/>'s position among their shared
     /// same-tag siblings — the drag-reorder drop (US-055). Id-preserving (the SDK <see cref="ProjectEditor.ReorderSubtree"/>),
     /// undoable. Returns false when the two are not a reorderable pair (not same-parent, same-tag siblings). No controller.</summary>
-    public async Task<bool> ReorderNodeToSiblingAsync(ElementId dragged, ElementId targetSibling)
+    /// <summary>Builds the command to reorder <paramref name="dragged"/> to <paramref name="targetSibling"/>'s
+    /// position among their shared same-tag siblings (US-055), or null when they are not a reorderable pair.</summary>
+    public ProjectCommand? BuildReorderNodeToSibling(ElementId dragged, ElementId targetSibling)
     {
         if (Current is not { } project || project.FindParent(dragged) is not { Id: { } parentId } parent
             || project.FindById(dragged) is not { } node
             || project.FindParent(targetSibling)?.Id != parentId)
-            return false;
+            return null;
         int targetIndex = parent.ChildrenOrEmpty().Where(c => c.Tag == node.Tag).ToList().FindIndex(c => c.Id == targetSibling);
-        if (targetIndex < 0)
-            return false;   // the target is not a same-tag sibling
-        EditOutcome outcome = await RouteAsync(new ReorderNode(dragged, targetIndex), "Reorder failed");
-        return outcome.Status == EditStatus.Committed;
+        return targetIndex < 0 ? null : new ReorderNode(dragged, targetIndex);
     }
+
+    public async Task<bool> ReorderNodeToSiblingAsync(ElementId dragged, ElementId targetSibling) =>
+        BuildReorderNodeToSibling(dragged, targetSibling) is { } command
+        && (await RouteAsync(command, "Reorder failed")).Status == EditStatus.Committed;
 
     /// <summary>
     /// Moves a node to another container (US-054): re-parents the subtree under <paramref name="targetParentId"/> with
