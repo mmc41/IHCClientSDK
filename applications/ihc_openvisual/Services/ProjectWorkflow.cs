@@ -725,10 +725,6 @@ public sealed class ProjectWorkflow : IDisposable
     public ProjectCommand BuildUpdateProduct(ElementId productId, ProductPropertiesResult r) =>
         new UpdateProduct(productId, r, Current?.FindParent(productId)?.Id);
 
-    /// <summary>Records one committed edit (the hook editors use in E2+): marks the project dirty and triggers a
-    /// crash backup on every Nth change. Fire-and-forget for UI callers; tests await <see cref="MarkChangedAsync"/>.</summary>
-    public void MarkChanged() => _ = MarkChangedAsync();
-
     // The single commit path for every project-mutating operation (US-052): snapshots the pre-edit project for undo,
     // invalidates the redo history, swaps in the new project, then marks changed (dirty + backup + StateChanged).
     // fablerefac W2-5 (migrate): route a command through a document session, then persist the result via the
@@ -801,31 +797,6 @@ public sealed class ProjectWorkflow : IDisposable
         return document.Preview(command);
     }
 
-    // The failure-dialog half of the legacy per-op wrappers: the raw ApplyAsync no longer dialogs, so the wrappers
-    // report a Failed outcome the old way. Removed with the wrappers when the VM owns the outcome→dialog mapping.
-    private async Task<EditOutcome> RouteAsync(ProjectCommand command, string failureTitle)
-    {
-        EditOutcome outcome = await ApplyAsync(command);
-        await ReportFailureAsync(outcome, failureTitle);
-        return outcome;
-    }
-
-    private async Task<EditOutcome<T>> RouteAsync<T>(ProjectCommand<T> command, string failureTitle)
-    {
-        EditOutcome<T> outcome = await ApplyAsync(command);
-        await ReportFailureAsync(outcome, failureTitle);
-        return outcome;
-    }
-
-    private async Task ReportFailureAsync(EditOutcome outcome, string failureTitle)
-    {
-        if (outcome.Status == EditStatus.Failed)
-        {
-            _logger.LogError("Edit failed: {Reason}", outcome.Reason);
-            await _dialogs.ShowMessageAsync(failureTitle, outcome.Reason ?? "The edit failed.");
-        }
-    }
-
     private async Task CommitAsync(Project updated, string label = "Edit", ProjectChangeSet? changes = null)
     {
         lock (_gate)
@@ -842,66 +813,6 @@ public sealed class ProjectWorkflow : IDisposable
         // redo/load/save) drives the full-rebuild fallback instead.
         await NotifyChangedAsync(dirty: true, changes);
     }
-
-    /// <summary>
-    /// The single edit envelope for every project-mutating operation: the null-project guard, the telemetry
-    /// activity, and the try/catch that reports a failure as <c>SetError</c> + a logged error + an error dialog. The
-    /// <paramref name="mutate"/> callback applies the edit to a fresh <see cref="ProjectEditor"/> over the current
-    /// <see cref="Project"/> and returns <c>true</c> to commit or <c>false</c> to abort silently (a failed guard);
-    /// on commit the edited project is swapped in via <see cref="CommitAsync"/> and <paramref name="result"/>
-    /// computes the return value from it. Returns <paramref name="onFail"/> when there is no open project, a guard
-    /// aborts, or the edit throws. A thrown <see cref="InvalidOperationException"/> (an engine refusal) uses
-    /// <paramref name="refusalTitle"/> for the dialog when one is given, otherwise <paramref name="failureTitle"/>.
-    /// </summary>
-    private async Task<T> RunEditAsync<T>(
-        string op, string failureTitle,
-        Func<Project, ProjectEditor, Task<bool>> mutate,
-        Func<Project, T> result, T onFail,
-        string? refusalTitle = null)
-    {
-        if (Current is null)
-            return onFail;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{op}");
-        try
-        {
-            ProjectEditor editor = Current.Edit();
-            if (!await mutate(Current, editor))
-                return onFail;   // a guard aborted: nothing committed, nothing dirty
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
-            return result(updated);
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Edit {Op} failed", op);
-            await _dialogs.ShowMessageAsync(
-                ex is InvalidOperationException && refusalTitle is not null ? refusalTitle : failureTitle, ex.Message);
-            return onFail;
-        }
-    }
-
-    /// <summary>Synchronous-callback overload of <see cref="RunEditAsync{T}(string,string,Func{Project,ProjectEditor,Task{bool}},Func{Project,T},T,string?)"/>.</summary>
-    private Task<T> RunEditAsync<T>(
-        string op, string failureTitle,
-        Func<Project, ProjectEditor, bool> mutate,
-        Func<Project, T> result, T onFail,
-        string? refusalTitle = null)
-        => RunEditAsync(op, failureTitle, (p, e) => Task.FromResult(mutate(p, e)), result, onFail, refusalTitle);
-
-    /// <summary>Bool-returning convenience: commits and returns <c>true</c>, or <c>false</c> on abort/failure.</summary>
-    private Task<bool> RunEditAsync(
-        string op, string failureTitle,
-        Func<Project, ProjectEditor, Task<bool>> mutate,
-        string? refusalTitle = null)
-        => RunEditAsync(op, failureTitle, mutate, static _ => true, false, refusalTitle);
-
-    /// <summary>Bool-returning convenience over a synchronous callback.</summary>
-    private Task<bool> RunEditAsync(
-        string op, string failureTitle,
-        Func<Project, ProjectEditor, bool> mutate,
-        string? refusalTitle = null)
-        => RunEditAsync(op, failureTitle, mutate, static _ => true, false, refusalTitle);
 
     /// <summary>
     /// Undoes the last project-mutating edit (US-052): restores the previous snapshot, pushes the current one onto the
@@ -947,9 +858,6 @@ public sealed class ProjectWorkflow : IDisposable
         await NotifyChangedAsync(dirty);
         return true;
     }
-
-    /// <summary>Records an edit: the document now differs from the file, so it is dirty by definition.</summary>
-    internal Task MarkChangedAsync() => NotifyChangedAsync(dirty: true);
 
     /// <summary>
     /// The shared tail of every change: set the flag, advance the change counter, notify, and take a crash backup

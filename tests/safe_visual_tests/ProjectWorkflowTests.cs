@@ -32,7 +32,7 @@ public class ProjectWorkflowTests
     {
         using var harness = ShellHarness.Create();
         await harness.Session.StartAsync();
-        harness.Session.MarkChanged();
+        await harness.Session.AddLocalityAsync();
         string path = harness.TempPath("StandardHouse_1.vis");
         harness.Dialogs.SavePath = path;
 
@@ -57,7 +57,7 @@ public class ProjectWorkflowTests
 
         // No SavePath is offered now; a plain Save must go to the already-known file.
         harness.Dialogs.SavePath = null;
-        harness.Session.MarkChanged();
+        await harness.Session.AddLocalityAsync();
         bool saved = await harness.Session.SaveAsync();
 
         Assert.Multiple(() =>
@@ -69,13 +69,13 @@ public class ProjectWorkflowTests
     }
 
     [Test]
-    public async Task MarkChanged_SetsDirty_AndSaveClearsIt()
+    public async Task Edit_SetsDirty_AndSaveClearsIt()
     {
         using var harness = ShellHarness.Create();
         await harness.Session.StartAsync();
         harness.Dialogs.SavePath = harness.TempPath("proj.vis");
 
-        harness.Session.MarkChanged();
+        await harness.Session.AddLocalityAsync();
         Assert.That(harness.Session.IsDirty, Is.True);
 
         await harness.Session.SaveAsync();
@@ -87,7 +87,7 @@ public class ProjectWorkflowTests
     {
         using var harness = ShellHarness.Create();
         await harness.Session.StartAsync();
-        harness.Session.MarkChanged();
+        await harness.Session.AddLocalityAsync();
         var before = harness.Session.Current;
         harness.Dialogs.SaveChangesResult = SaveChangesResult.Cancel;
 
@@ -107,7 +107,7 @@ public class ProjectWorkflowTests
     {
         using var harness = ShellHarness.Create();
         await harness.Session.StartAsync();
-        harness.Session.MarkChanged();
+        await harness.Session.AddLocalityAsync();
         harness.Dialogs.SaveChangesResult = SaveChangesResult.Discard;
 
         bool result = await harness.Session.NewAsync();
@@ -152,11 +152,11 @@ public class ProjectWorkflowTests
         using var harness = ShellHarness.Create(changeThreshold: 3);
         await harness.Session.StartAsync();
 
-        await harness.Session.MarkChangedAsync();
-        await harness.Session.MarkChangedAsync();
+        await harness.Session.AddLocalityAsync();
+        await harness.Session.AddLocalityAsync();
         Assert.That(harness.Backup.HasRecovery(), Is.False, "no backup before the threshold is reached");
 
-        await harness.Session.MarkChangedAsync();
+        await harness.Session.AddLocalityAsync();
         Assert.That(harness.Backup.HasRecovery(), Is.True, "the 3rd change triggers a recovery backup");
     }
 
@@ -213,8 +213,8 @@ public class ProjectWorkflowTests
 
         // Accumulate changes and a crash backup, then save: the save persists the work, so the stale
         // recovery backup must be discarded and the change counter reset (matching New/Open/Close).
-        await harness.Session.MarkChangedAsync();
-        await harness.Session.MarkChangedAsync();
+        await harness.Session.AddLocalityAsync();
+        await harness.Session.AddLocalityAsync();
         await harness.Session.AutoBackupAsync();
         Assert.That(harness.Backup.HasRecovery(), Is.True, "precondition: a crash backup exists");
         Assert.That(harness.Session.ChangeCount, Is.GreaterThan(0), "precondition: changes were recorded");
