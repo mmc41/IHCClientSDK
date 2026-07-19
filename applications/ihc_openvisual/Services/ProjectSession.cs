@@ -314,7 +314,7 @@ public sealed class ProjectSession : IDisposable
         RunEditAsync(nameof(AddUserTextAsync), "Add text failed", (project, editor) =>
         {
             bool exists = project.Child("enum_definitions")?.ChildrenOrEmpty()
-                .Any(c => c.Tag == "enum_definition" && c.GetAttribute("name") == UserTextsTableName) == true;
+                .Any(c => c.Tag == "enum_definition" && project.View(c).Name == UserTextsTableName) == true;
             EnumDefinitionRef def = exists ? editor.EnumDefinition(UserTextsTableName) : editor.AddEnumDefinition(UserTextsTableName);
             editor.AddEnumValues(def, text);
             return true;
@@ -701,8 +701,8 @@ public sealed class ProjectSession : IDisposable
         RunEditAsync(nameof(AddCaseValueAsync), "Add case value failed", (project, editor) =>
         {
             ProjectElement? kase = project.FindById(caseId);
-            if (kase?.Tag != "program_case" || !ElementId.TryParse(kase.GetAttribute("link"), out ElementId switchId)
-                || project.FindById(switchId) is not { } switchVar || switchVar.Tag == "resource_enum")
+            if (kase?.Tag != "program_case" || !ElementId.TryParse(project.View(kase).Effective("link"), out ElementId switchId)
+                || project.FindById(switchId) is not { } switchVar || switchVar.Kind == ElementKind.EnumResource)
                 return false;
             editor.Case(caseId).Case(criterion, switchVar.Tag, op => op.SetAttribute("inivalue", criterion));
             return true;
@@ -777,7 +777,7 @@ public sealed class ProjectSession : IDisposable
                 editor.Group(localityId).AddEmptyFunctionBlock(template, DateOnly.FromDateTime(DateTime.Now), EmptyBlockName);
                 return true;
             },
-            updated => updated.FindById(localityId)?.ChildrenOrEmpty().LastOrDefault(c => c.Tag == "functionblock")?.Id,
+            updated => updated.FindById(localityId)?.ChildrenOrEmpty().LastOrDefault(c => c.Kind == ElementKind.FunctionBlock)?.Id,
             onFail: null);
 
     /// <summary>
@@ -797,7 +797,7 @@ public sealed class ProjectSession : IDisposable
                 editor.Group(localityId).AddFunctionBlock(definition);
                 return true;
             },
-            updated => updated.FindById(localityId)?.ChildrenOrEmpty().LastOrDefault(c => c.Tag == "functionblock")?.Id,
+            updated => updated.FindById(localityId)?.ChildrenOrEmpty().LastOrDefault(c => c.Kind == ElementKind.FunctionBlock)?.Id,
             onFail: null);
 
     /// <summary>
@@ -860,7 +860,7 @@ public sealed class ProjectSession : IDisposable
                 return false;
             if (!group.Children.IsDefaultOrEmpty)
             {
-                string name = group.GetAttribute("name") ?? "this locality";
+                string name = project.View(group).Name is { Length: > 0 } n ? n : "this locality";
                 Activity.Current?.SetTag("locality.hasContents", true);
                 bool confirmed = await _dialogs.ConfirmAsync("Delete locality",
                     $"'{name}' contains products. Deleting it also removes those products and the commands and " +
@@ -1027,7 +1027,7 @@ public sealed class ProjectSession : IDisposable
             }
             bool referenced = HasLinkHalves(element) || WouldThrowStrict(id);
             if (referenced && !await _dialogs.ConfirmAsync("Delete",
-                    $"'{element.GetAttribute("name") ?? element.Tag}' is referenced by other logic (links and/or "
+                    $"'{(project.View(element).Name is { Length: > 0 } n ? n : element.Tag)}' is referenced by other logic (links and/or "
                     + "commands). Delete it together with those references?"))
             {
                 return false;   // declined — nothing is deleted
