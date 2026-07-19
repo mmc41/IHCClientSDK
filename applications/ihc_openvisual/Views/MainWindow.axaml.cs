@@ -111,22 +111,22 @@ public partial class MainWindow : Window
         e.DragEffects = DragDropEffects.None;
         if (_viewModel is null || TreeDragData.TryGetElementId(e.DataTransfer) is not { } draggedId)
         {
-            _viewModel?.HighlightDropTarget(null);
+            _viewModel?.DragDrop.HighlightDropTarget(null);
             return;
         }
         if ((e.Source as Control)?.FindAncestorOfType<TreeViewItem>(includeSelf: true)?.DataContext is not TreeNodeViewModel { ElementId: { } targetId })
         {
-            _viewModel.HighlightDropTarget(null);
+            _viewModel.DragDrop.HighlightDropTarget(null);
             return;
         }
-        DropVerdict verdict = _viewModel.CanDropOn(draggedId, targetId);
+        DropVerdict verdict = _viewModel.DragDrop.CanDropOn(draggedId, targetId);
         e.DragEffects = ToDragDropEffects(verdict.Effect);
-        _viewModel.HighlightDropTarget(verdict.Ok ? targetId : null);
+        _viewModel.DragDrop.HighlightDropTarget(verdict.Ok ? targetId : null);
         e.Handled = true;
     }
 
     // The drag left a tree without dropping — drop any lingering highlight.
-    private void OnTreeDragLeave(object? sender, RoutedEventArgs e) => _viewModel?.HighlightDropTarget(null);
+    private void OnTreeDragLeave(object? sender, RoutedEventArgs e) => _viewModel?.DragDrop.HighlightDropTarget(null);
 
     private static DragDropEffects ToDragDropEffects(DropEffect effect) => effect switch
     {
@@ -137,13 +137,13 @@ public partial class MainWindow : Window
 
     private async void OnTreeDrop(object? sender, DragEventArgs e)
     {
-        _viewModel?.HighlightDropTarget(null);
+        _viewModel?.DragDrop.HighlightDropTarget(null);
         if (_viewModel is null || TreeDragData.TryGetElementId(e.DataTransfer) is not { } draggedId)
             return;
         if ((e.Source as Control)?.FindAncestorOfType<TreeViewItem>(includeSelf: true)?.DataContext is not TreeNodeViewModel { ElementId: { } targetId })
             return;
         e.Handled = true;
-        await _viewModel.PerformDropAsync(draggedId, targetId);
+        await _viewModel.DragDrop.PerformDropAsync(draggedId, targetId);
     }
 
     private void OnTreePointerPressed(object? sender, PointerPressedEventArgs e)

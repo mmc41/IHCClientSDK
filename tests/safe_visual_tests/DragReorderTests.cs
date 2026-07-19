@@ -54,9 +54,9 @@ public class DragReorderTests : AvaloniaTestBase
         var (harness, vm, first, second) = await BuildAsync();
         using var _ = harness;
 
-        Assert.That(vm.CanDropOn(first, second).Effect, Is.EqualTo(DropEffect.Move), "dropping onto a same-tag sibling is a reorder Move");
+        Assert.That(vm.DragDrop.CanDropOn(first, second).Effect, Is.EqualTo(DropEffect.Move), "dropping onto a same-tag sibling is a reorder Move");
 
-        await vm.PerformDropAsync(first, second);
+        await vm.DragDrop.PerformDropAsync(first, second);
 
         Assert.Multiple(() =>
         {

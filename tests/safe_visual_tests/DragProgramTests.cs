@@ -46,9 +46,9 @@ public class DragProgramTests : AvaloniaTestBase
         var (harness, vm, doorbellId, eventsId) = await EditableProgramAsync();
         using var _ = harness;
 
-        Assert.That(vm.CanDropOn(doorbellId, eventsId).Effect, Is.EqualTo(DropEffect.Link), "a variable over Events is a legal authoring drop");
+        Assert.That(vm.DragDrop.CanDropOn(doorbellId, eventsId).Effect, Is.EqualTo(DropEffect.Link), "a variable over Events is a legal authoring drop");
 
-        await vm.PerformDropAsync(doorbellId, eventsId);
+        await vm.DragDrop.PerformDropAsync(doorbellId, eventsId);
 
         // The drop armed the variable and populated the Events method popup for that container — identical to the
         // two-step Use-in-program menu (US-028).
@@ -85,8 +85,8 @@ public class DragProgramTests : AvaloniaTestBase
         var variable = TreeNodes.FindFirst(vm.InstallationNodes, n => n.IsPin)!;
         var container = TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsEventsContainer || n.IsCommandsContainer)!;
 
-        DropVerdict verdict = vm.CanDropOn(variable.ElementId!.Value, container.ElementId!.Value);
-        await vm.PerformDropAsync(variable.ElementId!.Value, container.ElementId!.Value);
+        DropVerdict verdict = vm.DragDrop.CanDropOn(variable.ElementId!.Value, container.ElementId!.Value);
+        await vm.DragDrop.PerformDropAsync(variable.ElementId!.Value, container.ElementId!.Value);
 
         Assert.Multiple(() =>
         {

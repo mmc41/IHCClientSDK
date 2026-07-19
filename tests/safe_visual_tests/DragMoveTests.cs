@@ -61,9 +61,9 @@ public class DragMoveTests : AvaloniaTestBase
         var (harness, vm, productId, locA, locB) = await BuildAsync();
         using var _ = harness;
 
-        Assert.That(vm.CanDropOn(productId, locB).Effect, Is.EqualTo(DropEffect.Move), "the drag-over shows a Move over a legal locality");
+        Assert.That(vm.DragDrop.CanDropOn(productId, locB).Effect, Is.EqualTo(DropEffect.Move), "the drag-over shows a Move over a legal locality");
 
-        await vm.PerformDropAsync(productId, locB);
+        await vm.DragDrop.PerformDropAsync(productId, locB);
 
         var treeLocA = TreeNodes.FindById(vm.InstallationNodes, locA)!;
         var treeLocB = TreeNodes.FindById(vm.InstallationNodes, locB)!;
@@ -87,7 +87,7 @@ public class DragMoveTests : AvaloniaTestBase
         var productNode = TreeNodes.FindById(vm.InstallationNodes, productId)!;
         var pinId = productNode.Children.First(c => c.ElementId is not null).ElementId!.Value;
 
-        DropVerdict verdict = vm.CanDropOn(productId, pinId);
+        DropVerdict verdict = vm.DragDrop.CanDropOn(productId, pinId);
 
         Assert.Multiple(() =>
         {

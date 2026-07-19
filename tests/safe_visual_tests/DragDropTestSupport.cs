@@ -44,8 +44,8 @@ internal static class TreeNodes
 /// <see cref="TreeDragData.BuildDragData"/>, so the test exercises the real source-payload contract the drop handler
 /// reads back — not a shortcut.
 /// <para><b>Use these only for the FEW window tests that verify the end-to-end wiring.</b> Keep the bulk of the
-/// legality/mutation coverage at the view-model layer — call <c>vm.CanDropOn(draggedId, targetId)</c> /
-/// <c>await vm.PerformDropAsync(draggedId, targetId)</c> directly through a <see cref="ShellHarness"/> with no window
+/// legality/mutation coverage at the controller layer — call <c>vm.DragDrop.CanDropOn(draggedId, targetId)</c> /
+/// <c>await vm.DragDrop.PerformDropAsync(draggedId, targetId)</c> directly through a <see cref="ShellHarness"/> with no window
 /// (faster, and where §0.3 says most coverage belongs).</para>
 /// <para>Reorder (A-32) drops <i>between</i> siblings at a position, not onto a node — add a position-aware variant
 /// when it lands; do not force it through <see cref="DragOnto"/>.</para>

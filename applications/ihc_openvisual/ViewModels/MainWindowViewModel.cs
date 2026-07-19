@@ -48,6 +48,10 @@ public partial class MainWindowViewModel : ViewModelBase
     // this view-model's single outcome→status/dialog rule (ApplyAsync).
     private readonly PropertiesDialogCoordinator _properties;
 
+    /// <summary>The tree drag-and-drop dispatcher (W3-9): drop legality/route, the drop mutation, and the drop-target
+    /// highlight. The code-behind's DragOver/Drop handlers and the headless drag tests drive this.</summary>
+    public TreeDragDropController DragDrop { get; }
+
     private readonly IDialogService _dialogs;
     private readonly RecentProjectsStore _recent;
     private readonly IThemeService _themeService;
@@ -671,6 +675,14 @@ public partial class MainWindowViewModel : ViewModelBase
         CurrentTheme = theme.Current;
         _properties = new PropertiesDialogCoordinator(
             _session, _dialogs, (command, status) => ApplyAsync(command, status), status => StatusText = status);
+        DragDrop = new TreeDragDropController(
+            _session,
+            id => FindNode(InstallationNodes, id) ?? FindNode(FunctionNodes, id),
+            () => IsProgrammingBlockLocked,
+            (command, status) => ApplyAsync(command, status),
+            UseVariableInProgram,
+            status => StatusText = status,
+            RunAsync);
 
         _session.StateChanged += (_, _) => Refresh();
         _session.CatalogChanged += (_, _) => RebuildCatalogMenus();
@@ -997,117 +1009,6 @@ public partial class MainWindowViewModel : ViewModelBase
         if (node?.ElementId is { } id && _session.BuildReorderNode(id, delta) is { } command)
             await ApplyAsync(command, delta < 0 ? "Moved up." : "Moved down.");
     });
-
-    // ── Wave 9 / A-30 — the shared drag-and-drop dispatcher (§0.3). The legality (CanDropOn), the mutation
-    // (PerformDropAsync) and the drop-target highlight (HighlightDropTarget) all live here in the view-model, so they
-    // are testable headlessly with no pointer/drag simulation; the code-behind's DragOver/Drop handlers read the
-    // dragged id from the DataTransfer and call these. A-30 ships the product→locality move route (the A-P0 slice);
-    // A-31…A-34 add the reorder / pin-link / program-build routes onto this same dispatcher and source their per-route
-    // grammar from the SDK — do NOT re-encode vendor grammar here.
-
-    private TreeNodeViewModel? _dropTargetNode;
-
-    /// <summary>Whether — and how — the dragged node may drop onto the target: a <see cref="DropVerdict"/> of ok +
-    /// effect (Move/Link/None) + a reason when refused. Only the legality every route shares is decided here (a node
-    /// cannot drop onto itself); the per-route grammar (container-admissibility, link legality) belongs to the SDK op
-    /// the drop calls, so this is the drag-over hint, not the authoritative guard. Avalonia-free so it stays headlessly
-    /// testable.</summary>
-    public DropVerdict CanDropOn(ElementId dragged, ElementId target)
-    {
-        if (dragged == target)
-            return DropVerdict.Refused("Cannot drop a node onto itself.");
-        TreeNodeViewModel? draggedNode = FindNode(InstallationNodes, dragged) ?? FindNode(FunctionNodes, dragged);
-        TreeNodeViewModel? targetNode = FindNode(InstallationNodes, target) ?? FindNode(FunctionNodes, target);
-        if (draggedNode is null || targetNode is null)
-            return DropVerdict.None;
-        // Link: dropping one pin onto another creates a link when the SDK's data-flow rule allows it (US-022/US-023).
-        // The 15-cell legality + orientation live in the SDK (LinkRoles/CanLink — A-16/A-16amd/F-066); ask, don't
-        // re-encode. This precedes reorder so two same-tag pins link (never silently reorder).
-        if (draggedNode.IsPin && targetNode.IsPin)
-        {
-            return _session.CanLinkPins(dragged, target)
-                ? DropVerdict.Linking()
-                : DropVerdict.Refused("Those two pins can't be linked in that direction.");
-        }
-        // Program build: dropping a variable/pin onto an events or commands container arms the method popup (US-028).
-        // The effect is Link (an authoring connection); PerformDropAsync routes it to the shared Use-in-program menu,
-        // not LinkPinsAsync. Gated on the A-27 locked-block rule — no authoring drop into a locked library block.
-        if (draggedNode.IsPin && (targetNode.IsEventsContainer || targetNode.IsCommandsContainer))
-        {
-            return IsProgrammingBlockLocked
-                ? DropVerdict.Refused("This block is locked — unlock it to edit its program.")
-                : DropVerdict.Linking();
-        }
-        // Reorder: dropping onto a same-parent, same-tag sibling moves the node to that position (US-055). The SDK owns
-        // the "same-tag sibling" rule; the view-model only asks.
-        if (_session.CanReorderNode(dragged, target))
-            return DropVerdict.Moving();
-        // A product can be dragged to re-parent it into another locality (US-054). Ask the SDK whether this exact
-        // target is a legal destination — it owns the self/descendant + container-admissibility rules (the same
-        // legality Cut/Paste uses); do not re-encode them here. A-33/A-34 add the pin-link / program-build routes.
-        if (draggedNode.NodeKind == "product")
-        {
-            return _session.CanMoveNode(dragged, target)
-                ? DropVerdict.Moving()
-                : DropVerdict.Refused("That location can't hold this item.");
-        }
-        return DropVerdict.None;
-    }
-
-    /// <summary>Performs a drop, routing by the verdict from <see cref="CanDropOn"/>. A-30 ships the product→locality
-    /// move (the same id-preserving re-parent as Cut/Paste, US-054); a refused drop surfaces its reason and mutates
-    /// nothing. A-31…A-34 add their routes here.</summary>
-    public Task PerformDropAsync(ElementId dragged, ElementId target) => RunAsync(nameof(PerformDropAsync), async () =>
-    {
-        DropVerdict verdict = CanDropOn(dragged, target);
-        if (!verdict.Ok)
-        {
-            if (verdict.Reason is { } reason)
-                StatusText = reason;
-            return;
-        }
-        // Program build (US-028): a variable dropped onto an events/commands container arms the same method popup as
-        // Use-in-program — the user then picks the method. Handled before the pin-link route because it shares the Link
-        // effect but routes to the program menu, not LinkPinsAsync.
-        TreeNodeViewModel? draggedNode = FindNode(InstallationNodes, dragged) ?? FindNode(FunctionNodes, dragged);
-        TreeNodeViewModel? targetNode = FindNode(InstallationNodes, target) ?? FindNode(FunctionNodes, target);
-        if (draggedNode is { IsPin: true } && targetNode is { } container && (container.IsEventsContainer || container.IsCommandsContainer))
-        {
-            UseVariableInProgram(draggedNode, container);
-            return;
-        }
-        // Route by the verdict's effect: a pin-link (US-022/US-023), a reorder among same-tag siblings (US-055), or a
-        // re-parent (US-054). The effect already encodes which family; within Move, CanReorderNode splits the two.
-        if (verdict.Effect == DropEffect.Link)
-        {
-            await ApplyAsync(new LinkPins(dragged, target), "Linked.");
-        }
-        else if (_session.CanReorderNode(dragged, target))
-        {
-            if (_session.BuildReorderNodeToSibling(dragged, target) is { } command)
-                await ApplyAsync(command, "Reordered.");
-        }
-        else
-        {
-            await ApplyAsync(new MoveNode(dragged, target), "Moved.");
-        }
-    });
-
-    /// <summary>Highlights (or clears) the current legal drop target so the tree shows where a drop will land (A-30):
-    /// sets <see cref="TreeNodeViewModel.IsDropTarget"/> on the node addressed by <paramref name="target"/> and clears
-    /// any previous one; pass <c>null</c> to clear. Avalonia-free — the item template binds a row background to
-    /// IsDropTarget.</summary>
-    public void HighlightDropTarget(ElementId? target)
-    {
-        TreeNodeViewModel? node = target is { } id ? FindNode(InstallationNodes, id) ?? FindNode(FunctionNodes, id) : null;
-        if (ReferenceEquals(node, _dropTargetNode))
-            return;
-        if (_dropTargetNode is not null)
-            _dropTargetNode.IsDropTarget = false;
-        _dropTargetNode = node;
-        if (_dropTargetNode is not null)
-            _dropTargetNode.IsDropTarget = true;
-    }
 
     /// <summary>Opens the Properties dialog for a tree node to rename a locality (US-007). Invoked from the
     /// right-click <i>Properties</i> item (node passed in) and from F2 (the selected node passed in).</summary>

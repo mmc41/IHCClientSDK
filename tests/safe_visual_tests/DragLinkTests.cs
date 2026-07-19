@@ -51,8 +51,8 @@ public class DragLinkTests : AvaloniaTestBase
         var (harness, vm, productInputId, fbInputId) = await ProductAndBlockAsync();
         using var _ = harness;
 
-        Assert.That(vm.CanDropOn(productInputId, fbInputId).Effect, Is.EqualTo(DropEffect.Link), "a legal pin pair shows a Link");
-        await vm.PerformDropAsync(productInputId, fbInputId);
+        Assert.That(vm.DragDrop.CanDropOn(productInputId, fbInputId).Effect, Is.EqualTo(DropEffect.Link), "a legal pin pair shows a Link");
+        await vm.DragDrop.PerformDropAsync(productInputId, fbInputId);
 
         // US-022 — a block output dragged onto a second block's input.
         var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Outputs.Count > 0);
@@ -63,7 +63,7 @@ public class DragLinkTests : AvaloniaTestBase
         var fbOutputId = harness.Session.Current!.FindById(fbSrcId)!.FindChild("outputs")!.ChildrenOrEmpty().First().Id!.Value;
         var fbDstInputId = harness.Session.Current!.FindById(fbDstId)!.FindChild("inputs")!.ChildrenOrEmpty().First().Id!.Value;
 
-        await vm.PerformDropAsync(fbOutputId, fbDstInputId);
+        await vm.DragDrop.PerformDropAsync(fbOutputId, fbDstInputId);
 
         Assert.Multiple(() =>
         {
@@ -92,8 +92,8 @@ public class DragLinkTests : AvaloniaTestBase
         var inputA = harness.Session.Current!.FindById(pidA)!.ChildrenOrEmpty().First(c => c.Tag == "dataline_input").Id!.Value;
         var inputB = harness.Session.Current!.FindById(pidB)!.ChildrenOrEmpty().First(c => c.Tag == "dataline_input").Id!.Value;
 
-        DropVerdict verdict = vm.CanDropOn(inputA, inputB);
-        await vm.PerformDropAsync(inputA, inputB);
+        DropVerdict verdict = vm.DragDrop.CanDropOn(inputA, inputB);
+        await vm.DragDrop.PerformDropAsync(inputA, inputB);
 
         Assert.Multiple(() =>
         {
@@ -118,8 +118,8 @@ public class DragLinkTests : AvaloniaTestBase
         var ownOutputId = harness.Session.Current!.FindById(fbId)!.FindChild("outputs")!.ChildrenOrEmpty().First().Id!.Value;
         var ownInputId = harness.Session.Current!.FindById(fbId)!.FindChild("inputs")!.ChildrenOrEmpty().First().Id!.Value;
 
-        Assert.That(vm.CanDropOn(ownOutputId, ownInputId).Effect, Is.EqualTo(DropEffect.Link), "a self-link (output→own input) is allowed");
-        await vm.PerformDropAsync(ownOutputId, ownInputId);
+        Assert.That(vm.DragDrop.CanDropOn(ownOutputId, ownInputId).Effect, Is.EqualTo(DropEffect.Link), "a self-link (output→own input) is allowed");
+        await vm.DragDrop.PerformDropAsync(ownOutputId, ownInputId);
 
         Assert.Multiple(() =>
         {

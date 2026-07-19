@@ -10,14 +10,15 @@ using Avalonia.VisualTree;
 using ihc_openvisual.ViewModels;
 using ihc_openvisual.Views;
 using Ihc.Vis.Model;
+using Ihc.Vis.Projects;
 using NUnit.Framework;
 
 namespace safe_visual_tests;
 
 /// <summary>
-/// A-30 — the shared drag-and-drop infrastructure Wave 9 rides on: a <see cref="DropVerdict"/> (ok + reason + effect)
-/// returned by the view-model's <see cref="MainWindowViewModel.CanDropOn"/> dispatcher, drop-target highlighting as
-/// view-model state, the drop side keyed off the <c>DataTransfer</c> (never a captured source field, so an external
+/// A-30 — the shared drag-and-drop infrastructure Wave 9 rides on: a <see cref="DropVerdict"/> (ok + reason + effect +
+/// route) returned by the <see cref="TreeDragDropController.CanDropOn"/> dispatcher, drop-target highlighting as
+/// controller state, the drop side keyed off the <c>DataTransfer</c> (never a captured source field, so an external
 /// drop works too — §0.3), and the drag source wired on <b>both</b> trees for any addressable node. The concrete
 /// routes (move/reorder/link/program-build) are A-31…A-34; these tests pin the plumbing. A-P0's
 /// <see cref="DragDropPocTests"/> remain the drop-target mechanism tests this builds on.
@@ -66,8 +67,8 @@ public class DragDropInfrastructureTests : AvaloniaTestBase
         var (harness, vm, productId, _, locB) = await BuildAsync();
         using var _ = harness;
 
-        DropVerdict onSelf = vm.CanDropOn(productId, productId);
-        DropVerdict onLocality = vm.CanDropOn(productId, locB);
+        DropVerdict onSelf = vm.DragDrop.CanDropOn(productId, productId);
+        DropVerdict onLocality = vm.DragDrop.CanDropOn(productId, locB);
 
         Assert.Multiple(() =>
         {
@@ -79,7 +80,30 @@ public class DragDropInfrastructureTests : AvaloniaTestBase
         });
     }
 
-    // Drop-target highlighting is view-model state (the item template binds a row background to IsDropTarget): setting
+    // W3-9 — a drag-over probe resolves the concrete route ONCE and records it in the verdict, so the drop performs it
+    // without re-evaluating (the old dispatcher re-asked the SDK up to 3×); and probing the legality never mutates the
+    // project (no editor construction per pointer event).
+    [Test]
+    public async Task CanDropOn_ResolvesTheRoute_AndProbingDoesNotMutate()
+    {
+        var (harness, vm, productId, _, locB) = await BuildAsync();
+        using var _ = harness;
+        Project before = harness.Session.Current!;
+
+        DropVerdict verdict = vm.DragDrop.CanDropOn(productId, locB);
+        // Probe repeatedly, as a pointer moving over rows would.
+        vm.DragDrop.CanDropOn(productId, locB);
+        vm.DragDrop.CanDropOn(productId, productId);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(verdict.Route, Is.EqualTo(DropRoute.Reparent), "a product→locality drop resolves to the reparent route the drop then performs directly");
+            Assert.That(verdict.Effect, Is.EqualTo(DropEffect.Move), "the reparent route still presents as a Move to the drag-over cursor");
+            Assert.That(harness.Session.Current, Is.SameAs(before), "a drag-over probe evaluates the verdict without constructing an editor / mutating the project");
+        });
+    }
+
+    // Drop-target highlighting is controller state (the item template binds a row background to IsDropTarget): setting
     // a target marks its row, switching targets clears the old one, and null clears the highlight entirely.
     [Test]
     public async Task HighlightDropTarget_MarksTarget_AndClearsPrevious()
@@ -89,17 +113,17 @@ public class DragDropInfrastructureTests : AvaloniaTestBase
         var nodeA = TreeNodes.FindById(vm.InstallationNodes, locA)!;
         var nodeB = TreeNodes.FindById(vm.InstallationNodes, locB)!;
 
-        vm.HighlightDropTarget(locA);
+        vm.DragDrop.HighlightDropTarget(locA);
         Assert.That(nodeA.IsDropTarget, Is.True, "the drop-target row is highlighted");
 
-        vm.HighlightDropTarget(locB);
+        vm.DragDrop.HighlightDropTarget(locB);
         Assert.Multiple(() =>
         {
             Assert.That(nodeB.IsDropTarget, Is.True, "the new target row is highlighted");
             Assert.That(nodeA.IsDropTarget, Is.False, "the previous target's highlight is cleared");
         });
 
-        vm.HighlightDropTarget(null);
+        vm.DragDrop.HighlightDropTarget(null);
         Assert.That(nodeB.IsDropTarget, Is.False, "null clears the highlight");
     }
 

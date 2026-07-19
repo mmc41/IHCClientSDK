@@ -63,7 +63,7 @@ public class TreeExpansionTests : AvaloniaTestBase
         Expand(vm.FunctionNodes, fbId);
         Expand(vm.FunctionNodes, inputsSectionId);
 
-        await vm.PerformDropAsync(productInputId, fbInputId);   // link the two pins (drag-drop)
+        await vm.DragDrop.PerformDropAsync(productInputId, fbInputId);   // link the two pins (drag-drop)
 
         Assert.Multiple(() =>
         {
@@ -80,7 +80,7 @@ public class TreeExpansionTests : AvaloniaTestBase
         var (harness, vm, productId, productInputId, fbId, fbInputId) = await ProductAndBlockAsync();
         using var _ = harness;
         var inputsSectionId = InputsSectionId(harness, fbId);
-        await vm.PerformDropAsync(productInputId, fbInputId);   // create a link to delete
+        await vm.DragDrop.PerformDropAsync(productInputId, fbInputId);   // create a link to delete
         var linkRowId = harness.Session.Current!.FindById(productInputId)!.ChildrenOrEmpty()
             .First(c => c.Tag is "link_from_resource" or "link_to_resource").Id!.Value;
 
