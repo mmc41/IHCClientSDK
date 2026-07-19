@@ -1717,9 +1717,38 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         else
         {
+            // The full-rebuild fallback tears down the node instances, so the reconcile path's by-identity survival
+            // of the installer's place is lost here — capture selection (which Avalonia's focus + scroll-into-view
+            // follow) by id before the rebuild and restore it after, so undo/redo/load land the user back where they
+            // were (E14 place restore). Expansion is carried inside RebuildPaneFallback.
+            ElementId? selInstallation = SelectedInstallationNode?.ElementId;
+            ElementId? selFunctions = SelectedFunctionsNode?.ElementId;
+            bool installationActive = IsInstallationPaneActive;
             RebuildPaneFallback(InstallationNodes, _installationReconciler, preserve: sameView);
             RebuildPaneFallback(FunctionNodes, _functionsReconciler, preserve: sameView);
+            RestoreSelection(selInstallation, selFunctions, installationActive);
         }
+    }
+
+    // Re-selects, in each pane, the node standing for the id selected before a fallback rebuild (a rebuilt tree holds
+    // fresh instances, so the old selection would dangle). The active pane is restored LAST so IsInstallationPaneActive
+    // and SelectedNode — which the pane-selection change handlers set — settle on it; a selected node the edit removed
+    // simply isn't found and its selection clears.
+    private void RestoreSelection(ElementId? installationId, ElementId? functionsId, bool installationActive)
+    {
+        TreeNodeViewModel? installation = installationId is { } iid ? FindNode(InstallationNodes, iid) : null;
+        TreeNodeViewModel? functions = functionsId is { } fid ? FindNode(FunctionNodes, fid) : null;
+        if (installationActive)
+        {
+            SelectedFunctionsNode = functions;
+            SelectedInstallationNode = installation;
+        }
+        else
+        {
+            SelectedInstallationNode = installation;
+            SelectedFunctionsNode = functions;
+        }
+        IsInstallationPaneActive = installationActive;
     }
 
     // Whether the pane currently holds exactly the reconciler's root instance — the precondition for an in-place
