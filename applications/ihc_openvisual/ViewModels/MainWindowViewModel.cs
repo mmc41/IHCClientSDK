@@ -573,7 +573,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 continue;
             foreach (ProjectElement pin in section.ChildrenOrEmpty())
                 if (NumericTags.Contains(pin.Tag) && pin.Id is { } pid)
-                    yield return (pin.GetAttribute("name") ?? pin.Tag, pid);
+                    yield return (NameOr(pin, pin.Tag), pid);
         }
     }
 
@@ -811,7 +811,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private Task SaveFunctionBlock(TreeNodeViewModel? node) => RunAsync(nameof(SaveFunctionBlock), async () =>
     {
-        if (node?.ElementId is not { } id || _session.Current?.FindById(id) is not { } fb || fb.Tag != "functionblock")
+        if (node?.ElementId is not { } id || _session.Current?.FindById(id) is not { } fb || fb.Kind != ElementKind.FunctionBlock)
             return;
         string currentName = fb.GetAttribute("name") ?? "block";
         string currentNote = fb.GetAttribute("note") ?? string.Empty;
@@ -1301,11 +1301,11 @@ public partial class MainWindowViewModel : ViewModelBase
             await OpenSceneContainerAsync(id, element);   // the product's Scenarier dialog (US-024)
         else if (element.Tag is "scene_relay" or "scene_dimmer")
             await OpenSceneValuePropertiesAsync(id, element);   // edit a scenario link's value (US-058)
-        else if (element.Tag == "resource_enum")
+        else if (element.Kind == ElementKind.EnumResource)
             await OpenEnumPropertiesAsync(id);   // edit the enum type's states (US-030)
         else if (element.Tag is "group" or "functionblock")
             // A function block renames through the same Name/Note dialog as a locality (US-007/US-019).
-            await OpenLocalityPropertiesAsync(id, element.GetAttribute("name") ?? string.Empty);
+            await OpenLocalityPropertiesAsync(id, View(element).Name ?? string.Empty);
     }
 
     // The product's scene container (US-024): its fixed name, its note, and a row per membership naming the
@@ -1779,7 +1779,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // The label is the user's stored name (A-26/F-075); a never-renamed sub-program carries the vendor
         // default "Under program", shown here as the English default token "Sub-program" (R-1 — the default is
         // chrome, but a user name stays verbatim). "Under program" is FbGrammar.SubProgramName (internal).
-        string stored = sub.GetAttribute("name") ?? string.Empty;
+        string stored = View(sub).Name ?? string.Empty;
         string label = stored.Length == 0 || stored == "Under program" ? "Sub-program" : stored;
         var node = new TreeNodeViewModel(label, NodeIcons.For("program_sub", null),
             isExpanded: true, elementId: sub.Id) { NodeKind = "subProgram" };
@@ -1852,15 +1852,15 @@ public partial class MainWindowViewModel : ViewModelBase
     // Renders a program event/action row (US-028): the stored %P/%S template resolved to its operands' live names.
     private string EventCommandLabel(ProjectElement leaf)
     {
-        string name = leaf.GetAttribute("name") ?? leaf.Tag;
-        return name.Replace("%P", ResolveOperandName(leaf.GetAttribute("link1")))
-                   .Replace("%S", ResolveOperandName(leaf.GetAttribute("link2")));
+        string name = NameOr(leaf, leaf.Tag);
+        return name.Replace("%P", ResolveOperandName(View(leaf).Effective("link1")))
+                   .Replace("%S", ResolveOperandName(View(leaf).Effective("link2")));
     }
 
     private string ResolveOperandName(string? token) =>
         _session.Current is { } project && ElementId.TryParse(token, out ElementId id)
             && project.FindById(id) is { } operand
-                ? operand.GetAttribute("name") ?? string.Empty
+                ? project.View(operand).Name ?? string.Empty
                 : string.Empty;
 
     // Both panes share the Localities skeleton; the Installation pane nests each locality's products (with their
@@ -2050,10 +2050,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
     // The hover tooltip (US-047/US-048): the element's documentation note (line breaks preserved) plus, for a
     // resource-mapped node, its IHC resource id. Null when the element has neither, so no tooltip appears.
-    private static string? BuildTooltip(ProjectElement element)
+    private string? BuildTooltip(ProjectElement element)
     {
         var parts = new List<string>();
-        if (element.GetAttribute("note") is { Length: > 0 } note)
+        if (View(element).Note is { Length: > 0 } note)
             parts.Add(note.Replace("\r\n", "\n"));
         if (ResourceIdTags.Contains(element.Tag) && element.Id is { } id)
             parts.Add($"Resource ID: {id.Value}");
@@ -2071,8 +2071,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private string? StateValue(ProjectElement resource) =>
         resource.Kind == ElementKind.EnumResource
         && _session.Current is { } project
-        && ElementId.TryParse(resource.GetAttribute("inivalue"), out ElementId valueId)
-        && project.FindById(valueId)?.GetAttribute("name") is { Length: > 0 } state
+        && ElementId.TryParse(project.View(resource).Effective("inivalue"), out ElementId valueId)
+        && project.FindById(valueId) is { } operand
+        && project.View(operand).Name is { Length: > 0 } state
             ? state
             : null;
 
@@ -2161,11 +2162,11 @@ public partial class MainWindowViewModel : ViewModelBase
         while (current is not null)
         {
             bool significant = leaf || current.Tag is "group" or "functionblock" || ProductClassifier.IsProduct(current.Tag);
-            if (significant && current.GetAttribute("name") is { } partName && partName.Length > 0)
+            if (significant && View(current).Name is { Length: > 0 } partName)
                 // The product segment renders name (position) exactly as the Installation pane does (US-010/A-2),
                 // so two same-named products differing only by position stay distinguishable in a link row (A-20).
                 parts.Insert(0, ProductClassifier.IsProduct(current.Tag)
-                    ? ProductLabel(partName, current.GetAttribute("position"))
+                    ? ProductLabel(partName, View(current).Position)
                     : partName);
             current = current.Id is { } cid ? project.FindParent(cid) : null;
             leaf = false;
