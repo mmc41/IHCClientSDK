@@ -58,9 +58,7 @@ public sealed record SceneContainerResult(string Note);
 public sealed record AdvancedDimmerInput(
     int SoftOnMs, int SoftOffMs, int ManualRampS, int MinimumPercent, int MaximumPercent, string LoadMode);
 
-/// <summary>The edited advanced wireless-dimmer settings (US-015).</summary>
-public sealed record AdvancedDimmerResult(
-    int SoftOnMs, int SoftOffMs, int ManualRampS, int MinimumPercent, int MaximumPercent, string LoadMode);
+// AdvancedDimmerResult moved to the SDK (Ihc.Vis.Session, W2-10) — an edit payload for the dimmer command.
 
 // ContactInfo and ProjectInfoData moved to the SDK (Ihc.Vis, fablerefac W1-5) — they are project read/edit
 // models, not presentation DTOs. Referenced here via `using Ihc.Vis;`.
@@ -94,11 +92,7 @@ public sealed record ModemPropertiesInput(
     string PinCode, IReadOnlyList<string> PhoneNumbers,
     IReadOnlyList<LocalityChoice> Localities, string CurrentLocalityId);
 
-/// <summary>The edited modem documentation returned from the dialog (US-013).</summary>
-public sealed record ModemPropertiesResult(
-    string Name, string LocalityId, string Note, string IdentificationCode,
-    string Cable0V, string Cable24V, string CableRS485Minus, string CableRS485Plus,
-    string PinCode, IReadOnlyList<string> PhoneNumbers);
+// ModemPropertiesResult moved to the SDK (Ihc.Vis.Session, W2-10) — an edit payload for the modem command.
 
 /// <summary>
 /// Abstraction over the modal dialogs the shell needs (confirm-save, file pickers, message boxes, the

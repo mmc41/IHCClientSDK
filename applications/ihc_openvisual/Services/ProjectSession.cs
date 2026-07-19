@@ -275,15 +275,9 @@ public sealed class ProjectSession : IDisposable
     /// <c>customer_info</c>/<c>installer_info</c> contact attributes by id (blank clears to the DTD default). This
     /// identifies the installation in the generated reports. Commits, marks dirty. Returns false on failure.
     /// </summary>
-    public Task<bool> UpdateProjectInfoAsync(ProjectInfoData data) =>
-        RunEditAsync(nameof(UpdateProjectInfoAsync), "Project information failed", (project, editor) =>
-        {
-            editor.SetMetadata("project_info",
-                ("description", data.Description), ("number", data.Number), ("programmer", data.Programmer));
-            WriteContact(editor, "customer_info", data.Customer);
-            WriteContact(editor, "installer_info", data.Installer);
-            return true;
-        });
+    public async Task<bool> UpdateProjectInfoAsync(ProjectInfoData data) =>
+        (await RouteAsync(new UpdateProjectInfo(data), "Project information failed"))
+            .Status is EditStatus.Committed or EditStatus.NoChange;
 
     /// <summary>The dedicated user enum definition that holds the data-tables "user-defined texts" (US-049).</summary>
     public const string UserTextsTableName = ProjectProjections.UserTextsTableName;
@@ -311,37 +305,23 @@ public sealed class ProjectSession : IDisposable
         Current?.GetModuleAddressMap() ?? new ModuleAddressMap([], []);
 
     /// <summary>Appends a user-defined text (US-049), creating the user-texts table on first use. Returns false on failure.</summary>
-    public Task<bool> AddUserTextAsync(string text) =>
-        RunEditAsync(nameof(AddUserTextAsync), "Add text failed", (project, editor) =>
-        {
-            bool exists = project.Child("enum_definitions")?.ChildrenOrEmpty()
-                .Any(c => c.Tag == "enum_definition" && project.View(c).Name == UserTextsTableName) == true;
-            EnumDefinitionRef def = exists ? editor.EnumDefinition(UserTextsTableName) : editor.AddEnumDefinition(UserTextsTableName);
-            editor.AddEnumValues(def, text);
-            return true;
-        });
+    public async Task<bool> AddUserTextAsync(string text)
+    {
+        bool exists = Current is { } project && project.Child("enum_definitions")?.ChildrenOrEmpty()
+            .Any(c => c.Tag == "enum_definition" && project.View(c).Name == UserTextsTableName) == true;
+        EditOutcome outcome = await RouteAsync(new AddUserText(text, exists), "Add text failed");
+        return outcome.Status is EditStatus.Committed or EditStatus.NoChange;
+    }
 
     /// <summary>Renames a user-defined text by id (US-049 Edit). Returns false on failure.</summary>
-    public Task<bool> UpdateUserTextAsync(ElementId textId, string text) =>
-        RunEditAsync(nameof(UpdateUserTextAsync), "Edit text failed", (project, editor) =>
-        {
-            if (!editor.TryResolve(textId, out ElementRef? handle))
-                return false;
-            handle.SetAttribute("name", text);
-            return true;
-        });
+    public async Task<bool> UpdateUserTextAsync(ElementId textId, string text) =>
+        (await RouteAsync(new UpdateUserText(textId, text), "Edit text failed"))
+            .Status is EditStatus.Committed or EditStatus.NoChange;
 
     /// <summary>Deletes a user-defined text by id (US-049 Delete). Returns false on failure.</summary>
-    public Task<bool> DeleteUserTextAsync(ElementId textId) =>
-        RunEditAsync(nameof(DeleteUserTextAsync), "Delete text failed", (project, editor) =>
-        {
-            editor.DeleteById(textId, DeleteReferencePolicy.CascadeReferences);
-            return true;
-        });
+    public async Task<bool> DeleteUserTextAsync(ElementId textId) =>
+        (await RouteAsync(new DeleteUserText(textId), "Delete text failed")).Status == EditStatus.Committed;
 
-    private static void WriteContact(ProjectEditor editor, string tag, ContactInfo c) =>
-        editor.SetMetadata(tag, ("name", c.Name), ("address", c.Address), ("city", c.City),
-            ("zipcode", c.Zip), ("country", c.Country), ("phone", c.Phone), ("mobilephone", c.Mobile), ("email", c.Email));
 
     /// <summary>Whether dragging <paramref name="draggedPin"/> onto <paramref name="dropTargetPin"/> would create a
     /// link — the drag-over hint peer of <see cref="LinkPinsAsync"/>. Applies the SDK's data-flow rule and orientation
@@ -427,28 +407,14 @@ public sealed class ProjectSession : IDisposable
     /// enforces the section↔type matrix (a pin type into <c>settings</c> is refused). Commits, marks dirty. Returns
     /// the new variable's id, or null when the target is not a block section or the type is not allowed there.
     /// </summary>
-    public Task<ElementId?> AddVariableAsync(ElementId sectionId, string resourceTag, string name)
+    public async Task<ElementId?> AddVariableAsync(ElementId sectionId, string resourceTag, string name)
     {
-        ElementId? addedId = null;
-        return RunEditAsync<ElementId?>(nameof(AddVariableAsync), "Add variable failed", (project, editor) =>
-        {
-            Activity.Current?.SetTag("variable.type", resourceTag);
-            ProjectElement? section = project.FindById(sectionId);
-            ProjectElement? block = project.FindParent(sectionId);
-            if (section is null || block?.Tag != "functionblock" || block.Id is not { } blockId)
-                return false;
-            FunctionBlockRef fb = editor.FunctionBlock(blockId);
-            ResourceRef added = section.Tag switch
-            {
-                "inputs" => fb.AddInput(resourceTag, name),
-                "outputs" => fb.AddOutput(resourceTag, name),
-                "settings" => fb.AddSetting(resourceTag, name),
-                "internalsettings" => fb.AddInternalVariable(resourceTag, name),
-                _ => throw new InvalidOperationException($"<{section.Tag}> is not a function-block variable section."),
-            };
-            addedId = added.Id;
-            return true;
-        }, _ => addedId, onFail: null);
+        Activity.Current?.SetTag("variable.type", resourceTag);
+        if (Current?.FindById(sectionId) is not { } section
+            || Current.FindParent(sectionId) is not { Tag: "functionblock", Id: { } blockId })
+            return null;
+        EditOutcome<ElementId> outcome = await RouteAsync(new AddVariable(blockId, section.Tag, resourceTag, name), "Add variable failed");
+        return outcome.Status == EditStatus.Committed ? outcome.Value : null;
     }
 
     /// <summary>
@@ -458,33 +424,15 @@ public sealed class ProjectSession : IDisposable
     /// <paramref name="sectionId"/> wired to that type (<c>typedef</c> + <c>inivalue</c> of the first state). The type
     /// is global — other blocks can reference it. Returns the new variable's id, or null on failure. No controller.
     /// </summary>
-    public Task<ElementId?> AddEnumVariableAsync(ElementId sectionId, string variableName, string typeName, IReadOnlyList<string> states)
+    public async Task<ElementId?> AddEnumVariableAsync(ElementId sectionId, string variableName, string typeName, IReadOnlyList<string> states)
     {
-        ElementId? addedId = null;
-        return RunEditAsync<ElementId?>(nameof(AddEnumVariableAsync), "Add enumerator failed", (project, editor) =>
-        {
-            Activity.Current?.SetTag("enum.type", typeName);
-            ProjectElement? section = project.FindById(sectionId);
-            ProjectElement? block = project.FindParent(sectionId);
-            if (section is null || block?.Tag != "functionblock" || block.Id is not { } blockId)
-                return false;
-            EnumDefinitionRef def = editor.AddEnumDefinition(typeName, states.ToArray());
-            FunctionBlockRef fb = editor.FunctionBlock(blockId);
-            void Configure(ElementRef r)
-            {
-                r.SetAttribute("typedef", def.Typedef);
-                if (states.Count > 0)
-                    r.SetAttribute("inivalue", def.InitialValue(states[0]));
-            }
-            ResourceRef added = section.Tag switch
-            {
-                "settings" => fb.AddSetting("resource_enum", variableName, Configure),
-                "internalsettings" => fb.AddInternalVariable("resource_enum", variableName, Configure),
-                _ => throw new InvalidOperationException($"<{section.Tag}> does not accept an enum variable."),
-            };
-            addedId = added.Id;
-            return true;
-        }, _ => addedId, onFail: null);
+        Activity.Current?.SetTag("enum.type", typeName);
+        if (Current?.FindById(sectionId) is not { } section
+            || Current.FindParent(sectionId) is not { Tag: "functionblock", Id: { } blockId })
+            return null;
+        EditOutcome<ElementId> outcome = await RouteAsync(
+            new AddEnumVariable(blockId, section.Tag, variableName, typeName, states), "Add enumerator failed");
+        return outcome.Status == EditStatus.Committed ? outcome.Value : null;
     }
 
     /// <summary>
@@ -495,34 +443,17 @@ public sealed class ProjectSession : IDisposable
     /// </summary>
     public async Task<bool> UpdateEnumStatesAsync(ElementId enumVariableId, IReadOnlyList<string> states)
     {
-        if (Current is null)
+        // The old hand-rolled CommitAsync bypass dies (W2-10): this is now a normal command through Apply, and the
+        // "nothing new to append" case falls out as EditStatus.NoChange (no bespoke early-return, no burned history).
+        if (Current?.FindById(enumVariableId) is not { Tag: "resource_enum" } variable
+            || !ElementId.TryParse(variable.GetAttribute("typedef"), out ElementId defId)
+            || Current.FindById(defId) is not { } def || def.GetAttribute("name") is not { } defName)
             return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(UpdateEnumStatesAsync)}");
-        try
-        {
-            ProjectElement? variable = Current.FindById(enumVariableId);
-            if (variable?.Tag != "resource_enum"
-                || !ElementId.TryParse(variable.GetAttribute("typedef"), out ElementId defId)
-                || Current.FindById(defId) is not { } def || def.GetAttribute("name") is not { } defName)
-                return false;
-            var existing = def.ChildrenOrEmpty().Where(c => c.Tag == "enum_value")
-                .Select(c => c.GetAttribute("name")).ToHashSet();
-            string[] added = states.Where(s => !existing.Contains(s)).ToArray();
-            if (added.Length == 0)
-                return true;   // nothing new to append
-            ProjectEditor editor = Current.Edit();
-            editor.AddEnumValues(editor.EnumDefinition(defName), added);
-            Project updated = editor.ToProject();
-            await CommitAsync(updated);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to update enumerator states for {Id}", enumVariableId.ToToken());
-            await _dialogs.ShowMessageAsync("Edit enumerator failed", ex.Message);
-            return false;
-        }
+        var existing = def.ChildrenOrEmpty().Where(c => c.Tag == "enum_value")
+            .Select(c => c.GetAttribute("name")).ToHashSet();
+        string[] added = states.Where(s => !existing.Contains(s)).ToArray();
+        EditOutcome outcome = await RouteAsync(new UpdateEnumStates(defName, added), "Edit enumerator failed");
+        return outcome.Status is EditStatus.Committed or EditStatus.NoChange;
     }
 
     /// <summary>
@@ -1075,29 +1006,8 @@ public sealed class ProjectSession : IDisposable
     /// <c>dimmer_setting_*</c> children — fade-rate up/down (soft on/off), dimming rate (manual ramp), minimum/maximum
     /// value, and the load-mode token. Commits, marks dirty. Returns false on failure.
     /// </summary>
-    public Task<bool> UpdateDimmerSettingsAsync(ElementId productId, AdvancedDimmerResult r) =>
-        RunEditAsync(nameof(UpdateDimmerSettingsAsync), "Update failed", (project, editor) =>
-        {
-            ProjectElement? product = project.FindById(productId);
-            if (product is null)
-                return false;
-            void SetSetting(string tag, string value)
-            {
-                if (product.DescendantsAndSelf().FirstOrDefault(e => e.Tag == tag) is { Id: { } sid }
-                    && editor.TryResolve(sid, out ElementRef? h))
-                {
-                    h.SetAttribute("value", value);
-                }
-            }
-            string Dec(int v) => v.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            SetSetting("dimmer_setting_fade_rate_up", Dec(r.SoftOnMs));
-            SetSetting("dimmer_setting_fade_rate_down", Dec(r.SoftOffMs));
-            SetSetting("dimmer_setting_dimming_rate", Dec(r.ManualRampS));
-            SetSetting("dimmer_setting_minimum_value", Dec(r.MinimumPercent));
-            SetSetting("dimmer_setting_maximum_value", Dec(r.MaximumPercent));
-            SetSetting("dimmer_setting_load_mode", r.LoadMode);
-            return true;
-        });
+    public async Task<bool> UpdateDimmerSettingsAsync(ElementId productId, AdvancedDimmerResult r) =>
+        (await RouteAsync(new UpdateDimmerSettings(productId, r), "Update failed")).Status is EditStatus.Committed or EditStatus.NoChange;
 
     /// <summary>Whether the project already contains a modem device root (the at-most-one-modem rule, US-013).</summary>
     public static bool HasModem(Project project) =>
@@ -1109,44 +1019,12 @@ public sealed class ProjectSession : IDisposable
     /// matching <c>sms_modem_phonenumber</c> slots; re-parents to the chosen Location when changed. Commits, marks
     /// dirty. Returns false on failure.
     /// </summary>
-    public Task<bool> UpdateModemAsync(ElementId modemId, ModemPropertiesResult r) =>
-        RunEditAsync(nameof(UpdateModemAsync), "Update failed", (project, editor) =>
-        {
-            ProjectElement? modem = project.FindById(modemId);
-            if (modem is null)
-                return false;
-            if (!editor.TryResolve(modemId, out ElementRef? handle))
-                return false;
-            handle.SetAttribute("name", r.Name);
-            handle.SetAttribute("note", r.Note);
-            handle.SetAttribute("documentation_tag", r.IdentificationCode);
-            handle.SetAttribute("cablecolour_0V", r.Cable0V);
-            handle.SetAttribute("cablecolour_24V", r.Cable24V);
-            handle.SetAttribute("cablecolour_RS485Minus", r.CableRS485Minus);
-            handle.SetAttribute("cablecolour_RS485Plus", r.CableRS485Plus);
-
-            if (modem.DescendantsAndSelf().FirstOrDefault(e => e.Tag == "sms_modem_pincode") is { Id: { } pinId }
-                && editor.TryResolve(pinId, out ElementRef? pinHandle))
-            {
-                pinHandle.SetAttribute("value", string.IsNullOrEmpty(r.PinCode) ? "0" : r.PinCode);
-            }
-            for (int i = 0; i < r.PhoneNumbers.Count; i++)
-            {
-                string slot = (i + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
-                if (modem.DescendantsAndSelf().FirstOrDefault(e => e.Tag == "sms_modem_phonenumber"
-                        && e.GetAttribute("address") == slot) is { Id: { } pnId }
-                    && editor.TryResolve(pnId, out ElementRef? pnHandle))
-                {
-                    pnHandle.SetAttribute("phonenumber", r.PhoneNumbers[i]);
-                }
-            }
-            if (ElementId.TryParse(r.LocalityId, out ElementId targetLocality)
-                && project.FindParent(modemId)?.Id is { } currentParent && currentParent != targetLocality)
-            {
-                editor.MoveSubtree(modemId, targetLocality);
-            }
-            return true;
-        });
+    public async Task<bool> UpdateModemAsync(ElementId modemId, ModemPropertiesResult r)
+    {
+        ElementId? currentLocality = Current?.FindParent(modemId)?.Id;
+        EditOutcome outcome = await RouteAsync(new UpdateModem(modemId, r, currentLocality), "Update failed");
+        return outcome.Status is EditStatus.Committed or EditStatus.NoChange;
+    }
 
     /// <summary>Applies the edited note to a product's scene container (US-024) — the only editable field of the
     /// Scenarier dialog; the container's name is fixed by the product's catalog definition.</summary>
