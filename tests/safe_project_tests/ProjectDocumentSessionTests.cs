@@ -1,0 +1,279 @@
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Ihc.Vis.Editing;
+using Ihc.Vis.Session;
+
+namespace Ihc.Vis.Tests
+{
+    /// <summary>
+    /// fablerefac W2-4: the ProjectDocumentSession apply/undo/redo pipeline — committed/no-change/refused/failed
+    /// outcomes, labelled undo/redo with save-point-aware dirty tracking, the base-version guard, the save-race fix,
+    /// and the D12 thread-affinity guard. Exercised with minimal in-test commands over a real oracle project.
+    /// </summary>
+    public class ProjectDocumentSessionTests
+    {
+        private static ProjectAppService App => new(TestSetup.Settings);
+        private static Task<Project> Load(string file) => App.Load("testdata/projects/" + file);
+
+        private static async Task<(ProjectDocumentSession Session, ElementId Locality, string OldName)> OpenWithLocality()
+        {
+            Project project = await Load("project3-KompleksWired.vis");
+            ProjectElement group = project.Groups.First();
+            var session = new ProjectDocumentSession();
+            session.Open(project);
+            return (session, group.Id!.Value, group.GetAttribute("name") ?? "");
+        }
+
+        // ---- minimal in-test commands ----
+
+        private sealed record RenameLocality(ElementId Id, string NewName) : ProjectCommand
+        {
+            internal override string Describe(Project project) =>
+                "Rename " + (project.FindById(Id)?.GetAttribute("name") ?? "?");
+            internal override EditVerdict Evaluate(EditContext context) =>
+                context.Index.FindById(Id) is not null ? EditVerdict.Allow : EditVerdict.Refuse("no such element");
+            internal override void Execute(ProjectEditor editor)
+            {
+                if (editor.TryResolve(Id, out ElementRef? handle))
+                {
+                    handle.SetAttribute("name", NewName);
+                }
+            }
+        }
+
+        private sealed record NoOpCommand : ProjectCommand
+        {
+            internal override string Describe(Project project) => "No-op";
+            internal override EditVerdict Evaluate(EditContext context) => EditVerdict.Allow;
+            internal override void Execute(ProjectEditor editor) { }
+        }
+
+        private sealed record AlwaysRefuse(string Reason) : ProjectCommand
+        {
+            internal override string Describe(Project project) => "Refuse";
+            internal override EditVerdict Evaluate(EditContext context) => EditVerdict.Refuse(Reason);
+            internal override void Execute(ProjectEditor editor) => throw new InvalidOperationException("must not run");
+        }
+
+        private sealed record ThrowingCommand(bool AsRefusal) : ProjectCommand
+        {
+            internal override string Describe(Project project) => "Throw";
+            internal override EditVerdict Evaluate(EditContext context) => EditVerdict.Allow;
+            internal override void Execute(ProjectEditor editor)
+            {
+                if (AsRefusal)
+                {
+                    throw new EditRefusedException("deep refusal");
+                }
+                throw new InvalidOperationException("engine boom");
+            }
+        }
+
+        private sealed record RenameReturningId(ElementId Id, string NewName) : ProjectCommand<ElementId>
+        {
+            internal override string Describe(Project project) => "Rename returning id";
+            internal override EditVerdict Evaluate(EditContext context) => EditVerdict.Allow;
+            internal override ElementId ExecuteCore(ProjectEditor editor)
+            {
+                if (editor.TryResolve(Id, out ElementRef? handle))
+                {
+                    handle.SetAttribute("name", NewName);
+                }
+                return Id;
+            }
+        }
+
+        // ---- tests ----
+
+        [Test]
+        public async Task Apply_Commits_BumpsVersion_AndRaisesChanged()
+        {
+            (ProjectDocumentSession session, ElementId loc, _) = await OpenWithLocality();
+            int before = session.Version;
+            ProjectChangeSet? raised = null;
+            session.Changed += (_, e) => raised = e.Changes;
+
+            EditOutcome outcome = session.Apply(new RenameLocality(loc, "Renamed Room"));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed));
+                Assert.That(session.Version, Is.EqualTo(before + 1));
+                Assert.That(session.Current!.FindById(loc)!.GetAttribute("name"), Is.EqualTo("Renamed Room"));
+                Assert.That(session.CanUndo, Is.True);
+                Assert.That(raised, Is.Not.Null, "Changed fired with a change set");
+            });
+        }
+
+        [Test]
+        public async Task Apply_NoOp_ReturnsNoChange_HistoryUntouched()
+        {
+            (ProjectDocumentSession session, _, _) = await OpenWithLocality();
+            int before = session.Version;
+
+            EditOutcome outcome = session.Apply(new NoOpCommand());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(outcome.Status, Is.EqualTo(EditStatus.NoChange));
+                Assert.That(session.Version, Is.EqualTo(before), "a no-op does not bump the version");
+                Assert.That(session.CanUndo, Is.False, "a no-op does not enter history");
+            });
+        }
+
+        [Test]
+        public async Task UndoRedo_RestoreSnapshotsAndLabels()
+        {
+            (ProjectDocumentSession session, ElementId loc, string oldName) = await OpenWithLocality();
+            session.Apply(new RenameLocality(loc, "New Name"));
+
+            Assert.That(session.UndoLabel, Is.EqualTo("Rename " + oldName), "the label used the pre-edit name (D10)");
+
+            session.Undo();
+            Assert.Multiple(() =>
+            {
+                Assert.That(session.Current!.FindById(loc)!.GetAttribute("name"), Is.EqualTo(oldName), "undo restores the old name");
+                Assert.That(session.CanRedo, Is.True);
+                Assert.That(session.RedoLabel, Is.EqualTo("Rename " + oldName));
+            });
+
+            session.Redo();
+            Assert.That(session.Current!.FindById(loc)!.GetAttribute("name"), Is.EqualTo("New Name"), "redo re-applies it");
+        }
+
+        [Test]
+        public async Task NewEdit_AfterUndo_ClearsRedo()
+        {
+            (ProjectDocumentSession session, ElementId loc, _) = await OpenWithLocality();
+            session.Apply(new RenameLocality(loc, "A"));
+            session.Undo();
+            Assert.That(session.CanRedo, Is.True);
+
+            session.Apply(new RenameLocality(loc, "B"));
+
+            Assert.That(session.CanRedo, Is.False, "a fresh edit after undo clears the redo stack");
+        }
+
+        [Test]
+        public async Task Undo_EmptyHistory_IsNoChange()
+        {
+            (ProjectDocumentSession session, _, _) = await OpenWithLocality();
+
+            EditOutcome outcome = session.Undo();
+
+            Assert.That(outcome.Status, Is.EqualTo(EditStatus.NoChange));
+        }
+
+        [Test]
+        public async Task BaseVersionMismatch_IsRefused()
+        {
+            (ProjectDocumentSession session, ElementId loc, _) = await OpenWithLocality();
+
+            EditOutcome outcome = session.Apply(new RenameLocality(loc, "X"), baseVersion: session.Version + 5);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused));
+                Assert.That(session.CanUndo, Is.False, "a refused stale commit changes nothing");
+            });
+        }
+
+        [Test]
+        public async Task NegativeVerdict_IsRefused_WithReason()
+        {
+            (ProjectDocumentSession session, _, _) = await OpenWithLocality();
+
+            EditOutcome outcome = session.Apply(new AlwaysRefuse("not allowed here"));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused));
+                Assert.That(outcome.Reason, Is.EqualTo("not allowed here"));
+            });
+        }
+
+        [Test]
+        public async Task EngineException_IsFailed_ButEditRefusedException_IsRefused()
+        {
+            (ProjectDocumentSession session, _, _) = await OpenWithLocality();
+
+            EditOutcome failed = session.Apply(new ThrowingCommand(AsRefusal: false));
+            EditOutcome refused = session.Apply(new ThrowingCommand(AsRefusal: true));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(failed.Status, Is.EqualTo(EditStatus.Failed), "a plain exception is a failure");
+                Assert.That(failed.Reason, Is.EqualTo("engine boom"), "the message is preserved");
+                Assert.That(refused.Status, Is.EqualTo(EditStatus.Refused), "EditRefusedException is a refusal");
+            });
+        }
+
+        [Test]
+        public async Task Apply_Generic_SurfacesTheProducedValue()
+        {
+            (ProjectDocumentSession session, ElementId loc, _) = await OpenWithLocality();
+
+            EditOutcome<ElementId> outcome = session.Apply(new RenameReturningId(loc, "Y"));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed));
+                Assert.That(outcome.Value, Is.EqualTo(loc));
+            });
+        }
+
+        [Test]
+        public async Task SaveRace_MarkSavedWithTheWrittenSnapshot_KeepsDirtyWhenAnEditLanded()
+        {
+            (ProjectDocumentSession session, ElementId loc, _) = await OpenWithLocality();
+            session.Apply(new RenameLocality(loc, "First"));
+            Project written = session.Current!;                 // the snapshot a save would capture
+            session.Apply(new RenameLocality(loc, "Second"));   // an edit lands "during" the save
+
+            session.MarkSaved(written);
+
+            Assert.That(session.IsDirty, Is.True, "the save wrote an older snapshot, so the project is still dirty");
+
+            session.MarkSaved(session.Current!);
+            Assert.That(session.IsDirty, Is.False, "marking the actual current snapshot saved clears dirty");
+        }
+
+        [Test]
+        public async Task Dirty_ClearsWhenUndoCrossesTheSavePoint()
+        {
+            (ProjectDocumentSession session, ElementId loc, _) = await OpenWithLocality();   // opened clean
+            Assert.That(session.IsDirty, Is.False, "precondition: a freshly opened project is clean");
+            session.Apply(new RenameLocality(loc, "Edited"));
+            Assert.That(session.IsDirty, Is.True);
+
+            session.Undo();
+
+            Assert.That(session.IsDirty, Is.False, "undoing back to the opened snapshot is clean again");
+        }
+
+        [Test]
+        public async Task ThreadAffinity_ApplyAndMarkSavedFromANonOwnerThread_Throw()
+        {
+            (ProjectDocumentSession session, ElementId loc, _) = await OpenWithLocality();
+            Project snapshot = session.Current!;
+            Exception? applyError = null;
+            Exception? markSavedError = null;
+
+            var worker = new Thread(() =>
+            {
+                try { session.Apply(new RenameLocality(loc, "X")); } catch (Exception ex) { applyError = ex; }
+                try { session.MarkSaved(snapshot); } catch (Exception ex) { markSavedError = ex; }
+            });
+            worker.Start();
+            worker.Join();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(applyError, Is.InstanceOf<InvalidOperationException>());
+                Assert.That(markSavedError, Is.InstanceOf<InvalidOperationException>());
+            });
+        }
+    }
+}
