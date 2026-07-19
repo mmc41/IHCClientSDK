@@ -1,7 +1,12 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using Ihc.Vis;
+using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
+using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
+using Ihc.Vis.Schema;
 
 namespace ihc_openvisual.ViewModels;
 
@@ -172,4 +177,258 @@ public sealed class ProjectTreeProjector(Project project)
         ElementId.TryParse(token, out ElementId id) && project.FindById(id) is { } operand
             ? project.View(operand).Name ?? string.Empty
             : string.Empty;
+
+    private const string LocalityIcon = "/Assets/locality.svg";
+
+    // Both panes share the Localities skeleton; the Installation pane nests each locality's products (with their
+    // pins), the Functions pane its function blocks (US-006/US-010).
+    public TreeNodeViewModel BuildLocalitiesRoot(bool functions)
+    {
+        var root = new TreeNodeViewModel("Localities", LocalityIcon, isExpanded: true, isLocalitiesRoot: true)
+            { NodeKind = "localitiesRoot" };
+        foreach (ProjectElement group in project.Groups)
+        {
+            string name = NameOr(group, "(unnamed)");
+            var components = new List<ProjectElement>();
+            foreach (ProjectElement child in group.ChildrenOrEmpty())
+            {
+                if ((child.Kind == ElementKind.FunctionBlock) == functions)
+                    components.Add(child);
+            }
+            // A locality that holds components opens by default so they are visible (US-006 container reveal).
+            var locality = new TreeNodeViewModel(name, LocalityIcon, isExpanded: components.Count > 0,
+                isBold: true, elementId: group.Id) { Tooltip = BuildTooltip(group), NodeKind = "locality" };
+            foreach (ProjectElement child in components)
+                locality.Children.Add(BuildComponentNode(child));
+            root.Children.Add(locality);
+        }
+        return root;
+    }
+
+    // A product's tree label carries its placement descriptor: "name (position) " — trailing space included — and
+    // the bare name when position is absent (F-003). The trailing space is the vendor's and is reproduced so a
+    // label-mode diff against IHC Visual stays exact.
+    private static string ProductLabel(string name, string? position) =>
+        string.IsNullOrEmpty(position) ? name : $"{name} ({position}) ";
+
+    // A product / function block node. A product flattens its resource (pin) children (structural containers are
+    // omitted); a function block shows its four variable sections (US-018/US-019).
+    private TreeNodeViewModel BuildComponentNode(ProjectElement component)
+    {
+        string name = NameOr(component, component.Tag);
+        if (component.Kind == ElementKind.FunctionBlock)
+            return BuildFunctionBlockNode(component, name, programmingMode: false);
+
+        bool unlinked = View(component).IsUnlinkedWireless;
+        var node = new TreeNodeViewModel(ProductLabel(name, View(component).Position),
+            NodeIcons.For(component.Tag, View(component).Icon),
+            elementId: component.Id, isUnlinked: unlinked)
+            { Tooltip = BuildTooltip(component), NodeKind = "product" };
+        foreach (ProjectElement resource in component.ChildrenOrEmpty())
+        {
+            if (resource.Tag == "scenes")
+                node.Children.Add(BuildScenesNode(resource));   // a product's scenario output (scene link target, US-024)
+            else if (!ProductRows.IsStructuralChild(resource.Tag)
+                     && !ProductRows.IsHiddenFromTree(resource.Tag, resource.GetAttribute("setting")))
+                node.Children.Add(BuildPinNode(resource, catalogDeclared: true));   // catalog-declared pins (A-24, F-001/F-002)
+        }
+        return node;
+    }
+
+    // A product's scenes container — a scenario-link target — showing its scene member rows (US-024).
+    private TreeNodeViewModel BuildScenesNode(ProjectElement scenes)
+    {
+        var node = new TreeNodeViewModel(NameOr(scenes, "Scenarier"), "/Assets/scenario.svg",
+            elementId: scenes.Id) { IsSceneTarget = true, NodeKind = "scenes" };
+        foreach (ProjectElement member in scenes.ChildrenOrEmpty())
+        {
+            if (IsSceneMember(member.Tag))
+                node.Children.Add(BuildSceneMemberNode(member));
+        }
+        return node;
+    }
+
+    private static bool IsSceneMember(string tag) => tag is "scene_relay" or "scene_dimmer" or "scene_shutter";
+
+    private static (string Value, string RampTime) SceneMemberValue(ProjectElement member)
+    {
+        if (!SceneValue.TryParse(member, out SceneValue sv))
+            return (string.Empty, string.Empty);
+        return sv.Kind switch
+        {
+            SceneValueKind.Relay => (sv.On ? "ON" : "OFF", string.Empty),
+            SceneValueKind.Dimmer => ($"{sv.LevelPercent}%", $"{sv.RampTime.TotalSeconds:0.#}s"),
+            SceneValueKind.Shutter => (sv.ShutterUp ? "up" : "down", string.Empty),
+            _ => (string.Empty, string.Empty),
+        };
+    }
+
+    private TreeNodeViewModel BuildSceneMemberNode(ProjectElement member)
+    {
+        // A shutter member renders the BARE opposite path + direction as the product's shutter pin name (F-051/A-19);
+        // relay/dimmer keep "= <value>". Value/ramp belong to the scene-container dialog, not this row.
+        string label;
+        if (member.Tag == "scene_shutter")
+        {
+            label = ShutterDirectionPinName(member) is { Length: > 0 } dir
+                ? $"{LinkOppositePath(member)} / {dir}"
+                : LinkOppositePath(member);
+        }
+        else
+        {
+            (string value, string ramp) = SceneMemberValue(member);
+            string text = ramp.Length > 0 ? $"{value} / {ramp}" : value;
+            label = $"{LinkOppositePath(member)} = {text}";
+        }
+        return new TreeNodeViewModel(label, "/Assets/link-from.svg",
+            elementId: member.Id) { IsLinkRow = true, NodeKind = "sceneMember" };
+    }
+
+    private string? ShutterDirectionPinName(ProjectElement member)
+    {
+        if (member.Id is not { } memberId)
+            return null;
+        bool up = project.View(member).Effective("shutter_position") == "up";
+        string pinTag = up ? "airlink_shutter_up" : "airlink_shutter_down";
+        ProjectElement? product = project.FindParent(memberId) is { Id: { } scenesId }
+            ? project.FindParent(scenesId)
+            : null;
+        return product?.ChildrenOrEmpty().FirstOrDefault(c => c.Tag == pinTag)?.GetAttribute("name");
+    }
+
+    // A function block node. Configuration mode shows Input/Output/Settings (hiding empty ones); programming mode
+    // adds Internal variables and keeps every section (US-018/US-026, A-17/A-18).
+    public TreeNodeViewModel BuildFunctionBlockNode(ProjectElement fb, string name, bool programmingMode)
+    {
+        bool locked = View(fb).Locked;
+        string icon = locked ? "/Assets/fb-lk.svg" : "/Assets/fb-editable.svg";
+        var node = new TreeNodeViewModel(name, icon, elementId: fb.Id, isLockedFunctionBlock: locked)
+        {
+            IsFunctionBlock = true,
+            Tooltip = BuildTooltip(fb),
+            NodeKind = "functionBlock",
+        };
+        foreach ((string container, string label) in FunctionBlockSections.All)
+        {
+            if (!programmingMode && container == "internalsettings")
+                continue;   // Internal variables is programming-mode-only (A-17)
+            ProjectElement? holder = fb.FindChild(container);
+            if (!programmingMode && (holder is null || !holder.ChildrenOrEmpty().Any()))
+                continue;   // configuration mode hides an empty/childless container (A-18)
+            var section = new TreeNodeViewModel(label, NodeIcons.For(container, null), elementId: holder?.Id)
+            {
+                SectionTag = holder is not null ? container : null,
+                NodeKind = $"section:{container}",
+            };
+            if (holder is not null)
+            {
+                foreach (ProjectElement pin in holder.ChildrenOrEmpty())
+                    section.Children.Add(BuildPinNode(pin, inFunctionBlockSettings: container == "settings"));
+            }
+            node.Children.Add(section);
+        }
+        return node;
+    }
+
+    // The node categories that map to an IHC resource id shown in the tooltip (US-048).
+    private static readonly string[] ResourceIdTags =
+        { "resource_input", "resource_output", "dataline_input", "dataline_output", "functionblock" };
+
+    // The hover tooltip (US-047/US-048): the documentation note plus, for a resource-mapped node, its IHC resource id.
+    private string? BuildTooltip(ProjectElement element)
+    {
+        var parts = new List<string>();
+        if (View(element).Note is { Length: > 0 } note)
+            parts.Add(note.Replace("\r\n", "\n"));
+        if (ResourceIdTags.Contains(element.Tag) && element.Id is { } id)
+            parts.Add($"Resource ID: {id.Value}");
+        return parts.Count > 0 ? string.Join("\n\n", parts) : null;
+    }
+
+    // A state row renders its INITIAL value into the label (F-004) — only resource_enum's inivalue IDREF to an
+    // enum_value name; scoped deliberately (inivalue is a literal elsewhere).
+    private string? StateValue(ProjectElement resource) =>
+        resource.Kind == ElementKind.EnumResource
+        && ElementId.TryParse(project.View(resource).Effective("inivalue"), out ElementId valueId)
+        && project.FindById(valueId) is { } operand
+        && project.View(operand).Name is { Length: > 0 } state
+            ? state
+            : null;
+
+    // A function block's Indstillinger rows carry a literal time value (A-21/F-062), scoped to the time-carrying kinds.
+    private static readonly HashSet<string> SettingsTimeKinds =
+        new(StringComparer.Ordinal) { "resource_timer", "resource_timertime", "resource_time" };
+
+    private static string? SettingsTimeLiteral(ProjectElement resource)
+    {
+        if (!SettingsTimeKinds.Contains(resource.Tag))
+            return null;
+        int Part(string attr) => int.TryParse(resource.GetAttribute(attr), out int v) ? v : 0;
+        return $"{Part("hour"):00}:{Part("minute"):00}:{Part("second"):00}";
+    }
+
+    private TreeNodeViewModel BuildPinNode(ProjectElement resource, bool inFunctionBlockSettings = false,
+        bool catalogDeclared = false)
+    {
+        string name = NameOr(resource, resource.Tag);
+        string? value = StateValue(resource)
+                     ?? (inFunctionBlockSettings ? SettingsTimeLiteral(resource) : null)
+                     ?? resource.GetAttribute("value");
+        bool isOutput = resource.Tag is "resource_output" or "dataline_output" or "airlink_relay";
+        bool saved = isOutput && View(resource).Backup;
+        // The label carries the pin's name and, for a state row, its value; the save flag surfaces via IsValueSaved (F-019).
+        string label = string.IsNullOrEmpty(value) ? name : $"{name} = {value}";
+        var node = new TreeNodeViewModel(label, NodeIcons.For(resource.Tag, View(resource).Icon),
+            elementId: resource.Id)
+            {
+                IsPin = true, IsOutputPin = isOutput, IsValueSaved = saved, Tooltip = BuildTooltip(resource),
+                IsCatalogPin = catalogDeclared,
+                IsLogMarkPin = ProjectEditor.IsLogRow(resource, project),
+                NodeKind = $"pin:{resource.Tag}",
+            };
+        // A linked pin reveals its follow-link / scene-link rows (US-022/025).
+        foreach (ProjectElement child in resource.ChildrenOrEmpty())
+        {
+            if (child.Tag is "link_from_resource" or "link_to_resource" or "scene_link")
+                node.Children.Add(BuildLinkNode(child));
+        }
+        return node;
+    }
+
+    // A "link from"/"link to" row under a pin, labelled with the bare full path of the opposite end; direction is
+    // carried by the icon (and NodeKind), never the label text (F-020).
+    private TreeNodeViewModel BuildLinkNode(ProjectElement linkRow)
+    {
+        bool isSourceEnd = linkRow.Tag == "link_from_resource";
+        string icon = isSourceEnd ? "/Assets/link-from.svg" : "/Assets/link-to.svg";
+        return new TreeNodeViewModel(LinkOppositePath(linkRow), icon, elementId: linkRow.Id)
+            { IsLinkRow = true, NodeKind = linkRow.Tag == "scene_link" ? "sceneLink" : isSourceEnd ? "linkFrom" : "linkTo" };
+    }
+
+    private string LinkOppositePath(ProjectElement linkRow) =>
+        LinkOppositeParts(linkRow) is { Count: > 0 } parts ? string.Join(" / ", parts) : "(unresolved)";
+
+    // The opposite end's path parts, outermost first: [locality, product-or-block, pin]. Empty when unresolvable.
+    private IReadOnlyList<string> LinkOppositeParts(ProjectElement linkRow)
+    {
+        if (!ElementId.TryParse(linkRow.GetAttribute("link"), out ElementId partnerId)
+            || project.FindParent(partnerId) is not { } oppositePin)
+        {
+            return Array.Empty<string>();
+        }
+        var parts = new List<string>();
+        ProjectElement? current = oppositePin;
+        bool leaf = true;
+        while (current is not null)
+        {
+            bool significant = leaf || current.Tag is "group" or "functionblock" || ProductClassifier.IsProduct(current.Tag);
+            if (significant && View(current).Name is { Length: > 0 } partName)
+                parts.Insert(0, ProductClassifier.IsProduct(current.Tag)
+                    ? ProductLabel(partName, View(current).Position)
+                    : partName);
+            current = current.Id is { } cid ? project.FindParent(cid) : null;
+            leaf = false;
+        }
+        return parts;
+    }
 }

@@ -1762,7 +1762,8 @@ public partial class MainWindowViewModel : ViewModelBase
         RebuildPreservingExpansion(InstallationNodes, preserveExpansion, () =>
         {
             InstallationNodes.Clear();
-            InstallationNodes.Add(BuildFunctionBlockNode(block, name, programmingMode: true));   // block → Input/Output/Settings/Internal variables
+            // block → Input/Output/Settings/Internal variables (row projection extracted to ProjectTreeProjector, W3-1)
+            InstallationNodes.Add(new ProjectTreeProjector(_session.Current!).BuildFunctionBlockNode(block, name, programmingMode: true));
         });
         RebuildPreservingExpansion(FunctionNodes, preserveExpansion, () =>
         {
@@ -1777,28 +1778,11 @@ public partial class MainWindowViewModel : ViewModelBase
     private void BuildTree(ObservableCollection<TreeNodeViewModel> target, bool functions)
     {
         target.Clear();
-        var root = new TreeNodeViewModel("Localities", LocalityIcon, isExpanded: true, isLocalitiesRoot: true)
-            { NodeKind = "localitiesRoot" };
-        if (_session.Current is { } project)
-        {
-            foreach (ProjectElement group in project.Groups)
-            {
-                string name = NameOr(group, "(unnamed)");
-                var components = new List<ProjectElement>();
-                foreach (ProjectElement child in group.ChildrenOrEmpty())
-                {
-                    if ((child.Kind == ElementKind.FunctionBlock) == functions)
-                        components.Add(child);
-                }
-                // A locality that holds components opens by default so they are visible (US-006 container reveal).
-                var locality = new TreeNodeViewModel(name, LocalityIcon, isExpanded: components.Count > 0,
-                    isBold: true, elementId: group.Id) { Tooltip = BuildTooltip(group), NodeKind = "locality" };
-                foreach (ProjectElement child in components)
-                    locality.Children.Add(BuildComponentNode(child));
-                root.Children.Add(locality);
-            }
-        }
-        target.Add(root);
+        // Row projection extracted to ProjectTreeProjector (W3-1); the VM keeps the pane fill + expansion (US-070).
+        target.Add(_session.Current is { } project
+            ? new ProjectTreeProjector(project).BuildLocalitiesRoot(functions)
+            : new TreeNodeViewModel("Localities", LocalityIcon, isExpanded: true, isLocalitiesRoot: true)
+                { NodeKind = "localitiesRoot" });
     }
 
     // A product's tree label carries its placement descriptor: "name (position) " — the trailing space included —
@@ -1818,44 +1802,6 @@ public partial class MainWindowViewModel : ViewModelBase
     private string NameOr(ProjectElement element, string fallback) =>
         View(element).Name is { Length: > 0 } name ? name : fallback;
 
-    // A product / function block node. A product flattens its resource (pin) children (structural containers are
-    // omitted); a function block shows its four variable sections (Input/Output/Settings/Internal variables), each
-    // holding its typed pins (US-018/US-019).
-    private TreeNodeViewModel BuildComponentNode(ProjectElement component)
-    {
-        string name = NameOr(component, component.Tag);
-        if (component.Kind == ElementKind.FunctionBlock)
-            return BuildFunctionBlockNode(component, name, programmingMode: false);
-
-        bool unlinked = View(component).IsUnlinkedWireless;
-        var node = new TreeNodeViewModel(ProductLabel(name, View(component).Position),
-            NodeIcons.For(component.Tag, View(component).Icon),
-            elementId: component.Id, isUnlinked: unlinked)
-            { Tooltip = BuildTooltip(component), NodeKind = "product" };
-        foreach (ProjectElement resource in component.ChildrenOrEmpty())
-        {
-            if (resource.Tag == "scenes")
-                node.Children.Add(BuildScenesNode(resource));   // a product's scenario output (scene link target, US-024)
-            else if (!ProductRows.IsStructuralChild(resource.Tag)
-                     && !ProductRows.IsHiddenFromTree(resource.Tag, resource.GetAttribute("setting")))
-                node.Children.Add(BuildPinNode(resource, catalogDeclared: true));   // a product's pins are catalog-declared (A-24); the rows IHC Visual draws (F-001/F-002)
-        }
-        return node;
-    }
-
-    // A product's scenes container — a scenario-link target — showing its scene member rows (US-024).
-    private TreeNodeViewModel BuildScenesNode(ProjectElement scenes)
-    {
-        var node = new TreeNodeViewModel(NameOr(scenes, "Scenarier"), "/Assets/scenario.svg",
-            elementId: scenes.Id) { IsSceneTarget = true, NodeKind = "scenes" };
-        foreach (ProjectElement member in scenes.ChildrenOrEmpty())
-        {
-            if (IsSceneMember(member.Tag))
-                node.Children.Add(BuildSceneMemberNode(member));
-        }
-        return node;
-    }
-
     // The value-carrying rows inside a product's scenes container — its memberships of the scenarios FBs drive.
     private static bool IsSceneMember(string tag) => tag is "scene_relay" or "scene_dimmer" or "scene_shutter";
 
@@ -1873,187 +1819,6 @@ public partial class MainWindowViewModel : ViewModelBase
             _ => (string.Empty, string.Empty),
         };
     }
-
-    private TreeNodeViewModel BuildSceneMemberNode(ProjectElement member)
-    {
-        // A shutter scene member renders the BARE opposite-end path plus the driven direction as the product's own
-        // shutter pin NAME (Op/Ned) — a 4th bare segment — never the "= up" value token (F-051/A-19). The value/ramp
-        // belong to the scene-container dialog, not this row. Only the shutter kind is measured, so relay/dimmer
-        // members keep their existing "= <value>" rendering (unmeasured — do not generalise either way).
-        string label;
-        if (member.Tag == "scene_shutter")
-        {
-            label = ShutterDirectionPinName(member) is { Length: > 0 } dir
-                ? $"{LinkOppositePath(member)} / {dir}"
-                : LinkOppositePath(member);
-        }
-        else
-        {
-            (string value, string ramp) = SceneMemberValue(member);
-            string text = ramp.Length > 0 ? $"{value} / {ramp}" : value;
-            label = $"{LinkOppositePath(member)} = {text}";
-        }
-        return new TreeNodeViewModel(label, "/Assets/link-from.svg",
-            elementId: member.Id) { IsLinkRow = true, NodeKind = "sceneMember" };
-    }
-
-    // A shutter scene member's direction, rendered as the product's own shutter pin name: airlink_shutter_up
-    // ("Op") for an up member, airlink_shutter_down ("Ned") for down. The product owns both the scenes container
-    // and these direction pins (F-001 hides them from the tree, but they still name the direction here).
-    private string? ShutterDirectionPinName(ProjectElement member)
-    {
-        if (_session.Current is not { } project || member.Id is not { } memberId)
-            return null;
-        bool up = project.View(member).Effective("shutter_position") == "up";
-        string pinTag = up ? "airlink_shutter_up" : "airlink_shutter_down";
-        ProjectElement? product = project.FindParent(memberId) is { Id: { } scenesId }
-            ? project.FindParent(scenesId)
-            : null;
-        return product?.ChildrenOrEmpty().FirstOrDefault(c => c.Tag == pinTag)?.GetAttribute("name");
-    }
-
-
-    // A function block node. Which variable sections render depends on the mode (US-018/US-026):
-    //  - Configuration mode shows Input/Output/Settings only, and hides any of those whose container is empty
-    //    (IHC Visual omits an empty variable container — A-17/A-18, F-069/F-086).
-    //  - Programming mode is the authoring view: it adds the Internal variables section and keeps every section
-    //    (even an empty one) so a variable can still be added to it.
-    private TreeNodeViewModel BuildFunctionBlockNode(ProjectElement fb, string name, bool programmingMode)
-    {
-        // A locked library block shows the library icon; an unlocked/empty block the editable icon (US-018/US-020).
-        bool locked = View(fb).Locked;
-        string icon = locked ? "/Assets/fb-lk.svg" : "/Assets/fb-editable.svg";
-        var node = new TreeNodeViewModel(name, icon, elementId: fb.Id, isLockedFunctionBlock: locked)
-        {
-            IsFunctionBlock = true,
-            Tooltip = BuildTooltip(fb),
-            NodeKind = "functionBlock",
-        };
-        foreach ((string container, string label) in FunctionBlockSections.All)
-        {
-            if (!programmingMode && container == "internalsettings")
-                continue;   // Internal variables is programming-mode-only (A-17)
-            ProjectElement? holder = fb.FindChild(container);
-            if (!programmingMode && (holder is null || !holder.ChildrenOrEmpty().Any()))
-                continue;   // configuration mode hides an empty/childless container (A-18)
-            var section = new TreeNodeViewModel(label, NodeIcons.For(container, null), elementId: holder?.Id)
-            {
-                SectionTag = holder is not null ? container : null,
-                // The section's own .vis container tag (inputs/outputs/settings/internalsettings) — these
-                // four rows are siblings that differ only by label, so the kind must keep them apart.
-                NodeKind = $"section:{container}",
-            };
-            if (holder is not null)
-            {
-                foreach (ProjectElement pin in holder.ChildrenOrEmpty())
-                    section.Children.Add(BuildPinNode(pin, inFunctionBlockSettings: container == "settings"));
-            }
-            node.Children.Add(section);
-        }
-        return node;
-    }
-
-    // The node categories that map to an IHC resource id shown in the tooltip (US-048): inputs, outputs, blocks.
-    private static readonly string[] ResourceIdTags =
-        { "resource_input", "resource_output", "dataline_input", "dataline_output", "functionblock" };
-
-    // The hover tooltip (US-047/US-048): the element's documentation note (line breaks preserved) plus, for a
-    // resource-mapped node, its IHC resource id. Null when the element has neither, so no tooltip appears.
-    private string? BuildTooltip(ProjectElement element)
-    {
-        var parts = new List<string>();
-        if (View(element).Note is { Length: > 0 } note)
-            parts.Add(note.Replace("\r\n", "\n"));
-        if (ResourceIdTags.Contains(element.Tag) && element.Id is { } id)
-            parts.Add($"Resource ID: {id.Value}");
-        return parts.Count > 0 ? string.Join("\n\n", parts) : null;
-    }
-
-    // A state row renders its value into the label — "Tilstand = Ukendt", "Log Indgang = Off" (F-004). The only row
-    // kind that does so is resource_enum: its `inivalue` is an IDREF to an enum_value whose `name` is the label the
-    // vendor shows. Both of the vendor's examples are this one kind — a product's "Log …" rows are resource_enum
-    // over the "Logning" enum, not a separate log-row type.
-    // This is the INITIAL value (the enum's index-0 member), not live controller state — OpenVisual has no
-    // controller in the picture here. Scoped to resource_enum deliberately: `inivalue` is also used as a LITERAL
-    // elsewhere (resource_flag "on"/"off", the hidden calibration rows' "0.00"), and the vendor was never observed
-    // rendering a value on those, so they stay bare rather than being generalised into.
-    private string? StateValue(ProjectElement resource) =>
-        resource.Kind == ElementKind.EnumResource
-        && _session.Current is { } project
-        && ElementId.TryParse(project.View(resource).Effective("inivalue"), out ElementId valueId)
-        && project.FindById(valueId) is { } operand
-        && project.View(operand).Name is { Length: > 0 } state
-            ? state
-            : null;
-
-    // A function block's Indstillinger (settings) rows carry a literal value the vendor renders in the label —
-    // "Timertid = 00:10:00", "Sluk Tidspunkt = 00:00:00" (A-21/F-062). Scoped to the vendor-measured settings
-    // context (see BuildPinNode's caller) and the time-carrying value kinds — the peers ResourceMaterialization
-    // lists with hour/minute/second. resource_flag, resource_date and the unmeasured calibration rows stay bare,
-    // and product rows (where only resource_enum takes a value — A-3) are untouched.
-    private static readonly HashSet<string> SettingsTimeKinds =
-        new(StringComparer.Ordinal) { "resource_timer", "resource_timertime", "resource_time" };
-
-    private static string? SettingsTimeLiteral(ProjectElement resource)
-    {
-        if (!SettingsTimeKinds.Contains(resource.Tag))
-            return null;
-        int Part(string attr) => int.TryParse(resource.GetAttribute(attr), out int v) ? v : 0;
-        return $"{Part("hour"):00}:{Part("minute"):00}:{Part("second"):00}";
-    }
-
-    private TreeNodeViewModel BuildPinNode(ProjectElement resource, bool inFunctionBlockSettings = false,
-        bool catalogDeclared = false)
-    {
-        string name = NameOr(resource, resource.Tag);
-        string? value = StateValue(resource)
-                     ?? (inFunctionBlockSettings ? SettingsTimeLiteral(resource) : null)
-                     ?? resource.GetAttribute("value");
-        bool isOutput = resource.Tag is "resource_output" or "dataline_output" or "airlink_relay";
-        bool saved = isOutput && View(resource).Backup;
-        // The label carries the pin's name and, for a state row, its value — nothing else. The save-current-value
-        // flag (US-033) is deliberately NOT decorated in: IHC Visual renders the bare name (F-019), and the flag
-        // still surfaces as the checked state of the "Save current value" menu item bound to IsValueSaved.
-        string label = string.IsNullOrEmpty(value) ? name : $"{name} = {value}";   // fixed sub-resource default (US-010)
-        var node = new TreeNodeViewModel(label, NodeIcons.For(resource.Tag, View(resource).Icon),
-            elementId: resource.Id)
-            {
-                IsPin = true, IsOutputPin = isOutput, IsValueSaved = saved, Tooltip = BuildTooltip(resource),
-                IsCatalogPin = catalogDeclared,
-                IsLogMarkPin = _session.Current is { } logProject && ProjectEditor.IsLogRow(resource, logProject),
-                // The pin's own .vis tag IS its kind, and it is what the label cannot say: these trees are
-                // full of same-named siblings ("Udgang", "Spot", "Tryk (øverst venstre)") under nearly
-                // every product.
-                NodeKind = $"pin:{resource.Tag}",
-            };
-        // A linked pin reveals its follow-link / scene-link rows, each naming the opposite end's full path (US-022/025).
-        foreach (ProjectElement child in resource.ChildrenOrEmpty())
-        {
-            if (child.Tag is "link_from_resource" or "link_to_resource" or "scene_link")
-                node.Children.Add(BuildLinkNode(child));
-        }
-        return node;
-    }
-
-    // A "link from" or "link to" row under a pin, labelled with the bare full path of the opposite end. A
-    // scene_link is the FB scene output's outgoing reference to the product's scene member.
-    // The direction is carried by the icon alone — no arrow in the label text (F-020): an arrow there would
-    // duplicate the glyph already on the same row and eat width in the pane that matters most.
-    private TreeNodeViewModel BuildLinkNode(ProjectElement linkRow)
-    {
-        bool isSourceEnd = linkRow.Tag == "link_from_resource";   // a from-half means THIS pin drives the other end
-        string icon = isSourceEnd ? "/Assets/link-from.svg" : "/Assets/link-to.svg";
-        // The link's DIRECTION, which the label deliberately does not carry: F-019 removed the →/← markers
-        // because the icon already says it, and that left every tree-based check blind to direction — which
-        // is how F-066 (every link written with its halves swapped) survived a tree diff and three visual
-        // tests. The direction is back where a machine can read it, without putting an arrow back on screen.
-        return new TreeNodeViewModel(LinkOppositePath(linkRow), icon, elementId: linkRow.Id)
-            { IsLinkRow = true, NodeKind = linkRow.Tag == "scene_link" ? "sceneLink" : isSourceEnd ? "linkFrom" : "linkTo" };
-    }
-
-    // The full path (locality / product-or-block / pin) of the pin at the opposite end of a link row.
-    private string LinkOppositePath(ProjectElement linkRow) =>
-        LinkOppositeParts(linkRow) is { Count: > 0 } parts ? string.Join(" / ", parts) : "(unresolved)";
 
     // The opposite end's path as its separate parts, outermost first: [locality, product-or-block, pin]. The link
     // row's label joins them; the scene-container dialog shows them as three columns. Empty when unresolvable.
