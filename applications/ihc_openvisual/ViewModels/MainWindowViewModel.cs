@@ -1778,7 +1778,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Dictionary<ElementId, bool>? expansion = preserve ? SnapshotExpansion(pane) : null;
         TreeNodeViewModel root = _session.Current is { } project
             ? reconciler.Rebuild(project)
-            : new TreeNodeViewModel("Localities", LocalityIcon, isExpanded: true, isLocalitiesRoot: true) { NodeKind = "localitiesRoot" };
+            : new TreeNodeViewModel("Localities", LocalityIcon, isExpanded: true) { Kind = TreeNodeKind.LocalitiesRoot };
         pane.Clear();
         pane.Add(root);
         if (expansion is not null)

@@ -31,30 +31,30 @@ public sealed class ProjectTreeProjector(Project project)
     {
         bool locked = View(block).Locked;
         var blockNode = new TreeNodeViewModel(name, locked ? "/Assets/fb-lk.svg" : "/Assets/fb-editable.svg",
-            isExpanded: true, elementId: block.Id) { NodeKind = "functionBlock" };
+            isExpanded: true, elementId: block.Id) { Kind = TreeNodeKind.ProgramBlockRoot };
         ProjectElement? programs = block.FindChild("programs");
         var programsNode = new TreeNodeViewModel("Programs", NodeIcons.For("programs", null),
-            isExpanded: true, elementId: programs?.Id) { NodeKind = "programs" };
+            isExpanded: true, elementId: programs?.Id) { Kind = TreeNodeKind.Programs };
         if (programs is not null)
         {
             foreach (ProjectElement program in programs.ChildrenOrEmpty().Where(p => p.Tag is "program_simple" or "program_sub"))
             {
                 var programNode = new TreeNodeViewModel(NameOr(program, "Program"),
                     NodeIcons.For("program_simple", null), isExpanded: true, elementId: program.Id)
-                    { NodeKind = "program" };
+                    { Kind = TreeNodeKind.Program };
                 if (program.FindChild("events") is { } events)
                 {
                     var eventsNode = new TreeNodeViewModel("Events", NodeIcons.For("events", null),
-                        isExpanded: true, elementId: events.Id) { IsEventsContainer = true, NodeKind = "events" };
+                        isExpanded: true, elementId: events.Id) { Kind = TreeNodeKind.Events };
                     foreach (ProjectElement ev in events.ChildrenOrEmpty().Where(e => e.Tag is "event" or "event_power"))
                         eventsNode.Children.Add(new TreeNodeViewModel(EventCommandLabel(ev),
-                            NodeIcons.For(ev.Tag, null), elementId: ev.Id) { NodeKind = "event" });
+                            NodeIcons.For(ev.Tag, null), elementId: ev.Id) { Kind = TreeNodeKind.Event });
                     programNode.Children.Add(eventsNode);
                 }
                 if (program.FindChild("actions") is { } actions)
                 {
                     var commandsNode = new TreeNodeViewModel("Commands", NodeIcons.For("actions", null),
-                        isExpanded: true, elementId: actions.Id) { IsCommandsContainer = true, NodeKind = "commands" };
+                        isExpanded: true, elementId: actions.Id) { Kind = TreeNodeKind.Commands };
                     RenderActionsInto(commandsNode, actions);
                     programNode.Children.Add(commandsNode);
                 }
@@ -75,7 +75,7 @@ public sealed class ProjectTreeProjector(Project project)
             {
                 case "action":
                     commandsNode.Children.Add(new TreeNodeViewModel(EventCommandLabel(child),
-                        NodeIcons.For("action", null), elementId: child.Id) { NodeKind = "command" });
+                        NodeIcons.For("action", null), elementId: child.Id) { Kind = TreeNodeKind.Command });
                     break;
                 case "program_sub":
                     commandsNode.Children.Add(BuildSubProgramNode(child));
@@ -98,7 +98,7 @@ public sealed class ProjectTreeProjector(Project project)
         string stored = View(sub).Name ?? string.Empty;
         string label = stored.Length == 0 || stored == "Under program" ? "Sub-program" : stored;
         var node = new TreeNodeViewModel(label, NodeIcons.For("program_sub", null),
-            isExpanded: true, elementId: sub.Id) { NodeKind = "subProgram" };
+            isExpanded: true, elementId: sub.Id) { Kind = TreeNodeKind.SubProgram };
         if (sub.FindChild("conditions") is { } conditions)
             node.Children.Add(BuildConditionsNode(conditions));
         foreach (ProjectElement branch in sub.ChildrenOrEmpty().Where(a => a.Tag == "actions"))
@@ -107,7 +107,7 @@ public sealed class ProjectTreeProjector(Project project)
             var branchNode = new TreeNodeViewModel(
                 isTrue ? "Commands when conditions true" : "Commands when conditions false",
                 NodeIcons.For("actions", null), isExpanded: true, elementId: branch.Id)
-                { IsCommandsContainer = true, NodeKind = isTrue ? "commandsWhenTrue" : "commandsWhenFalse" };
+                { Kind = isTrue ? TreeNodeKind.CommandsWhenTrue : TreeNodeKind.CommandsWhenFalse };
             RenderActionsInto(branchNode, branch);
             node.Children.Add(branchNode);
         }
@@ -122,12 +122,12 @@ public sealed class ProjectTreeProjector(Project project)
         string label = $"{(nested ? "Logic group" : "Conditions")} ({(or ? ">=1" : "&")})";
         var node = new TreeNodeViewModel(label, NodeIcons.For(or ? "conditions-or" : "conditions", null),
             isExpanded: true, elementId: conditions.Id)
-            { IsConditionsContainer = true, IsOrGroup = or, NodeKind = nested ? "logicGroup" : "conditions" };
+            { IsOrGroup = or, Kind = nested ? TreeNodeKind.LogicGroup : TreeNodeKind.Conditions };
         foreach (ProjectElement child in conditions.ChildrenOrEmpty())
         {
             if (child.Tag == "condition")
                 node.Children.Add(new TreeNodeViewModel(EventCommandLabel(child),
-                    NodeIcons.For("condition", null), elementId: child.Id) { NodeKind = "condition" });
+                    NodeIcons.For("condition", null), elementId: child.Id) { Kind = TreeNodeKind.Condition });
             else if (child.Tag == "conditions")
                 node.Children.Add(BuildConditionsNode(child, nested: true));
         }
@@ -140,7 +140,7 @@ public sealed class ProjectTreeProjector(Project project)
     {
         string switchName = ResolveOperandName(kase.GetAttribute("link"));
         var node = new TreeNodeViewModel($"Case ({switchName})", NodeIcons.For("program_case", null),
-            isExpanded: true, elementId: kase.Id) { IsCaseNode = true, NodeKind = "case" };
+            isExpanded: true, elementId: kase.Id) { Kind = TreeNodeKind.Case };
         foreach (ProjectElement child in kase.ChildrenOrEmpty())
         {
             if (child.Tag == "case_action")
@@ -150,14 +150,14 @@ public sealed class ProjectTreeProjector(Project project)
                 // Commands container — it needs a kind of its own or the two merge in the census.
                 var valueNode = new TreeNodeViewModel(NameOr(child, "value"),
                     NodeIcons.For("case_action", null), isExpanded: true, elementId: child.Id)
-                    { IsCommandsContainer = true, NodeKind = "caseValue" };
+                    { Kind = TreeNodeKind.CaseValue };
                 RenderActionsInto(valueNode, child);   // the embedded criterion operand is skipped (not a command)
                 node.Children.Add(valueNode);
             }
             else if (child.Tag == "actions")
             {
                 var elseNode = new TreeNodeViewModel("Else", NodeIcons.For("actions", null),
-                    isExpanded: true, elementId: child.Id) { IsCommandsContainer = true, NodeKind = "caseElse" };
+                    isExpanded: true, elementId: child.Id) { Kind = TreeNodeKind.CaseElse };
                 RenderActionsInto(elseNode, child);
                 node.Children.Add(elseNode);
             }
@@ -184,8 +184,8 @@ public sealed class ProjectTreeProjector(Project project)
     // pins), the Functions pane its function blocks (US-006/US-010).
     public TreeNodeViewModel BuildLocalitiesRoot(bool functions)
     {
-        var root = new TreeNodeViewModel("Localities", LocalityIcon, isExpanded: true, isLocalitiesRoot: true)
-            { NodeKind = "localitiesRoot" };
+        var root = new TreeNodeViewModel("Localities", LocalityIcon, isExpanded: true)
+            { Kind = TreeNodeKind.LocalitiesRoot };
         foreach (ProjectElement group in project.Groups)
         {
             string name = NameOr(group, "(unnamed)");
@@ -197,7 +197,7 @@ public sealed class ProjectTreeProjector(Project project)
             }
             // A locality that holds components opens by default so they are visible (US-006 container reveal).
             var locality = new TreeNodeViewModel(name, LocalityIcon, isExpanded: components.Count > 0,
-                isBold: true, elementId: group.Id) { Tooltip = BuildTooltip(group), NodeKind = "locality" };
+                isBold: true, elementId: group.Id) { Tooltip = BuildTooltip(group), Kind = TreeNodeKind.Locality };
             foreach (ProjectElement child in components)
                 locality.Children.Add(BuildComponentNode(child));
             root.Children.Add(locality);
@@ -223,7 +223,7 @@ public sealed class ProjectTreeProjector(Project project)
         var node = new TreeNodeViewModel(ProductLabel(name, View(component).Position),
             NodeIcons.For(component.Tag, View(component).Icon),
             elementId: component.Id, isUnlinked: unlinked)
-            { Tooltip = BuildTooltip(component), NodeKind = "product" };
+            { Tooltip = BuildTooltip(component), Kind = TreeNodeKind.Product };
         foreach (ProjectElement resource in component.ChildrenOrEmpty())
         {
             if (resource.Tag == "scenes")
@@ -239,7 +239,7 @@ public sealed class ProjectTreeProjector(Project project)
     private TreeNodeViewModel BuildScenesNode(ProjectElement scenes)
     {
         var node = new TreeNodeViewModel(NameOr(scenes, "Scenarier"), "/Assets/scenario.svg",
-            elementId: scenes.Id) { IsSceneTarget = true, NodeKind = "scenes" };
+            elementId: scenes.Id) { Kind = TreeNodeKind.Scenes };
         foreach (ProjectElement member in scenes.ChildrenOrEmpty())
         {
             if (IsSceneMember(member.Tag))
@@ -281,7 +281,7 @@ public sealed class ProjectTreeProjector(Project project)
             label = $"{LinkOppositePath(member)} = {text}";
         }
         return new TreeNodeViewModel(label, "/Assets/link-from.svg",
-            elementId: member.Id) { IsLinkRow = true, NodeKind = "sceneMember" };
+            elementId: member.Id) { Kind = TreeNodeKind.SceneMember };
     }
 
     private string? ShutterDirectionPinName(ProjectElement member)
@@ -304,9 +304,8 @@ public sealed class ProjectTreeProjector(Project project)
         string icon = locked ? "/Assets/fb-lk.svg" : "/Assets/fb-editable.svg";
         var node = new TreeNodeViewModel(name, icon, elementId: fb.Id, isLockedFunctionBlock: locked)
         {
-            IsFunctionBlock = true,
             Tooltip = BuildTooltip(fb),
-            NodeKind = "functionBlock",
+            Kind = TreeNodeKind.FunctionBlock,
         };
         foreach ((string container, string label) in FunctionBlockSections.All)
         {
@@ -317,8 +316,8 @@ public sealed class ProjectTreeProjector(Project project)
                 continue;   // configuration mode hides an empty/childless container (A-18)
             var section = new TreeNodeViewModel(label, NodeIcons.For(container, null), elementId: holder?.Id)
             {
-                SectionTag = holder is not null ? container : null,
-                NodeKind = $"section:{container}",
+                KindDetail = container,
+                Kind = TreeNodeKind.Section,
             };
             if (holder is not null)
             {
@@ -381,10 +380,10 @@ public sealed class ProjectTreeProjector(Project project)
         var node = new TreeNodeViewModel(label, NodeIcons.For(resource.Tag, View(resource).Icon),
             elementId: resource.Id)
             {
-                IsPin = true, IsOutputPin = isOutput, IsValueSaved = saved, Tooltip = BuildTooltip(resource),
+                IsOutputPin = isOutput, IsValueSaved = saved, Tooltip = BuildTooltip(resource),
                 IsCatalogPin = catalogDeclared,
                 IsLogMarkPin = ProjectEditor.IsLogRow(resource, project),
-                NodeKind = $"pin:{resource.Tag}",
+                KindDetail = resource.Tag, Kind = TreeNodeKind.Pin,
             };
         // A linked pin reveals its follow-link / scene-link rows (US-022/025).
         foreach (ProjectElement child in resource.ChildrenOrEmpty())
@@ -402,7 +401,7 @@ public sealed class ProjectTreeProjector(Project project)
         bool isSourceEnd = linkRow.Tag == "link_from_resource";
         string icon = isSourceEnd ? "/Assets/link-from.svg" : "/Assets/link-to.svg";
         return new TreeNodeViewModel(LinkOppositePath(linkRow), icon, elementId: linkRow.Id)
-            { IsLinkRow = true, NodeKind = linkRow.Tag == "scene_link" ? "sceneLink" : isSourceEnd ? "linkFrom" : "linkTo" };
+            { Kind = linkRow.Tag == "scene_link" ? TreeNodeKind.SceneLink : isSourceEnd ? TreeNodeKind.LinkFrom : TreeNodeKind.LinkTo };
     }
 
     private string LinkOppositePath(ProjectElement linkRow) =>
