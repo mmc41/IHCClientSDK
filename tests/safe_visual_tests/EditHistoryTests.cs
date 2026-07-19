@@ -129,4 +129,37 @@ public class EditHistoryTests
 
         Assert.That(harness.Session.CanUndo, Is.False, "a new project has no edit history");
     }
+
+    // E14 ⭐ standing regression (US-020 + US-052): unlocking a library function block and then undoing must
+    // re-lock the block and leave the session alive. IHC Visual crashes on this exact gesture; OpenVisual must
+    // never regress here. (Wave 2 moves this undo semantics into the SDK — this pins the behavior that must survive.)
+    [Test]
+    public async Task Unlock_ThenUndo_ReLocksBlock_AndSessionStaysAlive()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var fbId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
+        Assert.That(IsLocked(harness, fbId), Is.True, "precondition: a library function block starts locked");
+
+        await harness.Session.UnlockFunctionBlockAsync(fbId);
+        Assert.That(IsLocked(harness, fbId), Is.False, "precondition: unlock cleared the lock");
+
+        var undone = await harness.Session.UndoAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(undone, Is.True, "the unlock was a reversible history entry");
+            Assert.That(IsLocked(harness, fbId), Is.True, "one undo re-locks the block");
+        });
+
+        // The session is still alive — it keeps accepting edits after the undo (this is where the vendor crashes).
+        await harness.Session.AddLocalityAsync();
+        Assert.That(harness.Session.CanUndo, Is.True, "the session still commits edits after the unlock-undo");
+    }
+
+    private static bool IsLocked(ShellHarness harness, ElementId id) =>
+        harness.Session.Current!.FindById(id)!.GetAttribute("locked") == "yes";
 }

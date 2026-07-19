@@ -109,4 +109,32 @@ public class SavePointTests
 
         Assert.That(harness.Session.IsDirty, Is.False, "back to the state the project started in");
     }
+
+    /// <summary>
+    /// The full save-point round trip (US-052 + US-004) with the save point set *mid-history*: undoing below the
+    /// save point makes the project dirty again, and redoing back up *to* it restores the clean state. Complements
+    /// <see cref="Undo_BackToSavedState_IsNotDirty"/> (undo onto the save point) and
+    /// <see cref="Save_MovesTheSavePoint_SoUndoingAwayFromItIsDirty"/> (undo below it) by pinning the missing
+    /// redo-back-to-clean transition against a save point that is *not* the project's initial snapshot.
+    /// </summary>
+    [Test]
+    public async Task UndoPastSavePoint_IsDirty_ThenRedoBackToSavePoint_IsClean()
+    {
+        using var harness = ShellHarness.Create();
+        await harness.Session.StartAsync();
+        await harness.Session.AddLocalityAsync();            // edit A → S1
+        await SaveToTempAsync(harness, "savepoint.vis");     // save point = S1 (mid-history, not the initial state)
+        await harness.Session.AddLocalityAsync();            // edit B → S2
+        Assert.That(harness.Session.IsDirty, Is.True, "precondition: edit B is not on disk");
+
+        await harness.Session.UndoAsync();                   // → S1, the save point
+        Assert.That(harness.Session.IsDirty, Is.False, "undo onto the save point is clean");
+
+        await harness.Session.UndoAsync();                   // → S0, past/below the save point
+        Assert.That(harness.Session.IsDirty, Is.True, "undoing past the save point is dirty again");
+
+        await harness.Session.RedoAsync();                   // → S1, back onto the save point
+
+        Assert.That(harness.Session.IsDirty, Is.False, "redoing back to the save point restores the clean state");
+    }
 }
