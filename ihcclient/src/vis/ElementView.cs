@@ -1,5 +1,6 @@
 #nullable enable
 using Ihc.Vis.Model;
+using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Schema;
 
@@ -28,6 +29,49 @@ namespace Ihc.Vis
             ?? (Project.SchemaView.TryGet(Element.Tag)?.FindAttr(attr) is { Kind: AttrKind.Defaulted } declared
                 ? declared.Default
                 : null);
+
+        // API-A universal read properties — each the effective value of one attribute (the attribute-name string
+        // literals live only here, SDK-side). The write-side Ref handles model these as strings, so the read side
+        // mirrors that shape; the (yes | no) flags decode to bool.
+
+        /// <summary>The element's effective <c>name</c> label (US-006), or its DTD default.</summary>
+        public string? Name => Effective("name");
+
+        /// <summary>The element's effective documentation <c>note</c> (US-047), or its DTD default.</summary>
+        public string? Note => Effective("note");
+
+        /// <summary>The element's effective <c>position</c> token, or its DTD default.</summary>
+        public string? Position => Effective("position");
+
+        /// <summary>The element's effective <c>icon</c> token, or its DTD default.</summary>
+        public string? Icon => Effective("icon");
+
+        /// <summary>The element's effective <c>value</c> (e.g. a dimmer setting or enum value), or its DTD default.</summary>
+        public string? Value => Effective("value");
+
+        /// <summary>The element's effective initial value (<c>inivalue</c>, e.g. an output's on/off power-up state),
+        /// or its DTD default.</summary>
+        public string? InitialValue => Effective("inivalue");
+
+        /// <summary>A wireless product's effective <c>serialnumber</c> (blank/null until commissioned, US-014).</summary>
+        public string? SerialNumber => Effective("serialnumber");
+
+        /// <summary>Whether the element is locked (US-020) — the effective <c>locked</c> flag is <c>"yes"</c>.</summary>
+        public bool Locked => Flag("locked");
+
+        /// <summary>Whether an output's value is persisted across a power loss (US-033) — effective <c>backup="yes"</c>.</summary>
+        public bool Backup => Flag("backup");
+
+        /// <summary>Whether a product is included in the end-user report — effective <c>enduser_report="yes"</c>.</summary>
+        public bool EnduserReport => Flag("enduser_report");
+
+        /// <summary>Whether this is a wireless product not yet linked to the controller (US-014). Reuses
+        /// <see cref="ProductClassifier"/> over the element tag and effective <see cref="SerialNumber"/>.</summary>
+        public bool IsUnlinkedWireless => ProductClassifier.IsUnlinkedWireless(Element.Tag, SerialNumber);
+
+        /// <summary>Decodes an effective <c>(yes | no)</c> flag to a bool — absent reads as the DTD default
+        /// (e.g. <c>"no"</c> → <c>false</c>).</summary>
+        private bool Flag(string attr) => Effective(attr) == "yes";
     }
 
     /// <summary>Project-scoped read-surface entry points (API-C/D, fablerefac Wave 1).</summary>
