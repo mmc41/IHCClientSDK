@@ -77,8 +77,7 @@ public sealed record EnumDefinitionResult(string TypeName, IReadOnlyList<string>
 public sealed record SceneValueInput(
     string Title, bool IsDimmer, bool On, int LevelPercent, int RampMinutes, int RampSeconds);
 
-/// <summary>The edited scene value (US-024/US-058).</summary>
-public sealed record SceneValueResult(bool On, int LevelPercent, int RampMinutes, int RampSeconds);
+// SceneValueResult moved to the SDK (Ihc.Vis.Session, W2-7) — an edit payload for the scene commands.
 
 /// <summary>The current values shown by the terminal-addressing dialog (US-012). <c>InUseTerminals</c> are the
 /// already-used <c>line.terminal</c> addresses in the same direction.</summary>

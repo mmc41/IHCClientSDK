@@ -348,33 +348,34 @@ public sealed class ProjectSession : IDisposable
     /// (<see cref="ProjectEditor.CanLink"/> / <see cref="Ihc.Vis.Schema.LinkRoles"/>): the dragged pin is the source, the
     /// target the sink; a self-link (a block output onto its own input) is allowed, a crossed or same-family pair
     /// refused. Non-mutating; no controller.</summary>
-    public bool CanLinkPins(ElementId draggedPin, ElementId dropTargetPin) =>
-        Current is { } project && project.Edit().CanLink(draggedPin, dropTargetPin);
+    public bool CanLinkPins(ElementId draggedPin, ElementId dropTargetPin)
+    {
+        if (Current is not { } current)
+            return false;
+        var document = new ProjectDocumentSession();
+        document.Open(current, startClean: true);
+        return document.CanApply(new LinkPins(draggedPin, dropTargetPin)).Ok;
+    }
 
     // The function block that owns a variable pin (block → section → pin), or null if the pin is not an FB variable
     // (e.g. a product pin). Used to detect and constrain function-block-to-function-block links (US-033b).
-    public Task<bool> LinkPinsAsync(ElementId draggedPinId, ElementId dropTargetPinId) =>
-        RunEditAsync(nameof(LinkPinsAsync), "Link failed", async (project, editor) =>
+    public async Task<bool> LinkPinsAsync(ElementId draggedPinId, ElementId dropTargetPinId)
+    {
+        // The dragged pin is the SOURCE and the drop target the SINK. A same-pin drop is a silent no-op; an
+        // incompatible pair is refused by LinkPins.Evaluate (the vendor data-flow rule), and we surface that here.
+        if (draggedPinId == dropTargetPinId)
+            return false;
+        EditOutcome outcome = await RouteAsync(new LinkPins(draggedPinId, dropTargetPinId), "Link failed");
+        if (outcome.Status == EditStatus.Refused)
         {
-            if (draggedPinId == dropTargetPinId)
-                return false;
-            // The dragged pin is the link's SOURCE and the drop target its SINK — the orientation IHC Visual
-            // writes: in every vendor-authored file the driving pin owns the link_from half and the driven pin
-            // the link_to half (never the reverse). ProjectEditor.CanLink applies the vendor's data-flow rule to
-            // every pin pair, so a crossed wire is refused here rather than written and shipped to a controller.
-            if (!editor.CanLink(draggedPinId, dropTargetPinId))
-            {
-                await _dialogs.ShowMessageAsync("Incompatible link",
-                    "Link a signal source to a signal target: a product input or a function-block output can drive "
-                    + "a function-block input or a product output. Two product pins must be joined through a "
-                    + "function block.");
-                return false;
-            }
-            // A block's output feeding its OWN input is a legitimate feedback pattern the vendor allows (A-16amd/
-            // F-080) — the data-flow rule (CanLink) is the only gate; there is no same-block refusal.
-            editor.Link(draggedPinId, dropTargetPinId);
-            return true;
-        });
+            await _dialogs.ShowMessageAsync("Incompatible link",
+                "Link a signal source to a signal target: a product input or a function-block output can drive "
+                + "a function-block input or a product output. Two product pins must be joined through a "
+                + "function block.");
+            return false;
+        }
+        return outcome.Status == EditStatus.Committed;
+    }
 
     /// <summary>
     /// Edits an existing scenario link's stored value (US-058): rebuilds the scene member's value from the dialog
@@ -382,20 +383,11 @@ public sealed class ProjectSession : IDisposable
     /// row's tag, so id/name/link/note are preserved). Commits, marks dirty. Returns false when the target is not a
     /// relay/dimmer scene member or the edit fails.
     /// </summary>
-    public Task<bool> UpdateSceneValueAsync(ElementId memberId, SceneValueResult r) =>
-        RunEditAsync(nameof(UpdateSceneValueAsync), "Scene value update failed", (project, editor) =>
-        {
-            SceneValue? value = project.FindById(memberId)?.Tag switch
-            {
-                "scene_dimmer" => SceneValue.Dimmer(r.LevelPercent, TimeSpan.FromSeconds((r.RampMinutes * 60) + r.RampSeconds)),
-                "scene_relay" => SceneValue.Relay(r.On),
-                _ => null,
-            };
-            if (value is null)
-                return false;
-            editor.SetSceneValue(memberId, value);
-            return true;
-        });
+    public async Task<bool> UpdateSceneValueAsync(ElementId memberId, SceneValueResult r)
+    {
+        EditOutcome outcome = await RouteAsync(new UpdateSceneValue(memberId, r), "Scene value update failed");
+        return outcome.Status == EditStatus.Committed;
+    }
 
     /// <summary>
     /// Removes a link by one of its rows (US-057): deletes the selected link half (follow-link "link to"/"link from"
@@ -403,27 +395,22 @@ public sealed class ProjectSession : IDisposable
     /// go together while every other link on the two pins is left intact. Commits, marks dirty. Returns false on
     /// failure.
     /// </summary>
-    public Task<bool> RemoveLinkAsync(ElementId linkRowId) =>
-        RunEditAsync(nameof(RemoveLinkAsync), "Remove link failed", (project, editor) =>
-        {
-            editor.DeleteById(linkRowId);   // cascades the reciprocal half that points back into the deleted row
-            return true;
-        });
+    public async Task<bool> RemoveLinkAsync(ElementId linkRowId)
+    {
+        EditOutcome outcome = await RouteAsync(new RemoveLink(linkRowId), "Remove link failed");
+        return outcome.Status == EditStatus.Committed;
+    }
 
     /// <summary>
     /// Creates a scenario link (US-024): wires the function-block scene output pin to the product's scenes container
     /// with the given value — <see cref="SceneValue.Dimmer"/> (light level %, ramp) for a dimmer or
     /// <see cref="SceneValue.Relay"/> (ON/OFF) otherwise. Commits, marks dirty. Returns false on failure.
     /// </summary>
-    public Task<bool> LinkSceneAsync(ElementId sceneOutputId, ElementId scenesId, SceneValueResult r, bool isDimmer) =>
-        RunEditAsync(nameof(LinkSceneAsync), "Scene link failed", (project, editor) =>
-        {
-            SceneValue value = isDimmer
-                ? SceneValue.Dimmer(r.LevelPercent, TimeSpan.FromSeconds((r.RampMinutes * 60) + r.RampSeconds))
-                : SceneValue.Relay(r.On);
-            editor.LinkScene(sceneOutputId, scenesId, value);
-            return true;
-        });
+    public async Task<bool> LinkSceneAsync(ElementId sceneOutputId, ElementId scenesId, SceneValueResult r, bool isDimmer)
+    {
+        EditOutcome outcome = await RouteAsync(new LinkScene(sceneOutputId, scenesId, r, isDimmer), "Scene link failed");
+        return outcome.Status == EditStatus.Committed;
+    }
 
     /// <summary>The catalog products available for insertion (from the SDK-embedded catalog; no controller needed).</summary>
     public IReadOnlyList<ProductDefinition> GetAvailableProducts() => _service.GetAvailableProducts();
@@ -1226,14 +1213,11 @@ public sealed class ProjectSession : IDisposable
 
     /// <summary>Applies the edited note to a product's scene container (US-024) — the only editable field of the
     /// Scenarier dialog; the container's name is fixed by the product's catalog definition.</summary>
-    public Task<bool> UpdateSceneContainerAsync(ElementId scenesId, string note) =>
-        RunEditAsync(nameof(UpdateSceneContainerAsync), "Update failed", (project, editor) =>
-        {
-            if (!editor.TryResolve(scenesId, out ElementRef? handle))
-                return false;
-            handle.SetAttribute("note", note);
-            return true;
-        });
+    public async Task<bool> UpdateSceneContainerAsync(ElementId scenesId, string note)
+    {
+        EditOutcome outcome = await RouteAsync(new UpdateSceneContainer(scenesId, note), "Update failed");
+        return outcome.Status == EditStatus.Committed;
+    }
 
     /// <summary>
     /// Applies edited terminal addressing to a product input/output pin (US-012): encodes (data line, terminal) into
