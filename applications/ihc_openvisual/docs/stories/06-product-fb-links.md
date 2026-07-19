@@ -361,10 +361,10 @@ Scenario: Create a relay/socket scene link with a state
 > **Known gap — shutter scenes NOT authored (F‑081, M3 measured 2026‑07‑18).** The vendor supports a **third**
 > scene family: a shutter/blind product takes a `scene_shutter` member (`shutter_position` = up|down + `delay_ms`),
 > confirmed by a real member in `realprj`. IHC OpenVisual **renders** shutter scenes (A‑19) and the SDK **can build**
-> them (`SceneValue.Shutter`), but the authoring path (`ProjectSession.LinkSceneAsync` / `UpdateSceneValueAsync`,
+> them (`SceneValue.Shutter`), but the authoring path (the `LinkScene` / `UpdateSceneValue` commands via `project.Edit()`,
 > and the value dialog) is **relay/dimmer‑only** — dragging onto a shutter product's Scenarier does not offer the
 > up/down + delay dialog. **User ruling (2026‑07‑18): record the gap, do not build shutter authoring yet.** To close
-> later: widen `LinkSceneAsync`/`UpdateSceneValueAsync` + add a shutter mode to the scene‑value dialog + extend
+> later: widen the `LinkScene`/`UpdateSceneValue` commands + add a shutter mode to the scene‑value dialog + extend
 > `SceneRules.PinnedMemberTagFor`. Evidence: `tmp\comptest\out\M\M3-scenes.json`.
 
 ### AC illustrations

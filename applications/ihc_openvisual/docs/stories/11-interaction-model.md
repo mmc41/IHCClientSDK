@@ -183,7 +183,9 @@ conditions):
 
 **Implementation status:** 🟡 Implemented (in‑scope shortcuts) — **except `F6`, which is bound but dead**
 (backlog **A‑28**). The arrow‑key quadrants are implemented and measured aligned (F‑013). **`Ctrl+C` /
-`Ctrl+X` / `Ctrl+V` are bound and measured working**, and undo/redo is effect‑verified.
+`Ctrl+X` / `Ctrl+V` are bound and measured working**, and undo/redo is effect‑verified — the status bar
+now names the reversed/re‑applied action (`ProjectWorkflow.LastChange`, fablerefac W3‑6) and the history is
+**unlimited** (`HistoryPolicy.Unlimited`, W4‑4; see E14/US-052).
 
 > **Corrected 2026‑07‑17 (was: "clipboard/undo and simulation bindings deferred").** The "deferred" claim
 > contradicted **this file's own `:88‑92`** (US-044), which records `Ctrl+C` as measured working — *the

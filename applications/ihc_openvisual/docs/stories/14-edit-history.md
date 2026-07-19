@@ -31,8 +31,9 @@ switches, chrome toggles, simulation) which do not enter the history.
 - SHOULD: A destructive, cascading edit (e.g. deleting a non‑empty locality, US-009) is reversed as a
   single step.
 
-**Readiness:** Not Ready — the undo history **depth** is unresolved: **the vendor's** retention (a measure),
-plus IHC OpenVisual's own cap. *(Not "single‑ vs multi‑level" — this app is **multi‑level**.)* See US-052.
+**Readiness:** Ready — the undo history **depth** is resolved (fablerefac D1 / W4‑4): IHC OpenVisual's own
+retention is **`Unlimited`** (no configured cap, bounded only by process memory); the vendor's retention is a
+now‑informational measure, not a blocker. *(This app is **multi‑level**, not "single‑ vs multi‑level".)* See US-052.
 
 ---
 
@@ -57,8 +58,9 @@ switches, toolbar/status‑bar toggles, simulation) which do not enter the edit 
   program‑logic authoring (E7), enumerator changes (E7), and project‑info/data‑table edits (E9).
 - [ ] MUST: Undo restores the project to its exact prior state, reflected **identically in both panes**
   (as every edit is, per E2), and redo restores the post‑edit state.
-- [ ] MUST: The status bar names the action being reversed or re‑applied (e.g. `Undoing insertion of
-  <product>`).
+- [x] MUST: The status bar names the action being reversed or re‑applied (e.g. `Undoing insertion of
+  <product>`). *(Met: the reversed/re‑applied action is read from `ProjectWorkflow.LastChange` and surfaced
+  to the status bar — fablerefac W3‑6.)*
 - [ ] MUST: Making a **new** edit after an undo clears the redo history — the undone change can no
   longer be redone.
 - [ ] MUST: Invoking *Undo* with nothing to undo (a freshly opened/saved project with no edits
@@ -136,20 +138,22 @@ switches, toolbar/status‑bar toggles, simulation) which do not enter the edit 
   depth.** ⚠ **Redo‑invalidation under depth was never stress‑tested on either app.** Owned by **C9** in
   `tmp\compare3.md` §5.
 
-**Readiness:** Not Ready.
-- [R3] Undo/redo **depth** is `[TBD]` — **re‑scoped 2026‑07‑17, not closed**; this remains E14's only
-  blocker. *(Was: "single‑ vs multi‑level; number of steps retained" — but the *Implementation status* line
-  below already answers the first half for **this** app: it is **multi‑level**.)* The open question is
-  therefore **the VENDOR's depth** — a measure: how many steps IHC Visual retains, and whether a second
-  consecutive `Ctrl+Z` undoes a second step — plus the narrower **self** half, IHC OpenVisual's own
-  retention cap. Granularity (one action = one step) is measured and closed (F‑045) and **must not be read
-  as closing depth**. Owned by **C9** (`tmp\compare3.md` §5).
+**Readiness:** Ready.
+- [x] [R3] Undo/redo **depth** — **CLOSED 2026‑07‑19 (fablerefac D1 / W4‑4, `2785ee0`).** IHC OpenVisual's
+  own retention is decided and shipped: an interim `Bounded(1000)` cap during the refactor, lifted to
+  **`Unlimited`** once the keyed‑reconciliation history landed — **no configured cap, bounded only by process
+  memory** (`HistoryPolicy.Unlimited` is the `ProjectDocumentSession` default). The **self** half is
+  therefore resolved. The **vendor‑depth measure** (how many steps IHC Visual retains, and whether a second
+  consecutive `Ctrl+Z` undoes a second step; C9, `tmp\compare3.md` §5) is **no longer a blocker** — with IHC
+  OpenVisual unbounded it retains at least as many steps as the vendor by construction, so the measure is
+  informational only. Granularity (one action = one step) was already measured and closed (F‑045).
 
-**Implementation status:** 🟡 Implemented (multi-level) — granularity is measured **aligned** with IHC Visual
-(F‑045), and the **graceful‑degradation rule is now verified good** (F‑065): the exact sequence that closes
+**Implementation status:** 🟢 Implemented (multi-level, **unlimited depth**) — undo/redo history has **no
+configured cap** (`HistoryPolicy.Unlimited`, fablerefac W4‑4); granularity is measured **aligned** with IHC
+Visual (F‑045), and the **graceful‑degradation rule is verified good** (F‑065): the exact sequence that closes
 IHC Visual — unlock a library block, then `Ctrl+Z` — runs cleanly here, re‑locking the block with the process
 alive and responding. **IHC OpenVisual is strictly better than the vendor on this path**, not merely equal.
-⚠ Only the depth `[R3]` is outstanding, and it is an unknown rather than a defect.
+The depth `[R3]` is now **closed** (see above), leaving no outstanding blocker.
 
 ---
 
@@ -157,4 +161,4 @@ alive and responding. **IHC OpenVisual is strictly better than the vendor on thi
 
 | ID | Title | Readiness | Epic/Feature | Priority | Dependencies |
 |----|-------|-----------|--------------|----------|--------------|
-| US-052 | Undo and redo any edit | Not Ready | E14 | Must | -- |
+| US-052 | Undo and redo any edit | Ready | E14 | Must | -- |

@@ -563,7 +563,7 @@ Scenario: An incompatible pair is refused
   implementation. (Was an R‑note deferring "the exact drag gesture"; drag is now **required** — 2026‑07‑18.)
 - ✅ A block's output feeding **its own** input is **allowed** — measured on the vendor (`_0x511228`: output
   *Udgang for åbne* → own input *Tryk for åbne*, undone cleanly), so the earlier different‑blocks refusal is
-  **dropped** (F‑080 amends A‑16). IHC OpenVisual's `ProjectSession.LinkPinsAsync` wrongly refuses it and the
+  **dropped** (F‑080 amends A‑16). IHC OpenVisual's `LinkPins` command (via `project.Edit()`) wrongly refuses it and the
   SDK `CanLink` never carried the check. ⚠ Do **not** re‑tighten by symmetry.
 - The *Incompatible link* message is a **granted exception** — IHC Visual refuses silently. It stays
   (US-069's ruling); only its ergonomics are in scope for fixing. **The ergonomic defect is measured and

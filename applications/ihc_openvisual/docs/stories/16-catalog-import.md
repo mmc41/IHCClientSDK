@@ -199,9 +199,9 @@ Scenario: A file-name collision keeps both files (R-7)
 - Verification method — **Test** that a persisted import is still available after an application
   restart, and that a declined import is absent after restart.
 - **Settled — the subpath.** The catalog folder is an app‑data directory, and its subpath is no longer
-  open: `ProjectSession.cs:67-68` resolves it as `Environment.SpecialFolder.ApplicationData` +
-  `IHC OpenVisual` + `catalog` — i.e. **`%APPDATA%\IHC OpenVisual\catalog`** on Windows. The constructor
-  loads it on startup (`ProjectSession.cs:63`), which is this story's second AC. An override is accepted
+  open: `ProjectWorkflow.DefaultCatalogDir()` resolves it as `Environment.SpecialFolder.ApplicationData` +
+  `IHC OpenVisual` + `catalog` — i.e. **`%APPDATA%\IHC OpenVisual\catalog`** on Windows. The `ProjectWorkflow`
+  constructor loads it on startup, which is this story's second AC. An override is accepted
   via the `catalogDir` constructor argument (tests use it).
 - **Resolved 2026‑07‑17 (R‑7 — keep both on file‑name collision).** When a persisted import collides by file
   name with an existing persisted file, IHC OpenVisual **keeps both**: the incoming file is written under a
