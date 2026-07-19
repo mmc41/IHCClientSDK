@@ -530,15 +530,15 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private Task ToggleSaveValue(TreeNodeViewModel? node) => RunAsync(nameof(ToggleSaveValue), async () =>
     {
-        if (node is { IsOutputPin: true, ElementId: { } outputId } && await _session.SetOutputBackupAsync(outputId, !node.IsValueSaved))
-            StatusText = node.IsValueSaved ? "Output value no longer saved on power loss." : "Output value saved on power loss.";
+        if (node is { IsOutputPin: true, ElementId: { } outputId })
+            await ApplyAsync(new SetOutputBackup(outputId, !node.IsValueSaved),
+                node.IsValueSaved ? "Output value no longer saved on power loss." : "Output value saved on power loss.");
     });
 
     private Task AddProgramCommandAsync(ElementId actionsId, ElementId variableId, string method, string name, string note) =>
         RunAsync(nameof(AddProgramCommandAsync), async () =>
         {
-            if (await _session.AddProgramCommandAsync(actionsId, variableId, method, name, note))
-                StatusText = "Command added to the program.";
+            await ApplyAsync(new AddProgramCommand(actionsId, variableId, method, name, note), "Command added to the program.");
         });
 
     /// <summary>The conditions a selected variable can be tested by, offered on a sub-program's Conditions node
@@ -561,16 +561,16 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private Task AddSubProgram(TreeNodeViewModel? node) => RunAsync(nameof(AddSubProgram), async () =>
     {
-        if (node is { IsCommandsContainer: true, ElementId: { } id } && await _session.AddSubProgramAsync(id))
-            StatusText = "Sub-program inserted.";
+        if (node is { IsCommandsContainer: true, ElementId: { } id })
+            await ApplyAsync(new AddSubProgram(id), "Sub-program inserted.");
     });
 
     /// <summary>Inserts a nested logic group inside a Conditions group for a compound expression (US-029).</summary>
     [RelayCommand]
     private Task AddLogicGroup(TreeNodeViewModel? node) => RunAsync(nameof(AddLogicGroup), async () =>
     {
-        if (node is { IsConditionsContainer: true, ElementId: { } id } && await _session.AddLogicGroupAsync(id))
-            StatusText = "Logic group inserted.";
+        if (node is { IsConditionsContainer: true, ElementId: { } id })
+            await ApplyAsync(new AddLogicGroup(id), "Logic group inserted.");
     });
 
     /// <summary>Combines a Conditions group with OR (<c>&gt;=1</c>) (US-029).</summary>
@@ -583,22 +583,21 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private Task ToggleConditionsAsync(TreeNodeViewModel? node, bool or) => RunAsync(nameof(ToggleConditionsAsync), async () =>
     {
-        if (node is { IsConditionsContainer: true, ElementId: { } id } && await _session.SetConditionsLogicAsync(id, or))
-            StatusText = or ? "Conditions combined with OR (>=1)." : "Conditions combined with AND (&).";
+        if (node is { IsConditionsContainer: true, ElementId: { } id })
+            await ApplyAsync(new SetConditionsLogic(id, or),
+                or ? "Conditions combined with OR (>=1)." : "Conditions combined with AND (&).");
     });
 
     private Task AddConditionAsync(ElementId conditionsId, ElementId variableId, string method, string name, string note) =>
         RunAsync(nameof(AddConditionAsync), async () =>
         {
-            if (await _session.AddConditionAsync(conditionsId, variableId, method, name, note))
-                StatusText = "Condition added.";
+            await ApplyAsync(new AddCondition(conditionsId, variableId, method, name, note), "Condition added.");
         });
 
     private Task AddCaseAsync(ElementId commandsId, ElementId switchVariableId) =>
         RunAsync(nameof(AddCaseAsync), async () =>
         {
-            if (await _session.AddCaseAsync(commandsId, switchVariableId))
-                StatusText = "Case structure inserted.";
+            await ApplyAsync(new AddCase(commandsId, switchVariableId), "Case structure inserted.");
         });
 
     // The numeric variables (decimal/integer/counter) in the programming block — the operand candidates for an
@@ -621,8 +620,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private Task AddArithmeticAsync(ElementId commandsId, ElementId targetId, string method, ElementId operandId, string name) =>
         RunAsync(nameof(AddArithmeticAsync), async () =>
         {
-            if (await _session.AddArithmeticCommandAsync(commandsId, targetId, method, operandId, name))
-                StatusText = "Arithmetic command added.";
+            await ApplyAsync(new AddArithmeticCommand(commandsId, targetId, method, operandId, name), "Arithmetic command added.");
         });
 
     /// <summary>Adds a case value branch to the selected Case node (US-031): prompts for the criterion value, then
