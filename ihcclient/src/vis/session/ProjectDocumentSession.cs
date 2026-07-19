@@ -240,6 +240,39 @@ namespace Ihc.Vis.Session
                 : EditVerdict.Refuse("No project is open.");
         }
 
+        // ---- API-D queries (W2-12): read projections over Current. Questions are calls, not command objects
+        // (CQS); each delegates to the W1-5 SDK projection and returns the blank model when no project is open. ----
+
+        /// <summary>Reads the project/customer/installer information (US-039), or the blank model when none is open.</summary>
+        public ProjectInfoData GetProjectInfo()
+        {
+            VerifyAccess();
+            return _current?.GetProjectInfo() ?? ProjectInfoData.Empty;
+        }
+
+        /// <summary>Reads the data tables (US-049) — the read-only system tables and the editable user-defined
+        /// texts — or an empty model when none is open.</summary>
+        public DataTablesModel GetDataTables()
+        {
+            VerifyAccess();
+            return _current?.GetDataTables() ?? new DataTablesModel([], []);
+        }
+
+        /// <summary>Names the wireless products not yet linked to the controller (US-042 pre-flight), or empty
+        /// when none is open.</summary>
+        public IReadOnlyList<string> GetUnlinkedWirelessProducts()
+        {
+            VerifyAccess();
+            return _current?.GetUnlinkedWirelessProducts() ?? [];
+        }
+
+        /// <summary>Builds the read-only Wired module address map (US-050), or an empty map when none is open.</summary>
+        public ModuleAddressMap GetModuleAddressMap()
+        {
+            VerifyAccess();
+            return _current?.GetModuleAddressMap() ?? new ModuleAddressMap([], []);
+        }
+
         private ProjectChangeSet Transition(Project from, Project to, string label, string origin)
         {
             int baseVersion = _version;
