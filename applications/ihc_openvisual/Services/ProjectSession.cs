@@ -532,8 +532,14 @@ public sealed class ProjectSession : IDisposable
     /// stays live if the variable is renamed. Returns false (with a diagnostic) when the target is not a program's
     /// events container. Read-add over the project; no controller contact.
     /// </summary>
-    public Task<bool> AddProgramEventAsync(ElementId containerId, ElementId variableId, string method, string name, string? note) =>
-        AuthorProgramChildAsync(containerId, variableId, method, name, note, isEvent: true);
+    public async Task<bool> AddProgramEventAsync(ElementId containerId, ElementId variableId, string method, string name, string? note)
+    {
+        if (Current?.FindById(containerId)?.Tag != "events"
+            || Current.FindParent(containerId) is not { Tag: "program_simple", Id: { } programId })
+            return false;
+        EditOutcome outcome = await RouteAsync(new AddProgramEvent(programId, variableId, method, name, note), "Add event failed");
+        return outcome.Status == EditStatus.Committed;
+    }
 
     /// <summary>
     /// Authors a program <c>action</c> command (US-028): appends a top-level command to the program owning
@@ -541,77 +547,42 @@ public sealed class ProjectSession : IDisposable
     /// <paramref name="variableId"/> per the vendor <paramref name="method"/> token. Events fire commands
     /// top-to-bottom. Returns false when the target is not a program's actions container.
     /// </summary>
-    public Task<bool> AddProgramCommandAsync(ElementId containerId, ElementId variableId, string method, string name, string? note) =>
-        AuthorProgramChildAsync(containerId, variableId, method, name, note, isEvent: false);
+    public async Task<bool> AddProgramCommandAsync(ElementId containerId, ElementId variableId, string method, string name, string? note) =>
+        (await RouteAsync(new AddProgramCommand(containerId, variableId, method, name, note), "Add command failed"))
+            .Status == EditStatus.Committed;
 
     /// <summary>
     /// Adds a <c>Powerup</c> system event (US-033) to the program owning <paramref name="eventsContainerId"/> — the
     /// program then runs on controller power-up (also on project transfer and software restart), useful for
     /// re-establishing timer values. Takes no operand. Returns false for a non-events target. No controller.
     /// </summary>
-    public Task<bool> AddPowerEventAsync(ElementId eventsContainerId) =>
-        RunEditAsync(nameof(AddPowerEventAsync), "Add Powerup event failed", (project, editor) =>
-        {
-            if (project.FindById(eventsContainerId)?.Tag != "events"
-                || project.FindParent(eventsContainerId) is not { Tag: "program_simple", Id: { } programId })
-                return false;
-            editor.Program(programId).AddPowerEvent("Powerup",
-                "Runs the program on controller power-up (also on project transfer and software restart).");
-            return true;
-        });
+    public async Task<bool> AddPowerEventAsync(ElementId eventsContainerId)
+    {
+        if (Current?.FindById(eventsContainerId)?.Tag != "events"
+            || Current.FindParent(eventsContainerId) is not { Tag: "program_simple", Id: { } programId })
+            return false;
+        EditOutcome outcome = await RouteAsync(new AddPowerEvent(programId), "Add Powerup event failed");
+        return outcome.Status == EditStatus.Committed;
+    }
 
     /// <summary>
     /// Sets an output's "Save current value" power-loss persistence (US-033): writes <c>backup="yes"|"no"</c> on the
     /// function-block or physical output <paramref name="outputId"/> so its value is restored after a power loss
     /// instead of reset. Returns false when the target is not an output. No controller.
     /// </summary>
-    public Task<bool> SetOutputBackupAsync(ElementId outputId, bool save) =>
-        RunEditAsync(nameof(SetOutputBackupAsync), "Save current value failed", (project, editor) =>
-        {
-            if (project.FindById(outputId)?.Tag is not ("resource_output" or "dataline_output" or "airlink_relay"))
-                return false;
-            if (!editor.TryResolve(outputId, out ElementRef? handle))
-                return false;
-            handle.SetAttribute("backup", save ? "yes" : "no");
-            return true;
-        });
-
-    private Task<bool> AuthorProgramChildAsync(
-        ElementId containerId, ElementId variableId, string method, string name, string? note, bool isEvent) =>
-        RunEditAsync(
-            isEvent ? nameof(AddProgramEventAsync) : nameof(AddProgramCommandAsync),
-            isEvent ? "Add event failed" : "Add command failed",
-            (project, editor) =>
-            {
-                Activity.Current?.SetTag("program.method", method);
-                ProjectElement? container = project.FindById(containerId);
-                ResourceRef variable = editor.Resource(variableId);
-                if (isEvent)
-                {
-                    // Events live only on the program root's events container (parent = program_simple).
-                    if (container?.Tag != "events" || project.FindParent(containerId) is not { Tag: "program_simple", Id: { } programId })
-                        return false;
-                    editor.Program(programId).AddEvent(name, variable, method, note: note);
-                }
-                else
-                {
-                    // Commands go into any command container — the root "Commands", a sub-program's true/false branch,
-                    // or a case value's <case_action> (US-028/US-029/US-031).
-                    if (container?.Tag is not ("actions" or "case_action"))
-                        return false;
-                    editor.Branch(containerId).AddAction(name, variable, method, note: note);
-                }
-                return true;
-            });
+    public async Task<bool> SetOutputBackupAsync(ElementId outputId, bool save) =>
+        // An idempotent setter succeeds when the backup is now as requested — Committed, or NoChange when it was
+        // already that value (the fresh relay defaults backup="yes"). Refused/Failed alone are false.
+        (await RouteAsync(new SetOutputBackup(outputId, save), "Save current value failed"))
+            .Status is EditStatus.Committed or EditStatus.NoChange;
 
     /// <summary>
     /// Inserts a conditional sub-program (US-029) into an <c>actions</c> container <paramref name="commandsId"/> (a
     /// program's Commands group or a branch) — a <c>program_sub</c> with a Conditions group and the true/false command
     /// branches. Returns false when the target is not an actions container. No controller contact.
     /// </summary>
-    public Task<bool> AddSubProgramAsync(ElementId commandsId) =>
-        MutateProgramAsync(nameof(AddSubProgramAsync), commandsId, "actions", "sub-program",
-            editor => editor.Branch(commandsId).AddSubProgram());
+    public async Task<bool> AddSubProgramAsync(ElementId commandsId) =>
+        (await RouteAsync(new AddSubProgram(commandsId), "Add sub-program failed")).Status == EditStatus.Committed;
 
     /// <summary>
     /// Adds a <c>condition</c> (US-029) to a Conditions group <paramref name="conditionsId"/>, testing the resource
@@ -619,25 +590,23 @@ public sealed class ProjectSession : IDisposable
     /// different token). The stored <paramref name="name"/> keeps the <c>%P</c>/<c>%S</c> template. Returns false when
     /// the target is not a conditions group.
     /// </summary>
-    public Task<bool> AddConditionAsync(ElementId conditionsId, ElementId variableId, string method, string name, string? note) =>
-        MutateProgramAsync(nameof(AddConditionAsync), conditionsId, "conditions", "condition",
-            editor => editor.ConditionsGroup(conditionsId).AddCondition(name, editor.Resource(variableId), method, note: note));
+    public async Task<bool> AddConditionAsync(ElementId conditionsId, ElementId variableId, string method, string name, string? note) =>
+        (await RouteAsync(new AddCondition(conditionsId, variableId, method, name, note), "Add condition failed"))
+            .Status == EditStatus.Committed;
 
     /// <summary>
     /// Toggles a Conditions group's logical combination (US-029): <paramref name="or"/> true → OR (<c>&gt;=1</c>),
     /// false → AND (<c>&amp;</c>, the default). Returns false when the target is not a conditions group.
     /// </summary>
-    public Task<bool> SetConditionsLogicAsync(ElementId conditionsId, bool or) =>
-        MutateProgramAsync(nameof(SetConditionsLogicAsync), conditionsId, "conditions", "logic",
-            editor => { var g = editor.ConditionsGroup(conditionsId); if (or) g.Or(); else g.And(); });
+    public async Task<bool> SetConditionsLogicAsync(ElementId conditionsId, bool or) =>
+        (await RouteAsync(new SetConditionsLogic(conditionsId, or), "Set logic failed")).Status == EditStatus.Committed;
 
     /// <summary>
     /// Adds a nested logic group (US-029) — a nested <c>conditions</c> group inside <paramref name="conditionsId"/> —
     /// for compound expressions. Returns false when the target is not a conditions group.
     /// </summary>
-    public Task<bool> AddLogicGroupAsync(ElementId conditionsId) =>
-        MutateProgramAsync(nameof(AddLogicGroupAsync), conditionsId, "conditions", "logic-group",
-            editor => editor.ConditionsGroup(conditionsId).AddConditionGroup());
+    public async Task<bool> AddLogicGroupAsync(ElementId conditionsId) =>
+        (await RouteAsync(new AddLogicGroup(conditionsId), "Add logic group failed")).Status == EditStatus.Committed;
 
     /// <summary>
     /// Authors a single arithmetic command line (US-032): one operation on the target register
@@ -646,15 +615,9 @@ public sealed class ProjectSession : IDisposable
     /// operation per line by construction — larger formulas are a sequence of these. The stored <paramref name="name"/>
     /// keeps the vendor <c>%P = %P ± %S</c> template. Returns false on a non-command target. No controller.
     /// </summary>
-    public Task<bool> AddArithmeticCommandAsync(ElementId commandsId, ElementId targetId, string method, ElementId operandId, string name) =>
-        RunEditAsync(nameof(AddArithmeticCommandAsync), "Add arithmetic failed", (project, editor) =>
-        {
-            Activity.Current?.SetTag("program.method", method);
-            if (project.FindById(commandsId)?.Tag is not ("actions" or "case_action"))
-                return false;
-            editor.Branch(commandsId).AddAction(name, editor.Resource(targetId), method, editor.Resource(operandId));
-            return true;
-        });
+    public async Task<bool> AddArithmeticCommandAsync(ElementId commandsId, ElementId targetId, string method, ElementId operandId, string name) =>
+        (await RouteAsync(new AddArithmeticCommand(commandsId, targetId, method, operandId, name), "Add arithmetic failed"))
+            .Status == EditStatus.Committed;
 
     /// <summary>The variable types a case may switch on (US-031): counter, enumerator, weekday, integer, or date.</summary>
     public static readonly HashSet<string> EligibleCaseVariableTags = new()
@@ -667,17 +630,8 @@ public sealed class ProjectSession : IDisposable
     /// switch variable <paramref name="switchVariableId"/> (counter/enum/weekday/integer/date) — a <c>program_case</c>
     /// eagerly allocating its default (Else) branch. Returns false for a non-eligible variable or non-command target.
     /// </summary>
-    public Task<bool> AddCaseAsync(ElementId commandsId, ElementId switchVariableId) =>
-        RunEditAsync(nameof(AddCaseAsync), "Add case failed", (project, editor) =>
-        {
-            ProjectElement? container = project.FindById(commandsId);
-            ProjectElement? switchVar = project.FindById(switchVariableId);
-            if (container?.Tag is not ("actions" or "case_action") || switchVar is null
-                || !EligibleCaseVariableTags.Contains(switchVar.Tag))
-                return false;
-            editor.Branch(commandsId).AddCase("Case", editor.Resource(switchVariableId));
-            return true;
-        });
+    public async Task<bool> AddCaseAsync(ElementId commandsId, ElementId switchVariableId) =>
+        (await RouteAsync(new AddCase(commandsId, switchVariableId), "Add case failed")).Status == EditStatus.Committed;
 
     /// <summary>
     /// Adds a case value branch (US-031) to a <c>program_case</c> <paramref name="caseId"/> for the literal
@@ -685,25 +639,15 @@ public sealed class ProjectSession : IDisposable
     /// <c>&lt;resource_counter inivalue="100"&gt;</c>). Returns false for a non-case target, a missing switch, or an
     /// enum switch (enum case values need the type's states — deferred). No controller.
     /// </summary>
-    public Task<bool> AddCaseValueAsync(ElementId caseId, string criterion) =>
-        RunEditAsync(nameof(AddCaseValueAsync), "Add case value failed", (project, editor) =>
-        {
-            ProjectElement? kase = project.FindById(caseId);
-            if (kase?.Tag != "program_case" || !ElementId.TryParse(project.View(kase).Effective("link"), out ElementId switchId)
-                || project.FindById(switchId) is not { } switchVar || switchVar.Kind == ElementKind.EnumResource)
-                return false;
-            editor.Case(caseId).Case(criterion, switchVar.Tag, op => op.SetAttribute("inivalue", criterion));
-            return true;
-        });
-
-    private Task<bool> MutateProgramAsync(string op, ElementId targetId, string requiredTag, string kind, Action<ProjectEditor> mutate) =>
-        RunEditAsync(op, $"Add {kind} failed", (project, editor) =>
-        {
-            if (project.FindById(targetId)?.Tag != requiredTag)
-                return false;
-            mutate(editor);
-            return true;
-        });
+    public async Task<bool> AddCaseValueAsync(ElementId caseId, string criterion)
+    {
+        if (Current?.FindById(caseId) is not { Tag: "program_case" } kase
+            || !ElementId.TryParse(Current.View(kase).Effective("link"), out ElementId switchId)
+            || Current.FindById(switchId) is not { } switchVar || switchVar.Kind == ElementKind.EnumResource)
+            return false;
+        EditOutcome outcome = await RouteAsync(new AddCaseValue(caseId, criterion, switchVar.Tag), "Add case value failed");
+        return outcome.Status == EditStatus.Committed;
+    }
 
     /// <summary>
     /// Saves a placed function block to a reusable <c>.ifb</c> catalog file (US-021): lifts the block (by id) to a
@@ -1219,14 +1163,8 @@ public sealed class ProjectSession : IDisposable
     /// </summary>
     /// <summary>Toggles a "Log …" row's log mark (US-068, the vendor's &amp;Logmærke): flips its Logning state between
     /// Off and the first logging mode. Commits, marks dirty. Returns false when the target is not a Logning row.</summary>
-    public Task<bool> ToggleLogMarkAsync(ElementId logRowId) =>
-        RunEditAsync(nameof(ToggleLogMarkAsync), "Log mark failed", (project, editor) =>
-        {
-            if (project.FindById(logRowId) is not { } row || !ProjectEditor.IsLogRow(row, project))
-                return false;
-            editor.ToggleLogMark(logRowId);
-            return true;
-        });
+    public async Task<bool> ToggleLogMarkAsync(ElementId logRowId) =>
+        (await RouteAsync(new ToggleLogMark(logRowId), "Log mark failed")).Status == EditStatus.Committed;
 
     public async Task<bool> UpdatePinAsync(ElementId pinId, PinPropertiesResult r)
     {

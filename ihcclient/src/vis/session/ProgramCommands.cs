@@ -1,0 +1,164 @@
+#nullable enable
+using System.Collections.Generic;
+using Ihc.Vis.Editing;
+using Ihc.Vis.Model;
+using Ihc.Vis.Projects;
+
+namespace Ihc.Vis.Session
+{
+    /// <summary>Authors a program event (US-028) on the program owning the events container. The caller resolves the
+    /// owning program id (parent of the "events" container).</summary>
+    public sealed record AddProgramEvent(ElementId ProgramId, ElementId VariableId, string Method, string Name, string? Note)
+        : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Add event";
+        internal override EditVerdict Evaluate(EditContext context) => Programs.RequireTag(context, ProgramId, "program_simple");
+        internal override void Execute(ProjectEditor editor) =>
+            editor.Program(ProgramId).AddEvent(Name, editor.Resource(VariableId), Method, note: Note);
+    }
+
+    /// <summary>Adds a Powerup system event (US-033) to a program.</summary>
+    public sealed record AddPowerEvent(ElementId ProgramId) : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Add Powerup event";
+        internal override EditVerdict Evaluate(EditContext context) => Programs.RequireTag(context, ProgramId, "program_simple");
+        internal override void Execute(ProjectEditor editor) =>
+            editor.Program(ProgramId).AddPowerEvent("Powerup",
+                "Runs the program on controller power-up (also on project transfer and software restart).");
+    }
+
+    /// <summary>Authors a program action command (US-028) into a command container.</summary>
+    public sealed record AddProgramCommand(ElementId ContainerId, ElementId VariableId, string Method, string Name, string? Note)
+        : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Add command";
+        internal override EditVerdict Evaluate(EditContext context) => Programs.RequireCommandContainer(context, ContainerId);
+        internal override void Execute(ProjectEditor editor) =>
+            editor.Branch(ContainerId).AddAction(Name, editor.Resource(VariableId), Method, note: Note);
+    }
+
+    /// <summary>Inserts a conditional sub-program (US-029) into a command container.</summary>
+    public sealed record AddSubProgram(ElementId CommandsId) : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Add sub-program";
+        internal override EditVerdict Evaluate(EditContext context) => Programs.RequireTag(context, CommandsId, "actions");
+        internal override void Execute(ProjectEditor editor) => editor.Branch(CommandsId).AddSubProgram();
+    }
+
+    /// <summary>Adds a condition (US-029) to a conditions group.</summary>
+    public sealed record AddCondition(ElementId ConditionsId, ElementId VariableId, string Method, string Name, string? Note)
+        : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Add condition";
+        internal override EditVerdict Evaluate(EditContext context) => Programs.RequireTag(context, ConditionsId, "conditions");
+        internal override void Execute(ProjectEditor editor) =>
+            editor.ConditionsGroup(ConditionsId).AddCondition(Name, editor.Resource(VariableId), Method, note: Note);
+    }
+
+    /// <summary>Toggles a conditions group's AND/OR combination (US-029).</summary>
+    public sealed record SetConditionsLogic(ElementId ConditionsId, bool Or) : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Set condition logic";
+        internal override EditVerdict Evaluate(EditContext context) => Programs.RequireTag(context, ConditionsId, "conditions");
+        internal override void Execute(ProjectEditor editor)
+        {
+            ConditionsGroupRef group = editor.ConditionsGroup(ConditionsId);
+            if (Or)
+            {
+                group.Or();
+            }
+            else
+            {
+                group.And();
+            }
+        }
+    }
+
+    /// <summary>Adds a nested logic group (US-029) inside a conditions group.</summary>
+    public sealed record AddLogicGroup(ElementId ConditionsId) : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Add logic group";
+        internal override EditVerdict Evaluate(EditContext context) => Programs.RequireTag(context, ConditionsId, "conditions");
+        internal override void Execute(ProjectEditor editor) => editor.ConditionsGroup(ConditionsId).AddConditionGroup();
+    }
+
+    /// <summary>Authors one arithmetic command line (US-032) into a command container.</summary>
+    public sealed record AddArithmeticCommand(ElementId CommandsId, ElementId TargetId, string Method, ElementId OperandId, string Name)
+        : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Add arithmetic";
+        internal override EditVerdict Evaluate(EditContext context) => Programs.RequireCommandContainer(context, CommandsId);
+        internal override void Execute(ProjectEditor editor) =>
+            editor.Branch(CommandsId).AddAction(Name, editor.Resource(TargetId), Method, editor.Resource(OperandId));
+    }
+
+    /// <summary>Inserts a case structure (US-031) keyed on an eligible switch variable.</summary>
+    public sealed record AddCase(ElementId CommandsId, ElementId SwitchVariableId) : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Add case";
+        internal override EditVerdict Evaluate(EditContext context) =>
+            Programs.IsCommandContainer(context, CommandsId)
+            && context.Index.FindById(SwitchVariableId) is { } v && Programs.EligibleCaseVariableTags.Contains(v.Tag)
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Not an eligible case switch on a command container.");
+        internal override void Execute(ProjectEditor editor) =>
+            editor.Branch(CommandsId).AddCase("Case", editor.Resource(SwitchVariableId));
+    }
+
+    /// <summary>Adds a case-value branch (US-031) for a literal criterion. The caller supplies the switch variable's
+    /// tag (resolved from the case's switch).</summary>
+    public sealed record AddCaseValue(ElementId CaseId, string Criterion, string SwitchTag) : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Add case value";
+        internal override EditVerdict Evaluate(EditContext context) => Programs.RequireTag(context, CaseId, "program_case");
+        internal override void Execute(ProjectEditor editor) =>
+            editor.Case(CaseId).Case(Criterion, SwitchTag, op => op.SetAttribute("inivalue", Criterion));
+    }
+
+    /// <summary>Sets an output's "Save current value" power-loss persistence (US-033).</summary>
+    public sealed record SetOutputBackup(ElementId OutputId, bool Save) : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Save current value";
+        internal override EditVerdict Evaluate(EditContext context) =>
+            context.Index.FindById(OutputId)?.Tag is "resource_output" or "dataline_output" or "airlink_relay"
+                ? EditVerdict.Allow : EditVerdict.Refuse("Not an output.");
+        internal override void Execute(ProjectEditor editor)
+        {
+            if (!editor.TryResolve(OutputId, out ElementRef? handle))
+            {
+                throw new EditRefusedException("The output no longer exists.");
+            }
+            handle.SetAttribute("backup", Save ? "yes" : "no");
+        }
+    }
+
+    /// <summary>Toggles a "Log …" row's log mark (US-068).</summary>
+    public sealed record ToggleLogMark(ElementId LogRowId) : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Toggle log mark";
+        internal override EditVerdict Evaluate(EditContext context) =>
+            context.Index.FindById(LogRowId) is { } row && ProjectEditor.IsLogRow(row, context.Project)
+                ? EditVerdict.Allow : EditVerdict.Refuse("Not a Logning row.");
+        internal override void Execute(ProjectEditor editor) => editor.ToggleLogMark(LogRowId);
+    }
+
+    internal static class Programs
+    {
+        /// <summary>The variable types a case may switch on (US-031).</summary>
+        public static readonly HashSet<string> EligibleCaseVariableTags = new()
+        {
+            "resource_counter", "resource_enum", "resource_weekday", "resource_integer", "resource_date",
+        };
+
+        public static EditVerdict RequireTag(EditContext context, ElementId id, string tag) =>
+            context.Index.FindById(id)?.Tag == tag
+                ? EditVerdict.Allow : EditVerdict.Refuse($"The target is not a '{tag}'.");
+
+        public static bool IsCommandContainer(EditContext context, ElementId id) =>
+            context.Index.FindById(id)?.Tag is "actions" or "case_action";
+
+        public static EditVerdict RequireCommandContainer(EditContext context, ElementId id) =>
+            IsCommandContainer(context, id)
+                ? EditVerdict.Allow : EditVerdict.Refuse("The target is not a command container.");
+    }
+}
