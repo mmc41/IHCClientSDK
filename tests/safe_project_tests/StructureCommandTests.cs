@@ -102,6 +102,43 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        [Test]   // W2-16: from CopyPasteTests.Copy_IntoIllegalContainer_IsRefused (moved down)
+        public async Task CopyNode_IntoIllegalContainer_IsRefused()
+        {
+            Project project = await Load("project3-KompleksWired.vis");
+            (ElementId product, _, _) = PickProductAndTwoLocalities(project);
+            ProjectDocumentSession session = Session(project);
+
+            // a product is not a legal paste target — only a locality can hold a product/block.
+            EditOutcome<ElementId> outcome = session.Apply(new CopyNode(product, product));
+
+            Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused));
+        }
+
+        [Test]   // W2-16: from CopyPasteTests.Copy_DropsLinksWhoseOtherEndIsOutsideTheCopy (moved down)
+        public async Task CopyNode_DropsExternalLinkHalves()
+        {
+            Project project = await Load("project3-KompleksWired.vis");
+            ProjectElement linked = project.Groups
+                .SelectMany(g => g.ChildrenOrEmpty().Where(c => ProductClassifier.IsProduct(c.Tag)))
+                .First(p => p.DescendantsAndSelf().Any(d => d.Tag is "link_to_resource" or "link_from_resource"));
+            ElementId product = linked.Id!.Value;
+            ElementId currentParent = project.FindParent(product)!.Id!.Value;
+            ElementId target = project.Groups.First(g => g.Id!.Value != currentParent).Id!.Value;
+            ProjectDocumentSession session = Session(project);
+
+            EditOutcome<ElementId> outcome = session.Apply(new CopyNode(product, target));
+
+            ProjectElement copy = session.Current!.FindById(outcome.Value)!;
+            Assert.Multiple(() =>
+            {
+                Assert.That(copy.DescendantsAndSelf().Any(d => d.Tag is "link_from_resource" or "link_to_resource"), Is.False,
+                    "the copy drops link halves whose other end lies outside the copy");
+                Assert.That(session.Current!.FindById(product)!.DescendantsAndSelf()
+                    .Any(d => d.Tag is "link_from_resource" or "link_to_resource"), Is.True, "the original keeps its link");
+            });
+        }
+
         [Test]
         public async Task ReorderNode_MatchesEngineReorderSubtree()
         {
