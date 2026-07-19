@@ -1321,7 +1321,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(UndoMenuHeader));   // the history may have grown/shrunk — refresh the Edit-menu labels (E14)
         OnPropertyChanged(nameof(RedoMenuHeader));
         if (IsProgrammingMode && _programmingBlockId is { } blockId
-            && _session.Current?.FindById(blockId) is { Tag: "functionblock" } block)
+            && _session.Current?.FindById(blockId) is { } block && block.Kind == ElementKind.FunctionBlock)
         {
             BuildProgrammingTrees(block, preserveExpansion: SameViewAsLastBuild("prog:" + blockId.ToToken()));
             return;

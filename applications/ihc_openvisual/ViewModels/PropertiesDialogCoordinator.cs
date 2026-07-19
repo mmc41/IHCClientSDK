@@ -121,7 +121,8 @@ internal sealed class PropertiesDialogCoordinator(
     // Reads an enum variable's type name and ordered state names for the Edit dialog (US-030); null if not an enum.
     private (string Name, List<string> States)? ReadEnumInfo(ElementId enumVariableId)
     {
-        if (session.Current is not { } project || project.FindById(enumVariableId) is not { Tag: "resource_enum" } variable
+        if (session.Current is not { } project || project.FindById(enumVariableId) is not { } variable
+            || variable.Kind != ElementKind.EnumResource
             || !ElementId.TryParse(project.View(variable).Effective("typedef"), out ElementId defId)
             || project.FindById(defId) is not { } def)
         {
@@ -299,7 +300,7 @@ internal sealed class PropertiesDialogCoordinator(
                 return;   // cancelled — the product keeps its documentation
             await applyAndReport(session.BuildUpdateProduct(productId, result), $"Updated {result.Name}.");
             if (result.ConfigureTerminalPinId is { } pinToken && ElementId.TryParse(pinToken, out ElementId pinId)
-                && session.Current?.FindById(pinId) is { Tag: "dataline_input" or "dataline_output" } pinEl)
+                && session.Current?.FindById(pinId) is { } pinEl && pinEl.Kind == ElementKind.DatalinePin)
             {
                 await OpenPinAsync(pinId, pinEl);
                 continue;   // re-open the product dialog after addressing the terminal (US-012)
