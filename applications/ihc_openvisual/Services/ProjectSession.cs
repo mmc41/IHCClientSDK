@@ -988,24 +988,23 @@ public sealed class ProjectSession : IDisposable
     /// nothing. If the engine cannot safely cascade a binding it **refuses and explains what to rewire**. Returns
     /// false on refusal/decline/failure. No controller.
     /// </summary>
-    public Task<bool> DeleteNodeAsync(ElementId id) =>
-        RunEditAsync(nameof(DeleteNodeAsync), "Delete failed", async (project, editor) =>
+    public async Task<bool> DeleteNodeAsync(ElementId id)
+    {
+        if (Current is not { } project || project.FindById(id) is not { } element || !IsDeletableNode(element.Tag))
         {
-            if (project.FindById(id) is not { } element || !IsDeletableNode(element.Tag))
-            {
-                await _dialogs.ShowMessageAsync("Cannot delete", "This node cannot be deleted.");
-                return false;
-            }
-            bool referenced = HasLinkHalves(element) || WouldThrowStrict(id);
-            if (referenced && !await _dialogs.ConfirmAsync("Delete",
-                    $"'{(project.View(element).Name is { Length: > 0 } n ? n : element.Tag)}' is referenced by other logic (links and/or "
-                    + "commands). Delete it together with those references?"))
-            {
-                return false;   // declined — nothing is deleted
-            }
-            editor.DeleteById(id, referenced ? DeleteReferencePolicy.CascadeReferences : DeleteReferencePolicy.Strict);
-            return true;
-        }, refusalTitle: "Cannot delete");   // the engine refuses a delete it cannot safely cascade
+            await _dialogs.ShowMessageAsync("Cannot delete", "This node cannot be deleted.");
+            return false;
+        }
+        bool referenced = HasLinkHalves(element) || WouldThrowStrict(id);
+        if (referenced && !await _dialogs.ConfirmAsync("Delete",
+                $"'{(project.View(element).Name is { Length: > 0 } n ? n : element.Tag)}' is referenced by other logic (links and/or "
+                + "commands). Delete it together with those references?"))
+        {
+            return false;   // declined — nothing is deleted
+        }
+        EditOutcome outcome = await RouteAsync(new DeleteNode(id, referenced), "Cannot delete");
+        return outcome.Status == EditStatus.Committed;
+    }
 
     // Whether a source node may be moved/pasted into a target container (US-054/US-056): a product or function block
     // belongs under a locality (group). (Variable/section moves are a later extension.)
@@ -1020,19 +1019,19 @@ public sealed class ProjectSession : IDisposable
     /// list ends. Reorders only same-tag siblings (so a locality moves past localities, a product past products).
     /// Undoable. No controller.
     /// </summary>
-    public Task<bool> ReorderNodeAsync(ElementId id, int delta) =>
-        RunEditAsync(nameof(ReorderNodeAsync), "Reorder failed", (project, editor) =>
-        {
-            if (delta == 0 || project.FindParent(id) is not { Id: { } } parent || project.FindById(id) is not { } node)
-                return false;
-            var siblings = parent.ChildrenOrEmpty().Where(c => c.Tag == node.Tag).ToList();
-            int here = siblings.FindIndex(c => c.Id == id);
-            int there = here + delta;
-            if (here < 0 || there < 0 || there >= siblings.Count)
-                return false;   // already at the end in that direction
-            editor.ReorderSubtree(id, there);   // the same-tag → absolute mapping lives in the SDK now (A-32)
-            return true;
-        });
+    public async Task<bool> ReorderNodeAsync(ElementId id, int delta)
+    {
+        if (delta == 0 || Current is not { } project
+            || project.FindParent(id) is not { Id: { } } parent || project.FindById(id) is not { } node)
+            return false;
+        var siblings = parent.ChildrenOrEmpty().Where(c => c.Tag == node.Tag).ToList();
+        int here = siblings.FindIndex(c => c.Id == id);
+        int there = here + delta;
+        if (here < 0 || there < 0 || there >= siblings.Count)
+            return false;   // already at the end in that direction
+        EditOutcome outcome = await RouteAsync(new ReorderNode(id, there), "Reorder failed");
+        return outcome.Status == EditStatus.Committed;
+    }
 
     /// <summary>Whether <paramref name="dragged"/> and <paramref name="target"/> are distinct <b>same-parent, same-tag
     /// siblings</b> — a reorder drop (US-055), the drag-over hint peer of <see cref="ReorderNodeToSiblingAsync"/>.
@@ -1052,19 +1051,18 @@ public sealed class ProjectSession : IDisposable
     /// <summary>Reorders <paramref name="dragged"/> to <paramref name="targetSibling"/>'s position among their shared
     /// same-tag siblings — the drag-reorder drop (US-055). Id-preserving (the SDK <see cref="ProjectEditor.ReorderSubtree"/>),
     /// undoable. Returns false when the two are not a reorderable pair (not same-parent, same-tag siblings). No controller.</summary>
-    public Task<bool> ReorderNodeToSiblingAsync(ElementId dragged, ElementId targetSibling) =>
-        RunEditAsync(nameof(ReorderNodeToSiblingAsync), "Reorder failed", (project, editor) =>
-        {
-            if (project.FindParent(dragged) is not { Id: { } parentId } parent
-                || project.FindById(dragged) is not { } node
-                || project.FindParent(targetSibling)?.Id != parentId)
-                return false;
-            int targetIndex = parent.ChildrenOrEmpty().Where(c => c.Tag == node.Tag).ToList().FindIndex(c => c.Id == targetSibling);
-            if (targetIndex < 0)
-                return false;   // the target is not a same-tag sibling
-            editor.ReorderSubtree(dragged, targetIndex);
-            return true;
-        });
+    public async Task<bool> ReorderNodeToSiblingAsync(ElementId dragged, ElementId targetSibling)
+    {
+        if (Current is not { } project || project.FindParent(dragged) is not { Id: { } parentId } parent
+            || project.FindById(dragged) is not { } node
+            || project.FindParent(targetSibling)?.Id != parentId)
+            return false;
+        int targetIndex = parent.ChildrenOrEmpty().Where(c => c.Tag == node.Tag).ToList().FindIndex(c => c.Id == targetSibling);
+        if (targetIndex < 0)
+            return false;   // the target is not a same-tag sibling
+        EditOutcome outcome = await RouteAsync(new ReorderNode(dragged, targetIndex), "Reorder failed");
+        return outcome.Status == EditStatus.Committed;
+    }
 
     /// <summary>
     /// Moves a node to another container (US-054): re-parents the subtree under <paramref name="targetParentId"/> with
@@ -1072,24 +1070,26 @@ public sealed class ProjectSession : IDisposable
     /// it participates in survive. Refuses an illegal container, a self/descendant target, or a no-op move into the
     /// current parent. Undoable (single snapshot). Returns false on refusal/failure. No controller.
     /// </summary>
-    public Task<bool> MoveNodeAsync(ElementId sourceId, ElementId targetParentId) =>
-        RunEditAsync(nameof(MoveNodeAsync), "Move failed", async (project, editor) =>
+    public async Task<bool> MoveNodeAsync(ElementId sourceId, ElementId targetParentId)
+    {
+        if (Current is not { } project
+            || project.FindById(sourceId) is not { } source || project.FindById(targetParentId) is not { } target)
+            return false;
+        if (project.FindParent(sourceId)?.Id == targetParentId)
         {
-            if (project.FindById(sourceId) is not { } source || project.FindById(targetParentId) is not { } target)
-                return false;
-            if (project.FindParent(sourceId)?.Id == targetParentId)
-            {
-                await _dialogs.ShowMessageAsync("Move", "The node is already in that container.");
-                return false;
-            }
-            if (!CanContain(source.Tag, target.Tag))
-            {
-                await _dialogs.ShowMessageAsync("Cannot move", "That container cannot hold this node.");
-                return false;
-            }
-            editor.MoveSubtree(sourceId, targetParentId);
-            return true;
-        }, refusalTitle: "Cannot move");   // self/descendant target
+            await _dialogs.ShowMessageAsync("Move", "The node is already in that container.");
+            return false;
+        }
+        if (!CanContain(source.Tag, target.Tag))
+        {
+            await _dialogs.ShowMessageAsync("Cannot move", "That container cannot hold this node.");
+            return false;
+        }
+        EditOutcome outcome = await RouteAsync(new MoveNode(sourceId, targetParentId), "Cannot move");
+        if (outcome.Status == EditStatus.Refused)   // self/descendant target (the engine move-contract)
+            await _dialogs.ShowMessageAsync("Cannot move", "That container cannot hold this node.");
+        return outcome.Status == EditStatus.Committed;
+    }
 
     /// <summary>Whether <see cref="MoveNodeAsync"/> would move <paramref name="sourceId"/> under
     /// <paramref name="targetParentId"/> — its non-mutating peer, read for the drag-over hint (A-31). Applies the SAME
@@ -1098,13 +1098,11 @@ public sealed class ProjectSession : IDisposable
     /// <see cref="ProjectEditor.CanMoveSubtree"/>). No dialogs, no mutation, no controller.</summary>
     public bool CanMoveNode(ElementId sourceId, ElementId targetParentId)
     {
-        if (Current is not { } project
-            || project.FindById(sourceId) is not { } source
-            || project.FindById(targetParentId) is not { } target)
+        if (Current is not { } current)
             return false;
-        return CanContain(source.Tag, target.Tag)
-            && project.FindParent(sourceId)?.Id != targetParentId
-            && project.Edit().CanMoveSubtree(sourceId, targetParentId);
+        var document = new ProjectDocumentSession();
+        document.Open(current, startClean: true);
+        return document.CanApply(new MoveNode(sourceId, targetParentId)).Ok;
     }
 
     /// <summary>
@@ -1114,23 +1112,18 @@ public sealed class ProjectSession : IDisposable
     /// stay connected); the original is left unchanged. Refuses an illegal container. Undoable. Returns the new node's
     /// id, or null on refusal/failure. No controller.
     /// </summary>
-    public Task<ElementId?> CopyNodeAsync(ElementId sourceId, ElementId targetParentId)
+    public async Task<ElementId?> CopyNodeAsync(ElementId sourceId, ElementId targetParentId)
     {
-        ElementId newId = default;
-        return RunEditAsync<ElementId?>(nameof(CopyNodeAsync), "Paste failed",
-            async (project, editor) =>
-            {
-                if (project.FindById(sourceId) is not { } source || project.FindById(targetParentId) is not { } target)
-                    return false;
-                if (!CanContain(source.Tag, target.Tag))
-                {
-                    await _dialogs.ShowMessageAsync("Cannot paste", "That container cannot hold this node.");
-                    return false;
-                }
-                newId = editor.CopySubtree(sourceId, targetParentId);
-                return true;
-            },
-            _ => newId, onFail: null, refusalTitle: "Cannot paste");
+        if (Current is not { } project
+            || project.FindById(sourceId) is not { } source || project.FindById(targetParentId) is not { } target)
+            return null;
+        if (!CanContain(source.Tag, target.Tag))
+        {
+            await _dialogs.ShowMessageAsync("Cannot paste", "That container cannot hold this node.");
+            return null;
+        }
+        EditOutcome<ElementId> outcome = await RouteAsync(new CopyNode(sourceId, targetParentId), "Cannot paste");
+        return outcome.Status == EditStatus.Committed ? outcome.Value : null;
     }
 
     /// <summary>
