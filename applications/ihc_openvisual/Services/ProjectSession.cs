@@ -15,6 +15,7 @@ using Ihc.Vis.Model;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Reporting;
+using Ihc.Vis.Session;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -835,16 +836,11 @@ public sealed class ProjectSession : IDisposable
     /// <see cref="Project.Groups"/>) so the caller can select it, or null when there is no open project or the edit
     /// fails.
     /// </summary>
-    public Task<ElementId?> AddLocalityAsync() =>
-        RunEditAsync<ElementId?>(nameof(AddLocalityAsync), "Insert failed",
-            (project, editor) =>
-            {
-                editor.AddGroup(NewLocalityName);
-                return true;
-            },
-            // The new room is appended last, so it is the final entry in Groups.
-            updated => updated.Groups.Count > 0 ? updated.Groups[^1].Id : null,
-            onFail: null);
+    public async Task<ElementId?> AddLocalityAsync()
+    {
+        EditOutcome<ElementId> outcome = await RouteAsync(new AddLocality(NewLocalityName), "Insert failed");
+        return outcome.Status == EditStatus.Committed ? outcome.Value : null;
+    }
 
     /// <summary>
     /// Deletes a locality (US-009). An empty room is removed silently; a room that still holds products or function
@@ -852,25 +848,21 @@ public sealed class ProjectSession : IDisposable
     /// that referenced the removed products (<see cref="DeleteReferencePolicy.CascadeReferences"/>). Returns false
     /// (nothing mutated) when the id is absent, the installer declines the confirmation, or the edit fails.
     /// </summary>
-    public Task<bool> DeleteLocalityAsync(ElementId id) =>
-        RunEditAsync(nameof(DeleteLocalityAsync), "Delete failed", async (project, editor) =>
+    public async Task<bool> DeleteLocalityAsync(ElementId id)
+    {
+        if (Current?.FindById(id) is { } group && !group.Children.IsDefaultOrEmpty)
         {
-            ProjectElement? group = project.FindById(id);
-            if (group is null)
-                return false;
-            if (!group.Children.IsDefaultOrEmpty)
-            {
-                string name = project.View(group).Name is { Length: > 0 } n ? n : "this locality";
-                Activity.Current?.SetTag("locality.hasContents", true);
-                bool confirmed = await _dialogs.ConfirmAsync("Delete locality",
-                    $"'{name}' contains products. Deleting it also removes those products and the commands and " +
-                    "conditions that use them. Delete anyway?");
-                if (!confirmed)
-                    return false;   // declined — nothing is deleted
-            }
-            editor.DeleteById(id, DeleteReferencePolicy.CascadeReferences);
-            return true;
-        });
+            string name = Current.View(group).Name is { Length: > 0 } n ? n : "this locality";
+            Activity.Current?.SetTag("locality.hasContents", true);
+            bool confirmed = await _dialogs.ConfirmAsync("Delete locality",
+                $"'{name}' contains products. Deleting it also removes those products and the commands and " +
+                "conditions that use them. Delete anyway?");
+            if (!confirmed)
+                return false;   // declined — nothing is deleted
+        }
+        EditOutcome outcome = await RouteAsync(new DeleteLocality(id), "Delete failed");
+        return outcome.Status == EditStatus.Committed;
+    }
 
     /// <summary>Raised after a catalog import changes the available products/function blocks (US-059/US-060), so the
     /// insertion menus can be rebuilt.</summary>
@@ -1327,18 +1319,11 @@ public sealed class ProjectSession : IDisposable
     /// project, and records the change — which also marks the project dirty and drives the every-Nth-change crash
     /// backup (US-005). Returns false (with a diagnostic) when the id no longer resolves or the edit fails.
     /// </summary>
-    public Task<bool> RenameLocalityAsync(ElementId id, string name, string note) =>
-        RunEditAsync(nameof(RenameLocalityAsync), "Rename failed", (project, editor) =>
-        {
-            if (!editor.TryResolve(id, out ElementRef? handle))
-            {
-                _logger.LogWarning("Cannot rename locality {Id}: it no longer exists", id.ToToken());
-                return false;
-            }
-            handle.SetAttribute("name", name);
-            handle.SetAttribute("note", note);
-            return true;
-        });
+    public async Task<bool> RenameLocalityAsync(ElementId id, string name, string note)
+    {
+        EditOutcome outcome = await RouteAsync(new RenameLocality(id, name, note), "Rename failed");
+        return outcome.Status == EditStatus.Committed;
+    }
 
     /// <summary>Records one committed edit (the hook editors use in E2+): marks the project dirty and triggers a
     /// crash backup on every Nth change. Fire-and-forget for UI callers; tests await <see cref="MarkChangedAsync"/>.</summary>
@@ -1346,6 +1331,45 @@ public sealed class ProjectSession : IDisposable
 
     // The single commit path for every project-mutating operation (US-052): snapshots the pre-edit project for undo,
     // invalidates the redo history, swaps in the new project, then marks changed (dirty + backup + StateChanged).
+    // fablerefac W2-5 (migrate): route a command through a document session, then persist the result via the
+    // existing commit path so ProjectSession's Current/undo/dirty stay the source of truth. W2-14 contracts this to
+    // one persistent session the VM drives directly. A fresh session per call is created on the calling thread,
+    // sidestepping the session's thread-affinity guard; it is used once as a stateless command runner.
+    private async Task<EditOutcome> RouteAsync(ProjectCommand command, string failureTitle)
+    {
+        if (Current is not { } current)
+            return new EditOutcome(EditStatus.Refused, command.GetType().Name, "No project is open.", null);
+        var document = new ProjectDocumentSession();
+        document.Open(current, startClean: true);
+        EditOutcome outcome = document.Apply(command);
+        await PersistAsync(document, outcome, failureTitle);
+        return outcome;
+    }
+
+    private async Task<EditOutcome<T>> RouteAsync<T>(ProjectCommand<T> command, string failureTitle)
+    {
+        if (Current is not { } current)
+            return new EditOutcome<T>(EditStatus.Refused, command.GetType().Name, "No project is open.", null, default);
+        var document = new ProjectDocumentSession();
+        document.Open(current, startClean: true);
+        EditOutcome<T> outcome = document.Apply(command);
+        await PersistAsync(document, outcome, failureTitle);
+        return outcome;
+    }
+
+    private async Task PersistAsync(ProjectDocumentSession document, EditOutcome outcome, string failureTitle)
+    {
+        if (outcome.Status == EditStatus.Committed)
+        {
+            await CommitAsync(document.Current!);
+        }
+        else if (outcome.Status == EditStatus.Failed)
+        {
+            _logger.LogError("Edit failed: {Reason}", outcome.Reason);
+            await _dialogs.ShowMessageAsync(failureTitle, outcome.Reason ?? "The edit failed.");
+        }
+    }
+
     private async Task CommitAsync(Project updated)
     {
         lock (_gate)
