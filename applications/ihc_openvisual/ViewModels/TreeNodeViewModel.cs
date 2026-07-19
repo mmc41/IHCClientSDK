@@ -9,7 +9,7 @@ namespace ihc_openvisual.ViewModels;
 /// root over the project's rooms); products, function blocks and pins are added by later epics, so children
 /// are exposed generically here.
 /// </summary>
-public sealed class TreeNodeViewModel : ObservableObject
+public sealed partial class TreeNodeViewModel : ObservableObject
 {
     public TreeNodeViewModel(string displayName, string iconAsset, bool isExpanded = false, bool isBold = false,
         ElementId? elementId = null, bool isLocalitiesRoot = false, bool isUnlinked = false,
@@ -26,11 +26,15 @@ public sealed class TreeNodeViewModel : ObservableObject
     }
 
     /// <summary>Whether to show the yellow "!" unlinked marker — a wireless product not yet linked to the
-    /// controller (US-014).</summary>
-    public bool IsUnlinked { get; }
+    /// controller (US-014). Re-rendered in place by the W3-4 reconciler when a product links/unlinks.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AccessibleName))]
+    public partial bool IsUnlinked { get; set; }
 
-    /// <summary>Whether this is a locked library function block — the target of <i>Unlock</i> (US-020).</summary>
-    public bool IsLockedFunctionBlock { get; }
+    /// <summary>Whether this is a locked library function block — the target of <i>Unlock</i> (US-020).
+    /// Re-rendered in place by the W3-4 reconciler on unlock.</summary>
+    [ObservableProperty]
+    public partial bool IsLockedFunctionBlock { get; set; }
 
     /// <summary>Whether this node is a function block — the target of <i>Save block…</i> (US-021).</summary>
     public bool IsFunctionBlock { get; init; }
@@ -113,7 +117,8 @@ public sealed class TreeNodeViewModel : ObservableObject
     /// <summary>Hover tooltip (US-047/US-048): the node's documentation note and, for a resource-mapped node (input,
     /// output, function block), its IHC resource id — each on its own line(s). Null when the node has neither, so no
     /// tooltip is shown (e.g. the Localities root or an empty locality).</summary>
-    public string? Tooltip { get; init; }
+    [ObservableProperty]
+    public partial string? Tooltip { get; set; }
 
     /// <summary>
     /// What KIND of thing this row is, independent of what it is called. Surfaced to automation as the row's
@@ -133,7 +138,9 @@ public sealed class TreeNodeViewModel : ObservableObject
     /// <summary>The <see cref="NodeKind"/> of a row no construction site has classified.</summary>
     public const string UnknownKind = "unknown";
 
-    public string DisplayName { get; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AccessibleName))]
+    public partial string DisplayName { get; set; }
 
     /// <summary>The name a screen reader announces for this row. It folds the visible label together with the
     /// unlinked state (which is otherwise conveyed only by the "!" glyph and tooltip), so assistive technology
@@ -144,8 +151,10 @@ public sealed class TreeNodeViewModel : ObservableObject
     /// product/FB id); null for the synthetic <c>Localities</c> root, which addresses no element.</summary>
     public ElementId? ElementId { get; }
 
-    /// <summary>The <c>/Assets/*.svg</c> glyph rendered beside the label (per the icon-mapping doc).</summary>
-    public string IconAsset { get; }
+    /// <summary>The <c>/Assets/*.svg</c> glyph rendered beside the label (per the icon-mapping doc).
+    /// Re-rendered in place by the W3-4 reconciler (e.g. a locked FB becomes editable).</summary>
+    [ObservableProperty]
+    public partial string IconAsset { get; set; }
 
     /// <summary>Whether the node is expanded by default (the <c>Localities</c> root is; rooms are collapsed).</summary>
     private bool _isExpanded;
@@ -159,7 +168,8 @@ public sealed class TreeNodeViewModel : ObservableObject
     }
 
     /// <summary>Whether the label renders bold — locality nodes do (US-006).</summary>
-    public bool IsBold { get; }
+    [ObservableProperty]
+    public partial bool IsBold { get; set; }
 
     private bool _isDropTarget;
 
