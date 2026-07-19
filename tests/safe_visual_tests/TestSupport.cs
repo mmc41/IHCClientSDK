@@ -180,7 +180,8 @@ public sealed class ShellHarness : IDisposable
 
     private readonly bool _ownsDir;
 
-    private ShellHarness(string dir, bool ownsDir, int changeThreshold)
+    private ShellHarness(string dir, bool ownsDir, int changeThreshold,
+        System.TimeProvider? timeProvider, TimeSpan? autoBackupInterval)
     {
         TempDir = dir;
         _ownsDir = ownsDir;
@@ -188,19 +189,21 @@ public sealed class ShellHarness : IDisposable
         Backup = new BackupService(Path.Combine(TempDir, "recovery"));
         Recent = new RecentProjectsStore(Path.Combine(TempDir, "recent.json"));
         var service = new ProjectAppService(new IhcSettings());
-        // A one-hour timer never fires during a test; backup triggers are driven explicitly via MarkChangedAsync.
-        // The catalog dir is a subfolder of TempDir so Restart(dir) reuses the same persisted catalog (US-061).
-        Session = new ProjectSession(service, Backup, Recent, Dialogs, null, TimeSpan.FromHours(1), changeThreshold,
-            Path.Combine(TempDir, "catalog"));
+        // By default a one-hour timer never fires during a test; a FakeTimeProvider (passed in) drives it
+        // deterministically. The catalog dir is a subfolder of TempDir so Restart(dir) reuses it (US-061).
+        Session = new ProjectSession(service, Backup, Recent, Dialogs, null,
+            autoBackupInterval ?? TimeSpan.FromHours(1), changeThreshold, Path.Combine(TempDir, "catalog"), timeProvider);
     }
 
-    public static ShellHarness Create(int changeThreshold = 10) =>
-        new(Path.Combine(Path.GetTempPath(), "ihc_ov_tests", Guid.NewGuid().ToString("N")), ownsDir: true, changeThreshold);
+    public static ShellHarness Create(int changeThreshold = 10,
+        System.TimeProvider? timeProvider = null, TimeSpan? autoBackupInterval = null) =>
+        new(Path.Combine(Path.GetTempPath(), "ihc_ov_tests", Guid.NewGuid().ToString("N")), ownsDir: true,
+            changeThreshold, timeProvider, autoBackupInterval);
 
     /// <summary>A second session over an existing directory — simulates restarting the app after a crash so the
     /// recovery backup left in <paramref name="dir"/> is discovered.</summary>
     public static ShellHarness Restart(string dir, int changeThreshold = 10) =>
-        new(dir, ownsDir: false, changeThreshold);
+        new(dir, ownsDir: false, changeThreshold, null, null);
 
     public string TempPath(string fileName) => Path.Combine(TempDir, fileName);
 

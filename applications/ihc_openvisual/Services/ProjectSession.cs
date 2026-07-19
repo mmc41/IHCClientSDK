@@ -37,9 +37,10 @@ public sealed class ProjectSession : IDisposable
     private readonly ILogger<ProjectSession> _logger;
     private readonly TimeSpan _autoBackupInterval;
     private readonly int _changeBackupThreshold;
+    private readonly TimeProvider _timeProvider;
     private readonly object _gate = new();
     private readonly SemaphoreSlim _backupLock = new(1, 1);
-    private Timer? _timer;
+    private ITimer? _timer;
 
     private readonly string _catalogDir;
 
@@ -51,13 +52,15 @@ public sealed class ProjectSession : IDisposable
         ILoggerFactory? loggerFactory = null,
         TimeSpan? autoBackupInterval = null,
         int changeBackupThreshold = 10,
-        string? catalogDir = null)
+        string? catalogDir = null,
+        TimeProvider? timeProvider = null)
     {
         _service = service;
         _backup = backup;
         _recent = recent;
         _dialogs = dialogs;
         _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<ProjectSession>();
+        _timeProvider = timeProvider ?? TimeProvider.System;   // D8: the auto-backup clock/timer, fakeable in tests
         _autoBackupInterval = autoBackupInterval ?? TimeSpan.FromMinutes(10);
         _changeBackupThreshold = changeBackupThreshold < 1 ? 10 : changeBackupThreshold;
         _catalogDir = catalogDir ?? DefaultCatalogDir();
@@ -980,7 +983,7 @@ public sealed class ProjectSession : IDisposable
                 return;
             _backup.EnsureDirectory();
             await _service.Save(snapshot, _backup.RecoveryProjectPath);
-            _backup.WriteMarker(origin, DateTimeOffset.UtcNow);
+            _backup.WriteMarker(origin, _timeProvider.GetUtcNow());
         }
         catch (Exception ex)
         {
@@ -996,12 +999,15 @@ public sealed class ProjectSession : IDisposable
     {
         try
         {
-            await _service.Save(Current!, path);
+            // Capture the snapshot that is being written BEFORE the await (the race fix): an edit landing during
+            // the file I/O must not be marked clean — the save point is exactly the snapshot the file holds.
+            Project snapshot = Current!;
+            await _service.Save(snapshot, path);
             lock (_gate)
             {
                 FilePath = path;
-                IsDirty = false;
-                _savePoint = Current;   // this snapshot is now what the file holds
+                IsDirty = !ReferenceEquals(Current, snapshot);   // still dirty if an edit slipped in during the write
+                _savePoint = snapshot;
             }
             _recent.Add(path);
             // The work is now safely persisted, so the crash backup is stale and the change counter starts
@@ -1065,7 +1071,7 @@ public sealed class ProjectSession : IDisposable
 
     private void StartTimer()
     {
-        _timer ??= new Timer(_ => _ = AutoBackupAsync(), null, _autoBackupInterval, _autoBackupInterval);
+        _timer ??= _timeProvider.CreateTimer(_ => _ = AutoBackupAsync(), null, _autoBackupInterval, _autoBackupInterval);
     }
 
     private void RaiseChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
