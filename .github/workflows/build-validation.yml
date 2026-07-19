@@ -7,6 +7,13 @@ on:
     paths:
     - '**.cs'
     - '**.csproj'
+    - '**.props'
+    - '**.vis'
+    - '**.def'
+    - '**.ifb'
+    - '**/*.dtd'
+    - 'tests/**'
+    - '.github/workflows/**'
 
 env:
   DOTNET_VERSION: '10.x' # The .NET SDK version to use
@@ -36,6 +43,12 @@ jobs:
 
     - name: Test (controller-free unit tests)
       run: dotnet test tests/safe_unit_tests/safe_unit_tests.csproj --no-build
+
+    - name: Test (project engine byte-fidelity)
+      # Controller-free .vis project engine + ProjectAppService byte-fidelity corpus (the
+      # hard-constraint gate). Needs no native render/font deps (unlike the Avalonia suites),
+      # so it runs on all three OSes like the unit tests.
+      run: dotnet test tests/safe_project_tests/safe_project_tests.csproj --no-build
 
     - name: Test (headless Lab UI tests)
       # Avalonia + Skia headless rendering is validated on the Windows runner (the primary
