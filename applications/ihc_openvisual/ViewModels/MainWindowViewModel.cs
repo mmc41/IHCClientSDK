@@ -321,14 +321,20 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private Task Undo() => RunAsync(nameof(Undo), async () =>
     {
-        StatusText = await _session.UndoAsync() ? "Undid the last change." : "Nothing to undo.";
+        string? label = _session.UndoLabel;   // capture before the stack pops — names the action (E14)
+        StatusText = await _session.UndoAsync()
+            ? label is null ? "Undid the last change." : $"Undid: {label}"
+            : "Nothing to undo.";
     });
 
     /// <summary>Edit ▸ Redo (US-052, Ctrl+Y): re-applies the last undone edit; a no-op when the redo history is empty.</summary>
     [RelayCommand]
     private Task Redo() => RunAsync(nameof(Redo), async () =>
     {
-        StatusText = await _session.RedoAsync() ? "Redid the change." : "Nothing to redo.";
+        string? label = _session.RedoLabel;
+        StatusText = await _session.RedoAsync()
+            ? label is null ? "Redid the change." : $"Redid: {label}"
+            : "Nothing to redo.";
     });
 
     /// <summary>Shows help text for the selected element (US-044/US-045, F1) — the element's note, or a generic

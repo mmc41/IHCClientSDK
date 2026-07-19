@@ -80,8 +80,10 @@ public sealed class ProjectSession : IDisposable
     // through CommitAsync, which pushes the pre-edit snapshot here and clears the redo list; loads (New/Open/Close)
     // reset the history. Capped so a long session can't grow the snapshot list without bound.
     private const int MaxHistoryDepth = 100;
-    private readonly List<Project> _undo = new();
-    private readonly List<Project> _redo = new();
+    // Each entry pairs the pre-edit snapshot to restore with the label of the edit that produced the newer state
+    // (the command's Describe, surfaced as EditOutcome.Label — W2-14/E14), so Undo/Redo can name their action.
+    private readonly List<(Project Snapshot, string Label)> _undo = new();
+    private readonly List<(Project Snapshot, string Label)> _redo = new();
 
     // The snapshot the document was last known to match: what a Save wrote, or the state a New/Open started from.
     // Dirtiness is "Current is not this snapshot", so undoing back to a saved state clears the flag rather than
@@ -100,6 +102,19 @@ public sealed class ProjectSession : IDisposable
     public bool CanRedo
     {
         get { lock (_gate) { return _redo.Count > 0; } }
+    }
+
+    /// <summary>The label of the edit <see cref="UndoAsync"/> would reverse (e.g. "Insert locality"), or null when
+    /// there is nothing to undo — so the status bar and Edit ▸ Undo can name the action (US-052/E14).</summary>
+    public string? UndoLabel
+    {
+        get { lock (_gate) { return _undo.Count > 0 ? _undo[^1].Label : null; } }
+    }
+
+    /// <summary>The label of the edit <see cref="RedoAsync"/> would re-apply, or null when nothing to redo (E14).</summary>
+    public string? RedoLabel
+    {
+        get { lock (_gate) { return _redo.Count > 0 ? _redo[^1].Label : null; } }
     }
 
     /// <summary>The document name shown in the title bar: <c>Untitled</c> before the first save, else the file name.</summary>
@@ -1111,7 +1126,7 @@ public sealed class ProjectSession : IDisposable
     {
         if (outcome.Status == EditStatus.Committed)
         {
-            await CommitAsync(document.Current!);
+            await CommitAsync(document.Current!, outcome.Label);
         }
         else if (outcome.Status == EditStatus.Failed)
         {
@@ -1120,13 +1135,13 @@ public sealed class ProjectSession : IDisposable
         }
     }
 
-    private async Task CommitAsync(Project updated)
+    private async Task CommitAsync(Project updated, string label = "Edit")
     {
         lock (_gate)
         {
             if (Current is not null)
             {
-                _undo.Add(Current);
+                _undo.Add((Current, label));
                 if (_undo.Count > MaxHistoryDepth)
                     _undo.RemoveAt(0);
             }
@@ -1209,9 +1224,10 @@ public sealed class ProjectSession : IDisposable
         {
             if (_undo.Count == 0 || Current is null)
                 return false;
-            _redo.Add(Current);
-            Current = _undo[^1];
+            (Project snapshot, string label) = _undo[^1];
             _undo.RemoveAt(_undo.Count - 1);
+            _redo.Add((Current, label));   // redo re-applies the same edit, so it carries the same label
+            Current = snapshot;
             dirty = !ReferenceEquals(Current, _savePoint);
         }
         await NotifyChangedAsync(dirty);
@@ -1228,9 +1244,10 @@ public sealed class ProjectSession : IDisposable
         {
             if (_redo.Count == 0 || Current is null)
                 return false;
-            _undo.Add(Current);
-            Current = _redo[^1];
+            (Project snapshot, string label) = _redo[^1];
             _redo.RemoveAt(_redo.Count - 1);
+            _undo.Add((Current, label));
+            Current = snapshot;
             dirty = !ReferenceEquals(Current, _savePoint);
         }
         await NotifyChangedAsync(dirty);

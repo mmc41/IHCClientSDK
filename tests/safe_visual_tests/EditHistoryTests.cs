@@ -27,11 +27,33 @@ public class EditHistoryTests
             Assert.That(vm.InstallationNodes[0].Children.Count, Is.EqualTo(paneBefore), "the Installation pane reflects the undo");
             Assert.That(vm.FunctionNodes[0].Children.Count, Is.EqualTo(paneBefore), "the Functions pane reflects it identically");
             Assert.That(harness.Session.CanRedo, Is.True);
-            Assert.That(vm.StatusText, Is.EqualTo("Undid the last change."));
+            Assert.That(vm.StatusText, Is.EqualTo("Undid: Insert locality"), "the undo status names the action (E14)");
         });
 
         await vm.RedoCommand.ExecuteAsync(null);
         Assert.That(harness.Session.Current!.Groups.Count, Is.EqualTo(groupsBefore + 1), "redo re-applies the insert");
+    }
+
+    // E14 (W2-14): the history names its actions — the session reports the label of the edit undo/redo would touch,
+    // and the VM surfaces it in the status text.
+    [Test]
+    public async Task History_NamesTheActionToUndoAndRedo()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddLocalityAsync();   // command label: "Insert locality"
+
+        Assert.That(harness.Session.UndoLabel, Is.EqualTo("Insert locality"), "the session names the edit to undo");
+
+        await vm.UndoCommand.ExecuteAsync(null);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.StatusText, Does.Contain("Insert locality"), "the undo status names the action");
+            Assert.That(harness.Session.UndoLabel, Is.Null, "nothing left to undo");
+            Assert.That(harness.Session.RedoLabel, Is.EqualTo("Insert locality"), "and redo names the same action");
+        });
     }
 
     [Test]
