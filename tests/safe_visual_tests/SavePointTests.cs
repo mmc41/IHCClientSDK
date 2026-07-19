@@ -1,13 +1,13 @@
-using System.IO;
 using System.Threading.Tasks;
 using ihc_openvisual.Services;
 
 namespace safe_visual_tests;
 
 /// <summary>
-/// The dirty flag tracks the saved state rather than latching (US-052 + US-004): a project that has been edited
-/// and then undone back to what is on disk is not modified, and must not provoke a "save changes?" prompt on
-/// close. Dirtiness is a comparison against the last saved snapshot, not a one-way flag.
+/// The app-level consequence of the save-point dirty tracking (US-052 + US-004): a project edited then undone back
+/// to what is on disk provokes no "save changes?" prompt on close. The dirty/save-point <b>semantics</b> now live
+/// in <c>safe_project_tests.SessionSavePointTests</c> (against <c>ProjectDocumentSession</c>, W2-16); this retains
+/// only the UI-level wiring — the close flow consults the dirty flag, not a latch.
 /// </summary>
 public class SavePointTests
 {
@@ -18,39 +18,6 @@ public class SavePointTests
         harness.Dialogs.SavePath = path;
         await harness.Session.SaveAsAsync();
         return path;
-    }
-
-    /// <summary>The defect: undo restored the saved project but left IsDirty latched at true.</summary>
-    [Test]
-    public async Task Undo_BackToSavedState_IsNotDirty()
-    {
-        using var harness = ShellHarness.Create();
-        await harness.Session.StartAsync();
-        await SaveToTempAsync(harness, "savepoint.vis");
-        Assert.That(harness.Session.IsDirty, Is.False, "precondition: a freshly saved project is clean");
-
-        await harness.Session.AddLocalityAsync();
-        Assert.That(harness.Session.IsDirty, Is.True, "precondition: the edit made it dirty");
-
-        await harness.Session.UndoAsync();
-
-        Assert.That(harness.Session.IsDirty, Is.False,
-            "undoing back to the saved snapshot leaves a project identical to the file on disk");
-    }
-
-    /// <summary>Redoing away from the saved state must make it dirty again — the flag tracks, it does not just clear.</summary>
-    [Test]
-    public async Task Redo_AwayFromSavedState_IsDirtyAgain()
-    {
-        using var harness = ShellHarness.Create();
-        await harness.Session.StartAsync();
-        await SaveToTempAsync(harness, "savepoint.vis");
-        await harness.Session.AddLocalityAsync();
-        await harness.Session.UndoAsync();
-
-        await harness.Session.RedoAsync();
-
-        Assert.That(harness.Session.IsDirty, Is.True, "the redone edit is again not on disk");
     }
 
     /// <summary>The user-visible consequence: no spurious save prompt when closing an undone-back-to-saved project.</summary>
@@ -72,69 +39,5 @@ public class SavePointTests
                 "a project matching the file on disk has nothing to prompt about");
             Assert.That(proceeded, Is.True);
         });
-    }
-
-    /// <summary>
-    /// Saving mid-history moves the save point: the state that is now on disk is the clean one, and undoing away
-    /// from it is dirty even though that older snapshot was itself saved earlier.
-    /// </summary>
-    [Test]
-    public async Task Save_MovesTheSavePoint_SoUndoingAwayFromItIsDirty()
-    {
-        using var harness = ShellHarness.Create();
-        await harness.Session.StartAsync();
-        await SaveToTempAsync(harness, "savepoint.vis");
-        await harness.Session.AddLocalityAsync();
-
-        // The edited project is now the one on disk.
-        await harness.Session.SaveAsync();
-        Assert.That(harness.Session.IsDirty, Is.False, "precondition: saving the edit made it clean");
-
-        await harness.Session.UndoAsync();
-
-        Assert.That(harness.Session.IsDirty, Is.True,
-            "undoing to the pre-edit snapshot now differs from the file on disk");
-    }
-
-    /// <summary>A never-saved project starts clean, so undoing back to its initial state is clean too.</summary>
-    [Test]
-    public async Task Undo_BackToInitialStateOfNeverSavedProject_IsNotDirty()
-    {
-        using var harness = ShellHarness.Create();
-        await harness.Session.StartAsync();
-        Assert.That(harness.Session.IsDirty, Is.False, "precondition: a new project starts clean");
-
-        await harness.Session.AddLocalityAsync();
-        await harness.Session.UndoAsync();
-
-        Assert.That(harness.Session.IsDirty, Is.False, "back to the state the project started in");
-    }
-
-    /// <summary>
-    /// The full save-point round trip (US-052 + US-004) with the save point set *mid-history*: undoing below the
-    /// save point makes the project dirty again, and redoing back up *to* it restores the clean state. Complements
-    /// <see cref="Undo_BackToSavedState_IsNotDirty"/> (undo onto the save point) and
-    /// <see cref="Save_MovesTheSavePoint_SoUndoingAwayFromItIsDirty"/> (undo below it) by pinning the missing
-    /// redo-back-to-clean transition against a save point that is *not* the project's initial snapshot.
-    /// </summary>
-    [Test]
-    public async Task UndoPastSavePoint_IsDirty_ThenRedoBackToSavePoint_IsClean()
-    {
-        using var harness = ShellHarness.Create();
-        await harness.Session.StartAsync();
-        await harness.Session.AddLocalityAsync();            // edit A → S1
-        await SaveToTempAsync(harness, "savepoint.vis");     // save point = S1 (mid-history, not the initial state)
-        await harness.Session.AddLocalityAsync();            // edit B → S2
-        Assert.That(harness.Session.IsDirty, Is.True, "precondition: edit B is not on disk");
-
-        await harness.Session.UndoAsync();                   // → S1, the save point
-        Assert.That(harness.Session.IsDirty, Is.False, "undo onto the save point is clean");
-
-        await harness.Session.UndoAsync();                   // → S0, past/below the save point
-        Assert.That(harness.Session.IsDirty, Is.True, "undoing past the save point is dirty again");
-
-        await harness.Session.RedoAsync();                   // → S1, back onto the save point
-
-        Assert.That(harness.Session.IsDirty, Is.False, "redoing back to the save point restores the clean state");
     }
 }
