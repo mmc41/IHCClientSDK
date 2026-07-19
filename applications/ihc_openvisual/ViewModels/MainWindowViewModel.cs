@@ -1396,20 +1396,18 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     // Full-rebuild fallback (US-070): rebuild the pane through the reconciler (which re-seeds it with the new root)
-    // and carry each surviving node's expand/collapse state across, unless this is a deliberate mode switch
-    // (preserve=false), where the fresh defaults ARE the wanted state.
+    // and carry each surviving node's expand/collapse state across (via the shared RebuildPreservingExpansion), unless
+    // this is a deliberate mode switch (preserve=false), where the fresh defaults ARE the wanted state.
     private void RebuildPaneFallback(ObservableCollection<TreeNodeViewModel> pane, ProjectTreeReconciler reconciler,
-        bool preserve)
-    {
-        Dictionary<ElementId, bool>? expansion = preserve ? SnapshotExpansion(pane) : null;
-        TreeNodeViewModel root = _session.Current is { } project
-            ? reconciler.Rebuild(project)
-            : new TreeNodeViewModel("Localities", LocalityIcon, isExpanded: true) { Kind = TreeNodeKind.LocalitiesRoot };
-        pane.Clear();
-        pane.Add(root);
-        if (expansion is not null)
-            RestoreExpansion(pane, expansion);
-    }
+        bool preserve) =>
+        RebuildPreservingExpansion(pane, preserve, () =>
+        {
+            TreeNodeViewModel root = _session.Current is { } project
+                ? reconciler.Rebuild(project)
+                : new TreeNodeViewModel("Localities", LocalityIcon, isExpanded: true) { Kind = TreeNodeKind.LocalitiesRoot };
+            pane.Clear();
+            pane.Add(root);
+        });
 
     // Records the view about to be built and reports whether it is the SAME as the last build — i.e. whether this
     // is an in-place refresh whose expansion should be carried across, rather than a mode switch that opens fresh.
