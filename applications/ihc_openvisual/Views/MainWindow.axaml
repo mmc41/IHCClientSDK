@@ -175,8 +175,8 @@
 
             <!-- Edit is owned by later epics (E14–E15); present as a stable host. -->
             <MenuItem Header="_Edit" a:AutomationProperties.AutomationId="MenuEdit">
-                <MenuItem Header="_Undo" Command="{Binding UndoCommand}" InputGesture="Ctrl+Z"/>
-                <MenuItem Header="_Redo" Command="{Binding RedoCommand}" InputGesture="Ctrl+Y"/>
+                <MenuItem Header="{Binding UndoMenuHeader}" Command="{Binding UndoCommand}" InputGesture="Ctrl+Z"/>
+                <MenuItem Header="{Binding RedoMenuHeader}" Command="{Binding RedoCommand}" InputGesture="Ctrl+Y"/>
                 <Separator/>
                 <MenuItem Header="Cu_t" Command="{Binding CutCommand}" CommandParameter="{Binding SelectedNode}" InputGesture="Ctrl+X"/>
                 <MenuItem Header="_Copy" Command="{Binding CopyCommand}" CommandParameter="{Binding SelectedNode}" InputGesture="Ctrl+C"/>

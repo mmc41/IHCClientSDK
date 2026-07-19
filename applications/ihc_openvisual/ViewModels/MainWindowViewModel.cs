@@ -316,6 +316,13 @@ public partial class MainWindowViewModel : ViewModelBase
                 StatusText = "Event added to the program.";
         });
 
+    /// <summary>The Edit ▸ Undo menu header, naming the action it would reverse (E14): e.g. "Undo Insert locality",
+    /// or just "Undo" when the history is empty. The leading underscore keeps the Alt+U access key.</summary>
+    public string UndoMenuHeader => _session.CanUndo ? $"_Undo {_session.UndoLabel}" : "_Undo";
+
+    /// <summary>The Edit ▸ Redo menu header, naming the action it would re-apply (E14), or just "Redo".</summary>
+    public string RedoMenuHeader => _session.CanRedo ? $"_Redo {_session.RedoLabel}" : "_Redo";
+
     /// <summary>Edit ▸ Undo (US-052, Ctrl+Z): reverses the last project-mutating edit; a no-op when there is nothing
     /// to undo. Refreshes both panes via the session's StateChanged.</summary>
     [RelayCommand]
@@ -1649,6 +1656,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private void Refresh()
     {
         Title = $"{_session.DocumentName} - {Constants.AppName}";
+        OnPropertyChanged(nameof(UndoMenuHeader));   // the history may have grown/shrunk — refresh the Edit-menu labels (E14)
+        OnPropertyChanged(nameof(RedoMenuHeader));
         if (IsProgrammingMode && _programmingBlockId is { } blockId
             && _session.Current?.FindById(blockId) is { Tag: "functionblock" } block)
         {

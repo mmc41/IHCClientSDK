@@ -56,6 +56,26 @@ public class EditHistoryTests
         });
     }
 
+    // E14 (W2-14): the Edit ▸ Undo/Redo menu headers name the action, and fall back to bare "Undo"/"Redo" when empty.
+    [Test]
+    public async Task EditMenu_UndoRedoHeaders_NameTheAction()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        Assert.That(vm.UndoMenuHeader, Is.EqualTo("_Undo"), "no history yet → bare header");
+
+        await harness.Session.AddLocalityAsync();
+        Assert.That(vm.UndoMenuHeader, Does.Contain("Insert locality"), "the Undo header names the action");
+
+        await vm.UndoCommand.ExecuteAsync(null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.UndoMenuHeader, Is.EqualTo("_Undo"), "nothing left to undo → bare header");
+            Assert.That(vm.RedoMenuHeader, Does.Contain("Insert locality"), "the Redo header names the re-applyable action");
+        });
+    }
+
     [Test]
     public async Task Undo_EmptyHistory_IsNoOp()
     {
