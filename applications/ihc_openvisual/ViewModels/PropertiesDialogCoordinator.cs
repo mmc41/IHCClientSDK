@@ -15,12 +15,12 @@ namespace ihc_openvisual.ViewModels;
 
 /// <summary>
 /// fablerefac W3-8: the per-node-type <i>Properties</i> dialog flows, extracted from
-/// <see cref="MainWindowViewModel"/> (C# 12 primary ctor). Each flow reads the element, opens its dialog through
+/// <see cref="MainWindowViewModel"/> (C# 12 primary ctor). <see cref="OpenAsync"/> is the node dispatch; each flow
+/// reads the element through a typed SDK read view (<see cref="PinView"/>/<see cref="ProductView"/>/
+/// <see cref="ModemView"/>/<see cref="DimmerView"/> or <see cref="ElementView"/>), opens its dialog through
 /// <see cref="IDialogService"/>, and applies the result as a command via <paramref name="applyAndReport"/> — the
-/// view-model's single outcome→status/dialog rule. The view-model keeps the node dispatch and calls these.
-/// <para>Extracted in slices: this holds the locality / scene-container / scene-value / enum flows; the
-/// product / pin / modem / dimmer cluster and the typed read views (which retire the dialog-DTO GetAttribute reads)
-/// follow in later increments.</para>
+/// view-model's single outcome→status/dialog rule (<paramref name="setStatus"/> serves the one flow, pin
+/// addressing, that reports a bespoke message). No raw schema attribute reads remain in this layer.
 /// </summary>
 internal sealed class PropertiesDialogCoordinator(
     ProjectWorkflow session,
@@ -58,7 +58,7 @@ internal sealed class PropertiesDialogCoordinator(
     /// <summary>Renames a locality or function block through the shared Name/Note dialog (US-007/US-019).</summary>
     public async Task OpenLocalityAsync(ElementId id, string currentName)
     {
-        string currentNote = session.Current?.FindById(id)?.GetAttribute("note") ?? string.Empty;
+        string currentNote = session.Current?.FindById(id) is { } locality ? View(locality).Note ?? string.Empty : string.Empty;
         PropertiesResult? result = await dialogs.EditPropertiesAsync($"Edit {currentName} properties", currentName, currentNote);
         if (result is null)
             return;   // cancelled — the locality keeps its original name and note
@@ -83,9 +83,10 @@ internal sealed class PropertiesDialogCoordinator(
                 Locality: parts.Count > 0 ? parts[0] : string.Empty,
                 Value: value, RampTime: ramp));
         }
-        string name = scenes.GetAttribute("name") ?? "Scenarier";
+        ElementView scenesView = View(scenes);
+        string name = scenesView.Name ?? "Scenarier";
         SceneContainerResult? result = await dialogs.EditSceneContainerAsync(
-            new SceneContainerInput(name, scenes.GetAttribute("note") ?? string.Empty, rows));
+            new SceneContainerInput(name, scenesView.Note ?? string.Empty, rows));
         if (result is null)
             return;
         await applyAndReport(new UpdateSceneContainer(scenesId, result.Note), $"'{name}' updated.");
@@ -121,14 +122,14 @@ internal sealed class PropertiesDialogCoordinator(
     private (string Name, List<string> States)? ReadEnumInfo(ElementId enumVariableId)
     {
         if (session.Current is not { } project || project.FindById(enumVariableId) is not { Tag: "resource_enum" } variable
-            || !ElementId.TryParse(variable.GetAttribute("typedef"), out ElementId defId)
+            || !ElementId.TryParse(project.View(variable).Effective("typedef"), out ElementId defId)
             || project.FindById(defId) is not { } def)
         {
             return null;
         }
         var states = def.ChildrenOrEmpty().Where(c => c.Tag == "enum_value")
-            .Select(c => c.GetAttribute("name") ?? string.Empty).ToList();
-        return (def.GetAttribute("name") ?? string.Empty, states);
+            .Select(c => project.View(c).Name ?? string.Empty).ToList();
+        return (project.View(def).Name ?? string.Empty, states);
     }
 
     // The value-carrying rows inside a product's scenes container — its memberships of the scenarios FBs drive.
@@ -158,7 +159,7 @@ internal sealed class PropertiesDialogCoordinator(
     private IReadOnlyList<string> LinkOppositeParts(ProjectElement linkRow)
     {
         if (session.Current is not { } project
-            || !ElementId.TryParse(linkRow.GetAttribute("link"), out ElementId partnerId)
+            || !ElementId.TryParse(project.View(linkRow).Effective("link"), out ElementId partnerId)
             || project.FindParent(partnerId) is not { } oppositePin)
         {
             return Array.Empty<string>();
@@ -183,35 +184,23 @@ internal sealed class PropertiesDialogCoordinator(
     {
         if (session.Current is not { } project || project.FindById(modemId) is not { } modem)
             return;
-        var localities = new List<LocalityChoice>();
-        foreach (ProjectElement group in project.Groups)
-        {
-            if (group.Id is { } gid)
-                localities.Add(new LocalityChoice(gid.ToToken(), group.GetAttribute("name") ?? string.Empty));
-        }
+        var view = new ModemView(project, modem);
+        List<LocalityChoice> localities = BuildLocalityChoices(project);
         string currentLocalityId = project.FindParent(modemId)?.Id?.ToToken() ?? string.Empty;
-        var phones = new List<string>();
-        for (int slot = 1; slot <= 4; slot++)
-        {
-            string s = slot.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            ProjectElement? pn = modem.DescendantsAndSelf()
-                .FirstOrDefault(e => e.Tag == "sms_modem_phonenumber" && e.GetAttribute("address") == s);
-            phones.Add(pn?.GetAttribute("phonenumber") ?? string.Empty);
-        }
-        string pin = modem.DescendantsAndSelf().FirstOrDefault(e => e.Tag == "sms_modem_pincode")?.GetAttribute("value") ?? string.Empty;
+        string pin = view.PinCode ?? string.Empty;
         if (pin == "0")
             pin = string.Empty;   // the DTD default reads as blank in the dialog
 
         var input = new ModemPropertiesInput(
             "SMS modem properties",
-            modem.GetAttribute("name") ?? string.Empty,
-            modem.GetAttribute("note") ?? string.Empty,
-            modem.GetAttribute("documentation_tag") ?? string.Empty,
-            modem.GetAttribute("cablecolour_0V") ?? string.Empty,
-            modem.GetAttribute("cablecolour_24V") ?? string.Empty,
-            modem.GetAttribute("cablecolour_RS485Minus") ?? string.Empty,
-            modem.GetAttribute("cablecolour_RS485Plus") ?? string.Empty,
-            pin, phones, localities, currentLocalityId);
+            view.Name ?? string.Empty,
+            view.Note ?? string.Empty,
+            view.DocumentationTag ?? string.Empty,
+            view.CableColour0V ?? string.Empty,
+            view.CableColour24V ?? string.Empty,
+            view.CableColourRS485Minus ?? string.Empty,
+            view.CableColourRS485Plus ?? string.Empty,
+            pin, view.PhoneNumbers, localities, currentLocalityId);
 
         ModemPropertiesResult? result = await dialogs.EditModemPropertiesAsync(input);
         if (result is null)
@@ -221,16 +210,15 @@ internal sealed class PropertiesDialogCoordinator(
 
     private async Task OpenPinAsync(ElementId pinId, ProjectElement pin)
     {
-        bool isOutput = pin.Tag == "dataline_output";
-        int dataLine = 1, terminal = 0;
-        if (DatalineAddress.TryParse(pin.GetAttribute("address_dataline"), isOutput, out DatalineAddress addr))
-            (dataLine, terminal) = (addr.DataLine, addr.Terminal);
+        var view = new PinView(session.Current!, pin);
+        bool isOutput = view.IsOutput;
+        (int dataLine, int terminal) = view.Address is { } addr ? (addr.DataLine, addr.Terminal) : (1, 0);
         var input = new PinPropertiesInput(
-            $"{(isOutput ? "Output" : "Input")} '{pin.GetAttribute("name")}'",
+            $"{(isOutput ? "Output" : "Input")} '{view.Name}'",
             isOutput, dataLine, terminal,
-            pin.GetAttribute("cable_colour") ?? string.Empty,
-            pin.GetAttribute("note") ?? string.Empty,
-            View(pin).InitialValue == "on",
+            view.CableColour ?? string.Empty,
+            view.Note ?? string.Empty,
+            view.InitialValueOn,
             InUseTerminals(isOutput, pinId));
 
         PinPropertiesResult? result = await dialogs.EditPinPropertiesAsync(input);
@@ -239,8 +227,20 @@ internal sealed class PropertiesDialogCoordinator(
         // A bespoke failure message (invalid address) rather than the generic mapping, so read the outcome directly.
         EditOutcome outcome = await session.ApplyAsync(new UpdatePin(pinId, result));
         setStatus(outcome.Status == EditStatus.Committed
-            ? $"Addressed {pin.GetAttribute("name")} to data line {result.DataLine}, terminal {result.Terminal}."
+            ? $"Addressed {view.Name} to data line {result.DataLine}, terminal {result.Terminal}."
             : $"Data line {result.DataLine}, terminal {result.Terminal} is not a valid address.");
+    }
+
+    // The localities offered as re-parent choices in the product/modem dialogs.
+    private static List<LocalityChoice> BuildLocalityChoices(Project project)
+    {
+        var localities = new List<LocalityChoice>();
+        foreach (ProjectElement group in project.Groups)
+        {
+            if (group.Id is { } gid)
+                localities.Add(new LocalityChoice(gid.ToToken(), project.View(group).Name ?? string.Empty));
+        }
+        return localities;
     }
 
     // The line.terminal addresses already used by other pins of the same direction (US-012 in-use indication).
@@ -253,7 +253,7 @@ internal sealed class PropertiesDialogCoordinator(
         foreach (ProjectElement element in project.Root.DescendantsAndSelf())
         {
             if (element.Tag == tag && element.Id is { } eid && eid != except
-                && DatalineAddress.TryParse(element.GetAttribute("address_dataline"), isOutput, out DatalineAddress a))
+                && new PinView(project, element).Address is { } a)
             {
                 used.Add($"{a.DataLine}.{a.Terminal}");
             }
@@ -270,33 +270,29 @@ internal sealed class PropertiesDialogCoordinator(
         {
             if (session.Current is not { } project || project.FindById(productId) is not { } product)
                 return;
-            var localities = new List<LocalityChoice>();
-            foreach (ProjectElement group in project.Groups)
-            {
-                if (group.Id is { } gid)
-                    localities.Add(new LocalityChoice(gid.ToToken(), group.GetAttribute("name") ?? string.Empty));
-            }
+            var view = new ProductView(project, product);
+            List<LocalityChoice> localities = BuildLocalityChoices(project);
             string currentLocalityId = project.FindParent(productId)?.Id?.ToToken() ?? string.Empty;
             // The dialog is titled with the product TYPE (the catalog name), not the generic "Product properties" —
             // it is how the vendor tells two open product dialogs apart (A-8/F-015).
             string productType = session.GetAvailableProducts()
-                .FirstOrDefault(p => p.ProductIdentifier == product.GetAttribute("product_identifier"))?.DisplayName
-                ?? product.GetAttribute("name") ?? "Product properties";
+                .FirstOrDefault(p => p.ProductIdentifier == view.ProductIdentifier)?.DisplayName
+                ?? view.Name ?? "Product properties";
             var input = new ProductPropertiesInput(
                 productType,
-                product.GetAttribute("name") ?? string.Empty,
-                product.GetAttribute("note") ?? string.Empty,
-                product.GetAttribute("cabletype") ?? string.Empty,
-                product.GetAttribute("cablenumber") ?? string.Empty,
-                product.GetAttribute("documentation_tag") ?? string.Empty,
-                product.GetAttribute("power_group") ?? string.Empty,
-                localities, currentLocalityId, ProductClassifier.IsWireless(product.Tag), IsWirelessDimmer(product),
-                BuildTerminals(product), product.GetAttribute("position") ?? string.Empty,
+                view.Name ?? string.Empty,
+                view.Note ?? string.Empty,
+                view.CableType ?? string.Empty,
+                view.CableNumber ?? string.Empty,
+                view.DocumentationTag ?? string.Empty,
+                view.PowerGroup ?? string.Empty,
+                localities, currentLocalityId, view.IsWireless, view.IsWirelessDimmer,
+                BuildTerminals(view), view.Position ?? string.Empty,
                 // A locked (library) product's name is fixed to the catalog type name — greyed out (A-15/F-032).
                 // Read locked off the ELEMENT, resolved via the project's inline DTD (default "no"); never a catalog
                 // lookup (whose default is "yes" and would grey the wrong products).
-                NameLocked: View(product).Locked,
-                EndUserReport: View(product).EnduserReport);
+                NameLocked: view.Locked,
+                EndUserReport: view.EnduserReport);
 
             ProductPropertiesResult? result = await dialogs.EditProductPropertiesAsync(input);
             if (result is null)
@@ -315,50 +311,40 @@ internal sealed class PropertiesDialogCoordinator(
     }
 
     // The product's input/output terminals for the addressing grids (US-012): each terminal's name, its
-    // vendor-formatted "Datalinie N.PP" address (blank when unassigned), cable colour and note. The SDK owns the
-    // address decode (DatalineAddress) — the coordinator only formats the row.
-    private static IReadOnlyList<ProductTerminal> BuildTerminals(ProjectElement product)
+    // vendor-formatted "Datalinie N.PP" address (blank when unassigned), cable colour and note. The typed PinView
+    // owns the reads + address decode — the coordinator only formats the row.
+    private static IReadOnlyList<ProductTerminal> BuildTerminals(ProductView product)
     {
         var terminals = new List<ProductTerminal>();
-        foreach (ProjectElement t in product.DescendantsAndSelf().Where(e => e.Tag is "dataline_input" or "dataline_output"))
+        foreach (PinView t in product.Terminals)
         {
-            bool isOutput = t.Tag == "dataline_output";
-            string label = DatalineAddress.ToVendorLabel(t.GetAttribute("address_dataline"), isOutput);
+            string label = DatalineAddress.ToVendorLabel(t.AddressToken, t.IsOutput);
             terminals.Add(new ProductTerminal(
-                t.GetAttribute("name") ?? string.Empty,
+                t.Name ?? string.Empty,
                 label == "?" ? string.Empty : $"Datalinie {label}",
-                t.GetAttribute("cable_colour") ?? string.Empty,
-                t.GetAttribute("note") ?? string.Empty,
-                isOutput,
+                t.CableColour ?? string.Empty,
+                t.Note ?? string.Empty,
+                t.IsOutput,
                 t.Id?.ToToken() ?? string.Empty));
         }
         return terminals;
     }
-
-    private static bool IsWirelessDimmer(ProjectElement product) =>
-        ProductClassifier.IsWireless(product.Tag) && product.DescendantsAndSelf().Any(e => e.Tag == "dimmer_settings");
 
     private async Task OpenAdvancedDimmerAsync(ElementId productId)
     {
         if (session.Current is not { } project || project.FindById(productId) is not { } product)
             return;
         // The fallbacks (700/700/2/0/100) are the vendor's FACTORY new-device defaults, NOT the DTD defaults: the
-        // schema default for a dimmer_setting `value` is "0" (load_mode "auto"), so Effective returns 0 for an unset
-        // device and the `v > 0` guard applies these constants. They stay app-side by design (fablerefac W1-3 finding).
-        int Read(string tag, int fallback)
-        {
-            ProjectElement? el = product.DescendantsAndSelf().FirstOrDefault(e => e.Tag == tag);
-            return el is not null && int.TryParse(project.View(el).Effective("value"), out int v) && v > 0 ? v : fallback;
-        }
-        ProjectElement? loadModeEl = product.DescendantsAndSelf().FirstOrDefault(e => e.Tag == "dimmer_setting_load_mode");
-        string loadMode = loadModeEl is { } lm && project.View(lm).Effective("value") is { } mode ? mode : "auto";
+        // schema default for a dimmer_setting `value` is "0", so an unset device reads 0 and PositiveSetting returns
+        // null, letting the `?? factory` here apply the constant (fablerefac W1-3 finding — kept app-side).
+        var view = new DimmerView(project, product);
         var input = new AdvancedDimmerInput(
-            Read("dimmer_setting_fade_rate_up", 700),
-            Read("dimmer_setting_fade_rate_down", 700),
-            Read("dimmer_setting_dimming_rate", 2),
-            Read("dimmer_setting_minimum_value", 0),
-            Read("dimmer_setting_maximum_value", 100),
-            loadMode);
+            view.PositiveSetting("dimmer_setting_fade_rate_up") ?? 700,
+            view.PositiveSetting("dimmer_setting_fade_rate_down") ?? 700,
+            view.PositiveSetting("dimmer_setting_dimming_rate") ?? 2,
+            view.PositiveSetting("dimmer_setting_minimum_value") ?? 0,
+            view.PositiveSetting("dimmer_setting_maximum_value") ?? 100,
+            view.LoadMode);
 
         AdvancedDimmerResult? result = await dialogs.EditAdvancedDimmerAsync(input);
         if (result is null)
