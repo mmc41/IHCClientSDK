@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ihc_openvisual.Services;
 using Ihc.Vis.Model;
+using Ihc.Vis.Session;
 
 namespace safe_visual_tests;
 

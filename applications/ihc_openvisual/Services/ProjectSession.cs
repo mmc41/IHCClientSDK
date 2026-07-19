@@ -753,33 +753,24 @@ public sealed class ProjectSession : IDisposable
     /// it becomes editable like a custom block. Commits, marks dirty. Returns false when the id no longer resolves or
     /// the edit fails.
     /// </summary>
-    public Task<bool> UnlockFunctionBlockAsync(ElementId functionBlockId) =>
-        RunEditAsync(nameof(UnlockFunctionBlockAsync), "Unlock failed", (project, editor) =>
-        {
-            if (!editor.TryResolve(functionBlockId, out ElementRef? handle))
-            {
-                _logger.LogWarning("Cannot unlock {Id}: it no longer exists", functionBlockId.ToToken());
-                return false;
-            }
-            handle.SetAttribute("locked", "no");
-            return true;
-        });
+    public async Task<bool> UnlockFunctionBlockAsync(ElementId functionBlockId)
+    {
+        EditOutcome outcome = await RouteAsync(new UnlockFunctionBlock(functionBlockId), "Unlock failed");
+        return outcome.Status == EditStatus.Committed;
+    }
 
     /// <summary>
     /// Inserts an empty "from scratch" function block into a locality (US-019): scaffolds the catalog's
     /// <c>Tom blok</c> template (the four variable sections + one empty program) named <see cref="EmptyBlockName"/>,
     /// commits, marks dirty. Returns the new block's id, or null when there is no open project or the edit fails.
     /// </summary>
-    public Task<ElementId?> AddEmptyFunctionBlockAsync(ElementId localityId) =>
-        RunEditAsync<ElementId?>(nameof(AddEmptyFunctionBlockAsync), "Insert failed",
-            (project, editor) =>
-            {
-                FunctionBlockDefinition template = _service.GetEmptyFunctionBlockTemplate();
-                editor.Group(localityId).AddEmptyFunctionBlock(template, DateOnly.FromDateTime(DateTime.Now), EmptyBlockName);
-                return true;
-            },
-            updated => updated.FindById(localityId)?.ChildrenOrEmpty().LastOrDefault(c => c.Kind == ElementKind.FunctionBlock)?.Id,
-            onFail: null);
+    public async Task<ElementId?> AddEmptyFunctionBlockAsync(ElementId localityId)
+    {
+        FunctionBlockDefinition template = _service.GetEmptyFunctionBlockTemplate();
+        var command = new AddEmptyFunctionBlock(localityId, template, DateOnly.FromDateTime(DateTime.Now), EmptyBlockName);
+        EditOutcome<ElementId> outcome = await RouteAsync(command, "Insert failed");
+        return outcome.Status == EditStatus.Committed ? outcome.Value : null;
+    }
 
     /// <summary>
     /// Inserts a preprogrammed library function block into a locality (US-018): deep-copies the block identified by
@@ -787,19 +778,19 @@ public sealed class ProjectSession : IDisposable
     /// sections and program materialized by the SDK), commits, marks dirty. Returns the new block's id, or null when
     /// there is no open project, the id is not a known library block, or the edit fails.
     /// </summary>
-    public Task<ElementId?> AddFunctionBlockAsync(ElementId localityId, string masterType) =>
-        RunEditAsync<ElementId?>(nameof(AddFunctionBlockAsync), "Insert failed",
-            (project, editor) =>
-            {
-                Activity.Current?.SetTag("functionblock.masterType", masterType);
-                FunctionBlockDefinition definition = _service.GetAvailableFunctionBlocks()
-                    .FirstOrDefault(f => f.MasterType == masterType)
-                    ?? throw new InvalidOperationException($"No library function block with master type '{masterType}'.");
-                editor.Group(localityId).AddFunctionBlock(definition);
-                return true;
-            },
-            updated => updated.FindById(localityId)?.ChildrenOrEmpty().LastOrDefault(c => c.Kind == ElementKind.FunctionBlock)?.Id,
-            onFail: null);
+    public async Task<ElementId?> AddFunctionBlockAsync(ElementId localityId, string masterType)
+    {
+        Activity.Current?.SetTag("functionblock.masterType", masterType);
+        FunctionBlockDefinition? definition = _service.GetAvailableFunctionBlocks()
+            .FirstOrDefault(f => f.MasterType == masterType);
+        if (definition is null)
+        {
+            await _dialogs.ShowMessageAsync("Insert failed", $"No library function block with master type '{masterType}'.");
+            return null;
+        }
+        EditOutcome<ElementId> outcome = await RouteAsync(new AddFunctionBlock(localityId, definition), "Insert failed");
+        return outcome.Status == EditStatus.Committed ? outcome.Value : null;
+    }
 
     /// <summary>
     /// Inserts a catalog product into a locality (US-010): deep-copies the product identified by
@@ -807,28 +798,29 @@ public sealed class ProjectSession : IDisposable
     /// scenes materialized by the SDK), commits, marks dirty and records the change. Returns the new product's id, or
     /// null when there is no open project, the id is not a known catalog product, or the edit fails.
     /// </summary>
-    public Task<ElementId?> AddProductAsync(ElementId localityId, string productIdentifier) =>
-        RunEditAsync<ElementId?>(nameof(AddProductAsync), "Insert failed",
-            async (project, editor) =>
-            {
-                Activity.Current?.SetTag("product.identifier", productIdentifier);
-                ProductDefinition definition = _service.GetAvailableProducts()
-                    .FirstOrDefault(p => p.ProductIdentifier == productIdentifier)
-                    ?? throw new InvalidOperationException($"No catalog product with identifier '{productIdentifier}'.");
-                // At most one modem per project, regardless of type (US-013).
-                if (ProductClassifier.IsModem(definition.Body.Tag) && HasModem(project))
-                {
-                    Activity.Current?.SetTag("modem.blocked", true);
-                    await _dialogs.ShowMessageAsync("Only one modem",
-                        "A project may contain at most one modem. Remove the existing modem before adding another.");
-                    return false;
-                }
-                editor.Group(localityId).AddProduct(definition);
-                return true;
-            },
-            // The product is appended as the locality's last child.
-            updated => updated.FindById(localityId)?.ChildrenOrEmpty().LastOrDefault()?.Id,
-            onFail: null);
+    public async Task<ElementId?> AddProductAsync(ElementId localityId, string productIdentifier)
+    {
+        Activity.Current?.SetTag("product.identifier", productIdentifier);
+        if (Current is not { } project)
+            return null;
+        ProductDefinition? definition = _service.GetAvailableProducts()
+            .FirstOrDefault(p => p.ProductIdentifier == productIdentifier);
+        if (definition is null)
+        {
+            await _dialogs.ShowMessageAsync("Insert failed", $"No catalog product with identifier '{productIdentifier}'.");
+            return null;
+        }
+        // At most one modem per project, regardless of type (US-013).
+        if (ProductClassifier.IsModem(definition.Body.Tag) && HasModem(project))
+        {
+            Activity.Current?.SetTag("modem.blocked", true);
+            await _dialogs.ShowMessageAsync("Only one modem",
+                "A project may contain at most one modem. Remove the existing modem before adding another.");
+            return null;
+        }
+        EditOutcome<ElementId> outcome = await RouteAsync(new AddProduct(localityId, definition), "Insert failed");
+        return outcome.Status == EditStatus.Committed ? outcome.Value : null;
+    }
 
     /// <summary>
     /// Inserts a new locality (US-008): appends a room named <see cref="NewLocalityName"/> under the project's
@@ -1259,26 +1251,11 @@ public sealed class ProjectSession : IDisposable
             return true;
         });
 
-    public Task<bool> UpdatePinAsync(ElementId pinId, PinPropertiesResult r) =>
-        RunEditAsync(nameof(UpdatePinAsync), "Addressing failed", (project, editor) =>
-        {
-            ProjectElement? pin = project.FindById(pinId);
-            if (pin is null)
-                return false;
-            bool isOutput = pin.Tag == "dataline_output";
-            if (!editor.TryResolve(pinId, out ElementRef? handle))
-                return false;
-            // A UI-unreachable out-of-range pick (belt-and-suspenders): abort without writing rather than clear the
-            // address to _0x0 — the caller surfaces the invalid combination.
-            if (!DatalineAddress.TryEncode(r.DataLine, r.Terminal, isOutput, out string addressToken))
-                return false;
-            handle.SetAttribute("address_dataline", addressToken);
-            handle.SetAttribute("cable_colour", r.CableColour);
-            handle.SetAttribute("note", r.Note);
-            if (isOutput)
-                handle.SetAttribute("inivalue", r.InitialValueOn ? "on" : "off");
-            return true;
-        });
+    public async Task<bool> UpdatePinAsync(ElementId pinId, PinPropertiesResult r)
+    {
+        EditOutcome outcome = await RouteAsync(new UpdatePin(pinId, r), "Addressing failed");
+        return outcome.Status == EditStatus.Committed;
+    }
 
     /// <summary>
     /// Applies edited product documentation (US-011): writes the product's <c>name</c>/<c>note</c>/<c>cabletype</c>/
@@ -1286,33 +1263,12 @@ public sealed class ProjectSession : IDisposable
     /// re-parents the product to the chosen <c>Location</c> locality when it changed (ids preserved via
     /// <see cref="ProjectEditor.MoveSubtree"/>). Commits, marks dirty, records the change. Returns false on failure.
     /// </summary>
-    public Task<bool> UpdateProductAsync(ElementId productId, ProductPropertiesResult r) =>
-        RunEditAsync(nameof(UpdateProductAsync), "Update failed", (project, editor) =>
-        {
-            if (!editor.TryResolve(productId, out ElementRef? handle))
-            {
-                _logger.LogWarning("Cannot update product {Id}: it no longer exists", productId.ToToken());
-                return false;
-            }
-            handle.SetAttribute("name", r.Name);
-            handle.SetAttribute("position", r.Position);   // the free-text placement descriptor (A-13/US-011)
-            handle.SetAttribute("enduser_report", r.EndUserReport ? "yes" : "no");   // A-23/US-012
-            handle.SetAttribute("note", r.Note);
-            handle.SetAttribute("documentation_tag", r.IdentificationCode);
-            handle.SetAttribute("power_group", r.LightGroup);
-            // Wireless (airlink) products declare no cabling attributes — only wired products carry them.
-            if (!ProductClassifier.IsWireless(handle.Tag))
-            {
-                handle.SetAttribute("cabletype", r.CableType);
-                handle.SetAttribute("cablenumber", r.CableNumber);
-            }
-            if (ElementId.TryParse(r.LocalityId, out ElementId targetLocality)
-                && project.FindParent(productId)?.Id is { } currentParent && currentParent != targetLocality)
-            {
-                editor.MoveSubtree(productId, targetLocality);   // Location changed → re-parent (ids preserved)
-            }
-            return true;
-        });
+    public async Task<bool> UpdateProductAsync(ElementId productId, ProductPropertiesResult r)
+    {
+        ElementId? currentLocality = Current?.FindParent(productId)?.Id;
+        EditOutcome outcome = await RouteAsync(new UpdateProduct(productId, r, currentLocality), "Update failed");
+        return outcome.Status == EditStatus.Committed;
+    }
 
     /// <summary>
     /// Renames a locality (US-007): sets the <c>group</c>'s <c>name</c> and <c>note</c> by id, commits the edited

@@ -8,6 +8,7 @@ using ihc_openvisual.Services;
 using ihc_openvisual.ViewModels;
 using Ihc;
 using Ihc.Vis;
+using Ihc.Vis.Session;
 using Ihc.Vis.Catalog;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Model;

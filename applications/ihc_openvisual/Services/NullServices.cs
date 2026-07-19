@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using Ihc.Vis;
+using Ihc.Vis.Session;
 
 namespace ihc_openvisual.Services;
 

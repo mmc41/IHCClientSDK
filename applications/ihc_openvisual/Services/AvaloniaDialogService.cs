@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Ihc.Vis;
+using Ihc.Vis.Session;
 using Avalonia.Layout;
 using Avalonia.Platform.Storage;
 using ihc_openvisual.Configuration;

@@ -11,6 +11,7 @@ using ihc_openvisual.Configuration;
 using ihc_openvisual.Services;
 using Ihc.Vis;
 using Ihc.Vis.Addressing;
+using Ihc.Vis.Session;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;

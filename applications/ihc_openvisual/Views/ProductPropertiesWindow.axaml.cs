@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using ihc_openvisual.Services;
+using Ihc.Vis.Session;
 
 namespace ihc_openvisual.Views;
 

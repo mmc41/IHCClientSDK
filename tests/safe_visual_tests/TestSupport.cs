@@ -5,6 +5,7 @@ using ihc_openvisual.Services;
 using ihc_openvisual.ViewModels;
 using Ihc;
 using Ihc.Vis;
+using Ihc.Vis.Session;
 
 namespace safe_visual_tests;
 

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Ihc.Vis;
+using Ihc.Vis.Session;
 
 namespace ihc_openvisual.Services;
 
@@ -35,15 +36,8 @@ public sealed record ProductPropertiesInput(
 public sealed record ProductTerminal(
     string Name, string Address, string CableColour, string Note, bool IsOutput, string PinId);
 
-/// <summary>The edited product documentation returned from the dialog (US-011); <c>LocalityId</c> is the chosen
-/// location's id token. <c>OpenAdvanced</c> is set when the installer clicked <i>Advanced…</i> on a wireless dimmer
-/// (US-015) — the caller applies the documentation then opens the advanced dimmer dialog. <c>ConfigureTerminalPinId</c>
-/// is the id token of a terminal the installer chose to address (US-012) — the caller applies the documentation, opens
-/// the terminal-addressing sub-dialog for that pin, then re-opens this dialog.</summary>
-public sealed record ProductPropertiesResult(
-    string Name, string LocalityId, string Note, string CableType, string CableNumber,
-    string IdentificationCode, string LightGroup, bool OpenAdvanced = false,
-    string? ConfigureTerminalPinId = null, string Position = "", bool EndUserReport = false);
+// ProductPropertiesResult and PinPropertiesResult moved to the SDK (Ihc.Vis.Session, fablerefac W2-6) — they are
+// edit payloads for the product/pin commands, not presentation. Referenced here via `using Ihc.Vis.Session;`.
 
 /// <summary>One row of the scene-container dialog's table: the scene membership seen from the product's side. The
 /// first three columns are the opposite end of the membership's link (the function block's scene pin, the block, and
@@ -92,9 +86,6 @@ public sealed record PinPropertiesInput(
     string Title, bool IsOutput, int DataLine, int Terminal, string CableColour, string Note,
     bool InitialValueOn, IReadOnlyList<string> InUseTerminals);
 
-/// <summary>The edited terminal addressing returned from the dialog (US-012).</summary>
-public sealed record PinPropertiesResult(
-    int DataLine, int Terminal, string CableColour, string Note, bool InitialValueOn);
 
 /// <summary>The current values shown by the modem properties dialog (US-013). <c>PhoneNumbers</c> holds telephone
 /// numbers 1..N (slot order).</summary>
