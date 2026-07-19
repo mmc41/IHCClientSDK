@@ -1425,8 +1425,8 @@ public partial class MainWindowViewModel : ViewModelBase
             new EnumDefinitionInput($"Edit {info.Name}", info.Name, info.States, IsNew: false));
         if (result is null)
             return;
-        if (await _session.UpdateEnumStatesAsync(enumVariableId, result.States))
-            StatusText = $"Enumerator '{info.Name}' updated.";
+        if (_session.BuildUpdateEnumStates(enumVariableId, result.States) is { } command)
+            await ApplyAsync(command, $"Enumerator '{info.Name}' updated.");
     }
 
     private Task InsertEnumAsync(ElementId sectionId, string sectionLabel) => RunAsync(nameof(InsertEnumAsync), async () =>
@@ -1476,8 +1476,7 @@ public partial class MainWindowViewModel : ViewModelBase
         ModemPropertiesResult? result = await _dialogs.EditModemPropertiesAsync(input);
         if (result is null)
             return;
-        if (await _session.UpdateModemAsync(modemId, result))
-            StatusText = $"Updated {result.Name}.";
+        await ApplyAsync(_session.BuildUpdateModem(modemId, result), $"Updated {result.Name}.");
     }
 
     private async Task OpenPinPropertiesAsync(ElementId pinId, ProjectElement pin)
@@ -1571,8 +1570,7 @@ public partial class MainWindowViewModel : ViewModelBase
             ProductPropertiesResult? result = await _dialogs.EditProductPropertiesAsync(input);
             if (result is null)
                 return;   // cancelled — the product keeps its documentation
-            if (await _session.UpdateProductAsync(productId, result))
-                StatusText = $"Updated {result.Name}.";
+            await ApplyAsync(_session.BuildUpdateProduct(productId, result), $"Updated {result.Name}.");
             if (result.ConfigureTerminalPinId is { } pinToken && ElementId.TryParse(pinToken, out ElementId pinId)
                 && _session.Current?.FindById(pinId) is { Tag: "dataline_input" or "dataline_output" } pinEl)
             {

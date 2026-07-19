@@ -463,20 +463,24 @@ public sealed class ProjectSession : IDisposable
     /// (the SDK's <c>AddEnumValues</c> is append-only; built-in read-only types are refused). Returns true when at
     /// least the call succeeded (a no-op append still returns true), false on failure or a non-enum target.
     /// </summary>
-    public async Task<bool> UpdateEnumStatesAsync(ElementId enumVariableId, IReadOnlyList<string> states)
+    /// <summary>Builds the command to append the not-yet-present states to the enumerator type referenced by a
+    /// <c>resource_enum</c> variable (US-030), or null for a non-enum target. The caller computes the delta, so an
+    /// append of nothing new falls out as a NoChange (the old hand-rolled CommitAsync bypass died in W2-10).</summary>
+    public ProjectCommand? BuildUpdateEnumStates(ElementId enumVariableId, IReadOnlyList<string> states)
     {
-        // The old hand-rolled CommitAsync bypass dies (W2-10): this is now a normal command through Apply, and the
-        // "nothing new to append" case falls out as EditStatus.NoChange (no bespoke early-return, no burned history).
         if (Current?.FindById(enumVariableId) is not { Tag: "resource_enum" } variable
             || !ElementId.TryParse(variable.GetAttribute("typedef"), out ElementId defId)
             || Current.FindById(defId) is not { } def || def.GetAttribute("name") is not { } defName)
-            return false;
+            return null;
         var existing = def.ChildrenOrEmpty().Where(c => c.Tag == "enum_value")
             .Select(c => c.GetAttribute("name")).ToHashSet();
         string[] added = states.Where(s => !existing.Contains(s)).ToArray();
-        EditOutcome outcome = await RouteAsync(new UpdateEnumStates(defName, added), "Edit enumerator failed");
-        return outcome.Status is EditStatus.Committed or EditStatus.NoChange;
+        return new UpdateEnumStates(defName, added);
     }
+
+    public async Task<bool> UpdateEnumStatesAsync(ElementId enumVariableId, IReadOnlyList<string> states) =>
+        BuildUpdateEnumStates(enumVariableId, states) is { } command
+        && (await RouteAsync(command, "Edit enumerator failed")).Status is EditStatus.Committed or EditStatus.NoChange;
 
     /// <summary>
     /// Authors a program <c>event</c> (US-028): appends an event to the program owning <paramref name="containerId"/>
@@ -1081,12 +1085,13 @@ public sealed class ProjectSession : IDisposable
     /// matching <c>sms_modem_phonenumber</c> slots; re-parents to the chosen Location when changed. Commits, marks
     /// dirty. Returns false on failure.
     /// </summary>
-    public async Task<bool> UpdateModemAsync(ElementId modemId, ModemPropertiesResult r)
-    {
-        ElementId? currentLocality = Current?.FindParent(modemId)?.Id;
-        EditOutcome outcome = await RouteAsync(new UpdateModem(modemId, r, currentLocality), "Update failed");
-        return outcome.Status is EditStatus.Committed or EditStatus.NoChange;
-    }
+    /// <summary>Builds the command to apply edited modem documentation (US-013), capturing the modem's current
+    /// locality so the command can re-parent it when the Location changed.</summary>
+    public ProjectCommand BuildUpdateModem(ElementId modemId, ModemPropertiesResult r) =>
+        new UpdateModem(modemId, r, Current?.FindParent(modemId)?.Id);
+
+    public async Task<bool> UpdateModemAsync(ElementId modemId, ModemPropertiesResult r) =>
+        (await RouteAsync(BuildUpdateModem(modemId, r), "Update failed")).Status is EditStatus.Committed or EditStatus.NoChange;
 
     /// <summary>Applies the edited note to a product's scene container (US-024) — the only editable field of the
     /// Scenarier dialog; the container's name is fixed by the product's catalog definition.</summary>
@@ -1118,12 +1123,13 @@ public sealed class ProjectSession : IDisposable
     /// re-parents the product to the chosen <c>Location</c> locality when it changed (ids preserved via
     /// <see cref="ProjectEditor.MoveSubtree"/>). Commits, marks dirty, records the change. Returns false on failure.
     /// </summary>
-    public async Task<bool> UpdateProductAsync(ElementId productId, ProductPropertiesResult r)
-    {
-        ElementId? currentLocality = Current?.FindParent(productId)?.Id;
-        EditOutcome outcome = await RouteAsync(new UpdateProduct(productId, r, currentLocality), "Update failed");
-        return outcome.Status == EditStatus.Committed;
-    }
+    /// <summary>Builds the command to apply edited product documentation (US-011), capturing the product's current
+    /// locality so the command can re-parent it when the Location changed.</summary>
+    public ProjectCommand BuildUpdateProduct(ElementId productId, ProductPropertiesResult r) =>
+        new UpdateProduct(productId, r, Current?.FindParent(productId)?.Id);
+
+    public async Task<bool> UpdateProductAsync(ElementId productId, ProductPropertiesResult r) =>
+        (await RouteAsync(BuildUpdateProduct(productId, r), "Update failed")).Status == EditStatus.Committed;
 
     /// <summary>
     /// Renames a locality (US-007): sets the <c>group</c>'s <c>name</c> and <c>note</c> by id, commits the edited
