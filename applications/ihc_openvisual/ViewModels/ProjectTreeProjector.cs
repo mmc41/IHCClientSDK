@@ -37,7 +37,7 @@ public sealed class ProjectTreeProjector(Project project)
             isExpanded: true, elementId: programs?.Id) { Kind = TreeNodeKind.Programs };
         if (programs is not null)
         {
-            foreach (ProjectElement program in programs.ChildrenOrEmpty().Where(p => p.Tag is "program_simple" or "program_sub"))
+            foreach (ProjectElement program in programs.ChildrenOrEmpty().Where(p => p.IsProgram))
             {
                 var programNode = new TreeNodeViewModel(NameOr(program, "Program"),
                     NodeIcons.For("program_simple", null), isExpanded: true, elementId: program.Id)
@@ -46,7 +46,7 @@ public sealed class ProjectTreeProjector(Project project)
                 {
                     var eventsNode = new TreeNodeViewModel("Events", NodeIcons.For("events", null),
                         isExpanded: true, elementId: events.Id) { Kind = TreeNodeKind.Events };
-                    foreach (ProjectElement ev in events.ChildrenOrEmpty().Where(e => e.Tag is "event" or "event_power"))
+                    foreach (ProjectElement ev in events.ChildrenOrEmpty().Where(e => e.IsProgramEvent))
                         eventsNode.Children.Add(new TreeNodeViewModel(EventCommandLabel(ev),
                             NodeIcons.For(ev.Tag, null), elementId: ev.Id) { Kind = TreeNodeKind.Event });
                     programNode.Children.Add(eventsNode);
@@ -71,19 +71,13 @@ public sealed class ProjectTreeProjector(Project project)
     {
         foreach (ProjectElement child in actions.ChildrenOrEmpty())
         {
-            switch (child.Tag)
-            {
-                case "action":
-                    commandsNode.Children.Add(new TreeNodeViewModel(EventCommandLabel(child),
-                        NodeIcons.For("action", null), elementId: child.Id) { Kind = TreeNodeKind.Command });
-                    break;
-                case "program_sub":
-                    commandsNode.Children.Add(BuildSubProgramNode(child));
-                    break;
-                case "program_case":
-                    commandsNode.Children.Add(BuildCaseNode(child));
-                    break;
-            }
+            if (child.IsProgramCommand)
+                commandsNode.Children.Add(new TreeNodeViewModel(EventCommandLabel(child),
+                    NodeIcons.For("action", null), elementId: child.Id) { Kind = TreeNodeKind.Command });
+            else if (child.IsSubProgram)
+                commandsNode.Children.Add(BuildSubProgramNode(child));
+            else if (child.IsProgramCase)
+                commandsNode.Children.Add(BuildCaseNode(child));
         }
     }
 
@@ -101,9 +95,9 @@ public sealed class ProjectTreeProjector(Project project)
             isExpanded: true, elementId: sub.Id) { Kind = TreeNodeKind.SubProgram };
         if (sub.FindChild("conditions") is { } conditions)
             node.Children.Add(BuildConditionsNode(conditions));
-        foreach (ProjectElement branch in sub.ChildrenOrEmpty().Where(a => a.Tag == "actions"))
+        foreach (ProjectElement branch in sub.ChildrenOrEmpty().Where(a => a.IsActionsContainer))
         {
-            bool isTrue = (branch.GetAttribute("type") ?? "") == "_0x1";
+            bool isTrue = (View(branch).Effective("type") ?? "") == "_0x1";
             var branchNode = new TreeNodeViewModel(
                 isTrue ? "Commands when conditions true" : "Commands when conditions false",
                 NodeIcons.For("actions", null), isExpanded: true, elementId: branch.Id)
@@ -125,10 +119,10 @@ public sealed class ProjectTreeProjector(Project project)
             { IsOrGroup = or, Kind = nested ? TreeNodeKind.LogicGroup : TreeNodeKind.Conditions };
         foreach (ProjectElement child in conditions.ChildrenOrEmpty())
         {
-            if (child.Tag == "condition")
+            if (child.IsCondition)
                 node.Children.Add(new TreeNodeViewModel(EventCommandLabel(child),
                     NodeIcons.For("condition", null), elementId: child.Id) { Kind = TreeNodeKind.Condition });
-            else if (child.Tag == "conditions")
+            else if (child.IsConditionsGroup)
                 node.Children.Add(BuildConditionsNode(child, nested: true));
         }
         return node;
@@ -138,12 +132,12 @@ public sealed class ProjectTreeProjector(Project project)
     // Every branch is a command container, so commands can be added to it with the normal gesture.
     private TreeNodeViewModel BuildCaseNode(ProjectElement kase)
     {
-        string switchName = ResolveOperandName(kase.GetAttribute("link"));
+        string switchName = ResolveOperandName(View(kase).Effective("link"));
         var node = new TreeNodeViewModel($"Case ({switchName})", NodeIcons.For("program_case", null),
             isExpanded: true, elementId: kase.Id) { Kind = TreeNodeKind.Case };
         foreach (ProjectElement child in kase.ChildrenOrEmpty())
         {
-            if (child.Tag == "case_action")
+            if (child.IsCaseValue)
             {
                 // "caseValue", not "commands": this row's LABEL is user data and it is ALSO an
                 // IsCommandsContainer, so neither the label nor the flag can tell it from a real
@@ -154,7 +148,7 @@ public sealed class ProjectTreeProjector(Project project)
                 RenderActionsInto(valueNode, child);   // the embedded criterion operand is skipped (not a command)
                 node.Children.Add(valueNode);
             }
-            else if (child.Tag == "actions")
+            else if (child.IsActionsContainer)
             {
                 var elseNode = new TreeNodeViewModel("Else", NodeIcons.For("actions", null),
                     isExpanded: true, elementId: child.Id) { Kind = TreeNodeKind.CaseElse };
@@ -226,10 +220,10 @@ public sealed class ProjectTreeProjector(Project project)
             { Tooltip = BuildTooltip(component), Kind = TreeNodeKind.Product };
         foreach (ProjectElement resource in component.ChildrenOrEmpty())
         {
-            if (resource.Tag == "scenes")
+            if (resource.IsScenesContainer)
                 node.Children.Add(BuildScenesNode(resource));   // a product's scenario output (scene link target, US-024)
             else if (!ProductRows.IsStructuralChild(resource.Tag)
-                     && !ProductRows.IsHiddenFromTree(resource.Tag, resource.GetAttribute("setting")))
+                     && !ProductRows.IsHiddenFromTree(resource.Tag, View(resource).Effective("setting")))
                 node.Children.Add(BuildPinNode(resource, catalogDeclared: true));   // catalog-declared pins (A-24, F-001/F-002)
         }
         return node;
@@ -242,13 +236,11 @@ public sealed class ProjectTreeProjector(Project project)
             elementId: scenes.Id) { Kind = TreeNodeKind.Scenes };
         foreach (ProjectElement member in scenes.ChildrenOrEmpty())
         {
-            if (IsSceneMember(member.Tag))
+            if (member.IsSceneMember)
                 node.Children.Add(BuildSceneMemberNode(member));
         }
         return node;
     }
-
-    private static bool IsSceneMember(string tag) => tag is "scene_relay" or "scene_dimmer" or "scene_shutter";
 
     private static (string Value, string RampTime) SceneMemberValue(ProjectElement member)
     {
@@ -268,7 +260,7 @@ public sealed class ProjectTreeProjector(Project project)
         // A shutter member renders the BARE opposite path + direction as the product's shutter pin name (F-051/A-19);
         // relay/dimmer keep "= <value>". Value/ramp belong to the scene-container dialog, not this row.
         string label;
-        if (member.Tag == "scene_shutter")
+        if (member.IsSceneShutter)
         {
             label = ShutterDirectionPinName(member) is { Length: > 0 } dir
                 ? $"{LinkOppositePath(member)} / {dir}"
@@ -293,7 +285,8 @@ public sealed class ProjectTreeProjector(Project project)
         ProjectElement? product = project.FindParent(memberId) is { Id: { } scenesId }
             ? project.FindParent(scenesId)
             : null;
-        return product?.ChildrenOrEmpty().FirstOrDefault(c => c.Tag == pinTag)?.GetAttribute("name");
+        ProjectElement? shutterPin = product?.ChildrenOrEmpty().FirstOrDefault(c => c.Tag == pinTag);
+        return shutterPin is not null ? project.View(shutterPin).Name : null;
     }
 
     // A function block node. Configuration mode shows Input/Output/Settings (hiding empty ones); programming mode
@@ -329,17 +322,13 @@ public sealed class ProjectTreeProjector(Project project)
         return node;
     }
 
-    // The node categories that map to an IHC resource id shown in the tooltip (US-048).
-    private static readonly string[] ResourceIdTags =
-        { "resource_input", "resource_output", "dataline_input", "dataline_output", "functionblock" };
-
     // The hover tooltip (US-047/US-048): the documentation note plus, for a resource-mapped node, its IHC resource id.
     private string? BuildTooltip(ProjectElement element)
     {
         var parts = new List<string>();
         if (View(element).Note is { Length: > 0 } note)
             parts.Add(note.Replace("\r\n", "\n"));
-        if (ResourceIdTags.Contains(element.Tag) && element.Id is { } id)
+        if (element.HasResourceId && element.Id is { } id)
             parts.Add($"Resource ID: {id.Value}");
         return parts.Count > 0 ? string.Join("\n\n", parts) : null;
     }
@@ -355,14 +344,11 @@ public sealed class ProjectTreeProjector(Project project)
             : null;
 
     // A function block's Indstillinger rows carry a literal time value (A-21/F-062), scoped to the time-carrying kinds.
-    private static readonly HashSet<string> SettingsTimeKinds =
-        new(StringComparer.Ordinal) { "resource_timer", "resource_timertime", "resource_time" };
-
-    private static string? SettingsTimeLiteral(ProjectElement resource)
+    private string? SettingsTimeLiteral(ProjectElement resource)
     {
-        if (!SettingsTimeKinds.Contains(resource.Tag))
+        if (!resource.IsTimeSetting)
             return null;
-        int Part(string attr) => int.TryParse(resource.GetAttribute(attr), out int v) ? v : 0;
+        int Part(string attr) => int.TryParse(View(resource).Effective(attr), out int v) ? v : 0;
         return $"{Part("hour"):00}:{Part("minute"):00}:{Part("second"):00}";
     }
 
@@ -372,8 +358,8 @@ public sealed class ProjectTreeProjector(Project project)
         string name = NameOr(resource, resource.Tag);
         string? value = StateValue(resource)
                      ?? (inFunctionBlockSettings ? SettingsTimeLiteral(resource) : null)
-                     ?? resource.GetAttribute("value");
-        bool isOutput = resource.Tag is "resource_output" or "dataline_output" or "airlink_relay";
+                     ?? View(resource).Value;
+        bool isOutput = resource.IsOutputPin;
         bool saved = isOutput && View(resource).Backup;
         // The label carries the pin's name and, for a state row, its value; the save flag surfaces via IsValueSaved (F-019).
         string label = string.IsNullOrEmpty(value) ? name : $"{name} = {value}";
@@ -388,7 +374,7 @@ public sealed class ProjectTreeProjector(Project project)
         // A linked pin reveals its follow-link / scene-link rows (US-022/025).
         foreach (ProjectElement child in resource.ChildrenOrEmpty())
         {
-            if (child.Tag is "link_from_resource" or "link_to_resource" or "scene_link")
+            if (child.IsLinkHalf)
                 node.Children.Add(BuildLinkNode(child));
         }
         return node;
@@ -398,10 +384,10 @@ public sealed class ProjectTreeProjector(Project project)
     // carried by the icon (and NodeKind), never the label text (F-020).
     private TreeNodeViewModel BuildLinkNode(ProjectElement linkRow)
     {
-        bool isSourceEnd = linkRow.Tag == "link_from_resource";
+        bool isSourceEnd = linkRow.IsLinkFromEnd;
         string icon = isSourceEnd ? "/Assets/link-from.svg" : "/Assets/link-to.svg";
         return new TreeNodeViewModel(LinkOppositePath(linkRow), icon, elementId: linkRow.Id)
-            { Kind = linkRow.Tag == "scene_link" ? TreeNodeKind.SceneLink : isSourceEnd ? TreeNodeKind.LinkFrom : TreeNodeKind.LinkTo };
+            { Kind = linkRow.IsSceneLink ? TreeNodeKind.SceneLink : isSourceEnd ? TreeNodeKind.LinkFrom : TreeNodeKind.LinkTo };
     }
 
     private string LinkOppositePath(ProjectElement linkRow) =>
@@ -410,7 +396,7 @@ public sealed class ProjectTreeProjector(Project project)
     // The opposite end's path parts, outermost first: [locality, product-or-block, pin]. Empty when unresolvable.
     private IReadOnlyList<string> LinkOppositeParts(ProjectElement linkRow)
     {
-        if (!ElementId.TryParse(linkRow.GetAttribute("link"), out ElementId partnerId)
+        if (!ElementId.TryParse(View(linkRow).Effective("link"), out ElementId partnerId)
             || project.FindParent(partnerId) is not { } oppositePin)
         {
             return Array.Empty<string>();
@@ -420,7 +406,7 @@ public sealed class ProjectTreeProjector(Project project)
         bool leaf = true;
         while (current is not null)
         {
-            bool significant = leaf || current.Tag is "group" or "functionblock" || ProductClassifier.IsProduct(current.Tag);
+            bool significant = leaf || current.IsLocalityGroup || current.Kind is ElementKind.FunctionBlock || ProductClassifier.IsProduct(current.Tag);
             if (significant && View(current).Name is { Length: > 0 } partName)
                 parts.Insert(0, ProductClassifier.IsProduct(current.Tag)
                     ? ProductLabel(partName, View(current).Position)

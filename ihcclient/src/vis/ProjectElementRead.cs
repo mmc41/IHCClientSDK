@@ -21,6 +21,74 @@ namespace Ihc.Vis
             /// (<c>ProductClassifier.Classify</c>).
             /// </summary>
             public ElementKind Kind => ClassifyTag(element.Tag);
+
+            // ── Fine model classification (fablerefac W3-10): the tree projection distinguishes rows below the grain
+            // of the 17-member coarse <see cref="ElementKind"/> (every program-tree node is one ElementKind.ProgramNode;
+            // every link half one ElementKind.Link). These predicates carry that finer, schema-derived classification
+            // here — SDK-side, beside the coarse Kind — so the GUI projector reads them instead of hand-matching raw
+            // element tags. They are MODEL facts (which tag is a command vs an event vs a condition), not GUI concepts.
+
+            /// <summary>A locality (room) — the <c>group</c> element specifically, NOT the <c>groups</c> container
+            /// (both are the coarse <see cref="ElementKind.Locality"/>, so that can't tell them apart).</summary>
+            public bool IsLocalityGroup => element.Tag == "group";
+
+            /// <summary>A single program under a block's <c>Programs</c> (a simple or conditional program).</summary>
+            public bool IsProgram => element.Tag is "program_simple" or "program_sub";
+
+            /// <summary>A program event row — a resource-triggered or power-up event (US-028/US-033).</summary>
+            public bool IsProgramEvent => element.Tag is "event" or "event_power";
+
+            /// <summary>A program command leaf (US-028).</summary>
+            public bool IsProgramCommand => element.Tag == "action";
+
+            /// <summary>A conditional sub-program (US-029).</summary>
+            public bool IsSubProgram => element.Tag == "program_sub";
+
+            /// <summary>A <c>program_case</c> switch (US-031).</summary>
+            public bool IsProgramCase => element.Tag == "program_case";
+
+            /// <summary>A case value branch (US-031) — a command container whose label is user data.</summary>
+            public bool IsCaseValue => element.Tag == "case_action";
+
+            /// <summary>A single condition row (US-029).</summary>
+            public bool IsCondition => element.Tag == "condition";
+
+            /// <summary>A <c>conditions</c> group (US-029).</summary>
+            public bool IsConditionsGroup => element.Tag == "conditions";
+
+            /// <summary>An <c>actions</c> ("Commands") container (US-028/US-029).</summary>
+            public bool IsActionsContainer => element.Tag == "actions";
+
+            /// <summary>An <c>events</c> container (US-028).</summary>
+            public bool IsEventsContainer => element.Tag == "events";
+
+            /// <summary>A product's <c>scenes</c> container — a scenario-link target (US-024).</summary>
+            public bool IsScenesContainer => element.Tag == "scenes";
+
+            /// <summary>A scene membership row inside a <c>scenes</c> container (US-024).</summary>
+            public bool IsSceneMember => element.Tag is "scene_relay" or "scene_dimmer" or "scene_shutter";
+
+            /// <summary>A shutter scene membership (renders its direction, F-051/A-19).</summary>
+            public bool IsSceneShutter => element.Tag == "scene_shutter";
+
+            /// <summary>A link half under a pin — a follow-link end or a scene link (US-022/US-025).</summary>
+            public bool IsLinkHalf => element.Tag is "link_from_resource" or "link_to_resource" or "scene_link";
+
+            /// <summary>The source ("from") end of a follow-link (F-020 direction).</summary>
+            public bool IsLinkFromEnd => element.Tag == "link_from_resource";
+
+            /// <summary>A scene link row (US-025).</summary>
+            public bool IsSceneLink => element.Tag == "scene_link";
+
+            /// <summary>An output pin — a function-block or physical output, or a wireless relay (US-033).</summary>
+            public bool IsOutputPin => element.Tag is "resource_output" or "dataline_output" or "airlink_relay";
+
+            /// <summary>A node that maps to an IHC controller resource id (shown in the hover tooltip, US-048).</summary>
+            public bool HasResourceId =>
+                element.Tag is "resource_input" or "resource_output" or "dataline_input" or "dataline_output" or "functionblock";
+
+            /// <summary>A function-block setting that carries a literal time value (hour/minute/second, A-21/F-062).</summary>
+            public bool IsTimeSetting => element.Tag is "resource_timer" or "resource_timertime" or "resource_time";
         }
 
         /// <summary>
