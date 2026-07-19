@@ -838,7 +838,8 @@ public class MainWindowViewModelTests
             Assert.That(first, Is.Not.Null, "the first modem inserts");
             Assert.That(second, Is.Null, "the second modem is blocked");
             Assert.That(modemCount, Is.EqualTo(1));
-            Assert.That(harness.Dialogs.LastMessage, Does.Contain("one modem"));
+            // W2-14: the "only one modem" dialog is now raised by the GUI (InsertProduct), not the session — the
+            // session-level pre-check just blocks the insert; the dialog is covered through the VM insert path.
         });
     }
 

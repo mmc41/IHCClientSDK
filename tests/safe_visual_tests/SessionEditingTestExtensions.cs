@@ -22,8 +22,15 @@ internal static class SessionEditingTestExtensions
     private static async Task<bool> CommittedOrNoChange(this ProjectSession s, ProjectCommand? command) =>
         command is not null && (await s.ApplyAsync(command)).Status is EditStatus.Committed or EditStatus.NoChange;
 
-    private static async Task<ElementId?> ProducedId(this ProjectSession s, ProjectCommand<ElementId>? command) =>
-        command is null ? null : (await s.ApplyAsync(command)).Value;
+    private static async Task<ElementId?> ProducedId(this ProjectSession s, ProjectCommand<ElementId>? command)
+    {
+        if (command is null)
+            return null;
+        // Only a Committed outcome carries a real id — EditOutcome<T>.Value on a refused/failed outcome is
+        // default(ElementId) (_0x0, not null) because T is an unconstrained value type, so gate on the status.
+        EditOutcome<ElementId> outcome = await s.ApplyAsync(command);
+        return outcome.Status == EditStatus.Committed ? outcome.Value : null;
+    }
 
     // ---- localities / structure ----
     public static Task<ElementId?> AddLocalityAsync(this ProjectSession s) =>
@@ -55,7 +62,10 @@ internal static class SessionEditingTestExtensions
 
     // ---- products / function blocks / variables ----
     public static Task<ElementId?> AddProductAsync(this ProjectSession s, ElementId localityId, string productIdentifier) =>
-        s.ProducedId(s.BuildAddProduct(localityId, productIdentifier));
+        // The at-most-one-modem rule (US-013) is an app-level pre-check, not part of the command's legality.
+        s.WouldExceedModemLimit(productIdentifier)
+            ? Task.FromResult<ElementId?>(null)
+            : s.ProducedId(s.BuildAddProduct(localityId, productIdentifier));
 
     public static Task<ElementId?> AddFunctionBlockAsync(this ProjectSession s, ElementId localityId, string masterType) =>
         s.ProducedId(s.BuildAddFunctionBlock(localityId, masterType));

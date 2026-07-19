@@ -295,15 +295,6 @@ public sealed class ProjectSession : IDisposable
     /// to the SDK projection (<c>Ihc.Vis.ProjectProjections</c>); removed once the VM calls the session query (W2-12).</summary>
     public ProjectInfoData GetProjectInfo() => Current?.GetProjectInfo() ?? ProjectInfoData.Empty;
 
-    /// <summary>
-    /// Applies edited project information (US-039): writes the <c>project_info</c> metadata and the
-    /// <c>customer_info</c>/<c>installer_info</c> contact attributes by id (blank clears to the DTD default). This
-    /// identifies the installation in the generated reports. Commits, marks dirty. Returns false on failure.
-    /// </summary>
-    public async Task<bool> UpdateProjectInfoAsync(ProjectInfoData data) =>
-        (await RouteAsync(new UpdateProjectInfo(data), "Project information failed"))
-            .Status is EditStatus.Committed or EditStatus.NoChange;
-
     /// <summary>The dedicated user enum definition that holds the data-tables "user-defined texts" (US-049).</summary>
     public const string UserTextsTableName = ProjectProjections.UserTextsTableName;
 
@@ -329,25 +320,11 @@ public sealed class ProjectSession : IDisposable
     public ModuleAddressMap GetModuleAddressMap() =>
         Current?.GetModuleAddressMap() ?? new ModuleAddressMap([], []);
 
-    /// <summary>Appends a user-defined text (US-049), creating the user-texts table on first use. Returns false on failure.</summary>
     /// <summary>Builds the command to append a user-defined text (US-049), reporting whether the user-texts table
     /// already exists so the command creates it on first use.</summary>
     public ProjectCommand BuildAddUserText(string text) =>
         new AddUserText(text, Current is { } project && project.Child("enum_definitions")?.ChildrenOrEmpty()
             .Any(c => c.Tag == "enum_definition" && project.View(c).Name == UserTextsTableName) == true);
-
-    public async Task<bool> AddUserTextAsync(string text) =>
-        (await RouteAsync(BuildAddUserText(text), "Add text failed")).Status is EditStatus.Committed or EditStatus.NoChange;
-
-    /// <summary>Renames a user-defined text by id (US-049 Edit). Returns false on failure.</summary>
-    public async Task<bool> UpdateUserTextAsync(ElementId textId, string text) =>
-        (await RouteAsync(new UpdateUserText(textId, text), "Edit text failed"))
-            .Status is EditStatus.Committed or EditStatus.NoChange;
-
-    /// <summary>Deletes a user-defined text by id (US-049 Delete). Returns false on failure.</summary>
-    public async Task<bool> DeleteUserTextAsync(ElementId textId) =>
-        (await RouteAsync(new DeleteUserText(textId), "Delete text failed")).Status == EditStatus.Committed;
-
 
     /// <summary>Whether dragging <paramref name="draggedPin"/> onto <paramref name="dropTargetPin"/> would create a
     /// link — the drag-over hint peer of <see cref="LinkPinsAsync"/>. Applies the SDK's data-flow rule and orientation
@@ -363,61 +340,6 @@ public sealed class ProjectSession : IDisposable
         return document.CanApply(new LinkPins(draggedPin, dropTargetPin)).Ok;
     }
 
-    // The function block that owns a variable pin (block → section → pin), or null if the pin is not an FB variable
-    // (e.g. a product pin). Used to detect and constrain function-block-to-function-block links (US-033b).
-    public async Task<bool> LinkPinsAsync(ElementId draggedPinId, ElementId dropTargetPinId)
-    {
-        // The dragged pin is the SOURCE and the drop target the SINK. A same-pin drop is a silent no-op; an
-        // incompatible pair is refused by LinkPins.Evaluate (the vendor data-flow rule), and we surface that here.
-        if (draggedPinId == dropTargetPinId)
-            return false;
-        EditOutcome outcome = await RouteAsync(new LinkPins(draggedPinId, dropTargetPinId), "Link failed");
-        if (outcome.Status == EditStatus.Refused)
-        {
-            await _dialogs.ShowMessageAsync("Incompatible link",
-                "Link a signal source to a signal target: a product input or a function-block output can drive "
-                + "a function-block input or a product output. Two product pins must be joined through a "
-                + "function block.");
-            return false;
-        }
-        return outcome.Status == EditStatus.Committed;
-    }
-
-    /// <summary>
-    /// Edits an existing scenario link's stored value (US-058): rebuilds the scene member's value from the dialog
-    /// result and rewrites it in place via <see cref="ProjectEditor.SetSceneValue"/> (member kind derived from the
-    /// row's tag, so id/name/link/note are preserved). Commits, marks dirty. Returns false when the target is not a
-    /// relay/dimmer scene member or the edit fails.
-    /// </summary>
-    public async Task<bool> UpdateSceneValueAsync(ElementId memberId, SceneValueResult r)
-    {
-        EditOutcome outcome = await RouteAsync(new UpdateSceneValue(memberId, r), "Scene value update failed");
-        return outcome.Status == EditStatus.Committed;
-    }
-
-    /// <summary>
-    /// Removes a link by one of its rows (US-057): deletes the selected link half (follow-link "link to"/"link from"
-    /// row, or a scene member / scene_link) and cascades its reciprocal partner, so both halves of exactly that link
-    /// go together while every other link on the two pins is left intact. Commits, marks dirty. Returns false on
-    /// failure.
-    /// </summary>
-    public async Task<bool> RemoveLinkAsync(ElementId linkRowId)
-    {
-        EditOutcome outcome = await RouteAsync(new RemoveLink(linkRowId), "Remove link failed");
-        return outcome.Status == EditStatus.Committed;
-    }
-
-    /// <summary>
-    /// Creates a scenario link (US-024): wires the function-block scene output pin to the product's scenes container
-    /// with the given value — <see cref="SceneValue.Dimmer"/> (light level %, ramp) for a dimmer or
-    /// <see cref="SceneValue.Relay"/> (ON/OFF) otherwise. Commits, marks dirty. Returns false on failure.
-    /// </summary>
-    public async Task<bool> LinkSceneAsync(ElementId sceneOutputId, ElementId scenesId, SceneValueResult r, bool isDimmer)
-    {
-        EditOutcome outcome = await RouteAsync(new LinkScene(sceneOutputId, scenesId, r, isDimmer), "Scene link failed");
-        return outcome.Status == EditStatus.Committed;
-    }
-
     /// <summary>The catalog products available for insertion (from the SDK-embedded catalog; no controller needed).</summary>
     public IReadOnlyList<ProductDefinition> GetAvailableProducts() => _service.GetAvailableProducts();
 
@@ -427,43 +349,6 @@ public sealed class ProjectSession : IDisposable
     /// <summary>The default name a freshly inserted empty function block carries until renamed (US-019).</summary>
     public const string EmptyBlockName = "Empty block";
 
-    /// <summary>
-    /// Adds a typed variable (<paramref name="resourceTag"/>, e.g. <c>resource_flag</c>) named <paramref name="name"/>
-    /// to a function-block variable section (US-027). The section's tag routes it to the SDK's section adder, which
-    /// enforces the section↔type matrix (a pin type into <c>settings</c> is refused). Commits, marks dirty. Returns
-    /// the new variable's id, or null when the target is not a block section or the type is not allowed there.
-    /// </summary>
-    public async Task<ElementId?> AddVariableAsync(ElementId sectionId, string resourceTag, string name)
-    {
-        Activity.Current?.SetTag("variable.type", resourceTag);
-        if (BuildAddVariable(sectionId, resourceTag, name) is not { } command)
-            return null;
-        EditOutcome<ElementId> outcome = await RouteAsync(command, "Add variable failed");
-        return outcome.Status == EditStatus.Committed ? outcome.Value : null;
-    }
-
-    /// <summary>
-    /// Creates a project-global enumerator type and inserts a variable of it (US-030): authors an
-    /// <c>enum_definition</c> named <paramref name="typeName"/> with the ordered <paramref name="states"/>, then adds a
-    /// <c>resource_enum</c> variable named <paramref name="variableName"/> to the block section
-    /// <paramref name="sectionId"/> wired to that type (<c>typedef</c> + <c>inivalue</c> of the first state). The type
-    /// is global — other blocks can reference it. Returns the new variable's id, or null on failure. No controller.
-    /// </summary>
-    public async Task<ElementId?> AddEnumVariableAsync(ElementId sectionId, string variableName, string typeName, IReadOnlyList<string> states)
-    {
-        Activity.Current?.SetTag("enum.type", typeName);
-        if (BuildAddEnumVariable(sectionId, variableName, typeName, states) is not { } command)
-            return null;
-        EditOutcome<ElementId> outcome = await RouteAsync(command, "Add enumerator failed");
-        return outcome.Status == EditStatus.Committed ? outcome.Value : null;
-    }
-
-    /// <summary>
-    /// Appends any newly-listed states to an existing enumerator type (US-030) — the type referenced by the
-    /// <c>resource_enum</c> variable <paramref name="enumVariableId"/>. Only states not already present are added
-    /// (the SDK's <c>AddEnumValues</c> is append-only; built-in read-only types are refused). Returns true when at
-    /// least the call succeeded (a no-op append still returns true), false on failure or a non-enum target.
-    /// </summary>
     /// <summary>Builds the command to append the not-yet-present states to the enumerator type referenced by a
     /// <c>resource_enum</c> variable (US-030), or null for a non-enum target. The caller computes the delta, so an
     /// append of nothing new falls out as a NoChange (the old hand-rolled CommitAsync bypass died in W2-10).</summary>
@@ -478,10 +363,6 @@ public sealed class ProjectSession : IDisposable
         string[] added = states.Where(s => !existing.Contains(s)).ToArray();
         return new UpdateEnumStates(defName, added);
     }
-
-    public async Task<bool> UpdateEnumStatesAsync(ElementId enumVariableId, IReadOnlyList<string> states) =>
-        BuildUpdateEnumStates(enumVariableId, states) is { } command
-        && (await RouteAsync(command, "Edit enumerator failed")).Status is EditStatus.Committed or EditStatus.NoChange;
 
     /// <summary>
     /// Authors a program <c>event</c> (US-028): appends an event to the program owning <paramref name="containerId"/>
@@ -515,106 +396,11 @@ public sealed class ProjectSession : IDisposable
             && Current.FindById(switchId) is { } switchVar && switchVar.Kind != ElementKind.EnumResource
             ? new AddCaseValue(caseId, criterion, switchVar.Tag) : null;
 
-    public async Task<bool> AddProgramEventAsync(ElementId containerId, ElementId variableId, string method, string name, string? note) =>
-        BuildAddProgramEvent(containerId, variableId, method, name, note) is { } command
-        && (await RouteAsync(command, "Add event failed")).Status == EditStatus.Committed;
-
-    /// <summary>
-    /// Authors a program <c>action</c> command (US-028): appends a top-level command to the program owning
-    /// <paramref name="containerId"/> (the selected <c>actions</c>/"Commands" node), driving the resource
-    /// <paramref name="variableId"/> per the vendor <paramref name="method"/> token. Events fire commands
-    /// top-to-bottom. Returns false when the target is not a program's actions container.
-    /// </summary>
-    public async Task<bool> AddProgramCommandAsync(ElementId containerId, ElementId variableId, string method, string name, string? note) =>
-        (await RouteAsync(new AddProgramCommand(containerId, variableId, method, name, note), "Add command failed"))
-            .Status == EditStatus.Committed;
-
-    /// <summary>
-    /// Adds a <c>Powerup</c> system event (US-033) to the program owning <paramref name="eventsContainerId"/> — the
-    /// program then runs on controller power-up (also on project transfer and software restart), useful for
-    /// re-establishing timer values. Takes no operand. Returns false for a non-events target. No controller.
-    /// </summary>
-    public async Task<bool> AddPowerEventAsync(ElementId eventsContainerId) =>
-        BuildAddPowerEvent(eventsContainerId) is { } command
-        && (await RouteAsync(command, "Add Powerup event failed")).Status == EditStatus.Committed;
-
-    /// <summary>
-    /// Sets an output's "Save current value" power-loss persistence (US-033): writes <c>backup="yes"|"no"</c> on the
-    /// function-block or physical output <paramref name="outputId"/> so its value is restored after a power loss
-    /// instead of reset. Returns false when the target is not an output. No controller.
-    /// </summary>
-    public async Task<bool> SetOutputBackupAsync(ElementId outputId, bool save) =>
-        // An idempotent setter succeeds when the backup is now as requested — Committed, or NoChange when it was
-        // already that value (the fresh relay defaults backup="yes"). Refused/Failed alone are false.
-        (await RouteAsync(new SetOutputBackup(outputId, save), "Save current value failed"))
-            .Status is EditStatus.Committed or EditStatus.NoChange;
-
-    /// <summary>
-    /// Inserts a conditional sub-program (US-029) into an <c>actions</c> container <paramref name="commandsId"/> (a
-    /// program's Commands group or a branch) — a <c>program_sub</c> with a Conditions group and the true/false command
-    /// branches. Returns false when the target is not an actions container. No controller contact.
-    /// </summary>
-    public async Task<bool> AddSubProgramAsync(ElementId commandsId) =>
-        (await RouteAsync(new AddSubProgram(commandsId), "Add sub-program failed")).Status == EditStatus.Committed;
-
-    /// <summary>
-    /// Adds a <c>condition</c> (US-029) to a Conditions group <paramref name="conditionsId"/>, testing the resource
-    /// <paramref name="variableId"/> per the vendor <paramref name="method"/> token (the popup's NOT variant is just a
-    /// different token). The stored <paramref name="name"/> keeps the <c>%P</c>/<c>%S</c> template. Returns false when
-    /// the target is not a conditions group.
-    /// </summary>
-    public async Task<bool> AddConditionAsync(ElementId conditionsId, ElementId variableId, string method, string name, string? note) =>
-        (await RouteAsync(new AddCondition(conditionsId, variableId, method, name, note), "Add condition failed"))
-            .Status == EditStatus.Committed;
-
-    /// <summary>
-    /// Toggles a Conditions group's logical combination (US-029): <paramref name="or"/> true → OR (<c>&gt;=1</c>),
-    /// false → AND (<c>&amp;</c>, the default). Returns false when the target is not a conditions group.
-    /// </summary>
-    public async Task<bool> SetConditionsLogicAsync(ElementId conditionsId, bool or) =>
-        (await RouteAsync(new SetConditionsLogic(conditionsId, or), "Set logic failed")).Status == EditStatus.Committed;
-
-    /// <summary>
-    /// Adds a nested logic group (US-029) — a nested <c>conditions</c> group inside <paramref name="conditionsId"/> —
-    /// for compound expressions. Returns false when the target is not a conditions group.
-    /// </summary>
-    public async Task<bool> AddLogicGroupAsync(ElementId conditionsId) =>
-        (await RouteAsync(new AddLogicGroup(conditionsId), "Add logic group failed")).Status == EditStatus.Committed;
-
-    /// <summary>
-    /// Authors a single arithmetic command line (US-032): one operation on the target register
-    /// <paramref name="targetId"/> against <paramref name="operandId"/> per <paramref name="method"/> (add
-    /// <c>_0x5a</c> / subtract <c>_0x64</c>), appended to the command container <paramref name="commandsId"/>. One
-    /// operation per line by construction — larger formulas are a sequence of these. The stored <paramref name="name"/>
-    /// keeps the vendor <c>%P = %P ± %S</c> template. Returns false on a non-command target. No controller.
-    /// </summary>
-    public async Task<bool> AddArithmeticCommandAsync(ElementId commandsId, ElementId targetId, string method, ElementId operandId, string name) =>
-        (await RouteAsync(new AddArithmeticCommand(commandsId, targetId, method, operandId, name), "Add arithmetic failed"))
-            .Status == EditStatus.Committed;
-
     /// <summary>The variable types a case may switch on (US-031): counter, enumerator, weekday, integer, or date.</summary>
     public static readonly HashSet<string> EligibleCaseVariableTags = new()
     {
         "resource_counter", "resource_enum", "resource_weekday", "resource_integer", "resource_date",
     };
-
-    /// <summary>
-    /// Inserts a case structure (US-031) into a command container <paramref name="commandsId"/>, keyed on the eligible
-    /// switch variable <paramref name="switchVariableId"/> (counter/enum/weekday/integer/date) — a <c>program_case</c>
-    /// eagerly allocating its default (Else) branch. Returns false for a non-eligible variable or non-command target.
-    /// </summary>
-    public async Task<bool> AddCaseAsync(ElementId commandsId, ElementId switchVariableId) =>
-        (await RouteAsync(new AddCase(commandsId, switchVariableId), "Add case failed")).Status == EditStatus.Committed;
-
-    /// <summary>
-    /// Adds a case value branch (US-031) to a <c>program_case</c> <paramref name="caseId"/> for the literal
-    /// <paramref name="criterion"/> — a bare typed operand matching the switch variable's type (e.g. a counter's
-    /// <c>&lt;resource_counter inivalue="100"&gt;</c>). Returns false for a non-case target, a missing switch, or an
-    /// enum switch (enum case values need the type's states — deferred). No controller.
-    /// </summary>
-    public async Task<bool> AddCaseValueAsync(ElementId caseId, string criterion) =>
-        BuildAddCaseValue(caseId, criterion) is { } command
-        && (await RouteAsync(command, "Add case value failed")).Status == EditStatus.Committed;
 
     /// <summary>
     /// Saves a placed function block to a reusable <c>.ifb</c> catalog file (US-021): lifts the block (by id) to a
@@ -646,22 +432,6 @@ public sealed class ProjectSession : IDisposable
         }
     }
 
-    /// <summary>
-    /// Unlocks a library function block for editing (US-020): clears its <c>locked</c> flag (to <c>no</c>) by id, so
-    /// it becomes editable like a custom block. Commits, marks dirty. Returns false when the id no longer resolves or
-    /// the edit fails.
-    /// </summary>
-    public async Task<bool> UnlockFunctionBlockAsync(ElementId functionBlockId)
-    {
-        EditOutcome outcome = await RouteAsync(new UnlockFunctionBlock(functionBlockId), "Unlock failed");
-        return outcome.Status == EditStatus.Committed;
-    }
-
-    /// <summary>
-    /// Inserts an empty "from scratch" function block into a locality (US-019): scaffolds the catalog's
-    /// <c>Tom blok</c> template (the four variable sections + one empty program) named <see cref="EmptyBlockName"/>,
-    /// commits, marks dirty. Returns the new block's id, or null when there is no open project or the edit fails.
-    /// </summary>
     // ---- Command factories (W2-14): resolve catalog / parent context into a ready-to-apply command (a query, no
     // mutation). The VM and tests apply them via ApplyAsync; the per-op wrappers below now consume them too, so the
     // resolution lives in one place and survives the wrappers' deletion. A null return = "could not be built". ----
@@ -696,36 +466,6 @@ public sealed class ProjectSession : IDisposable
             ? new AddEnumVariable(blockId, section.Tag, variableName, typeName, states)
             : null;
 
-    public async Task<ElementId?> AddEmptyFunctionBlockAsync(ElementId localityId)
-    {
-        EditOutcome<ElementId> outcome = await RouteAsync(BuildAddEmptyFunctionBlock(localityId), "Insert failed");
-        return outcome.Status == EditStatus.Committed ? outcome.Value : null;
-    }
-
-    /// <summary>
-    /// Inserts a preprogrammed library function block into a locality (US-018): deep-copies the block identified by
-    /// <paramref name="masterType"/> under the <c>group</c> <paramref name="localityId"/> (fresh ids; its variable
-    /// sections and program materialized by the SDK), commits, marks dirty. Returns the new block's id, or null when
-    /// there is no open project, the id is not a known library block, or the edit fails.
-    /// </summary>
-    public async Task<ElementId?> AddFunctionBlockAsync(ElementId localityId, string masterType)
-    {
-        Activity.Current?.SetTag("functionblock.masterType", masterType);
-        if (BuildAddFunctionBlock(localityId, masterType) is not { } command)
-        {
-            await _dialogs.ShowMessageAsync("Insert failed", $"No library function block with master type '{masterType}'.");
-            return null;
-        }
-        EditOutcome<ElementId> outcome = await RouteAsync(command, "Insert failed");
-        return outcome.Status == EditStatus.Committed ? outcome.Value : null;
-    }
-
-    /// <summary>
-    /// Inserts a catalog product into a locality (US-010): deep-copies the product identified by
-    /// <paramref name="productIdentifier"/> under the <c>group</c> <paramref name="localityId"/> (fresh ids, pins and
-    /// scenes materialized by the SDK), commits, marks dirty and records the change. Returns the new product's id, or
-    /// null when there is no open project, the id is not a known catalog product, or the edit fails.
-    /// </summary>
     /// <summary>Builds the command to insert a catalog product by identifier into a locality (US-010), or null when
     /// no such product is in the catalog. The at-most-one-modem rule (US-013) is a separate pre-check —
     /// <see cref="WouldExceedModemLimit"/> — so the caller can surface it before applying.</summary>
@@ -740,46 +480,6 @@ public sealed class ProjectSession : IDisposable
         Current is { } project
         && _service.GetAvailableProducts().FirstOrDefault(p => p.ProductIdentifier == productIdentifier) is { } definition
         && ProductClassifier.IsModem(definition.Body.Tag) && HasModem(project);
-
-    public async Task<ElementId?> AddProductAsync(ElementId localityId, string productIdentifier)
-    {
-        Activity.Current?.SetTag("product.identifier", productIdentifier);
-        if (BuildAddProduct(localityId, productIdentifier) is not { } command)
-        {
-            await _dialogs.ShowMessageAsync("Insert failed", $"No catalog product with identifier '{productIdentifier}'.");
-            return null;
-        }
-        if (WouldExceedModemLimit(productIdentifier))   // at most one modem per project, regardless of type (US-013)
-        {
-            Activity.Current?.SetTag("modem.blocked", true);
-            await _dialogs.ShowMessageAsync("Only one modem",
-                "A project may contain at most one modem. Remove the existing modem before adding another.");
-            return null;
-        }
-        EditOutcome<ElementId> outcome = await RouteAsync(command, "Insert failed");
-        return outcome.Status == EditStatus.Committed ? outcome.Value : null;
-    }
-
-    /// <summary>
-    /// Inserts a new locality (US-008): appends a room named <see cref="NewLocalityName"/> under the project's
-    /// localities, commits, marks the project dirty and records the change. Returns the new locality's id (last in
-    /// <see cref="Project.Groups"/>) so the caller can select it, or null when there is no open project or the edit
-    /// fails.
-    /// </summary>
-    public async Task<ElementId?> AddLocalityAsync()
-    {
-        EditOutcome<ElementId> outcome = await RouteAsync(new AddLocality(NewLocalityName), "Insert failed");
-        return outcome.Status == EditStatus.Committed ? outcome.Value : null;
-    }
-
-    /// <summary>
-    /// Deletes a locality (US-009): removes it and cascades to the products it holds and the commands/conditions
-    /// that referenced them (<see cref="DeleteReferencePolicy.CascadeReferences"/>). Dialog-free — the GUI runs the
-    /// non-empty-locality confirmation above the session (via <see cref="PreviewDelete"/>, W2-13) so no dialog lives
-    /// inside the edit path. Returns false when the id is absent or the edit fails.
-    /// </summary>
-    public async Task<bool> DeleteLocalityAsync(ElementId id) =>
-        (await RouteAsync(new DeleteLocality(id), "Delete failed")).Status == EditStatus.Committed;
 
     /// <summary>Raised after a catalog import changes the available products/function blocks (US-059/US-060), so the
     /// insertion menus can be rebuilt.</summary>
@@ -941,36 +641,12 @@ public sealed class ProjectSession : IDisposable
         return new DeleteImpact(true, HasLinkHalves(element) || WouldThrowStrict(id));
     }
 
-    /// <summary>
-    /// Deletes any project node and its subtree (US-053), generalising the US-009 locality delete to products,
-    /// function blocks, variables/pins and program elements. A referenced node is removed together with the
-    /// reciprocal link halves and referencing program rows as **one** undoable step; if the engine cannot safely
-    /// cascade a binding it refuses. Dialog-free — the GUI runs the reference-cascade confirmation above the
-    /// session (via <see cref="PreviewDelete"/>, W2-13). Returns false when the node is missing/not deletable or
-    /// the edit fails/refuses. No controller.
-    /// </summary>
-    public async Task<bool> DeleteNodeAsync(ElementId id)
-    {
-        if (Current is not { } project || project.FindById(id) is not { } element || !IsDeletableNode(element.Tag))
-            return false;
-        bool referenced = HasLinkHalves(element) || WouldThrowStrict(id);
-        EditOutcome outcome = await RouteAsync(new DeleteNode(id, referenced), "Cannot delete");
-        return outcome.Status == EditStatus.Committed;
-    }
-
     // Whether a source node may be moved/pasted into a target container (US-054/US-056): a product or function block
     // belongs under a locality (group). (Variable/section moves are a later extension.)
     private static bool CanContain(string sourceTag, string targetTag) =>
         (sourceTag.StartsWith("product_", System.StringComparison.Ordinal) || sourceTag == "functionblock")
         && targetTag == "group";
 
-    /// <summary>
-    /// Reorders a node among its siblings (US-055): moves it one position up (<paramref name="delta"/> = -1) or down
-    /// (+1) within its own container via the id-preserving <see cref="ProjectEditor.MoveSubtree"/> — only the position
-    /// changes, so ids and links are untouched and the new order drives report order (US-040). A no-op (false) at the
-    /// list ends. Reorders only same-tag siblings (so a locality moves past localities, a product past products).
-    /// Undoable. No controller.
-    /// </summary>
     /// <summary>Builds the command to reorder a node <paramref name="delta"/> positions among its same-tag siblings
     /// (US-055), or null at the list ends / for a rootless node.</summary>
     public ProjectCommand? BuildReorderNode(ElementId id, int delta)
@@ -983,9 +659,6 @@ public sealed class ProjectSession : IDisposable
         int there = here + delta;
         return here < 0 || there < 0 || there >= siblings.Count ? null : new ReorderNode(id, there);
     }
-
-    public async Task<bool> ReorderNodeAsync(ElementId id, int delta) =>
-        BuildReorderNode(id, delta) is { } command && (await RouteAsync(command, "Reorder failed")).Status == EditStatus.Committed;
 
     /// <summary>Whether <paramref name="dragged"/> and <paramref name="target"/> are distinct <b>same-parent, same-tag
     /// siblings</b> — a reorder drop (US-055), the drag-over hint peer of <see cref="ReorderNodeToSiblingAsync"/>.
@@ -1002,9 +675,6 @@ public sealed class ProjectSession : IDisposable
             && project.FindParent(target)?.Id == parentId;
     }
 
-    /// <summary>Reorders <paramref name="dragged"/> to <paramref name="targetSibling"/>'s position among their shared
-    /// same-tag siblings — the drag-reorder drop (US-055). Id-preserving (the SDK <see cref="ProjectEditor.ReorderSubtree"/>),
-    /// undoable. Returns false when the two are not a reorderable pair (not same-parent, same-tag siblings). No controller.</summary>
     /// <summary>Builds the command to reorder <paramref name="dragged"/> to <paramref name="targetSibling"/>'s
     /// position among their shared same-tag siblings (US-055), or null when they are not a reorderable pair.</summary>
     public ProjectCommand? BuildReorderNodeToSibling(ElementId dragged, ElementId targetSibling)
@@ -1017,38 +687,7 @@ public sealed class ProjectSession : IDisposable
         return targetIndex < 0 ? null : new ReorderNode(dragged, targetIndex);
     }
 
-    public async Task<bool> ReorderNodeToSiblingAsync(ElementId dragged, ElementId targetSibling) =>
-        BuildReorderNodeToSibling(dragged, targetSibling) is { } command
-        && (await RouteAsync(command, "Reorder failed")).Status == EditStatus.Committed;
-
-    /// <summary>
-    /// Moves a node to another container (US-054): re-parents the subtree under <paramref name="targetParentId"/> with
-    /// its **identity preserved** — the IHC resource ids do not change, so its documentation, addressing and every link
-    /// it participates in survive. Refuses an illegal container, a self/descendant target, or a no-op move into the
-    /// current parent. Undoable (single snapshot). Returns false on refusal/failure. No controller.
-    /// </summary>
-    public async Task<bool> MoveNodeAsync(ElementId sourceId, ElementId targetParentId)
-    {
-        if (Current is not { } project
-            || project.FindById(sourceId) is not { } source || project.FindById(targetParentId) is not { } target)
-            return false;
-        if (project.FindParent(sourceId)?.Id == targetParentId)
-        {
-            await _dialogs.ShowMessageAsync("Move", "The node is already in that container.");
-            return false;
-        }
-        if (!CanContain(source.Tag, target.Tag))
-        {
-            await _dialogs.ShowMessageAsync("Cannot move", "That container cannot hold this node.");
-            return false;
-        }
-        EditOutcome outcome = await RouteAsync(new MoveNode(sourceId, targetParentId), "Cannot move");
-        if (outcome.Status == EditStatus.Refused)   // self/descendant target (the engine move-contract)
-            await _dialogs.ShowMessageAsync("Cannot move", "That container cannot hold this node.");
-        return outcome.Status == EditStatus.Committed;
-    }
-
-    /// <summary>Whether <see cref="MoveNodeAsync"/> would move <paramref name="sourceId"/> under
+    /// <summary>Whether a move would place <paramref name="sourceId"/> under
     /// <paramref name="targetParentId"/> — its non-mutating peer, read for the drag-over hint (A-31). Applies the SAME
     /// legality as the move (and as paste): both ids resolve, the target admits the node's kind, the node is not already
     /// there, and the target is not the node itself or one of its descendants (the SDK's move-contract guard,
@@ -1062,101 +701,19 @@ public sealed class ProjectSession : IDisposable
         return document.CanApply(new MoveNode(sourceId, targetParentId)).Ok;
     }
 
-    /// <summary>
-    /// Copies a node and pastes it as an **independent duplicate** under <paramref name="targetParentId"/> (US-056):
-    /// the SDK <see cref="ProjectEditor.CopySubtree"/> deep-copies the subtree with **fresh IHC resource ids** and
-    /// **drops any link half whose other end lies outside the copy** (links wholly inside the copy are duplicated and
-    /// stay connected); the original is left unchanged. Refuses an illegal container. Undoable. Returns the new node's
-    /// id, or null on refusal/failure. No controller.
-    /// </summary>
-    public async Task<ElementId?> CopyNodeAsync(ElementId sourceId, ElementId targetParentId)
-    {
-        if (Current is not { } project
-            || project.FindById(sourceId) is not { } source || project.FindById(targetParentId) is not { } target)
-            return null;
-        if (!CanContain(source.Tag, target.Tag))
-        {
-            await _dialogs.ShowMessageAsync("Cannot paste", "That container cannot hold this node.");
-            return null;
-        }
-        EditOutcome<ElementId> outcome = await RouteAsync(new CopyNode(sourceId, targetParentId), "Cannot paste");
-        return outcome.Status == EditStatus.Committed ? outcome.Value : null;
-    }
-
-    /// <summary>
-    /// Applies edited advanced wireless-dimmer settings (US-015): writes the <c>value</c> of the dimmer's
-    /// <c>dimmer_setting_*</c> children — fade-rate up/down (soft on/off), dimming rate (manual ramp), minimum/maximum
-    /// value, and the load-mode token. Commits, marks dirty. Returns false on failure.
-    /// </summary>
-    public async Task<bool> UpdateDimmerSettingsAsync(ElementId productId, AdvancedDimmerResult r) =>
-        (await RouteAsync(new UpdateDimmerSettings(productId, r), "Update failed")).Status is EditStatus.Committed or EditStatus.NoChange;
-
     /// <summary>Whether the project already contains a modem device root (the at-most-one-modem rule, US-013).</summary>
     public static bool HasModem(Project project) =>
         project.Root.DescendantsAndSelf().Any(e => ProductClassifier.IsModem(e.Tag));
 
-    /// <summary>
-    /// Applies edited modem documentation (US-013): writes the modem's name/note/identification and the four RS485
-    /// cabling wire colours by id, the SIM <c>sms_modem_pincode</c> value, and telephone numbers 1..N onto the
-    /// matching <c>sms_modem_phonenumber</c> slots; re-parents to the chosen Location when changed. Commits, marks
-    /// dirty. Returns false on failure.
-    /// </summary>
     /// <summary>Builds the command to apply edited modem documentation (US-013), capturing the modem's current
     /// locality so the command can re-parent it when the Location changed.</summary>
     public ProjectCommand BuildUpdateModem(ElementId modemId, ModemPropertiesResult r) =>
         new UpdateModem(modemId, r, Current?.FindParent(modemId)?.Id);
 
-    public async Task<bool> UpdateModemAsync(ElementId modemId, ModemPropertiesResult r) =>
-        (await RouteAsync(BuildUpdateModem(modemId, r), "Update failed")).Status is EditStatus.Committed or EditStatus.NoChange;
-
-    /// <summary>Applies the edited note to a product's scene container (US-024) — the only editable field of the
-    /// Scenarier dialog; the container's name is fixed by the product's catalog definition.</summary>
-    public async Task<bool> UpdateSceneContainerAsync(ElementId scenesId, string note)
-    {
-        EditOutcome outcome = await RouteAsync(new UpdateSceneContainer(scenesId, note), "Update failed");
-        return outcome.Status == EditStatus.Committed;
-    }
-
-    /// <summary>
-    /// Applies edited terminal addressing to a product input/output pin (US-012): encodes (data line, terminal) into
-    /// <c>address_dataline</c> and writes <c>cable_colour</c>, <c>note</c>, and — for an output — the <c>inivalue</c>
-    /// (on = normally-closed, off = normally-open). Commits, marks dirty, records the change. Returns false on failure.
-    /// </summary>
-    /// <summary>Toggles a "Log …" row's log mark (US-068, the vendor's &amp;Logmærke): flips its Logning state between
-    /// Off and the first logging mode. Commits, marks dirty. Returns false when the target is not a Logning row.</summary>
-    public async Task<bool> ToggleLogMarkAsync(ElementId logRowId) =>
-        (await RouteAsync(new ToggleLogMark(logRowId), "Log mark failed")).Status == EditStatus.Committed;
-
-    public async Task<bool> UpdatePinAsync(ElementId pinId, PinPropertiesResult r)
-    {
-        EditOutcome outcome = await RouteAsync(new UpdatePin(pinId, r), "Addressing failed");
-        return outcome.Status == EditStatus.Committed;
-    }
-
-    /// <summary>
-    /// Applies edited product documentation (US-011): writes the product's <c>name</c>/<c>note</c>/<c>cabletype</c>/
-    /// <c>cablenumber</c>/<c>documentation_tag</c>/<c>power_group</c> by id (a blank value clears the attribute), and
-    /// re-parents the product to the chosen <c>Location</c> locality when it changed (ids preserved via
-    /// <see cref="ProjectEditor.MoveSubtree"/>). Commits, marks dirty, records the change. Returns false on failure.
-    /// </summary>
     /// <summary>Builds the command to apply edited product documentation (US-011), capturing the product's current
     /// locality so the command can re-parent it when the Location changed.</summary>
     public ProjectCommand BuildUpdateProduct(ElementId productId, ProductPropertiesResult r) =>
         new UpdateProduct(productId, r, Current?.FindParent(productId)?.Id);
-
-    public async Task<bool> UpdateProductAsync(ElementId productId, ProductPropertiesResult r) =>
-        (await RouteAsync(BuildUpdateProduct(productId, r), "Update failed")).Status == EditStatus.Committed;
-
-    /// <summary>
-    /// Renames a locality (US-007): sets the <c>group</c>'s <c>name</c> and <c>note</c> by id, commits the edited
-    /// project, and records the change — which also marks the project dirty and drives the every-Nth-change crash
-    /// backup (US-005). Returns false (with a diagnostic) when the id no longer resolves or the edit fails.
-    /// </summary>
-    public async Task<bool> RenameLocalityAsync(ElementId id, string name, string note)
-    {
-        EditOutcome outcome = await RouteAsync(new RenameLocality(id, name, note), "Rename failed");
-        return outcome.Status == EditStatus.Committed;
-    }
 
     /// <summary>Records one committed edit (the hook editors use in E2+): marks the project dirty and triggers a
     /// crash backup on every Nth change. Fire-and-forget for UI callers; tests await <see cref="MarkChangedAsync"/>.</summary>
