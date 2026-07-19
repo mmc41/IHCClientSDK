@@ -73,7 +73,8 @@ public partial class MainWindowViewModel : ViewModelBase
     /// unlock it deliberately first. Unlock is a separate, irreversible action (F-046).</summary>
     public bool IsProgrammingBlockLocked =>
         IsProgrammingMode && _programmingBlockId is { } id
-        && (_session.Current?.FindById(id)?.GetAttribute("locked") ?? "no") == "yes";
+        && _session.Current is { } project && project.FindById(id) is { } block
+        && project.View(block).Locked;
 
     // The programming-mode authoring context-menu gates: a container node's own kind AND an editable (unlocked)
     // programming block. On a locked block every one is false, so the vendor's "missing, not greyed" affordance holds.
@@ -1437,7 +1438,7 @@ public partial class MainWindowViewModel : ViewModelBase
             isOutput, dataLine, terminal,
             pin.GetAttribute("cable_colour") ?? string.Empty,
             pin.GetAttribute("note") ?? string.Empty,
-            (pin.GetAttribute("inivalue") ?? "off") == "on",
+            View(pin).InitialValue == "on",
             InUseTerminals(isOutput, pinId));
 
         PinPropertiesResult? result = await _dialogs.EditPinPropertiesAsync(input);
@@ -1510,8 +1511,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 // A locked (library) product's name is fixed to the catalog type name — greyed out (A-15/F-032).
                 // Read locked off the ELEMENT, resolved via the project's inline DTD (default "no"); never a catalog
                 // lookup (whose default is "yes" and would grey the wrong products).
-                NameLocked: (product.GetAttribute("locked") ?? "no") == "yes",
-                EndUserReport: (product.GetAttribute("enduser_report") ?? "no") == "yes");
+                NameLocked: View(product).Locked,
+                EndUserReport: View(product).EnduserReport);
 
             ProductPropertiesResult? result = await _dialogs.EditProductPropertiesAsync(input);
             if (result is null)
@@ -1558,13 +1559,16 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (_session.Current is not { } project || project.FindById(productId) is not { } product)
             return;
+        // The fallbacks (700/700/2/0/100) are the vendor's FACTORY new-device defaults, NOT the DTD defaults: the
+        // schema default for a dimmer_setting `value` is "0" (load_mode "auto"), so Effective returns 0 for an unset
+        // device and the `v > 0` guard applies these constants. They stay app-side by design (fablerefac W1-3 finding).
         int Read(string tag, int fallback)
         {
             ProjectElement? el = product.DescendantsAndSelf().FirstOrDefault(e => e.Tag == tag);
-            return el is not null && int.TryParse(el.GetAttribute("value"), out int v) && v > 0 ? v : fallback;
+            return el is not null && int.TryParse(project.View(el).Effective("value"), out int v) && v > 0 ? v : fallback;
         }
-        string loadMode = product.DescendantsAndSelf().FirstOrDefault(e => e.Tag == "dimmer_setting_load_mode")
-            ?.GetAttribute("value") ?? "auto";
+        ProjectElement? loadModeEl = product.DescendantsAndSelf().FirstOrDefault(e => e.Tag == "dimmer_setting_load_mode");
+        string loadMode = loadModeEl is { } lm && project.View(lm).Effective("value") is { } mode ? mode : "auto";
         var input = new AdvancedDimmerInput(
             Read("dimmer_setting_fade_rate_up", 700),
             Read("dimmer_setting_fade_rate_down", 700),
@@ -1798,7 +1802,7 @@ public partial class MainWindowViewModel : ViewModelBase
     // the icon (& vs >=1) and a label suffix.
     private TreeNodeViewModel BuildConditionsNode(ProjectElement conditions, bool nested = false)
     {
-        bool or = (conditions.GetAttribute("type") ?? "and") == "or";
+        bool or = View(conditions).Effective("type") == "or";
         string label = $"{(nested ? "Logic group" : "Conditions")} ({(or ? ">=1" : "&")})";
         var node = new TreeNodeViewModel(label, NodeIcons.For(or ? "conditions-or" : "conditions", null),
             isExpanded: true, elementId: conditions.Id)
@@ -1991,7 +1995,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (_session.Current is not { } project || member.Id is not { } memberId)
             return null;
-        bool up = (member.GetAttribute("shutter_position") ?? "up") == "up";
+        bool up = project.View(member).Effective("shutter_position") == "up";
         string pinTag = up ? "airlink_shutter_up" : "airlink_shutter_down";
         ProjectElement? product = project.FindParent(memberId) is { Id: { } scenesId }
             ? project.FindParent(scenesId)
