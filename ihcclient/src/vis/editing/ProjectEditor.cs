@@ -46,7 +46,17 @@ namespace Ihc.Vis.Editing
             ArgumentNullException.ThrowIfNull(project);
             root = project.Root;
             inlineDtdBlocks = project.InlineDtdBlocks;   // carry the file's captured DTD so open-world edits round-trip
+            // P1b (W4-1): an SDK-committed project registered its open analysis — the id counter high-water mark, and
+            // implicitly that it is canonical, undeclared-attribute-free and duplicate-id-free. Reuse it: re-seeding the
+            // allocator from the cached counter is exactly what a fresh scan would return, so the guards below are
+            // redundant. Any un-registered project (loaded, consumer-created, or a with-clone) takes the full safe path.
+            if (EditAnalysisCache.TryGet(project) is { } analysis)
+            {
+                allocator = new IdAllocator(analysis.AllocatorSeed);
+                return;
+            }
             allocator = IdAllocator.ForProject(project);
+            EditAnalysisCache.CountFullAnalysis();
             // An attribute the grammar does not declare would fail the save; failing here — before the user
             // invests edits — beats a commit-time crash, and beats the silent drop canonicalization once did.
             SchemaGuards.GuardTreeNoUnknownAttributes(root, SchemaView);
@@ -1188,6 +1198,10 @@ namespace Ihc.Vis.Editing
                 InlineDtdBlocks = inlineDtdBlocks,
             };
             ProjectContracts.AssertCore(committed, "edit-commit");
+            // P1b (W4-1): register this SDK-produced snapshot's analysis. The written last_unique_id IS the allocator
+            // counter, and every present/referenced id is ≤ it, so IdAllocator.ForProject(committed) would return
+            // exactly this counter — the next Edit() of `committed` reuses it and skips the tree re-scan + guards.
+            EditAnalysisCache.Register(committed, allocator.Counter);
             return committed;
         }
 
