@@ -435,10 +435,9 @@ public sealed class ProjectSession : IDisposable
     public async Task<ElementId?> AddVariableAsync(ElementId sectionId, string resourceTag, string name)
     {
         Activity.Current?.SetTag("variable.type", resourceTag);
-        if (Current?.FindById(sectionId) is not { } section
-            || Current.FindParent(sectionId) is not { Tag: "functionblock", Id: { } blockId })
+        if (BuildAddVariable(sectionId, resourceTag, name) is not { } command)
             return null;
-        EditOutcome<ElementId> outcome = await RouteAsync(new AddVariable(blockId, section.Tag, resourceTag, name), "Add variable failed");
+        EditOutcome<ElementId> outcome = await RouteAsync(command, "Add variable failed");
         return outcome.Status == EditStatus.Committed ? outcome.Value : null;
     }
 
@@ -452,11 +451,9 @@ public sealed class ProjectSession : IDisposable
     public async Task<ElementId?> AddEnumVariableAsync(ElementId sectionId, string variableName, string typeName, IReadOnlyList<string> states)
     {
         Activity.Current?.SetTag("enum.type", typeName);
-        if (Current?.FindById(sectionId) is not { } section
-            || Current.FindParent(sectionId) is not { Tag: "functionblock", Id: { } blockId })
+        if (BuildAddEnumVariable(sectionId, variableName, typeName, states) is not { } command)
             return null;
-        EditOutcome<ElementId> outcome = await RouteAsync(
-            new AddEnumVariable(blockId, section.Tag, variableName, typeName, states), "Add enumerator failed");
+        EditOutcome<ElementId> outcome = await RouteAsync(command, "Add enumerator failed");
         return outcome.Status == EditStatus.Committed ? outcome.Value : null;
     }
 
@@ -651,11 +648,43 @@ public sealed class ProjectSession : IDisposable
     /// <c>Tom blok</c> template (the four variable sections + one empty program) named <see cref="EmptyBlockName"/>,
     /// commits, marks dirty. Returns the new block's id, or null when there is no open project or the edit fails.
     /// </summary>
+    // ---- Command factories (W2-14): resolve catalog / parent context into a ready-to-apply command (a query, no
+    // mutation). The VM and tests apply them via ApplyAsync; the per-op wrappers below now consume them too, so the
+    // resolution lives in one place and survives the wrappers' deletion. A null return = "could not be built". ----
+
+    /// <summary>Builds the command to insert the catalog "Tom blok" empty function-block template into a locality
+    /// (US-019), stamped with today's date.</summary>
+    public ProjectCommand<ElementId> BuildAddEmptyFunctionBlock(ElementId localityId) =>
+        new AddEmptyFunctionBlock(localityId, _service.GetEmptyFunctionBlockTemplate(),
+            DateOnly.FromDateTime(DateTime.Now), EmptyBlockName);
+
+    /// <summary>Builds the command to insert a preprogrammed library function block by master type (US-018), or null
+    /// when no such block is in the catalog.</summary>
+    public ProjectCommand<ElementId>? BuildAddFunctionBlock(ElementId localityId, string masterType) =>
+        _service.GetAvailableFunctionBlocks().FirstOrDefault(f => f.MasterType == masterType) is { } definition
+            ? new AddFunctionBlock(localityId, definition)
+            : null;
+
+    /// <summary>Builds the command to add a typed variable to a function-block variable section (US-027), or null
+    /// when the section is not a function-block variable section.</summary>
+    public ProjectCommand<ElementId>? BuildAddVariable(ElementId sectionId, string resourceTag, string name) =>
+        Current?.FindById(sectionId) is { } section
+            && Current.FindParent(sectionId) is { Tag: "functionblock", Id: { } blockId }
+            ? new AddVariable(blockId, section.Tag, resourceTag, name)
+            : null;
+
+    /// <summary>Builds the command to create a project-global enum type and add a variable of it to a function-block
+    /// section (US-030), or null when the section is not a function-block variable section.</summary>
+    public ProjectCommand<ElementId>? BuildAddEnumVariable(
+        ElementId sectionId, string variableName, string typeName, IReadOnlyList<string> states) =>
+        Current?.FindById(sectionId) is { } section
+            && Current.FindParent(sectionId) is { Tag: "functionblock", Id: { } blockId }
+            ? new AddEnumVariable(blockId, section.Tag, variableName, typeName, states)
+            : null;
+
     public async Task<ElementId?> AddEmptyFunctionBlockAsync(ElementId localityId)
     {
-        FunctionBlockDefinition template = _service.GetEmptyFunctionBlockTemplate();
-        var command = new AddEmptyFunctionBlock(localityId, template, DateOnly.FromDateTime(DateTime.Now), EmptyBlockName);
-        EditOutcome<ElementId> outcome = await RouteAsync(command, "Insert failed");
+        EditOutcome<ElementId> outcome = await RouteAsync(BuildAddEmptyFunctionBlock(localityId), "Insert failed");
         return outcome.Status == EditStatus.Committed ? outcome.Value : null;
     }
 
@@ -668,14 +697,12 @@ public sealed class ProjectSession : IDisposable
     public async Task<ElementId?> AddFunctionBlockAsync(ElementId localityId, string masterType)
     {
         Activity.Current?.SetTag("functionblock.masterType", masterType);
-        FunctionBlockDefinition? definition = _service.GetAvailableFunctionBlocks()
-            .FirstOrDefault(f => f.MasterType == masterType);
-        if (definition is null)
+        if (BuildAddFunctionBlock(localityId, masterType) is not { } command)
         {
             await _dialogs.ShowMessageAsync("Insert failed", $"No library function block with master type '{masterType}'.");
             return null;
         }
-        EditOutcome<ElementId> outcome = await RouteAsync(new AddFunctionBlock(localityId, definition), "Insert failed");
+        EditOutcome<ElementId> outcome = await RouteAsync(command, "Insert failed");
         return outcome.Status == EditStatus.Committed ? outcome.Value : null;
     }
 

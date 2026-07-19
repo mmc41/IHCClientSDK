@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using Ihc.Vis.Model;
 using Ihc.Vis.Session;
 
 namespace safe_visual_tests;
@@ -65,5 +66,23 @@ public class SessionApplyTests
             Assert.That(preview!.Added, Is.Not.Empty, "the preview names the new locality id");
             Assert.That(harness.Session.Current!.Groups.Count, Is.EqualTo(groups), "neither query committed anything");
         });
+    }
+
+    [Test]
+    public async Task BuildAddFunctionBlock_ResolvesKnownBlock_NullForUnknown_AndApplies()
+    {
+        using var harness = ShellHarness.Create();
+        await harness.Session.NewAsync();
+        ElementId loc = harness.Session.Current!.Groups[0].Id!.Value;
+        string master = harness.Session.GetAvailableFunctionBlocks()[0].MasterType;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(harness.Session.BuildAddFunctionBlock(loc, master), Is.Not.Null, "a known master type builds a command");
+            Assert.That(harness.Session.BuildAddFunctionBlock(loc, "not-a-real-block"), Is.Null, "an unknown one builds nothing");
+        });
+
+        EditOutcome outcome = await harness.Session.ApplyAsync(harness.Session.BuildAddFunctionBlock(loc, master)!);
+        Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed), "the built command applies through the session");
     }
 }
