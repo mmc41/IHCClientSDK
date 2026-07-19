@@ -32,9 +32,11 @@ namespace Ihc.Vis.Session
 
         private readonly record struct HistoryEntry(Project Snapshot, string Label);
 
-        /// <summary>Creates a session with the given history policy (default <see cref="HistoryPolicy.Bounded"/>(1000)).</summary>
+        /// <summary>Creates a session with the given history policy. The default is <see cref="HistoryPolicy.Unlimited"/>
+        /// (W4-4): undo depth is bounded only by process memory now that a committed snapshot path-copies just the
+        /// subtrees it changed (W4-3), so a history entry costs its changed path, not a full tree.</summary>
         public ProjectDocumentSession(HistoryPolicy? history = null) =>
-            _history = history ?? HistoryPolicy.Bounded(1000);
+            _history = history ?? HistoryPolicy.Unlimited;
 
         /// <summary>Raised after <see cref="Apply(ProjectCommand, int?)"/>/<see cref="Undo"/>/<see cref="Redo"/>
         /// with the structural change set, so a projector can reconcile in place.</summary>

@@ -91,8 +91,8 @@ public sealed class ProjectWorkflow : IDisposable
 
     // The multi-level undo/redo history (US-052): immutable project snapshots. Every project-mutating commit goes
     // through CommitAsync, which pushes the pre-edit snapshot here and clears the redo list; loads (New/Open/Close)
-    // reset the history. Capped so a long session can't grow the snapshot list without bound.
-    private const int MaxHistoryDepth = 1000;   // W2-14: the session's bounded-history cap
+    // reset the history. Unlimited (W4-4): a committed snapshot path-copies only the subtrees it changed (W4-3), so a
+    // deep history costs its changed paths, not a full tree per entry — bounded only by process memory.
     // Each entry pairs the pre-edit snapshot to restore with the label of the edit that produced the newer state
     // (the command's Describe, surfaced as EditOutcome.Label — W2-14/E14), so Undo/Redo can name their action.
     private readonly List<(Project Snapshot, string Label)> _undo = new();
@@ -832,9 +832,7 @@ public sealed class ProjectWorkflow : IDisposable
         {
             if (Current is not null)
             {
-                _undo.Add((Current, label));
-                if (_undo.Count > MaxHistoryDepth)
-                    _undo.RemoveAt(0);
+                _undo.Add((Current, label));   // unlimited (W4-4): no trim — entries are cheap path-copies (W4-3)
             }
             _redo.Clear();
             Current = updated;
