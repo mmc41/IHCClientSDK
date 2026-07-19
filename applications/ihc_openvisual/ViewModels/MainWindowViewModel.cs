@@ -206,8 +206,8 @@ public partial class MainWindowViewModel : ViewModelBase
             ? InsertEnumAsync(sectionId, sectionLabel)
             : RunAsync(nameof(InsertVariableAsync), async () =>
             {
-                if (await _session.AddVariableAsync(sectionId, tag, label) is not null)
-                    StatusText = $"{label} was inserted under {sectionLabel}";
+                if (_session.BuildAddVariable(sectionId, tag, label) is { } command)
+                    await ApplyAsync(command, $"{label} was inserted under {sectionLabel}");
             });
 
     /// <summary>The events a selected variable can raise, offered on a program's Events node (US-028); rebuilt when
@@ -401,8 +401,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 : "Enter a block's programming mode to insert an input or output.";
             return;
         }
-        if (await _session.AddVariableAsync(sectionId, tag, label) is not null)
-            StatusText = $"{label} inserted into the block.";
+        if (_session.BuildAddVariable(sectionId, tag, label) is { } command)
+            await ApplyAsync(command, $"{label} inserted into the block.");
     });
 
     /// <summary>Opens the Project information dialog (US-039) prefilled from the project, and applies edits.</summary>
@@ -412,8 +412,7 @@ public partial class MainWindowViewModel : ViewModelBase
         ProjectInfoData? result = await _dialogs.EditProjectInfoAsync(_session.GetProjectInfo());
         if (result is null)
             return;
-        if (await _session.UpdateProjectInfoAsync(result))
-            StatusText = "Project information updated.";
+        await ApplyAsync(new UpdateProjectInfo(result), "Project information updated.");
     });
 
     /// <summary>Documentation ▸ Data tables (US-049): opens the data-tables dialog (read-only system tables +
@@ -875,8 +874,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (node?.ElementId is not { } id)
             return;
         string name = node.DisplayName;
-        if (await _session.UnlockFunctionBlockAsync(id))
-            StatusText = $"Unlocked {name}.";
+        await ApplyAsync(new UnlockFunctionBlock(id), $"Unlocked {name}.");
     });
 
     /// <summary>Deletes the selected node (US-053), dispatching by type: a link row removes its reciprocal pair
@@ -891,8 +889,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (node.IsLinkRow)
         {
             // Removing a link deletes its reciprocal pair, not a subtree (US-057).
-            if (await _session.RemoveLinkAsync(id))
-                StatusText = "Link removed.";
+            await ApplyAsync(new RemoveLink(id), "Link removed.");
             return;
         }
         string name = node.DisplayName;
@@ -958,16 +955,15 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         if (_clipboardIsCut)
         {
-            if (await _session.MoveNodeAsync(sourceId, targetId))
+            if (await ApplyAsync(new MoveNode(sourceId, targetId), "Moved."))
             {
-                StatusText = "Moved.";
                 _clipboardId = null;   // a cut is consumed by its paste
                 OnPropertyChanged(nameof(CanPaste));
             }
         }
-        else if (await _session.CopyNodeAsync(sourceId, targetId) is not null)
+        else
         {
-            StatusText = "Pasted a copy.";   // a copy is not consumed — it can be pasted again
+            await ApplyAsync(new CopyNode(sourceId, targetId), "Pasted a copy.");   // a copy is not consumed
         }
     });
 
@@ -1180,8 +1176,8 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private Task ToggleLogMark(TreeNodeViewModel? node) => RunAsync(nameof(ToggleLogMark), async () =>
     {
-        if (node is { IsLogMarkPin: true, ElementId: { } id } && await _session.ToggleLogMarkAsync(id))
-            StatusText = $"Toggled the log mark on {node.DisplayName}.";
+        if (node is { IsLogMarkPin: true, ElementId: { } id })
+            await ApplyAsync(new ToggleLogMark(id), $"Toggled the log mark on {node.DisplayName}.");
     });
 
     /// <summary>Enters programming mode for the selected function block (US-026, F3): the panes switch to the block's
@@ -1236,8 +1232,7 @@ public partial class MainWindowViewModel : ViewModelBase
             if (source?.ElementId is not { } fromId || target?.ElementId is not { } toId
                 || !source.IsPin || !target.IsPin)
                 return;
-            if (await _session.LinkPinsAsync(fromId, toId))
-                StatusText = $"Linked {source.DisplayName} to {target.DisplayName}.";
+            await ApplyAsync(new LinkPins(fromId, toId), $"Linked {source.DisplayName} to {target.DisplayName}.");
         });
 
     /// <summary>The pin from which a link is being drawn — armed by <i>Link from here</i>, consumed by
@@ -1337,8 +1332,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SceneValueResult? result = await _dialogs.EditSceneValueAsync(input);
         if (result is null)
             return;
-        if (await _session.LinkSceneAsync(sceneOutputId, scenesId, result, isDimmer))
-            StatusText = "Scene link created.";
+        await ApplyAsync(new LinkScene(sceneOutputId, scenesId, result, isDimmer), "Scene link created.");
     }
 
     // The Properties route (right-click / F2) dispatches by element type: a modem opens the modem dialog (US-013),
@@ -1391,8 +1385,7 @@ public partial class MainWindowViewModel : ViewModelBase
             new SceneContainerInput(name, scenes.GetAttribute("note") ?? string.Empty, rows));
         if (result is null)
             return;
-        if (await _session.UpdateSceneContainerAsync(scenesId, result.Note))
-            StatusText = $"'{name}' updated.";
+        await ApplyAsync(new UpdateSceneContainer(scenesId, result.Note), $"'{name}' updated.");
     }
 
     private async Task OpenSceneValuePropertiesAsync(ElementId memberId, ProjectElement member)
@@ -1406,8 +1399,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SceneValueResult? result = await _dialogs.EditSceneValueAsync(input);
         if (result is null)
             return;
-        if (await _session.UpdateSceneValueAsync(memberId, result))
-            StatusText = "Scene value updated.";
+        await ApplyAsync(new UpdateSceneValue(memberId, result), "Scene value updated.");
     }
 
     // Reads an enum variable's type name and ordered state names for the Edit dialog (US-030); null if not an enum.
@@ -1442,8 +1434,8 @@ public partial class MainWindowViewModel : ViewModelBase
             new EnumDefinitionInput("New enumerator", string.Empty, System.Array.Empty<string>(), IsNew: true));
         if (result is null || string.IsNullOrWhiteSpace(result.TypeName))
             return;
-        if (await _session.AddEnumVariableAsync(sectionId, result.TypeName, result.TypeName, result.States) is not null)
-            StatusText = $"Enumerator '{result.TypeName}' was inserted under {sectionLabel}";
+        if (_session.BuildAddEnumVariable(sectionId, result.TypeName, result.TypeName, result.States) is { } command)
+            await ApplyAsync(command, $"Enumerator '{result.TypeName}' was inserted under {sectionLabel}");
     });
 
     private async Task OpenModemPropertiesAsync(ElementId modemId)
@@ -1504,7 +1496,9 @@ public partial class MainWindowViewModel : ViewModelBase
         PinPropertiesResult? result = await _dialogs.EditPinPropertiesAsync(input);
         if (result is null)
             return;   // cancelled — the pin keeps its addressing
-        StatusText = await _session.UpdatePinAsync(pinId, result)
+        // A bespoke failure message (invalid address) rather than the generic mapping, so read the outcome directly.
+        EditOutcome outcome = await _session.ApplyAsync(new UpdatePin(pinId, result));
+        StatusText = outcome.Status == EditStatus.Committed
             ? $"Addressed {pin.GetAttribute("name")} to data line {result.DataLine}, terminal {result.Terminal}."
             : $"Data line {result.DataLine}, terminal {result.Terminal} is not a valid address.";
     }
@@ -1533,8 +1527,7 @@ public partial class MainWindowViewModel : ViewModelBase
         PropertiesResult? result = await _dialogs.EditPropertiesAsync($"Edit {currentName} properties", currentName, currentNote);
         if (result is null)
             return;   // cancelled — the locality keeps its original name and note
-        if (await _session.RenameLocalityAsync(id, result.Name, result.Note))
-            StatusText = $"Renamed to {result.Name}.";
+        await ApplyAsync(new RenameLocality(id, result.Name, result.Note), $"Renamed to {result.Name}.");
     }
 
     // The product documentation dialog (US-011) plus its terminal-addressing grids (US-012). Re-entrant: choosing to
@@ -1640,8 +1633,7 @@ public partial class MainWindowViewModel : ViewModelBase
         AdvancedDimmerResult? result = await _dialogs.EditAdvancedDimmerAsync(input);
         if (result is null)
             return;
-        if (await _session.UpdateDimmerSettingsAsync(productId, result))
-            StatusText = "Updated dimmer settings.";
+        await ApplyAsync(new UpdateDimmerSettings(productId, result), "Updated dimmer settings.");
     }
 
     [RelayCommand]
