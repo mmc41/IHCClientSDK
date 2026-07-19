@@ -855,7 +855,25 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
         string name = node.DisplayName;
-        bool deleted = _session.Current?.FindById(id)?.Tag == "group"
+        // Preview → confirm → apply (W2-13): the confirmation lives here in the GUI, never below the session.
+        ProjectSession.DeleteImpact impact = _session.PreviewDelete(id);
+        if (!impact.Deletable)
+        {
+            await _dialogs.ShowMessageAsync("Cannot delete", "This node cannot be deleted.");
+            return;
+        }
+        bool isLocality = _session.Current?.FindById(id)?.Tag == "group";
+        if (impact.NeedsConfirm)
+        {
+            (string title, string message) = isLocality
+                ? ("Delete locality", $"'{name}' contains products. Deleting it also removes those products and the "
+                    + "commands and conditions that use them. Delete anyway?")
+                : ("Delete", $"'{name}' is referenced by other logic (links and/or commands). Delete it together "
+                    + "with those references?");
+            if (!await _dialogs.ConfirmAsync(title, message))
+                return;   // declined — nothing is deleted
+        }
+        bool deleted = isLocality
             ? await _session.DeleteLocalityAsync(id)     // the US-009 locality worked example
             : await _session.DeleteNodeAsync(id);        // any other project node (US-053)
         if (deleted)

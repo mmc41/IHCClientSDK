@@ -697,26 +697,13 @@ public sealed class ProjectSession : IDisposable
     }
 
     /// <summary>
-    /// Deletes a locality (US-009). An empty room is removed silently; a room that still holds products or function
-    /// blocks is removed only after the installer confirms, and the delete cascades to the commands and conditions
-    /// that referenced the removed products (<see cref="DeleteReferencePolicy.CascadeReferences"/>). Returns false
-    /// (nothing mutated) when the id is absent, the installer declines the confirmation, or the edit fails.
+    /// Deletes a locality (US-009): removes it and cascades to the products it holds and the commands/conditions
+    /// that referenced them (<see cref="DeleteReferencePolicy.CascadeReferences"/>). Dialog-free — the GUI runs the
+    /// non-empty-locality confirmation above the session (via <see cref="PreviewDelete"/>, W2-13) so no dialog lives
+    /// inside the edit path. Returns false when the id is absent or the edit fails.
     /// </summary>
-    public async Task<bool> DeleteLocalityAsync(ElementId id)
-    {
-        if (Current?.FindById(id) is { } group && !group.Children.IsDefaultOrEmpty)
-        {
-            string name = Current.View(group).Name is { Length: > 0 } n ? n : "this locality";
-            Activity.Current?.SetTag("locality.hasContents", true);
-            bool confirmed = await _dialogs.ConfirmAsync("Delete locality",
-                $"'{name}' contains products. Deleting it also removes those products and the commands and " +
-                "conditions that use them. Delete anyway?");
-            if (!confirmed)
-                return false;   // declined — nothing is deleted
-        }
-        EditOutcome outcome = await RouteAsync(new DeleteLocality(id), "Delete failed");
-        return outcome.Status == EditStatus.Committed;
-    }
+    public async Task<bool> DeleteLocalityAsync(ElementId id) =>
+        (await RouteAsync(new DeleteLocality(id), "Delete failed")).Status == EditStatus.Committed;
 
     /// <summary>Raised after a catalog import changes the available products/function blocks (US-059/US-060), so the
     /// insertion menus can be rebuilt.</summary>
@@ -855,28 +842,42 @@ public sealed class ProjectSession : IDisposable
         }
     }
 
+    /// <summary>The non-mutating impact of deleting a node (US-009/US-053), for the GUI's confirm-before-delete
+    /// flow (W2-13): whether the node can be deleted at all, and whether deleting it needs confirmation because it
+    /// cascades — a locality that still holds contents, or any other node other logic references (links and/or
+    /// program rows). Presentation composes the confirmation wording; this decides only whether one is needed.</summary>
+    public readonly record struct DeleteImpact(bool Deletable, bool NeedsConfirm);
+
+    /// <summary>
+    /// The non-mutating impact of deleting <paramref name="id"/> (W2-13): drives the GUI's confirm-before-delete
+    /// without a dialog below the session. A locality needs confirmation when it still holds contents (US-009);
+    /// any other deletable node needs it when other logic references it (link halves, or a program row the strict
+    /// delete would trip over). A missing or non-deletable node reports <see cref="DeleteImpact.Deletable"/> false.
+    /// </summary>
+    public DeleteImpact PreviewDelete(ElementId id)
+    {
+        if (Current?.FindById(id) is not { } element)
+            return new DeleteImpact(false, false);
+        if (element.Tag == "group")
+            return new DeleteImpact(true, !element.Children.IsDefaultOrEmpty);   // US-009 locality cascade
+        if (!IsDeletableNode(element.Tag))
+            return new DeleteImpact(false, false);
+        return new DeleteImpact(true, HasLinkHalves(element) || WouldThrowStrict(id));
+    }
+
     /// <summary>
     /// Deletes any project node and its subtree (US-053), generalising the US-009 locality delete to products,
-    /// function blocks, variables/pins and program elements. An unreferenced leaf is removed silently; a node that
-    /// other logic references (a link, or a command/condition/event) is **confirmed first**, then removed together
-    /// with the reciprocal link halves and referencing program rows as **one** undoable step. Declining deletes
-    /// nothing. If the engine cannot safely cascade a binding it **refuses and explains what to rewire**. Returns
-    /// false on refusal/decline/failure. No controller.
+    /// function blocks, variables/pins and program elements. A referenced node is removed together with the
+    /// reciprocal link halves and referencing program rows as **one** undoable step; if the engine cannot safely
+    /// cascade a binding it refuses. Dialog-free — the GUI runs the reference-cascade confirmation above the
+    /// session (via <see cref="PreviewDelete"/>, W2-13). Returns false when the node is missing/not deletable or
+    /// the edit fails/refuses. No controller.
     /// </summary>
     public async Task<bool> DeleteNodeAsync(ElementId id)
     {
         if (Current is not { } project || project.FindById(id) is not { } element || !IsDeletableNode(element.Tag))
-        {
-            await _dialogs.ShowMessageAsync("Cannot delete", "This node cannot be deleted.");
             return false;
-        }
         bool referenced = HasLinkHalves(element) || WouldThrowStrict(id);
-        if (referenced && !await _dialogs.ConfirmAsync("Delete",
-                $"'{(project.View(element).Name is { Length: > 0 } n ? n : element.Tag)}' is referenced by other logic (links and/or "
-                + "commands). Delete it together with those references?"))
-        {
-            return false;   // declined — nothing is deleted
-        }
         EditOutcome outcome = await RouteAsync(new DeleteNode(id, referenced), "Cannot delete");
         return outcome.Status == EditStatus.Committed;
     }
