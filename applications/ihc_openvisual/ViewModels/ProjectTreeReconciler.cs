@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Ihc.Vis;
 using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Session;
@@ -352,43 +353,36 @@ public sealed class ProjectTreeReconciler
     // over-approximation is safe: re-rendering a row whose value is unchanged is a no-op via the observable setters.
     private IEnumerable<ElementId> DependenciesOf(ProjectElement element, Project project)
     {
-        switch (element.Tag)
+        // link halves and scene members render the opposite end's bare path (the partner pin + its ancestors' names).
+        if (element.IsLinkHalf || element.IsSceneMember)
         {
-            case "link_from_resource":
-            case "link_to_resource":
-            case "scene_link":
-            case "scene_relay":
-            case "scene_dimmer":
-            case "scene_shutter":
-                // renders the opposite end's bare path: the partner pin plus its ancestors' names
-                if (ElementId.TryParse(element.GetAttribute("link"), out ElementId partnerId)
-                    && project.FindParent(partnerId) is { } partnerPin)
+            if (ElementId.TryParse(project.View(element).Effective("link"), out ElementId partnerId)
+                && project.FindParent(partnerId) is { } partnerPin)
+            {
+                for (ProjectElement? cur = partnerPin; cur is not null;
+                     cur = cur.Id is { } cid ? project.FindParent(cid) : null)
                 {
-                    for (ProjectElement? cur = partnerPin; cur is not null;
-                         cur = cur.Id is { } cid ? project.FindParent(cid) : null)
+                    if (cur.Id is { } id)
                     {
-                        if (cur.Id is { } id)
-                        {
-                            yield return id;
-                        }
+                        yield return id;
                     }
                 }
-                break;
-            case "event":
-            case "event_power":
-            case "action":
-            case "condition":
-                foreach (ElementId operand in Operands(element, project, "link1", "link2"))
-                {
-                    yield return operand;
-                }
-                break;
-            case "program_case":
-                foreach (ElementId operand in Operands(element, project, "link"))
-                {
-                    yield return operand;
-                }
-                break;
+            }
+        }
+        // program event/command/condition rows render %P/%S operand names (link1/link2); a case switch its switch operand.
+        else if (element.IsProgramEvent || element.IsProgramCommand || element.IsCondition)
+        {
+            foreach (ElementId operand in Operands(element, project, "link1", "link2"))
+            {
+                yield return operand;
+            }
+        }
+        else if (element.IsProgramCase)
+        {
+            foreach (ElementId operand in Operands(element, project, "link"))
+            {
+                yield return operand;
+            }
         }
     }
 
@@ -396,7 +390,7 @@ public sealed class ProjectTreeReconciler
     {
         foreach (string attr in attrs)
         {
-            if (ElementId.TryParse(element.GetAttribute(attr), out ElementId id) && project.FindById(id) is not null)
+            if (ElementId.TryParse(project.View(element).Effective(attr), out ElementId id) && project.FindById(id) is not null)
             {
                 yield return id;
             }

@@ -89,6 +89,19 @@ namespace Ihc.Vis
 
             /// <summary>A function-block setting that carries a literal time value (hour/minute/second, A-21/F-062).</summary>
             public bool IsTimeSetting => element.Tag is "resource_timer" or "resource_timertime" or "resource_time";
+
+            /// <summary>An enum type definition (<c>enum_definition</c>) — distinct from the <c>enum_value</c> rows and
+            /// the <c>enum_definitions</c> container it groups (all the coarse <see cref="ElementKind.EnumDefinition"/>).</summary>
+            public bool IsEnumDefinition => element.Tag == "enum_definition";
+
+            /// <summary>A single enum state (<c>enum_value</c>).</summary>
+            public bool IsEnumValue => element.Tag == "enum_value";
+
+            /// <summary>A function block's scene output resource (<c>resource_scene</c>) — a scenario-link source.</summary>
+            public bool IsSceneResource => element.Tag == "resource_scene";
+
+            /// <summary>A wireless dimmer's dimming resource (<c>airlink_dimming</c>) — the Advanced dimmer target (US-015).</summary>
+            public bool IsWirelessDimming => element.Tag == "airlink_dimming";
         }
 
         /// <summary>

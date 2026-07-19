@@ -42,15 +42,15 @@ internal sealed class PropertiesDialogCoordinator(
             await OpenModemAsync(id);
         else if (ProductClassifier.IsProduct(element.Tag))
             await OpenProductAsync(id);
-        else if (element.Tag is "dataline_input" or "dataline_output")
+        else if (element.Kind == ElementKind.DatalinePin)
             await OpenPinAsync(id, element);
-        else if (element.Tag == "scenes")
+        else if (element.IsScenesContainer)
             await OpenSceneContainerAsync(id, element);   // the product's Scenarier dialog (US-024)
-        else if (element.Tag is "scene_relay" or "scene_dimmer")
+        else if (element.IsSceneMember && !element.IsSceneShutter)
             await OpenSceneValueAsync(id, element);   // edit a scenario link's value (US-058)
         else if (element.Kind == ElementKind.EnumResource)
             await OpenEnumAsync(id);   // edit the enum type's states (US-030)
-        else if (element.Tag is "group" or "functionblock")
+        else if (element.IsLocalityGroup || element.Kind is ElementKind.FunctionBlock)
             // A function block renames through the same Name/Note dialog as a locality (US-007/US-019).
             await OpenLocalityAsync(id, View(element).Name ?? string.Empty);
     }
@@ -127,7 +127,7 @@ internal sealed class PropertiesDialogCoordinator(
         {
             return null;
         }
-        var states = def.ChildrenOrEmpty().Where(c => c.Tag == "enum_value")
+        var states = def.ChildrenOrEmpty().Where(c => c.IsEnumValue)
             .Select(c => project.View(c).Name ?? string.Empty).ToList();
         return (project.View(def).Name ?? string.Empty, states);
     }
@@ -169,7 +169,7 @@ internal sealed class PropertiesDialogCoordinator(
         bool leaf = true;
         while (current is not null)
         {
-            bool significant = leaf || current.Tag is "group" or "functionblock" || ProductClassifier.IsProduct(current.Tag);
+            bool significant = leaf || current.IsLocalityGroup || current.Kind is ElementKind.FunctionBlock || ProductClassifier.IsProduct(current.Tag);
             if (significant && View(current).Name is { Length: > 0 } partName)
                 parts.Insert(0, ProductClassifier.IsProduct(current.Tag)
                     ? ProductLabel(partName, View(current).Position)

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using ihc_openvisual.Configuration;
+using Ihc.Vis;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
@@ -45,7 +46,7 @@ public static class DefaultLocalities
         ProjectEditor editor = project.Edit();
         for (int i = 0; i < English.Count; i++)
         {
-            string current = groups[i].GetAttribute("name") ?? string.Empty;
+            string current = project.View(groups[i]).Name ?? string.Empty;
             if (current.Length == 0)
             {
                 continue;   // an unnamed group is not a default room; Group("") would seed a new one

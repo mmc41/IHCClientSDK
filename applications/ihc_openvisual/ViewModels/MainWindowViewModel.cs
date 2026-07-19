@@ -395,7 +395,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private Task Help(TreeNodeViewModel? node) => RunAsync(nameof(Help), async () =>
     {
         string name = node?.DisplayName ?? Constants.AppName;
-        string help = node?.ElementId is { } id && _session.Current?.FindById(id)?.GetAttribute("note") is { Length: > 0 } note
+        string help = node?.ElementId is { } id && _session.Current?.FindById(id) is { } element
+            && View(element).Note is { Length: > 0 } note
             ? note
             : "No specific help is available for this element.";
         await _dialogs.ShowMessageAsync($"Help — {name}", help);
@@ -883,8 +884,8 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (node?.ElementId is not { } id || _session.Current?.FindById(id) is not { } fb || fb.Kind != ElementKind.FunctionBlock)
             return;
-        string currentName = fb.GetAttribute("name") ?? "block";
-        string currentNote = fb.GetAttribute("note") ?? string.Empty;
+        string currentName = View(fb).Name ?? "block";
+        string currentNote = View(fb).Note ?? string.Empty;
         PropertiesResult? meta = await _dialogs.EditPropertiesAsync("Save function block", currentName, currentNote);
         if (meta is null)
             return;   // cancelled the name/note step
@@ -929,7 +930,7 @@ public partial class MainWindowViewModel : ViewModelBase
             await _dialogs.ShowMessageAsync("Cannot delete", "This node cannot be deleted.");
             return;
         }
-        bool isLocality = _session.Current?.FindById(id)?.Tag == "group";
+        bool isLocality = _session.Current?.FindById(id)?.IsLocalityGroup == true;
         if (impact.NeedsConfirm)
         {
             (string title, string message) = isLocality
@@ -1191,7 +1192,7 @@ public partial class MainWindowViewModel : ViewModelBase
         PendingLinkSource = null;
 
         if (node.IsSceneTarget && source.ElementId is { } srcId && node.ElementId is { } scenesId
-            && _session.Current?.FindById(srcId)?.Tag == "resource_scene")
+            && _session.Current?.FindById(srcId)?.IsSceneResource == true)
         {
             await CompleteSceneLinkAsync(srcId, scenesId);
             return;
@@ -1206,7 +1207,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (node is not { IsLinkRow: true } || node.ElementId is not { } linkId || _session.Current is not { } project
             || project.FindById(linkId) is not { } linkRow
-            || !ElementId.TryParse(linkRow.GetAttribute("link"), out ElementId partnerId)
+            || !ElementId.TryParse(View(linkRow).Effective("link"), out ElementId partnerId)
             || project.FindParent(partnerId) is not { Id: { } oppositeId })
         {
             return;
@@ -1250,8 +1251,8 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_session.Current is not { } project || project.FindById(scenesId) is not { } scenes)
             return;
         // The scene value variant follows the bound output family: airlink_dimming → dimmer, else relay/socket.
-        bool isDimmer = ElementId.TryParse(scenes.GetAttribute("scene_resource"), out ElementId boundId)
-            && project.FindById(boundId)?.Tag == "airlink_dimming";
+        bool isDimmer = ElementId.TryParse(View(scenes).Effective("scene_resource"), out ElementId boundId)
+            && project.FindById(boundId)?.IsWirelessDimming == true;
         var input = new SceneValueInput("Scene value", isDimmer, On: true, LevelPercent: isDimmer ? 100 : 0, RampMinutes: 0, RampSeconds: 0);
 
         SceneValueResult? result = await _dialogs.EditSceneValueAsync(input);

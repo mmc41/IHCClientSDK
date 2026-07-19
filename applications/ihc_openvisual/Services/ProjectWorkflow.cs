@@ -333,7 +333,7 @@ public sealed class ProjectWorkflow : IDisposable
     /// already exists so the command creates it on first use.</summary>
     public ProjectCommand BuildAddUserText(string text) =>
         new AddUserText(text, Current is { } project && project.Child("enum_definitions")?.ChildrenOrEmpty()
-            .Any(c => c.Tag == "enum_definition" && project.View(c).Name == UserTextsTableName) == true);
+            .Any(c => c.IsEnumDefinition && project.View(c).Name == UserTextsTableName) == true);
 
     /// <summary>Whether dragging <paramref name="draggedPin"/> onto <paramref name="dropTargetPin"/> would create a
     /// link — the drag-over hint peer of <see cref="LinkPinsAsync"/>. Applies the SDK's data-flow rule and orientation
@@ -363,12 +363,13 @@ public sealed class ProjectWorkflow : IDisposable
     /// append of nothing new falls out as a NoChange (the old hand-rolled CommitAsync bypass died in W2-10).</summary>
     public ProjectCommand? BuildUpdateEnumStates(ElementId enumVariableId, IReadOnlyList<string> states)
     {
-        if (Current?.FindById(enumVariableId) is not { Tag: "resource_enum" } variable
-            || !ElementId.TryParse(variable.GetAttribute("typedef"), out ElementId defId)
-            || Current.FindById(defId) is not { } def || def.GetAttribute("name") is not { } defName)
+        if (Current is not { } project || project.FindById(enumVariableId) is not { } variable
+            || variable.Kind != ElementKind.EnumResource
+            || !ElementId.TryParse(project.View(variable).Effective("typedef"), out ElementId defId)
+            || project.FindById(defId) is not { } def || project.View(def).Name is not { } defName)
             return null;
-        var existing = def.ChildrenOrEmpty().Where(c => c.Tag == "enum_value")
-            .Select(c => c.GetAttribute("name")).ToHashSet();
+        var existing = def.ChildrenOrEmpty().Where(c => c.IsEnumValue)
+            .Select(c => project.View(c).Name).ToHashSet();
         string[] added = states.Where(s => !existing.Contains(s)).ToArray();
         return new UpdateEnumStates(defName, added);
     }
@@ -382,8 +383,8 @@ public sealed class ProjectWorkflow : IDisposable
     /// </summary>
     // Resolves the program owning an `events` container (US-028/US-033), or null when the target is not one.
     private ElementId? ProgramOfEventsContainer(ElementId containerId) =>
-        Current?.FindById(containerId)?.Tag == "events"
-            && Current.FindParent(containerId) is { Tag: "program_simple", Id: { } programId }
+        Current?.FindById(containerId)?.IsEventsContainer == true
+            && Current.FindParent(containerId) is { Id: { } programId } parent && parent.IsProgram
             ? programId : null;
 
     /// <summary>Builds the command to add a resource-triggered program event to an `events` container (US-028), or
@@ -400,7 +401,7 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>Builds the command to add a case-value branch to a `program_case` (US-031), or null for a non-case
     /// target, a missing switch, or an enum switch (whose case values need the type's states).</summary>
     public ProjectCommand? BuildAddCaseValue(ElementId caseId, string criterion) =>
-        Current?.FindById(caseId) is { Tag: "program_case" } kase
+        Current?.FindById(caseId) is { } kase && kase.IsProgramCase
             && ElementId.TryParse(Current.View(kase).Effective("link"), out ElementId switchId)
             && Current.FindById(switchId) is { } switchVar && switchVar.Kind != ElementKind.EnumResource
             ? new AddCaseValue(caseId, criterion, switchVar.Tag) : null;
@@ -462,7 +463,7 @@ public sealed class ProjectWorkflow : IDisposable
     /// when the section is not a function-block variable section.</summary>
     public ProjectCommand<ElementId>? BuildAddVariable(ElementId sectionId, string resourceTag, string name) =>
         Current?.FindById(sectionId) is { } section
-            && Current.FindParent(sectionId) is { Tag: "functionblock", Id: { } blockId }
+            && Current.FindParent(sectionId) is { Id: { } blockId } block && block.Kind == ElementKind.FunctionBlock
             ? new AddVariable(blockId, section.Tag, resourceTag, name)
             : null;
 
@@ -471,7 +472,7 @@ public sealed class ProjectWorkflow : IDisposable
     public ProjectCommand<ElementId>? BuildAddEnumVariable(
         ElementId sectionId, string variableName, string typeName, IReadOnlyList<string> states) =>
         Current?.FindById(sectionId) is { } section
-            && Current.FindParent(sectionId) is { Tag: "functionblock", Id: { } blockId }
+            && Current.FindParent(sectionId) is { Id: { } blockId } block && block.Kind == ElementKind.FunctionBlock
             ? new AddEnumVariable(blockId, section.Tag, variableName, typeName, states)
             : null;
 
@@ -612,7 +613,7 @@ public sealed class ProjectWorkflow : IDisposable
         || tag is "event" or "event_power" or "action" or "condition" or "program_sub" or "program_case" or "case_action";
 
     private static bool HasLinkHalves(ProjectElement element) =>
-        element.DescendantsAndSelf().Any(d => d.Tag is "link_to_resource" or "link_from_resource" or "scene_link");
+        element.DescendantsAndSelf().Any(d => d.IsLinkHalf);
 
     private bool WouldThrowStrict(ElementId id)
     {
@@ -643,7 +644,7 @@ public sealed class ProjectWorkflow : IDisposable
     {
         if (Current?.FindById(id) is not { } element)
             return new DeleteImpact(false, false);
-        if (element.Tag == "group")
+        if (element.IsLocalityGroup)
             return new DeleteImpact(true, !element.Children.IsDefaultOrEmpty);   // US-009 locality cascade
         if (!IsDeletableNode(element.Tag))
             return new DeleteImpact(false, false);
