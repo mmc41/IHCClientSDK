@@ -14,8 +14,8 @@ namespace Ihc.Vis.Session
         internal override string Describe(Project project) => "Move";
         internal override EditVerdict Evaluate(EditContext context) =>
             context.Index.FindById(SourceId) is { } source
-            && context.Index.FindById(TargetParentId) is not null
-            && StructurePlacement.CanContain(source.Tag, context.Index.FindById(TargetParentId)!.Tag)
+            && context.Index.FindById(TargetParentId) is { } target
+            && StructurePlacement.CanContain(source.Tag, target.Tag)
             && context.Index.FindParent(SourceId)?.Id != TargetParentId
             && context.Project.Edit().CanMoveSubtree(SourceId, TargetParentId)
                 ? EditVerdict.Allow
@@ -40,8 +40,8 @@ namespace Ihc.Vis.Session
         internal override string Describe(Project project) => "Paste";
         internal override EditVerdict Evaluate(EditContext context) =>
             context.Index.FindById(SourceId) is { } source
-            && context.Index.FindById(TargetParentId) is not null
-            && StructurePlacement.CanContain(source.Tag, context.Index.FindById(TargetParentId)!.Tag)
+            && context.Index.FindById(TargetParentId) is { } target
+            && StructurePlacement.CanContain(source.Tag, target.Tag)
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse("That container cannot hold this node.");
         internal override ElementId ExecuteCore(ProjectEditor editor) => editor.CopySubtree(SourceId, TargetParentId);

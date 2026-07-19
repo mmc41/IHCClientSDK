@@ -62,12 +62,15 @@ namespace Ihc.Vis
         extension(Project project)
         {
             /// <summary>Reads the project/customer/installer information (US-039).</summary>
-            public ProjectInfoData GetProjectInfo() =>
-                new(Attr(project, project.Child("project_info"), "description"),
-                    Attr(project, project.Child("project_info"), "number"),
-                    Attr(project, project.Child("project_info"), "programmer"),
+            public ProjectInfoData GetProjectInfo()
+            {
+                ProjectElement? info = project.Child("project_info");
+                return new(Attr(project, info, "description"),
+                    Attr(project, info, "number"),
+                    Attr(project, info, "programmer"),
                     ReadContact(project, project.Child("customer_info")),
                     ReadContact(project, project.Child("installer_info")));
+            }
 
             /// <summary>Reads the project's data tables (US-049): the read-only system tables (the built-in
             /// <c>typeid</c>-bearing enum definitions) and the editable user-defined texts (the values of the

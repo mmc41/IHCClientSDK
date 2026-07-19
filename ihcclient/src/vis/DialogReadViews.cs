@@ -75,7 +75,8 @@ namespace Ihc.Vis
         public bool IsWireless => ProductClassifier.IsWireless(Element.Tag);
 
         /// <summary>Whether this is a wireless product with an advanced dimmer configuration (US-015).</summary>
-        public bool IsWirelessDimmer => IsWireless && Element.DescendantsAndSelf().Any(e => e.Tag == "dimmer_settings");
+        public bool IsWirelessDimmer =>
+            IsWireless && Element.FindDescendantOrSelf(e => e.Tag == "dimmer_settings") is not null;
 
         /// <summary>The product's input/output terminals (the addressing grids, US-012) as typed pin views.</summary>
         public IEnumerable<PinView> Terminals
@@ -104,7 +105,7 @@ namespace Ihc.Vis
         /// <summary>The modem's stored PIN code, or null when none (the DTD default "0" is preserved verbatim; the
         /// dialog blanks it for presentation).</summary>
         public string? PinCode =>
-            Element.DescendantsAndSelf().FirstOrDefault(e => e.Tag == "sms_modem_pincode")?.GetAttribute("value");
+            Element.FindDescendantOrSelf(e => e.Tag == "sms_modem_pincode")?.GetAttribute("value");
 
         /// <summary>The four phone-number slots (1..4), blank where unset — the order the dialog shows them.</summary>
         public IReadOnlyList<string> PhoneNumbers
@@ -115,8 +116,8 @@ namespace Ihc.Vis
                 for (int slot = 1; slot <= 4; slot++)
                 {
                     string s = slot.ToString(CultureInfo.InvariantCulture);
-                    ProjectElement? pn = Element.DescendantsAndSelf()
-                        .FirstOrDefault(e => e.Tag == "sms_modem_phonenumber" && e.GetAttribute("address") == s);
+                    ProjectElement? pn = Element.FindDescendantOrSelf(
+                        e => e.Tag == "sms_modem_phonenumber" && e.GetAttribute("address") == s);
                     phones.Add(pn?.GetAttribute("phonenumber") ?? string.Empty);
                 }
                 return phones;
@@ -132,13 +133,13 @@ namespace Ihc.Vis
         /// unset device; the dialog substitutes the factory constant, fablerefac W1-3 finding).</summary>
         public int? PositiveSetting(string settingTag)
         {
-            ProjectElement? el = Element.DescendantsAndSelf().FirstOrDefault(e => e.Tag == settingTag);
+            ProjectElement? el = Element.FindDescendantOrSelf(e => e.Tag == settingTag);
             return el is not null && int.TryParse(Project.View(el).Effective("value"), out int v) && v > 0 ? v : null;
         }
 
         /// <summary>The dimmer's load mode (auto/rc/rl), defaulting to auto when unset.</summary>
         public string LoadMode =>
-            Element.DescendantsAndSelf().FirstOrDefault(e => e.Tag == "dimmer_setting_load_mode") is { } lm
+            Element.FindDescendantOrSelf(e => e.Tag == "dimmer_setting_load_mode") is { } lm
             && Project.View(lm).Effective("value") is { } mode ? mode : "auto";
     }
 }

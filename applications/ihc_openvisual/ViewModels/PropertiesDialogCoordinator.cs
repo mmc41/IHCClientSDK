@@ -73,7 +73,7 @@ internal sealed class PropertiesDialogCoordinator(
         var rows = new List<SceneContainerRow>();
         foreach (ProjectElement member in scenes.ChildrenOrEmpty())
         {
-            if (!IsSceneMember(member.Tag))
+            if (!member.IsSceneMember)
                 continue;
             IReadOnlyList<string> parts = LinkOppositeParts(member);
             (string value, string ramp) = SceneMemberValue(member);
@@ -132,9 +132,6 @@ internal sealed class PropertiesDialogCoordinator(
             .Select(c => project.View(c).Name ?? string.Empty).ToList();
         return (project.View(def).Name ?? string.Empty, states);
     }
-
-    // The value-carrying rows inside a product's scenes container — its memberships of the scenarios FBs drive.
-    private static bool IsSceneMember(string tag) => tag is "scene_relay" or "scene_dimmer" or "scene_shutter";
 
     // A scene membership's stored value and, for a dimmer, its ramp time — the two columns the scene-container
     // dialog shows separately.

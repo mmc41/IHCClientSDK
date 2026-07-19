@@ -256,13 +256,6 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>The default name a freshly inserted locality carries until the installer renames it (US-008).</summary>
     public const string NewLocalityName = "Locality";
 
-    /// <summary>
-    /// Creates a reciprocal follow-link between two pins (US-022/US-023): <paramref name="draggedPinId"/> is the
-    /// SOURCE and receives the <c>link_from_resource</c> half, <paramref name="dropTargetPinId"/> is the SINK and
-    /// receives the <c>link_to_resource</c> half, each naming the other's full path — the orientation IHC Visual
-    /// writes in every authored file. Commits, marks dirty. Returns false (with a diagnostic) when a pin is
-    /// missing or the pair is one the vendor refuses (see <c>ProjectEditor.CanLink</c>).
-    /// </summary>
     /// <summary>Builds the render-ready installation report model for the open project (US-040), or null if none.</summary>
     public InstallationReport? GenerateInstallationReport() =>
         Current is { } project ? _service.GenerateInstallationReport(project) : null;
@@ -336,7 +329,7 @@ public sealed class ProjectWorkflow : IDisposable
             .Any(c => c.IsEnumDefinition && project.View(c).Name == UserTextsTableName) == true);
 
     /// <summary>Whether dragging <paramref name="draggedPin"/> onto <paramref name="dropTargetPin"/> would create a
-    /// link — the drag-over hint peer of <see cref="LinkPinsAsync"/>. Applies the SDK's data-flow rule and orientation
+    /// link — the drag-over hint peer of the <c>LinkPins</c> command. Applies the SDK's data-flow rule and orientation
     /// (<see cref="ProjectEditor.CanLink"/> / <see cref="Ihc.Vis.Schema.LinkRoles"/>): the dragged pin is the source, the
     /// target the sink; a self-link (a block output onto its own input) is allowed, a crossed or same-family pair
     /// refused. Non-mutating; no controller.</summary>
@@ -344,9 +337,7 @@ public sealed class ProjectWorkflow : IDisposable
     {
         if (Current is not { } current)
             return false;
-        var document = new ProjectDocumentSession();
-        document.Open(current, startClean: true);
-        return document.CanApply(new LinkPins(draggedPin, dropTargetPin)).Ok;
+        return OpenScratch(current).CanApply(new LinkPins(draggedPin, dropTargetPin)).Ok;
     }
 
     /// <summary>The catalog products available for insertion (from the SDK-embedded catalog; no controller needed).</summary>
@@ -671,7 +662,7 @@ public sealed class ProjectWorkflow : IDisposable
     }
 
     /// <summary>Whether <paramref name="dragged"/> and <paramref name="target"/> are distinct <b>same-parent, same-tag
-    /// siblings</b> — a reorder drop (US-055), the drag-over hint peer of <see cref="ReorderNodeToSiblingAsync"/>.
+    /// siblings</b> — a reorder drop (US-055), the drag-over hint peer of the <c>ReorderNodeToSibling</c> command.
     /// Non-mutating; no controller.</summary>
     public bool CanReorderNode(ElementId dragged, ElementId target)
     {
@@ -706,9 +697,7 @@ public sealed class ProjectWorkflow : IDisposable
     {
         if (Current is not { } current)
             return false;
-        var document = new ProjectDocumentSession();
-        document.Open(current, startClean: true);
-        return document.CanApply(new MoveNode(sourceId, targetParentId)).Ok;
+        return OpenScratch(current).CanApply(new MoveNode(sourceId, targetParentId)).Ok;
     }
 
     /// <summary>Whether the project already contains a modem device root (the at-most-one-modem rule, US-013).</summary>
@@ -743,8 +732,7 @@ public sealed class ProjectWorkflow : IDisposable
     {
         if (StaleOrClosed(command, baseVersion) is { } refusal)
             return refusal;
-        var document = new ProjectDocumentSession();
-        document.Open(Current!, startClean: true);
+        ProjectDocumentSession document = OpenScratch(Current!);
         EditOutcome outcome = document.Apply(command);
         if (outcome.Status == EditStatus.Committed)
             await CommitAsync(document.Current!, outcome.Label, outcome.Changes);
@@ -756,8 +744,7 @@ public sealed class ProjectWorkflow : IDisposable
     {
         if (StaleOrClosed(command, baseVersion) is { } refusal)
             return new EditOutcome<T>(refusal.Status, refusal.Label, refusal.Reason, null, default);
-        var document = new ProjectDocumentSession();
-        document.Open(Current!, startClean: true);
+        ProjectDocumentSession document = OpenScratch(Current!);
         EditOutcome<T> outcome = document.Apply(command);
         if (outcome.Status == EditStatus.Committed)
             await CommitAsync(document.Current!, outcome.Label, outcome.Changes);
@@ -775,15 +762,22 @@ public sealed class ProjectWorkflow : IDisposable
         return null;
     }
 
+    // Opens a throwaway document session over a snapshot of the given project — the stateless runner behind every
+    // command probe/apply/preview against Current (nothing persists back except through CommitAsync).
+    private static ProjectDocumentSession OpenScratch(Project project)
+    {
+        var document = new ProjectDocumentSession();
+        document.Open(project, startClean: true);
+        return document;
+    }
+
     /// <summary>The command's legality verdict against the open project (cheap — no edit), for drag-over probes and
     /// menu gates. Refused when no project is open.</summary>
     public EditVerdict CanApply(ProjectCommand command)
     {
         if (Current is not { } current)
             return EditVerdict.Refuse("No project is open.");
-        var document = new ProjectDocumentSession();
-        document.Open(current, startClean: true);
-        return document.CanApply(command);
+        return OpenScratch(current).CanApply(command);
     }
 
     /// <summary>The structural change set the command would produce if applied now, without committing — or null when
@@ -792,9 +786,7 @@ public sealed class ProjectWorkflow : IDisposable
     {
         if (Current is not { } current)
             return null;
-        var document = new ProjectDocumentSession();
-        document.Open(current, startClean: true);
-        return document.Preview(command);
+        return OpenScratch(current).Preview(command);
     }
 
     private async Task CommitAsync(Project updated, string label = "Edit", ProjectChangeSet? changes = null)
