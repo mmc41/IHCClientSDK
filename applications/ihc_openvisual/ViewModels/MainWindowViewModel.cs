@@ -44,6 +44,10 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly ProjectTreeReconciler _functionsReconciler =
         new(p => new ProjectTreeProjector(p).BuildLocalitiesRoot(functions: true));
 
+    // The per-node-type Properties dialog flows, extracted from this view-model (W3-8). It applies results through
+    // this view-model's single outcome→status/dialog rule (ApplyAsync).
+    private readonly PropertiesDialogCoordinator _properties;
+
     private readonly IDialogService _dialogs;
     private readonly RecentProjectsStore _recent;
     private readonly IThemeService _themeService;
@@ -665,6 +669,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _config = config;
         _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<MainWindowViewModel>();
         CurrentTheme = theme.Current;
+        _properties = new PropertiesDialogCoordinator(_session, _dialogs, (command, status) => ApplyAsync(command, status));
 
         _session.StateChanged += (_, _) => Refresh();
         _session.CatalogChanged += (_, _) => RebuildCatalogMenus();
@@ -1370,80 +1375,14 @@ public partial class MainWindowViewModel : ViewModelBase
         else if (element.Tag is "dataline_input" or "dataline_output")
             await OpenPinPropertiesAsync(id, element);
         else if (element.Tag == "scenes")
-            await OpenSceneContainerAsync(id, element);   // the product's Scenarier dialog (US-024)
+            await _properties.OpenSceneContainerAsync(id, element);   // the product's Scenarier dialog (US-024)
         else if (element.Tag is "scene_relay" or "scene_dimmer")
-            await OpenSceneValuePropertiesAsync(id, element);   // edit a scenario link's value (US-058)
+            await _properties.OpenSceneValueAsync(id, element);   // edit a scenario link's value (US-058)
         else if (element.Kind == ElementKind.EnumResource)
-            await OpenEnumPropertiesAsync(id);   // edit the enum type's states (US-030)
+            await _properties.OpenEnumAsync(id);   // edit the enum type's states (US-030)
         else if (element.Tag is "group" or "functionblock")
             // A function block renames through the same Name/Note dialog as a locality (US-007/US-019).
-            await OpenLocalityPropertiesAsync(id, View(element).Name ?? string.Empty);
-    }
-
-    // The product's scene container (US-024): its fixed name, its note, and a row per membership naming the
-    // scenario, the function block driving it and that block's locality — the same triple the membership's link row
-    // shows as a path, split into columns.
-    private async Task OpenSceneContainerAsync(ElementId scenesId, ProjectElement scenes)
-    {
-        var rows = new List<SceneContainerRow>();
-        foreach (ProjectElement member in scenes.ChildrenOrEmpty())
-        {
-            if (!IsSceneMember(member.Tag))
-                continue;
-            IReadOnlyList<string> parts = LinkOppositeParts(member);
-            (string value, string ramp) = SceneMemberValue(member);
-            rows.Add(new SceneContainerRow(
-                SceneName: parts.Count > 2 ? parts[2] : string.Empty,
-                FunctionBlock: parts.Count > 1 ? parts[1] : string.Empty,
-                Locality: parts.Count > 0 ? parts[0] : string.Empty,
-                Value: value, RampTime: ramp));
-        }
-        string name = scenes.GetAttribute("name") ?? "Scenarier";
-        SceneContainerResult? result = await _dialogs.EditSceneContainerAsync(
-            new SceneContainerInput(name, scenes.GetAttribute("note") ?? string.Empty, rows));
-        if (result is null)
-            return;
-        await ApplyAsync(new UpdateSceneContainer(scenesId, result.Note), $"'{name}' updated.");
-    }
-
-    private async Task OpenSceneValuePropertiesAsync(ElementId memberId, ProjectElement member)
-    {
-        if (!SceneValue.TryParse(member, out SceneValue sv))
-            return;
-        bool isDimmer = sv.Kind == SceneValueKind.Dimmer;
-        int ms = (int)sv.RampTime.TotalMilliseconds;
-        var input = new SceneValueInput("Scene value", isDimmer, sv.On, sv.LevelPercent, ms / 60000, ms / 1000 % 60);
-
-        SceneValueResult? result = await _dialogs.EditSceneValueAsync(input);
-        if (result is null)
-            return;
-        await ApplyAsync(new UpdateSceneValue(memberId, result), "Scene value updated.");
-    }
-
-    // Reads an enum variable's type name and ordered state names for the Edit dialog (US-030); null if not an enum.
-    private (string Name, List<string> States)? ReadEnumInfo(ElementId enumVariableId)
-    {
-        if (_session.Current is not { } project || project.FindById(enumVariableId) is not { Tag: "resource_enum" } variable
-            || !ElementId.TryParse(variable.GetAttribute("typedef"), out ElementId defId)
-            || project.FindById(defId) is not { } def)
-        {
-            return null;
-        }
-        var states = def.ChildrenOrEmpty().Where(c => c.Tag == "enum_value")
-            .Select(c => c.GetAttribute("name") ?? string.Empty).ToList();
-        return (def.GetAttribute("name") ?? string.Empty, states);
-    }
-
-    private async Task OpenEnumPropertiesAsync(ElementId enumVariableId)
-    {
-        if (ReadEnumInfo(enumVariableId) is not { } info)
-            return;
-        EnumDefinitionResult? result = await _dialogs.EditEnumDefinitionAsync(
-            new EnumDefinitionInput($"Edit {info.Name}", info.Name, info.States, IsNew: false));
-        if (result is null)
-            return;
-        if (_session.BuildUpdateEnumStates(enumVariableId, result.States) is { } command)
-            await ApplyAsync(command, $"Enumerator '{info.Name}' updated.");
+            await _properties.OpenLocalityAsync(id, View(element).Name ?? string.Empty);
     }
 
     private Task InsertEnumAsync(ElementId sectionId, string sectionLabel) => RunAsync(nameof(InsertEnumAsync), async () =>
@@ -1536,15 +1475,6 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         }
         return used;
-    }
-
-    private async Task OpenLocalityPropertiesAsync(ElementId id, string currentName)
-    {
-        string currentNote = _session.Current?.FindById(id)?.GetAttribute("note") ?? string.Empty;
-        PropertiesResult? result = await _dialogs.EditPropertiesAsync($"Edit {currentName} properties", currentName, currentNote);
-        if (result is null)
-            return;   // cancelled — the locality keeps its original name and note
-        await ApplyAsync(new RenameLocality(id, result.Name, result.Note), $"Renamed to {result.Name}.");
     }
 
     // The product documentation dialog (US-011) plus its terminal-addressing grids (US-012). Re-entrant: choosing to
@@ -1859,14 +1789,6 @@ public partial class MainWindowViewModel : ViewModelBase
         });
     }
 
-    // A product's tree label carries its placement descriptor: "name (position) " — the trailing space included —
-    // and the bare name when position is absent, with no empty parens (F-003). The source is `position`, NOT the
-    // `note` the same element also carries: a note holds a long description IHC Visual never puts in the label.
-    // The trailing space is the vendor's and is reproduced deliberately: it is invisible on screen, and keeping it
-    // lets a label-mode tree diff against IHC Visual stay exact instead of flagging every product row forever.
-    private static string ProductLabel(string name, string? position) =>
-        string.IsNullOrEmpty(position) ? name : $"{name} ({position}) ";
-
     // fablerefac W1-6: read element attributes through the SDK read surface (project.View) instead of raw
     // GetAttribute. The projected element always belongs to the open project, so the schema context is _session.Current.
     private ElementView View(ProjectElement element) => _session.Current!.View(element);
@@ -1875,52 +1797,6 @@ public partial class MainWindowViewModel : ViewModelBase
     // `GetAttribute("name") ?? fallback` (a canonicalized project omits an empty name, so it reads back as "").
     private string NameOr(ProjectElement element, string fallback) =>
         View(element).Name is { Length: > 0 } name ? name : fallback;
-
-    // The value-carrying rows inside a product's scenes container — its memberships of the scenarios FBs drive.
-    private static bool IsSceneMember(string tag) => tag is "scene_relay" or "scene_dimmer" or "scene_shutter";
-
-    // A scene membership's stored value and, for a dimmer, its ramp time — the two columns the scene-container
-    // dialog shows separately. The tree row joins them into one label instead.
-    private static (string Value, string RampTime) SceneMemberValue(ProjectElement member)
-    {
-        if (!SceneValue.TryParse(member, out SceneValue sv))
-            return (string.Empty, string.Empty);
-        return sv.Kind switch
-        {
-            SceneValueKind.Relay => (sv.On ? "ON" : "OFF", string.Empty),
-            SceneValueKind.Dimmer => ($"{sv.LevelPercent}%", $"{sv.RampTime.TotalSeconds:0.#}s"),
-            SceneValueKind.Shutter => (sv.ShutterUp ? "up" : "down", string.Empty),
-            _ => (string.Empty, string.Empty),
-        };
-    }
-
-    // The opposite end's path as its separate parts, outermost first: [locality, product-or-block, pin]. The link
-    // row's label joins them; the scene-container dialog shows them as three columns. Empty when unresolvable.
-    private IReadOnlyList<string> LinkOppositeParts(ProjectElement linkRow)
-    {
-        if (_session.Current is not { } project
-            || !ElementId.TryParse(linkRow.GetAttribute("link"), out ElementId partnerId)
-            || project.FindParent(partnerId) is not { } oppositePin)
-        {
-            return Array.Empty<string>();
-        }
-        var parts = new List<string>();
-        ProjectElement? current = oppositePin;
-        bool leaf = true;
-        while (current is not null)
-        {
-            bool significant = leaf || current.Tag is "group" or "functionblock" || ProductClassifier.IsProduct(current.Tag);
-            if (significant && View(current).Name is { Length: > 0 } partName)
-                // The product segment renders name (position) exactly as the Installation pane does (US-010/A-2),
-                // so two same-named products differing only by position stay distinguishable in a link row (A-20).
-                parts.Insert(0, ProductClassifier.IsProduct(current.Tag)
-                    ? ProductLabel(partName, View(current).Position)
-                    : partName);
-            current = current.Id is { } cid ? project.FindParent(cid) : null;
-            leaf = false;
-        }
-        return parts;
-    }
 
     private void RefreshRecent()
     {
