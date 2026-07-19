@@ -66,6 +66,19 @@ namespace Ihc.Vis.Tests
             Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused));
         }
 
+        [Test]   // W2-16: from MoveTests.Move_IntoSameParent_IsRefusedAsNoOp (moved down)
+        public async Task MoveNode_IntoCurrentParent_IsRefused()
+        {
+            Project project = await Load("project3-KompleksWired.vis");
+            (ElementId product, ElementId sourceLoc, _) = PickProductAndTwoLocalities(project);
+            ProjectDocumentSession session = Session(project);
+
+            EditOutcome outcome = session.Apply(new MoveNode(product, sourceLoc));
+
+            Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused),
+                "moving a node into the container it already lives in is a no-op refusal");
+        }
+
         [Test]
         public async Task CopyNode_PastesIndependentDuplicate_MatchesEngineCopySubtree()
         {
