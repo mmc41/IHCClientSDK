@@ -96,7 +96,7 @@ public sealed record ModemPropertiesInput(
 
 /// <summary>
 /// Abstraction over the modal dialogs the shell needs (confirm-save, file pickers, message boxes, the
-/// About and settings windows). Kept free of Avalonia types so view-models and <see cref="ProjectSession"/>
+/// About and settings windows). Kept free of Avalonia types so view-models and <see cref="ProjectWorkflow"/>
 /// stay headlessly testable; the Avalonia implementation lives in the view layer.
 /// </summary>
 public interface IDialogService

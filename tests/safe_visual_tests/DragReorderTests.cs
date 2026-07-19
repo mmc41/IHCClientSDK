@@ -17,7 +17,7 @@ namespace safe_visual_tests;
 /// A-32 (US-055) — dragging a sibling onto another same-tag sibling reorders it to that position, the same
 /// id-preserving move as US-054 but with an in-container target index; the effect is a Move and the result matches one
 /// step of the <i>Move up/down</i> supplement. The reorder legality (same parent, same tag) is the SDK/session's
-/// (<see cref="ProjectSession.CanReorderNode"/>), not re-encoded in the view-model.
+/// (<see cref="ProjectWorkflow.CanReorderNode"/>), not re-encoded in the view-model.
 /// </summary>
 public class DragReorderTests : AvaloniaTestBase
 {

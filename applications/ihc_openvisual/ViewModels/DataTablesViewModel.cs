@@ -20,7 +20,7 @@ public sealed record UserTextItem(string Id, string Text);
 /// </summary>
 public partial class DataTablesViewModel : ObservableObject
 {
-    private readonly ProjectSession _session;
+    private readonly ProjectWorkflow _session;
     private readonly IDialogService _dialogs;
 
     public ObservableCollection<DataTableView> SystemTables { get; } = new();
@@ -28,7 +28,7 @@ public partial class DataTablesViewModel : ObservableObject
 
     [ObservableProperty] private UserTextItem? _selectedUserText;
 
-    public DataTablesViewModel(ProjectSession session, IDialogService dialogs)
+    public DataTablesViewModel(ProjectWorkflow session, IDialogService dialogs)
     {
         _session = session;
         _dialogs = dialogs;

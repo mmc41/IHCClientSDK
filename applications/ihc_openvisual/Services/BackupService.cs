@@ -10,7 +10,7 @@ public sealed record RecoveryInfo(string? OriginPath, DateTimeOffset SavedAtUtc)
 
 /// <summary>
 /// Manages the crash-recovery backup files (US-005): the location of the recovery project copy and its origin
-/// marker, and their creation/detection/deletion. Only the file bookkeeping lives here; <see cref="ProjectSession"/>
+/// marker, and their creation/detection/deletion. Only the file bookkeeping lives here; <see cref="ProjectWorkflow"/>
 /// owns the schedule (10-minute timer + every-10th-change) and writes the actual project bytes via the SDK.
 /// Avalonia-free and testable.
 /// </summary>

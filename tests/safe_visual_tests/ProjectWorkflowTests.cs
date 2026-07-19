@@ -6,10 +6,10 @@ using ihc_openvisual.Services;
 namespace safe_visual_tests;
 
 /// <summary>
-/// Lifecycle behaviour of <see cref="ProjectSession"/> (US-002/003/004/005/064): new/open/save, the dirty flag,
+/// Lifecycle behaviour of <see cref="ProjectWorkflow"/> (US-002/003/004/005/064): new/open/save, the dirty flag,
 /// the single-project constraint, the save prompt, and the crash-recovery backup — all headless and file-only.
 /// </summary>
-public class ProjectSessionTests
+public class ProjectWorkflowTests
 {
     [Test]
     public async Task StartAsync_CleanState_OpensStandardEmptyProjectWithTenLocalities()

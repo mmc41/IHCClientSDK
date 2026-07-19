@@ -167,7 +167,7 @@ public sealed class FakeDialogService : IDialogService
     }
 }
 
-/// <summary>Builds file-only <see cref="ProjectSession"/>/<see cref="MainWindowViewModel"/> instances over a
+/// <summary>Builds file-only <see cref="ProjectWorkflow"/>/<see cref="MainWindowViewModel"/> instances over a
 /// throwaway temp directory, with a fake dialog service and no controller — the whole shell is exercised without
 /// a network, controller or IHC install.</summary>
 public sealed class ShellHarness : IDisposable
@@ -176,7 +176,7 @@ public sealed class ShellHarness : IDisposable
     public FakeDialogService Dialogs { get; } = new();
     public BackupService Backup { get; }
     public RecentProjectsStore Recent { get; }
-    public ProjectSession Session { get; }
+    public ProjectWorkflow Session { get; }
 
     private readonly bool _ownsDir;
 
@@ -191,7 +191,7 @@ public sealed class ShellHarness : IDisposable
         var service = new ProjectAppService(new IhcSettings());
         // By default a one-hour timer never fires during a test; a FakeTimeProvider (passed in) drives it
         // deterministically. The catalog dir is a subfolder of TempDir so Restart(dir) reuses it (US-061).
-        Session = new ProjectSession(service, Backup, Recent, Dialogs, null,
+        Session = new ProjectWorkflow(service, Backup, Recent, Dialogs, null,
             autoBackupInterval ?? TimeSpan.FromHours(1), changeThreshold, Path.Combine(TempDir, "catalog"), timeProvider);
     }
 

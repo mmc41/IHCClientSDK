@@ -148,7 +148,7 @@ public class ReportRenderingTests
             Assert.That(url, Is.Not.Null.And.StartWith("file:"));
             var text = File.ReadAllText(new Uri(url!).LocalPath);
             Assert.That(text, Does.Contain("Functionsblok dokumentation"));
-            Assert.That(text, Does.Contain(ProjectSession.EmptyBlockName), "the inserted block is listed");
+            Assert.That(text, Does.Contain(ProjectWorkflow.EmptyBlockName), "the inserted block is listed");
             Assert.That(vm.StatusText, Is.EqualTo("Function-block report opened in your browser."));
         });
     }

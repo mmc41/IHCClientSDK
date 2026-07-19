@@ -28,13 +28,13 @@ namespace ihc_openvisual.Services;
 /// constraint, drives the save-prompt through <see cref="IDialogService"/>, and runs the crash-recovery
 /// auto-backup (10-minute timer + every 10th change). Deliberately Avalonia-free so it is testable headlessly.
 /// </summary>
-public sealed class ProjectSession : IDisposable
+public sealed class ProjectWorkflow : IDisposable
 {
     private readonly ProjectAppService _service;
     private readonly BackupService _backup;
     private readonly RecentProjectsStore _recent;
     private readonly IDialogService _dialogs;
-    private readonly ILogger<ProjectSession> _logger;
+    private readonly ILogger<ProjectWorkflow> _logger;
     private readonly TimeSpan _autoBackupInterval;
     private readonly int _changeBackupThreshold;
     private readonly TimeProvider _timeProvider;
@@ -44,7 +44,7 @@ public sealed class ProjectSession : IDisposable
 
     private readonly string _catalogDir;
 
-    public ProjectSession(
+    public ProjectWorkflow(
         ProjectAppService service,
         BackupService backup,
         RecentProjectsStore recent,
@@ -59,7 +59,7 @@ public sealed class ProjectSession : IDisposable
         _backup = backup;
         _recent = recent;
         _dialogs = dialogs;
-        _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<ProjectSession>();
+        _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<ProjectWorkflow>();
         _timeProvider = timeProvider ?? TimeProvider.System;   // D8: the auto-backup clock/timer, fakeable in tests
         _autoBackupInterval = autoBackupInterval ?? TimeSpan.FromMinutes(10);
         _changeBackupThreshold = changeBackupThreshold < 1 ? 10 : changeBackupThreshold;
@@ -276,7 +276,7 @@ public sealed class ProjectSession : IDisposable
     /// </summary>
     public async Task<string?> WriteReportHtmlAsync(string fileStem, string html)
     {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(WriteReportHtmlAsync)}");
+        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(WriteReportHtmlAsync)}");
         try
         {
             string dir = Path.Combine(Path.GetTempPath(), "ihc-openvisual-reports");
@@ -415,7 +415,7 @@ public sealed class ProjectSession : IDisposable
     {
         if (Current is null)
             return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(SaveFunctionBlockAsync)}");
+        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(SaveFunctionBlockAsync)}");
         try
         {
             ProjectEditor editor = Current.Edit();
@@ -534,7 +534,7 @@ public sealed class ProjectSession : IDisposable
     /// </summary>
     public async Task<bool> ImportCatalogFileAsync(string path, bool persist)
     {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(ImportCatalogFileAsync)}");
+        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(ImportCatalogFileAsync)}");
         try
         {
             _service.ImportCatalogFile(path);
@@ -561,7 +561,7 @@ public sealed class ProjectSession : IDisposable
     /// </summary>
     public async Task<int> ImportCatalogFolderAsync(string dir, bool persist)
     {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(ImportCatalogFolderAsync)}");
+        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(ImportCatalogFolderAsync)}");
         if (!Directory.Exists(dir))
         {
             await _dialogs.ShowMessageAsync("Import failed", $"The folder '{dir}' does not exist.");
@@ -725,7 +725,7 @@ public sealed class ProjectSession : IDisposable
     // The single commit path for every project-mutating operation (US-052): snapshots the pre-edit project for undo,
     // invalidates the redo history, swaps in the new project, then marks changed (dirty + backup + StateChanged).
     // fablerefac W2-5 (migrate): route a command through a document session, then persist the result via the
-    // existing commit path so ProjectSession's Current/undo/dirty stay the source of truth. W2-14 contracts this to
+    // existing commit path so ProjectWorkflow's Current/undo/dirty stay the source of truth. W2-14 contracts this to
     // one persistent session the VM drives directly. A fresh session per call is created on the calling thread,
     // sidestepping the session's thread-affinity guard; it is used once as a stateless command runner.
     /// <summary>
@@ -854,7 +854,7 @@ public sealed class ProjectSession : IDisposable
     {
         if (Current is null)
             return onFail;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{op}");
+        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{op}");
         try
         {
             ProjectEditor editor = Current.Edit();
@@ -903,7 +903,7 @@ public sealed class ProjectSession : IDisposable
     /// </summary>
     public async Task<bool> UndoAsync()
     {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(UndoAsync)}");
+        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(UndoAsync)}");
         bool dirty;
         lock (_gate)
         {
@@ -924,7 +924,7 @@ public sealed class ProjectSession : IDisposable
     /// redo history is empty.</summary>
     public async Task<bool> RedoAsync()
     {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectSession)}.{nameof(RedoAsync)}");
+        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(RedoAsync)}");
         bool dirty;
         lock (_gate)
         {

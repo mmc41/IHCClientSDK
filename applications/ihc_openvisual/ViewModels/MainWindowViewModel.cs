@@ -26,14 +26,14 @@ namespace ihc_openvisual.ViewModels;
 /// <summary>
 /// The shell view-model: the window title, the two locality tree panes, the status-bar hint, the toolbar/
 /// status-bar/theme view state, and the <i>File</i>/<i>View</i>/<i>Help</i> commands. A thin coordinator over
-/// <see cref="ProjectSession"/> (all project logic) and <see cref="IDialogService"/>/<see cref="IThemeService"/>
+/// <see cref="ProjectWorkflow"/> (all project logic) and <see cref="IDialogService"/>/<see cref="IThemeService"/>
 /// (all Avalonia); free of Avalonia types so it is testable headlessly.
 /// </summary>
 public partial class MainWindowViewModel : ViewModelBase
 {
     private const string LocalityIcon = "/Assets/locality.svg";
 
-    private readonly ProjectSession _session;
+    private readonly ProjectWorkflow _session;
     private readonly IDialogService _dialogs;
     private readonly RecentProjectsStore _recent;
     private readonly IThemeService _themeService;
@@ -281,7 +281,7 @@ public partial class MainWindowViewModel : ViewModelBase
                     new AsyncRelayCommand(() => AddProgramCommandAsync(actionsId, varId, m.Token, m.NameTemplate, m.Note))));
             }
             // A case can be built here when the armed variable is an eligible switch type (US-031).
-            if (_session.Current?.FindById(varId)?.Tag is { } varTag && ProjectSession.EligibleCaseVariableTags.Contains(varTag))
+            if (_session.Current?.FindById(varId)?.Tag is { } varTag && ProjectWorkflow.EligibleCaseVariableTags.Contains(varTag))
                 ProgramCaseMenu.Add(new ProductMenuItemViewModel($"Case ({varName})", "case",
                     new AsyncRelayCommand(() => AddCaseAsync(actionsId, varId))));
             // Arithmetic can be built here when the armed variable is a numeric target register (US-032).
@@ -641,7 +641,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public event EventHandler? CloseRequested;
 
     public MainWindowViewModel(
-        ProjectSession session,
+        ProjectWorkflow session,
         IDialogService dialogs,
         RecentProjectsStore recent,
         IThemeService theme,
@@ -739,7 +739,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         string localityName = SelectedNode.DisplayName;
         await ApplyAsync(_session.BuildAddEmptyFunctionBlock(localityId),
-            $"{ProjectSession.EmptyBlockName} was inserted under {localityName}");
+            $"{ProjectWorkflow.EmptyBlockName} was inserted under {localityName}");
     });
 
     /// <summary>Inserts a preprogrammed library function block (US-018) under the selected locality — shown in the
@@ -840,8 +840,8 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private Task InsertLocality() => RunAsync(nameof(InsertLocality), async () =>
     {
-        if (await ApplyAsync(new AddLocality(ProjectSession.NewLocalityName),
-                $"{ProjectSession.NewLocalityName} was inserted under Localities") is not { } id)
+        if (await ApplyAsync(new AddLocality(ProjectWorkflow.NewLocalityName),
+                $"{ProjectWorkflow.NewLocalityName} was inserted under Localities") is not { } id)
             return;
         // Refresh already rebuilt the trees (StateChanged); highlight the new locality in the Installation pane
         // (which sets it as the active node).
@@ -895,7 +895,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         string name = node.DisplayName;
         // Preview → confirm → apply (W2-13): the confirmation lives here in the GUI, never below the session.
-        ProjectSession.DeleteImpact impact = _session.PreviewDelete(id);
+        ProjectWorkflow.DeleteImpact impact = _session.PreviewDelete(id);
         if (!impact.Deletable)
         {
             await _dialogs.ShowMessageAsync("Cannot delete", "This node cannot be deleted.");
@@ -2268,10 +2268,10 @@ public partial class MainWindowViewModel : ViewModelBase
         static string OrNone(string? value) => string.IsNullOrWhiteSpace(value) ? "(not set)" : value;
     }
 
-    private static ProjectSession CreateDesignSession()
+    private static ProjectWorkflow CreateDesignSession()
     {
         var service = new Ihc.Vis.ProjectAppService(new Ihc.IhcSettings());
         string tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ihc_openvisual_design");
-        return new ProjectSession(service, new BackupService(tempDir), new RecentProjectsStore(System.IO.Path.GetTempFileName()), new NullDialogService());
+        return new ProjectWorkflow(service, new BackupService(tempDir), new RecentProjectsStore(System.IO.Path.GetTempFileName()), new NullDialogService());
     }
 }

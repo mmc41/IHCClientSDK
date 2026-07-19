@@ -19,7 +19,7 @@ namespace safe_visual_tests;
 /// <see cref="DragDropTestSupport"/> helpers so each test names only the nodes to drag between. The question these
 /// three tests answer: can an in-app tree drag-drop be <b>implemented</b> in Avalonia 12 <b>and verified in a headless
 /// <c>safe_visual_tests</c> test</b>? The minimal gesture is the simplest later route — drag one product node onto
-/// another locality and re-parent it via <see cref="ProjectSession.MoveNodeAsync"/>.
+/// another locality and re-parent it via <see cref="ProjectWorkflow.MoveNodeAsync"/>.
 /// <para>Verdict: PASS. Kept as A-30's first tests (backlog A-P0); grow them into the full node-kind dispatcher.</para>
 /// </summary>
 public class DragDropPocTests : AvaloniaTestBase
