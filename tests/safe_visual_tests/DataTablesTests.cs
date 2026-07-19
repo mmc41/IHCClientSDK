@@ -2,20 +2,15 @@ using System.Linq;
 using System.Threading.Tasks;
 using ihc_openvisual.Services;
 using ihc_openvisual.ViewModels;
-using Ihc.Vis.Model;
 
 namespace safe_visual_tests;
 
-/// <summary>US-049: the data-tables model — read-only system tables (built-in enum definitions) and CRUD over
-/// the editable user-defined texts.</summary>
+/// <summary>US-049 (UI face): the data-tables view-model loads the read-only system tables + editable user texts,
+/// adds through the dialog prompt, and guards Delete with an app-level confirm. The user-text CRUD <b>command
+/// semantics</b> (append/create-table, rename-by-id, delete-only-that-row) now live in
+/// <c>safe_project_tests.SessionUserTextTests</c> (against <c>ProjectDocumentSession</c>, W2-16).</summary>
 public class DataTablesTests
 {
-    private static ElementId ParseId(string token)
-    {
-        ElementId.TryParse(token, out ElementId id);
-        return id;
-    }
-
     [Test]
     public async Task SystemTables_AreTheReadOnlyBuiltins()
     {
@@ -30,62 +25,6 @@ public class DataTablesTests
             Assert.That(model.SystemTables.Length, Is.GreaterThanOrEqualTo(2), "the built-in system tables are shown");
             Assert.That(model.SystemTables.All(t => t.Rows.Length > 0), Is.True, "each system table lists its rows");
             Assert.That(model.UserTexts, Is.Empty, "a fresh project has no user-defined texts");
-        });
-    }
-
-    [Test]
-    public async Task AddUserText_AppendsToTheEditableList()
-    {
-        using var harness = ShellHarness.Create();
-        var vm = harness.CreateViewModel();
-        await vm.InitializeAsync();
-
-        var ok = await harness.Session.AddUserTextAsync("By main door");
-
-        var texts = harness.Session.GetDataTables().UserTexts;
-        Assert.Multiple(() =>
-        {
-            Assert.That(ok, Is.True);
-            Assert.That(texts.Select(t => t.Text), Does.Contain("By main door"));
-            Assert.That(harness.Session.IsDirty, Is.True);
-        });
-    }
-
-    [Test]
-    public async Task EditUserText_ChangesTheText()
-    {
-        using var harness = ShellHarness.Create();
-        var vm = harness.CreateViewModel();
-        await vm.InitializeAsync();
-        await harness.Session.AddUserTextAsync("Old text");
-        var id = ParseId(harness.Session.GetDataTables().UserTexts.Single().Id);
-
-        var ok = await harness.Session.UpdateUserTextAsync(id, "New text");
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(ok, Is.True);
-            Assert.That(harness.Session.GetDataTables().UserTexts.Single().Text, Is.EqualTo("New text"));
-        });
-    }
-
-    [Test]
-    public async Task DeleteUserText_RemovesOnlyThatText()
-    {
-        using var harness = ShellHarness.Create();
-        var vm = harness.CreateViewModel();
-        await vm.InitializeAsync();
-        await harness.Session.AddUserTextAsync("Keep");
-        await harness.Session.AddUserTextAsync("Remove");
-        var remove = ParseId(harness.Session.GetDataTables().UserTexts.First(t => t.Text == "Remove").Id);
-
-        var ok = await harness.Session.DeleteUserTextAsync(remove);
-
-        var texts = harness.Session.GetDataTables().UserTexts.Select(t => t.Text).ToList();
-        Assert.Multiple(() =>
-        {
-            Assert.That(ok, Is.True);
-            Assert.That(texts, Does.Contain("Keep").And.Not.Contain("Remove"));
         });
     }
 
