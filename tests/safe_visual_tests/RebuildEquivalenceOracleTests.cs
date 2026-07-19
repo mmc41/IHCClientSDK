@@ -65,4 +65,14 @@ public class RebuildEquivalenceOracleTests
         Assert.DoesNotThrow(
             () => RebuildEquivalenceOracle.Check(project, RebuildEquivalenceOracle.RebuildFromScratch, iter: 100));
     }
+
+    // W3-4: the safety net now drives the REAL incremental reconciler. Over randomized Add/Rename/Reorder/Delete
+    // sequences its in-place forest must stay structurally identical to a from-scratch rebuild — the property that
+    // keeps keyed reconciliation honest.
+    [Test]
+    public void Oracle_AcceptsTheRealIncrementalReconciler()
+    {
+        Project project = NewBaseProject();
+        Assert.DoesNotThrow(() => RebuildEquivalenceOracle.CheckIncremental(project, iter: 200));
+    }
 }

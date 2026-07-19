@@ -139,6 +139,51 @@ internal static class RebuildEquivalenceOracle
     /// by construction. W3-4 replaces it with the real incremental reconciler, which must satisfy the same property.</summary>
     internal static readonly ReconcileStep RebuildFromScratch = (_, _, updated) => BuildInstallationForest(updated);
 
+    // ---- W3-4: the real incremental reconciler driven through the same oracle. A fresh ProjectTreeReconciler per
+    //      sequence is seeded from the base project and then reconciled after each committed edit; its in-place
+    //      forest must stay structurally identical to a from-scratch rebuild throughout. ----
+
+    /// <summary>Drives one command sequence through the real <see cref="ProjectTreeReconciler"/>: seeds it from the
+    /// base project, reconciles after each committed edit, and returns the first divergence from a from-scratch
+    /// rebuild (or null when it stayed rebuild-equivalent).</summary>
+    internal static string? FirstDivergenceIncremental(Project baseProject, Op[] ops)
+    {
+        var session = new ProjectDocumentSession();
+        session.Open(baseProject);
+        var reconciler = new ProjectTreeReconciler(p => new ProjectTreeProjector(p).BuildLocalitiesRoot(functions: false));
+        reconciler.Rebuild(session.Current!);
+        string? divergence = null;
+        foreach (Op op in ops)
+        {
+            if (Interpret(op, session.Current!) is not { } command)
+            {
+                continue;
+            }
+            EditOutcome outcome = session.Apply(command);
+            if (outcome.Status != EditStatus.Committed)
+            {
+                continue;
+            }
+            TreeNodeViewModel forest = reconciler.Reconcile(session.Current!, outcome.Changes!);
+            divergence = StructuralDifference(BuildInstallationForest(session.Current!), forest);
+            if (divergence is not null)
+            {
+                break;
+            }
+        }
+        return divergence;
+    }
+
+    /// <summary>Samples randomized command sequences against the real incremental reconciler (fixed iteration count,
+    /// single-threaded for determinism); throws (CsCheck) on the first sequence whose in-place reconcile diverges
+    /// from a from-scratch rebuild.</summary>
+    internal static void CheckIncremental(Project baseProject, long iter = 100) =>
+        CommandSequence.Sample(
+            ops => FirstDivergenceIncremental(baseProject, ops) is null,
+            iter: iter,
+            threads: 1,
+            print: ops => string.Join(" ; ", ops.Select(op => op.ToString())));
+
     /// <summary>A deliberately divergent reconcile that ignores the change set (keeps the stale forest). Used only to
     /// prove the oracle catches a wrong reconcile.</summary>
     internal static readonly ReconcileStep StaleNoOp = (current, _, _) => current;
