@@ -312,8 +312,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private Task AddProgramEventAsync(ElementId eventsId, ElementId variableId, string method, string name, string note) =>
         RunAsync(nameof(AddProgramEventAsync), async () =>
         {
-            if (await _session.AddProgramEventAsync(eventsId, variableId, method, name, note))
-                StatusText = "Event added to the program.";
+            if (_session.BuildAddProgramEvent(eventsId, variableId, method, name, note) is { } command)
+                await ApplyAsync(command, "Event added to the program.");
         });
 
     /// <summary>The Edit ▸ Undo menu header, naming the action it would reverse (E14): e.g. "Undo Insert locality",
@@ -521,8 +521,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private Task AddPowerEvent(TreeNodeViewModel? node) => RunAsync(nameof(AddPowerEvent), async () =>
     {
-        if (node is { IsEventsContainer: true, ElementId: { } eventsId } && await _session.AddPowerEventAsync(eventsId))
-            StatusText = "Powerup event added to the program.";
+        if (node is { IsEventsContainer: true, ElementId: { } eventsId }
+            && _session.BuildAddPowerEvent(eventsId) is { } command)
+            await ApplyAsync(command, "Powerup event added to the program.");
     });
 
     /// <summary>Toggles an output's <i>Save current value</i> power-loss persistence (US-033).</summary>
@@ -632,8 +633,8 @@ public partial class MainWindowViewModel : ViewModelBase
         PropertiesResult? result = await _dialogs.EditPropertiesAsync("New case value", string.Empty, string.Empty);
         if (result is null || string.IsNullOrWhiteSpace(result.Name))
             return;
-        if (await _session.AddCaseValueAsync(caseId, result.Name.Trim()))
-            StatusText = $"Case value '{result.Name.Trim()}' added.";
+        if (_session.BuildAddCaseValue(caseId, result.Name.Trim()) is { } command)
+            await ApplyAsync(command, $"Case value '{result.Name.Trim()}' added.");
     });
 
     /// <summary>Raised by the <i>Exit</i> command to ask the window to close (the close then runs the save prompt).</summary>

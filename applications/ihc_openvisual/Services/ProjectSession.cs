@@ -485,14 +485,34 @@ public sealed class ProjectSession : IDisposable
     /// stays live if the variable is renamed. Returns false (with a diagnostic) when the target is not a program's
     /// events container. Read-add over the project; no controller contact.
     /// </summary>
-    public async Task<bool> AddProgramEventAsync(ElementId containerId, ElementId variableId, string method, string name, string? note)
-    {
-        if (Current?.FindById(containerId)?.Tag != "events"
-            || Current.FindParent(containerId) is not { Tag: "program_simple", Id: { } programId })
-            return false;
-        EditOutcome outcome = await RouteAsync(new AddProgramEvent(programId, variableId, method, name, note), "Add event failed");
-        return outcome.Status == EditStatus.Committed;
-    }
+    // Resolves the program owning an `events` container (US-028/US-033), or null when the target is not one.
+    private ElementId? ProgramOfEventsContainer(ElementId containerId) =>
+        Current?.FindById(containerId)?.Tag == "events"
+            && Current.FindParent(containerId) is { Tag: "program_simple", Id: { } programId }
+            ? programId : null;
+
+    /// <summary>Builds the command to add a resource-triggered program event to an `events` container (US-028), or
+    /// null when the target is not a program's events container.</summary>
+    public ProjectCommand? BuildAddProgramEvent(ElementId containerId, ElementId variableId, string method, string name, string? note) =>
+        ProgramOfEventsContainer(containerId) is { } programId
+            ? new AddProgramEvent(programId, variableId, method, name, note) : null;
+
+    /// <summary>Builds the command to add a Powerup system event to an `events` container (US-033), or null for a
+    /// non-events target.</summary>
+    public ProjectCommand? BuildAddPowerEvent(ElementId eventsContainerId) =>
+        ProgramOfEventsContainer(eventsContainerId) is { } programId ? new AddPowerEvent(programId) : null;
+
+    /// <summary>Builds the command to add a case-value branch to a `program_case` (US-031), or null for a non-case
+    /// target, a missing switch, or an enum switch (whose case values need the type's states).</summary>
+    public ProjectCommand? BuildAddCaseValue(ElementId caseId, string criterion) =>
+        Current?.FindById(caseId) is { Tag: "program_case" } kase
+            && ElementId.TryParse(Current.View(kase).Effective("link"), out ElementId switchId)
+            && Current.FindById(switchId) is { } switchVar && switchVar.Kind != ElementKind.EnumResource
+            ? new AddCaseValue(caseId, criterion, switchVar.Tag) : null;
+
+    public async Task<bool> AddProgramEventAsync(ElementId containerId, ElementId variableId, string method, string name, string? note) =>
+        BuildAddProgramEvent(containerId, variableId, method, name, note) is { } command
+        && (await RouteAsync(command, "Add event failed")).Status == EditStatus.Committed;
 
     /// <summary>
     /// Authors a program <c>action</c> command (US-028): appends a top-level command to the program owning
@@ -509,14 +529,9 @@ public sealed class ProjectSession : IDisposable
     /// program then runs on controller power-up (also on project transfer and software restart), useful for
     /// re-establishing timer values. Takes no operand. Returns false for a non-events target. No controller.
     /// </summary>
-    public async Task<bool> AddPowerEventAsync(ElementId eventsContainerId)
-    {
-        if (Current?.FindById(eventsContainerId)?.Tag != "events"
-            || Current.FindParent(eventsContainerId) is not { Tag: "program_simple", Id: { } programId })
-            return false;
-        EditOutcome outcome = await RouteAsync(new AddPowerEvent(programId), "Add Powerup event failed");
-        return outcome.Status == EditStatus.Committed;
-    }
+    public async Task<bool> AddPowerEventAsync(ElementId eventsContainerId) =>
+        BuildAddPowerEvent(eventsContainerId) is { } command
+        && (await RouteAsync(command, "Add Powerup event failed")).Status == EditStatus.Committed;
 
     /// <summary>
     /// Sets an output's "Save current value" power-loss persistence (US-033): writes <c>backup="yes"|"no"</c> on the
@@ -592,15 +607,9 @@ public sealed class ProjectSession : IDisposable
     /// <c>&lt;resource_counter inivalue="100"&gt;</c>). Returns false for a non-case target, a missing switch, or an
     /// enum switch (enum case values need the type's states — deferred). No controller.
     /// </summary>
-    public async Task<bool> AddCaseValueAsync(ElementId caseId, string criterion)
-    {
-        if (Current?.FindById(caseId) is not { Tag: "program_case" } kase
-            || !ElementId.TryParse(Current.View(kase).Effective("link"), out ElementId switchId)
-            || Current.FindById(switchId) is not { } switchVar || switchVar.Kind == ElementKind.EnumResource)
-            return false;
-        EditOutcome outcome = await RouteAsync(new AddCaseValue(caseId, criterion, switchVar.Tag), "Add case value failed");
-        return outcome.Status == EditStatus.Committed;
-    }
+    public async Task<bool> AddCaseValueAsync(ElementId caseId, string criterion) =>
+        BuildAddCaseValue(caseId, criterion) is { } command
+        && (await RouteAsync(command, "Add case value failed")).Status == EditStatus.Committed;
 
     /// <summary>
     /// Saves a placed function block to a reusable <c>.ifb</c> catalog file (US-021): lifts the block (by id) to a
