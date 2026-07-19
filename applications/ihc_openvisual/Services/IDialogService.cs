@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Ihc.Vis;
 
 namespace ihc_openvisual.Services;
 
@@ -67,21 +68,8 @@ public sealed record AdvancedDimmerInput(
 public sealed record AdvancedDimmerResult(
     int SoftOnMs, int SoftOffMs, int ManualRampS, int MinimumPercent, int MaximumPercent, string LoadMode);
 
-/// <summary>A party's contact details (US-039) — a <c>customer_info</c>/<c>installer_info</c> record. The reports
-/// render only Name/Address/Phone; the rest are captured for completeness.</summary>
-public sealed record ContactInfo(
-    string Name, string Address, string City, string Zip, string Country, string Phone, string Mobile, string Email)
-{
-    public static readonly ContactInfo Empty = new("", "", "", "", "", "", "", "");
-}
-
-/// <summary>The project-information dialog's data (US-039): project metadata plus the customer and installer
-/// contacts. Used both to prefill the dialog and as its result.</summary>
-public sealed record ProjectInfoData(
-    string Description, string Number, string Programmer, ContactInfo Customer, ContactInfo Installer)
-{
-    public static readonly ProjectInfoData Empty = new("", "", "", ContactInfo.Empty, ContactInfo.Empty);
-}
+// ContactInfo and ProjectInfoData moved to the SDK (Ihc.Vis, fablerefac W1-5) — they are project read/edit
+// models, not presentation DTOs. Referenced here via `using Ihc.Vis;`.
 
 /// <summary>The current values shown by the enumerator dialog (US-030): the enum type's name and its ordered state
 /// names. <c>IsNew</c> distinguishes creating a new type (name editable) from editing an existing one (append states).</summary>

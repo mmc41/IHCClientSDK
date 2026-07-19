@@ -1,12 +1,13 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:svc="clr-namespace:ihc_openvisual.Services"
+        xmlns:vis="clr-namespace:Ihc.Vis;assembly=ihcclient"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="560" d:DesignHeight="420"
         x:Class="ihc_openvisual.Views.ModuleMapWindow"
-        x:DataType="svc:ModuleAddressMap"
+        x:DataType="vis:ModuleAddressMap"
         Title="Wired module address map"
         Width="560" Height="440"
         WindowStartupLocation="CenterOwner"
@@ -18,7 +19,7 @@
         <ListBox Grid.Row="1" Grid.Column="0" ItemsSource="{Binding InputModules}"
                  a:AutomationProperties.LabeledBy="{Binding #InputModulesLabel}">
             <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="svc:ModuleAddressEntry">
+                <DataTemplate x:DataType="vis:ModuleAddressEntry">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock Text="{Binding Address}" FontFamily="Consolas,monospace" MinWidth="44"/>
                         <TextBlock Text="{Binding Product}"/>
@@ -31,7 +32,7 @@
         <ListBox Grid.Row="1" Grid.Column="2" ItemsSource="{Binding OutputModules}"
                  a:AutomationProperties.LabeledBy="{Binding #OutputModulesLabel}">
             <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="svc:ModuleAddressEntry">
+                <DataTemplate x:DataType="vis:ModuleAddressEntry">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock Text="{Binding Address}" FontFamily="Consolas,monospace" MinWidth="44"/>
                         <TextBlock Text="{Binding Product}"/>

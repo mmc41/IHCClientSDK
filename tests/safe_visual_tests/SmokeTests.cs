@@ -10,6 +10,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using CommunityToolkit.Mvvm.Input;
+using Ihc.Vis;
 using ihc_openvisual.Services;
 using ihc_openvisual.ViewModels;
 using ihc_openvisual.Views;

@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ihc_openvisual.Services;
+using Ihc.Vis;
 using Ihc.Vis.Model;
 
 namespace ihc_openvisual.ViewModels;

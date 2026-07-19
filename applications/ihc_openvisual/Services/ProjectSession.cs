@@ -265,22 +265,9 @@ public sealed class ProjectSession : IDisposable
         }
     }
 
-    /// <summary>Reads the current project/customer/installer information (US-039) to prefill the dialog.</summary>
-    public ProjectInfoData GetProjectInfo()
-    {
-        if (Current is null)
-            return ProjectInfoData.Empty;
-        ProjectElement? pi = Current.Child("project_info");
-        return new ProjectInfoData(
-            Attr(pi, "description"), Attr(pi, "number"), Attr(pi, "programmer"),
-            ReadContact(Current.Child("customer_info")), ReadContact(Current.Child("installer_info")));
-    }
-
-    private static string Attr(ProjectElement? e, string name) => e?.GetAttribute(name) ?? string.Empty;
-
-    private static ContactInfo ReadContact(ProjectElement? c) => new(
-        Attr(c, "name"), Attr(c, "address"), Attr(c, "city"), Attr(c, "zipcode"),
-        Attr(c, "country"), Attr(c, "phone"), Attr(c, "mobilephone"), Attr(c, "email"));
+    /// <summary>Reads the current project/customer/installer information (US-039) to prefill the dialog. Delegates
+    /// to the SDK projection (<c>Ihc.Vis.ProjectProjections</c>); removed once the VM calls the session query (W2-12).</summary>
+    public ProjectInfoData GetProjectInfo() => Current?.GetProjectInfo() ?? ProjectInfoData.Empty;
 
     /// <summary>
     /// Applies edited project information (US-039): writes the <c>project_info</c> metadata and the
@@ -298,93 +285,29 @@ public sealed class ProjectSession : IDisposable
         });
 
     /// <summary>The dedicated user enum definition that holds the data-tables "user-defined texts" (US-049).</summary>
-    public const string UserTextsTableName = "User-defined texts";
+    public const string UserTextsTableName = ProjectProjections.UserTextsTableName;
 
     /// <summary>
     /// Reads the project's data tables (US-049): the read-only system tables (the built-in <c>typeid</c>-bearing enum
     /// definitions) and the editable user-defined texts (the values of the <see cref="UserTextsTableName"/> enum).
+    /// Delegates to the SDK projection; removed once the VM calls the session query (W2-12).
     /// </summary>
-    public DataTablesModel GetDataTables()
-    {
-        var system = ImmutableArray.CreateBuilder<DataTableView>();
-        var texts = ImmutableArray.CreateBuilder<UserText>();
-        if (Current?.Child("enum_definitions") is { } container)
-        {
-            foreach (ProjectElement def in container.ChildrenOrEmpty().Where(c => c.Tag == "enum_definition"))
-            {
-                var values = def.ChildrenOrEmpty().Where(v => v.Tag == "enum_value").ToList();
-                if (def.GetAttribute("name") == UserTextsTableName)
-                {
-                    foreach (ProjectElement v in values)
-                        if (v.Id is { } id)
-                            texts.Add(new UserText(id.ToToken(), v.GetAttribute("name") ?? string.Empty));
-                }
-                else if ((def.GetAttribute("typeid") ?? ElementId.NullToken) != ElementId.NullToken)
-                {
-                    system.Add(new DataTableView(def.GetAttribute("name") ?? string.Empty,
-                        values.Select(v => v.GetAttribute("name") ?? string.Empty).ToImmutableArray()));
-                }
-            }
-        }
-        return new DataTablesModel(system.ToImmutable(), texts.ToImmutable());
-    }
+    public DataTablesModel GetDataTables() => Current?.GetDataTables() ?? new DataTablesModel([], []);
 
     /// <summary>
     /// Names the wireless products in the project not yet linked to the controller (US-042 pre-flight): the offline
-    /// half of the "warn about unlinked wireless products before sending" check. Read-only; no controller contact.
+    /// half of the "warn about unlinked wireless products before sending" check. Delegates to the SDK projection.
     /// </summary>
-    public IReadOnlyList<string> GetUnlinkedWirelessProducts()
-    {
-        var names = new List<string>();
-        if (Current is { } project)
-        {
-            foreach (ProjectElement group in project.Groups)
-            {
-                foreach (ProjectElement product in group.ChildrenOrEmpty())
-                {
-                    if (ProductClassifier.IsUnlinkedWireless(product.Tag, product.GetAttribute("serialnumber")))
-                        names.Add(product.GetAttribute("name") ?? product.Tag);
-                }
-            }
-        }
-        return names;
-    }
+    public IReadOnlyList<string> GetUnlinkedWirelessProducts() =>
+        Current?.GetUnlinkedWirelessProducts() ?? new List<string>();
 
     /// <summary>
     /// Builds the read-only Wired module address map (US-050): every addressed <c>dataline_input</c>/<c>dataline_output</c>
-    /// terminal across all products, decoded to its <c>line.terminal</c> address and paired with the occupying product
-    /// terminal, split into input and output modules and sorted by address. Unaddressed terminals are omitted; wireless
-    /// products carry no module addressing so contribute nothing. Read-only; mutates nothing; no controller.
+    /// terminal across all products, decoded to its <c>line.terminal</c> address and split into input/output modules,
+    /// sorted by address. Delegates to the SDK projection; removed once the VM calls the session query (W2-12).
     /// </summary>
-    public ModuleAddressMap GetModuleAddressMap()
-    {
-        var inputs = new List<(int Line, int Terminal, ModuleAddressEntry Entry)>();
-        var outputs = new List<(int Line, int Terminal, ModuleAddressEntry Entry)>();
-        if (Current is { } project)
-        {
-            foreach (ProjectElement group in project.Groups)
-            {
-                foreach (ProjectElement product in group.ChildrenOrEmpty())
-                {
-                    string productName = product.GetAttribute("name") ?? product.Tag;
-                    foreach (ProjectElement pin in product.ChildrenOrEmpty())
-                    {
-                        bool isOutput = pin.Tag == "dataline_output";
-                        if (pin.Tag != "dataline_input" && !isOutput)
-                            continue;
-                        if (!DatalineAddress.TryParse(pin.GetAttribute("address_dataline"), isOutput, out DatalineAddress addr))
-                            continue;
-                        var entry = new ModuleAddressEntry($"{addr.DataLine}.{addr.Terminal}", productName, pin.GetAttribute("name") ?? pin.Tag);
-                        (isOutput ? outputs : inputs).Add((addr.DataLine, addr.Terminal, entry));
-                    }
-                }
-            }
-        }
-        return new ModuleAddressMap(SortByAddress(inputs), SortByAddress(outputs));
-    }
-
-    private static ImmutableArray<ModuleAddressEntry> SortByAddress(List<(int Line, int Terminal, ModuleAddressEntry Entry)> rows) =>
-        rows.OrderBy(r => r.Line).ThenBy(r => r.Terminal).Select(r => r.Entry).ToImmutableArray();
+    public ModuleAddressMap GetModuleAddressMap() =>
+        Current?.GetModuleAddressMap() ?? new ModuleAddressMap([], []);
 
     /// <summary>Appends a user-defined text (US-049), creating the user-texts table on first use. Returns false on failure.</summary>
     public Task<bool> AddUserTextAsync(string text) =>
