@@ -142,6 +142,46 @@
             <MenuItem Header="P_roperties" Command="{Binding PropertiesCommand}" CommandParameter="{Binding SelectedNode}"
                       IsVisible="{Binding SelectedNode.CanEditNonLink, FallbackValue=False}"/>
         </MenuFlyout>
+
+        <!-- The tree-row container theme + row template, shared by both panes (they were byte-identical). The
+             theme carries the container behaviour (TwoWay IsExpanded so an expander click reaches the VM for the
+             US-070 snapshot/restore) and the UIA name/kind; the template renders icon + label + the US-014
+             unlinked "!" marker. Both panes reference these instead of repeating the blocks inline. -->
+        <ControlTheme x:Key="TreeNodeItemTheme" TargetType="TreeViewItem" x:DataType="vm:TreeNodeViewModel"
+                      BasedOn="{StaticResource {x:Type TreeViewItem}}">
+            <!-- TwoWay so a user's expander click reaches the view-model, which snapshots and restores expansion
+                 across every edit's tree rebuild (US-070). -->
+            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+            <!-- Publish the row's accessible name on the container itself so a UIA client reading TreeItem.Name gets
+                 the label directly (not blank, with the name on an inner peer). -->
+            <Setter Property="a:AutomationProperties.Name" Value="{Binding AccessibleName}"/>
+            <!-- Publish the row's KIND for automation. AutomationId is never rendered and is not announced as
+                 content, so this is invisible to a user — unlike HelpText, which is already the tooltip the user
+                 sees. It exists because a row's LABEL is user data and cannot identify it (see
+                 TreeNodeViewModel.NodeKind). -->
+            <Setter Property="a:AutomationProperties.AutomationId" Value="{Binding NodeKind}"/>
+        </ControlTheme>
+
+        <TreeDataTemplate x:Key="TreeNodeTemplate" x:DataType="vm:TreeNodeViewModel" ItemsSource="{Binding Children}">
+            <!-- DoubleTapped is handled HERE, on the row's own content, and not on the TreeView: the event only
+                 bubbles, and TreeViewItem toggles expansion from a handler on its header presenter — this
+                 StackPanel's ancestor. Handling it here is therefore the last point that still runs BEFORE the
+                 toggle (US-044, F-006/F-007). -->
+            <StackPanel Orientation="Horizontal" Spacing="6" ToolTip.Tip="{Binding Tooltip}"
+                        DoubleTapped="OnNodeDoubleTapped"
+                        Background="{Binding IsDropTarget, Converter={x:Static conv:BoolToBrushConverter.DropTarget}}"
+                        a:AutomationProperties.Name="{Binding AccessibleName}"
+                        a:AutomationProperties.HelpText="{Binding Tooltip}">
+                <svg:Svg Width="16" Height="16" Path="{Binding IconAsset}" CurrentColor="{DynamicResource IconColor}"
+                         a:AutomationProperties.AccessibilityView="Raw"/>
+                <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"
+                           FontWeight="{Binding IsBold, Converter={x:Static conv:BoolToFontWeightConverter.Instance}}"/>
+                <!-- Unlinked wireless product marker (US-014) -->
+                <TextBlock Text="!" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"
+                           IsVisible="{Binding IsUnlinked}"
+                           ToolTip.Tip="Not yet linked to the controller"/>
+            </StackPanel>
+        </TreeDataTemplate>
     </Window.Resources>
 
     <DockPanel>
@@ -354,45 +394,9 @@
                 </Border>
                 <controls:AccessibleTreeView x:Name="InstallationTree" ItemsSource="{Binding InstallationNodes}" KeyDown="OnTreeKeyDown"
                           SelectedItem="{Binding SelectedInstallationNode, Mode=TwoWay}"
-                          ContextFlyout="{StaticResource NodeContextMenu}">
-                    <TreeView.Styles>
-                        <Style Selector=":is(TreeViewItem)" x:DataType="vm:TreeNodeViewModel">
-                            <!-- TwoWay so a user's expander click reaches the view-model, which snapshots and
-                                 restores expansion across every edit's tree rebuild (US-070). -->
-                            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
-                            <!-- Publish the row's accessible name on the container itself so a UIA client reading
-                                 TreeItem.Name gets the label directly (not blank, with the name on an inner peer). -->
-                            <Setter Property="a:AutomationProperties.Name" Value="{Binding AccessibleName}"/>
-                            <!-- Publish the row's KIND for automation. AutomationId is never rendered and is not
-                                 announced as content, so this is invisible to a user — unlike HelpText, which is
-                                 already the tooltip the user sees. It exists because a row's LABEL is user data
-                                 and cannot identify it (see TreeNodeViewModel.NodeKind). -->
-                            <Setter Property="a:AutomationProperties.AutomationId" Value="{Binding NodeKind}"/>
-                        </Style>
-                    </TreeView.Styles>
-                    <TreeView.ItemTemplate>
-                        <TreeDataTemplate x:DataType="vm:TreeNodeViewModel" ItemsSource="{Binding Children}">
-                            <!-- DoubleTapped is handled HERE, on the row's own content, and not on the TreeView:
-                                 the event only bubbles, and TreeViewItem toggles expansion from a handler on its
-                                 header presenter — this StackPanel's ancestor. Handling it here is therefore the
-                                 last point that still runs BEFORE the toggle (US-044, F-006/F-007). -->
-                            <StackPanel Orientation="Horizontal" Spacing="6" ToolTip.Tip="{Binding Tooltip}"
-                                        DoubleTapped="OnNodeDoubleTapped"
-                                        Background="{Binding IsDropTarget, Converter={x:Static conv:BoolToBrushConverter.DropTarget}}"
-                                        a:AutomationProperties.Name="{Binding AccessibleName}"
-                                        a:AutomationProperties.HelpText="{Binding Tooltip}">
-                                <svg:Svg Width="16" Height="16" Path="{Binding IconAsset}" CurrentColor="{DynamicResource IconColor}"
-                                         a:AutomationProperties.AccessibilityView="Raw"/>
-                                <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"
-                                           FontWeight="{Binding IsBold, Converter={x:Static conv:BoolToFontWeightConverter.Instance}}"/>
-                                <!-- Unlinked wireless product marker (US-014) -->
-                                <TextBlock Text="!" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"
-                                           IsVisible="{Binding IsUnlinked}"
-                                           ToolTip.Tip="Not yet linked to the controller"/>
-                            </StackPanel>
-                        </TreeDataTemplate>
-                    </TreeView.ItemTemplate>
-                </controls:AccessibleTreeView>
+                          ContextFlyout="{StaticResource NodeContextMenu}"
+                          ItemContainerTheme="{StaticResource TreeNodeItemTheme}"
+                          ItemTemplate="{StaticResource TreeNodeTemplate}"/>
             </DockPanel>
 
             <GridSplitter Grid.Column="1" Width="4" ResizeDirection="Columns"
@@ -405,45 +409,9 @@
                 </Border>
                 <controls:AccessibleTreeView x:Name="FunctionsTree" ItemsSource="{Binding FunctionNodes}" KeyDown="OnTreeKeyDown"
                           SelectedItem="{Binding SelectedFunctionsNode, Mode=TwoWay}"
-                          ContextFlyout="{StaticResource NodeContextMenu}">
-                    <TreeView.Styles>
-                        <Style Selector=":is(TreeViewItem)" x:DataType="vm:TreeNodeViewModel">
-                            <!-- TwoWay so a user's expander click reaches the view-model, which snapshots and
-                                 restores expansion across every edit's tree rebuild (US-070). -->
-                            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
-                            <!-- Publish the row's accessible name on the container itself so a UIA client reading
-                                 TreeItem.Name gets the label directly (not blank, with the name on an inner peer). -->
-                            <Setter Property="a:AutomationProperties.Name" Value="{Binding AccessibleName}"/>
-                            <!-- Publish the row's KIND for automation. AutomationId is never rendered and is not
-                                 announced as content, so this is invisible to a user — unlike HelpText, which is
-                                 already the tooltip the user sees. It exists because a row's LABEL is user data
-                                 and cannot identify it (see TreeNodeViewModel.NodeKind). -->
-                            <Setter Property="a:AutomationProperties.AutomationId" Value="{Binding NodeKind}"/>
-                        </Style>
-                    </TreeView.Styles>
-                    <TreeView.ItemTemplate>
-                        <TreeDataTemplate x:DataType="vm:TreeNodeViewModel" ItemsSource="{Binding Children}">
-                            <!-- DoubleTapped is handled HERE, on the row's own content, and not on the TreeView:
-                                 the event only bubbles, and TreeViewItem toggles expansion from a handler on its
-                                 header presenter — this StackPanel's ancestor. Handling it here is therefore the
-                                 last point that still runs BEFORE the toggle (US-044, F-006/F-007). -->
-                            <StackPanel Orientation="Horizontal" Spacing="6" ToolTip.Tip="{Binding Tooltip}"
-                                        DoubleTapped="OnNodeDoubleTapped"
-                                        Background="{Binding IsDropTarget, Converter={x:Static conv:BoolToBrushConverter.DropTarget}}"
-                                        a:AutomationProperties.Name="{Binding AccessibleName}"
-                                        a:AutomationProperties.HelpText="{Binding Tooltip}">
-                                <svg:Svg Width="16" Height="16" Path="{Binding IconAsset}" CurrentColor="{DynamicResource IconColor}"
-                                         a:AutomationProperties.AccessibilityView="Raw"/>
-                                <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"
-                                           FontWeight="{Binding IsBold, Converter={x:Static conv:BoolToFontWeightConverter.Instance}}"/>
-                                <!-- Unlinked wireless product marker (US-014) -->
-                                <TextBlock Text="!" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"
-                                           IsVisible="{Binding IsUnlinked}"
-                                           ToolTip.Tip="Not yet linked to the controller"/>
-                            </StackPanel>
-                        </TreeDataTemplate>
-                    </TreeView.ItemTemplate>
-                </controls:AccessibleTreeView>
+                          ContextFlyout="{StaticResource NodeContextMenu}"
+                          ItemContainerTheme="{StaticResource TreeNodeItemTheme}"
+                          ItemTemplate="{StaticResource TreeNodeTemplate}"/>
             </DockPanel>
         </Grid>
     </DockPanel>

@@ -70,6 +70,49 @@ namespace Ihc.Vis.Tests
                 Throws.InvalidOperationException.With.Message.Contains("modified").And.Message.Contains("year"));
         }
 
+        // Rebuilds the tree with the element of the given id replaced — a raw model edit that bypasses the editor's
+        // canonicalization, so a default-equal / undeclared attribute actually reaches the serializer.
+        private static ProjectElement Replace(ProjectElement node, ElementId id, ProjectElement replacement) =>
+            node.Id == id
+                ? replacement
+                : node with { Children = node.ChildrenOrEmpty().Select(c => Replace(c, id, replacement)).ToImmutableArray() };
+
+        // T036 (D03): pin — the serializer OMITS a Defaulted attribute whose value equals its DTD default
+        // (omit-if-default, AttrSchema.OmitsOnWrite); the reader never re-materializes it. No serializer change.
+        [Test]
+        public void Serialize_AttributeEqualToItsDtdDefault_IsOmitted()
+        {
+            Project project = Load("Project1-SimpelWired.vis");
+            ProjectSchemaView view = ProjectSchemaView.For(project);
+            // Find a real element whose schema declares a Defaulted attribute with a non-empty default, currently absent.
+            (ProjectElement Element, AttrSchema Attr) target = project.Root.DescendantsAndSelf()
+                .Where(e => e.Id is not null)
+                .Select(e => (Element: e, Attr: view.TryGet(e.Tag)?.Attrs
+                    .FirstOrDefault(a => a.Kind == AttrKind.Defaulted && a.Default.Length > 0 && e.GetAttribute(a.Name) is null)))
+                .First(x => x.Attr is not null)!;
+            ElementId id = target.Element.Id!.Value;
+
+            // Set that attribute to EXACTLY its DTD default and re-serialize.
+            Project modified = project with { Root = Replace(project.Root, id, target.Element.WithAttribute(target.Attr.Name, target.Attr.Default)) };
+            Project reparsed = ProjectReader.Read(new MemoryStream(ProjectSerializer.Serialize(modified)));
+
+            Assert.That(reparsed.FindById(id)!.GetAttribute(target.Attr.Name), Is.Null,
+                $"attribute '{target.Attr.Name}' equal to its DTD default ('{target.Attr.Default}') is omitted on write (omit-if-default)");
+        }
+
+        // T036 (D03): pin — the serializer REFUSES (throws) an attribute the element's schema does not declare,
+        // rather than silently dropping it or writing a DTD-invalid file. No serializer change.
+        [Test]
+        public void Serialize_UndeclaredAttribute_IsRefused()
+        {
+            Project project = Load("Project1-SimpelWired.vis");
+            ProjectElement group = project.Groups.First();
+            Project modified = project with { Root = Replace(project.Root, group.Id!.Value, group.WithAttribute("bogus_undeclared", "x")) };
+
+            Assert.That(() => ProjectSerializer.Serialize(modified),
+                Throws.InvalidOperationException.With.Message.Contains("bogus_undeclared"));
+        }
+
         [Test]
         public void Validate_MissingRequiredAttribute_MatchesTheSerializerVerdict()
         {

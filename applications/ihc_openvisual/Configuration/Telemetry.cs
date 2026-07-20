@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Ihc.Bootstrap;
 
 namespace ihc_openvisual.Configuration;
 
@@ -14,5 +15,5 @@ public static class Telemetry
     public const string ActivitySourceName = "IhcOpenVisual";
 
     public static ActivitySource ActivitySource { get; } =
-        new ActivitySource(name: ActivitySourceName, version: VersionInfo.GetAppVersionStr());
+        new ActivitySource(name: ActivitySourceName, version: AppTelemetryBootstrap.GetAppVersionStr());
 }

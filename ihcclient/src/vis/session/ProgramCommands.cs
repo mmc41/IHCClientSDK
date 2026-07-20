@@ -1,7 +1,7 @@
 #nullable enable
-using System.Collections.Generic;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
+using Ihc.Vis.Programs;
 using Ihc.Vis.Projects;
 
 namespace Ihc.Vis.Session
@@ -98,7 +98,7 @@ namespace Ihc.Vis.Session
         internal override string Describe(Project project) => "Add case";
         internal override EditVerdict Evaluate(EditContext context) =>
             Programs.IsCommandContainer(context, CommandsId)
-            && context.Index.FindById(SwitchVariableId) is { } v && Programs.EligibleCaseVariableTags.Contains(v.Tag)
+            && context.Index.FindById(SwitchVariableId) is { } v && ProgramMethodCatalog.EligibleCaseVariableTags.Contains(v.Tag)
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse("Not an eligible case switch on a command container.");
         internal override void Execute(ProjectEditor editor) =>
@@ -122,14 +122,8 @@ namespace Ihc.Vis.Session
         internal override EditVerdict Evaluate(EditContext context) =>
             context.Index.FindById(OutputId)?.Tag is "resource_output" or "dataline_output" or "airlink_relay"
                 ? EditVerdict.Allow : EditVerdict.Refuse("Not an output.");
-        internal override void Execute(ProjectEditor editor)
-        {
-            if (!editor.TryResolve(OutputId, out ElementRef? handle))
-            {
-                throw new EditRefusedException("The output no longer exists.");
-            }
-            handle.SetAttribute("backup", Save ? "yes" : "no");
-        }
+        internal override void Execute(ProjectEditor editor) =>
+            editor.Resolve(OutputId, "output").SetAttribute("backup", Save ? "yes" : "no");
     }
 
     /// <summary>Toggles a "Log …" row's log mark (US-068).</summary>
@@ -144,12 +138,6 @@ namespace Ihc.Vis.Session
 
     internal static class Programs
     {
-        /// <summary>The variable types a case may switch on (US-031).</summary>
-        public static readonly HashSet<string> EligibleCaseVariableTags = new()
-        {
-            "resource_counter", "resource_enum", "resource_weekday", "resource_integer", "resource_date",
-        };
-
         public static EditVerdict RequireTag(EditContext context, ElementId id, string tag) =>
             context.Index.FindById(id)?.Tag == tag
                 ? EditVerdict.Allow : EditVerdict.Refuse($"The target is not a '{tag}'.");

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ihc_openvisual.Configuration;
 using Ihc;
+using Ihc.Bootstrap;
 using Ihc.Vis;
 using Ihc.Vis.Projects;
 using Microsoft.Extensions.Logging;
@@ -33,7 +34,7 @@ public class UnhandledExceptionTests
     {
         // (a) The unhandled-exception handler records the failure through ILogger.
         var logger = new CapturingLogger();
-        AppSetup.LogUnhandledException(logger, new InvalidOperationException("boom-42"));
+        AppTelemetryBootstrap.LogUnhandledException(logger, new InvalidOperationException("boom-42"));
         Assert.That(logger.Messages, Has.Some.Contains("boom-42"), "the unhandled exception reaches ILogger");
         Assert.That(logger.Messages, Has.Some.Contains("Critical"), "and at a critical level");
 

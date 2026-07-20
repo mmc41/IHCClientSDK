@@ -25,7 +25,7 @@ public partial class AboutWindow : Window
         AppDescription.Text = Constants.APP_DESCRIPTION;
 
         // Display version information
-        AppVersionText.Text = $"App Version: {IhcLab.VersionInfo.GetAppVersionStr()}";
+        AppVersionText.Text = $"App Version: {Ihc.Bootstrap.AppTelemetryBootstrap.GetAppVersionStr()}";
         SdkVersionText.Text = $"SDK Version: {Ihc.VersionInfo.GetSdkVersion()}";
     }
 

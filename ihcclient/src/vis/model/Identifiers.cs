@@ -78,12 +78,9 @@ namespace Ihc.Vis.Model
         public static bool TryParse(string? token, out ElementId id)
         {
             id = default;
-            if (token is null || !token.StartsWith("_0x", StringComparison.Ordinal))
-            {
-                return false;
-            }
-            if (!long.TryParse(token.AsSpan(3), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out long value)
-                || value < 0 || value > MaxPackedValue)
+            // Parse the raw _0x+hex value through the shared HexToken primitive (which already rejects a null,
+            // non-_0x, malformed, or negative token), then apply the id-specific packed-range ceiling.
+            if (!HexToken.TryParseValue(token, out long value) || value > MaxPackedValue)
             {
                 return false;
             }

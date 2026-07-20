@@ -28,6 +28,24 @@ namespace Ihc.Vis.Tests
             Assert.That(result.IsValid, Is.True, "vendor function blocks are well-formed: " + string.Join(" | ", result.Errors));
         }
 
+        // T015: the validator's five-container invariant must stay derived from FunctionBlockSections.All
+        // (the shared FB-section source of truth) plus the "programs" container — never an independent literal
+        // that can silently drift from it. An authentic function block therefore presents exactly that sequence,
+        // and validates clean against it.
+        [Test]
+        public async Task Validate_FunctionBlockShapeRule_IsDerivedFromFunctionBlockSections()
+        {
+            Project project = await Load("project3-KompleksWired.vis");
+            string[] expected = FunctionBlockSections.All.Select(s => s.Container).Append("programs").ToArray();
+
+            string[] actual = TomBlok(project).Children.Select(c => c.Tag).ToArray();
+            Assert.That(actual, Is.EqualTo(expected),
+                "the authentic FB containers must equal FunctionBlockSections.All + 'programs'");
+
+            ProjectValidationResult result = App.Validate(project);
+            Assert.That(result.IsValid, Is.True, "errors: " + string.Join(" | ", result.Errors));
+        }
+
         [Test]
         public async Task Validate_FunctionBlockMissingAContainer_Fails()
         {

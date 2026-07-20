@@ -54,6 +54,27 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // T038 (D03): NormalizeCatalogEnums is idempotent — a second call on the same editor must NOT re-hoist and
+        // burn a fresh block of ids (the catalog enums keep their non-null typeid after the first hoist, so without
+        // the guard they'd be re-selected and re-minted). Applying it twice equals applying it once.
+        [Test]
+        public async Task NormalizeCatalogEnums_CalledTwice_IsIdempotent_NoIdBurn()
+        {
+            Project project = await new ProjectAppService(Settings).Load("testdata/projects/" + Original);
+
+            ProjectEditor editor = project.Edit();
+            editor.NormalizeCatalogEnums();
+            Project once = editor.ToProject();
+            editor.NormalizeCatalogEnums();   // second call — must be a no-op
+            Project twice = editor.ToProject();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(twice, Is.EqualTo(once), "a second normalize reproduces the first result — no re-hoist");
+                Assert.That(twice.LastUniqueId, Is.EqualTo(once.LastUniqueId), "no extra ids burned by the second call");
+            });
+        }
+
         // ---- Copy C: the enum-footprint id burn (falsification gate for the burn mechanism) ----
 
         [Test]

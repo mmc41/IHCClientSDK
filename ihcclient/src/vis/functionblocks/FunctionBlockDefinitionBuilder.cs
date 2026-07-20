@@ -40,17 +40,16 @@ namespace Ihc.Vis.FunctionBlocks
     /// via <see cref="Ihc.Vis.ProjectAppService"/>), which owns telemetry, IO and the single project-mutation entry
     /// point — the builder deliberately owns none of that.</para>
     /// </remarks>
-    public sealed class FunctionBlockDefinitionBuilder
+    public sealed class FunctionBlockDefinitionBuilder : DefinitionBuilderBase<FunctionBlockDefinitionBuilder>
     {
         private static readonly (string Name, string Value)[] NoAttrs = Array.Empty<(string, string)>();
         private static readonly ProjectElement[] NoChildren = Array.Empty<ProjectElement>();
 
-        private IdAllocator ids = new(0);
+        private ProjectElement? builtBody;   // memoized so repeated Build() is idempotent (no id drift off the shared allocator)
         private readonly string masterType;
         private readonly string masterVersion;
         private readonly string masterName;
         private string? displayNameOverride;
-        private string categoryPath = string.Empty;
         private readonly List<(string Name, string Value)> rootAttrs = new();
         private bool stampResourceDefaults = true;
         private bool isEmptyTemplate;
@@ -64,18 +63,17 @@ namespace Ihc.Vis.FunctionBlocks
         private readonly List<FbEnumDefRef> enumDefs = new();
         private readonly List<ProjectElement> rawBodyChildren = new();
         private readonly List<FbProgramBuilder> programs = new();
-        private CatalogGrammar grammar = CatalogGrammarPresets.FunctionBlock;   // effective grammar (preset/From/assigned)
-        private CatalogTextEncoding? sourceEncoding;                            // From-carried physical encoding
-        private string? docSummary;
-        private readonly Dictionary<string, string> resourceDocs = new(StringComparer.Ordinal);
         private ProjectElement? decodedBody;
 
         private FunctionBlockDefinitionBuilder(string masterType, string masterVersion, string masterName)
+            : base(CatalogGrammarPresets.FunctionBlock)   // effective grammar starts at the FB preset (From/assign replaces)
         {
             this.masterType = masterType;
             this.masterVersion = masterVersion;
             this.masterName = masterName;
         }
+
+        private protected override FunctionBlockDefinitionBuilder Self => this;
 
         /// <summary>Begins a function block keyed by <paramref name="masterType"/> (e.g. <c>1.1.01</c>),
         /// <paramref name="masterVersion"/> (e.g. <c>e</c>) and <paramref name="masterName"/> (e.g.
@@ -113,11 +111,7 @@ namespace Ihc.Vis.FunctionBlocks
             // an explicit .Grammar(...) replaces the carried grammar; .ExtendGrammar(...) starts from it.
             builder.grammar = existing.Grammar;
             builder.sourceEncoding = existing.SourceEncoding;
-            builder.docSummary = existing.Documentation.Summary;
-            foreach (KeyValuePair<string, string> doc in existing.Documentation.Resources)
-            {
-                builder.resourceDocs[doc.Key] = doc.Value;
-            }
+            builder.SeedDocumentation(existing.Documentation);
             return builder;
         }
 
@@ -128,13 +122,6 @@ namespace Ihc.Vis.FunctionBlocks
         public FunctionBlockDefinitionBuilder DisplayName(string displayName)
         {
             displayNameOverride = displayName;
-            return this;
-        }
-
-        /// <summary>Sets the library category path the block is filed under.</summary>
-        public FunctionBlockDefinitionBuilder CategoryPath(string categoryPath)
-        {
-            this.categoryPath = categoryPath;
             return this;
         }
 
@@ -303,45 +290,21 @@ namespace Ihc.Vis.FunctionBlocks
         }
 
         // ---- documentation (help metadata; programmatic-lookup only, never serialized) ----
-
-        /// <summary>
-        /// Sets the block-level documentation text — the whole help document a GUI shows for the block, mirroring a
-        /// vendor <c>FunctionBlocks\*.md</c> file's "Anvendelse/Beskrivelse" prose. This is <b>metadata for
-        /// programmatic lookup only</b>: it rides on <see cref="FunctionBlockDefinition.Documentation"/> (as
-        /// <see cref="FunctionBlockDocumentation.Summary"/>) but is deliberately kept out of the serialized
-        /// <see cref="FunctionBlockDefinition.Body"/>, so it is never written into a project <c>.vis</c> or a
-        /// function-block description <c>.ifb</c>. Contrast <see cref="Note"/>, which sets the serialized <c>note</c>
-        /// attribute. Returns this for chaining.
-        /// </summary>
-        public FunctionBlockDefinitionBuilder Documentation(string documentation)
-        {
-            docSummary = documentation;
-            return this;
-        }
+        // The block-level Documentation(string) and the name-keyed Documentation(string, string) live on the shared
+        // DefinitionBuilderBase; only the FB-specific by-handle overload stays here.
 
         /// <summary>
         /// Attaches documentation text to one resource — the input/output/setting/variable identified by its
         /// <paramref name="resource"/> handle — the per-pin help a vendor <c>*.md</c> lists under "Indgange"/"Udgange".
-        /// Like the block-level <see cref="Documentation(string)"/> overload this is <b>programmatic-lookup-only</b>
-        /// metadata: it surfaces on <see cref="FunctionBlockDefinition.Documentation"/> (looked up by the resource's
-        /// display name via <see cref="FunctionBlockDocumentation.ForResource"/>) and is never serialized into
-        /// <see cref="FunctionBlockDefinition.Body"/> or an <c>.ifb</c>. Returns this for chaining.
+        /// Like the block-level <see cref="DefinitionBuilderBase{TSelf}.Documentation(string)"/> overload this is
+        /// <b>programmatic-lookup-only</b> metadata: it surfaces on <see cref="FunctionBlockDefinition.Documentation"/>
+        /// (looked up by the resource's display name via <see cref="DefinitionDocumentation.ForResource"/>) and is never
+        /// serialized into <see cref="FunctionBlockDefinition.Body"/> or an <c>.ifb</c>. Returns this for chaining.
         /// </summary>
         public FunctionBlockDefinitionBuilder Documentation(FbResourceHandle resource, string documentation)
         {
             ArgumentNullException.ThrowIfNull(resource);
-            resourceDocs[resource.Name] = documentation;
-            return this;
-        }
-
-        /// <summary>Attaches documentation text to a resource identified by its display <paramref name="resourceName"/>
-        /// (the same key <see cref="FunctionBlockDocumentation.ForResource"/> looks it up by) — the name-keyed peer of
-        /// the by-handle overload, for a caller that has help text keyed by pin name (e.g. parsed from a help document)
-        /// rather than a live handle. Programmatic-lookup-only; never serialized. Returns this for chaining.</summary>
-        public FunctionBlockDefinitionBuilder Documentation(string resourceName, string documentation)
-        {
-            ArgumentNullException.ThrowIfNull(resourceName);
-            resourceDocs[resourceName] = documentation;
+            SetResourceDoc(resource.Name, documentation);
             return this;
         }
 
@@ -358,32 +321,7 @@ namespace Ihc.Vis.FunctionBlocks
             return this;
         }
 
-        /// <summary>
-        /// <b>Replaces</b> the effective grammar wholesale — the one canonical assignment used by generated catalog
-        /// code and for full replacement after <see cref="From"/>. To add or adjust a single declaration while
-        /// keeping the preset/carried grammar intact, use <see cref="ExtendGrammar"/> instead.
-        /// </summary>
-        public FunctionBlockDefinitionBuilder Grammar(CatalogGrammar grammar)
-        {
-            ArgumentNullException.ThrowIfNull(grammar);
-            this.grammar = grammar;
-            return this;
-        }
-
-        /// <summary>
-        /// <b>Extends</b> the effective grammar (the block preset, a <see cref="From"/>-carried grammar, or a prior
-        /// assignment): the callback add-or-replaces whole per-tag declarations, leaving every other declaration,
-        /// default and IDREF classification intact — the near-minimal path for declaring one custom body type
-        /// (e.g. an open-world subtree spliced via <see cref="RawChild"/>).
-        /// </summary>
-        public FunctionBlockDefinitionBuilder ExtendGrammar(Action<CatalogGrammarBuilder> extend)
-        {
-            ArgumentNullException.ThrowIfNull(extend);
-            var builder = new CatalogGrammarBuilder(grammar);
-            extend(builder);
-            grammar = builder.Build();
-            return this;
-        }
+        // Grammar(CatalogGrammar) and ExtendGrammar(Action<CatalogGrammarBuilder>) live on DefinitionBuilderBase.
 
         /// <summary>
         /// Checks the builder's current state against the locally-decidable authoring preconditions (identity present,
@@ -459,20 +397,29 @@ namespace Ihc.Vis.FunctionBlocks
             // attributes), exactly as CatalogReader.Read yields an .ifb's parsed tree: the insert transform
             // canonicalizes against the project on insert, and the oracle component tests canonicalize against the
             // block's own grammar.
-            ProjectElement body = decodedBody is not null ? MaterializeDecoded()
-                : isEmptyTemplate ? MaterializeEmptyTemplate()
-                : MaterializeBody();
-
-            // A catalog-decompiled block reproduces its raw .ifb, which never writes an empty note="" (unlike a
-            // product .def) — it rides the note CDATA "" default. The structural/program builders stamp a default
-            // (often empty) note on containers and program-graph nodes; strip those empty notes so the body matches
-            // the file byte-for-byte (the insert transform re-derives them from the block's DTD when needed).
-            if (!stampResourceDefaults)
+            // Materialize ONCE and memoize: the placeholder-id allocations (5 containers, the program graph, enum
+            // values, the functionblock root) advance the single shared IdAllocator every call, so re-materializing on
+            // a second Build() would drift every allocated id. Matching ProductDefinitionBuilder's allocate-once
+            // idempotence, the id-bearing Body is built on the first call and reused, so Build()→Build() is byte-
+            // identical; the wrapper (Grammar/Documentation/encoding) is still re-read each call.
+            if (builtBody is null)
             {
-                body = DropEmptyDefaultAttrs(body);
+                ProjectElement body = decodedBody is not null ? MaterializeDecoded()
+                    : isEmptyTemplate ? MaterializeEmptyTemplate()
+                    : MaterializeBody();
+
+                // A catalog-decompiled block reproduces its raw .ifb, which never writes an empty note="" (unlike a
+                // product .def) — it rides the note CDATA "" default. The structural/program builders stamp a default
+                // (often empty) note on containers and program-graph nodes; strip those empty notes so the body matches
+                // the file byte-for-byte (the insert transform re-derives them from the block's DTD when needed).
+                if (!stampResourceDefaults)
+                {
+                    body = DropEmptyDefaultAttrs(body);
+                }
+                builtBody = body;
             }
 
-            var definition = new FunctionBlockDefinition(masterType, masterVersion, masterName, ComposedDisplayName, categoryPath, body)
+            var definition = new FunctionBlockDefinition(masterType, masterVersion, masterName, ComposedDisplayName, categoryPath, builtBody)
             {
                 Grammar = grammar,
                 IsEmptyTemplate = isEmptyTemplate,
@@ -542,22 +489,34 @@ namespace Ihc.Vis.FunctionBlocks
                 new[] { ("name", "Program"), ("icon", FbGrammar.ProgramSimpleIcon) },
                 new[] { events, actions });
 
+            // Container names + notes route through the same ContainerName/ContainerNote override lookup the normal
+            // MaterializeBody path uses, so a per-block name/note override is honored uniformly on the empty template
+            // too (previously the name overrides were ignored entirely and only the inputs/outputs notes were read).
             var bodyChildren = new[]
             {
-                FbGrammar.Container(ids, "inputs", FbGrammar.InputsName, FbGrammar.InputsIcon,
+                FbGrammar.Container(ids, "inputs", ContainerName("inputs", FbGrammar.InputsName), FbGrammar.InputsIcon,
                     ContainerNote("inputs", FbGrammar.InputsNoteDefault), NoChildren),
-                FbGrammar.Container(ids, "outputs", FbGrammar.OutputsName, FbGrammar.OutputsIcon,
+                FbGrammar.Container(ids, "outputs", ContainerName("outputs", FbGrammar.OutputsName), FbGrammar.OutputsIcon,
                     ContainerNote("outputs", FbGrammar.OutputsNoteDefault), NoChildren),
-                FbGrammar.Container(ids, "settings", FbGrammar.SettingsName, FbGrammar.SettingsIcon,
-                    FbGrammar.SettingsNote, NoChildren),
-                FbGrammar.Container(ids, "internalsettings", FbGrammar.InternalName, FbGrammar.InternalIcon,
-                    FbGrammar.InternalNote, NoChildren),
-                FbGrammar.Container(ids, "programs", FbGrammar.ProgramsName, FbGrammar.ProgramsIcon,
-                    FbGrammar.ProgramsNote, new[] { programSimple }),
+                FbGrammar.Container(ids, "settings", ContainerName("settings", FbGrammar.SettingsName), FbGrammar.SettingsIcon,
+                    ContainerNote("settings", FbGrammar.SettingsNote), NoChildren),
+                FbGrammar.Container(ids, "internalsettings", ContainerName("internalsettings", FbGrammar.InternalName), FbGrammar.InternalIcon,
+                    ContainerNote("internalsettings", FbGrammar.InternalNote), NoChildren),
+                FbGrammar.Container(ids, "programs", ContainerName("programs", FbGrammar.ProgramsName), FbGrammar.ProgramsIcon,
+                    ContainerNote("programs", FbGrammar.ProgramsNote), new[] { programSimple }),
             };
-            return FbGrammar.Node("functionblock",
+            ProjectElement root = FbGrammar.Node("functionblock",
                 ids.Allocate(TypeCode.RequireForTag("functionblock")),
                 new[] { ("name", ComposedDisplayName), ("icon", emptyIcon) }, bodyChildren);
+            // Honor any authored root attributes (Note/Locked/Attribute) on top of the fixed name+icon scaffold, for
+            // parity with the normal path. The empty template deliberately omits the master_* identity (the vendor
+            // fb.def scaffold carries none), so it does NOT run the identity-stamping ApplyIdentityAndRootAttrs; but a
+            // per-block root attribute is applied (WithAttribute replaces in place / appends), rather than dropped.
+            foreach ((string name, string value) in rootAttrs)
+            {
+                root = root.WithAttribute(name, value);
+            }
+            return root;
         }
 
         // Re-emits a body decoded via From(): the preserved children plus any post-From() authored edits spliced onto
@@ -716,11 +675,6 @@ namespace Ihc.Vis.FunctionBlocks
             rootAttrs.Add((name, value));
             return this;
         }
-
-        private FunctionBlockDocumentation BuildDocumentation() =>
-            docSummary is null && resourceDocs.Count == 0
-                ? FunctionBlockDocumentation.Empty
-                : new FunctionBlockDocumentation(docSummary, resourceDocs.ToImmutableDictionary(StringComparer.Ordinal));
 
     }
 

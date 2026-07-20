@@ -19,7 +19,7 @@ namespace safe_visual_tests;
 /// (the same <see cref="ProjectWorkflow.MoveNodeAsync"/> op), with drop-target highlighting; an illegal target (the
 /// node itself, one of its descendants, or a container that may not hold it) is not highlighted and the drop is
 /// refused with a reason. The legality is the SDK's move contract (self/descendant + container-admissibility), asked
-/// via <see cref="ProjectWorkflow.CanMoveNode"/> — not re-encoded in the view-model.
+/// via <see cref="ProjectWorkflow.CanApply"/> (the MoveNode command's own Evaluate) — not re-encoded in the view-model.
 /// </summary>
 public class DragMoveTests : AvaloniaTestBase
 {

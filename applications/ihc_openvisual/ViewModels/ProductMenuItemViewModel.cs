@@ -30,6 +30,9 @@ public sealed class ProductMenuItemViewModel
     /// <summary>The insert command for a leaf, or null for a category node.</summary>
     public ICommand? Command { get; }
 
+    /// <summary>Whether this is a product leaf (has a product identifier) rather than a category node. Intentional
+    /// test-only seam (D02): the menu templates route on ItemsSource/Command; this predicate is read only by the
+    /// catalog-menu tests, kept as a readable classifier.</summary>
     public bool IsLeaf => ProductIdentifier is not null;
 
     public ObservableCollection<ProductMenuItemViewModel> Children { get; } = new();

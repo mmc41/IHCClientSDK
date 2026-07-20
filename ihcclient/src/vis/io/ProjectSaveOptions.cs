@@ -40,6 +40,6 @@ namespace Ihc.Vis.Io
 
         public override string ToString() =>
             $"ProjectSaveOptions(WriteMetadataVerbatim={WriteMetadataVerbatim}, CreateBackup={CreateBackup}, " +
-            $"ValidateBeforeSave={ValidateBeforeSave})";
+            $"ValidateBeforeSave={ValidateBeforeSave}, VerifyRoundTrip={VerifyRoundTrip})";
     }
 }

@@ -40,7 +40,11 @@ public partial class App : Application
             var window = new MainWindow { DataContext = viewModel };
             dialogs.Owner = window;
             desktop.MainWindow = window;
-            desktop.ShutdownRequested += (_, _) => session.Dispose();
+            desktop.ShutdownRequested += (_, _) =>
+            {
+                viewModel.Dispose();   // detach the VM's session/recent event handlers first
+                session.Dispose();
+            };
 
             // Open the standard empty project (or offer crash recovery) once the window is shown, so any
             // recovery prompt has a visible owner.

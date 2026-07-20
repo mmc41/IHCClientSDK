@@ -63,12 +63,12 @@ namespace Ihc.Vis.FunctionBlocks
         /// <summary>
         /// Human-readable help metadata for this block and its pins — <b>programmatic-lookup only</b>, and deliberately
         /// <b>not</b> part of the serialized <see cref="Body"/>: it is never written into a project <c>.vis</c> or a
-        /// function-block description <c>.ifb</c>. Defaults to <see cref="FunctionBlockDocumentation.Empty"/> (what
+        /// function-block description <c>.ifb</c>. Defaults to <see cref="DefinitionDocumentation.Empty"/> (what
         /// catalog discovery yields, since an <c>.ifb</c> carries no help text). Authored via
-        /// <see cref="FunctionBlockDefinitionBuilder.Documentation(string)"/> and its by-handle overload; see
-        /// <see cref="FunctionBlockDocumentation"/>.
+        /// <see cref="DefinitionBuilderBase{TSelf}.Documentation(string)"/> and the builder's by-handle overload; see
+        /// <see cref="DefinitionDocumentation"/>.
         /// </summary>
-        public FunctionBlockDocumentation Documentation { get; init; } = FunctionBlockDocumentation.Empty;
+        public DefinitionDocumentation Documentation { get; init; } = DefinitionDocumentation.Empty;
 
         /// <summary>A decoded, read-only view of the block's <c>inputs</c> container children — for GUI preview
         /// without walking <see cref="Body"/>. Computed on access; not part of record equality.</summary>

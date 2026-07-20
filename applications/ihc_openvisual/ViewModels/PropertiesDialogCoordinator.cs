@@ -75,8 +75,8 @@ internal sealed class PropertiesDialogCoordinator(
         {
             if (!member.IsSceneMember)
                 continue;
-            IReadOnlyList<string> parts = LinkOppositeParts(member);
-            (string value, string ramp) = SceneMemberValue(member);
+            IReadOnlyList<string> parts = TreeLabelFormatter.LinkOppositeParts(session.Current!, member);
+            (string value, string ramp) = TreeLabelFormatter.SceneMemberValue(member);
             rows.Add(new SceneContainerRow(
                 SceneName: parts.Count > 2 ? parts[2] : string.Empty,
                 FunctionBlock: parts.Count > 1 ? parts[1] : string.Empty,
@@ -131,51 +131,6 @@ internal sealed class PropertiesDialogCoordinator(
         var states = def.ChildrenOrEmpty().Where(c => c.IsEnumValue)
             .Select(c => project.View(c).Name ?? string.Empty).ToList();
         return (project.View(def).Name ?? string.Empty, states);
-    }
-
-    // A scene membership's stored value and, for a dimmer, its ramp time — the two columns the scene-container
-    // dialog shows separately.
-    private static (string Value, string RampTime) SceneMemberValue(ProjectElement member)
-    {
-        if (!SceneValue.TryParse(member, out SceneValue sv))
-            return (string.Empty, string.Empty);
-        return sv.Kind switch
-        {
-            SceneValueKind.Relay => (sv.On ? "ON" : "OFF", string.Empty),
-            SceneValueKind.Dimmer => ($"{sv.LevelPercent}%", $"{sv.RampTime.TotalSeconds:0.#}s"),
-            SceneValueKind.Shutter => (sv.ShutterUp ? "up" : "down", string.Empty),
-            _ => (string.Empty, string.Empty),
-        };
-    }
-
-    // A product's tree label carries its placement descriptor "name (position) " (F-003) — reproduced so the
-    // scene-container dialog names a product exactly as the Installation pane does.
-    private static string ProductLabel(string name, string? position) =>
-        string.IsNullOrEmpty(position) ? name : $"{name} ({position}) ";
-
-    // The opposite end's path parts, outermost first: [locality, product-or-block, pin]. Empty when unresolvable.
-    private IReadOnlyList<string> LinkOppositeParts(ProjectElement linkRow)
-    {
-        if (session.Current is not { } project
-            || !ElementId.TryParse(project.View(linkRow).Effective("link"), out ElementId partnerId)
-            || project.FindParent(partnerId) is not { } oppositePin)
-        {
-            return Array.Empty<string>();
-        }
-        var parts = new List<string>();
-        ProjectElement? current = oppositePin;
-        bool leaf = true;
-        while (current is not null)
-        {
-            bool significant = leaf || current.IsLocalityGroup || current.Kind is ElementKind.FunctionBlock || ProductClassifier.IsProduct(current.Tag);
-            if (significant && View(current).Name is { Length: > 0 } partName)
-                parts.Insert(0, ProductClassifier.IsProduct(current.Tag)
-                    ? ProductLabel(partName, View(current).Position)
-                    : partName);
-            current = current.Id is { } cid ? project.FindParent(cid) : null;
-            leaf = false;
-        }
-        return parts;
     }
 
     private async Task OpenModemAsync(ElementId modemId)

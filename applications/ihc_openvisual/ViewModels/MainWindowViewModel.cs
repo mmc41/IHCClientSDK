@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -29,24 +30,24 @@ namespace ihc_openvisual.ViewModels;
 /// <see cref="ProjectWorkflow"/> (all project logic) and <see cref="IDialogService"/>/<see cref="IThemeService"/>
 /// (all Avalonia); free of Avalonia types so it is testable headlessly.
 /// </summary>
-public partial class MainWindowViewModel : ViewModelBase
+public partial class MainWindowViewModel : ViewModelBase, IDisposable
 {
-    private const string LocalityIcon = "/Assets/locality.svg";
-
     private readonly ProjectWorkflow _session;
 
-    // The keyed reconcilers for the two configuration-mode panes (W3-6): a committed edit updates the forest in
-    // place from the session's change set, preserving node identity (Avalonia keeps containers, selection and
-    // expansion) instead of clearing and rebuilding. A non-incremental transition (load/undo/redo/save/mode switch,
-    // or a reconcile that falls back) rebuilds through the same reconciler, which re-seeds it.
-    private readonly ProjectTreeReconciler _installationReconciler =
-        new(p => new ProjectTreeProjector(p).BuildLocalitiesRoot(functions: false));
-    private readonly ProjectTreeReconciler _functionsReconciler =
-        new(p => new ProjectTreeProjector(p).BuildLocalitiesRoot(functions: true));
+    // Stored so Dispose can detach them: an inline lambda cannot be unsubscribed, which would leak this view-model
+    // through the longer-lived session / recent-store event sources (review Low).
+    private readonly EventHandler _onSessionStateChanged;
+    private readonly EventHandler _onSessionCatalogChanged;
+    private readonly EventHandler _onRecentChanged;
+
+    // The two-pane tree-sync engine (W3-6 / T031): owns the keyed reconcilers and drives the per-edit in-place
+    // reconcile-or-rebuild + programming-mode pane build. Selection capture/restore stays here (view-state).
+    private readonly TreePaneCoordinator _treePanes;
 
     // The per-node-type Properties dialog flows, extracted from this view-model (W3-8). It applies results through
     // this view-model's single outcome→status/dialog rule (ApplyAsync).
     private readonly PropertiesDialogCoordinator _properties;
+    private readonly ProgramAuthoringCoordinator _programAuthoring;
 
     /// <summary>The tree drag-and-drop dispatcher (W3-9): drop legality/route, the drop mutation, and the drop-target
     /// highlight. The code-behind's DragOver/Drop handlers and the headless drag tests drive this.</summary>
@@ -145,6 +146,13 @@ public partial class MainWindowViewModel : ViewModelBase
             IsInstallationPaneActive = true;
             SelectedNode = value;
         }
+        else if (IsInstallationPaneActive)
+        {
+            // The active pane's selection was cleared (delete / undo / project-switch reconciliation): drop the
+            // shared selection too so SelectedNode never dangles on a detached node and the mutation gates disable
+            // (review C4). The inactive pane clearing its own stale selection must not touch SelectedNode.
+            SelectedNode = null;
+        }
     }
 
     partial void OnSelectedFunctionsNodeChanged(TreeNodeViewModel? value)
@@ -153,6 +161,10 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             IsInstallationPaneActive = false;
             SelectedNode = value;
+        }
+        else if (!IsInstallationPaneActive)
+        {
+            SelectedNode = null;   // active-pane clear → drop the shared selection (review C4)
         }
     }
 
@@ -204,7 +216,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnSelectedNodeChanged(TreeNodeViewModel? value)
     {
-        RebuildProgramMenus(value);
+        _programAuthoring.Rebuild(value);
         VariablePaletteMenu.Clear();
         if (value is not { IsBlockSection: true, ElementId: { } sectionId, SectionTag: { } sectionTag })
             return;
@@ -228,111 +240,29 @@ public partial class MainWindowViewModel : ViewModelBase
                     await ApplyAsync(command, $"{label} was inserted under {sectionLabel}");
             });
 
-    /// <summary>The events a selected variable can raise, offered on a program's Events node (US-028); rebuilt when
-    /// selection or the armed program variable changes.</summary>
-    public ObservableCollection<ProductMenuItemViewModel> ProgramEventMenu { get; } = new();
+    // T030: the program-authoring menus + engine (US-028/029/031/032) live in ProgramAuthoringCoordinator. The
+    // view-model re-exposes the five XAML-bound menu collections and keeps the thin [RelayCommand] entry points,
+    // delegating their bodies to the coordinator.
+
+    /// <summary>The events a selected variable can raise, offered on a program's Events node (US-028).</summary>
+    public ObservableCollection<ProductMenuItemViewModel> ProgramEventMenu => _programAuthoring.ProgramEventMenu;
 
     /// <summary>The commands a selected variable can be driven by, offered on a program's Commands node (US-028).</summary>
-    public ObservableCollection<ProductMenuItemViewModel> ProgramCommandMenu { get; } = new();
+    public ObservableCollection<ProductMenuItemViewModel> ProgramCommandMenu => _programAuthoring.ProgramCommandMenu;
 
-    // The GUI-side presentation verbs for each program method (US-028/029), positionally aligned with the SDK
-    // ProgramMethodCatalog per-category lists (the SDK owns the tokens/names/notes/semantics; the app owns only the
-    // menu verb and which methods to surface). Same order as Events/Commands/Conditions below.
-    private static readonly string[] EventVerbs = { "changes to ON", "changes state", "is assigned" };
-    private static readonly string[] CommandVerbs = { "set to ON", "set to OFF", "toggled" };
-    private static readonly string[] ConditionVerbs = { "is ON", "is OFF", "is NOT ON" };
+    /// <summary>The conditions a selected variable can be tested by on a sub-program's Conditions node (US-029).</summary>
+    public ObservableCollection<ProductMenuItemViewModel> ProgramConditionMenu => _programAuthoring.ProgramConditionMenu;
 
-    /// <summary>The variable armed by <i>Use in program</i> to become the operand of the next event/command (US-028) —
-    /// the testable substitute for dragging a variable onto Events/Commands.</summary>
-    [ObservableProperty] private TreeNodeViewModel? _pendingProgramVariable;
+    /// <summary>The "Case (&lt;variable&gt;)" option offered on a Commands node for an eligible switch variable (US-031).</summary>
+    public ObservableCollection<ProductMenuItemViewModel> ProgramCaseMenu => _programAuthoring.ProgramCaseMenu;
 
-    partial void OnPendingProgramVariableChanged(TreeNodeViewModel? value) => RebuildProgramMenus(SelectedNode);
+    /// <summary>The arithmetic operations offered on a Commands node when a numeric target register is armed (US-032).</summary>
+    public ObservableCollection<ProductMenuItemViewModel> ProgramArithmeticMenu => _programAuthoring.ProgramArithmeticMenu;
 
     /// <summary>Arms a variable (a block input/output/setting/internal, US-028) as the operand for the next event or
     /// command; the Events/Commands node then offers that variable's triggers and commands.</summary>
     [RelayCommand]
-    private void UseInProgram(TreeNodeViewModel? node)
-    {
-        if (node is { IsPin: true })
-        {
-            PendingProgramVariable = node;
-            StatusText = $"Using {node.DisplayName} — pick 'Add event' or 'Add command' on the program.";
-        }
-    }
-
-    /// <summary>Arms <paramref name="variable"/> and surfaces the method popup on <paramref name="container"/> — the
-    /// drag gesture behind US-028. It selects the drop-target container so the two-step's shared menu-builder
-    /// (<see cref="RebuildProgramMenus"/>) populates that container's Add-event/Add-command menu for the armed variable;
-    /// the user then chooses a method, which builds the event/command exactly as the two-step <i>Use in program</i>
-    /// does. A-27's locked-block gate is applied upstream in <see cref="CanDropOn"/>.</summary>
-    private void UseVariableInProgram(TreeNodeViewModel variable, TreeNodeViewModel container)
-    {
-        PendingProgramVariable = variable;
-        SelectNode(container);
-        StatusText = $"Using {variable.DisplayName} — choose a method on {container.DisplayName}.";
-    }
-
-    private void RebuildProgramMenus(TreeNodeViewModel? value)
-    {
-        ProgramEventMenu.Clear();
-        ProgramCommandMenu.Clear();
-        ProgramConditionMenu.Clear();
-        ProgramCaseMenu.Clear();
-        ProgramArithmeticMenu.Clear();
-        if (PendingProgramVariable is not { ElementId: { } varId, DisplayName: { } varName })
-            return;
-        if (value is { IsEventsContainer: true, ElementId: { } eventsId })
-        {
-            for (int i = 0; i < ProgramMethodCatalog.Events.Length; i++)
-            {
-                ProgramMethod m = ProgramMethodCatalog.Events[i];
-                ProgramEventMenu.Add(new ProductMenuItemViewModel($"{varName} {EventVerbs[i]}", m.Token,
-                    new AsyncRelayCommand(() => AddProgramEventAsync(eventsId, varId, m.Token, m.NameTemplate, m.Note))));
-            }
-        }
-        if (value is { IsCommandsContainer: true, ElementId: { } actionsId })
-        {
-            for (int i = 0; i < ProgramMethodCatalog.Commands.Length; i++)
-            {
-                ProgramMethod m = ProgramMethodCatalog.Commands[i];
-                ProgramCommandMenu.Add(new ProductMenuItemViewModel($"{varName} {CommandVerbs[i]}", m.Token,
-                    new AsyncRelayCommand(() => AddProgramCommandAsync(actionsId, varId, m.Token, m.NameTemplate, m.Note))));
-            }
-            // A case can be built here when the armed variable is an eligible switch type (US-031).
-            if (_session.Current?.FindById(varId)?.Tag is { } varTag && ProjectWorkflow.EligibleCaseVariableTags.Contains(varTag))
-                ProgramCaseMenu.Add(new ProductMenuItemViewModel($"Case ({varName})", "case",
-                    new AsyncRelayCommand(() => AddCaseAsync(actionsId, varId))));
-            // Arithmetic can be built here when the armed variable is a numeric target register (US-032).
-            if (_session.Current?.FindById(varId)?.Tag is { } t && NumericTags.Contains(t))
-            {
-                foreach (ProgramMethod op in ProgramMethodCatalog.Arithmetic)
-                {
-                    var opNode = new ProductMenuItemViewModel($"{varName} {op.OperatorSymbol}= …");   // category
-                    foreach ((string opName, ElementId opId) in NumericOperandsInBlock())
-                        opNode.Children.Add(new ProductMenuItemViewModel(opName, "arith",
-                            new AsyncRelayCommand(() => AddArithmeticAsync(actionsId, varId, op.Token, opId, op.NameTemplate))));
-                    if (opNode.Children.Count > 0)
-                        ProgramArithmeticMenu.Add(opNode);
-                }
-            }
-        }
-        if (value is { IsConditionsContainer: true, ElementId: { } conditionsId })
-        {
-            for (int i = 0; i < ProgramMethodCatalog.Conditions.Length; i++)
-            {
-                ProgramMethod m = ProgramMethodCatalog.Conditions[i];
-                ProgramConditionMenu.Add(new ProductMenuItemViewModel($"{varName} {ConditionVerbs[i]}", m.Token,
-                    new AsyncRelayCommand(() => AddConditionAsync(conditionsId, varId, m.Token, m.NameTemplate, m.Note))));
-            }
-        }
-    }
-
-    private Task AddProgramEventAsync(ElementId eventsId, ElementId variableId, string method, string name, string note) =>
-        RunAsync(nameof(AddProgramEventAsync), async () =>
-        {
-            if (_session.BuildAddProgramEvent(eventsId, variableId, method, name, note) is { } command)
-                await ApplyAsync(command, "Event added to the program.");
-        });
+    private void UseInProgram(TreeNodeViewModel? node) => _programAuthoring.Arm(node);
 
     /// <summary>The Edit ▸ Undo menu header, naming the action it would reverse (E14): e.g. "Undo Insert locality",
     /// or just "Undo" when the history is empty. The leading underscore keeps the Alt+U access key.</summary>
@@ -554,27 +484,6 @@ public partial class MainWindowViewModel : ViewModelBase
                 node.IsValueSaved ? "Output value no longer saved on power loss." : "Output value saved on power loss.");
     });
 
-    private Task AddProgramCommandAsync(ElementId actionsId, ElementId variableId, string method, string name, string note) =>
-        RunAsync(nameof(AddProgramCommandAsync), async () =>
-        {
-            await ApplyAsync(new AddProgramCommand(actionsId, variableId, method, name, note), "Command added to the program.");
-        });
-
-    /// <summary>The conditions a selected variable can be tested by, offered on a sub-program's Conditions node
-    /// (US-029); includes the NOT variant. Rebuilt with the other program menus.</summary>
-    public ObservableCollection<ProductMenuItemViewModel> ProgramConditionMenu { get; } = new();
-
-    /// <summary>The "Case (&lt;variable&gt;)" option offered on a Commands node when an eligible switch variable is
-    /// armed (US-031). Rebuilt with the other program menus.</summary>
-    public ObservableCollection<ProductMenuItemViewModel> ProgramCaseMenu { get; } = new();
-
-    /// <summary>The arithmetic operations offered on a Commands node when a numeric target register is armed (US-032):
-    /// a per-operator submenu of the block's numeric operands. One operation per command line.</summary>
-    public ObservableCollection<ProductMenuItemViewModel> ProgramArithmeticMenu { get; } = new();
-
-    // Numeric variable types that can be an arithmetic target register or operand (US-032).
-    private static readonly string[] NumericTags = { "resource_floating_point", "resource_integer", "resource_counter" };
-
     /// <summary>Inserts a conditional sub-program (Conditions + true/false command branches) into a Commands
     /// group (US-029).</summary>
     [RelayCommand]
@@ -606,41 +515,6 @@ public partial class MainWindowViewModel : ViewModelBase
             await ApplyAsync(new SetConditionsLogic(id, or),
                 or ? "Conditions combined with OR (>=1)." : "Conditions combined with AND (&).");
     });
-
-    private Task AddConditionAsync(ElementId conditionsId, ElementId variableId, string method, string name, string note) =>
-        RunAsync(nameof(AddConditionAsync), async () =>
-        {
-            await ApplyAsync(new AddCondition(conditionsId, variableId, method, name, note), "Condition added.");
-        });
-
-    private Task AddCaseAsync(ElementId commandsId, ElementId switchVariableId) =>
-        RunAsync(nameof(AddCaseAsync), async () =>
-        {
-            await ApplyAsync(new AddCase(commandsId, switchVariableId), "Case structure inserted.");
-        });
-
-    // The numeric variables (decimal/integer/counter) in the programming block — the operand candidates for an
-    // arithmetic command line (US-032).
-    private IEnumerable<(string Name, ElementId Id)> NumericOperandsInBlock()
-    {
-        if (_session.Current is not { } project || _programmingBlockId is not { } blockId
-            || project.FindById(blockId) is not { } block)
-            yield break;
-        foreach ((string container, string _) in FunctionBlockSections.All)
-        {
-            if (block.FindChild(container) is not { } section)
-                continue;
-            foreach (ProjectElement pin in section.ChildrenOrEmpty())
-                if (NumericTags.Contains(pin.Tag) && pin.Id is { } pid)
-                    yield return (NameOr(pin, pin.Tag), pid);
-        }
-    }
-
-    private Task AddArithmeticAsync(ElementId commandsId, ElementId targetId, string method, ElementId operandId, string name) =>
-        RunAsync(nameof(AddArithmeticAsync), async () =>
-        {
-            await ApplyAsync(new AddArithmeticCommand(commandsId, targetId, method, operandId, name), "Arithmetic command added.");
-        });
 
     /// <summary>Adds a case value branch to the selected Case node (US-031): prompts for the criterion value, then
     /// inserts a command group tagged with it (filled by the normal Add-command gesture).</summary>
@@ -676,21 +550,39 @@ public partial class MainWindowViewModel : ViewModelBase
         CurrentTheme = theme.Current;
         _properties = new PropertiesDialogCoordinator(
             _session, _dialogs, (command, status) => ApplyAsync(command, status), status => StatusText = status);
+        _programAuthoring = new ProgramAuthoringCoordinator(
+            _session, RunAsync, (command, status) => ApplyAsync(command, status), SelectNode,
+            status => StatusText = status, () => SelectedNode, () => _programmingBlockId, NameOr);
+        _treePanes = new TreePaneCoordinator(
+            InstallationNodes, FunctionNodes, () => _session.Current, () => _session.LastChange, NameOr,
+            (installHeader, functionsHeader) => { InstallationPaneHeader = installHeader; FunctionsPaneHeader = functionsHeader; });
         DragDrop = new TreeDragDropController(
             _session,
             id => FindNode(InstallationNodes, id) ?? FindNode(FunctionNodes, id),
             () => IsProgrammingBlockLocked,
             (command, status) => ApplyAsync(command, status),
-            UseVariableInProgram,
+            _programAuthoring.ArmAndSelect,
             status => StatusText = status,
             RunAsync);
 
-        _session.StateChanged += (_, _) => Refresh();
-        _session.CatalogChanged += (_, _) => RebuildCatalogMenus();
-        _recent.Changed += (_, _) => RefreshRecent();
+        _onSessionStateChanged = (_, _) => Refresh();
+        _onSessionCatalogChanged = (_, _) => RebuildCatalogMenus();
+        _onRecentChanged = (_, _) => RefreshRecent();
+        _session.StateChanged += _onSessionStateChanged;
+        _session.CatalogChanged += _onSessionCatalogChanged;
+        _recent.Changed += _onRecentChanged;
         BuildProductMenu();
         RefreshRecent();
         Refresh();
+    }
+
+    /// <summary>Detaches the session/recent-store event handlers so this view-model does not leak through those
+    /// longer-lived sources (review Low). Called on app shutdown; the session itself is disposed separately.</summary>
+    public void Dispose()
+    {
+        _session.StateChanged -= _onSessionStateChanged;
+        _session.CatalogChanged -= _onSessionCatalogChanged;
+        _recent.Changed -= _onRecentChanged;
     }
 
     // Rebuilds the product/function-block insertion menus from the current catalog (US-059/US-060: after an import
@@ -1313,8 +1205,6 @@ public partial class MainWindowViewModel : ViewModelBase
     // The identity of the view last built into the panes. An in-place rebuild (every edit fires StateChanged →
     // Refresh) keeps the same key, so the panes' expand/collapse state is carried across (US-070); a deliberate
     // MODE switch (config ⇄ a block's programming view) changes the key, so that view opens fresh at its defaults.
-    private string? _lastBuiltViewKey;
-
     private void Refresh()
     {
         Title = $"{_session.DocumentName} - {Constants.AppName}";
@@ -1323,35 +1213,34 @@ public partial class MainWindowViewModel : ViewModelBase
         if (IsProgrammingMode && _programmingBlockId is { } blockId
             && _session.Current?.FindById(blockId) is { } block && block.Kind == ElementKind.FunctionBlock)
         {
-            BuildProgrammingTrees(block, preserveExpansion: SameViewAsLastBuild("prog:" + blockId.ToToken()));
+            // BuildProgrammingTrees clears and rebuilds both panes (fresh node instances), so — exactly like the
+            // config-mode fallback below — capture the selection by id and restore it after, else a program edit
+            // (every edit fires StateChanged → Refresh) drops the selected container to an orphan (review C5).
+            ElementId? selInstallation = SelectedInstallationNode?.ElementId;
+            ElementId? selFunctions = SelectedFunctionsNode?.ElementId;
+            bool installationActive = IsInstallationPaneActive;
+            _treePanes.BuildProgrammingTrees(block, preserveExpansion: _treePanes.SameViewAsLastBuild("prog:" + blockId.ToToken()));
+            RestoreSelection(selInstallation, selFunctions, installationActive);
             return;
         }
         IsProgrammingMode = false;   // the block is gone (or never set) → configuration mode
         _programmingBlockId = null;
         InstallationPaneHeader = "Installation";
         FunctionsPaneHeader = "Functions";
-        bool sameView = SameViewAsLastBuild("config");
+        bool sameView = _treePanes.SameViewAsLastBuild("config");
         // Reconcile in place when this is an incremental edit on the SAME view whose panes still hold the
         // reconcilers' roots; otherwise (load/undo/redo/mode switch/first build) rebuild through the reconciler,
         // which re-seeds it — with expansion carried across as before (W3-6 keeps the fallback permanent).
-        if (sameView && _session.Current is { } current && _session.LastChange is { } changes
-            && PaneHoldsRoot(InstallationNodes, _installationReconciler)
-            && PaneHoldsRoot(FunctionNodes, _functionsReconciler))
-        {
-            ReconcilePane(InstallationNodes, _installationReconciler, current, changes);
-            ReconcilePane(FunctionNodes, _functionsReconciler, current, changes);
-        }
-        else
+        if (!(sameView && _treePanes.TryReconcileConfig()))
         {
             // The full-rebuild fallback tears down the node instances, so the reconcile path's by-identity survival
             // of the installer's place is lost here — capture selection (which Avalonia's focus + scroll-into-view
             // follow) by id before the rebuild and restore it after, so undo/redo/load land the user back where they
-            // were (E14 place restore). Expansion is carried inside RebuildPaneFallback.
+            // were (E14 place restore). Expansion is carried inside the coordinator's fallback.
             ElementId? selInstallation = SelectedInstallationNode?.ElementId;
             ElementId? selFunctions = SelectedFunctionsNode?.ElementId;
             bool installationActive = IsInstallationPaneActive;
-            RebuildPaneFallback(InstallationNodes, _installationReconciler, preserve: sameView);
-            RebuildPaneFallback(FunctionNodes, _functionsReconciler, preserve: sameView);
+            _treePanes.RebuildConfig(preserve: sameView);
             RestoreSelection(selInstallation, selFunctions, installationActive);
         }
     }
@@ -1377,112 +1266,6 @@ public partial class MainWindowViewModel : ViewModelBase
         IsInstallationPaneActive = installationActive;
     }
 
-    // Whether the pane currently holds exactly the reconciler's root instance — the precondition for an in-place
-    // reconcile (a fallback rebuild or a mode switch leaves them out of sync until the next re-seed).
-    private static bool PaneHoldsRoot(ObservableCollection<TreeNodeViewModel> pane, ProjectTreeReconciler reconciler) =>
-        reconciler.Root is { } root && pane.Count == 1 && ReferenceEquals(pane[0], root);
-
-    // In-place reconcile: the root instance is preserved, so selection/expansion survive by identity. If the
-    // reconciler had to fall back internally (a new root), re-point the pane at it.
-    private static void ReconcilePane(ObservableCollection<TreeNodeViewModel> pane, ProjectTreeReconciler reconciler,
-        Project current, ProjectChangeSet changes)
-    {
-        TreeNodeViewModel root = reconciler.Reconcile(current, changes);
-        if (pane.Count != 1 || !ReferenceEquals(pane[0], root))
-        {
-            pane.Clear();
-            pane.Add(root);
-        }
-    }
-
-    // Full-rebuild fallback (US-070): rebuild the pane through the reconciler (which re-seeds it with the new root)
-    // and carry each surviving node's expand/collapse state across (via the shared RebuildPreservingExpansion), unless
-    // this is a deliberate mode switch (preserve=false), where the fresh defaults ARE the wanted state.
-    private void RebuildPaneFallback(ObservableCollection<TreeNodeViewModel> pane, ProjectTreeReconciler reconciler,
-        bool preserve) =>
-        RebuildPreservingExpansion(pane, preserve, () =>
-        {
-            TreeNodeViewModel root = _session.Current is { } project
-                ? reconciler.Rebuild(project)
-                : new TreeNodeViewModel("Localities", LocalityIcon, isExpanded: true) { Kind = TreeNodeKind.LocalitiesRoot };
-            pane.Clear();
-            pane.Add(root);
-        });
-
-    // Records the view about to be built and reports whether it is the SAME as the last build — i.e. whether this
-    // is an in-place refresh whose expansion should be carried across, rather than a mode switch that opens fresh.
-    private bool SameViewAsLastBuild(string key)
-    {
-        bool same = _lastBuiltViewKey == key;
-        _lastBuiltViewKey = key;
-        return same;
-    }
-
-    // Carries each surviving node's expand/collapse state across a full pane rebuild (US-070): every edit clears and
-    // repopulates the pane, so without this the fresh nodes snap back to their build-time defaults and the whole tree
-    // collapses on every change. Snapshot is taken BEFORE <paramref name="populate"/> clears the pane, and restored
-    // after; skipped (preserve=false) on a mode switch, where the fresh defaults ARE the wanted state.
-    private static void RebuildPreservingExpansion(ObservableCollection<TreeNodeViewModel> target, bool preserve, Action populate)
-    {
-        Dictionary<ElementId, bool>? previous = preserve ? SnapshotExpansion(target) : null;
-        populate();
-        if (previous is not null)
-            RestoreExpansion(target, previous);
-    }
-
-    private static Dictionary<ElementId, bool> SnapshotExpansion(IEnumerable<TreeNodeViewModel> nodes)
-    {
-        var map = new Dictionary<ElementId, bool>();
-        CollectExpansion(nodes, map);
-        return map;
-    }
-
-    // Records the expand/collapse state of every node that CURRENTLY HAS CHILDREN, keyed by element id. The
-    // "has children" gate is what lets a node revealing its FIRST child (an empty locality gaining a product,
-    // US-006) keep its open-by-default state rather than inherit a stale collapsed one, while a node that was
-    // already a parent carries the installer's expansion across the rebuild (US-070).
-    private static void CollectExpansion(IEnumerable<TreeNodeViewModel> nodes, Dictionary<ElementId, bool> into)
-    {
-        foreach (TreeNodeViewModel node in nodes)
-        {
-            if (node.ElementId is { } id && node.Children.Count > 0)
-                into[id] = node.IsExpanded;
-            CollectExpansion(node.Children, into);
-        }
-    }
-
-    private static void RestoreExpansion(IEnumerable<TreeNodeViewModel> nodes, IReadOnlyDictionary<ElementId, bool> previous)
-    {
-        foreach (TreeNodeViewModel node in nodes)
-        {
-            if (node.ElementId is { } id && previous.TryGetValue(id, out bool wasExpanded))
-                node.IsExpanded = wasExpanded;
-            RestoreExpansion(node.Children, previous);
-        }
-    }
-
-    // Programming mode (US-026): the left pane shows the block's variable sections, the right pane its program
-    // subtree (Programs > Program > { Events, Commands }); both headers carry the block's name.
-    private void BuildProgrammingTrees(ProjectElement block, bool preserveExpansion)
-    {
-        string name = NameOr(block, "block");
-        InstallationPaneHeader = name;
-        FunctionsPaneHeader = name;
-
-        RebuildPreservingExpansion(InstallationNodes, preserveExpansion, () =>
-        {
-            InstallationNodes.Clear();
-            // block → Input/Output/Settings/Internal variables (row projection extracted to ProjectTreeProjector, W3-1)
-            InstallationNodes.Add(new ProjectTreeProjector(_session.Current!).BuildFunctionBlockNode(block, name, programmingMode: true));
-        });
-        RebuildPreservingExpansion(FunctionNodes, preserveExpansion, () =>
-        {
-            FunctionNodes.Clear();
-            // block → Programs → Program → Events/Commands (row projection extracted to ProjectTreeProjector, W3-1)
-            FunctionNodes.Add(new ProjectTreeProjector(_session.Current!).BuildBlockProgramsNode(block, name));
-        });
-    }
-
     // fablerefac W1-6: read element attributes through the SDK read surface (project.View) instead of raw
     // GetAttribute. The projected element always belongs to the open project, so the schema context is _session.Current.
     private ElementView View(ProjectElement element) => _session.Current!.View(element);
@@ -1502,7 +1285,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private string BuildSettingsText()
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"Application: {Constants.AppName} {VersionInfo.GetAppVersionStr()}");
+        sb.AppendLine($"Application: {Constants.AppName} {Ihc.Bootstrap.AppTelemetryBootstrap.GetAppVersionStr()}");
         sb.AppendLine($"SDK: {Ihc.VersionInfo.GetSdkVersionStr()}");
         sb.AppendLine();
         if (_config is null)

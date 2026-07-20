@@ -54,8 +54,12 @@ namespace Ihc.Vis.Validation
                 }
             }
 
-            ValidateLinkBijection(elements, findings);
-            ValidateSceneBijection(elements, findings);
+            // Follow-links must always be wired (a half with no partner is corruption); scene rows may be authored
+            // unwired (link=NullToken), so those are skipped rather than flagged.
+            ValidateReciprocity(elements, ReciprocalTags.FollowLinkHalfTags, "link-bijection", "half",
+                allowUnwired: false, findings);
+            ValidateReciprocity(elements, ReciprocalTags.SceneHalfTags, "scene-bijection", "scene row",
+                allowUnwired: true, findings);
             ValidateDatalineAddressing(elements, findings);
             ValidateEnumConsistency(elements, idToElement, findings);
             ValidateRoot(project, maxCounter, findings);
@@ -172,10 +176,11 @@ namespace Ihc.Vis.Validation
 
         // ----- function-block shape (spec ch. 06 §6.3) -----
 
+        // The five containers a function block must hold, in fixed order: the four variable sections from the
+        // shared FunctionBlockSections source of truth, followed by the programs container. Derived — not an
+        // independent literal — so it can never silently drift from FunctionBlockSections.All.
         private static readonly string[] FunctionBlockContainers =
-        {
-            "inputs", "outputs", "settings", "internalsettings", "programs",
-        };
+            FunctionBlockSections.All.Select(s => s.Container).Append("programs").ToArray();
 
         private static void ValidateFunctionBlockShape(ProjectElement functionBlock, FindingCollector findings)
         {
@@ -339,46 +344,18 @@ namespace Ihc.Vis.Validation
 
         // ----- reciprocal bijections (spec ch. 06 §6.4, ch. 08) -----
 
-        private static void ValidateLinkBijection(IReadOnlyList<ProjectElement> elements, FindingCollector findings)
+        // The single reciprocal-pair check for both the follow-link halves and the scene rows: every wired half must
+        // point at a live partner of the COMPLEMENTARY kind that points back at it. Merging the two once-separate
+        // checks closes the scene gap — the scene variant never verified the partner kind, so a scene member wired to
+        // another member (instead of its scene_link) slipped through. <paramref name="allowUnwired"/> keeps the
+        // scene-only leniency (a NullToken link is a legitimate authored state; a follow-link half is never unwired).
+        private static void ValidateReciprocity(IReadOnlyList<ProjectElement> elements, IReadOnlySet<string> halfTags,
+            string ruleId, string noun, bool allowUnwired, FindingCollector findings)
         {
             var halves = new Dictionary<string, ProjectElement>(StringComparer.Ordinal);
             foreach (ProjectElement element in elements)
             {
-                if (ReciprocalTags.FollowLinkHalfTags.Contains(element.Tag) && element.GetAttribute("id") is { } id)
-                {
-                    halves[id] = element;
-                }
-            }
-
-            foreach (ProjectElement half in halves.Values)
-            {
-                string? partnerId = half.GetAttribute("link");
-                if (partnerId is null || !halves.TryGetValue(partnerId, out ProjectElement? partner))
-                {
-                    findings.Error("link-bijection", half,
-                        $"{half.Tag} '{half.GetAttribute("id")}' links to missing half '{partnerId}'");
-                    continue;
-                }
-                string expectedTag = half.Tag == "link_from_resource" ? "link_to_resource" : "link_from_resource";
-                if (partner.Tag != expectedTag)
-                {
-                    findings.Error("link-bijection", half,
-                        $"{half.Tag} '{half.GetAttribute("id")}' partner is a {partner.Tag}, expected {expectedTag}");
-                }
-                else if (partner.GetAttribute("link") != half.GetAttribute("id"))
-                {
-                    findings.Error("link-bijection", half,
-                        $"{half.Tag} '{half.GetAttribute("id")}' is not reciprocally linked");
-                }
-            }
-        }
-
-        private static void ValidateSceneBijection(IReadOnlyList<ProjectElement> elements, FindingCollector findings)
-        {
-            var halves = new Dictionary<string, ProjectElement>(StringComparer.Ordinal);
-            foreach (ProjectElement element in elements)
-            {
-                if (ReciprocalTags.SceneHalfTags.Contains(element.Tag) && element.GetAttribute("id") is { } id)
+                if (halfTags.Contains(element.Tag) && element.GetAttribute("id") is { } id)
                 {
                     halves[id] = element;
                 }
@@ -389,19 +366,55 @@ namespace Ihc.Vis.Validation
                 string? partnerId = half.GetAttribute("link");
                 if (partnerId is null || partnerId == ElementId.NullToken)
                 {
-                    continue;   // an unwired scene row is a legitimate authored state
+                    if (allowUnwired)
+                    {
+                        continue;   // an unwired scene row is a legitimate authored state
+                    }
+                    findings.Error(ruleId, half,
+                        $"{noun} {half.Tag} '{half.GetAttribute("id")}' links to missing {noun} '{partnerId}'");
+                    continue;
                 }
                 if (!halves.TryGetValue(partnerId, out ProjectElement? partner))
                 {
-                    findings.Error("scene-bijection", half,
-                        $"scene row {half.Tag} '{half.GetAttribute("id")}' links to missing scene row '{partnerId}'");
+                    findings.Error(ruleId, half,
+                        $"{noun} {half.Tag} '{half.GetAttribute("id")}' links to missing {noun} '{partnerId}'");
+                    continue;
+                }
+                IReadOnlySet<string> expected = ReciprocalComplements[half.Tag];
+                if (!expected.Contains(partner.Tag))
+                {
+                    findings.Error(ruleId, half,
+                        $"{noun} {half.Tag} '{half.GetAttribute("id")}' partner is a {partner.Tag}, "
+                        + $"expected {string.Join(" or ", expected)}");
                 }
                 else if (partner.GetAttribute("link") != half.GetAttribute("id"))
                 {
-                    findings.Error("scene-bijection", half,
-                        $"scene row {half.Tag} '{half.GetAttribute("id")}' is not reciprocally linked");
+                    findings.Error(ruleId, half,
+                        $"{noun} {half.Tag} '{half.GetAttribute("id")}' is not reciprocally linked");
                 }
             }
+        }
+
+        // The complementary partner kind(s) for each reciprocal half, derived from ReciprocalTags (the single source
+        // of truth): a from-half pairs with a to-half and vice versa; a scene member row pairs with a scene_link and a
+        // scene_link with any member row.
+        private static readonly IReadOnlyDictionary<string, IReadOnlySet<string>> ReciprocalComplements =
+            BuildReciprocalComplements();
+
+        private static IReadOnlyDictionary<string, IReadOnlySet<string>> BuildReciprocalComplements()
+        {
+            static IReadOnlySet<string> Of(params string[] tags) => new HashSet<string>(tags, StringComparer.Ordinal);
+            var map = new Dictionary<string, IReadOnlySet<string>>(StringComparer.Ordinal)
+            {
+                [ReciprocalTags.FollowLinkFromTag] = Of(ReciprocalTags.FollowLinkToTag),
+                [ReciprocalTags.FollowLinkToTag] = Of(ReciprocalTags.FollowLinkFromTag),
+                [ReciprocalTags.SceneLinkTag] = ReciprocalTags.SceneMemberTags,
+            };
+            foreach (string member in ReciprocalTags.SceneMemberTags)
+            {
+                map[member] = Of(ReciprocalTags.SceneLinkTag);
+            }
+            return map;
         }
 
         // ----- dataline addressing (spec ch. 04: modules 1–128, unique per direction) -----

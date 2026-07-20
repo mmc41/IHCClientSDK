@@ -26,9 +26,7 @@ namespace Ihc.Vis.Session
     public sealed record RemoveLink(ElementId LinkRowId) : ProjectCommand
     {
         internal override string Describe(Project project) => "Remove link";
-        internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(LinkRowId) is not null
-                ? EditVerdict.Allow : EditVerdict.Refuse("The link no longer exists.");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(LinkRowId, "link");
         internal override void Execute(ProjectEditor editor) => editor.DeleteById(LinkRowId);
     }
 
@@ -55,10 +53,7 @@ namespace Ihc.Vis.Session
                 ? EditVerdict.Allow : EditVerdict.Refuse("Not a relay or dimmer scene member.");
         internal override void Execute(ProjectEditor editor)
         {
-            if (!editor.TryResolve(MemberId, out ElementRef? handle))
-            {
-                throw new EditRefusedException("The scene member no longer exists.");
-            }
+            ElementRef handle = editor.Resolve(MemberId, "scene member");
             editor.SetSceneValue(MemberId, SceneValues.From(Result, handle.Tag == "scene_dimmer"));
         }
     }
@@ -67,17 +62,9 @@ namespace Ihc.Vis.Session
     public sealed record UpdateSceneContainer(ElementId ScenesId, string Note) : ProjectCommand
     {
         internal override string Describe(Project project) => "Edit scenario container";
-        internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(ScenesId) is not null
-                ? EditVerdict.Allow : EditVerdict.Refuse("The scenes container no longer exists.");
-        internal override void Execute(ProjectEditor editor)
-        {
-            if (!editor.TryResolve(ScenesId, out ElementRef? handle))
-            {
-                throw new EditRefusedException("The scenes container no longer exists.");
-            }
-            handle.SetAttribute("note", Note);
-        }
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(ScenesId, "scenes container");
+        internal override void Execute(ProjectEditor editor) =>
+            editor.Resolve(ScenesId, "scenes container").SetAttribute("note", Note);
     }
 
     internal static class SceneValues

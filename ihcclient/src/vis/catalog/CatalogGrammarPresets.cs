@@ -55,6 +55,9 @@ namespace Ihc.Vis.Catalog
                 Id(), Name(), Note(), OnOff("inivalue", "off"), YesNo("backup", "yes"),
                 GrammarAttr.Enumerated("type", new[] { "led", "unspecified" }, "unspecified"),
                 GrammarAttr.Cdata("address_dataline", "_0x0"), GrammarAttr.Cdata("cable_colour", "")),
+            // scenes is declared LAST in the Dataline preset because that is the child order the vendor
+            // synthetic_<...>_dataline.def oracle pins — the byte-fidelity tests compare against it, so the
+            // declaration sequence here is not free to reorder.
             GrammarDeclaration.Element("scenes",
                 Id(), GrammarAttr.IdRefRequired("scene_resource"), Name(), Note()),
         });

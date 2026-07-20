@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 using Ihc.Vis.Model;
@@ -50,6 +51,29 @@ namespace Ihc.Vis.Tests
                 Assert.That(pinView.AddressToken, Is.EqualTo(pin.GetAttribute("address_dataline")));
                 Assert.That(pinView.IsOutput, Is.EqualTo(pin.Tag == "dataline_output"));
                 Assert.That(pinView.Id, Is.EqualTo(pin.Id));
+            });
+        }
+
+        // T018: ModemView.Name reads through the shared ElementView.Name surface (project.View(element).Name),
+        // not a re-typed raw GetAttribute("name"). For a named element (as every real modem is) the effective
+        // read equals the element's own name.
+        [Test]
+        public void ModemView_Name_ReadsThroughTheElementViewSurface()
+        {
+            var modem = new ProjectElement("sms_modem_settings", new ElementId(0x57d, 0xcb),
+                ImmutableArray.Create(("id", "_0x57dcb"), ("name", "Telephone numbers #1-#10")),
+                ImmutableArray<ProjectElement>.Empty);
+            var root = new ProjectElement("utcs_project", null,
+                ImmutableArray.Create(("version_major", "4"), ("last_unique_id", "_0x600000")),
+                ImmutableArray.Create(modem));
+            var project = new Project(root);
+
+            var view = new ModemView(project, modem);
+            Assert.Multiple(() =>
+            {
+                Assert.That(view.Name, Is.EqualTo("Telephone numbers #1-#10"));
+                Assert.That(view.Name, Is.EqualTo(project.View(modem).Name),
+                    "ModemView.Name delegates to the shared ElementView.Name surface");
             });
         }
     }

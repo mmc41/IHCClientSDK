@@ -21,6 +21,22 @@ namespace Ihc.Vis.Tests
         public void Classify_KnownFamilies_MatchExactly(string tag, ProductFamily expected) =>
             Assert.That(ProductClassifier.Classify(tag), Is.EqualTo(expected));
 
+        // T043: `product_rs485_modem` (the non-SMS RS485 modem) is an INTENTIONAL open-world tag — it has no attested
+        // vendor type code, so it is deliberately absent from the TypeCode registry (inventing a byte could collide),
+        // YET the classifier and the report still recognise it (as an RS485 modem / a modem). This pins that contract.
+        [Test]
+        public void ProductRs485Modem_HasNoBuiltInTypeCode_ButStillClassifiesAsAModem()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(TypeCode.ForTag("product_rs485_modem"), Is.Null, "no built-in TypeCode (open-world tag)");
+                Assert.That(ProductClassifier.Classify("product_rs485_modem"), Is.EqualTo(ProductFamily.Rs485Modem));
+                Assert.That(ProductClassifier.IsModem("product_rs485_modem"), Is.True, "the report path treats it as a modem");
+                // Contrast: its SMS sibling DOES carry a built-in type code.
+                Assert.That(TypeCode.ForTag("product_rs485_sms_modem"), Is.EqualTo(0x56));
+            });
+        }
+
         // ----- Classify: open-world fallback + precedence -----
 
         [TestCase("product_x_airlink", ProductFamily.Airlink)]

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ihc.Vis.Model;
@@ -78,7 +79,9 @@ public sealed partial class TreeNodeViewModel : ObservableObject
     /// <i>Logic group</i> and the AND/OR toggle (US-029).</summary>
     public bool IsConditionsContainer => Kind is TreeNodeKind.Conditions or TreeNodeKind.LogicGroup;
 
-    /// <summary>Whether this conditions group is OR-combined (<c>&gt;=1</c>) rather than the default AND (US-029).</summary>
+    /// <summary>Whether this conditions group is OR-combined (<c>&gt;=1</c>) rather than the default AND (US-029).
+    /// Intentional test-only seam (D02): the projector SETS it (the AND/OR shows in the icon + label suffix); it is
+    /// currently READ only by the projection tests, kept so a future label/icon binding can consume it without churn.</summary>
     public bool IsOrGroup { get; init; }
 
     /// <summary>Whether this node is a <c>program_case</c> switch — the target of <i>New case value…</i> (US-031).</summary>
@@ -193,36 +196,33 @@ public sealed partial class TreeNodeViewModel : ObservableObject
     /// product/FB id); null for the synthetic <c>Localities</c> root, which addresses no element.</summary>
     public ElementId? ElementId { get; }
 
+    /// <summary>The OTHER elements whose live name/value the projector rendered into this row's label — a link/scene
+    /// row's opposite-end ancestors, a program row's %P/%S operands, a case's switch operand. Emitted by the projector
+    /// (T022) so the reconciler reads the cross-reference dependency edges from the projection itself instead of
+    /// re-deriving them and risking drift from what was actually rendered. Empty for a row whose label is composed
+    /// only of its own attributes.</summary>
+    public IReadOnlyList<ElementId> CrossReferences { get; set; } = Array.Empty<ElementId>();
+
     /// <summary>The <c>/Assets/*.svg</c> glyph rendered beside the label (per the icon-mapping doc).
     /// Re-rendered in place by the W3-4 reconciler (e.g. a locked FB becomes editable).</summary>
     [ObservableProperty]
     public partial string IconAsset { get; set; }
 
-    /// <summary>Whether the node is expanded by default (the <c>Localities</c> root is; rooms are collapsed).</summary>
-    private bool _isExpanded;
-
-    /// <summary>Whether the node is expanded. Settable and observable so a jump (F4/A-6) can expand the opposite
-    /// pin's ancestor chain to bring it into view; the tree binds this one-way to the container's IsExpanded.</summary>
-    public bool IsExpanded
-    {
-        get => _isExpanded;
-        set => SetProperty(ref _isExpanded, value);
-    }
+    /// <summary>Whether the node is expanded (the <c>Localities</c> root is by default; rooms are collapsed).
+    /// Settable and observable so a jump (F4/A-6) can expand the opposite pin's ancestor chain to bring it into view;
+    /// the tree binds this one-way to the container's IsExpanded.</summary>
+    [ObservableProperty]
+    public partial bool IsExpanded { get; set; }
 
     /// <summary>Whether the label renders bold — locality nodes do (US-006).</summary>
     [ObservableProperty]
     public partial bool IsBold { get; set; }
 
-    private bool _isDropTarget;
-
     /// <summary>Whether this row is the current drag-over drop target — the item template paints its background so the
     /// user sees where a drop will land (A-30). Observable so the highlight follows the pointer as a drag moves across
-    /// rows; set by <see cref="MainWindowViewModel.HighlightDropTarget"/>, never bound to persisted state.</summary>
-    public bool IsDropTarget
-    {
-        get => _isDropTarget;
-        set => SetProperty(ref _isDropTarget, value);
-    }
+    /// rows; set by <see cref="TreeDragDropController.HighlightDropTarget"/>, never bound to persisted state.</summary>
+    [ObservableProperty]
+    public partial bool IsDropTarget { get; set; }
 
     public ObservableCollection<TreeNodeViewModel> Children { get; } = new();
 }

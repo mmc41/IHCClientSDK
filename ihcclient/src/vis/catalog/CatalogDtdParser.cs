@@ -93,7 +93,7 @@ namespace Ihc.Vis.Catalog
         // ----- strict core -----
 
         private static readonly Regex PrologShape = new(
-            "^<\\?xml\\s+version\\s*=\\s*\"1\\.0\"\\s+encoding\\s*=\\s*\"([A-Za-z][A-Za-z0-9._-]*)\"\\s*\\?>$",
+            "^<\\?xml\\s+version\\s*=\\s*\"1\\.0\"\\s+encoding\\s*=\\s*\"(" + CatalogGrammar.EncName + ")\"\\s*\\?>$",
             RegexOptions.CultureInvariant);
 
         private static CatalogGrammar ParseCore(string headText)
@@ -323,7 +323,7 @@ namespace Ihc.Vis.Catalog
         // ----- lenient fallback -----
 
         private static readonly Regex LooseEncoding = new(
-            "encoding\\s*=\\s*[\"']([A-Za-z][A-Za-z0-9._-]*)[\"']", RegexOptions.CultureInvariant);
+            "encoding\\s*=\\s*[\"'](" + CatalogGrammar.EncName + ")[\"']", RegexOptions.CultureInvariant);
 
         private static readonly Regex LooseDoctype = new(
             "<!DOCTYPE\\s+([^\\s\\[>]+)", RegexOptions.CultureInvariant);
@@ -554,16 +554,17 @@ namespace Ihc.Vis.Catalog
                 return result;
             }
 
-            public string ReadName(string what) => ReadToken(what, IsNameChar);
+            public string ReadName(string what) => ReadToken(what);
 
-            public string ReadNmtoken(string what) => ReadToken(what, IsNameChar);
+            public string ReadNmtoken(string what) => ReadToken(what);
 
-            // One token class serves both: XML NameChar is a superset of what distinguishes tokens here, and the
-            // model factories (XmlConvert) do the spec-exact Name-vs-Nmtoken validation.
-            private string ReadToken(string what, Func<char, bool> isTokenChar)
+            // One token class (XML NameChar) serves both ReadName and ReadNmtoken — a superset of what distinguishes
+            // tokens here — so ReadToken takes no char-class delegate; the model factories (XmlConvert) do the
+            // spec-exact Name-vs-Nmtoken validation.
+            private string ReadToken(string what)
             {
                 int start = Position;
-                while (Position < s.Length && isTokenChar(s[Position]))
+                while (Position < s.Length && IsNameChar(s[Position]))
                 {
                     Position++;
                 }

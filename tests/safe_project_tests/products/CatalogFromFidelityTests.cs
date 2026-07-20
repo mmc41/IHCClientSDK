@@ -1,6 +1,7 @@
 #nullable enable
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace Ihc.Vis.Tests
 {
@@ -52,6 +53,38 @@ namespace Ihc.Vis.Tests
             Assert.That(rebuilt.SourceEncoding, Is.EqualTo(CatalogTextEncoding.Utf8), "From carries the encoding");
             SyntheticOracle.AssertWritesOracleBytes(rebuilt, "products/synthetic/synthetic_9f13_utf8nobom.def",
                 "_0x01", "_0x02");
+        }
+
+        // H2: a BOM-less UTF-8 catalog file whose prolog MIS-declares ISO-8859-1. The decode must trust the file's
+        // actual bytes (genuine UTF-8, Danish æøå as multi-byte), so the names survive AND the recorded SourceEncoding
+        // (which drives re-emission) matches the encoding the reader actually decoded with. Before the fix the reader
+        // honored the declared ISO-8859-1 and decoded the UTF-8 bytes as Latin-1 (mojibake), while SourceEncoding was
+        // classified Utf8 from the bytes — a decode/record divergence that re-encodes to different bytes on save.
+        [Test]
+        public void ImportBomlessUtf8_MisdeclaringIso8859_1_DanishSurvives_AndEncodingMatchesDecode()
+        {
+            byte[] utf8Bytes = File.ReadAllBytes(OraclePath("products/synthetic/synthetic_9f13_utf8nobom.def"));
+            string text = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetString(utf8Bytes)
+                .Replace("encoding=\"UTF-8\"", "encoding=\"ISO-8859-1\"");
+            byte[] misdeclared = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(text);
+
+            ProductDefinition read;
+            using (var ms = new MemoryStream(misdeclared, writable: false))
+            {
+                read = CatalogReader.ReadProduct(ms);
+            }
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(read.DisplayName, Does.Contain("æøå"),
+                    "Danish characters survive the decode despite the ISO-8859-1 mis-declaration");
+                Assert.That(read.SourceEncoding, Is.EqualTo(CatalogTextEncoding.Utf8),
+                    "the recorded SourceEncoding is the content classification");
+                Assert.That(read.SourceEncoding.TextEncoding().GetBytes(read.Body.GetAttribute("name")!),
+                    Is.EqualTo(Encoding.UTF8.GetBytes("Synthetic UTF-8 uden BOM æøå")),
+                    "re-encoding the decoded name with the recorded SourceEncoding reproduces the source bytes "
+                    + "— record matches decode, so a re-save cannot mojibake");
+            });
         }
 
         [Test]

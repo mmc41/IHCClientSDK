@@ -6,17 +6,18 @@ using System.IO;
 using System.Text;
 
 using Ihc.Vis.FunctionBlocks;
+using Ihc.Vis.Model;
 
 namespace Ihc.Vis.Catalog
 {
     /// <summary>
     /// Parses a synthetic English help document (<c>syn_en*.md</c>) — the de-branded companion the IHC Visual install
     /// ships next to each <c>FunctionBlocks\*.ifb</c> — into the programmatic-lookup-only
-    /// <see cref="FunctionBlockDocumentation"/> a code-authored block carries. The document shape is a fixed, trivially
+    /// <see cref="DefinitionDocumentation"/> a code-authored block carries. The document shape is a fixed, trivially
     /// parseable convention: a level-1 heading (<c># display name</c>, kept for reference but not part of the summary),
-    /// then a leading prose paragraph (the block <see cref="FunctionBlockDocumentation.Summary"/>), then
+    /// then a leading prose paragraph (the block <see cref="DefinitionDocumentation.Summary"/>), then
     /// <c>**Inputs**</c>/<c>**Outputs**</c>/… sections whose bullets read <c>- **resource name** — help text</c> and map
-    /// to the per-resource text keyed by resource display name (<see cref="FunctionBlockDocumentation.Resources"/>).
+    /// to the per-resource text keyed by resource display name (<see cref="DefinitionDocumentation.Resources"/>).
     /// </summary>
     /// <remarks>
     /// The vendor also ships a copyrighted <c>{base}.md</c>; this reader uses <b>only</b> the synthetic
@@ -31,11 +32,11 @@ namespace Ihc.Vis.Catalog
         // specific first: em dash and en dash (the syn_en convention), then a spaced ASCII hyphen (a lenient fallback).
         private static readonly string[] Separators = { " — ", " – ", " - " };
 
-        /// <summary>Parses help-document <paramref name="markdown"/> into a <see cref="FunctionBlockDocumentation"/>:
+        /// <summary>Parses help-document <paramref name="markdown"/> into a <see cref="DefinitionDocumentation"/>:
         /// the leading paragraph becomes the block summary, and each <c>- **name** — text</c> bullet under any
         /// <c>**section**</c> heading becomes a per-resource entry keyed by <c>name</c>. Missing sections are tolerated
-        /// (an empty document yields <see cref="FunctionBlockDocumentation.Empty"/>).</summary>
-        public static FunctionBlockDocumentation Parse(string markdown)
+        /// (an empty document yields <see cref="DefinitionDocumentation.Empty"/>).</summary>
+        public static DefinitionDocumentation Parse(string markdown)
         {
             ArgumentNullException.ThrowIfNull(markdown);
             string[] lines = markdown.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
@@ -78,15 +79,15 @@ namespace Ihc.Vis.Catalog
 
             string? summaryText = summary.Length > 0 ? summary.ToString() : null;
             return summaryText is null && resources.Count == 0
-                ? FunctionBlockDocumentation.Empty
-                : new FunctionBlockDocumentation(summaryText, resources.ToImmutable());
+                ? DefinitionDocumentation.Empty
+                : new DefinitionDocumentation(summaryText, resources.ToImmutable());
         }
 
         /// <summary>Probes for the help document sibling of the function-block file at <paramref name="ifbPath"/> and
         /// parses it: the synthetic <c>syn_en{base}.md</c> is tried first, then — unless <paramref name="synEnOnly"/> —
         /// the vendor <c>{base}.md</c> (used only for a caller's own components, never the copyrighted install catalog).
         /// Returns <c>null</c> when no sibling exists.</summary>
-        public static FunctionBlockDocumentation? ForFunctionBlock(string ifbPath, bool synEnOnly = false)
+        public static DefinitionDocumentation? ForFunctionBlock(string ifbPath, bool synEnOnly = false)
         {
             ArgumentNullException.ThrowIfNull(ifbPath);
             foreach (string candidate in SiblingCandidates(ifbPath, synEnOnly))

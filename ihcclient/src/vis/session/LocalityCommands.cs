@@ -20,19 +20,13 @@ namespace Ihc.Vis.Session
     public sealed record RenameLocality(ElementId Id, string Name, string Note) : ProjectCommand
     {
         internal override string Describe(Project project) =>
-            "Rename " + (project.FindById(Id)?.GetAttribute("name") ?? "locality");
+            "Rename " + ((project.FindById(Id) is { } element ? project.View(element).Name : null) ?? "locality");
 
-        internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(Id) is not null
-                ? EditVerdict.Allow
-                : EditVerdict.Refuse("The element no longer exists.");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(Id, "element");
 
         internal override void Execute(ProjectEditor editor)
         {
-            if (!editor.TryResolve(Id, out ElementRef? handle))
-            {
-                throw new EditRefusedException("The element no longer exists.");
-            }
+            ElementRef handle = editor.Resolve(Id, "element");
             handle.SetAttribute("name", Name);
             handle.SetAttribute("note", Note);
         }
@@ -43,12 +37,9 @@ namespace Ihc.Vis.Session
     public sealed record DeleteLocality(ElementId Id) : ProjectCommand
     {
         internal override string Describe(Project project) =>
-            "Delete " + (project.FindById(Id)?.GetAttribute("name") ?? "locality");
+            "Delete " + ((project.FindById(Id) is { } element ? project.View(element).Name : null) ?? "locality");
 
-        internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(Id) is not null
-                ? EditVerdict.Allow
-                : EditVerdict.Refuse("The locality no longer exists.");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(Id, "locality");
 
         internal override void Execute(ProjectEditor editor) =>
             editor.DeleteById(Id, DeleteReferencePolicy.CascadeReferences);

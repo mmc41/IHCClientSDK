@@ -182,4 +182,43 @@ public class ProjectTreeReconcilerReconcileTests
             Assert.That(member.DisplayName, Does.Not.Contain("Living room"), "stale name gone");
         });
     }
+
+    // T022: the projector EMITS the cross-reference dependency edges on each derived-label row (here a scene member,
+    // whose far path names the locality), so the reconciler reads them from the projection instead of hand-mirroring
+    // the partner walk. A row whose label is composed only of its own attributes emits none.
+    [Test]
+    public void Projector_EmitsCrossReferenceEdges_OnADerivedLabelRow()
+    {
+        var service = new ProjectAppService(new IhcSettings());
+        Project project = service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty));
+        project = DefaultLocalities.ApplyEnglish(project);
+        var jalousi = service.GetAvailableProducts().First(p => p.DisplayName.Contains("Jalousi 4 tast"));
+        var fbDef = service.GetAvailableFunctionBlocks().First(f => f.MasterType == "3.1.03");
+
+        ProjectEditor editor = project.Edit();
+        editor.Group("Living room").AddProduct(jalousi);
+        editor.Group("Living room").AddFunctionBlock(fbDef);
+        Project mid = editor.ToProject();
+        ProjectElement room = mid.Groups.First(g => g.GetAttribute("name") == "Living room");
+        ElementId scenePinId = room.ChildrenOrEmpty().First(c => c.Tag == "functionblock")
+            .FindChild("outputs")!.ChildrenOrEmpty()
+            .First(c => c.Tag == "resource_scene" && c.GetAttribute("name") == "Regulering").Id!.Value;
+        ElementId scenesId = room.ChildrenOrEmpty().First(c => c.Tag == "product_airlink")
+            .ChildrenOrEmpty().First(c => c.Tag == "scenes").Id!.Value;
+        editor.LinkScene(scenePinId, scenesId, SceneValue.Shutter(up: true));
+        Project linked = editor.ToProject();
+
+        TreeNodeViewModel root = new ProjectTreeProjector(linked).BuildLocalitiesRoot(functions: false);
+        ElementId livingRoomId = linked.Groups.First(g => g.GetAttribute("name") == "Living room").Id!.Value;
+        TreeNodeViewModel member = Flatten(root).First(n => n.NodeKind == "sceneMember");
+        TreeNodeViewModel locality = Flatten(root).First(n => n.ElementId == livingRoomId);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(member.CrossReferences, Does.Contain(livingRoomId),
+                "the scene member's far path names the locality, so its id is an emitted cross-reference edge");
+            Assert.That(locality.CrossReferences, Is.Empty,
+                "a plain locality row's label is composed only of its own name — no cross-references");
+        });
+    }
 }

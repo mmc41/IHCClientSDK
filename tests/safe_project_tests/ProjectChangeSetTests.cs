@@ -68,6 +68,32 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // T037: an id-BEARING element added under an id-LESS container. The container carries no id, so it is not a
+        // diff key; SelfAndIdlessEqual excludes the id-bearing child from the id-less roll-up, and the container's
+        // nearest id-bearing ancestor's ChildIdSequence (direct id-bearing children only) never sees the nested add.
+        // Characterization (no behavior change): the add surfaces ONLY as Added(child) — the ancestor (ProductId) is
+        // reported in NEITHER Changed NOR ChildListChanged, so a purely-incremental reconcile has no container edge
+        // for the new row (it relies on the Added-child's own subtree / the rebuild fallback).
+        [Test]
+        public void Diff_IdBearingAddUnderIdlessContainer_SurfacesOnlyAsAdded()
+        {
+            static ProjectElement Holder(params ProjectElement[] children) =>
+                ProjectElement.Create("holder", null, System.Array.Empty<(string, string)>(), children);
+
+            ProjectChangeSet cs = Diff(
+                Build(Product("P", Holder())),
+                Build(Product("P", Holder(Pin("dataline_output", PinB)))));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(cs.Added, Does.Contain(PinB), "the id-bearing child is Added");
+                Assert.That(cs.ChildListChanged, Does.Not.Contain(ProductId),
+                    "the id-less container's ancestor is NOT ChildListChanged — a nested id-bearing child is invisible to ChildIdSequence");
+                Assert.That(cs.Changed, Does.Not.Contain(ProductId),
+                    "nor Changed — SelfAndIdlessEqual excludes the id-bearing child from the id-less roll-up comparison");
+            });
+        }
+
         [Test]
         public void AttrChange_PopulatesChanged_NotTheUnchangedChild()
         {

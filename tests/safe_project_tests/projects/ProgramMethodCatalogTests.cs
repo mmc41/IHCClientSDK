@@ -1,4 +1,6 @@
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Ihc.Vis.Tests
 {
@@ -55,11 +57,81 @@ namespace Ihc.Vis.Tests
             {
                 Assert.That(One(ProgramMethodCatalog.Arithmetic, "_0x5a").NameTemplate, Is.EqualTo("%P = %P + %S"));
                 Assert.That(One(ProgramMethodCatalog.Arithmetic, "_0x5a").OperatorSymbol, Is.EqualTo("+"));
-                Assert.That(One(ProgramMethodCatalog.Arithmetic, "_0x64").NameTemplate, Is.EqualTo("%P = %P − %S"));
-                Assert.That(One(ProgramMethodCatalog.Arithmetic, "_0x64").OperatorSymbol, Is.EqualTo("−"));
+                Assert.That(One(ProgramMethodCatalog.Arithmetic, "_0x64").NameTemplate, Is.EqualTo("%P = %P - %S"));
+                Assert.That(One(ProgramMethodCatalog.Arithmetic, "_0x64").OperatorSymbol, Is.EqualTo("-"));
                 Assert.That(ProgramMethodCatalog.Arithmetic.Select(m => m.OperandCount), Is.All.EqualTo(2));
             });
         }
+
+        // H1: every persisted template/note/operator MUST live in the ISO-8859-1 repertoire — the .vis format is
+        // Latin-1 with no BOM, so a character outside U+0000..U+00FF cannot be encoded and Save throws. The subtract
+        // entry historically carried U+2212 (MINUS SIGN), which is NOT Latin-1; this guards the whole catalog.
+        [Test]
+        public void AllProgramMethods_UseOnlyLatin1EncodableText()
+        {
+            var all = ProgramMethodCatalog.Events
+                .Concat(ProgramMethodCatalog.Commands)
+                .Concat(ProgramMethodCatalog.Conditions)
+                .Concat(ProgramMethodCatalog.Arithmetic);
+            Assert.Multiple(() =>
+            {
+                foreach (ProgramMethod m in all)
+                {
+                    Assert.That(IsLatin1(m.NameTemplate), Is.True,
+                        $"NameTemplate outside Latin-1: {m.Category}/{m.Token} '{m.NameTemplate}'");
+                    Assert.That(IsLatin1(m.Note), Is.True,
+                        $"Note outside Latin-1: {m.Category}/{m.Token}");
+                    if (m.OperatorSymbol is { } sym)
+                    {
+                        Assert.That(IsLatin1(sym), Is.True,
+                            $"OperatorSymbol outside Latin-1: {m.Category}/{m.Token} '{sym}'");
+                    }
+                }
+            });
+        }
+
+        // H1 end-to-end: authoring a subtract command from the catalog template and saving must not throw, and the
+        // command name must survive the save→reload round-trip (before the fix, Save throws EncoderFallbackException).
+        [Test]
+        public async Task AddSubtractCommand_FromCatalogTemplate_SavesAndRoundTrips()
+        {
+            ProgramMethod subtract = One(ProgramMethodCatalog.Arithmetic, "_0x64");
+            Project original = await ReplayOracle.LoadProject("project2-CustomBlock.vis");
+
+            ProjectEditor editor = original.Edit();
+            FunctionBlockRef custom = editor.Group("Stue").FunctionBlock("Custom blok");
+            SubProgramRef sub = custom.Program().AddSubProgram();
+            sub.WhenTrue.AddAction(subtract.NameTemplate, custom.Output("Udgang"), subtract.Token,
+                custom.Setting("NyTypeForThisProject"));
+            Project after = editor.ToProject();
+
+            using var ms = new MemoryStream();
+            await new ProjectAppService(TestSetup.Settings).Save(after, ms);
+
+            Project reloaded = ProjectReader.Read(ms.ToArray());
+            ProjectElement action = reloaded.Root.Descendants()
+                .Single(e => e.Tag == "action" && e.GetAttribute("method") == subtract.Token);
+            Assert.That(action.GetAttribute("name"), Is.EqualTo(subtract.NameTemplate),
+                "the subtract command name survives the ISO-8859-1 save/reload round-trip");
+        }
+
+        // T020: the case-switch eligibility set (US-031) is a public SDK fact — the single source both the session's
+        // AddCase Evaluate guard and the OpenVisual case menu read; the app keeps no private copy.
+        [Test]
+        public void EligibleCaseVariableTags_AreTheFiveSwitchableTypes()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(ProgramMethodCatalog.EligibleCaseVariableTags, Is.EquivalentTo(new[]
+                {
+                    "resource_counter", "resource_enum", "resource_weekday", "resource_integer", "resource_date",
+                }));
+                Assert.That(ProgramMethodCatalog.EligibleCaseVariableTags.Contains("resource_flag"), Is.False,
+                    "a boolean flag is not a switchable case variable");
+            });
+        }
+
+        private static bool IsLatin1(string value) => value.All(c => c <= 'ÿ');
 
         // The same token means different things per category — the (category, token) key is required.
         [Test]

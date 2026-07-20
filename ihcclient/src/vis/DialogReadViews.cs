@@ -18,14 +18,17 @@ namespace Ihc.Vis
     /// <para><b>Raw, not effective:</b> the documentation/cable/address fields report the element's own stored value
     /// (the old raw <c>GetAttribute</c>), NOT the DTD-default-resolved <see cref="ElementView.Effective"/> — an
     /// editable dialog shows blank for an unset field and lets the SDK apply defaults on write (fablerefac W1-3).
-    /// Only the flags (<c>Locked</c>/<c>EnduserReport</c>/initial value) and the dimmer settings read effective.</para>
+    /// The flags (<c>Locked</c>/<c>EnduserReport</c>/initial value) and the dimmer settings read effective.
+    /// <c>Name</c> reads through the shared <see cref="ElementView.Name"/> surface (so the <c>"name"</c> literal lives
+    /// SDK-side in one place); because the <c>name</c> attribute's DTD default is the empty string, that effective
+    /// read equals the raw value for every named element these views wrap and presents blank for an unset one.</para>
     /// </summary>
     public readonly record struct PinView(Project Project, ProjectElement Element)
     {
         private ElementView View => Project.View(Element);
 
-        /// <summary>The pin's name.</summary>
-        public string? Name => Element.GetAttribute("name");
+        /// <summary>The pin's name (via the shared <see cref="ElementView.Name"/> read surface).</summary>
+        public string? Name => View.Name;
 
         /// <summary>The pin's documentation note.</summary>
         public string? Note => Element.GetAttribute("note");
@@ -55,7 +58,7 @@ namespace Ihc.Vis
     {
         private ElementView View => Project.View(Element);
 
-        public string? Name => Element.GetAttribute("name");
+        public string? Name => View.Name;
         public string? Note => Element.GetAttribute("note");
         public string? CableType => Element.GetAttribute("cabletype");
         public string? CableNumber => Element.GetAttribute("cablenumber");
@@ -94,7 +97,9 @@ namespace Ihc.Vis
     /// <summary>Typed read view of an SMS modem for its properties dialog.</summary>
     public readonly record struct ModemView(Project Project, ProjectElement Element)
     {
-        public string? Name => Element.GetAttribute("name");
+        private ElementView View => Project.View(Element);
+
+        public string? Name => View.Name;
         public string? Note => Element.GetAttribute("note");
         public string? DocumentationTag => Element.GetAttribute("documentation_tag");
         public string? CableColour0V => Element.GetAttribute("cablecolour_0V");

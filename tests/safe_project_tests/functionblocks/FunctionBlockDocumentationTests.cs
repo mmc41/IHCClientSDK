@@ -4,7 +4,7 @@ using System.Linq;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// Exercises the programmatic-lookup-only <see cref="FunctionBlockDocumentation"/> help metadata carried on a
+    /// Exercises the programmatic-lookup-only <see cref="DefinitionDocumentation"/> help metadata carried on a
     /// <see cref="FunctionBlockDefinition"/>: the block's overview text plus a per-resource text keyed by display name
     /// (a shape modeled on, but not copied from, a vendor <c>FunctionBlocks\*.md</c> help file — the sample strings here
     /// are synthetic), and — the load-bearing guarantee — that attaching it
@@ -36,8 +36,8 @@ namespace Ihc.Vis.Tests
                 "1.1.01", "e", "Kip tænd sluk", "1.1.01.e. Kip tænd sluk", "00. Foretrukne", body ?? ToggleBody());
 
         // Synthetic, self-authored help text  — only its shape matches one.
-        private static FunctionBlockDocumentation Documented(string summary) =>
-            new FunctionBlockDocumentation(
+        private static DefinitionDocumentation Documented(string summary) =>
+            new DefinitionDocumentation(
                 summary,
                 ImmutableDictionary<string, string>.Empty
                     .Add("Kip", "Opdigtet hjælpetekst: denne indgang skifter udgangens tilstand i eksemplet.")
@@ -46,7 +46,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void Empty_HasNoBlockTextAndNoResourceText()
         {
-            FunctionBlockDocumentation empty = FunctionBlockDocumentation.Empty;
+            DefinitionDocumentation empty = DefinitionDocumentation.Empty;
 
             Assert.Multiple(() =>
             {
@@ -59,7 +59,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void ForResource_ReturnsText_ForDocumentedName_AndNull_ForUndocumented()
         {
-            FunctionBlockDocumentation doc = Documented("Block help.");
+            DefinitionDocumentation doc = Documented("Block help.");
 
             Assert.Multiple(() =>
             {
@@ -79,7 +79,7 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(def.Documentation, Is.SameAs(FunctionBlockDocumentation.Empty));
+                Assert.That(def.Documentation, Is.SameAs(DefinitionDocumentation.Empty));
                 Assert.That(def.Documentation.IsEmpty, Is.True);
             });
         }
@@ -111,7 +111,7 @@ namespace Ihc.Vis.Tests
             FunctionBlockDefinition bare = ToggleDefinition();
             FunctionBlockDefinition documented = bare with
             {
-                Documentation = new FunctionBlockDocumentation(
+                Documentation = new DefinitionDocumentation(
                     "BLOCK-HELP-SENTINEL",
                     ImmutableDictionary<string, string>.Empty
                         .Add("Kip", "KIP-HELP-SENTINEL")
@@ -145,6 +145,25 @@ namespace Ihc.Vis.Tests
             {
                 Assert.That(bare with { }, Is.EqualTo(bare), "an undocumented clone stays equal");
                 Assert.That(documented, Is.Not.EqualTo(bare), "documentation participates in value equality");
+            });
+        }
+
+        // T023 (S3): the FB and product documentation records were identical and are now the ONE shared
+        // DefinitionDocumentation — both definition families carry that single type, and one instance is assignable
+        // to either (deliberately coupling the FB/Product namespaces under D01).
+        [Test]
+        public void BothDefinitionFamilies_ShareTheOneDocumentationType()
+        {
+            System.Type fbDocType = typeof(FunctionBlockDefinition).GetProperty(nameof(FunctionBlockDefinition.Documentation))!.PropertyType;
+            System.Type productDocType = typeof(ProductDefinition).GetProperty(nameof(ProductDefinition.Documentation))!.PropertyType;
+            var shared = new DefinitionDocumentation("shared", ImmutableDictionary<string, string>.Empty);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(fbDocType, Is.EqualTo(typeof(DefinitionDocumentation)));
+                Assert.That(productDocType, Is.EqualTo(typeof(DefinitionDocumentation)));
+                Assert.That((ToggleDefinition() with { Documentation = shared }).Documentation, Is.SameAs(shared),
+                    "the one record assigns to a FunctionBlockDefinition");
             });
         }
     }

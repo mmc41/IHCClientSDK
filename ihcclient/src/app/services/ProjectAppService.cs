@@ -583,7 +583,7 @@ namespace Ihc.Vis
         /// Imports one catalog component file at runtime so it resolves and inserts alongside the built-ins: a
         /// <c>.ifb</c> is read as a function block, any other extension (<c>.def</c>) as a product, via the same
         /// encoding/DTD-default/inline-DTD handling as install discovery
-        /// (<see cref="CatalogReader.ReadProduct(string, ProductDocumentation?)"/>). The imported component shadows a
+        /// (<see cref="CatalogReader.ReadProduct(string, DefinitionDocumentation?)"/>). The imported component shadows a
         /// built-in with the same key (imported-wins) and appears in <see cref="GetAvailableProducts"/> /
         /// <see cref="GetAvailableFunctionBlocks"/>. Pass <paramref name="documentationProbe"/> (e.g.
         /// <see cref="ReadSiblingDocumentation"/>) to attach help metadata from a sibling file; it maps the component
@@ -600,16 +600,16 @@ namespace Ihc.Vis
                     string? summary = documentationProbe?.Invoke(path);
                     if (Path.GetExtension(path).Equals(".ifb", StringComparison.OrdinalIgnoreCase))
                     {
-                        FunctionBlockDocumentation? documentation = summary is null
+                        DefinitionDocumentation? documentation = summary is null
                             ? null
-                            : new FunctionBlockDocumentation(summary, ImmutableDictionary<string, string>.Empty);
+                            : new DefinitionDocumentation(summary, ImmutableDictionary<string, string>.Empty);
                         catalog.Value.Import(CatalogReader.ReadFunctionBlock(path, documentation));
                     }
                     else
                     {
-                        ProductDocumentation? documentation = summary is null
+                        DefinitionDocumentation? documentation = summary is null
                             ? null
-                            : new ProductDocumentation(summary, ImmutableDictionary<string, string>.Empty);
+                            : new DefinitionDocumentation(summary, ImmutableDictionary<string, string>.Empty);
                         catalog.Value.Import(CatalogReader.ReadProduct(path, documentation));
                     }
                     activity?.SetReturnValue(path);

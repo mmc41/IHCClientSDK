@@ -36,7 +36,12 @@ namespace Ihc.Vis
     public sealed record UserText(string Id, string Text);
 
     /// <summary>The data-tables read model (US-049): the read-only system tables and the editable user-defined texts.</summary>
-    public sealed record DataTablesModel(ImmutableArray<DataTableView> SystemTables, ImmutableArray<UserText> UserTexts);
+    public sealed record DataTablesModel(ImmutableArray<DataTableView> SystemTables, ImmutableArray<UserText> UserTexts)
+    {
+        /// <summary>The empty model (no tables, no texts) — the projection for a closed/empty document.</summary>
+        public static DataTablesModel Empty { get; } =
+            new(ImmutableArray<DataTableView>.Empty, ImmutableArray<UserText>.Empty);
+    }
 
     /// <summary>One occupied module terminal (US-050): the decoded <c>line.terminal</c> address and the product
     /// terminal that occupies it.</summary>
@@ -45,14 +50,21 @@ namespace Ihc.Vis
     /// <summary>The Wired module address map (US-050): the addressed input-module and output-module terminals,
     /// read-only. Unaddressed terminals do not appear.</summary>
     public sealed record ModuleAddressMap(
-        ImmutableArray<ModuleAddressEntry> InputModules, ImmutableArray<ModuleAddressEntry> OutputModules);
+        ImmutableArray<ModuleAddressEntry> InputModules, ImmutableArray<ModuleAddressEntry> OutputModules)
+    {
+        /// <summary>The empty map (no addressed terminals) — the projection for a closed/empty document.</summary>
+        public static ModuleAddressMap Empty { get; } =
+            new(ImmutableArray<ModuleAddressEntry>.Empty, ImmutableArray<ModuleAddressEntry>.Empty);
+    }
 
     /// <summary>
     /// API-D (fablerefac W1-5): the pure read projections over a <see cref="Project"/> — project/customer/installer
     /// information, the data tables, the unlinked-wireless pre-flight list, and the Wired module address map. Moved
     /// down from <c>ProjectSession</c> so they read through the SDK read surface (<c>project.View(element)</c>)
-    /// rather than hand-parsing attributes, and so they are testable controller-free. The GUI session keeps thin
-    /// delegators (removed in W2-12/W2-14).
+    /// rather than hand-parsing attributes, and so they are testable controller-free. The GUI (<c>ProjectWorkflow</c>)
+    /// keeps thin delegators over these: they stay, because the GUI runs commands through a per-call scratch session
+    /// rather than one persistent <c>ProjectDocumentSession</c> (the thread-affinity decision D12 superseded the
+    /// persistent-session goal), so there is no long-lived session for the VM to query directly.
     /// </summary>
     public static class ProjectProjections
     {

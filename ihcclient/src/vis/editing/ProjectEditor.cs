@@ -40,6 +40,7 @@ namespace Ihc.Vis.Editing
         private readonly IdAllocator allocator;
         private ImmutableDictionary<string, string> inlineDtdBlocks;   // grows as unregistered inserted types are adopted
         private ProjectSchemaView? schemaView;   // memoized view over inlineDtdBlocks; invalidated when they change
+        private bool catalogEnumsNormalized;      // NormalizeCatalogEnums has already run on this editor (idempotence guard, D03)
 
         internal ProjectEditor(Project project)
         {
@@ -79,12 +80,9 @@ namespace Ihc.Vis.Editing
                         "would silently target the wrong element. Repair the duplicate ids first " +
                         $"({nameof(ProjectAppService)}.{nameof(ProjectAppService.Validate)} lists them).");
                 }
-                if (!element.Children.IsDefaultOrEmpty)
+                foreach (ProjectElement child in element.ChildrenOrEmpty())
                 {
-                    foreach (ProjectElement child in element.Children)
-                    {
-                        Walk(child);
-                    }
+                    Walk(child);
                 }
             }
             Walk(root);
@@ -114,12 +112,7 @@ namespace Ihc.Vis.Editing
         /// </summary>
         public GroupRef Group(ElementId id)
         {
-            ProjectElement group = Require(id);
-            if (group.Tag != "group")
-            {
-                throw new InvalidOperationException(
-                    $"Element {id.ToToken()} is a <{group.Tag}>, not a <group> (locality).");
-            }
+            RequireTagged(id, "group");
             return new GroupRef(this, id);
         }
 
@@ -131,12 +124,7 @@ namespace Ihc.Vis.Editing
         /// </summary>
         public FunctionBlockRef FunctionBlock(ElementId id)
         {
-            ProjectElement element = Require(id);
-            if (element.Tag != "functionblock")
-            {
-                throw new InvalidOperationException(
-                    $"Element {id.ToToken()} is a <{element.Tag}>, not a <functionblock>.");
-            }
+            RequireTagged(id, "functionblock");
             return new FunctionBlockRef(this, id);
         }
 
@@ -272,8 +260,17 @@ namespace Ihc.Vis.Editing
         /// </summary>
         public ProjectEditor NormalizeCatalogEnums()
         {
+            if (catalogEnumsNormalized)
+            {
+                // Idempotence guard (D03): a re-hoist re-mints fresh def+value ids, so a second call on the same
+                // editor would burn another block of ids and move the (already-normalized) enums again. The catalog
+                // enums keep their non-null typeid after the first hoist, so the filter below would re-select them —
+                // hence this explicit guard rather than relying on the state to self-terminate.
+                return this;
+            }
             ProjectElement container = root.FindChild(EnumDefinitionsTag)
                 ?? throw new InvalidOperationException("The project has no enum_definitions container.");
+            catalogEnumsNormalized = true;   // set once the container resolves, so any later call is a no-op (incl. the count==0 path)
 
             var catalogEnums = container.ChildrenOrEmpty()
                 .Where(c => c.Tag == "enum_definition"
@@ -329,17 +326,11 @@ namespace Ihc.Vis.Editing
             return UpdateMetadataChild("installer_info", configure(new PartyInfoBuilder()).Attributes);
         }
 
-        private ProjectEditor UpdateMetadataChild(string tag, IReadOnlyList<(string Name, string Value)> attributes)
-        {
-            ProjectElement block = root.FindChild(tag)
-                ?? throw new InvalidOperationException($"The project has no <{tag}> metadata element.");
-            foreach ((string name, string value) in attributes)
-            {
-                block = block.WithAttribute(name, value);
-            }
-            root = ReplaceChildByTag(root, tag, block);
-            return this;
-        }
+        // The builder-driven metadata setters (SetProjectInfo/SetCustomerInfo/SetInstallerInfo) and the tag-driven
+        // SetMetadata upsert the same id-less top-level block the same way, so this routes them through the single
+        // SetMetadata implementation (review theme 2 DRY).
+        private ProjectEditor UpdateMetadataChild(string tag, IReadOnlyList<(string Name, string Value)> attributes) =>
+            SetMetadata(tag, attributes.ToArray());
 
         /// <summary>
         /// Opens a <see cref="ProgramBuilder"/> over an existing <c>program_simple</c> (addressed by id) to author its
@@ -349,12 +340,7 @@ namespace Ihc.Vis.Editing
         /// </summary>
         public ProgramBuilder Program(ElementId programSimpleId)
         {
-            ProjectElement program = Require(programSimpleId);
-            if (program.Tag != "program_simple")
-            {
-                throw new InvalidOperationException(
-                    $"Element {programSimpleId.ToToken()} is a <{program.Tag}>, not a <program_simple>.");
-            }
+            RequireTagged(programSimpleId, "program_simple");
             return new ProgramBuilder(this, programSimpleId);
         }
 
@@ -397,14 +383,9 @@ namespace Ihc.Vis.Editing
         /// </summary>
         public BranchRef Branch(ElementId actionsId)
         {
-            ProjectElement actions = Require(actionsId);
             // A case value's <case_action> is itself a command container (CaseRef.Case returns a BranchRef over it),
             // so it is a legal Branch target alongside a plain <actions> group (US-031).
-            if (actions.Tag is not ("actions" or "case_action"))
-            {
-                throw new InvalidOperationException(
-                    $"Element {actionsId.ToToken()} is a <{actions.Tag}>, not an <actions> or <case_action>.");
-            }
+            RequireTagged(actionsId, "actions", "case_action");
             return new BranchRef(this, actionsId);
         }
 
@@ -415,12 +396,7 @@ namespace Ihc.Vis.Editing
         /// </summary>
         public CaseRef Case(ElementId caseId)
         {
-            ProjectElement kase = Require(caseId);
-            if (kase.Tag != "program_case")
-            {
-                throw new InvalidOperationException(
-                    $"Element {caseId.ToToken()} is a <{kase.Tag}>, not a <program_case>.");
-            }
+            ProjectElement kase = RequireTagged(caseId, "program_case");
             ProjectElement elseBranch = kase.ChildrenOrEmpty().Last(c => c.Tag == "actions");
             return new CaseRef(this, caseId, elseBranch.Id!.Value);
         }
@@ -432,12 +408,7 @@ namespace Ihc.Vis.Editing
         /// </summary>
         public ConditionsGroupRef ConditionsGroup(ElementId conditionsId)
         {
-            ProjectElement conditions = Require(conditionsId);
-            if (conditions.Tag != "conditions")
-            {
-                throw new InvalidOperationException(
-                    $"Element {conditionsId.ToToken()} is a <{conditions.Tag}>, not a <conditions>.");
-            }
+            RequireTagged(conditionsId, "conditions");
             return new ConditionsGroupRef(this, conditionsId);
         }
 
@@ -458,6 +429,38 @@ namespace Ihc.Vis.Editing
             handle = new ElementRef(this, id);
             return true;
         }
+
+        /// <summary>
+        /// Resolves <paramref name="id"/> to a live <see cref="ElementRef"/> handle, or throws an
+        /// <see cref="InvalidOperationException"/> naming the missing <paramref name="noun"/> — the throwing
+        /// counterpart of <see cref="TryResolve"/> and the single require-or-throw resolver the id-addressed editing
+        /// guards route through (review theme 2). Pass the noun the caller means ("locality", "pin", "product") so a
+        /// stale id reads for that operation instead of a generic id miss.
+        /// </summary>
+        internal ElementRef Resolve(ElementId id, string noun) =>
+            TryResolve(id, out ElementRef? handle)
+                ? handle
+                : throw new InvalidOperationException($"The {noun} (id {id.ToToken()}) no longer exists.");
+
+        /// <summary>
+        /// Resolves <paramref name="id"/> and asserts its tag is one of <paramref name="expectedTags"/>, returning the
+        /// element; throws an <see cref="InvalidOperationException"/> naming the actual and expected tags otherwise —
+        /// the single "require the expected tag or throw" primitive the id-addressed entry points route through
+        /// (review theme 2). At least one expected tag must be supplied.
+        /// </summary>
+        internal ProjectElement RequireTagged(ElementId id, params string[] expectedTags)
+        {
+            ProjectElement element = Require(id);
+            if (Array.IndexOf(expectedTags, element.Tag) < 0)
+            {
+                throw new InvalidOperationException(
+                    $"Element {id.ToToken()} is a <{element.Tag}>, not {DescribeExpectedTags(expectedTags)}.");
+            }
+            return element;
+        }
+
+        private static string DescribeExpectedTags(string[] expectedTags) =>
+            "a " + string.Join(" or ", expectedTags.Select(tag => $"<{tag}>"));
 
         /// <summary>
         /// Removes a locality (room) and everything in it, cascading the reciprocal follow-link halves outside it
@@ -548,9 +551,9 @@ namespace Ihc.Vis.Editing
                     {
                         rows.Add(element);    // the whole row goes; no need to look inside it
                     }
-                    else if (!element.Children.IsDefaultOrEmpty)
+                    else
                     {
-                        foreach (ProjectElement child in element.Children)
+                        foreach (ProjectElement child in element.ChildrenOrEmpty())
                         {
                             Walk(child);
                         }
@@ -585,9 +588,9 @@ namespace Ihc.Vis.Editing
             void Walk(ProjectElement element)
             {
                 ElementSchema? schema = SchemaView.TryGet(element.Tag);
-                if (schema is not null && !element.Attrs.IsDefaultOrEmpty)
+                if (schema is not null)
                 {
-                    foreach ((string name, string value) in element.Attrs)
+                    foreach ((string name, string value) in element.AttrsOrEmpty())
                     {
                         if (IsDeletedIdRef(schema, name, value, deletedIds))
                         {
@@ -595,12 +598,9 @@ namespace Ihc.Vis.Editing
                         }
                     }
                 }
-                if (!element.Children.IsDefaultOrEmpty)
+                foreach (ProjectElement child in element.ChildrenOrEmpty())
                 {
-                    foreach (ProjectElement child in element.Children)
-                    {
-                        Walk(child);
-                    }
+                    Walk(child);
                 }
             }
             Walk(tree);
@@ -617,10 +617,10 @@ namespace Ihc.Vis.Editing
         {
             ArgumentNullException.ThrowIfNull(from);
             ArgumentNullException.ThrowIfNull(to);
-            ElementId fromId = RequireId(from);
-            ElementId toId = RequireId(to);
-            ProjectElement fromEl = Require(fromId);   // both ends must exist before any id is allocated or a half
-            ProjectElement toEl = Require(toId);       // appended: a stale handle must fail here, not half-write a link
+            ProjectElement fromEl = RequireLive(from);   // both ends must exist before any id is allocated or a half
+            ProjectElement toEl = RequireLive(to);       // appended: a stale handle must fail here, not half-write a link
+            ElementId fromId = fromEl.Id!.Value;
+            ElementId toId = toEl.Id!.Value;
 
             if (!LinkRoles.CanLink(fromEl.Tag, toEl.Tag))
                 throw new InvalidOperationException(
@@ -643,14 +643,16 @@ namespace Ihc.Vis.Editing
         /// Whether <see cref="Link(ElementId,ElementId)"/> would accept these two pins — the check a GUI runs before
         /// offering the gesture, so it can refuse with its own message instead of catching. <paramref name="fromId"/>
         /// is the source end (it would receive the <c>link_from_resource</c> half), <paramref name="toId"/> the sink.
-        /// False when either id does not resolve, when the two are the same pin, or when the shape is one IHC Visual
-        /// refuses (see <see cref="Ihc.Vis.Schema.LinkRoles"/>).
+        /// False when either id does not resolve, or when the shape is one IHC Visual refuses (see
+        /// <see cref="Ihc.Vis.Schema.LinkRoles"/>). A pin to itself is <em>not</em> refused here: for a value FB pin
+        /// (source==sink) it is a legal feedback link the vendor accepts and <see cref="Link(ElementId,ElementId)"/>
+        /// already allows, so this stays in lock-step with <c>Link</c> (the data-flow rule alone decides).
         /// </summary>
         public bool CanLink(ElementId fromId, ElementId toId)
         {
             ProjectElement? from = FindById(root, fromId);
             ProjectElement? to = FindById(root, toId);
-            return from is not null && to is not null && fromId != toId && LinkRoles.CanLink(from.Tag, to.Tag);
+            return from is not null && to is not null && LinkRoles.CanLink(from.Tag, to.Tag);
         }
 
         /// <summary>
@@ -688,8 +690,8 @@ namespace Ihc.Vis.Editing
         {
             ArgumentNullException.ThrowIfNull(from);
             ArgumentNullException.ThrowIfNull(to);
-            ProjectElement fromEl = Require(RequireId(from));
-            ProjectElement toEl = Require(RequireId(to));
+            ProjectElement fromEl = RequireLive(from);
+            ProjectElement toEl = RequireLive(to);
 
             if (FindReciprocalPair(fromEl, toEl, t => t == ReciprocalTags.FollowLinkFromTag, ReciprocalTags.FollowLinkToTag)
                 is not { } pair)
@@ -749,8 +751,8 @@ namespace Ihc.Vis.Editing
             ArgumentNullException.ThrowIfNull(sceneOutput);
             ArgumentNullException.ThrowIfNull(target);
             ArgumentNullException.ThrowIfNull(value);
-            ElementId pinId = RequireId(sceneOutput);
-            ProjectElement pin = Require(pinId);      // both ends must exist before any id is allocated or a half
+            ProjectElement pin = RequireLive(sceneOutput);   // both ends must exist before any id is allocated or a half
+            ElementId pinId = pin.Id!.Value;
             ProjectElement scenes = Require(target.Id);   // appended — a stale handle must fail here (Link precedent)
             if (pin.Tag != "resource_scene")
             {
@@ -869,7 +871,7 @@ namespace Ihc.Vis.Editing
         {
             ArgumentNullException.ThrowIfNull(sceneOutput);
             ArgumentNullException.ThrowIfNull(target);
-            ProjectElement pin = Require(RequireId(sceneOutput));
+            ProjectElement pin = RequireLive(sceneOutput);
             ProjectElement scenes = Require(target.Id);
 
             if (FindReciprocalPair(scenes, pin, ReciprocalTags.SceneMemberTags.Contains, ReciprocalTags.SceneLinkTag)
@@ -910,6 +912,13 @@ namespace Ihc.Vis.Editing
         {
             ProjectElement source = Require(sourceId);
             Require(targetParentId);                      // fail fast if the paste target does not exist
+            if (FindById(source, targetParentId) is not null)
+            {
+                // The target is the source itself or lives inside it — the clone would nest inside a copy of itself.
+                // Refuse it exactly as MoveSubtree does (a paste into a node's own descendant is never valid).
+                throw new InvalidOperationException(
+                    $"Cannot copy {sourceId.ToToken()} into itself or its own descendant {targetParentId.ToToken()}.");
+            }
             // Drop external reciprocal halves BEFORE the clone allocates ids: the vendor's paste consumes no id for
             // a dropped half, so removing them afterwards (copy-then-prune) would leave a phantom id burn. Internal
             // pairs (both ends inside the copy) stay and are remapped by InsertTransform.
@@ -1019,9 +1028,7 @@ namespace Ihc.Vis.Editing
         private void InsertChildAt(ElementId parentId, ProjectElement child, int? index) =>
             Mutate(parentId, parent =>
             {
-                ImmutableArray<ProjectElement> children = parent.Children.IsDefaultOrEmpty
-                    ? ImmutableArray<ProjectElement>.Empty
-                    : parent.Children;
+                ImmutableArray<ProjectElement> children = parent.ChildrenOrEmpty();
                 int at = index is { } i ? Math.Clamp(i, 0, children.Length) : children.Length;
                 return parent with { Children = children.Insert(at, child) };
             });
@@ -1080,16 +1087,13 @@ namespace Ihc.Vis.Editing
         {
             ProjectElement resource = Require(resourceId);
             var links = new List<LinkInfo>();
-            if (!resource.Children.IsDefaultOrEmpty)
+            foreach (ProjectElement child in resource.ChildrenOrEmpty())
             {
-                foreach (ProjectElement child in resource.Children)
+                if (child.Tag is "link_from_resource" or "link_to_resource"
+                    && child.Id is { } rowId
+                    && ElementId.TryParse(child.GetAttribute("link"), out ElementId partner))
                 {
-                    if (child.Tag is "link_from_resource" or "link_to_resource"
-                        && child.Id is { } rowId
-                        && ElementId.TryParse(child.GetAttribute("link"), out ElementId partner))
-                    {
-                        links.Add(new LinkInfo(rowId, child.Tag, partner));
-                    }
+                    links.Add(new LinkInfo(rowId, child.Tag, partner));
                 }
             }
             return links;
@@ -1169,14 +1173,11 @@ namespace Ihc.Vis.Editing
             {
                 return true;
             }
-            if (!element.Children.IsDefaultOrEmpty)
+            foreach (ProjectElement child in element.ChildrenOrEmpty())
             {
-                foreach (ProjectElement child in element.Children)
+                if (BuildPath(child, targetId, chain))
                 {
-                    if (BuildPath(child, targetId, chain))
-                    {
-                        return true;
-                    }
+                    return true;
                 }
             }
             chain.RemoveAt(chain.Count - 1);
@@ -1255,12 +1256,9 @@ namespace Ihc.Vis.Editing
                 {
                     builder[e.Tag] = CatalogDtdEmitter.RenderProjectBlock(declaration);
                 }
-                if (!e.Children.IsDefaultOrEmpty)
+                foreach (ProjectElement c in e.ChildrenOrEmpty())
                 {
-                    foreach (ProjectElement c in e.Children)
-                    {
-                        Walk(c);
-                    }
+                    Walk(c);
                 }
             }
             Walk(body);
@@ -1274,9 +1272,8 @@ namespace Ihc.Vis.Editing
             IReadOnlyList<(string Name, string Value)> attrs)
         {
             ProjectElement parent = Require(parentId);
-            ProjectElement? existing = parent.Children.IsDefaultOrEmpty
-                ? null
-                : parent.Children.FirstOrDefault(c => c.Tag == tag && c.GetAttribute("name") == name);
+            ProjectElement? existing = parent.ChildrenOrEmpty()
+                .FirstOrDefault(c => c.Tag == tag && c.GetAttribute("name") == name);
 
             if (existing is not null)
             {
@@ -1315,13 +1312,11 @@ namespace Ihc.Vis.Editing
         internal void EnsureScenesBoundToFirstOutput(ElementId productId)
         {
             ProjectElement product = Require(productId);
-            if (!product.Children.IsDefaultOrEmpty && product.Children.Any(c => c.Tag == "scenes"))
+            if (product.ChildrenOrEmpty().Any(c => c.Tag == "scenes"))
             {
                 return;   // the catalog deep-copy already provides the scenes container
             }
-            ProjectElement? output = product.Children.IsDefaultOrEmpty
-                ? null
-                : product.Children.FirstOrDefault(c => c.Tag == "dataline_output");
+            ProjectElement? output = product.ChildrenOrEmpty().FirstOrDefault(c => c.Tag == "dataline_output");
             if (output?.Id is not { } outputId)
             {
                 return;   // nothing to bind scenes to
@@ -1371,16 +1366,16 @@ namespace Ihc.Vis.Editing
             });
 
         /// <summary>
-        /// Resolves a live resource handle to its id, requiring both that the handle carries an id and that the
-        /// element still exists in the session — wiring a stale handle into a program would persist a dangling
-        /// reference.
+        /// Resolves a resource handle to its live element, requiring both that the handle carries an id and that the
+        /// element still exists in the session — wiring a stale handle into a program/link/scene would persist a
+        /// dangling reference. The single resource-id guard the link, scene and program paths route through (review
+        /// theme 2 DRY): its id is <c>result.Id!.Value</c>.
         /// </summary>
-        internal ElementId RequireLive(ResourceRef resource)
+        internal ProjectElement RequireLive(ResourceRef resource)
         {
             ElementId id = resource.Id ?? throw new InvalidOperationException(
-                $"Resource '{resource.Name}' has no allocated id; it cannot be wired into a program.");
-            Require(id);
-            return id;
+                $"Resource '{resource.Name}' has no allocated id; it is not a live element.");
+            return Require(id);
         }
 
         // ----- generic child authoring (called by ProgramBuilder) -----
@@ -1417,9 +1412,8 @@ namespace Ihc.Vis.Editing
         internal ElementId RequireSoleChildId(ElementId parentId, string childTag)
         {
             ProjectElement parent = Require(parentId);
-            ImmutableArray<ProjectElement> matches = parent.Children.IsDefaultOrEmpty
-                ? ImmutableArray<ProjectElement>.Empty
-                : parent.Children.Where(c => c.Tag == childTag).ToImmutableArray();
+            ImmutableArray<ProjectElement> matches = parent.ChildrenOrEmpty()
+                .Where(c => c.Tag == childTag).ToImmutableArray();
             if (matches.Length != 1)
             {
                 throw new InvalidOperationException(
@@ -1615,8 +1609,6 @@ namespace Ihc.Vis.Editing
         private static ImmutableArray<ProjectElement> AppendTo(ImmutableArray<ProjectElement> children, ProjectElement child) =>
             (children.IsDefaultOrEmpty ? ImmutableArray<ProjectElement>.Empty : children).Add(child);
 
-        private static ElementId RequireId(ResourceRef resource) => resource.Id
-            ?? throw new InvalidOperationException($"Resource '{resource.Name}' has no allocated id; it cannot be linked.");
     }
 
     /// <summary>

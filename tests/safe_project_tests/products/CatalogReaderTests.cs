@@ -126,7 +126,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void ReadProduct_AttachesSuppliedDocumentation()
         {
-            var documentation = new ProductDocumentation("Overview help text", ImmutableDictionary<string, string>.Empty);
+            var documentation = new DefinitionDocumentation("Overview help text", ImmutableDictionary<string, string>.Empty);
             using var stream = new MemoryStream(Encoding.Latin1.GetBytes(ProductDefXml));
 
             ProductDefinition product = CatalogReader.ReadProduct(stream, documentation);

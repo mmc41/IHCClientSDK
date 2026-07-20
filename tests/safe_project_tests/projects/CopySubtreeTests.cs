@@ -62,6 +62,21 @@ namespace Ihc.Vis.Tests
             return (fb, target);
         }
 
+        // Review Low: copying a node into its own descendant is refused, exactly as MoveSubtree already does —
+        // otherwise the clone would nest inside a copy of itself, building an invalid tree.
+        [Test]
+        public async Task CopySubtree_IntoOwnDescendant_IsRefused()
+        {
+            Project project = await LoadOracle();
+            ProjectEditor editor = project.Edit();
+            ProjectElement fb = project.Root.Descendants().First(e => e.Tag == "functionblock");
+            ElementId sourceId = fb.Id!.Value;
+            ElementId descendantId = fb.Descendants().First(d => d.Id is not null).Id!.Value;
+
+            Assert.Throws<System.InvalidOperationException>(() => editor.CopySubtree(sourceId, descendantId),
+                "a copy into the source's own descendant is refused, like MoveSubtree");
+        }
+
         [Test]
         public async Task CopySubtree_FunctionBlock_FreshDisjointIds_SuffixPreserved_ValidatorClean()
         {

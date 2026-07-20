@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj"/>
+    <ProjectReference Include="..\..\shared\ihc_appbootstrap\ihc_appbootstrap.csproj"/>
   </ItemGroup>
 
   <ItemGroup>

@@ -56,10 +56,12 @@ public sealed class ProjectTreeReconciler
     /// <summary>The current forest root, or null before the first <see cref="Rebuild"/>.</summary>
     public TreeNodeViewModel? Root => _root;
 
-    /// <summary>The number of indexed rows.</summary>
+    /// <summary>The number of indexed rows. Intentional test-only seam (D02): read only by the reconciler-index
+    /// tests to assert the index population; kept as an observability handle, not dead.</summary>
     public int Count => _index.Count;
 
-    /// <summary>The row indexed under <paramref name="key"/>, or null if none.</summary>
+    /// <summary>The row indexed under <paramref name="key"/>, or null if none. Intentional test-only seam (D02):
+    /// the reconcile is driven internally; this lookup is exposed for the tests to inspect a specific row by key.</summary>
     public TreeNodeViewModel? Find(NodeKey key) => _index.GetValueOrDefault(key);
 
     /// <summary>
@@ -151,7 +153,7 @@ public sealed class ProjectTreeReconciler
             ReRenderInPlace(key, freshByKey);
         }
 
-        RebuildIndex(project);   // repoint index + dependency map at the reconciled forest
+        RebuildIndex(project, freshByKey);   // repoint index + dependency map (edges sourced from the fresh projection)
         return _root;
     }
 
@@ -316,29 +318,31 @@ public sealed class ProjectTreeReconciler
 
     // Repopulates the index + dependency map from the current forest (called after a full build or an incremental
     // reconcile). Cheap POCO walk; keeps the maps authoritative without incremental deregistration bookkeeping.
-    private void RebuildIndex(Project project)
+    private void RebuildIndex(Project project, IReadOnlyDictionary<NodeKey, TreeNodeViewModel>? freshByKey = null)
     {
         _index.Clear();
         _dependents.Clear();
         _rootElementId = project.Child("groups")?.Id;
         if (_root is not null)
         {
-            IndexSubtree(_root, project);
+            IndexSubtree(_root, freshByKey);
         }
     }
 
-    private void IndexSubtree(TreeNodeViewModel node, Project project)
+    private void IndexSubtree(TreeNodeViewModel node, IReadOnlyDictionary<NodeKey, TreeNodeViewModel>? freshByKey)
     {
         if (ForestKeyOf(node) is { } key)
         {
-            ElementId[] dependsOn = node.ElementId is { } id && project.FindById(id) is { } element
-                ? DependenciesOf(element, project).ToArray()
-                : [];
-            Register(key, node, dependsOn);
+            // The cross-reference edges are emitted by the projector on each row (TreeNodeViewModel.CrossReferences).
+            // A reused row instance may still carry the edges from a PRIOR projection, so in an incremental reconcile
+            // prefer the FRESH projection's node for this key — matching the pre-T022 behaviour, which re-derived the
+            // edges from the current project on every RebuildIndex.
+            TreeNodeViewModel source = freshByKey?.GetValueOrDefault(key) ?? node;
+            Register(key, node, source.CrossReferences.ToArray());
         }
         foreach (TreeNodeViewModel child in node.Children)
         {
-            IndexSubtree(child, project);
+            IndexSubtree(child, freshByKey);
         }
     }
 
@@ -348,52 +352,4 @@ public sealed class ProjectTreeReconciler
         node.ElementId is { } id ? NodeKey.ForElement(id)
         : node.IsLocalitiesRoot && _rootElementId is { } rootId ? NodeKey.ForElement(rootId)
         : null;
-
-    // The OTHER elements whose name/attrs feed this row's label — mirrors the projector's cross-references. An
-    // over-approximation is safe: re-rendering a row whose value is unchanged is a no-op via the observable setters.
-    private IEnumerable<ElementId> DependenciesOf(ProjectElement element, Project project)
-    {
-        // link halves and scene members render the opposite end's bare path (the partner pin + its ancestors' names).
-        if (element.IsLinkHalf || element.IsSceneMember)
-        {
-            if (ElementId.TryParse(project.View(element).Effective("link"), out ElementId partnerId)
-                && project.FindParent(partnerId) is { } partnerPin)
-            {
-                for (ProjectElement? cur = partnerPin; cur is not null;
-                     cur = cur.Id is { } cid ? project.FindParent(cid) : null)
-                {
-                    if (cur.Id is { } id)
-                    {
-                        yield return id;
-                    }
-                }
-            }
-        }
-        // program event/command/condition rows render %P/%S operand names (link1/link2); a case switch its switch operand.
-        else if (element.IsProgramEvent || element.IsProgramCommand || element.IsCondition)
-        {
-            foreach (ElementId operand in Operands(element, project, "link1", "link2"))
-            {
-                yield return operand;
-            }
-        }
-        else if (element.IsProgramCase)
-        {
-            foreach (ElementId operand in Operands(element, project, "link"))
-            {
-                yield return operand;
-            }
-        }
-    }
-
-    private static IEnumerable<ElementId> Operands(ProjectElement element, Project project, params string[] attrs)
-    {
-        foreach (string attr in attrs)
-        {
-            if (ElementId.TryParse(project.View(element).Effective(attr), out ElementId id) && project.FindById(id) is not null)
-            {
-                yield return id;
-            }
-        }
-    }
 }

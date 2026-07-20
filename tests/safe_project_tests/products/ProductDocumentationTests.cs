@@ -4,7 +4,7 @@ using System.Linq;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// Exercises the programmatic-lookup-only <see cref="ProductDocumentation"/> help metadata carried on a
+    /// Exercises the programmatic-lookup-only <see cref="DefinitionDocumentation"/> help metadata carried on a
     /// <see cref="ProductDefinition"/>: the product's overview text plus a per-resource text keyed by display name
     /// (help for each I/O pin — a shape modeled on, but not copied from, any vendor source; every sample string here is
     /// synthetic and self-authored), and — the load-bearing guarantee — that attaching it leaves the serialized
@@ -35,8 +35,8 @@ namespace Ihc.Vis.Tests
             new ProductDefinition("_0x2101", "Tryk 2 tast", "01. Tryk/2 taster", body ?? PushButtonBody());
 
         // Synthetic, self-authored help text (NOT copied from any copyrighted vendor source) — only its shape matches one.
-        private static ProductDocumentation Documented(string summary) =>
-            new ProductDocumentation(
+        private static DefinitionDocumentation Documented(string summary) =>
+            new DefinitionDocumentation(
                 summary,
                 ImmutableDictionary<string, string>.Empty
                     .Add("Tryk (venstre)", "Opdigtet hjælpetekst: venstre tast skifter udgangens tilstand i eksemplet.")
@@ -45,7 +45,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void Empty_HasNoProductTextAndNoResourceText()
         {
-            ProductDocumentation empty = ProductDocumentation.Empty;
+            DefinitionDocumentation empty = DefinitionDocumentation.Empty;
 
             Assert.Multiple(() =>
             {
@@ -58,7 +58,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void ForResource_ReturnsText_ForDocumentedName_AndNull_ForUndocumented()
         {
-            ProductDocumentation doc = Documented("Product help.");
+            DefinitionDocumentation doc = Documented("Product help.");
 
             Assert.Multiple(() =>
             {
@@ -78,7 +78,7 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(def.Documentation, Is.SameAs(ProductDocumentation.Empty));
+                Assert.That(def.Documentation, Is.SameAs(DefinitionDocumentation.Empty));
                 Assert.That(def.Documentation.IsEmpty, Is.True);
             });
         }
@@ -110,7 +110,7 @@ namespace Ihc.Vis.Tests
             ProductDefinition bare = PushButtonDefinition();
             ProductDefinition documented = bare with
             {
-                Documentation = new ProductDocumentation(
+                Documentation = new DefinitionDocumentation(
                     "PRODUCT-HELP-SENTINEL",
                     ImmutableDictionary<string, string>.Empty
                         .Add("Tryk (venstre)", "VENSTRE-HELP-SENTINEL")

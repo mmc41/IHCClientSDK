@@ -147,6 +147,53 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // ---- Validator interplay: wrong-KIND partner (still reciprocal) → the merged scene-bijection complement check ----
+
+        // T013: the scene bijection never verified the PARTNER KIND, so a scene member wired to another member (with
+        // the scene_links likewise wired to each other) stayed fully reciprocal and slipped through. The merge into
+        // ValidateReciprocity closes that gap: the partner kind must be the complement (member ↔ scene_link).
+        [Test]
+        public async Task SceneRowsWiredToWrongKind_ButReciprocal_FailSceneBijection()
+        {
+            var app = new ProjectAppService(Settings);
+            Project original = await app.Load("testdata/projects/" + Original);
+
+            ProjectEditor editor = original.Edit();
+            (ResourceRef relayPin, ScenesRef relayTarget) = ResolveRelayEndpoints(editor);
+            editor.LinkScene(relayPin, relayTarget, SceneValue.Relay(on: true));
+            (ResourceRef dimmerPin, ScenesRef dimmerTarget) = ResolveDimmerEndpoints(editor);
+            editor.LinkScene(dimmerPin, dimmerTarget, SceneValue.Dimmer(100, TimeSpan.FromMilliseconds(1000)));
+
+            // Rewire into two mutual WRONG-KIND pairs: member↔member and scene_link↔scene_link. Every half still
+            // points at a partner that points back (reciprocity intact) — only the partner KIND is wrong.
+            Project linked = editor.ToProject();
+            ProjectElement relayMember = linked.Root.Descendants().Single(e => e.Tag == "scene_relay");
+            ProjectElement dimmerMember = linked.Root.Descendants().Single(e => e.Tag == "scene_dimmer");
+            System.Collections.Generic.List<ProjectElement> sceneLinks =
+                linked.Root.Descendants().Where(e => e.Tag == "scene_link").ToList();
+            Pair(editor, relayMember, dimmerMember);
+            Pair(editor, sceneLinks[0], sceneLinks[1]);
+
+            ProjectValidationResult validation = app.Validate(editor.ToProject());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(validation.IsValid, Is.False, "a wrong-kind (but reciprocal) scene pairing must not validate");
+                Assert.That(validation.Findings.Any(f => f.RuleId == "scene-bijection"), Is.True,
+                    "the wrong partner kind is caught by the merged scene-bijection complement check; findings: "
+                    + string.Join(" | ", validation.Findings));
+            });
+        }
+
+        // Wires two rows reciprocally at each other (each row's link IDREF → the other's id).
+        private static void Pair(ProjectEditor editor, ProjectElement a, ProjectElement b)
+        {
+            editor.TryResolve(a.Id!.Value, out ElementRef? ha);
+            editor.TryResolve(b.Id!.Value, out ElementRef? hb);
+            ha!.SetAttribute("link", b.GetAttribute("id")!);
+            hb!.SetAttribute("link", a.GetAttribute("id")!);
+        }
+
         // ---- Delete cascade, FB direction: deleting the scene pin cascades the member row ----
 
         // Every stock scene pin in project3 is fired by its own block's program ("Fremkald %P" actions), and the

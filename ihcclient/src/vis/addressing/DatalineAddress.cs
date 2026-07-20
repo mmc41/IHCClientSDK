@@ -50,7 +50,7 @@ namespace Ihc.Vis.Addressing
             int value = (dataLine - 1) * perLine + terminal;
             if (value < 1 || value > MaxAddressValue)
                 return false;
-            token = "_0x" + value.ToString("x", CultureInfo.InvariantCulture);
+            token = HexToken.Format(value);
             return true;
         }
 

@@ -24,32 +24,39 @@ public partial class ProjectInfoWindow : ResultDialog<ProjectInfoData>
         window.ProjDescriptionBox.Text = current.Description;
         window.ProjNumberBox.Text = current.Number;
         window.ProjProgrammerBox.Text = current.Programmer;
-        window.Fill("Cust", current.Customer);
-        window.Fill("Inst", current.Installer);
+        Fill(current.Customer, window.CustNameBox, window.CustAddressBox, window.CustCityBox, window.CustZipBox,
+            window.CustCountryBox, window.CustPhoneBox, window.CustMobileBox, window.CustEmailBox);
+        Fill(current.Installer, window.InstNameBox, window.InstAddressBox, window.InstCityBox, window.InstZipBox,
+            window.InstCountryBox, window.InstPhoneBox, window.InstMobileBox, window.InstEmailBox);
         return window.ShowDialogForResult(owner);
     }
 
-    private void Fill(string prefix, ContactInfo c)
+    // The contact grids share a fixed 8-field layout; the generated x:Name fields are passed in positionally so the
+    // Cust*/Inst* boxes are addressed directly (no runtime string FindControl, so a renamed control is a compile error).
+    private static void Fill(ContactInfo c, TextBox name, TextBox address, TextBox city, TextBox zip,
+        TextBox country, TextBox phone, TextBox mobile, TextBox email)
     {
-        Box($"{prefix}NameBox").Text = c.Name;
-        Box($"{prefix}AddressBox").Text = c.Address;
-        Box($"{prefix}CityBox").Text = c.City;
-        Box($"{prefix}ZipBox").Text = c.Zip;
-        Box($"{prefix}CountryBox").Text = c.Country;
-        Box($"{prefix}PhoneBox").Text = c.Phone;
-        Box($"{prefix}MobileBox").Text = c.Mobile;
-        Box($"{prefix}EmailBox").Text = c.Email;
+        name.Text = c.Name;
+        address.Text = c.Address;
+        city.Text = c.City;
+        zip.Text = c.Zip;
+        country.Text = c.Country;
+        phone.Text = c.Phone;
+        mobile.Text = c.Mobile;
+        email.Text = c.Email;
     }
 
-    private ContactInfo Read(string prefix) => new(
-        Text($"{prefix}NameBox"), Text($"{prefix}AddressBox"), Text($"{prefix}CityBox"), Text($"{prefix}ZipBox"),
-        Text($"{prefix}CountryBox"), Text($"{prefix}PhoneBox"), Text($"{prefix}MobileBox"), Text($"{prefix}EmailBox"));
+    private static ContactInfo Read(TextBox name, TextBox address, TextBox city, TextBox zip,
+        TextBox country, TextBox phone, TextBox mobile, TextBox email) => new(
+        Val(name), Val(address), Val(city), Val(zip), Val(country), Val(phone), Val(mobile), Val(email));
 
-    private TextBox Box(string name) => this.FindControl<TextBox>(name)!;
-    private string Text(string name) => Box(name).Text ?? string.Empty;
+    private static string Val(TextBox box) => box.Text ?? string.Empty;
 
     private void OnOk(object? sender, RoutedEventArgs e) =>
         Accept(new ProjectInfoData(
-            Text("ProjDescriptionBox"), Text("ProjNumberBox"), Text("ProjProgrammerBox"),
-            Read("Cust"), Read("Inst")));
+            Val(ProjDescriptionBox), Val(ProjNumberBox), Val(ProjProgrammerBox),
+            Read(CustNameBox, CustAddressBox, CustCityBox, CustZipBox,
+                CustCountryBox, CustPhoneBox, CustMobileBox, CustEmailBox),
+            Read(InstNameBox, InstAddressBox, InstCityBox, InstZipBox,
+                InstCountryBox, InstPhoneBox, InstMobileBox, InstEmailBox)));
 }

@@ -32,7 +32,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void Parse_Summary_IsFirstParagraphAfterHeading()
         {
-            FunctionBlockDocumentation doc = FunctionBlockDocReader.Parse(Sample);
+            DefinitionDocumentation doc = FunctionBlockDocReader.Parse(Sample);
 
             Assert.That(doc.Summary,
                 Is.EqualTo("Manual on/off control for a single output, toggled by one push button."));
@@ -41,7 +41,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void Parse_Resources_KeyedByDisplayName_AcrossSections()
         {
-            FunctionBlockDocumentation doc = FunctionBlockDocReader.Parse(Sample);
+            DefinitionDocumentation doc = FunctionBlockDocReader.Parse(Sample);
 
             Assert.Multiple(() =>
             {
@@ -56,7 +56,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void Parse_HeadingIsNotPartOfSummary()
         {
-            FunctionBlockDocumentation doc = FunctionBlockDocReader.Parse(Sample);
+            DefinitionDocumentation doc = FunctionBlockDocReader.Parse(Sample);
 
             Assert.That(doc.Summary, Does.Not.Contain("Toggle lamp"));
         }
@@ -67,7 +67,7 @@ namespace Ihc.Vis.Tests
             const string summaryOnly =
                 "# 2.1.01.a. Clock\r\n\r\nA plain block with prose but no pin lists.\r\n";
 
-            FunctionBlockDocumentation doc = FunctionBlockDocReader.Parse(summaryOnly);
+            DefinitionDocumentation doc = FunctionBlockDocReader.Parse(summaryOnly);
 
             Assert.Multiple(() =>
             {
@@ -90,7 +90,7 @@ namespace Ihc.Vis.Tests
                 "- **A** – en dash text\r\n" +
                 "- **B** - hyphen text\r\n";
 
-            FunctionBlockDocumentation doc = FunctionBlockDocReader.Parse(mixed);
+            DefinitionDocumentation doc = FunctionBlockDocReader.Parse(mixed);
 
             Assert.Multiple(() =>
             {
@@ -111,7 +111,7 @@ namespace Ihc.Vis.Tests
                 // A vendor .md sibling exists too, but syn_en must win (copyright).
                 File.WriteAllText(Path.Combine(dir, "1.1.01.md"), "# vendor\r\n\r\nVendor copyrighted prose.\r\n");
 
-                FunctionBlockDocumentation? doc = FunctionBlockDocReader.ForFunctionBlock(
+                DefinitionDocumentation? doc = FunctionBlockDocReader.ForFunctionBlock(
                     Path.Combine(dir, "1.1.01.ifb"), synEnOnly: true);
 
                 Assert.That(doc, Is.Not.Null);

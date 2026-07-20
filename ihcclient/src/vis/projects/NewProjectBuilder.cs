@@ -185,14 +185,11 @@ namespace Ihc.Vis.Projects
         private static ProjectElement Node(string tag, string? id, IEnumerable<(string Name, string Value)> attrs,
                                            IEnumerable<ProjectElement> children)
         {
+            // The ids passed here are canonical _0x tokens (each is an IdAllocator .ToToken() or the skeleton's
+            // canonical container id), so parsing to ElementId and letting ProjectElement.Create re-render the id
+            // attribute is byte-identical — and drops this method's re-implementation of Create's id-bag assembly.
             ElementId? parsedId = id is not null && ElementId.TryParse(id, out ElementId p) ? p : null;
-            var bag = ImmutableArray.CreateBuilder<(string, string)>();
-            if (id is not null)
-            {
-                bag.Add(("id", id));
-            }
-            bag.AddRange(attrs);
-            return new ProjectElement(tag, parsedId, bag.ToImmutable(), children.ToImmutableArray());
+            return ProjectElement.Create(tag, parsedId, attrs, children);
         }
 
         private static IEnumerable<(string, string)> CopyAttrs(ProjectElement source, params string[] names)

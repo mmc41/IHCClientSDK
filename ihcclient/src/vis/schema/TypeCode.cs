@@ -119,7 +119,12 @@ namespace Ihc.Vis.Schema
             ["shutter_settings"] = 0x78,
             ["shutter_setting_travel_time_up"] = 0x79,
             ["shutter_setting_travel_time_down"] = 0x7a,
-            // RS485 LED dimmer, S0 meter device, SMS modem
+            // RS485 LED dimmer, S0 meter device, SMS modem.
+            // NOTE: the bare `product_rs485_modem` tag (a non-SMS RS485 modem) is DELIBERATELY absent here — it has
+            // no attested vendor type-code, so it is an open-world tag the classifier (ProductClassifier.FamilyOf ->
+            // Rs485Modem, IsModem) and the report (ReportBuilder.ModemTags) still recognise WITHOUT a built-in
+            // TypeCode/registry entry. Inventing a byte for it risks colliding with a real vendor code; a project
+            // that actually uses it carries its own inline-DTD id anyway. (T043)
             ["product_rs485_sms_modem"] = 0x56,
             ["s0_device"] = 0x57,
             ["product_rs485_led_dimmer"] = 0x58,

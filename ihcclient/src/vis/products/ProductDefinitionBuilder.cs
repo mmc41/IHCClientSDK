@@ -34,10 +34,11 @@ namespace Ihc.Vis.Products
     /// <c>#REQUIRED</c> value initials: authentic <c>Products\*.def</c> files carry the canonical icon as the resource's
     /// own DTD default (so the vendor body omits it), which the reader materializes and the canonicalizer then drops —
     /// a leanly-authored body reaches the same canonical form by emitting nothing. Each named factory seeds its
-    /// family's standard grammar preset; <see cref="Grammar"/> replaces it wholesale and <see cref="ExtendGrammar"/>
+    /// family's standard grammar preset; <see cref="DefinitionBuilderBase{TSelf}.Grammar(CatalogGrammar)"/> replaces it
+    /// wholesale and <see cref="DefinitionBuilderBase{TSelf}.ExtendGrammar(System.Action{CatalogGrammarBuilder})"/>
     /// add-or-replaces single declarations (body verbs never mutate the grammar). The escape hatches —
-    /// <see cref="Attribute"/>, <see cref="AddResource"/>, <see cref="RawChild"/> plus an
-    /// <see cref="ExtendGrammar"/> declaration — cover exotic/open-world families so any product is authorable from code.
+    /// <see cref="Attribute"/>, <see cref="AddResource"/>, <see cref="RawChild"/> plus an <c>ExtendGrammar</c>
+    /// declaration — cover exotic/open-world families so any product is authorable from code.
     /// <para><b>Opaque tokens (address / icon / product-identifier):</b> these are per-family, fidelity-critical wire
     /// tokens taken verbatim. A GUI does not invent them — it enumerates the legal vocabulary from the catalog seam
     /// (<see cref="Ihc.Vis.Catalog.ICatalog"/>, typically the SDK-embedded <c>BuiltInCatalog</c>) and binds pickers
@@ -47,7 +48,7 @@ namespace Ihc.Vis.Products
     /// (<c>project.Edit().Group(..).AddProduct(def)</c> via <see cref="Ihc.Vis.ProjectAppService"/>), which owns the
     /// telemetry, IO and the single project-mutation entry point — the builder deliberately owns none of that.</para>
     /// </remarks>
-    public sealed class ProductDefinitionBuilder
+    public sealed class ProductDefinitionBuilder : DefinitionBuilderBase<ProductDefinitionBuilder>
     {
         /// <summary>The vendor default display name of a product's <c>scenes</c> container — a user-facing,
         /// user-editable label (it varies per catalog family, e.g. "Scenarier/regulering" on dimmers), not fixed
@@ -57,35 +58,31 @@ namespace Ihc.Vis.Products
         private static readonly (string Name, string Value)[] NoAttrs = Array.Empty<(string, string)>();
         private static readonly ProjectElement[] NoChildren = Array.Empty<ProjectElement>();
 
-        private IdAllocator ids = new(0);
         private readonly string rootTag;
         private string productIdentifier;
         private string displayName;
         private string? bodyName;
-        private string categoryPath = string.Empty;
         private readonly List<(string Name, string Value)> rootAttrs = new();
         private readonly List<ProjectElement> children = new();
         private ElementId? lastResourceId;
         private ElementId? builtRootId;     // memoized so repeated Build() is idempotent (no id drift off the allocator)
         private ElementId? builtScenesId;
         private string? scenes;   // the scenes container's label when requested (null = no scenes)
-        private CatalogGrammar grammar;                 // the EFFECTIVE grammar: family preset / From-carried / assigned
-        private CatalogTextEncoding? sourceEncoding;    // From-carried physical encoding
-        private string? docSummary;
-        private readonly Dictionary<string, string> resourceDocs = new(StringComparer.Ordinal);
 
         private ProductDefinitionBuilder(string rootTag, string productIdentifier, string displayName,
             CatalogGrammar grammar)
+            : base(grammar)   // the EFFECTIVE grammar: family preset / From-carried / assigned
         {
             this.rootTag = rootTag;
             this.productIdentifier = productIdentifier;
             this.displayName = displayName;
-            this.grammar = grammar;
         }
+
+        private protected override ProductDefinitionBuilder Self => this;
 
         /// <summary>Begins a dataline product (root <c>product_dataline</c>), keyed by its opaque
         /// <c>product_identifier</c> token (e.g. <c>_0x2101</c>) and shown as <paramref name="displayName"/>.
-        /// Seeds the family's standard grammar preset (see <see cref="Grammar"/>/<see cref="ExtendGrammar"/>).</summary>
+        /// Seeds the family's standard grammar preset (see the base <c>Grammar</c>/<c>ExtendGrammar</c>).</summary>
         public static ProductDefinitionBuilder Dataline(string productIdentifier, string displayName) =>
             new("product_dataline", productIdentifier, displayName, CatalogGrammarPresets.Dataline);
 
@@ -159,22 +156,12 @@ namespace Ihc.Vis.Products
                     builder.lastResourceId = id;
                 }
             }
-            builder.docSummary = existing.Documentation.Summary;
-            foreach (KeyValuePair<string, string> doc in existing.Documentation.Resources)
-            {
-                builder.resourceDocs[doc.Key] = doc.Value;
-            }
+            builder.SeedDocumentation(existing.Documentation);
             return builder;
         }
 
         // ---- identity / library placement ----
-
-        /// <summary>Sets the library category path the product is filed under (GUI menu placement).</summary>
-        public ProductDefinitionBuilder CategoryPath(string categoryPath)
-        {
-            this.categoryPath = categoryPath;
-            return this;
-        }
+        // CategoryPath(string) lives on the shared DefinitionBuilderBase (GUI menu placement).
 
         /// <summary>Overrides the display name shown in the IHC Visual library/tree (the
         /// <see cref="ProductDefinition.DisplayName"/> field, defaulted from the factory argument) — the library label
@@ -258,37 +245,9 @@ namespace Ihc.Vis.Products
         }
 
         // ---- documentation (help metadata; programmatic-lookup only, never serialized) ----
-
-        /// <summary>
-        /// Sets the product-level documentation text — the whole help document a GUI shows for the product. This is
-        /// <b>metadata for programmatic lookup only</b>: it rides on <see cref="ProductDefinition.Documentation"/> (as
-        /// <see cref="ProductDocumentation.Summary"/>) but is deliberately kept out of the serialized
-        /// <see cref="ProductDefinition.Body"/>, so it is never written into a project <c>.vis</c> or a product catalog
-        /// <c>.def</c>. Contrast <see cref="Note"/>, which sets the serialized <c>note</c> attribute. Returns this for
-        /// chaining. Mirrors <see cref="Ihc.Vis.FunctionBlocks.FunctionBlockDefinitionBuilder.Documentation(string)"/>.
-        /// </summary>
-        public ProductDefinitionBuilder Documentation(string documentation)
-        {
-            docSummary = documentation;
-            return this;
-        }
-
-        /// <summary>
-        /// Attaches documentation text to one resource — the I/O pin or family resource identified by its display
-        /// <paramref name="resourceName"/> (the same name passed to <see cref="AddInput"/>/<see cref="AddOutput"/>/
-        /// <see cref="AddResource"/> and read back off <see cref="ProductDefinition.Resources"/>). Like the product-level
-        /// <see cref="Documentation(string)"/> overload this is <b>programmatic-lookup-only</b> metadata: it surfaces on
-        /// <see cref="ProductDefinition.Documentation"/> (looked up by name via
-        /// <see cref="ProductDocumentation.ForResource"/>) and is never serialized into
-        /// <see cref="ProductDefinition.Body"/> or a <c>.def</c>. This keys by resource name because the product builder
-        /// identifies resources by name rather than by handle — the function-block side takes an <c>FbResourceHandle</c>
-        /// because it also wires resources into a program graph, which a product has none of. Returns this for chaining.
-        /// </summary>
-        public ProductDefinitionBuilder Documentation(string resourceName, string documentation)
-        {
-            resourceDocs[resourceName] = documentation;
-            return this;
-        }
+        // Both the product-level Documentation(string) and the name-keyed Documentation(string, string) live on the
+        // shared DefinitionBuilderBase — a product keys per-resource docs by name (no handle), which is exactly the
+        // base's name-keyed overload; the function-block side adds a by-FbResourceHandle overload on top.
 
         // ---- escape hatches (exotic families / open world) ----
 
@@ -325,32 +284,7 @@ namespace Ihc.Vis.Products
             return this;
         }
 
-        /// <summary>
-        /// <b>Replaces</b> the effective grammar wholesale — the one canonical assignment used by generated catalog
-        /// code and for full replacement after <see cref="From"/>. To add or adjust a single declaration while
-        /// keeping the preset/carried grammar intact, use <see cref="ExtendGrammar"/> instead.
-        /// </summary>
-        public ProductDefinitionBuilder Grammar(CatalogGrammar grammar)
-        {
-            ArgumentNullException.ThrowIfNull(grammar);
-            this.grammar = grammar;
-            return this;
-        }
-
-        /// <summary>
-        /// <b>Extends</b> the effective grammar (the family preset, a <see cref="From"/>-carried grammar, or a
-        /// prior assignment): the callback add-or-replaces whole per-tag declarations, leaving every other
-        /// declaration, default and IDREF classification intact — the near-minimal path for declaring one custom
-        /// body type (e.g. an open-world resource spliced via <see cref="RawChild"/>).
-        /// </summary>
-        public ProductDefinitionBuilder ExtendGrammar(Action<CatalogGrammarBuilder> extend)
-        {
-            ArgumentNullException.ThrowIfNull(extend);
-            var builder = new CatalogGrammarBuilder(grammar);
-            extend(builder);
-            grammar = builder.Build();
-            return this;
-        }
+        // Grammar(CatalogGrammar) and ExtendGrammar(Action<CatalogGrammarBuilder>) live on DefinitionBuilderBase.
 
         /// <summary>
         /// Checks the builder's current state against the locally-decidable authoring preconditions (identity present,
@@ -477,11 +411,6 @@ namespace Ihc.Vis.Products
             rootAttrs.Add((name, value));
             return this;
         }
-
-        private ProductDocumentation BuildDocumentation() =>
-            docSummary is null && resourceDocs.Count == 0
-                ? ProductDocumentation.Empty
-                : new ProductDocumentation(docSummary, resourceDocs.ToImmutableDictionary(StringComparer.Ordinal));
     }
 
     /// <summary>

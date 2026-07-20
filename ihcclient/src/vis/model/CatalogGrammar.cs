@@ -90,7 +90,11 @@ namespace Ihc.Vis.Model
             return Build(projectedDeclarations, declaredEncoding, doctypeRoot, verbatimHead);
         }
 
-        private static readonly Regex EncodingLabel = new("^[A-Za-z][A-Za-z0-9._-]*$", RegexOptions.CultureInvariant);
+        /// <summary>The XML encoding-label character class (an EncName: a letter then letters/digits/<c>.</c>/<c>_</c>/
+        /// <c>-</c>), shared by every regex that reads or validates an encoding declaration.</summary>
+        internal const string EncName = "[A-Za-z][A-Za-z0-9._-]*";
+
+        private static readonly Regex EncodingLabel = new("^" + EncName + "$", RegexOptions.CultureInvariant);
 
         private static CatalogGrammar Build(ImmutableArray<GrammarDeclaration> declarations, string declaredEncoding,
             string? doctypeRoot, string? verbatimHead)

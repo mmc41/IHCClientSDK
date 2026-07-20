@@ -21,7 +21,7 @@ public partial class AboutWindow : Window
         AppDescription.Text = Constants.AppDescription;
         RepoLinkText.Text = Constants.SdkRepoLink;
         RepoAuthors.Text = Constants.Authors;
-        AppVersionText.Text = $"App Version: {VersionInfo.GetAppVersionStr()}";
+        AppVersionText.Text = $"App Version: {Ihc.Bootstrap.AppTelemetryBootstrap.GetAppVersionStr()}";
         SdkVersionText.Text = $"SDK Version: {Ihc.VersionInfo.GetSdkVersionStr()}";
     }
 

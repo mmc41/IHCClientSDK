@@ -162,11 +162,24 @@ public sealed class ProjectWorkflow : IDisposable
                 $"IHC OpenVisual did not close normally last time. Recover unsaved work{when}?");
             if (recover)
             {
-                Project recovered = await _service.Load(_backup.RecoveryProjectPath);
-                SetProject(recovered, info?.OriginPath, dirty: true);
-                ResetChangeCount();
-                StartTimer();
-                return;
+                try
+                {
+                    Project recovered = await _service.Load(_backup.RecoveryProjectPath);
+                    SetProject(recovered, info?.OriginPath, dirty: true);
+                    ResetChangeCount();
+                    StartTimer();
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    // A corrupt recovery file must not crash the launch — this runs under App's async-void
+                    // window.Opened handler, so an unhandled throw is unobserved and fatal. Route it through the
+                    // same error path as OpenAsync: report it, discard the unusable backup below, and fall through
+                    // to a fresh project (review Low "startup async void").
+                    _logger.LogError(ex, "Failed to recover crash backup {Path}", _backup.RecoveryProjectPath);
+                    await _dialogs.ShowMessageAsync("Recovery failed",
+                        $"The recovered project could not be loaded and was discarded:\n{ex.Message}");
+                }
             }
             _backup.Delete();
         }
@@ -294,7 +307,9 @@ public sealed class ProjectWorkflow : IDisposable
     }
 
     /// <summary>Reads the current project/customer/installer information (US-039) to prefill the dialog. Delegates
-    /// to the SDK projection (<c>Ihc.Vis.ProjectProjections</c>); removed once the VM calls the session query (W2-12).</summary>
+    /// to the SDK projection (<c>Ihc.Vis.ProjectProjections</c>). Permanent: the GUI runs commands through a per-call
+    /// scratch session, not one persistent <c>ProjectDocumentSession</c> (D12 thread-affinity superseded W2's
+    /// persistent-session goal), so there is no long-lived session query to delegate to.</summary>
     public ProjectInfoData GetProjectInfo() => Current?.GetProjectInfo() ?? ProjectInfoData.Empty;
 
     /// <summary>The dedicated user enum definition that holds the data-tables "user-defined texts" (US-049).</summary>
@@ -303,7 +318,7 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>
     /// Reads the project's data tables (US-049): the read-only system tables (the built-in <c>typeid</c>-bearing enum
     /// definitions) and the editable user-defined texts (the values of the <see cref="UserTextsTableName"/> enum).
-    /// Delegates to the SDK projection; removed once the VM calls the session query (W2-12).
+    /// Delegates to the SDK projection. Permanent (see <see cref="GetProjectInfo"/>): no persistent session to query.
     /// </summary>
     public DataTablesModel GetDataTables() => Current?.GetDataTables() ?? new DataTablesModel([], []);
 
@@ -317,7 +332,8 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>
     /// Builds the read-only Wired module address map (US-050): every addressed <c>dataline_input</c>/<c>dataline_output</c>
     /// terminal across all products, decoded to its <c>line.terminal</c> address and split into input/output modules,
-    /// sorted by address. Delegates to the SDK projection; removed once the VM calls the session query (W2-12).
+    /// sorted by address. Delegates to the SDK projection. Permanent (see <see cref="GetProjectInfo"/>): no
+    /// persistent session to query.
     /// </summary>
     public ModuleAddressMap GetModuleAddressMap() =>
         Current?.GetModuleAddressMap() ?? new ModuleAddressMap([], []);
@@ -327,18 +343,6 @@ public sealed class ProjectWorkflow : IDisposable
     public ProjectCommand BuildAddUserText(string text) =>
         new AddUserText(text, Current is { } project && project.Child("enum_definitions")?.ChildrenOrEmpty()
             .Any(c => c.IsEnumDefinition && project.View(c).Name == UserTextsTableName) == true);
-
-    /// <summary>Whether dragging <paramref name="draggedPin"/> onto <paramref name="dropTargetPin"/> would create a
-    /// link — the drag-over hint peer of the <c>LinkPins</c> command. Applies the SDK's data-flow rule and orientation
-    /// (<see cref="ProjectEditor.CanLink"/> / <see cref="Ihc.Vis.Schema.LinkRoles"/>): the dragged pin is the source, the
-    /// target the sink; a self-link (a block output onto its own input) is allowed, a crossed or same-family pair
-    /// refused. Non-mutating; no controller.</summary>
-    public bool CanLinkPins(ElementId draggedPin, ElementId dropTargetPin)
-    {
-        if (Current is not { } current)
-            return false;
-        return OpenScratch(current).CanApply(new LinkPins(draggedPin, dropTargetPin)).Ok;
-    }
 
     /// <summary>The catalog products available for insertion (from the SDK-embedded catalog; no controller needed).</summary>
     public IReadOnlyList<ProductDefinition> GetAvailableProducts() => _service.GetAvailableProducts();
@@ -396,12 +400,6 @@ public sealed class ProjectWorkflow : IDisposable
             && ElementId.TryParse(Current.View(kase).Effective("link"), out ElementId switchId)
             && Current.FindById(switchId) is { } switchVar && switchVar.Kind != ElementKind.EnumResource
             ? new AddCaseValue(caseId, criterion, switchVar.Tag) : null;
-
-    /// <summary>The variable types a case may switch on (US-031): counter, enumerator, weekday, integer, or date.</summary>
-    public static readonly HashSet<string> EligibleCaseVariableTags = new()
-    {
-        "resource_counter", "resource_enum", "resource_weekday", "resource_integer", "resource_date",
-    };
 
     /// <summary>
     /// Saves a placed function block to a reusable <c>.ifb</c> catalog file (US-021): lifts the block (by id) to a
@@ -642,12 +640,6 @@ public sealed class ProjectWorkflow : IDisposable
         return new DeleteImpact(true, HasLinkHalves(element) || WouldThrowStrict(id));
     }
 
-    // Whether a source node may be moved/pasted into a target container (US-054/US-056): a product or function block
-    // belongs under a locality (group). (Variable/section moves are a later extension.)
-    private static bool CanContain(string sourceTag, string targetTag) =>
-        (sourceTag.StartsWith("product_", System.StringComparison.Ordinal) || sourceTag == "functionblock")
-        && targetTag == "group";
-
     /// <summary>Builds the command to reorder a node <paramref name="delta"/> positions among its same-tag siblings
     /// (US-055), or null at the list ends / for a rootless node.</summary>
     public ProjectCommand? BuildReorderNode(ElementId id, int delta)
@@ -688,18 +680,6 @@ public sealed class ProjectWorkflow : IDisposable
         return targetIndex < 0 ? null : new ReorderNode(dragged, targetIndex);
     }
 
-    /// <summary>Whether a move would place <paramref name="sourceId"/> under
-    /// <paramref name="targetParentId"/> — its non-mutating peer, read for the drag-over hint (A-31). Applies the SAME
-    /// legality as the move (and as paste): both ids resolve, the target admits the node's kind, the node is not already
-    /// there, and the target is not the node itself or one of its descendants (the SDK's move-contract guard,
-    /// <see cref="ProjectEditor.CanMoveSubtree"/>). No dialogs, no mutation, no controller.</summary>
-    public bool CanMoveNode(ElementId sourceId, ElementId targetParentId)
-    {
-        if (Current is not { } current)
-            return false;
-        return OpenScratch(current).CanApply(new MoveNode(sourceId, targetParentId)).Ok;
-    }
-
     /// <summary>Whether the project already contains a modem device root (the at-most-one-modem rule, US-013).</summary>
     public static bool HasModem(Project project) =>
         project.Root.DescendantsAndSelf().Any(e => ProductClassifier.IsModem(e.Tag));
@@ -717,9 +697,18 @@ public sealed class ProjectWorkflow : IDisposable
     // The single commit path for every project-mutating operation (US-052): snapshots the pre-edit project for undo,
     // invalidates the redo history, swaps in the new project, then marks changed (dirty + backup + StateChanged).
     // fablerefac W2-5 (migrate): route a command through a document session, then persist the result via the
-    // existing commit path so ProjectWorkflow's Current/undo/dirty stay the source of truth. W2-14 contracts this to
-    // one persistent session the VM drives directly. A fresh session per call is created on the calling thread,
-    // sidestepping the session's thread-affinity guard; it is used once as a stateless command runner.
+    // existing commit path so ProjectWorkflow's Current/undo/dirty stay the source of truth. A fresh session per call
+    // is created on the calling thread, sidestepping the session's thread-affinity guard; it is used once as a
+    // stateless command runner.
+    //
+    // DESIGN NOTE (do not "finish W2" by swapping this for one persistent ProjectDocumentSession): W2-14 originally
+    // envisioned a single persistent session the VM drives directly. That was SUPERSEDED by the later D12 decision to
+    // make ProjectDocumentSession thread-affine (owner thread captured at construction). A persistent session would
+    // be constructible only on the exact thread it is later operated from, forcing every session-touching test onto
+    // [AvaloniaTest] and coupling core correctness to Avalonia's async-continuation marshalling (under-documented and
+    // evolving across major versions). Deep research (2026-07-20) confirmed that approach is *feasible* in Avalonia
+    // 12 but strictly worse on simplicity/testability/stability/portability than this OpenScratch runner, which
+    // depends on nothing Avalonia-specific. Keep the per-call scratch session; keep undo/redo/version here.
     /// <summary>
     /// Applies a command to the open project and commits it on success (W2-14): the single edit entry the VM drives.
     /// Runs the command through a stateless document session over <see cref="Current"/>, then — only on
@@ -989,9 +978,17 @@ public sealed class ProjectWorkflow : IDisposable
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    private bool _disposed;
+
     public void Dispose()
     {
-        _timer?.Dispose();
+        if (_disposed)
+            return;   // idempotent: the guarded _backupLock.Wait() below would throw on a second (disposed) call
+        _disposed = true;
+        _timer?.Dispose();   // stop new timer-driven backups from firing
+        // Wait for any in-flight auto-backup (timer- or change-counter-triggered) to finish and release the lock
+        // before disposing it — disposing a SemaphoreSlim held by a running backup would fault that backup's Release.
+        _backupLock.Wait();
         _backupLock.Dispose();
     }
 }

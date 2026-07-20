@@ -32,6 +32,13 @@ namespace Ihc.Vis.Session
 
         private readonly record struct HistoryEntry(Project Snapshot, string Label);
 
+        // The transition-origin tags stamped on a ProjectChangeSet, naming which operation produced it (a consumer
+        // may branch on these, e.g. undo/redo drive a full rebuild while apply reconciles in place).
+        private const string OriginApply = "apply";
+        private const string OriginUndo = "undo";
+        private const string OriginRedo = "redo";
+        private const string OriginPreview = "preview";
+
         /// <summary>Creates a session with the given history policy. The default is <see cref="HistoryPolicy.Unlimited"/>
         /// (W4-4): undo depth is bounded only by process memory now that a committed snapshot path-copies just the
         /// subtrees it changed (W4-3), so a history entry costs its changed path, not a full tree.</summary>
@@ -148,12 +155,10 @@ namespace Ihc.Vis.Session
                 return new EditOutcome(EditStatus.Refused, label, verdict.Reason, null);
             }
 
-            Project updated;
+            Project? updated;
             try
             {
-                ProjectEditor editor = current.Edit();
-                execute(editor);
-                updated = editor.ToProject();
+                updated = TryProduceUpdated(current, execute);
             }
             catch (EditRefusedException ex)   // a deep guard refuses only inside Execute
             {
@@ -166,7 +171,7 @@ namespace Ihc.Vis.Session
                 return new EditOutcome(EditStatus.Failed, label, ex.Message, null);
             }
 
-            if (updated.Equals(current))   // no-op (an allocator burn makes the project differ, so it is not one)
+            if (updated is null)   // no-op (an allocator burn makes the project differ, so it is not one)
             {
                 return new EditOutcome(EditStatus.NoChange, label, null, null);
             }
@@ -174,8 +179,20 @@ namespace Ihc.Vis.Session
             _undo.AddLast(new HistoryEntry(current, label));
             TrimUndo();
             _redo.Clear();
-            ProjectChangeSet changes = Transition(current, updated, label, "apply");
+            ProjectChangeSet changes = Transition(current, updated, label, OriginApply);
             return new EditOutcome(EditStatus.Committed, label, null, changes);
+        }
+
+        // The single edit kernel BOTH Apply and Preview run: open an editor over <paramref name="current"/>, run the
+        // command's mutation, and return the updated project — or null when it produced no change. Because the change
+        // set a Preview shows and the change set an Apply commits are derived from the same produced project, their
+        // parity is structural, not merely test-enforced (review medium; PreviewApplyParityTests is the guard).
+        private static Project? TryProduceUpdated(Project current, Action<ProjectEditor> execute)
+        {
+            ProjectEditor editor = current.Edit();
+            execute(editor);
+            Project updated = editor.ToProject();
+            return updated.Equals(current) ? null : updated;
         }
 
         /// <summary>Reverses the most recent edit, or a no-op outcome when the history is empty.</summary>
@@ -189,7 +206,7 @@ namespace Ihc.Vis.Session
             HistoryEntry entry = _undo.Last!.Value;
             _undo.RemoveLast();
             _redo.Push(new HistoryEntry(current, entry.Label));
-            ProjectChangeSet changes = Transition(current, entry.Snapshot, entry.Label, "undo");
+            ProjectChangeSet changes = Transition(current, entry.Snapshot, entry.Label, OriginUndo);
             return new EditOutcome(EditStatus.Committed, entry.Label, null, changes);
         }
 
@@ -204,7 +221,7 @@ namespace Ihc.Vis.Session
             HistoryEntry entry = _redo.Pop();
             _undo.AddLast(new HistoryEntry(current, entry.Label));
             TrimUndo();
-            ProjectChangeSet changes = Transition(current, entry.Snapshot, entry.Label, "redo");
+            ProjectChangeSet changes = Transition(current, entry.Snapshot, entry.Label, OriginRedo);
             return new EditOutcome(EditStatus.Committed, entry.Label, null, changes);
         }
 
@@ -219,12 +236,10 @@ namespace Ihc.Vis.Session
             }
             try
             {
-                ProjectEditor editor = current.Edit();
-                command.Execute(editor);
-                Project updated = editor.ToProject();
-                return updated.Equals(current)
+                Project? updated = TryProduceUpdated(current, command.Execute);
+                return updated is null
                     ? null
-                    : ProjectChangeSet.Diff(current, updated, _version, _version, "preview", command.Describe(current));
+                    : ProjectChangeSet.Diff(current, updated, _version, _version, OriginPreview, command.Describe(current));
             }
             catch (Exception)
             {

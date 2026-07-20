@@ -7,6 +7,7 @@ using System.Text;
 
 using Ihc.Vis.Catalog;
 using Ihc.Vis.FunctionBlocks;
+using Ihc.Vis.Model;
 
 namespace Ihc.Vis.CatalogCodegen
 {
@@ -38,7 +39,7 @@ namespace Ihc.Vis.CatalogCodegen
                 string name = Path.GetFileName(path);
                 string categoryPath = Path.GetDirectoryName(Path.GetRelativePath(functionBlocksDir, path)) ?? string.Empty;
                 FunctionBlockSource source = CatalogSourceFile.ReadFunctionBlock(path, categoryPath);
-                FunctionBlockDocumentation? documentation = FunctionBlockDocReader.ForFunctionBlock(path, synEnOnly: true);
+                DefinitionDocumentation? documentation = FunctionBlockDocReader.ForFunctionBlock(path, synEnOnly: true);
                 FunctionBlockRecipe recipe;
                 try
                 {

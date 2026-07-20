@@ -14,7 +14,7 @@ namespace Ihc.Vis.Catalog
     /// An <see cref="ICatalog"/> that layers runtime-imported components on top of a base catalog (typically a
     /// <see cref="BuiltInCatalog"/>): the base supplies the ~173 stock products/function blocks and the File→New
     /// templates, and callers <see cref="Import(ProductDefinition)"/> extra components (e.g. a <c>.def</c>/<c>.ifb</c>
-    /// read via <see cref="CatalogReader.ReadProduct(string, ProductDocumentation?)"/>) at runtime without touching the
+    /// read via <see cref="CatalogReader.ReadProduct(string, DefinitionDocumentation?)"/>) at runtime without touching the
     /// embedded catalog. This is the seam the app-service uses so a user-supplied component resolves and inserts
     /// alongside the built-ins.
     /// </summary>

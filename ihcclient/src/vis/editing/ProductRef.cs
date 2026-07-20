@@ -159,9 +159,8 @@ namespace Ihc.Vis.Editing
         public void RemoveScenes()
         {
             ProjectElement product = editor.Require(Id);
-            List<ElementId> ids = product.Children.IsDefaultOrEmpty
-                ? new List<ElementId>()
-                : product.Children.Where(c => c.Tag == "scenes" && c.Id is not null).Select(c => c.Id!.Value).ToList();
+            List<ElementId> ids = product.ChildrenOrEmpty()
+                .Where(c => c.Tag == "scenes" && c.Id is not null).Select(c => c.Id!.Value).ToList();
             if (ids.Count == 0)
             {
                 throw new InvalidOperationException($"Product {Id.ToToken()} has no scenes container.");

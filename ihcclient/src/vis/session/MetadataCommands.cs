@@ -56,15 +56,9 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Edit text";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(TextId) is not null ? EditVerdict.Allow : EditVerdict.Refuse("The text no longer exists.");
-        internal override void Execute(ProjectEditor editor)
-        {
-            if (!editor.TryResolve(TextId, out ElementRef? handle))
-            {
-                throw new EditRefusedException("The text no longer exists.");
-            }
-            handle.SetAttribute("name", Text);
-        }
+            context.RequireExists(TextId, "text");
+        internal override void Execute(ProjectEditor editor) =>
+            editor.Resolve(TextId, "text").SetAttribute("name", Text);
     }
 
     /// <summary>Deletes a user-defined text by id (US-049 Delete).</summary>
@@ -72,7 +66,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Delete text";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(TextId) is not null ? EditVerdict.Allow : EditVerdict.Refuse("The text no longer exists.");
+            context.RequireExists(TextId, "text");
         internal override void Execute(ProjectEditor editor) =>
             editor.DeleteById(TextId, DeleteReferencePolicy.CascadeReferences);
     }
@@ -148,7 +142,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Edit dimmer settings";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(ProductId) is not null ? EditVerdict.Allow : EditVerdict.Refuse("The product no longer exists.");
+            context.RequireExists(ProductId, "product");
         internal override void Execute(ProjectEditor editor)
         {
             ProjectElement product = editor.Require(ProductId);
@@ -176,14 +170,14 @@ namespace Ihc.Vis.Session
         : ProjectCommand
     {
         internal override string Describe(Project project) => "Edit modem";
-        internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(ModemId) is not null ? EditVerdict.Allow : EditVerdict.Refuse("The modem no longer exists.");
+        internal override EditVerdict Evaluate(EditContext context)
+        {
+            EditVerdict exists = context.RequireExists(ModemId, "modem");
+            return exists.Ok ? Relocation.Verdict(context, CurrentLocalityId, Result.LocalityId) : exists;
+        }
         internal override void Execute(ProjectEditor editor)
         {
-            if (!editor.TryResolve(ModemId, out ElementRef? handle))
-            {
-                throw new EditRefusedException("The modem no longer exists.");
-            }
+            ElementRef handle = editor.Resolve(ModemId, "modem");
             handle.SetAttribute("name", Result.Name);
             handle.SetAttribute("note", Result.Note);
             handle.SetAttribute("documentation_tag", Result.IdentificationCode);
@@ -208,11 +202,7 @@ namespace Ihc.Vis.Session
                     pnHandle.SetAttribute("phonenumber", Result.PhoneNumbers[i]);
                 }
             }
-            if (ElementId.TryParse(Result.LocalityId, out ElementId target)
-                && CurrentLocalityId is { } current && current != target)
-            {
-                editor.MoveSubtree(ModemId, target);
-            }
+            Relocation.Apply(editor, ModemId, CurrentLocalityId, Result.LocalityId);   // Location changed → re-parent
         }
     }
 }

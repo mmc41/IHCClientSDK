@@ -29,6 +29,8 @@ namespace Ihc.Vis.Reporting
         private const string Unknown = "?";
         private static readonly ImmutableHashSet<string> DetailProductTags =
             ImmutableHashSet.Create(StringComparer.Ordinal, "product_dataline", "product_airlink", "product_rs485_led_dimmer");
+        // `product_rs485_modem` is an open-world tag with no built-in TypeCode (see TypeCode.cs) but is still reported
+        // as a modem here — its recognition lives in this closed set + ProductClassifier, not in the id registry.
         private static readonly ImmutableHashSet<string> ModemTags =
             ImmutableHashSet.Create(StringComparer.Ordinal, "product_rs485_modem", "product_rs485_sms_modem");
 

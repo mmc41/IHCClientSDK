@@ -60,7 +60,7 @@
                        HorizontalAlignment="Center"/>
         </StackPanel>
 
-        <Button Content="Close" Width="{StaticResource DialogButtonWidth}"
+        <Button Content="Close" MinWidth="84"
                 HorizontalAlignment="Center" Margin="0,8,0,0"
                 IsCancel="True" IsDefault="True" Click="OnCloseClick"/>
     </StackPanel>

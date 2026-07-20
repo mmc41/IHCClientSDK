@@ -13,6 +13,7 @@ using Ihc.Vis.Catalog;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
+using Ihc.Vis.Programs;
 using Ihc.Vis.Projects;
 
 namespace safe_visual_tests;
@@ -2022,6 +2023,29 @@ public class MainWindowViewModelTests
         });
     }
 
+    // T024: menu verbs are keyed by (Category, Token), not by a positional index parallel to the catalog. A reordered
+    // and resized method list (here with an extra unknown-token method) still labels each item by its token and drops
+    // the unknown one — where the pre-T024 verbs[i] would have mis-labelled every row or thrown IndexOutOfRange.
+    [Test]
+    public void MethodMenuItems_LabelByCategoryToken_ToleratesReorderAndResize()
+    {
+        var reorderedResized = new[]
+        {
+            new ProgramMethod(ProgramMethodCategory.Event, "_0x9b", "%P is assigned", "", 1, null),   // moved to front
+            new ProgramMethod(ProgramMethodCategory.Event, "_0xa", "%P -> ON", "", 1, null),
+            new ProgramMethod(ProgramMethodCategory.Event, "_0xZZ", "unknown", "", 1, null),           // no verb → dropped
+        };
+
+        var items = ProgramAuthoringCoordinator.MethodMenuItems(reorderedResized, "Kip").ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(items.Select(i => i.Label), Is.EqualTo(new[] { "Kip is assigned", "Kip changes to ON" }),
+                "labels follow the method's token in the given order, not a fixed positional verb");
+            Assert.That(items.Select(i => i.Method.Token), Does.Not.Contain("_0xZZ"), "an unverbed method is dropped, not thrown on");
+        });
+    }
+
     // US-028: a command authored on the Commands node drives the armed variable and renders under Commands.
     [Test]
     public async Task AddCommand_FromArmedVariable_AuthorsAndRendersCommand()
@@ -2542,7 +2566,7 @@ public class MainWindowViewModelTests
 
         vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => c.DisplayName == "F1"));
         vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
-        var subCategory = vm.ProgramArithmeticMenu.First(m => m.Header.Contains("−"));
+        var subCategory = vm.ProgramArithmeticMenu.First(m => m.Header.Contains("-"));
         await ((IAsyncRelayCommand)subCategory.Children.First(c => c.Header == "F2").Command!).ExecuteAsync(null);
 
         var commandsId = FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!.ElementId!.Value;

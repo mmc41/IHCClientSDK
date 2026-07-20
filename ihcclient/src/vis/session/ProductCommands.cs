@@ -31,10 +31,7 @@ namespace Ihc.Vis.Session
     public sealed record AddProduct(ElementId LocalityId, ProductDefinition Definition) : ProjectCommand<ElementId>
     {
         internal override string Describe(Project project) => "Insert product";
-        internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(LocalityId) is not null
-                ? EditVerdict.Allow
-                : EditVerdict.Refuse("The locality no longer exists.");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(LocalityId, "locality");
         internal override ElementId ExecuteCore(ProjectEditor editor) =>
             editor.Group(LocalityId).AddProduct(Definition).Id;
     }
@@ -44,10 +41,7 @@ namespace Ihc.Vis.Session
         : ProjectCommand<ElementId>
     {
         internal override string Describe(Project project) => "Insert function block";
-        internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(LocalityId) is not null
-                ? EditVerdict.Allow
-                : EditVerdict.Refuse("The locality no longer exists.");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(LocalityId, "locality");
         internal override ElementId ExecuteCore(ProjectEditor editor) =>
             editor.Group(LocalityId).AddFunctionBlock(Definition).Id;
     }
@@ -58,10 +52,7 @@ namespace Ihc.Vis.Session
         : ProjectCommand<ElementId>
     {
         internal override string Describe(Project project) => "Insert function block";
-        internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(LocalityId) is not null
-                ? EditVerdict.Allow
-                : EditVerdict.Refuse("The locality no longer exists.");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(LocalityId, "locality");
         internal override ElementId ExecuteCore(ProjectEditor editor) =>
             editor.Group(LocalityId).AddEmptyFunctionBlock(Template, Created, Name).Id;
     }
@@ -70,18 +61,9 @@ namespace Ihc.Vis.Session
     public sealed record UnlockFunctionBlock(ElementId Id) : ProjectCommand
     {
         internal override string Describe(Project project) => "Unlock function block";
-        internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(Id) is not null
-                ? EditVerdict.Allow
-                : EditVerdict.Refuse("The function block no longer exists.");
-        internal override void Execute(ProjectEditor editor)
-        {
-            if (!editor.TryResolve(Id, out ElementRef? handle))
-            {
-                throw new EditRefusedException("The function block no longer exists.");
-            }
-            handle.SetAttribute("locked", "no");
-        }
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(Id, "function block");
+        internal override void Execute(ProjectEditor editor) =>
+            editor.Resolve(Id, "function block").SetAttribute("locked", "no");
     }
 
     /// <summary>Applies edited pin addressing (US-012): terminal address, cable colour, note, and (outputs) initial
@@ -102,10 +84,7 @@ namespace Ihc.Vis.Session
         }
         internal override void Execute(ProjectEditor editor)
         {
-            if (!editor.TryResolve(Id, out ElementRef? handle))
-            {
-                throw new EditRefusedException("The pin no longer exists.");
-            }
+            ElementRef handle = editor.Resolve(Id, "pin");
             bool isOutput = handle.Tag == "dataline_output";
             if (!DatalineAddress.TryEncode(Result.DataLine, Result.Terminal, isOutput, out string addressToken))
             {
@@ -129,16 +108,14 @@ namespace Ihc.Vis.Session
         : ProjectCommand
     {
         internal override string Describe(Project project) => "Edit product";
-        internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(Id) is not null
-                ? EditVerdict.Allow
-                : EditVerdict.Refuse("The product no longer exists.");
+        internal override EditVerdict Evaluate(EditContext context)
+        {
+            EditVerdict exists = context.RequireExists(Id, "product");
+            return exists.Ok ? Relocation.Verdict(context, CurrentLocalityId, Result.LocalityId) : exists;
+        }
         internal override void Execute(ProjectEditor editor)
         {
-            if (!editor.TryResolve(Id, out ElementRef? handle))
-            {
-                throw new EditRefusedException("The product no longer exists.");
-            }
+            ElementRef handle = editor.Resolve(Id, "product");
             handle.SetAttribute("name", Result.Name);
             handle.SetAttribute("position", Result.Position);
             handle.SetAttribute("enduser_report", Result.EndUserReport ? "yes" : "no");
@@ -150,11 +127,42 @@ namespace Ihc.Vis.Session
                 handle.SetAttribute("cabletype", Result.CableType);
                 handle.SetAttribute("cablenumber", Result.CableNumber);
             }
-            if (ElementId.TryParse(Result.LocalityId, out ElementId target)
-                && CurrentLocalityId is { } current && current != target)
+            Relocation.Apply(editor, Id, CurrentLocalityId, Result.LocalityId);   // Location changed → re-parent
+        }
+    }
+
+    /// <summary>The shared "change Location" guard for the product/modem property edits (US-011/US-013 re-parent).
+    /// A re-parent is requested when the edited Location differs from the element's current parent; the target must
+    /// resolve to an existing group (the only valid product/modem container — see <c>ProjectEditor.Group</c>).
+    /// Centralizing it keeps <see cref="UpdateProduct"/>/<see cref="UpdateModem"/> Evaluate verdict and Execute
+    /// move in lock-step, so a bad target Refuses instead of being silently dropped (unparseable id) or building an
+    /// invalid tree that still saves (a non-group target) — review C3.</summary>
+    internal static class Relocation
+    {
+        // A re-parent is requested when the selected Location differs from the element's current parent token; an
+        // unchanged edit re-selects the current parent, so its token round-trips to equality here (no move).
+        private static bool IsRequested(ElementId? currentParent, string selectedLocalityId) =>
+            selectedLocalityId != (currentParent?.ToToken() ?? string.Empty);
+
+        /// <summary>Allow unless a requested re-parent targets something that is not an existing group.</summary>
+        public static EditVerdict Verdict(EditContext context, ElementId? currentParent, string selectedLocalityId) =>
+            !IsRequested(currentParent, selectedLocalityId) || ResolveGroup(context, selectedLocalityId) is not null
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("The chosen Location is not an existing group.");
+
+        /// <summary>Performs the re-parent when one is requested; the target was validated by <see cref="Verdict"/>.</summary>
+        public static void Apply(ProjectEditor editor, ElementId elementId, ElementId? currentParent, string selectedLocalityId)
+        {
+            if (IsRequested(currentParent, selectedLocalityId) && ElementId.TryParse(selectedLocalityId, out ElementId target))
             {
-                editor.MoveSubtree(Id, target);   // Location changed → re-parent (ids preserved)
+                editor.MoveSubtree(elementId, target);   // ids preserved
             }
         }
+
+        private static ProjectElement? ResolveGroup(EditContext context, string selectedLocalityId) =>
+            ElementId.TryParse(selectedLocalityId, out ElementId target)
+                && context.Index.FindById(target) is { Tag: "group" } group
+                    ? group
+                    : null;
     }
 }

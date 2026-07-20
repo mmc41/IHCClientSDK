@@ -54,19 +54,6 @@ public static class CatalogMenu
     private static string TranslateSubcategory(string label) =>
         SubcategoryEnglish.TryGetValue(label, out string? english) ? english : label;
 
-    /// <summary>Builds a flat, name-ordered list of product leaves (no category nesting) — e.g. the Special products
-    /// modem list (US-013).</summary>
-    public static IReadOnlyList<ProductMenuItemViewModel> BuildLeaves(
-        IEnumerable<ProductDefinition> products, Func<ProductDefinition, ICommand> leafCommand)
-    {
-        ArgumentNullException.ThrowIfNull(products);
-        ArgumentNullException.ThrowIfNull(leafCommand);
-        return products
-            .OrderBy(p => p.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .Select(p => new ProductMenuItemViewModel(p.DisplayName, p.ProductIdentifier, leafCommand(p)))
-            .ToList();
-    }
-
     /// <summary>Builds the full library-folder tree for the catalog function blocks (US-018), keyed by
     /// <see cref="FunctionBlockDefinition.MasterType"/>.</summary>
     public static IReadOnlyList<ProductMenuItemViewModel> BuildFunctionBlocks(

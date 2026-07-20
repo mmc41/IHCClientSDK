@@ -29,7 +29,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Reorder";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(Id) is not null ? EditVerdict.Allow : EditVerdict.Refuse("The node no longer exists.");
+            context.RequireExists(Id, "node");
         internal override void Execute(ProjectEditor editor) => editor.ReorderSubtree(Id, SameTagIndex);
     }
 
@@ -53,7 +53,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Delete";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(Id) is not null ? EditVerdict.Allow : EditVerdict.Refuse("The node no longer exists.");
+            context.RequireExists(Id, "node");
         internal override void Execute(ProjectEditor editor) =>
             editor.DeleteById(Id, Cascade ? DeleteReferencePolicy.CascadeReferences : DeleteReferencePolicy.Strict);
     }

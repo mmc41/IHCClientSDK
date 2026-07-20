@@ -1,9 +1,11 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Logging;
 using ihc_openvisual.Configuration;
+using Ihc.Bootstrap;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -35,24 +37,35 @@ internal sealed class Program
                 string.Equals(a, "--skip-recovery", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(a, "--no-recover", StringComparison.OrdinalIgnoreCase));
             Config = new AppConfiguration();
-            LoggerFactory = AppSetup.SetupTelemetryAndLoggingFactory(Config);
-            AppDomain.CurrentDomain.UnhandledException += AppSetup.UnhandledExceptionHandler(
+            LoggerFactory = AppTelemetryBootstrap.SetupTelemetryAndLogging(
+                Telemetry.AppServiceName, Telemetry.AppServiceNamespace, Telemetry.ActivitySourceName,
+                Config.TelemetryConfig, Config.LoggingConfig);
+            AppDomain.CurrentDomain.UnhandledException += AppTelemetryBootstrap.UnhandledExceptionHandler(
                 LoggerFactory.CreateLogger("Ihc.OpenVisual.UnhandledException"));
 
             // Probe the configured OTLP endpoint so a wrong endpoint/token fails loudly instead of silently
-            // dropping all telemetry. Runs in the background; never blocks the workspace from opening.
-            _ = Ihc.TelemetrySelfCheck.ProbeAndReportAsync(Config.TelemetryConfig);
+            // dropping all telemetry. Runs in the background; never blocks the workspace from opening. The fault is
+            // OBSERVED (a continuation logs it) so a probe exception is not swallowed as an UnobservedTaskException.
+            Ihc.TelemetrySelfCheck.ProbeAndReportAsync(Config.TelemetryConfig).ContinueWith(
+                t => LoggerFactory!.CreateLogger("Ihc.OpenVisual.TelemetrySelfCheck")
+                    .LogWarning(t.Exception, "Telemetry self-check faulted"),
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
 
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
         catch (Exception ex)
         {
-            Trace.WriteLine("Fatal error " + ex);
+            // Route the fatal startup error through the wired ILogger (OTLP-exported) when it is up; fall back to
+            // Trace only for an exception thrown BEFORE the logger factory was created.
+            if (LoggerFactory is { } loggerFactory)
+                loggerFactory.CreateLogger("Ihc.OpenVisual.Startup").LogCritical(ex, "Fatal startup error");
+            else
+                Trace.WriteLine("Fatal error " + ex);
         }
         finally
         {
             // Flush and release telemetry on shutdown so the final batch of spans/logs is exported.
-            AppSetup.TracerProvider?.Dispose();
+            AppTelemetryBootstrap.TracerProvider?.Dispose();
             LoggerFactory?.Dispose();
         }
     }
@@ -70,7 +83,7 @@ internal sealed class Program
         if (LoggerFactory is { } loggerFactory && Config is { } config)
         {
             LogLevel avaloniaLevel = config.LoggingConfig.GetValue("LogLevel:Avalonia", LogLevel.Warning);
-            LogEventLevel level = AppSetup.MapFromIlogToAvaloniaLogLevel(avaloniaLevel);
+            LogEventLevel level = AppTelemetryBootstrap.MapFromIlogToAvaloniaLogLevel(avaloniaLevel);
             // The default trace logger must be installed before our sink so our sink can chain to it.
             builder = builder.LogToTrace(level).LogToSink(loggerFactory);
         }

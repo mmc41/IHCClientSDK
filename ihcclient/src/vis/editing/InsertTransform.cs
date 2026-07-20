@@ -121,18 +121,15 @@ namespace Ihc.Vis.Editing
             attrs = StampRequiredNullTokens(attrs, element.Tag, view);   // #REQUIRED-yet-empty → null token "_0x0"
 
             var children = ImmutableArray.CreateBuilder<ProjectElement>();
-            if (!element.Children.IsDefaultOrEmpty)
+            foreach (ProjectElement child in element.ChildrenOrEmpty())
             {
-                foreach (ProjectElement child in element.Children)
+                if (child.Tag == "enum_definition")
                 {
-                    if (child.Tag == "enum_definition")
-                    {
-                        HoistOrResolveEnum(child, allocator, idMap, enumDefinitions, hoisted);  // not added to subtree
-                    }
-                    else
-                    {
-                        children.Add(Reassign(child, allocator, idMap, enumDefinitions, hoisted, view, isRoot: false));
-                    }
+                    HoistOrResolveEnum(child, allocator, idMap, enumDefinitions, hoisted);  // not added to subtree
+                }
+                else
+                {
+                    children.Add(Reassign(child, allocator, idMap, enumDefinitions, hoisted, view, isRoot: false));
                 }
             }
 
@@ -284,9 +281,8 @@ namespace Ihc.Vis.Editing
                 }
             }
 
-            ImmutableArray<ProjectElement> children = element.Children.IsDefaultOrEmpty
-                ? ImmutableArray<ProjectElement>.Empty
-                : element.Children.Select(c => RewriteAttributes(c, view, rule)).ToImmutableArray();
+            ImmutableArray<ProjectElement> children = element.ChildrenOrEmpty()
+                .Select(c => RewriteAttributes(c, view, rule)).ToImmutableArray();
 
             return element with { Attrs = attrs, Children = children };
         }

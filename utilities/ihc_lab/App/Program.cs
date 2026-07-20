@@ -5,6 +5,7 @@ using OpenTelemetry.Logs;
 using System.Diagnostics;
 using Avalonia.Logging;
 using IhcLab;
+using Ihc.Bootstrap;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 
@@ -36,9 +37,14 @@ public class Program
         {
             // First setup logging and telemetry. Note that this goes against above advice but seems to work.
             // In case of trouble first move some of the telemtry setup to mainwindow or so.
-            AppDomain.CurrentDomain.UnhandledException += AppSetup.UnhandledExceptionHandler;
             config = new Configuration();
-            loggerFactory = AppSetup.SetupTelemetryAndLoggingFactory(config);
+            loggerFactory = AppTelemetryBootstrap.SetupTelemetryAndLogging(
+                Telemetry.AppServiceName, Telemetry.AppServiceNamespace, Telemetry.ActivitySourceName,
+                config.telemetryConfig, config.loggingConfig);
+            // Registered after the logger factory exists so the fatal exception is recorded through ILogger (hence
+            // OTLP-exported), not a bare Trace write; an exception before this point is caught by Main's catch below.
+            AppDomain.CurrentDomain.UnhandledException += AppTelemetryBootstrap.UnhandledExceptionHandler(
+                loggerFactory.CreateLogger("IhcLab.UnhandledException"));
 
             // Probe the configured OTLP endpoint so a wrong endpoint/token fails loudly instead of
             // silently dropping all telemetry. Runs in the background; does not block startup.
@@ -55,7 +61,7 @@ public class Program
         finally
         {
             // Flush and release telemetry on shutdown so the final batch of spans/logs is exported.
-            AppSetup.TracerProvider?.Dispose();
+            AppTelemetryBootstrap.TracerProvider?.Dispose();
             loggerFactory?.Dispose();
         }
     }
@@ -72,7 +78,7 @@ public class Program
         return AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
-            .LogToTrace(AppSetup.MapFromIlogToAvaloniaLogLevel(logLevel)) // Important that this default logger (if present) is before our own LogToSink which will forward to it.
-            .LogToSink(loggerFactory, AppSetup.MapFromIlogToAvaloniaLogLevel(logLevel)); // Install log forwarder to ilogger which is setup to forward to opentel.
+            .LogToTrace(AppTelemetryBootstrap.MapFromIlogToAvaloniaLogLevel(logLevel)) // Important that this default logger (if present) is before our own LogToSink which will forward to it.
+            .LogToSink(loggerFactory, AppTelemetryBootstrap.MapFromIlogToAvaloniaLogLevel(logLevel)); // Install log forwarder to ilogger which is setup to forward to opentel.
     }
 }

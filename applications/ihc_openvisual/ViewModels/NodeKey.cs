@@ -50,6 +50,10 @@ public readonly record struct NodeKey
 
     /// <summary>A key for a structural row owned by <paramref name="owner"/>, separated from its siblings by
     /// <paramref name="role"/> and, when needed, <paramref name="refId"/>.</summary>
+    /// <remarks>Intentional test-only seam (D02): the synthetic-key surface — <see cref="ForStructural"/> plus
+    /// <see cref="Owner"/>/<see cref="Role"/>/<see cref="RefId"/>/<see cref="IsElementBacked"/> — is exercised by the
+    /// reconciler-key tests and kept for the structural (id-less) row case, even though the current reconciler keys
+    /// every projected row via <see cref="ForElement"/>. Deliberately retained, not dead.</remarks>
     public static NodeKey ForStructural(ElementId owner, string role, ElementId? refId = null) =>
         new(null, owner, role, refId);
 }

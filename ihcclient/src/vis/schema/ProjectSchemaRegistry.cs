@@ -115,7 +115,7 @@ namespace Ihc.Vis.Schema
         {
             string tag = ReadTag(block);
             ImmutableArray<AttrSchema> attrs = ParseAttrs(block, tag);
-            return new ElementSchema(tag, TypeCode.ForTag(tag), block, attrs);
+            return new ElementSchema(tag, block, attrs);
         }
 
         internal static string ReadTag(string block)

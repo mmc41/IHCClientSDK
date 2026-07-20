@@ -7,6 +7,19 @@ using Ihc.Vis.Schema;
 namespace Ihc.Vis.Io
 {
     /// <summary>
+    /// What <see cref="Canonicalizer.Canonicalize"/> does with an attribute the element's DTD block does not
+    /// declare. <see cref="Drop"/> is for catalog-sourced trees (insert / File→New), whose <c>.def</c>-only
+    /// editor attributes (<c>helpid</c>/<c>access</c>/…) must be shed exactly as IHC Visual does;
+    /// <see cref="Throw"/> is for the edit-session commit, where an undeclared attribute can only be an
+    /// authoring error and dropping it would be silent data loss the plain serializer refuses.
+    /// </summary>
+    internal enum UndeclaredAttributePolicy
+    {
+        Drop,
+        Throw,
+    }
+
+    /// <summary>
     /// Reduces a node subtree to its <b>canonical in-memory form</b> against the project schema registry: each
     /// node's attribute bag becomes exactly the attributes the serializer would write — in ATTLIST order, dropping
     /// any equal to its DTD default (omit-if-default, S9) and any not declared for the element type (editor-only
@@ -20,19 +33,6 @@ namespace Ihc.Vis.Io
     /// catalog element's <em>effective</em> values are in its bag (via <see cref="Ihc.Vis.Catalog.CatalogReader"/>'s DTD defaults),
     /// canonicalizing against the project schema writes those that differ from the project default and omits the rest.
     /// </remarks>
-    /// <summary>
-    /// What <see cref="Canonicalizer.Canonicalize"/> does with an attribute the element's DTD block does not
-    /// declare. <see cref="Drop"/> is for catalog-sourced trees (insert / File→New), whose <c>.def</c>-only
-    /// editor attributes (<c>helpid</c>/<c>access</c>/…) must be shed exactly as IHC Visual does;
-    /// <see cref="Throw"/> is for the edit-session commit, where an undeclared attribute can only be an
-    /// authoring error and dropping it would be silent data loss the plain serializer refuses.
-    /// </summary>
-    internal enum UndeclaredAttributePolicy
-    {
-        Drop,
-        Throw,
-    }
-
     internal static class Canonicalizer
     {
         public static ProjectElement Canonicalize(ProjectElement element, ProjectSchemaView view,

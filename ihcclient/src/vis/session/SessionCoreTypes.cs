@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
 
 namespace Ihc.Vis.Session
@@ -54,7 +55,14 @@ namespace Ihc.Vis.Session
 
     /// <summary>The read-only context a command's legality check runs against: the pre-edit project and its
     /// <see cref="ProjectIndex"/>. Internal — only the session builds and passes it.</summary>
-    internal readonly record struct EditContext(Project Project, ProjectIndex Index);
+    internal readonly record struct EditContext(Project Project, ProjectIndex Index)
+    {
+        /// <summary>Allow when <paramref name="id"/> still resolves in the pre-edit index, else Refuse naming the
+        /// <paramref name="noun"/> — the single "does the target still exist?" legality guard the command Evaluate
+        /// checks route through, preserving each command's per-noun refusal message (review theme 2).</summary>
+        public EditVerdict RequireExists(ElementId id, string noun) =>
+            Index.FindById(id) is not null ? EditVerdict.Allow : EditVerdict.Refuse($"The {noun} no longer exists.");
+    }
 
     /// <summary>Thrown by a deep engine guard that can only refuse a command once inside its Execute (proposal
     /// §3.4). The session maps it to <see cref="EditStatus.Refused"/>; every other exception is a failure.</summary>

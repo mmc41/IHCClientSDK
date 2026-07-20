@@ -39,6 +39,7 @@ namespace Ihc.Vis.Products
                 "product_dataline" => ProductFamily.Dataline,
                 "product_airlink" => ProductFamily.Airlink,
                 "product_rs485_led_dimmer" => ProductFamily.Rs485LedDimmer,
+                // Open-world: `product_rs485_modem` is recognised here but has NO built-in TypeCode (see TypeCode.cs).
                 "product_rs485_modem" => ProductFamily.Rs485Modem,
                 "product_rs485_sms_modem" => ProductFamily.Rs485SmsModem,
                 _ when tag.Contains("airlink", StringComparison.Ordinal) => ProductFamily.Airlink,

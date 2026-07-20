@@ -71,6 +71,58 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // T027: Build() must be idempotent — a second call yields a structurally identical Body (matching
+        // ProductDefinitionBuilder). The old builder re-materialized every call, drifting the placeholder ids of the
+        // 5 containers, the functionblock root and the whole program graph off the shared allocator.
+        [Test]
+        public void Build_CalledTwice_YieldsStructurallyIdenticalBodies()
+        {
+            FunctionBlockDefinitionBuilder builder = FunctionBlockDefinitionBuilder
+                .Create("1.1.01", "e", "Kip tænd sluk")
+                .VendorMaster();
+            FbResourceHandle kip = builder.AddInput("Kip");
+            FbResourceHandle udgang = builder.AddOutput("Udgang");
+            FbProgramBuilder program = builder.Program();
+            program.AddEvent("Kip", kip, method: "_0xa");
+            FbSubProgramRef sub = program.AddSubProgram();
+            sub.WhenTrue.AddAction("Sluk lys", udgang, method: "_0xdc");
+
+            FunctionBlockDefinition first = builder.Build();
+            FunctionBlockDefinition second = builder.Build();
+
+            Assert.That(second.Body, Is.EqualTo(first.Body),
+                "a second Build() must reproduce the same placeholder ids (no drift off the shared allocator)");
+        }
+
+        // T028: the empty-template path honors per-block container-name/note overrides AND authored root attributes
+        // uniformly (as the normal MaterializeBody path does), instead of silently dropping the name overrides,
+        // 3-of-5 note overrides, and every root attribute. (The master_* identity stays omitted — the fb.def scaffold
+        // carries none — so byte-fidelity of an un-customized empty template is unchanged; covered by fb05 oracle.)
+        [Test]
+        public void AsEmptyTemplate_HonorsContainerOverridesAndRootAttributes()
+        {
+            FunctionBlockDefinition block = FunctionBlockDefinitionBuilder
+                .Create("1.1.01", "e", "Kip")
+                .InputsName("Mine indgange")
+                .SettingsNote("Egen note")
+                .Note("Blok-note")
+                .Locked()
+                .AsEmptyTemplate()
+                .Build();
+
+            ProjectElement inputs = block.Body.FindChild("inputs")!;
+            ProjectElement settings = block.Body.FindChild("settings")!;
+            Assert.Multiple(() =>
+            {
+                Assert.That(inputs.GetAttribute("name"), Is.EqualTo("Mine indgange"), "container-name override honored");
+                Assert.That(settings.GetAttribute("note"), Is.EqualTo("Egen note"), "settings-container-note override honored");
+                Assert.That(block.Body.GetAttribute("note"), Is.EqualTo("Blok-note"), "root attribute honored");
+                Assert.That(block.Body.GetAttribute("locked"), Is.EqualTo("yes"), "root attribute honored");
+                Assert.That(block.Body.GetAttribute("master_name"), Is.Null, "the empty template still omits master identity");
+                Assert.That(block.IsEmptyTemplate, Is.True);
+            });
+        }
+
         [Test]
         public async Task InsertAuthoredBlock_IntoLoadedProject_ShowsItWorksWithProjectBuilder()
         {

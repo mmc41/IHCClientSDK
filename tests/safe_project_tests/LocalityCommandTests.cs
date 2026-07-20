@@ -65,6 +65,26 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // T018: the DeleteLocality label reads the pre-edit name through the ElementView.Name read surface
+        // (project.View(element).Name), not a raw GetAttribute("name") re-typed literal.
+        [Test]
+        public async Task DeleteLocality_LabelUsesPreEditName()
+        {
+            Project project = await Load("project3-KompleksWired.vis");
+            ProjectElement group = project.Groups.First(g => !g.Children.IsDefaultOrEmpty);
+            string name = group.GetAttribute("name") ?? "";
+            ProjectDocumentSession session = Session(project);
+
+            EditOutcome outcome = session.Apply(new DeleteLocality(group.Id!.Value));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed));
+                Assert.That(outcome.Label, Is.EqualTo("Delete " + name),
+                    "the label reads the name via the shared ElementView.Name surface");
+            });
+        }
+
         [Test]
         public async Task RenameLocality_Evaluate_RefusesAMissingElement()
         {

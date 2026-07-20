@@ -62,6 +62,7 @@ public sealed class ProjectTreeProjector(Project project)
             }
         }
         blockNode.Children.Add(programsNode);
+        StampCrossReferences(blockNode);
         return blockNode;
     }
 
@@ -172,13 +173,52 @@ public sealed class ProjectTreeProjector(Project project)
             ? project.View(operand).Name ?? string.Empty
             : string.Empty;
 
-    private const string LocalityIcon = "/Assets/locality.svg";
+    // The projector emits the cross-reference dependency edges on every id-bearing row it produced: the OTHER
+    // elements whose live name/value it rendered into that row's label. The reconciler reads these from the
+    // projection (TreeNodeViewModel.CrossReferences) instead of re-deriving them, so the edges can never drift from
+    // what was actually rendered (T022).
+    private void StampCrossReferences(TreeNodeViewModel node)
+    {
+        if (node.ElementId is { } id && project.FindById(id) is { } element)
+            node.CrossReferences = CrossReferencesOf(element);
+        foreach (TreeNodeViewModel child in node.Children)
+            StampCrossReferences(child);
+    }
+
+    // A link/scene row renders the opposite end's ancestor names (the shared partner walk); a program event/command/
+    // condition renders its %P/%S operands; a case its switch operand. Every other row's label is composed only of its
+    // own attributes, so it has no cross-references.
+    private IReadOnlyList<ElementId> CrossReferencesOf(ProjectElement element)
+    {
+        if (element.IsLinkHalf || element.IsSceneMember)
+        {
+            var ids = new List<ElementId>();
+            foreach (ProjectElement ancestor in TreeLabelFormatter.LinkPartnerChain(project, element))
+                if (ancestor.Id is { } id)
+                    ids.Add(id);
+            return ids;
+        }
+        if (element.IsProgramEvent || element.IsProgramCommand || element.IsCondition)
+            return OperandRefs(element, "link1", "link2");
+        if (element.IsProgramCase)
+            return OperandRefs(element, "link");
+        return Array.Empty<ElementId>();
+    }
+
+    private List<ElementId> OperandRefs(ProjectElement element, params string[] attrs)
+    {
+        var ids = new List<ElementId>();
+        foreach (string attr in attrs)
+            if (ElementId.TryParse(View(element).Effective(attr), out ElementId id) && project.FindById(id) is not null)
+                ids.Add(id);
+        return ids;
+    }
 
     // Both panes share the Localities skeleton; the Installation pane nests each locality's products (with their
     // pins), the Functions pane its function blocks (US-006/US-010).
     public TreeNodeViewModel BuildLocalitiesRoot(bool functions)
     {
-        var root = new TreeNodeViewModel("Localities", LocalityIcon, isExpanded: true)
+        var root = new TreeNodeViewModel("Localities", NodeIcons.Locality, isExpanded: true)
             { Kind = TreeNodeKind.LocalitiesRoot };
         foreach (ProjectElement group in project.Groups)
         {
@@ -190,20 +230,15 @@ public sealed class ProjectTreeProjector(Project project)
                     components.Add(child);
             }
             // A locality that holds components opens by default so they are visible (US-006 container reveal).
-            var locality = new TreeNodeViewModel(name, LocalityIcon, isExpanded: components.Count > 0,
+            var locality = new TreeNodeViewModel(name, NodeIcons.Locality, isExpanded: components.Count > 0,
                 isBold: true, elementId: group.Id) { Tooltip = BuildTooltip(group), Kind = TreeNodeKind.Locality };
             foreach (ProjectElement child in components)
                 locality.Children.Add(BuildComponentNode(child));
             root.Children.Add(locality);
         }
+        StampCrossReferences(root);
         return root;
     }
-
-    // A product's tree label carries its placement descriptor: "name (position) " — trailing space included — and
-    // the bare name when position is absent (F-003). The trailing space is the vendor's and is reproduced so a
-    // label-mode diff against IHC Visual stays exact.
-    private static string ProductLabel(string name, string? position) =>
-        string.IsNullOrEmpty(position) ? name : $"{name} ({position}) ";
 
     // A product / function block node. A product flattens its resource (pin) children (structural containers are
     // omitted); a function block shows its four variable sections (US-018/US-019).
@@ -214,7 +249,7 @@ public sealed class ProjectTreeProjector(Project project)
             return BuildFunctionBlockNode(component, name, programmingMode: false);
 
         bool unlinked = View(component).IsUnlinkedWireless;
-        var node = new TreeNodeViewModel(ProductLabel(name, View(component).Position),
+        var node = new TreeNodeViewModel(TreeLabelFormatter.ProductLabel(name, View(component).Position),
             NodeIcons.For(component.Tag, View(component).Icon),
             elementId: component.Id, isUnlinked: unlinked)
             { Tooltip = BuildTooltip(component), Kind = TreeNodeKind.Product };
@@ -242,19 +277,6 @@ public sealed class ProjectTreeProjector(Project project)
         return node;
     }
 
-    private static (string Value, string RampTime) SceneMemberValue(ProjectElement member)
-    {
-        if (!SceneValue.TryParse(member, out SceneValue sv))
-            return (string.Empty, string.Empty);
-        return sv.Kind switch
-        {
-            SceneValueKind.Relay => (sv.On ? "ON" : "OFF", string.Empty),
-            SceneValueKind.Dimmer => ($"{sv.LevelPercent}%", $"{sv.RampTime.TotalSeconds:0.#}s"),
-            SceneValueKind.Shutter => (sv.ShutterUp ? "up" : "down", string.Empty),
-            _ => (string.Empty, string.Empty),
-        };
-    }
-
     private TreeNodeViewModel BuildSceneMemberNode(ProjectElement member)
     {
         // A shutter member renders the BARE opposite path + direction as the product's shutter pin name (F-051/A-19);
@@ -263,14 +285,14 @@ public sealed class ProjectTreeProjector(Project project)
         if (member.IsSceneShutter)
         {
             label = ShutterDirectionPinName(member) is { Length: > 0 } dir
-                ? $"{LinkOppositePath(member)} / {dir}"
-                : LinkOppositePath(member);
+                ? $"{TreeLabelFormatter.LinkOppositePath(project, member)} / {dir}"
+                : TreeLabelFormatter.LinkOppositePath(project, member);
         }
         else
         {
-            (string value, string ramp) = SceneMemberValue(member);
+            (string value, string ramp) = TreeLabelFormatter.SceneMemberValue(member);
             string text = ramp.Length > 0 ? $"{value} / {ramp}" : value;
-            label = $"{LinkOppositePath(member)} = {text}";
+            label = $"{TreeLabelFormatter.LinkOppositePath(project, member)} = {text}";
         }
         return new TreeNodeViewModel(label, "/Assets/link-from.svg",
             elementId: member.Id) { Kind = TreeNodeKind.SceneMember };
@@ -386,34 +408,7 @@ public sealed class ProjectTreeProjector(Project project)
     {
         bool isSourceEnd = linkRow.IsLinkFromEnd;
         string icon = isSourceEnd ? "/Assets/link-from.svg" : "/Assets/link-to.svg";
-        return new TreeNodeViewModel(LinkOppositePath(linkRow), icon, elementId: linkRow.Id)
+        return new TreeNodeViewModel(TreeLabelFormatter.LinkOppositePath(project, linkRow), icon, elementId: linkRow.Id)
             { Kind = linkRow.IsSceneLink ? TreeNodeKind.SceneLink : isSourceEnd ? TreeNodeKind.LinkFrom : TreeNodeKind.LinkTo };
-    }
-
-    private string LinkOppositePath(ProjectElement linkRow) =>
-        LinkOppositeParts(linkRow) is { Count: > 0 } parts ? string.Join(" / ", parts) : "(unresolved)";
-
-    // The opposite end's path parts, outermost first: [locality, product-or-block, pin]. Empty when unresolvable.
-    private IReadOnlyList<string> LinkOppositeParts(ProjectElement linkRow)
-    {
-        if (!ElementId.TryParse(View(linkRow).Effective("link"), out ElementId partnerId)
-            || project.FindParent(partnerId) is not { } oppositePin)
-        {
-            return Array.Empty<string>();
-        }
-        var parts = new List<string>();
-        ProjectElement? current = oppositePin;
-        bool leaf = true;
-        while (current is not null)
-        {
-            bool significant = leaf || current.IsLocalityGroup || current.Kind is ElementKind.FunctionBlock || ProductClassifier.IsProduct(current.Tag);
-            if (significant && View(current).Name is { Length: > 0 } partName)
-                parts.Insert(0, ProductClassifier.IsProduct(current.Tag)
-                    ? ProductLabel(partName, View(current).Position)
-                    : partName);
-            current = current.Id is { } cid ? project.FindParent(cid) : null;
-            leaf = false;
-        }
-        return parts;
     }
 }

@@ -151,9 +151,9 @@ namespace Ihc.Vis.Tests
 
             for (int i = 0; i < files.Count; i++)
             {
-                FunctionBlockDocumentation expected =
-                    FunctionBlockDocReader.ForFunctionBlock(files[i], synEnOnly: true) ?? FunctionBlockDocumentation.Empty;
-                FunctionBlockDocumentation actual = built.FunctionBlocks[i].Documentation;
+                DefinitionDocumentation expected =
+                    FunctionBlockDocReader.ForFunctionBlock(files[i], synEnOnly: true) ?? DefinitionDocumentation.Empty;
+                DefinitionDocumentation actual = built.FunctionBlocks[i].Documentation;
                 Assert.Multiple(() =>
                 {
                     Assert.That(actual.Summary, Is.EqualTo(expected.Summary), $"[{i}] {Path.GetFileName(files[i])} summary");

@@ -42,15 +42,15 @@ namespace Ihc.Vis.Catalog
         /// scanned one. <see cref="ProductDefinition.CategoryPath"/> is empty (a standalone file has no catalog-tree
         /// category); pass <paramref name="documentation"/> to attach programmatic help metadata (the D3 doc-probe hook).
         /// </summary>
-        public static ProductDefinition ReadProduct(string path, ProductDocumentation? documentation = null)
+        public static ProductDefinition ReadProduct(string path, DefinitionDocumentation? documentation = null)
         {
             ArgumentNullException.ThrowIfNull(path);
             return ParseCatalogFile(path, () => BuildProduct(File.ReadAllBytes(path), string.Empty, documentation));
         }
 
         /// <summary>Reads a product catalog file from a stream into a <see cref="ProductDefinition"/>; see
-        /// <see cref="ReadProduct(string, ProductDocumentation?)"/>.</summary>
-        public static ProductDefinition ReadProduct(Stream stream, ProductDocumentation? documentation = null)
+        /// <see cref="ReadProduct(string, DefinitionDocumentation?)"/>.</summary>
+        public static ProductDefinition ReadProduct(Stream stream, DefinitionDocumentation? documentation = null)
         {
             ArgumentNullException.ThrowIfNull(stream);
             return BuildProduct(XmlProlog.ReadAllBytes(stream), string.Empty, documentation);
@@ -62,7 +62,7 @@ namespace Ihc.Vis.Catalog
         /// handling as <see cref="CatalogDiscovery"/>; <see cref="FunctionBlockDefinition.CategoryPath"/> is empty.
         /// Pass <paramref name="documentation"/> to attach programmatic help metadata (the D3 doc-probe hook).
         /// </summary>
-        public static FunctionBlockDefinition ReadFunctionBlock(string path, FunctionBlockDocumentation? documentation = null)
+        public static FunctionBlockDefinition ReadFunctionBlock(string path, DefinitionDocumentation? documentation = null)
         {
             ArgumentNullException.ThrowIfNull(path);
             return ParseCatalogFile(path, () => BuildFunctionBlock(File.ReadAllBytes(path), string.Empty, documentation));
@@ -88,8 +88,8 @@ namespace Ihc.Vis.Catalog
         }
 
         /// <summary>Reads a function-block catalog file from a stream into a <see cref="FunctionBlockDefinition"/>; see
-        /// <see cref="ReadFunctionBlock(string, FunctionBlockDocumentation?)"/>.</summary>
-        public static FunctionBlockDefinition ReadFunctionBlock(Stream stream, FunctionBlockDocumentation? documentation = null)
+        /// <see cref="ReadFunctionBlock(string, DefinitionDocumentation?)"/>.</summary>
+        public static FunctionBlockDefinition ReadFunctionBlock(Stream stream, DefinitionDocumentation? documentation = null)
         {
             ArgumentNullException.ThrowIfNull(stream);
             return BuildFunctionBlock(XmlProlog.ReadAllBytes(stream), string.Empty, documentation);
@@ -99,7 +99,7 @@ namespace Ihc.Vis.Catalog
         // CatalogDiscovery's install-dir scan (which supplies the tree-relative CategoryPath). Keeping identifier/
         // display-name extraction + InlineDtd capture here means an imported instance is byte-for-byte the same shape
         // as a scanned one.
-        internal static ProductDefinition BuildProduct(byte[] bytes, string categoryPath, ProductDocumentation? documentation)
+        internal static ProductDefinition BuildProduct(byte[] bytes, string categoryPath, DefinitionDocumentation? documentation)
         {
             ProjectElement body = Read(bytes);
             string identifier = body.GetAttribute("product_identifier") ?? string.Empty;
@@ -112,7 +112,7 @@ namespace Ihc.Vis.Catalog
             return documentation is null ? definition : definition with { Documentation = documentation };
         }
 
-        internal static FunctionBlockDefinition BuildFunctionBlock(byte[] bytes, string categoryPath, FunctionBlockDocumentation? documentation)
+        internal static FunctionBlockDefinition BuildFunctionBlock(byte[] bytes, string categoryPath, DefinitionDocumentation? documentation)
         {
             ProjectElement body = Read(bytes);
             string masterType = body.GetAttribute("master_type") ?? string.Empty;
@@ -125,13 +125,6 @@ namespace Ihc.Vis.Catalog
                 SourceEncoding = CatalogTextEncodingExtensions.Classify(bytes),
             };
             return documentation is null ? definition : definition with { Documentation = documentation };
-        }
-
-        internal static ProjectElement ReadFile(string path)
-        {
-            ArgumentNullException.ThrowIfNull(path);
-            using FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return Read(stream);
         }
 
         internal static ProjectElement Read(Stream stream)
@@ -155,8 +148,8 @@ namespace Ihc.Vis.Catalog
             };
             // Decode the bytes ourselves: .NET's XmlReader trusts the declared ISO-8859-1 over a UTF-8 BOM, which
             // mojibakes the Products\*.def files. A BOM wins (the spec's documented trap, ch. 09 §9.3.2); with no
-            // BOM a declared non-Latin-1 encoding is honored (a UTF-8-without-BOM file would otherwise silently
-            // mojibake its names into every project it is inserted into); otherwise Latin-1 (.ifb/.idf).
+            // BOM a declared non-Latin-1 encoding is honored, else the CONTENT decides (a BOM-less UTF-8 file — even
+            // one that mis-declares ISO-8859-1 — is decoded as UTF-8 so its names survive), else Latin-1 (.ifb/.idf).
             using var textReader = new StreamReader(new MemoryStream(bytes, writable: false), SniffEncoding(bytes),
                                                     detectEncodingFromByteOrderMarks: true);
             using XmlReader reader = XmlReader.Create(textReader, settings);
@@ -164,7 +157,9 @@ namespace Ihc.Vis.Catalog
         }
 
         // Internal (not private): CatalogDtdParser.CaptureHeadText decodes file bytes with the identical rule, so
-        // the header text the grammar parser sees and the body text the XML reader sees can never diverge.
+        // the header text the grammar parser sees and the body text the XML reader sees can never diverge. The
+        // decode is kept in lock-step with CatalogTextEncoding.Classify (which records SourceEncoding): the byte the
+        // reader decodes with is exactly the one the writer re-encodes with, so an import→re-save is byte-faithful.
         internal static Encoding SniffEncoding(byte[] bytes)
         {
             if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
@@ -180,10 +175,15 @@ namespace Ihc.Vis.Catalog
                 }
                 catch (ArgumentException)
                 {
-                    // unknown name → fall through to Latin-1 (total: every byte decodes)
+                    // unknown name → fall through to the content classification (total: every byte decodes)
                 }
             }
-            return Encoding.Latin1;
+            // No BOM and either no declaration or a declared ISO-8859-1: trust the CONTENT, not the declaration.
+            // Classify inspects the actual bytes (valid non-ASCII UTF-8 → Utf8, else Latin1), so a BOM-less UTF-8
+            // file that mis-declares ISO-8859-1 still decodes as UTF-8 — matching the SourceEncoding it is recorded
+            // with. TextEncoding() decodes tolerantly (replacement fallback), and Latin-1 is total, so this never
+            // throws for the real corpus (.ifb lone-high-byte files classify Latin1 and decode unchanged).
+            return CatalogTextEncodingExtensions.Classify(bytes).TextEncoding();
         }
 
         private static ProjectElement ReadElement(XmlReader reader)

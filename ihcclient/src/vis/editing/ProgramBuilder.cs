@@ -453,7 +453,7 @@ namespace Ihc.Vis.Editing
         {
             ArgumentNullException.ThrowIfNull(name);
             ArgumentNullException.ThrowIfNull(switchVariable);
-            string criterion = editor.RequireLive(switchVariable).ToToken();
+            string criterion = editor.RequireLive(switchVariable).Id!.Value.ToToken();
             var attrs = new List<(string, string)> { ("name", name), ("icon", ProgramCaseIcon) };
             if (note is not null)
             {

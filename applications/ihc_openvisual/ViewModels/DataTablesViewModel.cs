@@ -18,7 +18,7 @@ public sealed record UserTextItem(string Id, string Text);
 /// The vendor deletes a text with no confirmation — per the story R-note this view-model guards Delete with an
 /// app-level confirm.
 /// </summary>
-public partial class DataTablesViewModel : ObservableObject
+public partial class DataTablesViewModel : ViewModelBase
 {
     private readonly ProjectWorkflow _session;
     private readonly IDialogService _dialogs;
@@ -47,7 +47,7 @@ public partial class DataTablesViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public async Task AddText()
+    private async Task AddText()
     {
         PropertiesResult? result = await _dialogs.EditPropertiesAsync("New user-defined text", string.Empty, string.Empty);
         if (result is null || string.IsNullOrWhiteSpace(result.Name))
@@ -57,7 +57,7 @@ public partial class DataTablesViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public async Task EditText()
+    private async Task EditText()
     {
         if (SelectedUserText is not { } selected || !ElementId.TryParse(selected.Id, out ElementId id))
             return;
@@ -69,7 +69,7 @@ public partial class DataTablesViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public async Task DeleteText()
+    private async Task DeleteText()
     {
         if (SelectedUserText is not { } selected || !ElementId.TryParse(selected.Id, out ElementId id))
             return;

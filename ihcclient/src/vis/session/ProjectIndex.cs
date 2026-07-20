@@ -14,15 +14,15 @@ namespace Ihc.Vis.Session
     /// </summary>
     internal sealed class ProjectIndex
     {
-        private readonly FrozenDictionary<ElementId, ProjectElement> byId;
-        private readonly FrozenDictionary<ElementId, ProjectElement> parentById;
+        private readonly FrozenDictionary<ElementId, ProjectElement> _byId;
+        private readonly FrozenDictionary<ElementId, ProjectElement> _parentById;
 
         private ProjectIndex(
             FrozenDictionary<ElementId, ProjectElement> byId,
             FrozenDictionary<ElementId, ProjectElement> parentById)
         {
-            this.byId = byId;
-            this.parentById = parentById;
+            _byId = byId;
+            _parentById = parentById;
         }
 
         /// <summary>Builds the index in a single pre-order walk of the project tree (id-less elements are skipped).
@@ -56,10 +56,10 @@ namespace Ihc.Vis.Session
 
         /// <summary>The element with the given id, or null when no id-bearing element matches.</summary>
         public ProjectElement? FindById(ElementId id) =>
-            byId.TryGetValue(id, out ProjectElement? element) ? element : null;
+            _byId.TryGetValue(id, out ProjectElement? element) ? element : null;
 
         /// <summary>The parent element of the id-bearing element with the given id, or null (a root or an absent id).</summary>
         public ProjectElement? FindParent(ElementId id) =>
-            parentById.TryGetValue(id, out ProjectElement? parent) ? parent : null;
+            _parentById.TryGetValue(id, out ProjectElement? parent) ? parent : null;
     }
 }

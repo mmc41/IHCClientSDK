@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Threading.Tasks;
 
 using static Ihc.Vis.Tests.Tree;
@@ -94,6 +95,34 @@ namespace Ihc.Vis.Tests
                     "the sink end carries the to-half");
                 Assert.That(HalvesOn(after, from, "link_to_resource"), Is.Zero, "the source is never a sink");
                 Assert.That(HalvesOn(after, to, "link_from_resource"), Is.Zero, "the sink is never a source");
+            });
+        }
+
+        // Review Low: CanLink(pin, pin) must AGREE with Link. A value FB pin (resource_flag) linked to itself is
+        // legal — source==sink, both a function-block pin — and Link/the vendor accept it. CanLink previously refused
+        // it via a `fromId != toId` guard that Link never applied, so a GUI drag-over hint would wrongly forbid a
+        // link Link accepts. The gate below is that both agree.
+        [Test]
+        public async Task SelfLink_SamePin_CanLinkAgreesWithLink()
+        {
+            Project project = await new ProjectAppService(TestSetup.Settings)
+                .Load("testdata/projects/project2-CustomBlock.vis");
+            ProjectEditor editor = project.Edit();
+            ElementId flag = project.Root.Descendants()
+                .First(e => e.Tag == "resource_flag" && e.Id is not null).Id!.Value;
+
+            Assert.That(editor.CanLink(flag, flag), Is.True,
+                "a value pin linked to itself is legal — CanLink now agrees with Link and the vendor");
+            Assert.DoesNotThrow(() => editor.Link(flag, flag),
+                "Link already accepts the self-link — CanLink must not disagree with it");
+
+            ProjectElement pinAfter = editor.ToProject().FindById(flag)!;
+            Assert.Multiple(() =>
+            {
+                Assert.That(pinAfter.ChildrenOrEmpty().Count(c => c.Tag == "link_from_resource"), Is.EqualTo(1),
+                    "the pin carries the from-half");
+                Assert.That(pinAfter.ChildrenOrEmpty().Count(c => c.Tag == "link_to_resource"), Is.EqualTo(1),
+                    "and the to-half — both ends are the same pin");
             });
         }
 

@@ -58,6 +58,25 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // T017: NewProjectBuilder.Node routes through ProjectElement.Create. The enum_definitions container id is
+        // the one id fed to Node as a raw skeleton-derived string (every other id is an allocator .ToToken()); it
+        // must survive CreateNew as the canonical "_0x3046" (Create re-renders it via ToToken byte-identically).
+        [Test]
+        public void CreateNew_EnumDefinitionsContainer_KeepsCanonicalId()
+        {
+            var clock = new FakeTimeProvider(new DateTimeOffset(2026, 6, 27, 16, 5, 51, TimeSpan.Zero));
+            var app = new ProjectAppService(Settings, Catalog(), clock);
+
+            Project project = app.CreateNew(new ProjectDetails("P", "I", "DK"));
+
+            ProjectElement enums = project.Child("enum_definitions")!;
+            Assert.Multiple(() =>
+            {
+                Assert.That(enums.GetAttribute("id"), Is.EqualTo("_0x3046"), "container id attribute preserved");
+                Assert.That(enums.Id, Is.EqualTo(new ElementId(0x30, 0x46)), "and its strongly-typed id agrees");
+            });
+        }
+
         // M3 / 3.2 — seed-layout knob. project2-CustomBlock seeds the three documentation *_modules FIRST
         // (counters 65-67) and the two built-in enums AFTER (68-80) — the reverse of Project0/Project1 (anomaly A-1).
         // Document emission order is unchanged; only the seed ids differ.

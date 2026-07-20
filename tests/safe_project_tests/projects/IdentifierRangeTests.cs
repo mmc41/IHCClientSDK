@@ -32,6 +32,27 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // T016: ElementId.TryParse now parses the raw _0x+hex value through the shared HexToken primitive and
+        // ToToken formats through it too. A token minted by ToToken must parse back to the same (Counter, TypeCode)
+        // across the range, including at the packed-value ceiling.
+        [Test]
+        public void ToToken_TryParse_RoundTripsAcrossTheRange()
+        {
+            (int Counter, int TypeCode)[] cases =
+            {
+                (0, 0), (1, 0x28), (0xFF, 0x49), (0x1234, 0x02), (0xFFFFFF, 0xFF),
+            };
+            Assert.Multiple(() =>
+            {
+                foreach ((int counter, int typeCode) in cases)
+                {
+                    var id = new ElementId(counter, typeCode);
+                    Assert.That(ElementId.TryParse(id.ToToken(), out ElementId parsed), Is.True, id.ToToken());
+                    Assert.That(parsed, Is.EqualTo(id), id.ToToken());
+                }
+            });
+        }
+
         [Test]
         public void Allocate_AtCeiling_Throws_WithoutAdvancingTheCounter()
         {

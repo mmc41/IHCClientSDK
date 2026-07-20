@@ -59,7 +59,7 @@ namespace Ihc.Vis.CatalogCodegen
         /// <c>syn_en*.md</c>) as programmatic-lookup-only <c>.Documentation(..)</c> calls. Throws
         /// <see cref="DecompileNotSupportedException"/> for a construct this stage cannot reverse.</summary>
         public static FunctionBlockRecipe Decompile(FunctionBlockDefinition def, ImmutableDictionary<string, string> blocks,
-            FunctionBlockDocumentation? documentation = null)
+            DefinitionDocumentation? documentation = null)
         {
             ArgumentNullException.ThrowIfNull(def);
             if (def.MasterName.Length == 0)
@@ -74,7 +74,7 @@ namespace Ihc.Vis.CatalogCodegen
             return new FunctionBlockDecompiler(def, blocks).Run(def, documentation);
         }
 
-        private FunctionBlockRecipe Run(FunctionBlockDefinition def, FunctionBlockDocumentation? documentation)
+        private FunctionBlockRecipe Run(FunctionBlockDefinition def, DefinitionDocumentation? documentation)
         {
             ProjectElement body = def.Body;
             EmitHead(body, def);
@@ -168,7 +168,7 @@ namespace Ihc.Vis.CatalogCodegen
 
         // Bakes the block's syn_en documentation as programmatic-lookup-only head calls (out-of-Body, so it does not
         // affect self-verify). Per-resource entries are emitted key-sorted so the generated source is diff-stable.
-        private void EmitDocumentation(FunctionBlockDocumentation? documentation)
+        private void EmitDocumentation(DefinitionDocumentation? documentation)
         {
             if (documentation is null || documentation.IsEmpty)
             {

@@ -63,6 +63,59 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // C3: a "change Location" whose target is unresolvable or not a group must Refuse — not silently drop the
+        // move (garbage id) and not build an invalid tree that still saves (moving a product under another product).
+        [Test]
+        public async Task UpdateProduct_ChangeLocation_RefusesBadTarget_CommitsValidMove()
+        {
+            Project project = await Load("project3-KompleksWired.vis");
+            ProjectElement product = project.Root.Descendants()
+                .First(e => ProductClassifier.IsProduct(e.Tag) && e.Id is not null);
+            ElementId productId = product.Id!.Value;
+            ElementId currentGroup = project.FindParent(productId)!.Id!.Value;
+            ElementId otherProduct = project.Root.Descendants()
+                .First(e => ProductClassifier.IsProduct(e.Tag) && e.Id is not null && e.Id!.Value != productId).Id!.Value;
+            ElementId otherGroup = project.Root.Descendants()
+                .First(g => g.Tag == "group" && g.Id is not null && g.Id!.Value != currentGroup).Id!.Value;
+
+            static ProductPropertiesResult ToLoc(string localityId) =>
+                new("N", localityId, "", "", "", "", "", Position: "", EndUserReport: false);
+
+            EditStatus garbage = Session(project)
+                .Apply(new UpdateProduct(productId, ToLoc("garbage"), currentGroup)).Status;
+            EditStatus nonGroup = Session(project)
+                .Apply(new UpdateProduct(productId, ToLoc(otherProduct.ToToken()), currentGroup)).Status;
+            ProjectDocumentSession valid = Session(project);
+            EditOutcome move = valid.Apply(new UpdateProduct(productId, ToLoc(otherGroup.ToToken()), currentGroup));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(garbage, Is.EqualTo(EditStatus.Refused), "an unparseable target is refused, not silently dropped");
+                Assert.That(nonGroup, Is.EqualTo(EditStatus.Refused), "a non-group target is refused, not moved into an invalid tree");
+                Assert.That(move.Status, Is.EqualTo(EditStatus.Committed), "a valid Location change commits");
+                Assert.That(valid.Current!.FindParent(productId)!.Id, Is.EqualTo(otherGroup), "the product re-parents to the chosen group");
+            });
+        }
+
+        // T012: the session Evaluate existence guards now route through EditContext.RequireExists; a stale-id command
+        // must still Refuse with its command-specific noun.
+        [Test]
+        public async Task StaleId_Command_StillRefusesWithItsNoun()
+        {
+            Project project = await Load("project3-KompleksWired.vis");
+            ProjectDocumentSession session = Session(project);
+            ElementId.TryParse("_0xdead01", out ElementId absent);
+
+            EditOutcome outcome = session.Apply(new RenameLocality(absent, "X", ""));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused), "a stale-id command is refused, not committed");
+                Assert.That(outcome.Reason, Does.Contain("element").And.Contain("no longer exists"),
+                    "the refusal keeps the command's per-noun message");
+            });
+        }
+
         [Test]
         public async Task UpdatePin_AppliesTheAddress()
         {

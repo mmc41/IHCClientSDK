@@ -42,10 +42,8 @@
             <SolidColorBrush x:Key="PaneHeaderForegroundBrush" Color="#FFFFFFFF"/>
             <SolidColorBrush x:Key="LinkBrush" Color="#FF3B82F6"/>
             <x:Double x:Key="TitleFontSize">22</x:Double>
-            <x:Double x:Key="HeadingFontSize">16</x:Double>
             <x:Double x:Key="BodyFontSize">12</x:Double>
             <x:Double x:Key="CaptionFontSize">11</x:Double>
-            <x:Double x:Key="DialogButtonWidth">90</x:Double>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -1,4 +1,6 @@
 #nullable enable
+using System;
+using System.Collections.Frozen;
 using System.Collections.Immutable;
 
 namespace Ihc.Vis.Programs
@@ -17,10 +19,15 @@ namespace Ihc.Vis.Programs
     /// condition row, the vendor <see cref="NameTemplate"/> and <see cref="Note"/> stored verbatim (the <c>%P</c>/
     /// <c>%S</c> placeholders stay live so the row re-renders when its operands are renamed), and the semantics the
     /// GUI can no longer infer from a token: <see cref="OperandCount"/> (1 for event/command/condition, 2 for
-    /// arithmetic's <c>%P … %S</c>) and <see cref="OperatorSymbol"/> (<c>+</c>/<c>−</c> for arithmetic, else null).
+    /// arithmetic's <c>%P … %S</c>) and <see cref="OperatorSymbol"/> (<c>+</c>/<c>-</c> for arithmetic, else null;
+    /// ASCII hyphen-minus, not U+2212 — the .vis format is ISO-8859-1 and cannot encode a MINUS SIGN).
     /// The same token can appear under more than one category (e.g. <c>_0xa</c> is Event, Command and Condition), so
     /// a method is identified by the <c>(Category, Token)</c> pair, never the token alone.
     /// </summary>
+    /// <remarks>Intentional test-only seam (D02): <see cref="OperandCount"/> is currently asserted only by the
+    /// ProgramMethodCatalog tests (1 for event/command/condition, 2 for arithmetic); it is kept as the method-arity
+    /// fact a future GUI operand picker would consult. (<see cref="Category"/> is NOT a test-only member — the
+    /// OpenVisual program menu keys its verbs by the <c>(Category, Token)</c> pair, so it is production-used.)</remarks>
     public sealed record ProgramMethod(
         ProgramMethodCategory Category,
         string Token,
@@ -61,6 +68,14 @@ namespace Ihc.Vis.Programs
         /// have no attested vendor token, so are not offered. The <c>%S</c> is the second operand.</summary>
         public static readonly ImmutableArray<ProgramMethod> Arithmetic = ImmutableArray.Create(
             new ProgramMethod(ProgramMethodCategory.Arithmetic, "_0x5a", "%P = %P + %S", "Adds %S to %P", 2, "+"),
-            new ProgramMethod(ProgramMethodCategory.Arithmetic, "_0x64", "%P = %P − %S", "Subtracts %S from %P", 2, "−"));
+            new ProgramMethod(ProgramMethodCategory.Arithmetic, "_0x64", "%P = %P - %S", "Subtracts %S from %P", 2, "-"));
+
+        /// <summary>The variable types a <c>program_case</c> may switch on (US-031): counter, enumerator, weekday,
+        /// integer, or date. The single public source of truth for case-switch eligibility — the session's AddCase
+        /// guard and the OpenVisual case menu both test membership against this set, so neither keeps its own copy.</summary>
+        public static readonly FrozenSet<string> EligibleCaseVariableTags = new[]
+        {
+            "resource_counter", "resource_enum", "resource_weekday", "resource_integer", "resource_date",
+        }.ToFrozenSet(StringComparer.Ordinal);
     }
 }

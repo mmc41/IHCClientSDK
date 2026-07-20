@@ -35,6 +35,7 @@ namespace Ihc.Vis.Tests
 
         private static readonly Type[] SurfaceTypes =
         {
+            typeof(DefinitionBuilderBase<>),
             typeof(ProductDefinitionBuilder), typeof(ProductResourceDefBuilder),
             typeof(FunctionBlockDefinitionBuilder), typeof(FbResourceDefBuilder),
             typeof(FbProgramBuilder), typeof(FbSubProgramRef), typeof(FbConditionsGroupRef),
@@ -47,6 +48,13 @@ namespace Ihc.Vis.Tests
         // the family preset) or is dynamic/non-emitting.
         private static readonly Dictionary<string, Verb> Classification = new(StringComparer.Ordinal)
         {
+            // ---- DefinitionBuilderBase<TSelf> (shared authoring core of both definition builders) ----
+            ["DefinitionBuilderBase`1.CategoryPath(String)"] = Verb.NonEmitting,
+            ["DefinitionBuilderBase`1.Grammar(CatalogGrammar)"] = Verb.NonEmitting,
+            ["DefinitionBuilderBase`1.ExtendGrammar(Action`1)"] = Verb.NonEmitting,
+            ["DefinitionBuilderBase`1.Documentation(String)"] = Verb.NonEmitting,
+            ["DefinitionBuilderBase`1.Documentation(String,String)"] = Verb.NonEmitting,
+
             // ---- ProductDefinitionBuilder ----
             ["ProductDefinitionBuilder.Dataline(String,String)"] = Verb.Closed(new[] { "product_dataline" }, "Dataline"),
             ["ProductDefinitionBuilder.Airlink(String,String)"] = Verb.Closed(new[] { "product_airlink" }, "Airlink"),
@@ -55,7 +63,6 @@ namespace Ihc.Vis.Tests
             ["ProductDefinitionBuilder.S0Device(String,String)"] = Verb.Closed(new[] { "s0_device" }, "S0Device"),
             ["ProductDefinitionBuilder.Create(String,String,String)"] = Verb.Dynamic,
             ["ProductDefinitionBuilder.From(ProductDefinition)"] = Verb.NonEmitting,
-            ["ProductDefinitionBuilder.CategoryPath(String)"] = Verb.NonEmitting,
             ["ProductDefinitionBuilder.DisplayName(String)"] = Verb.NonEmitting,
             ["ProductDefinitionBuilder.Name(String)"] = Verb.NonEmitting,
             ["ProductDefinitionBuilder.Locked(Boolean)"] = Verb.NonEmitting,
@@ -69,13 +76,9 @@ namespace Ihc.Vis.Tests
             ["ProductDefinitionBuilder.AddInput(String,Action`1)"] = Verb.Closed(new[] { "dataline_input" }, "Dataline"),
             ["ProductDefinitionBuilder.AddOutput(String,Action`1)"] = Verb.Closed(new[] { "dataline_output" }, "Dataline"),
             ["ProductDefinitionBuilder.AddScenes(String)"] = Verb.Closed(new[] { "scenes" }, AllProductFamilies),
-            ["ProductDefinitionBuilder.Documentation(String)"] = Verb.NonEmitting,
-            ["ProductDefinitionBuilder.Documentation(String,String)"] = Verb.NonEmitting,
             ["ProductDefinitionBuilder.Attribute(String,String)"] = Verb.NonEmitting,
             ["ProductDefinitionBuilder.AddResource(String,String,Action`1)"] = Verb.Dynamic,
             ["ProductDefinitionBuilder.RawChild(ProjectElement)"] = Verb.Dynamic,
-            ["ProductDefinitionBuilder.Grammar(CatalogGrammar)"] = Verb.NonEmitting,
-            ["ProductDefinitionBuilder.ExtendGrammar(Action`1)"] = Verb.NonEmitting,
             ["ProductDefinitionBuilder.Validate()"] = Verb.NonEmitting,
             ["ProductDefinitionBuilder.Build()"] = Verb.NonEmitting,
 
@@ -93,7 +96,6 @@ namespace Ihc.Vis.Tests
                 { "functionblock", "inputs", "outputs", "settings", "internalsettings", "programs" }),
             ["FunctionBlockDefinitionBuilder.From(FunctionBlockDefinition)"] = Verb.NonEmitting,
             ["FunctionBlockDefinitionBuilder.DisplayName(String)"] = Verb.NonEmitting,
-            ["FunctionBlockDefinitionBuilder.CategoryPath(String)"] = Verb.NonEmitting,
             ["FunctionBlockDefinitionBuilder.MasterProgrammer(String)"] = Verb.NonEmitting,
             ["FunctionBlockDefinitionBuilder.MasterDate(DateOnly)"] = Verb.NonEmitting,
             ["FunctionBlockDefinitionBuilder.VendorMaster(Boolean)"] = Verb.NonEmitting,
@@ -121,12 +123,8 @@ namespace Ihc.Vis.Tests
             ["FunctionBlockDefinitionBuilder.AddEnumDefinition(String)"] = Verb.Closed(new[] { "enum_definition" }),
             ["FunctionBlockDefinitionBuilder.AddEnumDefinition(String,String)"] = Verb.Closed(new[] { "enum_definition" }),
             ["FunctionBlockDefinitionBuilder.Program(String)"] = Verb.Closed(new[] { "program_simple", "events", "actions" }),
-            ["FunctionBlockDefinitionBuilder.Documentation(String)"] = Verb.NonEmitting,
             ["FunctionBlockDefinitionBuilder.Documentation(FbResourceHandle,String)"] = Verb.NonEmitting,
-            ["FunctionBlockDefinitionBuilder.Documentation(String,String)"] = Verb.NonEmitting,
             ["FunctionBlockDefinitionBuilder.RawChild(ProjectElement)"] = Verb.Dynamic,
-            ["FunctionBlockDefinitionBuilder.Grammar(CatalogGrammar)"] = Verb.NonEmitting,
-            ["FunctionBlockDefinitionBuilder.ExtendGrammar(Action`1)"] = Verb.NonEmitting,
             ["FunctionBlockDefinitionBuilder.Validate()"] = Verb.NonEmitting,
             ["FunctionBlockDefinitionBuilder.Build()"] = Verb.NonEmitting,
 

@@ -8,6 +8,7 @@ using NUnit.Framework.Interfaces;
 using NUnit.Framework.Internal;
 using NUnit.Framework.Internal.Commands;
 using Ihc;
+using Ihc.Bootstrap;
 using System.Reflection;
 using IhcLab;
 using Avalonia;

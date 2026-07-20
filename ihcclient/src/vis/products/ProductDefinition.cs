@@ -48,12 +48,12 @@ namespace Ihc.Vis.Products
         /// <summary>
         /// Human-readable help metadata for this product and its resources — <b>programmatic-lookup only</b>, and
         /// deliberately <b>not</b> part of the serialized <see cref="Body"/>: it is never written into a project
-        /// <c>.vis</c> or a product catalog <c>.def</c>. Defaults to <see cref="ProductDocumentation.Empty"/> (what
+        /// <c>.vis</c> or a product catalog <c>.def</c>. Defaults to <see cref="DefinitionDocumentation.Empty"/> (what
         /// catalog discovery yields, since a <c>.def</c> carries no help text). Authored via
-        /// <see cref="ProductDefinitionBuilder.Documentation(string)"/> and its by-name overload; see
-        /// <see cref="ProductDocumentation"/>.
+        /// <see cref="DefinitionBuilderBase{TSelf}.Documentation(string)"/> and its by-name overload; see
+        /// <see cref="DefinitionDocumentation"/>.
         /// </summary>
-        public ProductDocumentation Documentation { get; init; } = ProductDocumentation.Empty;
+        public DefinitionDocumentation Documentation { get; init; } = DefinitionDocumentation.Empty;
 
         /// <summary>
         /// A decoded, read-only view of the product's direct resource children (I/O pins and family-specific
