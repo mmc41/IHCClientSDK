@@ -272,7 +272,7 @@ namespace Ihc.Vis.Session
         public DataTablesModel GetDataTables()
         {
             VerifyAccess();
-            return _current?.GetDataTables() ?? new DataTablesModel([], []);
+            return _current?.GetDataTables() ?? DataTablesModel.Empty;
         }
 
         /// <summary>Names the wireless products not yet linked to the controller (US-042 pre-flight), or empty
@@ -287,7 +287,7 @@ namespace Ihc.Vis.Session
         public ModuleAddressMap GetModuleAddressMap()
         {
             VerifyAccess();
-            return _current?.GetModuleAddressMap() ?? new ModuleAddressMap([], []);
+            return _current?.GetModuleAddressMap() ?? ModuleAddressMap.Empty;
         }
 
         private ProjectChangeSet Transition(Project from, Project to, string label, string origin)

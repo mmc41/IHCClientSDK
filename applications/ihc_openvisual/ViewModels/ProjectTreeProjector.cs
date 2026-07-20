@@ -48,7 +48,8 @@ public sealed class ProjectTreeProjector(Project project)
                         isExpanded: true, elementId: events.Id) { Kind = TreeNodeKind.Events };
                     foreach (ProjectElement ev in events.ChildrenOrEmpty().Where(e => e.IsProgramEvent))
                         eventsNode.Children.Add(new TreeNodeViewModel(EventCommandLabel(ev),
-                            NodeIcons.For(ev.Tag, null), elementId: ev.Id) { Kind = TreeNodeKind.Event });
+                            NodeIcons.For(ev.Tag, null), elementId: ev.Id)
+                            { Kind = TreeNodeKind.Event, CrossReferences = CrossReferencesOf(ev) });
                     programNode.Children.Add(eventsNode);
                 }
                 if (program.FindChild("actions") is { } actions)
@@ -62,7 +63,6 @@ public sealed class ProjectTreeProjector(Project project)
             }
         }
         blockNode.Children.Add(programsNode);
-        StampCrossReferences(blockNode);
         return blockNode;
     }
 
@@ -74,7 +74,8 @@ public sealed class ProjectTreeProjector(Project project)
         {
             if (child.IsProgramCommand)
                 commandsNode.Children.Add(new TreeNodeViewModel(EventCommandLabel(child),
-                    NodeIcons.For("action", null), elementId: child.Id) { Kind = TreeNodeKind.Command });
+                    NodeIcons.For("action", null), elementId: child.Id)
+                    { Kind = TreeNodeKind.Command, CrossReferences = CrossReferencesOf(child) });
             else if (child.IsSubProgram)
                 commandsNode.Children.Add(BuildSubProgramNode(child));
             else if (child.IsProgramCase)
@@ -122,7 +123,8 @@ public sealed class ProjectTreeProjector(Project project)
         {
             if (child.IsCondition)
                 node.Children.Add(new TreeNodeViewModel(EventCommandLabel(child),
-                    NodeIcons.For("condition", null), elementId: child.Id) { Kind = TreeNodeKind.Condition });
+                    NodeIcons.For("condition", null), elementId: child.Id)
+                    { Kind = TreeNodeKind.Condition, CrossReferences = CrossReferencesOf(child) });
             else if (child.IsConditionsGroup)
                 node.Children.Add(BuildConditionsNode(child, nested: true));
         }
@@ -135,7 +137,7 @@ public sealed class ProjectTreeProjector(Project project)
     {
         string switchName = ResolveOperandName(View(kase).Effective("link"));
         var node = new TreeNodeViewModel($"Case ({switchName})", NodeIcons.For("program_case", null),
-            isExpanded: true, elementId: kase.Id) { Kind = TreeNodeKind.Case };
+            isExpanded: true, elementId: kase.Id) { Kind = TreeNodeKind.Case, CrossReferences = CrossReferencesOf(kase) };
         foreach (ProjectElement child in kase.ChildrenOrEmpty())
         {
             if (child.IsCaseValue)
@@ -173,21 +175,13 @@ public sealed class ProjectTreeProjector(Project project)
             ? project.View(operand).Name ?? string.Empty
             : string.Empty;
 
-    // The projector emits the cross-reference dependency edges on every id-bearing row it produced: the OTHER
-    // elements whose live name/value it rendered into that row's label. The reconciler reads these from the
-    // projection (TreeNodeViewModel.CrossReferences) instead of re-deriving them, so the edges can never drift from
-    // what was actually rendered (T022).
-    private void StampCrossReferences(TreeNodeViewModel node)
-    {
-        if (node.ElementId is { } id && project.FindById(id) is { } element)
-            node.CrossReferences = CrossReferencesOf(element);
-        foreach (TreeNodeViewModel child in node.Children)
-            StampCrossReferences(child);
-    }
-
-    // A link/scene row renders the opposite end's ancestor names (the shared partner walk); a program event/command/
-    // condition renders its %P/%S operands; a case its switch operand. Every other row's label is composed only of its
-    // own attributes, so it has no cross-references.
+    // The cross-reference dependency edges for a row the projector just built — the OTHER elements whose live
+    // name/value it rendered into the row's label — stamped inline (CrossReferences = …) by each builder that
+    // produces one of these kinds, so the edges can never drift from what was actually rendered and no whole-tree
+    // re-resolve is needed (T022). The reconciler reads them off the projection instead of re-deriving them. A
+    // link/scene row renders the opposite end's ancestor names (the shared partner walk); a program event/command/
+    // condition renders its %P/%S operands; a case its switch operand. Every other row's label is composed only of
+    // its own attributes, so it keeps the default empty list.
     private IReadOnlyList<ElementId> CrossReferencesOf(ProjectElement element)
     {
         if (element.IsLinkHalf || element.IsSceneMember)
@@ -236,7 +230,6 @@ public sealed class ProjectTreeProjector(Project project)
                 locality.Children.Add(BuildComponentNode(child));
             root.Children.Add(locality);
         }
-        StampCrossReferences(root);
         return root;
     }
 
@@ -295,7 +288,7 @@ public sealed class ProjectTreeProjector(Project project)
             label = $"{TreeLabelFormatter.LinkOppositePath(project, member)} = {text}";
         }
         return new TreeNodeViewModel(label, "/Assets/link-from.svg",
-            elementId: member.Id) { Kind = TreeNodeKind.SceneMember };
+            elementId: member.Id) { Kind = TreeNodeKind.SceneMember, CrossReferences = CrossReferencesOf(member) };
     }
 
     private string? ShutterDirectionPinName(ProjectElement member)
@@ -409,6 +402,7 @@ public sealed class ProjectTreeProjector(Project project)
         bool isSourceEnd = linkRow.IsLinkFromEnd;
         string icon = isSourceEnd ? "/Assets/link-from.svg" : "/Assets/link-to.svg";
         return new TreeNodeViewModel(TreeLabelFormatter.LinkOppositePath(project, linkRow), icon, elementId: linkRow.Id)
-            { Kind = linkRow.IsSceneLink ? TreeNodeKind.SceneLink : isSourceEnd ? TreeNodeKind.LinkFrom : TreeNodeKind.LinkTo };
+            { Kind = linkRow.IsSceneLink ? TreeNodeKind.SceneLink : isSourceEnd ? TreeNodeKind.LinkFrom : TreeNodeKind.LinkTo,
+              CrossReferences = CrossReferencesOf(linkRow) };
     }
 }

@@ -320,7 +320,7 @@ public sealed class ProjectWorkflow : IDisposable
     /// definitions) and the editable user-defined texts (the values of the <see cref="UserTextsTableName"/> enum).
     /// Delegates to the SDK projection. Permanent (see <see cref="GetProjectInfo"/>): no persistent session to query.
     /// </summary>
-    public DataTablesModel GetDataTables() => Current?.GetDataTables() ?? new DataTablesModel([], []);
+    public DataTablesModel GetDataTables() => Current?.GetDataTables() ?? DataTablesModel.Empty;
 
     /// <summary>
     /// Names the wireless products in the project not yet linked to the controller (US-042 pre-flight): the offline
@@ -336,7 +336,7 @@ public sealed class ProjectWorkflow : IDisposable
     /// persistent session to query.
     /// </summary>
     public ModuleAddressMap GetModuleAddressMap() =>
-        Current?.GetModuleAddressMap() ?? new ModuleAddressMap([], []);
+        Current?.GetModuleAddressMap() ?? ModuleAddressMap.Empty;
 
     /// <summary>Builds the command to append a user-defined text (US-049), reporting whether the user-texts table
     /// already exists so the command creates it on first use.</summary>

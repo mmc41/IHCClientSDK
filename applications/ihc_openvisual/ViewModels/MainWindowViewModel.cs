@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -1216,11 +1215,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // BuildProgrammingTrees clears and rebuilds both panes (fresh node instances), so — exactly like the
             // config-mode fallback below — capture the selection by id and restore it after, else a program edit
             // (every edit fires StateChanged → Refresh) drops the selected container to an orphan (review C5).
-            ElementId? selInstallation = SelectedInstallationNode?.ElementId;
-            ElementId? selFunctions = SelectedFunctionsNode?.ElementId;
-            bool installationActive = IsInstallationPaneActive;
-            _treePanes.BuildProgrammingTrees(block, preserveExpansion: _treePanes.SameViewAsLastBuild("prog:" + blockId.ToToken()));
-            RestoreSelection(selInstallation, selFunctions, installationActive);
+            RebuildPreservingSelection(() =>
+                _treePanes.BuildProgrammingTrees(block, preserveExpansion: _treePanes.SameViewAsLastBuild("prog:" + blockId.ToToken())));
             return;
         }
         IsProgrammingMode = false;   // the block is gone (or never set) → configuration mode
@@ -1237,12 +1233,20 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // of the installer's place is lost here — capture selection (which Avalonia's focus + scroll-into-view
             // follow) by id before the rebuild and restore it after, so undo/redo/load land the user back where they
             // were (E14 place restore). Expansion is carried inside the coordinator's fallback.
-            ElementId? selInstallation = SelectedInstallationNode?.ElementId;
-            ElementId? selFunctions = SelectedFunctionsNode?.ElementId;
-            bool installationActive = IsInstallationPaneActive;
-            _treePanes.RebuildConfig(preserve: sameView);
-            RestoreSelection(selInstallation, selFunctions, installationActive);
+            RebuildPreservingSelection(() => _treePanes.RebuildConfig(preserve: sameView));
         }
+    }
+
+    // Captures the per-pane selection by id, runs a full <paramref name="rebuild"/> that replaces the pane nodes with
+    // fresh instances, then re-selects those ids — the shared guard both Refresh rebuild branches use so a rebuild
+    // (every edit fires StateChanged → Refresh) never drops the selected node to an orphan (review C5 / E14 place restore).
+    private void RebuildPreservingSelection(Action rebuild)
+    {
+        ElementId? selInstallation = SelectedInstallationNode?.ElementId;
+        ElementId? selFunctions = SelectedFunctionsNode?.ElementId;
+        bool installationActive = IsInstallationPaneActive;
+        rebuild();
+        RestoreSelection(selInstallation, selFunctions, installationActive);
     }
 
     // Re-selects, in each pane, the node standing for the id selected before a fallback rebuild (a rebuilt tree holds
