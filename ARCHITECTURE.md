@@ -66,7 +66,7 @@ Rules a contributor or agent can rely on, with their scope stated explicitly. Wh
 
 The `safe_project_tests` checks named above are available verification, not current CI enforcement. The workflow compiles them as part of the solution but executes only `safe_unit_tests` and, on Windows, `safe_lab_tests` and `safe_visual_tests`; its pull-request path filter also covers only `.cs` and `.csproj` files.
 
-There is no architecture-test framework (NetArchTest or similar) and no ADR directory in the repository; decision rationale lives in XML doc comments, per-project READMEs, and `CLAUDE.md`.
+Architecture tests run via NetArchTest in `tests/safe_unit_tests/ArchitectureTests.cs`, and architecture decisions are recorded as ADRs under `docs/adr/` (starting with ADR-001, the Avalonia UI-thread-affinity model); additional decision rationale lives in XML doc comments, per-project READMEs, and `CLAUDE.md`.
 
 ## Layer Boundaries
 
