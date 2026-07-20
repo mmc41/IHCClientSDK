@@ -73,6 +73,12 @@ public sealed class ProjectWorkflow : IDisposable
 
     public Project? Current { get; private set; }
 
+    /// <summary>The SDK command-factory gateway (the single authoring door, D01): builds ready-to-apply
+    /// <see cref="ProjectCommand"/>s the VM hands to <see cref="ApplyAsync(ProjectCommand,int?)"/>. Exposes the
+    /// stateless planner on the underlying <see cref="ProjectAppService"/> — the app never constructs command
+    /// types directly.</summary>
+    public ProjectCommands Commands => _service.Commands;
+
     public string? FilePath { get; private set; }
 
     public bool IsDirty { get; private set; }
@@ -338,12 +344,6 @@ public sealed class ProjectWorkflow : IDisposable
     public ModuleAddressMap GetModuleAddressMap() =>
         Current?.GetModuleAddressMap() ?? ModuleAddressMap.Empty;
 
-    /// <summary>Builds the command to append a user-defined text (US-049), reporting whether the user-texts table
-    /// already exists so the command creates it on first use.</summary>
-    public ProjectCommand BuildAddUserText(string text) =>
-        new AddUserText(text, Current is { } project && project.Child("enum_definitions")?.ChildrenOrEmpty()
-            .Any(c => c.IsEnumDefinition && project.View(c).Name == UserTextsTableName) == true);
-
     /// <summary>The catalog products available for insertion (from the SDK-embedded catalog; no controller needed).</summary>
     public IReadOnlyList<ProductDefinition> GetAvailableProducts() => _service.GetAvailableProducts();
 
@@ -353,53 +353,6 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>The default name a freshly inserted empty function block carries until renamed (US-019).</summary>
     public const string EmptyBlockName = "Empty block";
 
-    /// <summary>Builds the command to append the not-yet-present states to the enumerator type referenced by a
-    /// <c>resource_enum</c> variable (US-030), or null for a non-enum target. The caller computes the delta, so an
-    /// append of nothing new falls out as a NoChange (the old hand-rolled CommitAsync bypass died in W2-10).</summary>
-    public ProjectCommand? BuildUpdateEnumStates(ElementId enumVariableId, IReadOnlyList<string> states)
-    {
-        if (Current is not { } project || project.FindById(enumVariableId) is not { } variable
-            || variable.Kind != ElementKind.EnumResource
-            || !ElementId.TryParse(project.View(variable).Effective("typedef"), out ElementId defId)
-            || project.FindById(defId) is not { } def || project.View(def).Name is not { } defName)
-            return null;
-        var existing = def.ChildrenOrEmpty().Where(c => c.IsEnumValue)
-            .Select(c => project.View(c).Name).ToHashSet();
-        string[] added = states.Where(s => !existing.Contains(s)).ToArray();
-        return new UpdateEnumStates(defName, added);
-    }
-
-    /// <summary>
-    /// Authors a program <c>event</c> (US-028): appends an event to the program owning <paramref name="containerId"/>
-    /// (the selected <c>events</c> node), triggered by the resource <paramref name="variableId"/> per the vendor
-    /// <paramref name="method"/> token. The stored <paramref name="name"/> keeps the vendor <c>%P</c> template so it
-    /// stays live if the variable is renamed. Returns false (with a diagnostic) when the target is not a program's
-    /// events container. Read-add over the project; no controller contact.
-    /// </summary>
-    // Resolves the program owning an `events` container (US-028/US-033), or null when the target is not one.
-    private ElementId? ProgramOfEventsContainer(ElementId containerId) =>
-        Current?.FindById(containerId)?.IsEventsContainer == true
-            && Current.FindParent(containerId) is { Id: { } programId } parent && parent.IsProgram
-            ? programId : null;
-
-    /// <summary>Builds the command to add a resource-triggered program event to an `events` container (US-028), or
-    /// null when the target is not a program's events container.</summary>
-    public ProjectCommand? BuildAddProgramEvent(ElementId containerId, ElementId variableId, string method, string name, string? note) =>
-        ProgramOfEventsContainer(containerId) is { } programId
-            ? new AddProgramEvent(programId, variableId, method, name, note) : null;
-
-    /// <summary>Builds the command to add a Powerup system event to an `events` container (US-033), or null for a
-    /// non-events target.</summary>
-    public ProjectCommand? BuildAddPowerEvent(ElementId eventsContainerId) =>
-        ProgramOfEventsContainer(eventsContainerId) is { } programId ? new AddPowerEvent(programId) : null;
-
-    /// <summary>Builds the command to add a case-value branch to a `program_case` (US-031), or null for a non-case
-    /// target, a missing switch, or an enum switch (whose case values need the type's states).</summary>
-    public ProjectCommand? BuildAddCaseValue(ElementId caseId, string criterion) =>
-        Current?.FindById(caseId) is { } kase && kase.IsProgramCase
-            && ElementId.TryParse(Current.View(kase).Effective("link"), out ElementId switchId)
-            && Current.FindById(switchId) is { } switchVar && switchVar.Kind != ElementKind.EnumResource
-            ? new AddCaseValue(caseId, criterion, switchVar.Tag) : null;
 
     /// <summary>
     /// Saves a placed function block to a reusable <c>.ifb</c> catalog file (US-021): lifts the block (by id) to a
@@ -409,17 +362,16 @@ public sealed class ProjectWorkflow : IDisposable
     /// </summary>
     public async Task<bool> SaveFunctionBlockAsync(ElementId functionBlockId, string filePath, string name, string note)
     {
-        if (Current is null)
+        if (Current is not { } project)
             return false;
         using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(SaveFunctionBlockAsync)}");
         try
         {
-            ProjectEditor editor = Current.Edit();
-            FunctionBlockDefinition definition = editor.FunctionBlock(functionBlockId).ExportDefinition(
-                name, Environment.UserName, DateOnly.FromDateTime(DateTime.Now),
-                string.IsNullOrEmpty(note) ? null : note);
-            await using FileStream stream = File.Create(filePath);
-            Ihc.Vis.Catalog.CatalogFileWriter.Write(definition, stream);
+            // The Gem… composition now lives behind the one door (ProjectAppService.ExportFunctionBlock, R3):
+            // explicit author (the OS user is an app-side concern), clock-defaulted date, atomic write. The app
+            // supplies only the author.
+            await _service.ExportFunctionBlock(project, functionBlockId, filePath, name, Environment.UserName,
+                note: string.IsNullOrEmpty(note) ? null : note);
             return true;
         }
         catch (Exception ex)
@@ -431,54 +383,9 @@ public sealed class ProjectWorkflow : IDisposable
         }
     }
 
-    // ---- Command factories (W2-14): resolve catalog / parent context into a ready-to-apply command (a query, no
-    // mutation). The VM and tests apply them via ApplyAsync; the per-op wrappers below now consume them too, so the
-    // resolution lives in one place and survives the wrappers' deletion. A null return = "could not be built". ----
-
-    /// <summary>Builds the command to insert the catalog "Tom blok" empty function-block template into a locality
-    /// (US-019), stamped with today's date.</summary>
-    public ProjectCommand<ElementId> BuildAddEmptyFunctionBlock(ElementId localityId) =>
-        new AddEmptyFunctionBlock(localityId, _service.GetEmptyFunctionBlockTemplate(),
-            DateOnly.FromDateTime(DateTime.Now), EmptyBlockName);
-
-    /// <summary>Builds the command to insert a preprogrammed library function block by master type (US-018), or null
-    /// when no such block is in the catalog.</summary>
-    public ProjectCommand<ElementId>? BuildAddFunctionBlock(ElementId localityId, string masterType) =>
-        _service.GetAvailableFunctionBlocks().FirstOrDefault(f => f.MasterType == masterType) is { } definition
-            ? new AddFunctionBlock(localityId, definition)
-            : null;
-
-    /// <summary>Builds the command to add a typed variable to a function-block variable section (US-027), or null
-    /// when the section is not a function-block variable section.</summary>
-    public ProjectCommand<ElementId>? BuildAddVariable(ElementId sectionId, string resourceTag, string name) =>
-        Current?.FindById(sectionId) is { } section
-            && Current.FindParent(sectionId) is { Id: { } blockId } block && block.Kind == ElementKind.FunctionBlock
-            ? new AddVariable(blockId, section.Tag, resourceTag, name)
-            : null;
-
-    /// <summary>Builds the command to create a project-global enum type and add a variable of it to a function-block
-    /// section (US-030), or null when the section is not a function-block variable section.</summary>
-    public ProjectCommand<ElementId>? BuildAddEnumVariable(
-        ElementId sectionId, string variableName, string typeName, IReadOnlyList<string> states) =>
-        Current?.FindById(sectionId) is { } section
-            && Current.FindParent(sectionId) is { Id: { } blockId } block && block.Kind == ElementKind.FunctionBlock
-            ? new AddEnumVariable(blockId, section.Tag, variableName, typeName, states)
-            : null;
-
-    /// <summary>Builds the command to insert a catalog product by identifier into a locality (US-010), or null when
-    /// no such product is in the catalog. The at-most-one-modem rule (US-013) is a separate pre-check —
-    /// <see cref="WouldExceedModemLimit"/> — so the caller can surface it before applying.</summary>
-    public ProjectCommand<ElementId>? BuildAddProduct(ElementId localityId, string productIdentifier) =>
-        _service.GetAvailableProducts().FirstOrDefault(p => p.ProductIdentifier == productIdentifier) is { } definition
-            ? new AddProduct(localityId, definition)
-            : null;
-
-    /// <summary>Whether inserting the product would break the at-most-one-modem rule (US-013): the product is a modem
-    /// and the project already holds one.</summary>
-    public bool WouldExceedModemLimit(string productIdentifier) =>
-        Current is { } project
-        && _service.GetAvailableProducts().FirstOrDefault(p => p.ProductIdentifier == productIdentifier) is { } definition
-        && ProductClassifier.IsModem(definition.Body.Tag) && HasModem(project);
+    // ---- Command factories (W2-14): resolve parent context into a ready-to-apply command (a query, no mutation).
+    // The catalog-bearing Product family (T004) relocated to the SDK gateway (ProjectAppService.Commands); the
+    // families still below migrate in later R1 tasks. A null return = "could not be built". ----
 
     /// <summary>Raised after a catalog import changes the available products/function blocks (US-059/US-060), so the
     /// insertion menus can be rebuilt.</summary>
@@ -592,107 +499,6 @@ public sealed class ProjectWorkflow : IDisposable
         return count;
     }
 
-    // The node types US-053 can delete: products, function blocks, variables/pins, and program elements. Structural
-    // containers (sections, event/command/conditions groups, programs) and metadata are not user-deletable.
-    private static bool IsDeletableNode(string tag) =>
-        tag.StartsWith("product_", System.StringComparison.Ordinal) || tag == "functionblock"
-        || tag.StartsWith("resource_", System.StringComparison.Ordinal)
-        || tag.StartsWith("dataline_", System.StringComparison.Ordinal)
-        || tag.StartsWith("airlink_", System.StringComparison.Ordinal)
-        || tag is "event" or "event_power" or "action" or "condition" or "program_sub" or "program_case" or "case_action";
-
-    private static bool HasLinkHalves(ProjectElement element) =>
-        element.DescendantsAndSelf().Any(d => d.IsLinkHalf);
-
-    private bool WouldThrowStrict(ElementId id)
-    {
-        try
-        {
-            Current!.Edit().DeleteById(id, DeleteReferencePolicy.Strict);
-            return false;
-        }
-        catch (InvalidOperationException)
-        {
-            return true;   // a program row still references the subtree — deletion needs the cascade
-        }
-    }
-
-    /// <summary>The non-mutating impact of deleting a node (US-009/US-053), for the GUI's confirm-before-delete
-    /// flow (W2-13): whether the node can be deleted at all, and whether deleting it needs confirmation because it
-    /// cascades — a locality that still holds contents, or any other node other logic references (links and/or
-    /// program rows). Presentation composes the confirmation wording; this decides only whether one is needed.</summary>
-    public readonly record struct DeleteImpact(bool Deletable, bool NeedsConfirm);
-
-    /// <summary>
-    /// The non-mutating impact of deleting <paramref name="id"/> (W2-13): drives the GUI's confirm-before-delete
-    /// without a dialog below the session. A locality needs confirmation when it still holds contents (US-009);
-    /// any other deletable node needs it when other logic references it (link halves, or a program row the strict
-    /// delete would trip over). A missing or non-deletable node reports <see cref="DeleteImpact.Deletable"/> false.
-    /// </summary>
-    public DeleteImpact PreviewDelete(ElementId id)
-    {
-        if (Current?.FindById(id) is not { } element)
-            return new DeleteImpact(false, false);
-        if (element.IsLocalityGroup)
-            return new DeleteImpact(true, !element.Children.IsDefaultOrEmpty);   // US-009 locality cascade
-        if (!IsDeletableNode(element.Tag))
-            return new DeleteImpact(false, false);
-        return new DeleteImpact(true, HasLinkHalves(element) || WouldThrowStrict(id));
-    }
-
-    /// <summary>Builds the command to reorder a node <paramref name="delta"/> positions among its same-tag siblings
-    /// (US-055), or null at the list ends / for a rootless node.</summary>
-    public ProjectCommand? BuildReorderNode(ElementId id, int delta)
-    {
-        if (delta == 0 || Current is not { } project
-            || project.FindParent(id) is not { Id: { } } parent || project.FindById(id) is not { } node)
-            return null;
-        var siblings = parent.ChildrenOrEmpty().Where(c => c.Tag == node.Tag).ToList();
-        int here = siblings.FindIndex(c => c.Id == id);
-        int there = here + delta;
-        return here < 0 || there < 0 || there >= siblings.Count ? null : new ReorderNode(id, there);
-    }
-
-    /// <summary>Whether <paramref name="dragged"/> and <paramref name="target"/> are distinct <b>same-parent, same-tag
-    /// siblings</b> — a reorder drop (US-055), the drag-over hint peer of the <c>ReorderNodeToSibling</c> command.
-    /// Non-mutating; no controller.</summary>
-    public bool CanReorderNode(ElementId dragged, ElementId target)
-    {
-        if (dragged == target
-            || Current is not { } project
-            || project.FindById(dragged) is not { } a
-            || project.FindById(target) is not { } b)
-            return false;
-        return a.Tag == b.Tag
-            && project.FindParent(dragged) is { Id: { } parentId }
-            && project.FindParent(target)?.Id == parentId;
-    }
-
-    /// <summary>Builds the command to reorder <paramref name="dragged"/> to <paramref name="targetSibling"/>'s
-    /// position among their shared same-tag siblings (US-055), or null when they are not a reorderable pair.</summary>
-    public ProjectCommand? BuildReorderNodeToSibling(ElementId dragged, ElementId targetSibling)
-    {
-        if (Current is not { } project || project.FindParent(dragged) is not { Id: { } parentId } parent
-            || project.FindById(dragged) is not { } node
-            || project.FindParent(targetSibling)?.Id != parentId)
-            return null;
-        int targetIndex = parent.ChildrenOrEmpty().Where(c => c.Tag == node.Tag).ToList().FindIndex(c => c.Id == targetSibling);
-        return targetIndex < 0 ? null : new ReorderNode(dragged, targetIndex);
-    }
-
-    /// <summary>Whether the project already contains a modem device root (the at-most-one-modem rule, US-013).</summary>
-    public static bool HasModem(Project project) =>
-        project.Root.DescendantsAndSelf().Any(e => ProductClassifier.IsModem(e.Tag));
-
-    /// <summary>Builds the command to apply edited modem documentation (US-013), capturing the modem's current
-    /// locality so the command can re-parent it when the Location changed.</summary>
-    public ProjectCommand BuildUpdateModem(ElementId modemId, ModemPropertiesResult r) =>
-        new UpdateModem(modemId, r, Current?.FindParent(modemId)?.Id);
-
-    /// <summary>Builds the command to apply edited product documentation (US-011), capturing the product's current
-    /// locality so the command can re-parent it when the Location changed.</summary>
-    public ProjectCommand BuildUpdateProduct(ElementId productId, ProductPropertiesResult r) =>
-        new UpdateProduct(productId, r, Current?.FindParent(productId)?.Id);
 
     // The single commit path for every project-mutating operation (US-052): snapshots the pre-edit project for undo,
     // invalidates the redo history, swaps in the new project, then marks changed (dirty + backup + StateChanged).
@@ -936,8 +742,10 @@ public sealed class ProjectWorkflow : IDisposable
 
     private void NewInternal()
     {
-        Project project = _service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty));
-        project = DefaultLocalities.ApplyEnglish(project, _logger);
+        // English is OpenVisual's product language, so authored projects start from English room names (US-002).
+        // The seeding lives in the SDK now (CreateNew's LocalityLanguage option), not an app-side project.Edit().
+        Project project = _service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty),
+            language: LocalityLanguage.English);
         SetProject(project, null, dirty: false);
     }
 

@@ -93,9 +93,6 @@ internal sealed class ProgramAuthoringCoordinator(
                 yield return (m, $"{varName} {verb}");
     }
 
-    // Numeric variable types that can be an arithmetic target register or operand (US-032).
-    private static readonly string[] NumericTags = { "resource_floating_point", "resource_integer", "resource_counter" };
-
     /// <summary>Arms a variable (a block input/output/setting/internal, US-028) as the operand for the next event or
     /// command; the Events/Commands node then offers that variable's triggers and commands.</summary>
     public void Arm(TreeNodeViewModel? node)
@@ -145,7 +142,7 @@ internal sealed class ProgramAuthoringCoordinator(
                 ProgramCaseMenu.Add(new ProductMenuItemViewModel($"Case ({varName})", "case",
                     new AsyncRelayCommand(() => AddCaseAsync(actionsId, varId))));
             // Arithmetic can be built here when the armed variable is a numeric target register (US-032).
-            if (session.Current?.FindById(varId)?.Tag is { } t && NumericTags.Contains(t))
+            if (session.Current?.FindById(varId)?.Tag is { } t && ProgramMethodCatalog.NumericVariableTags.Contains(t))
             {
                 foreach (ProgramMethod op in ProgramMethodCatalog.Arithmetic)
                 {
@@ -169,25 +166,25 @@ internal sealed class ProgramAuthoringCoordinator(
     private Task AddProgramEventAsync(ElementId eventsId, ElementId variableId, string method, string name, string note) =>
         runAsync(nameof(AddProgramEventAsync), async () =>
         {
-            if (session.BuildAddProgramEvent(eventsId, variableId, method, name, note) is { } command)
+            if (session.Commands.AddProgramEvent(session.Current!, eventsId, variableId, method, name, note) is { } command)
                 await applyAndReport(command, "Event added to the program.");
         });
 
     private Task AddProgramCommandAsync(ElementId actionsId, ElementId variableId, string method, string name, string note) =>
         runAsync(nameof(AddProgramCommandAsync), () =>
-            applyAndReport(new AddProgramCommand(actionsId, variableId, method, name, note), "Command added to the program."));
+            applyAndReport(session.Commands.AddProgramCommand(session.Current!, actionsId, variableId, method, name, note), "Command added to the program."));
 
     private Task AddConditionAsync(ElementId conditionsId, ElementId variableId, string method, string name, string note) =>
         runAsync(nameof(AddConditionAsync), () =>
-            applyAndReport(new AddCondition(conditionsId, variableId, method, name, note), "Condition added."));
+            applyAndReport(session.Commands.AddCondition(session.Current!, conditionsId, variableId, method, name, note), "Condition added."));
 
     private Task AddCaseAsync(ElementId commandsId, ElementId switchVariableId) =>
         runAsync(nameof(AddCaseAsync), () =>
-            applyAndReport(new AddCase(commandsId, switchVariableId), "Case structure inserted."));
+            applyAndReport(session.Commands.AddCase(session.Current!, commandsId, switchVariableId), "Case structure inserted."));
 
     private Task AddArithmeticAsync(ElementId commandsId, ElementId targetId, string method, ElementId operandId, string name) =>
         runAsync(nameof(AddArithmeticAsync), () =>
-            applyAndReport(new AddArithmeticCommand(commandsId, targetId, method, operandId, name), "Arithmetic command added."));
+            applyAndReport(session.Commands.AddArithmeticCommand(session.Current!, commandsId, targetId, method, operandId, name), "Arithmetic command added."));
 
     // The numeric variables (decimal/integer/counter) in the programming block — the operand candidates for an
     // arithmetic command line (US-032).
@@ -201,7 +198,7 @@ internal sealed class ProgramAuthoringCoordinator(
             if (block.FindChild(container) is not { } section)
                 continue;
             foreach (ProjectElement pin in section.ChildrenOrEmpty())
-                if (NumericTags.Contains(pin.Tag) && pin.Id is { } pid)
+                if (ProgramMethodCatalog.NumericVariableTags.Contains(pin.Tag) && pin.Id is { } pid)
                     yield return (nameOr(pin, pin.Tag), pid);
         }
     }

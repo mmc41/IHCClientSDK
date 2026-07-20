@@ -39,6 +39,32 @@ namespace Ihc.Vis.Tests
             TestData.AssertBytesIdentical(TestData.ReadBytes("projects/Project0-Tomt.vis"), ms.ToArray(), "CreateNew + default save");
         }
 
+        // T012: the locality-language option. Vendor (default) is byte-identical (proven above); English replays the
+        // ten default-room renames by position — the app-side DefaultLocalities.ApplyEnglish relocated into CreateNew.
+        [Test]
+        public void CreateNew_EnglishLanguage_RenamesTheTenDefaultRoomsByPosition()
+        {
+            var clock = new FakeTimeProvider(new DateTimeOffset(2026, 6, 27, 16, 5, 51, TimeSpan.Zero));
+            var app = new ProjectAppService(Settings, Catalog(), clock);
+
+            Project vendor = app.CreateNew(new ProjectDetails("P", "I", "DK"));                                    // default = Vendor
+            Project english = app.CreateNew(new ProjectDetails("P", "I", "DK"), language: LocalityLanguage.English);
+
+            string[] expected =
+            {
+                "Living room", "Hall", "Kitchen", "Bedroom", "Room",
+                "Bathroom", "Utility room", "Garage", "Basement", "Outdoors",
+            };
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(english.Groups.Select(g => english.View(g).Name).ToArray(), Is.EqualTo(expected),
+                    "English requested → the ten default rooms are renamed by position");
+                Assert.That(vendor.Groups.Select(g => vendor.View(g).Name).ToArray(), Is.Not.EqualTo(expected),
+                    "the Vendor default keeps the authentic Danish rooms (the byte-identity path stays untouched)");
+            });
+        }
+
         [Test]
         public void CreateNew_SeedsTenRooms_TwoBuiltInEnums_AndDocumentationModules()
         {

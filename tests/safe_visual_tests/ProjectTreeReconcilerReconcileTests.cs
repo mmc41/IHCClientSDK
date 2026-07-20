@@ -144,8 +144,8 @@ public class ProjectTreeReconcilerReconcileTests
     public async Task Reconcile_ReRendersDependentRow_WhenAReferencedLocalityIsRenamed()
     {
         var service = new ProjectAppService(new IhcSettings());
-        Project project = service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty));
-        project = DefaultLocalities.ApplyEnglish(project);
+        Project project = service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty),
+            language: LocalityLanguage.English);
         var jalousi = service.GetAvailableProducts().First(p => p.DisplayName.Contains("Jalousi 4 tast"));
         var fbDef = service.GetAvailableFunctionBlocks().First(f => f.MasterType == "3.1.03");
 
@@ -190,8 +190,8 @@ public class ProjectTreeReconcilerReconcileTests
     public void Projector_EmitsCrossReferenceEdges_OnADerivedLabelRow()
     {
         var service = new ProjectAppService(new IhcSettings());
-        Project project = service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty));
-        project = DefaultLocalities.ApplyEnglish(project);
+        Project project = service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty),
+            language: LocalityLanguage.English);
         var jalousi = service.GetAvailableProducts().First(p => p.DisplayName.Contains("Jalousi 4 tast"));
         var fbDef = service.GetAvailableFunctionBlocks().First(f => f.MasterType == "3.1.03");
 

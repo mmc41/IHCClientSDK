@@ -77,5 +77,13 @@ namespace Ihc.Vis.Programs
         {
             "resource_counter", "resource_enum", "resource_weekday", "resource_integer", "resource_date",
         }.ToFrozenSet(StringComparer.Ordinal);
+
+        /// <summary>The numeric variable types that can be an arithmetic target register or operand (US-032, sliver #3
+        /// relocated from the app): decimal, integer, counter. The single public source of truth for arithmetic
+        /// eligibility — the OpenVisual arithmetic menu tests membership against this set.</summary>
+        public static readonly FrozenSet<string> NumericVariableTags = new[]
+        {
+            "resource_floating_point", "resource_integer", "resource_counter",
+        }.ToFrozenSet(StringComparer.Ordinal);
     }
 }

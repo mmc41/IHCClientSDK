@@ -236,8 +236,8 @@ public class MainWindowViewModelTests
     {
         var harness = ShellHarness.Create();
         var service = new ProjectAppService(new IhcSettings());
-        Project project = service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty));
-        project = DefaultLocalities.ApplyEnglish(project);
+        Project project = service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty),
+            language: LocalityLanguage.English);
         var catalog = new BuiltInCatalog();
         ProjectEditor editor = project.Edit();
         editor.Group("Living room").AddEmptyFunctionBlock(catalog.EmptyFunctionBlockTemplate, new DateOnly(2024, 1, 1));
@@ -1493,8 +1493,8 @@ public class MainWindowViewModelTests
     {
         using var harness = ShellHarness.Create();
         var service = new ProjectAppService(new IhcSettings());
-        Project project = service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty));
-        project = DefaultLocalities.ApplyEnglish(project);
+        Project project = service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty),
+            language: LocalityLanguage.English);
         var jalousi = service.GetAvailableProducts().First(p => p.DisplayName.Contains("Jalousi 4 tast"));
         var fbDef = service.GetAvailableFunctionBlocks().First(f => f.MasterType == "3.1.03");
 
@@ -1543,8 +1543,8 @@ public class MainWindowViewModelTests
     {
         using var harness = ShellHarness.Create();
         var service = new ProjectAppService(new IhcSettings());
-        Project project = service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty));
-        project = DefaultLocalities.ApplyEnglish(project);
+        Project project = service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty),
+            language: LocalityLanguage.English);
         var product = service.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
         var fbDef = service.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
@@ -3208,8 +3208,8 @@ public class MainWindowViewModelTests
     {
         var harness = ShellHarness.Create();
         var service = new ProjectAppService(new IhcSettings());
-        Project project = service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty));
-        project = DefaultLocalities.ApplyEnglish(project);
+        Project project = service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty),
+            language: LocalityLanguage.English);
         var catalog = new BuiltInCatalog();
         ProjectEditor editor = project.Edit();
         GroupRef room = editor.Group("Living room");

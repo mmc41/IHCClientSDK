@@ -50,32 +50,34 @@ public partial class DataTablesViewModel : ViewModelBase
     private async Task AddText()
     {
         PropertiesResult? result = await _dialogs.EditPropertiesAsync("New user-defined text", string.Empty, string.Empty);
-        if (result is null || string.IsNullOrWhiteSpace(result.Name))
+        if (result is null || string.IsNullOrWhiteSpace(result.Name) || _session.Current is not { } project)
             return;
-        if ((await _session.ApplyAsync(_session.BuildAddUserText(result.Name.Trim()))).Status == EditStatus.Committed)
+        if ((await _session.ApplyAsync(_session.Commands.AddUserText(project, result.Name.Trim()))).Status == EditStatus.Committed)
             Reload();
     }
 
     [RelayCommand]
     private async Task EditText()
     {
-        if (SelectedUserText is not { } selected || !ElementId.TryParse(selected.Id, out ElementId id))
+        if (SelectedUserText is not { } selected || !ElementId.TryParse(selected.Id, out ElementId id)
+            || _session.Current is not { } project)
             return;
         PropertiesResult? result = await _dialogs.EditPropertiesAsync("Edit user-defined text", selected.Text, string.Empty);
         if (result is null || string.IsNullOrWhiteSpace(result.Name))
             return;
-        if ((await _session.ApplyAsync(new UpdateUserText(id, result.Name.Trim()))).Status == EditStatus.Committed)
+        if ((await _session.ApplyAsync(_session.Commands.UpdateUserText(project, id, result.Name.Trim()))).Status == EditStatus.Committed)
             Reload();
     }
 
     [RelayCommand]
     private async Task DeleteText()
     {
-        if (SelectedUserText is not { } selected || !ElementId.TryParse(selected.Id, out ElementId id))
+        if (SelectedUserText is not { } selected || !ElementId.TryParse(selected.Id, out ElementId id)
+            || _session.Current is not { } project)
             return;
         if (!await _dialogs.ConfirmAsync("Delete text", $"Delete the text '{selected.Text}'?"))
             return;
-        if ((await _session.ApplyAsync(new DeleteUserText(id))).Status == EditStatus.Committed)
+        if ((await _session.ApplyAsync(_session.Commands.DeleteUserText(project, id))).Status == EditStatus.Committed)
             Reload();
     }
 }

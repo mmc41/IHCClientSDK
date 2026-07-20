@@ -33,6 +33,55 @@ namespace Ihc.Vis.Tests
                         Node("product_dataline", "_0x5153", new[] { ("product_identifier", "_0x2202"), ("name", "P") },
                             Node("scenes", "_0x5349", new[] { ("name", "Scenarier"), ("scene_resource", "_0xdead52") }))))));
 
+        // --- R0: the controller bridge must authenticate the SAME cookie session the controller rides ---
+        // (refac2ana.md section 3.7 / R0 / D02). A ControllerService rides the cookie handler of the
+        // IAuthenticationService it is built from (controllerService.cs); if ProjectAppService self-builds a
+        // second AuthenticationService, EnsureAuthenticated logs into a session the controller never uses. These
+        // wiring tests build the REAL AuthenticationService/ControllerService (construction does no network I/O),
+        // so they need a real (non-mock) endpoint rather than the suite's default mock:// settings.
+        private static IhcSettings RealEndpointSettings() =>
+            TestSetup.Settings with { Endpoint = "https://ihc.invalid" };
+
+        [Test]
+        public void InjectingControllerWithoutMatchingAuth_IsRejected_NeverAuthenticatesAForeignSession()
+        {
+            IhcSettings settings = RealEndpointSettings();
+            // The controller rides the cookie session of the auth it was built from.
+            var auth = new AuthenticationService(settings);
+            var controller = new ControllerService(auth);
+
+            // Pre-fix the service silently self-built a SECOND AuthenticationService here, authenticating a
+            // session the injected controller never uses (R0). The bridge must instead demand the matching auth.
+            Assert.That(() => new ProjectAppService(settings, A.Fake<ICatalog>(),
+                    new FakeTimeProvider(DateTimeOffset.UnixEpoch), controller, authService: null),
+                Throws.ArgumentException.With.Message.Contains(nameof(IAuthenticationService)),
+                "a controller-injecting bridge must be given the auth the controller rides, not self-build a foreign one");
+        }
+
+        [Test]
+        public void MatchedPairBridge_AuthenticatesTheExactAuthTheControllerWasBuiltFrom()
+        {
+            IhcSettings settings = RealEndpointSettings();
+            var auth = new AuthenticationService(settings);
+            var controller = new ControllerService(auth);   // rides auth.GetCookieHandler()
+
+            var app = new ProjectAppService(settings, controller, auth);
+
+            Assert.That(app.BridgeAuthentication, Is.SameAs(auth),
+                "the bridge authenticates the same auth the controller rides — one shared cookie session");
+        }
+
+        [Test]
+        public void CreateWithControllerBridge_WiresANonNullSharedAuthentication()
+        {
+            // The settings-based bridge builds ONE AuthenticationService and the ControllerService that rides its
+            // cookie handler, so DownloadFrom/UploadTo authenticate exactly the controller's session.
+            ProjectAppService app = ProjectAppService.CreateWithControllerBridge(RealEndpointSettings());
+
+            Assert.That(app.BridgeAuthentication, Is.InstanceOf<AuthenticationService>(),
+                "the bridge must authenticate a real, shared AuthenticationService");
+        }
+
         [Test]
         public void UploadTo_InvalidProject_ThrowsProjectValidationException_AndNeverStores()
         {

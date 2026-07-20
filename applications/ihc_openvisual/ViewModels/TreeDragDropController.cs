@@ -44,7 +44,7 @@ public sealed class TreeDragDropController(
         // Ask the LinkPins command's own Evaluate; this precedes reorder so two same-tag pins link (never reorder).
         if (draggedNode.IsPin && targetNode.IsPin)
         {
-            return session.CanApply(new LinkPins(dragged, target)).Ok
+            return session.CanApply(session.Commands.LinkPins(session.Current!, dragged, target)).Ok
                 ? DropVerdict.PinLink()
                 : DropVerdict.Refused("Those two pins can't be linked in that direction.");
         }
@@ -58,13 +58,13 @@ public sealed class TreeDragDropController(
         }
         // Reorder: dropping onto a same-parent, same-tag sibling moves the node to that position (US-055). The SDK owns
         // the "same-tag sibling" rule; ask it.
-        if (session.CanReorderNode(dragged, target))
+        if (session.Commands.CanReorderNode(session.Current!, dragged, target))
             return DropVerdict.Reorder();
         // A product can be dragged to re-parent it into another locality (US-054). Ask the MoveNode command's Evaluate
         // whether this exact target is a legal destination (the same legality Cut/Paste uses).
         if (draggedNode.Kind == TreeNodeKind.Product)
         {
-            return session.CanApply(new MoveNode(dragged, target)).Ok
+            return session.CanApply(session.Commands.MoveNode(session.Current!, dragged, target)).Ok
                 ? DropVerdict.Reparent()
                 : DropVerdict.Refused("That location can't hold this item.");
         }
@@ -91,14 +91,14 @@ public sealed class TreeDragDropController(
                     useVariableInProgram(variable, container);
                 break;
             case DropRoute.PinLink:
-                await applyAndReport(new LinkPins(dragged, target), "Linked.");
+                await applyAndReport(session.Commands.LinkPins(session.Current!, dragged, target), "Linked.");
                 break;
             case DropRoute.Reorder:
-                if (session.BuildReorderNodeToSibling(dragged, target) is { } command)
+                if (session.Commands.ReorderNodeToSibling(session.Current!, dragged, target) is { } command)
                     await applyAndReport(command, "Reordered.");
                 break;
             case DropRoute.Reparent:
-                await applyAndReport(new MoveNode(dragged, target), "Moved.");
+                await applyAndReport(session.Commands.MoveNode(session.Current!, dragged, target), "Moved.");
                 break;
         }
     });

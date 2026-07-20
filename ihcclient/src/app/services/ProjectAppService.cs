@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Ihc.App;
 
 using Ihc.Vis.Catalog;
+using Ihc.Vis.Editing;
 using Ihc.Vis.FunctionBlocks;
 using Ihc.Vis.Io;
 using Ihc.Vis.Model;
@@ -33,7 +34,10 @@ namespace Ihc.Vis
     /// <see cref="Validate"/> (the pre-serialize checklist), catalog discovery
     /// (<see cref="GetAvailableProducts"/>/<see cref="GetAvailableFunctionBlocks"/>), and the controller bridge
     /// (<see cref="DownloadFrom"/>/<see cref="UploadTo"/>, which rides the same <c>Load</c>/<c>Save</c> stream
-    /// overloads). Editing a loaded/created project starts via its <c>Edit()</c> extension. The catalog is the
+    /// overloads). Editing a loaded/created project goes through the <see cref="Commands"/> gateway — the single
+    /// discoverable authoring door (a stateless <see cref="ProjectCommands"/> planner that mints the undoable
+    /// command vocabulary a frontend applies through its session); its <c>project.Edit()</c> extension is the
+    /// low-level mutation entry the gateway is built on. The catalog is the
     /// SDK-embedded <see cref="BuiltInCatalog"/>, materialized lazily on first catalog use, so no operation —
     /// file/controller IO, <see cref="CreateNew"/>, or the <c>GetAvailable*</c> methods — requires an IHC Visual
     /// install at runtime.
@@ -50,30 +54,62 @@ namespace Ihc.Vis
         private readonly IAuthenticationService? authService;
 
         /// <summary>
-        /// Creates a service from settings, with an optional <paramref name="controller"/> for the
-        /// download/upload bridge (omit it for file-only use). Its catalog is the SDK-embedded
+        /// Creates a file-only service (no controller bridge). Its catalog is the SDK-embedded
         /// <see cref="BuiltInCatalog"/> (materialized lazily, on first catalog use), so it needs no IHC Visual
-        /// install at runtime — file/controller IO that needs no catalog never touches it, and
+        /// install at runtime — file IO that needs no catalog never touches it, and
         /// <see cref="CreateNew"/>/<c>GetAvailable*</c> resolve against the embedded catalog. It uses the system
-        /// clock (<see cref="TimeProvider.System"/>).
+        /// clock (<see cref="TimeProvider.System"/>). For the download/upload bridge, use
+        /// <see cref="CreateWithControllerBridge"/> (settings-based) or the matching
+        /// controller+auth constructor.
         /// </summary>
-        public ProjectAppService(IhcSettings settings, IControllerService? controller = null)
+        public ProjectAppService(IhcSettings settings)
             : this(settings,
                    // Lazy so the built-in catalog (~173 components) is not materialized until a catalog operation
-                   // (CreateNew/GetAvailable*/Import) runs — file/controller IO needs no catalog. PublicationOnly
-                   // never caches a factory exception.
+                   // (CreateNew/GetAvailable*/Import) runs — file IO needs no catalog. PublicationOnly never caches
+                   // a factory exception.
                    new Lazy<ICatalog>(() => new BuiltInCatalog(), LazyThreadSafetyMode.PublicationOnly),
                    TimeProvider.System,
-                   controller,
+                   controller: null,
                    authService: null)
         {
         }
 
         /// <summary>
+        /// Creates a controller-bridge service from an already-matched <paramref name="controller"/> and the
+        /// <paramref name="authService"/> whose cookie session that controller rides (both required). The bridge
+        /// authenticates exactly the session the controller uses — it never self-builds a second, foreign auth
+        /// (the R0 defect). Use <see cref="CreateWithControllerBridge"/> to build both from settings. Uses the
+        /// SDK-embedded <see cref="BuiltInCatalog"/> (lazy) and the system clock.
+        /// </summary>
+        public ProjectAppService(IhcSettings settings, IControllerService controller, IAuthenticationService authService)
+            : this(settings,
+                   new Lazy<ICatalog>(() => new BuiltInCatalog(), LazyThreadSafetyMode.PublicationOnly),
+                   TimeProvider.System,
+                   controller ?? throw new ArgumentNullException(nameof(controller)),
+                   authService ?? throw new ArgumentNullException(nameof(authService)))
+        {
+        }
+
+        /// <summary>
+        /// Builds a settings-based controller bridge the way <see cref="Ihc.App.InformationAppService"/> does:
+        /// ONE <see cref="AuthenticationService"/> is created from <paramref name="settings"/> and the
+        /// <see cref="ControllerService"/> is built from it, so both share a single cookie session and
+        /// <see cref="DownloadFrom"/>/<see cref="UploadTo"/> authenticate exactly the session the controller rides.
+        /// </summary>
+        public static ProjectAppService CreateWithControllerBridge(IhcSettings settings)
+        {
+            ArgumentNullException.ThrowIfNull(settings);
+            var authService = new AuthenticationService(settings);
+            var controller = new ControllerService(authService);   // rides authService's cookie handler — one session
+            return new ProjectAppService(settings, controller, authService);
+        }
+
+        /// <summary>
         /// Creates a service with an injected catalog and time provider (used by tests for determinism), with
-        /// an optional <paramref name="controller"/> for the download/upload bridge and an optional
-        /// <paramref name="authService"/> (tests inject a fake; production builds one from settings when a
-        /// controller is present).
+        /// an optional <paramref name="controller"/> for the download/upload bridge. When a
+        /// <paramref name="controller"/> is supplied, its matching <paramref name="authService"/> (the one whose
+        /// cookie session the controller rides) is <b>required</b>; the service never self-builds a foreign auth.
+        /// A file-only service passes neither.
         /// </summary>
         public ProjectAppService(IhcSettings settings, ICatalog catalog, TimeProvider timeProvider,
                                  IControllerService? controller = null, IAuthenticationService? authService = null)
@@ -100,11 +136,22 @@ namespace Ihc.Vis
                 LazyThreadSafetyMode.PublicationOnly);
             this.timeProvider = timeProvider;
             this.controller = controller;
-            // Auth is only exercised on the controller bridge. Build it from settings when a controller is present
-            // but the caller injected none (mirroring AdminAppService/InformationAppService); a file-only service
-            // never authenticates, so it stays null.
-            this.authService = authService ?? (controller is not null ? new AuthenticationService(settings) : null);
+            // R0: a controller-bearing service authenticates the SAME cookie session the controller rides, so the
+            // caller must supply the matching auth (CreateWithControllerBridge builds both from one
+            // AuthenticationService). Never self-build a second auth here — it would log into a session the injected
+            // controller never uses. A file-only service (no controller) never authenticates, so auth stays null.
+            if (controller is not null && authService is null)
+            {
+                throw new ArgumentException(
+                    $"A {nameof(ProjectAppService)} with an {nameof(IControllerService)} must also be given the " +
+                    $"matching {nameof(IAuthenticationService)} the controller rides; use " +
+                    $"{nameof(CreateWithControllerBridge)} to build both from settings.", nameof(authService));
+            }
+            this.authService = authService;
         }
+
+        /// <summary>Test seam: the auth the controller bridge authenticates (null for a file-only service).</summary>
+        internal IAuthenticationService? BridgeAuthentication => authService;
 
         /// <summary>Authenticates with the controller if not already authenticated (the controller-bridge paths).</summary>
         private async Task EnsureAuthenticated()
@@ -123,6 +170,17 @@ namespace Ihc.Vis
                 $"This {nameof(ProjectAppService)} was created without an {nameof(IControllerService)}; " +
                 $"use a controller-injecting constructor to call {nameof(DownloadFrom)}/{nameof(UploadTo)}.");
 
+        private ProjectCommands? commandsGateway;
+
+        /// <summary>
+        /// The single authoring door (R1/D01): a stateless <see cref="ProjectCommands"/> planner that mints
+        /// ready-to-apply commands for every domain edit, bound to this service's embedded catalog. A GUI or
+        /// console frontend obtains a command here and hands it to its session/apply path — it never constructs
+        /// command types directly. Editing a loaded/created project therefore starts at <c>Commands</c> (for the
+        /// undoable command vocabulary) or, at the low level, its <c>Edit()</c> extension.
+        /// </summary>
+        public ProjectCommands Commands => commandsGateway ??= new ProjectCommands(catalog, timeProvider);
+
         /// <summary>
         /// Creates a new empty project replicating IHC Visual's File→New: seeds the default rooms, the
         /// two built-in enums and the fixed skeleton from the catalog's <c>NewDoc.idf</c> /
@@ -131,7 +189,8 @@ namespace Ihc.Vis
         /// <c>id1</c>/<c>id2</c>/<c>modified</c> are stamped from the clock at creation time; a later
         /// <c>Save</c> re-stamps <c>id2</c>.
         /// </summary>
-        public Project CreateNew(ProjectDetails details, SeedIdLayout seedLayout = SeedIdLayout.EnumsFirst)
+        public Project CreateNew(ProjectDetails details, SeedIdLayout seedLayout = SeedIdLayout.EnumsFirst,
+                                 LocalityLanguage language = LocalityLanguage.Vendor)
         {
             ArgumentNullException.ThrowIfNull(details);
             using (var activity = StartActivity(nameof(CreateNew)))
@@ -139,6 +198,12 @@ namespace Ihc.Vis
                 try
                 {
                     Project project = NewProjectBuilder.Build(catalog.Value, details, timeProvider.GetLocalNow(), seedLayout);
+                    // Vendor (default) leaves the authentic Danish rooms untouched → byte-identical output. English
+                    // replays the ten default-room renames for an English-language authoring frontend (US-002).
+                    if (language == LocalityLanguage.English)
+                    {
+                        project = ApplyEnglishLocalities(project);
+                    }
                     activity?.SetReturnValue(project);
                     return project;
                 }
@@ -148,6 +213,37 @@ namespace Ihc.Vis
                     throw;
                 }
             }
+        }
+
+        // The ten default localities in the fixed vendor order, in English — an English-language authoring frontend
+        // (e.g. OpenVisual) seeds these instead of the vendor's Danish rooms (relocated from the app's DefaultLocalities).
+        private static readonly string[] EnglishLocalities =
+        {
+            "Living room", "Hall", "Kitchen", "Bedroom", "Room",
+            "Bathroom", "Utility room", "Garage", "Basement", "Outdoors",
+        };
+
+        // Renames the ten default localities to English by position — an attribute edit (no ids allocated, tree
+        // structure unchanged) applied only when the project holds exactly the ten-locality default skeleton, so a
+        // customised template is never rewritten (mirrors the app's former DefaultLocalities.ApplyEnglish guard).
+        private static Project ApplyEnglishLocalities(Project project)
+        {
+            IReadOnlyList<ProjectElement> groups = project.Groups;
+            if (groups.Count != EnglishLocalities.Length)
+            {
+                return project;
+            }
+            ProjectEditor editor = project.Edit();
+            for (int i = 0; i < EnglishLocalities.Length; i++)
+            {
+                string current = project.View(groups[i]).Name ?? string.Empty;
+                if (current.Length == 0)
+                {
+                    continue;   // an unnamed group is not a default room; Group("") would seed a new one
+                }
+                editor.Group(current).Name(EnglishLocalities[i]);
+            }
+            return editor.ToProject();
         }
 
         /// <summary>Loads a project from a file path.</summary>
@@ -210,7 +306,7 @@ namespace Ihc.Vis
                 try
                 {
                     byte[] bytes = SerializeForSave(project, effective);
-                    await WriteAtomically(path, bytes, effective).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    await WriteAtomically(path, bytes, effective.CreateBackup).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     activity?.SetReturnValue(bytes.Length);
                 }
                 catch (Exception ex)
@@ -221,10 +317,10 @@ namespace Ihc.Vis
             }
         }
 
-        private async Task WriteAtomically(string path, byte[] bytes, ProjectSaveOptions options)
+        private async Task WriteAtomically(string path, byte[] bytes, bool createBackup)
         {
             string fullPath = Path.GetFullPath(path);
-            string? backup = options.CreateBackup ? Path.ChangeExtension(fullPath, ".BAK") : null;
+            string? backup = createBackup ? Path.ChangeExtension(fullPath, ".BAK") : null;
             if (backup is not null && string.Equals(Path.GetFullPath(backup), fullPath,
                     OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
             {
@@ -642,8 +738,82 @@ namespace Ihc.Vis
             return null;
         }
 
-        // To edit a project, call the project.Edit() extension on a loaded/created Project — there is no
-        // service-level Edit, to keep a single mutation entry point.
+        // To edit a project, obtain a command from the Commands gateway (the single authoring door) and apply it
+        // through a session; the project.Edit() extension is the low-level mutation entry the gateway is built on.
+
+        /// <summary>
+        /// Exports the function block <paramref name="functionBlockId"/> to a reusable <c>.ifb</c> catalog file
+        /// (US-021 "Gem…"): lifts the block to a keyless user-block <see cref="FunctionBlockDefinition"/> and writes
+        /// it atomically. The write reuses <see cref="Save(Project,string,ProjectSaveOptions)"/>'s atomic mechanics —
+        /// bytes land in a same-directory temp file and swap in with <see cref="File.Replace(string,string,string?)"/>
+        /// — so a failed or interrupted export never truncates an existing file (no <c>.BAK</c> is kept for an
+        /// export). The project is <b>not</b> mutated. <paramref name="author"/> is explicit (no ambient OS user) and
+        /// <paramref name="created"/> defaults to <b>today from the service clock</b> when omitted (never
+        /// <c>DateTime.Now</c>), so exports are deterministic and testable.
+        /// </summary>
+        /// <exception cref="InvalidOperationException"><paramref name="functionBlockId"/> is not a function block.</exception>
+        /// <exception cref="IOException">The file could not be written.</exception>
+        public async Task ExportFunctionBlock(Project project, ElementId functionBlockId, string path, string name,
+            string author, DateOnly? created = null, string? note = null)
+        {
+            ArgumentNullException.ThrowIfNull(path);
+            using (var activity = StartActivity(nameof(ExportFunctionBlock)))
+            {
+                try
+                {
+                    FunctionBlockDefinition definition = BuildExportDefinition(project, functionBlockId, name, author, created, note);
+                    using var buffer = new MemoryStream();
+                    CatalogFileWriter.Write(definition, buffer);
+                    await WriteAtomically(path, buffer.ToArray(), createBackup: false)
+                        .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    activity?.SetReturnValue(path);
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
+        /// The <see cref="Stream"/> primitive of <see cref="ExportFunctionBlock(Project, ElementId, string, string, string, DateOnly?, string?)"/>:
+        /// writes the exported <c>.ifb</c> bytes to <paramref name="stream"/> (no atomic-file handling — the caller
+        /// owns the stream). Same author/date/error semantics; the project is not mutated.
+        /// </summary>
+        /// <exception cref="InvalidOperationException"><paramref name="functionBlockId"/> is not a function block.</exception>
+        public void ExportFunctionBlock(Project project, ElementId functionBlockId, Stream stream, string name,
+            string author, DateOnly? created = null, string? note = null)
+        {
+            ArgumentNullException.ThrowIfNull(stream);
+            using (var activity = StartActivity(nameof(ExportFunctionBlock)))
+            {
+                try
+                {
+                    FunctionBlockDefinition definition = BuildExportDefinition(project, functionBlockId, name, author, created, note);
+                    CatalogFileWriter.Write(definition, stream);
+                    activity?.SetReturnValue(name);
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
+
+        // Lifts a placed block to a keyless user-block definition (read-only over the immutable project — project.Edit()
+        // makes a private mutable copy that is never committed back). The date defaults to today from the service clock.
+        private FunctionBlockDefinition BuildExportDefinition(Project project, ElementId functionBlockId, string name,
+            string author, DateOnly? created, string? note)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            ArgumentNullException.ThrowIfNull(name);
+            ArgumentNullException.ThrowIfNull(author);
+            DateOnly exportDate = created ?? DateOnly.FromDateTime(timeProvider.GetLocalNow().DateTime);
+            return project.Edit().FunctionBlock(functionBlockId)
+                .ExportDefinition(name, author, exportDate, string.IsNullOrEmpty(note) ? null : note);
+        }
 
         /// <summary>
         /// Builds the render-ready installation ("Installationsdokumentation") report model from a loaded
@@ -734,5 +904,19 @@ namespace Ihc.Vis
                 return result;
             }
         }
+    }
+
+    /// <summary>
+    /// The locality language a <see cref="ProjectAppService.CreateNew"/> seeds the ten default rooms in: the
+    /// vendor's authentic Danish rooms (<see cref="Vendor"/>, the default — byte-identical to IHC Visual's empty
+    /// project) or their English equivalents (<see cref="English"/>) for an English-language authoring frontend.
+    /// </summary>
+    public enum LocalityLanguage
+    {
+        /// <summary>The vendor's Danish default rooms (Stue, Køkken, …) — byte-identical to IHC Visual.</summary>
+        Vendor,
+
+        /// <summary>English default rooms (Living room, Hall, …), renamed from the vendor rooms by position.</summary>
+        English,
     }
 }

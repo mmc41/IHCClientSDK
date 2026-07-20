@@ -58,11 +58,13 @@ internal sealed class PropertiesDialogCoordinator(
     /// <summary>Renames a locality or function block through the shared Name/Note dialog (US-007/US-019).</summary>
     public async Task OpenLocalityAsync(ElementId id, string currentName)
     {
-        string currentNote = session.Current?.FindById(id) is { } locality ? View(locality).Note ?? string.Empty : string.Empty;
+        if (session.Current is not { } project)
+            return;
+        string currentNote = project.FindById(id) is { } locality ? View(locality).Note ?? string.Empty : string.Empty;
         PropertiesResult? result = await dialogs.EditPropertiesAsync($"Edit {currentName} properties", currentName, currentNote);
         if (result is null)
             return;   // cancelled — the locality keeps its original name and note
-        await applyAndReport(new RenameLocality(id, result.Name, result.Note), $"Renamed to {result.Name}.");
+        await applyAndReport(session.Commands.RenameLocality(project, id, result.Name, result.Note), $"Renamed to {result.Name}.");
     }
 
     // The product's scene container (US-024): its fixed name, its note, and a row per membership naming the
@@ -89,7 +91,7 @@ internal sealed class PropertiesDialogCoordinator(
             new SceneContainerInput(name, scenesView.Note ?? string.Empty, rows));
         if (result is null)
             return;
-        await applyAndReport(new UpdateSceneContainer(scenesId, result.Note), $"'{name}' updated.");
+        await applyAndReport(session.Commands.UpdateSceneContainer(session.Current!, scenesId, result.Note), $"'{name}' updated.");
     }
 
     public async Task OpenSceneValueAsync(ElementId memberId, ProjectElement member)
@@ -103,7 +105,7 @@ internal sealed class PropertiesDialogCoordinator(
         SceneValueResult? result = await dialogs.EditSceneValueAsync(input);
         if (result is null)
             return;
-        await applyAndReport(new UpdateSceneValue(memberId, result), "Scene value updated.");
+        await applyAndReport(session.Commands.UpdateSceneValue(session.Current!, memberId, result), "Scene value updated.");
     }
 
     public async Task OpenEnumAsync(ElementId enumVariableId)
@@ -114,7 +116,7 @@ internal sealed class PropertiesDialogCoordinator(
             new EnumDefinitionInput($"Edit {info.Name}", info.Name, info.States, IsNew: false));
         if (result is null)
             return;
-        if (session.BuildUpdateEnumStates(enumVariableId, result.States) is { } command)
+        if (session.Commands.UpdateEnumStates(session.Current!, enumVariableId, result.States) is { } command)
             await applyAndReport(command, $"Enumerator '{info.Name}' updated.");
     }
 
@@ -158,7 +160,7 @@ internal sealed class PropertiesDialogCoordinator(
         ModemPropertiesResult? result = await dialogs.EditModemPropertiesAsync(input);
         if (result is null)
             return;
-        await applyAndReport(session.BuildUpdateModem(modemId, result), $"Updated {result.Name}.");
+        await applyAndReport(session.Commands.UpdateModem(project, modemId, result), $"Updated {result.Name}.");
     }
 
     private async Task OpenPinAsync(ElementId pinId, ProjectElement pin)
@@ -178,7 +180,7 @@ internal sealed class PropertiesDialogCoordinator(
         if (result is null)
             return;   // cancelled — the pin keeps its addressing
         // A bespoke failure message (invalid address) rather than the generic mapping, so read the outcome directly.
-        EditOutcome outcome = await session.ApplyAsync(new UpdatePin(pinId, result));
+        EditOutcome outcome = await session.ApplyAsync(session.Commands.UpdatePin(session.Current!, pinId, result));
         setStatus(outcome.Status == EditStatus.Committed
             ? $"Addressed {view.Name} to data line {result.DataLine}, terminal {result.Terminal}."
             : $"Data line {result.DataLine}, terminal {result.Terminal} is not a valid address.");
@@ -250,7 +252,7 @@ internal sealed class PropertiesDialogCoordinator(
             ProductPropertiesResult? result = await dialogs.EditProductPropertiesAsync(input);
             if (result is null)
                 return;   // cancelled — the product keeps its documentation
-            await applyAndReport(session.BuildUpdateProduct(productId, result), $"Updated {result.Name}.");
+            await applyAndReport(session.Commands.UpdateProduct(project, productId, result), $"Updated {result.Name}.");
             if (result.ConfigureTerminalPinId is { } pinToken && ElementId.TryParse(pinToken, out ElementId pinId)
                 && session.Current?.FindById(pinId) is { } pinEl && pinEl.Kind == ElementKind.DatalinePin)
             {
@@ -302,6 +304,6 @@ internal sealed class PropertiesDialogCoordinator(
         AdvancedDimmerResult? result = await dialogs.EditAdvancedDimmerAsync(input);
         if (result is null)
             return;
-        await applyAndReport(new UpdateDimmerSettings(productId, result), "Updated dimmer settings.");
+        await applyAndReport(session.Commands.UpdateDimmerSettings(project, productId, result), "Updated dimmer settings.");
     }
 }

@@ -5,6 +5,11 @@
 Decided — 2026-07-19. Records the standing architecture, in force since the SDK's early versions; documented
 retrospectively.
 
+Amended — 2026-07-20. Owner rulings on how the project-authoring facade realizes the single-entry-point ideal
+(one discoverable door, command factories for every edit, the display-interpretation boundary) are folded into
+the Decision section; the verbatim question/answer record lives in the facade-gap analysis of that date
+(`tmp/refac2ana.md`, untracked).
+
 Revisit triggers: (a) a vendor firmware/WSDL revision changing the controller's service surface — re-price the 1-1
 mirror; (b) a frontend that cannot reference the SDK in-process (non-.NET or remote) — that calls for a hosted
 service boundary, not more tiers; (c) a second frontend re-implementing read-side model interpretation — the
@@ -15,8 +20,10 @@ per-frontend behavior variants.
 
 All device integration, protocol handling, project-file and business logic lives in the single shared `ihcclient`
 library, split into an API-service tier that mirrors the controller's SOAP services 1-1 behind SDK models and an
-application-service tier holding tech-agnostic business logic per application type; every application and tool
-above the SDK is a thin GUI or command-line shell.
+application-service tier of tech-agnostic, use-case-tailored business facades — one per application type, each a
+uniform, consistent, easy-to-understand high-level entry point that does the hard work (business logic and
+controller integration) over the deliberately more general lower-level APIs. Every application and tool above the
+SDK is then a thin GUI or command-line shell that only wires presentation to a facade.
 
 ## Context
 
@@ -31,14 +38,18 @@ above the SDK is a thin GUI or command-line shell.
   `ProjectAppService` (`Ihc.Vis`, facade of the offline project engine) — under `IIHCAppService`/`AppServiceBase`
   (`src/app/services/serviceBase.cs`), composing API-service interfaces and auto-authenticating on demand.
 - Frontends are measurably thin: `ihc_admin` is argument parsing plus `AdminAppService` calls; `ihc_lab`'s
-  view-model synchronizes GUI state with `LabAppService`; `ihc_openvisual` routes every mutation through
-  `ProjectAppService`/`project.Edit()` via an Avalonia-free session wrapper.
+  view-model synchronizes GUI state with `LabAppService`; `ihc_openvisual` routes every mutation through the
+  `Ihc.Vis.Session` command layer (each command executing via `project.Edit()`) driven from an Avalonia-free
+  session wrapper — with the command vocabulary slated to become discoverable from `ProjectAppService` (see
+  Decision).
 - Enforcement is partial: NetArchTest (`tests/safe_unit_tests/ArchitectureTests.cs`) pins `Ihc.Vis` ↛ `Ihc.Soap`
   and SDK ↛ Avalonia; the downward service-tier direction and frontend thinness are review conventions
-  (`ARCHITECTURE.md` invariants 4 and 9). Two deviations are documented, both being retired: read-side model
-  interpretation that accumulated in OpenVisual's `MainWindowViewModel` (`ARCHITECTURE.md`, design challenge 7)
-  is slated to move into the SDK by a planned refactoring, and `ihc_project_io_extractor`'s standalone `.vis`
-  parser is deprecated; the standalone `ihc_httpproxyrecorder` operates below the SDK by design.
+  (`ARCHITECTURE.md` invariants 4 and 9). Two deviations are documented, both being retired: command-selection
+  and legality logic that accumulated in OpenVisual's `ProjectWorkflow` and view-models (`ARCHITECTURE.md`,
+  design challenge 7) is slated to move into the SDK by a planned refactoring — *display* interpretation of
+  model values, by contrast, stays frontend-owned by design (see Decision) — and `ihc_project_io_extractor`'s
+  standalone `.vis` parser is deprecated; the standalone `ihc_httpproxyrecorder` operates below the SDK by
+  design.
 - ADR-001 (UI-thread affinity) builds on this structure; the "SDK must not reference a GUI framework" rule it
   cites as a standing invariant is owned here.
 
@@ -141,9 +152,23 @@ Keep and formalize the standing structure (option 1):
   consumed only through private per-service adapters (anti-corruption layer) and never appear in public
   signatures.
 - **Application-service tier**: tech-agnostic backends, each targeted at a type of application (administration,
-  controller information, lab exploration, project authoring). They compose API-service interfaces and SDK
-  engines; dependencies point strictly downward — API services never know application services. Cross-service and
-  SOAP-less domain logic lives at this level or below.
+  controller information, lab exploration, project authoring). Each is a **use-case-tailored business facade** — a
+  uniform, high-quality, maintainable, easy-to-understand high-level entry point that does all the hard work
+  (business logic and controller integration) so its frontend is left with simple wiring, while the lower-level
+  APIs it composes stay deliberately more general and directly usable by advanced consumers. `ProjectAppService`
+  is the exemplar: the single, consistent door for IHC project (`.vis`) CRUD, tailored to that use case and built
+  to be the backend `ihc_openvisual` — and future project-related apps — sit on. How that single door is realized
+  for *authoring* (owner rulings, 2026-07-20; realized): `ProjectAppService` stays **one discoverable door** — it
+  exposes the stateless `ProjectCommands` gateway (`ProjectAppService.Commands`) so command discovery starts at
+  exactly one class, while `Ihc.Vis.Session` command objects remain the sole mutation vocabulary beneath it; the
+  edit vocabulary is a **complete, uniform set of SDK command factories** — a frontend obtains every command from a
+  factory and never constructs one directly (uniform discoverability outranks the no-trivial-delegation rule on
+  this published surface; a reflection test enforces completeness and the `CompositeCommand` exclusion); and the
+  facade with the SDK read surface exposes **raw values plus legality, selection and mutation**, while *display*
+  interpretation of vendor values (labels, display defaults, translations) is deliberately frontend-owned
+  presentation policy. They compose API-service
+  interfaces and SDK engines; dependencies point strictly downward — API services never know application services.
+  Cross-service and SOAP-less domain logic lives at this level or below.
 - **Frontends** — applications, utilities, examples — contain presentation and wiring only; logic worth testing or
   reusing is pushed down into the SDK. Consumers choose their entry level: the API tier for direct controller
   access, the application tier for ready-made behavior; selected lower-level engine surfaces stay public for
@@ -185,10 +210,17 @@ as writes — the refactoring that moves it into the SDK is planned but has not 
 - Architecture tests (NetArchTest in `safe_unit_tests`, run by CI on all platforms): existing rules pin
   SDK ↛ Avalonia and `Ihc.Vis` ↛ `Ihc.Soap`; extend with an API-tier ↛ app-tier dependency rule.
 - Code-review checklist: no `Ihc.Soap` types in public signatures; no business logic in view-models or
-  `Program.Main`; test fakes only at `IIHCApiService`/`ICatalog` — application services always real.
+  `Program.Main` (vendor *display* interpretation is the sanctioned exception — frontend-owned by design);
+  project-edit commands obtained only via the SDK command factories, never constructed in a frontend; test fakes
+  only at `IIHCApiService`/`ICatalog` — application services always real.
 
 ## Consultation
 
 Sole maintainer stated the decision and its two-tier structure when commissioning this record (2026-07-19).
 Content grounded in `ARCHITECTURE.md`, `CLAUDE.md`, SDK doc comments, and a code inventory of all consuming
 projects. Retrospective documentation of a standing decision; no other stakeholders.
+
+2026-07-20: sole maintainer ruled the four facade-realization tradeoffs as explicit multiple-choice questions
+(one discoverable door; factories for every command; display interpretation frontend-owned; add
+`ExportFunctionBlock` and a `CreateNew` locality-language option now). Verbatim questions, options and rulings:
+`tmp/refac2ana.md` §7 (untracked analysis record).

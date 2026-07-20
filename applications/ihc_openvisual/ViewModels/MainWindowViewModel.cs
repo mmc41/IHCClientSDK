@@ -235,7 +235,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             ? InsertEnumAsync(sectionId, sectionLabel)
             : RunAsync(nameof(InsertVariableAsync), async () =>
             {
-                if (_session.BuildAddVariable(sectionId, tag, label) is { } command)
+                if (_session.Current is { } project && _session.Commands.AddVariable(project, sectionId, tag, label) is { } command)
                     await ApplyAsync(command, $"{label} was inserted under {sectionLabel}");
             });
 
@@ -349,7 +349,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 : "Enter a block's programming mode to insert an input or output.";
             return;
         }
-        if (_session.BuildAddVariable(sectionId, tag, label) is { } command)
+        if (_session.Current is { } project && _session.Commands.AddVariable(project, sectionId, tag, label) is { } command)
             await ApplyAsync(command, $"{label} inserted into the block.");
     });
 
@@ -358,9 +358,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private Task ProjectInfo() => RunAsync(nameof(ProjectInfo), async () =>
     {
         ProjectInfoData? result = await _dialogs.EditProjectInfoAsync(_session.GetProjectInfo());
-        if (result is null)
+        if (result is null || _session.Current is not { } project)
             return;
-        await ApplyAsync(new UpdateProjectInfo(result), "Project information updated.");
+        await ApplyAsync(_session.Commands.UpdateProjectInfo(project, result), "Project information updated.");
     });
 
     /// <summary>Documentation ▸ Data tables (US-049): opens the data-tables dialog (read-only system tables +
@@ -469,8 +469,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private Task AddPowerEvent(TreeNodeViewModel? node) => RunAsync(nameof(AddPowerEvent), async () =>
     {
-        if (node is { IsEventsContainer: true, ElementId: { } eventsId }
-            && _session.BuildAddPowerEvent(eventsId) is { } command)
+        if (node is { IsEventsContainer: true, ElementId: { } eventsId } && _session.Current is { } project
+            && _session.Commands.AddPowerEvent(project, eventsId) is { } command)
             await ApplyAsync(command, "Powerup event added to the program.");
     });
 
@@ -478,8 +478,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private Task ToggleSaveValue(TreeNodeViewModel? node) => RunAsync(nameof(ToggleSaveValue), async () =>
     {
-        if (node is { IsOutputPin: true, ElementId: { } outputId })
-            await ApplyAsync(new SetOutputBackup(outputId, !node.IsValueSaved),
+        if (node is { IsOutputPin: true, ElementId: { } outputId } && _session.Current is { } project)
+            await ApplyAsync(_session.Commands.SetOutputBackup(project, outputId, !node.IsValueSaved),
                 node.IsValueSaved ? "Output value no longer saved on power loss." : "Output value saved on power loss.");
     });
 
@@ -488,16 +488,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private Task AddSubProgram(TreeNodeViewModel? node) => RunAsync(nameof(AddSubProgram), async () =>
     {
-        if (node is { IsCommandsContainer: true, ElementId: { } id })
-            await ApplyAsync(new AddSubProgram(id), "Sub-program inserted.");
+        if (node is { IsCommandsContainer: true, ElementId: { } id } && _session.Current is { } project)
+            await ApplyAsync(_session.Commands.AddSubProgram(project, id), "Sub-program inserted.");
     });
 
     /// <summary>Inserts a nested logic group inside a Conditions group for a compound expression (US-029).</summary>
     [RelayCommand]
     private Task AddLogicGroup(TreeNodeViewModel? node) => RunAsync(nameof(AddLogicGroup), async () =>
     {
-        if (node is { IsConditionsContainer: true, ElementId: { } id })
-            await ApplyAsync(new AddLogicGroup(id), "Logic group inserted.");
+        if (node is { IsConditionsContainer: true, ElementId: { } id } && _session.Current is { } project)
+            await ApplyAsync(_session.Commands.AddLogicGroup(project, id), "Logic group inserted.");
     });
 
     /// <summary>Combines a Conditions group with OR (<c>&gt;=1</c>) (US-029).</summary>
@@ -510,8 +510,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     private Task ToggleConditionsAsync(TreeNodeViewModel? node, bool or) => RunAsync(nameof(ToggleConditionsAsync), async () =>
     {
-        if (node is { IsConditionsContainer: true, ElementId: { } id })
-            await ApplyAsync(new SetConditionsLogic(id, or),
+        if (node is { IsConditionsContainer: true, ElementId: { } id } && _session.Current is { } project)
+            await ApplyAsync(_session.Commands.SetConditionsLogic(project, id, or),
                 or ? "Conditions combined with OR (>=1)." : "Conditions combined with AND (&).");
     });
 
@@ -520,12 +520,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private Task NewCaseValue(TreeNodeViewModel? node) => RunAsync(nameof(NewCaseValue), async () =>
     {
-        if (node is not { IsCaseNode: true, ElementId: { } caseId })
+        if (node is not { IsCaseNode: true, ElementId: { } caseId } || _session.Current is not { } project)
             return;
         PropertiesResult? result = await _dialogs.EditPropertiesAsync("New case value", string.Empty, string.Empty);
         if (result is null || string.IsNullOrWhiteSpace(result.Name))
             return;
-        if (_session.BuildAddCaseValue(caseId, result.Name.Trim()) is { } command)
+        if (_session.Commands.AddCaseValue(project, caseId, result.Name.Trim()) is { } command)
             await ApplyAsync(command, $"Case value '{result.Name.Trim()}' added.");
     });
 
@@ -652,13 +652,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private Task InsertEmptyFunctionBlock() => RunAsync(nameof(InsertEmptyFunctionBlock), async () =>
     {
-        if (SelectedNode?.ElementId is not { } localityId)
+        if (SelectedNode?.ElementId is not { } localityId || _session.Current is not { } project)
         {
             StatusText = "Select a locality first, then insert the empty function block.";
             return;
         }
         string localityName = SelectedNode.DisplayName;
-        await ApplyAsync(_session.BuildAddEmptyFunctionBlock(localityId),
+        await ApplyAsync(_session.Commands.AddEmptyFunctionBlock(project, localityId, ProjectWorkflow.EmptyBlockName),
             $"{ProjectWorkflow.EmptyBlockName} was inserted under {localityName}");
     });
 
@@ -667,13 +667,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private Task InsertFunctionBlockAsync(string masterType, string blockName) =>
         RunAsync(nameof(InsertFunctionBlockAsync), async () =>
         {
-            if (SelectedNode?.ElementId is not { } localityId)
+            if (SelectedNode?.ElementId is not { } localityId || _session.Current is not { } project)
             {
                 StatusText = "Select a locality first, then insert the function block.";
                 return;
             }
             string localityName = SelectedNode.DisplayName;
-            if (_session.BuildAddFunctionBlock(localityId, masterType) is not { } command)
+            if (_session.Commands.AddFunctionBlock(project, localityId, masterType) is not { } command)
             {
                 await _dialogs.ShowMessageAsync("Insert failed", $"No library function block with master type '{masterType}'.");
                 return;
@@ -760,7 +760,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private Task InsertLocality() => RunAsync(nameof(InsertLocality), async () =>
     {
-        if (await ApplyAsync(new AddLocality(ProjectWorkflow.NewLocalityName),
+        if (_session.Current is not { } project)
+            return;
+        if (await ApplyAsync(_session.Commands.AddLocality(project, ProjectWorkflow.NewLocalityName),
                 $"{ProjectWorkflow.NewLocalityName} was inserted under Localities") is not { } id)
             return;
         // Refresh already rebuilt the trees (StateChanged); highlight the new locality in the Installation pane
@@ -792,10 +794,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private Task Unlock(TreeNodeViewModel? node) => RunAsync(nameof(Unlock), async () =>
     {
-        if (node?.ElementId is not { } id)
+        if (node?.ElementId is not { } id || _session.Current is not { } project)
             return;
         string name = node.DisplayName;
-        await ApplyAsync(new UnlockFunctionBlock(id), $"Unlocked {name}.");
+        await ApplyAsync(_session.Commands.UnlockFunctionBlock(project, id), $"Unlocked {name}.");
     });
 
     /// <summary>Deletes the selected node (US-053), dispatching by type: a link row removes its reciprocal pair
@@ -805,26 +807,26 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private Task Delete(TreeNodeViewModel? node) => RunAsync(nameof(Delete), async () =>
     {
-        if (node?.ElementId is not { } id)
+        if (node?.ElementId is not { } id || _session.Current is not { } project)
             return;
-        if (node.IsLinkRow)
-        {
-            // Removing a link deletes its reciprocal pair, not a subtree (US-057).
-            await ApplyAsync(new RemoveLink(id), "Link removed.");
-            return;
-        }
-        string name = node.DisplayName;
-        // Preview → confirm → apply (W2-13): the confirmation lives here in the GUI, never below the session.
-        ProjectWorkflow.DeleteImpact impact = _session.PreviewDelete(id);
+        // Preview → dispatch → confirm → apply (W2-13): the SDK decides the delete KIND (sliver #9); the
+        // confirmation lives here in the GUI, never below the session.
+        DeleteImpact impact = _session.Commands.PreviewDelete(project, id);
         if (!impact.Deletable)
         {
             await _dialogs.ShowMessageAsync("Cannot delete", "This node cannot be deleted.");
             return;
         }
-        bool isLocality = _session.Current?.FindById(id)?.IsLocalityGroup == true;
+        if (impact.Kind == DeleteKind.Link)
+        {
+            // Removing a link deletes its reciprocal pair, not a subtree (US-057).
+            await ApplyAsync(_session.Commands.RemoveLink(project, id), "Link removed.");
+            return;
+        }
+        string name = node.DisplayName;
         if (impact.NeedsConfirm)
         {
-            (string title, string message) = isLocality
+            (string title, string message) = impact.Kind == DeleteKind.Locality
                 ? ("Delete locality", $"'{name}' contains products. Deleting it also removes those products and the "
                     + "commands and conditions that use them. Delete anyway?")
                 : ("Delete", $"'{name}' is referenced by other logic (links and/or commands). Delete it together "
@@ -832,11 +834,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             if (!await _dialogs.ConfirmAsync(title, message))
                 return;   // declined — nothing is deleted
         }
-        if (isLocality)
-            await ApplyAsync(new DeleteLocality(id), $"Deleted {name}.");   // the US-009 locality worked example
+        if (impact.Kind == DeleteKind.Locality)
+            await ApplyAsync(_session.Commands.DeleteLocality(project, id), $"Deleted {name}.");   // the US-009 locality worked example
         else
             // impact.NeedsConfirm is the reference-cascade flag PreviewDelete computed for this node.
-            await ApplyAsync(new DeleteNode(id, impact.NeedsConfirm), $"Deleted {name}.");   // US-053
+            await ApplyAsync(_session.Commands.DeleteNode(project, id, impact.NeedsConfirm), $"Deleted {name}.");   // US-053
     });
 
     // The structural-editing clipboard (US-054/US-056): the id of the cut/copied node and whether it is a cut
@@ -872,11 +874,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private Task Paste(TreeNodeViewModel? node) => RunAsync(nameof(Paste), async () =>
     {
-        if (_clipboardId is not { } sourceId || node?.ElementId is not { } targetId)
+        if (_clipboardId is not { } sourceId || node?.ElementId is not { } targetId || _session.Current is not { } project)
             return;
         if (_clipboardIsCut)
         {
-            if (await ApplyAsync(new MoveNode(sourceId, targetId), "Moved."))
+            if (await ApplyAsync(_session.Commands.MoveNode(project, sourceId, targetId), "Moved."))
             {
                 _clipboardId = null;   // a cut is consumed by its paste
                 OnPropertyChanged(nameof(CanPaste));
@@ -884,7 +886,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
         else
         {
-            await ApplyAsync(new CopyNode(sourceId, targetId), "Pasted a copy.");   // a copy is not consumed
+            await ApplyAsync(_session.Commands.CopyNode(project, sourceId, targetId), "Pasted a copy.");   // a copy is not consumed
         }
     });
 
@@ -898,7 +900,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     private Task ReorderAsync(TreeNodeViewModel? node, int delta) => RunAsync(nameof(ReorderAsync), async () =>
     {
-        if (node?.ElementId is { } id && _session.BuildReorderNode(id, delta) is { } command)
+        if (node?.ElementId is { } id && _session.Current is { } project
+            && _session.Commands.ReorderNode(project, id, delta) is { } command)
             await ApplyAsync(command, delta < 0 ? "Moved up." : "Moved down.");
     });
 
@@ -962,18 +965,18 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private Task InsertProductAsync(string productIdentifier, string productName) =>
         RunAsync(nameof(InsertProductAsync), async () =>
         {
-            if (SelectedNode?.ElementId is not { } localityId)
+            if (SelectedNode?.ElementId is not { } localityId || _session.Current is not { } project)
             {
                 StatusText = "Select a locality first, then insert the product.";
                 return;
             }
             string localityName = SelectedNode.DisplayName;
-            if (_session.BuildAddProduct(localityId, productIdentifier) is not { } command)
+            if (_session.Commands.AddProduct(project, localityId, productIdentifier) is not { } command)
             {
                 await _dialogs.ShowMessageAsync("Insert failed", $"No catalog product with identifier '{productIdentifier}'.");
                 return;
             }
-            if (_session.WouldExceedModemLimit(productIdentifier))   // at most one modem per project (US-013)
+            if (_session.Commands.WouldExceedModemLimit(project, productIdentifier))   // at most one modem per project (US-013)
             {
                 await _dialogs.ShowMessageAsync("Only one modem",
                     "A project may contain at most one modem. Remove the existing modem before adding another.");
@@ -993,8 +996,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private Task ToggleLogMark(TreeNodeViewModel? node) => RunAsync(nameof(ToggleLogMark), async () =>
     {
-        if (node is { IsLogMarkPin: true, ElementId: { } id })
-            await ApplyAsync(new ToggleLogMark(id), $"Toggled the log mark on {node.DisplayName}.");
+        if (node is { IsLogMarkPin: true, ElementId: { } id } && _session.Current is { } project)
+            await ApplyAsync(_session.Commands.ToggleLogMark(project, id), $"Toggled the log mark on {node.DisplayName}.");
     });
 
     /// <summary>Enters programming mode for the selected function block (US-026, F3): the panes switch to the block's
@@ -1047,9 +1050,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         RunAsync(nameof(LinkPins), async () =>
         {
             if (source?.ElementId is not { } fromId || target?.ElementId is not { } toId
-                || !source.IsPin || !target.IsPin)
+                || !source.IsPin || !target.IsPin || _session.Current is not { } project)
                 return;
-            await ApplyAsync(new LinkPins(fromId, toId), $"Linked {source.DisplayName} to {target.DisplayName}.");
+            await ApplyAsync(_session.Commands.LinkPins(project, fromId, toId), $"Linked {source.DisplayName} to {target.DisplayName}.");
         });
 
     /// <summary>The pin from which a link is being drawn — armed by <i>Link from here</i>, consumed by
@@ -1139,17 +1142,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     private async Task CompleteSceneLinkAsync(ElementId sceneOutputId, ElementId scenesId)
     {
-        if (_session.Current is not { } project || project.FindById(scenesId) is not { } scenes)
+        if (_session.Current is not { } project || project.FindById(scenesId) is null)
             return;
-        // The scene value variant follows the bound output family: airlink_dimming → dimmer, else relay/socket.
-        bool isDimmer = ElementId.TryParse(View(scenes).Effective("scene_resource"), out ElementId boundId)
-            && project.FindById(boundId)?.IsWirelessDimming == true;
+        // The scene value variant (sliver #11) is the SDK's decision now — used to shape the dialog and stamp the command.
+        bool isDimmer = _session.Commands.IsSceneWirelessDimming(project, scenesId);
         var input = new SceneValueInput("Scene value", isDimmer, On: true, LevelPercent: isDimmer ? 100 : 0, RampMinutes: 0, RampSeconds: 0);
 
         SceneValueResult? result = await _dialogs.EditSceneValueAsync(input);
         if (result is null)
             return;
-        await ApplyAsync(new LinkScene(sceneOutputId, scenesId, result, isDimmer), "Scene link created.");
+        await ApplyAsync(_session.Commands.LinkScene(project, sceneOutputId, scenesId, result), "Scene link created.");
     }
 
     // The Properties route (right-click / F2) dispatches by element type: a modem opens the modem dialog (US-013),
@@ -1164,7 +1166,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             new EnumDefinitionInput("New enumerator", string.Empty, System.Array.Empty<string>(), IsNew: true));
         if (result is null || string.IsNullOrWhiteSpace(result.TypeName))
             return;
-        if (_session.BuildAddEnumVariable(sectionId, result.TypeName, result.TypeName, result.States) is { } command)
+        if (_session.Current is { } project
+            && _session.Commands.AddEnumVariable(project, sectionId, result.TypeName, result.TypeName, result.States) is { } command)
             await ApplyAsync(command, $"Enumerator '{result.TypeName}' was inserted under {sectionLabel}");
     });
 
