@@ -31,6 +31,13 @@ namespace Ihc.Vis.Model
         private static readonly byte[] Utf8Preamble = { 0xEF, 0xBB, 0xBF };
         private static readonly byte[] NoPreamble = Array.Empty<byte>();
 
+        /// <summary>T027: whether the raw file bytes begin with the UTF-8 byte-order mark (<c>EF BB BF</c>) — the one
+        /// shared BOM test, co-located with the preamble bytes it checks for, used by the catalog and project readers
+        /// and by <see cref="Classify"/> below.</summary>
+        public static bool HasUtf8Bom(byte[] bytes) =>
+            bytes.Length >= Utf8Preamble.Length
+            && bytes[0] == Utf8Preamble[0] && bytes[1] == Utf8Preamble[1] && bytes[2] == Utf8Preamble[2];
+
         /// <summary>The BOM bytes to emit before the text for this encoding (empty when none).</summary>
         public static byte[] Preamble(this CatalogTextEncoding encoding) =>
             encoding == CatalogTextEncoding.Utf8Bom ? Utf8Preamble : NoPreamble;
@@ -53,7 +60,7 @@ namespace Ihc.Vis.Model
         public static CatalogTextEncoding Classify(byte[] bytes)
         {
             ArgumentNullException.ThrowIfNull(bytes);
-            if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+            if (HasUtf8Bom(bytes))
             {
                 return CatalogTextEncoding.Utf8Bom;
             }

@@ -54,6 +54,7 @@ namespace Ihc.Vis.Tests
             ["DefinitionBuilderBase`1.ExtendGrammar(Action`1)"] = Verb.NonEmitting,
             ["DefinitionBuilderBase`1.Documentation(String)"] = Verb.NonEmitting,
             ["DefinitionBuilderBase`1.Documentation(String,String)"] = Verb.NonEmitting,
+            ["DefinitionBuilderBase`1.Attribute(String,String)"] = Verb.NonEmitting,   // M7: the raw root-attribute escape hatch moved to the shared base
 
             // ---- ProductDefinitionBuilder ----
             ["ProductDefinitionBuilder.Dataline(String,String)"] = Verb.Closed(new[] { "product_dataline" }, "Dataline"),
@@ -76,7 +77,6 @@ namespace Ihc.Vis.Tests
             ["ProductDefinitionBuilder.AddInput(String,Action`1)"] = Verb.Closed(new[] { "dataline_input" }, "Dataline"),
             ["ProductDefinitionBuilder.AddOutput(String,Action`1)"] = Verb.Closed(new[] { "dataline_output" }, "Dataline"),
             ["ProductDefinitionBuilder.AddScenes(String)"] = Verb.Closed(new[] { "scenes" }, AllProductFamilies),
-            ["ProductDefinitionBuilder.Attribute(String,String)"] = Verb.NonEmitting,
             ["ProductDefinitionBuilder.AddResource(String,String,Action`1)"] = Verb.Dynamic,
             ["ProductDefinitionBuilder.RawChild(ProjectElement)"] = Verb.Dynamic,
             ["ProductDefinitionBuilder.Validate()"] = Verb.NonEmitting,
@@ -101,7 +101,6 @@ namespace Ihc.Vis.Tests
             ["FunctionBlockDefinitionBuilder.VendorMaster(Boolean)"] = Verb.NonEmitting,
             ["FunctionBlockDefinitionBuilder.Locked(Boolean)"] = Verb.NonEmitting,
             ["FunctionBlockDefinitionBuilder.Note(String)"] = Verb.NonEmitting,
-            ["FunctionBlockDefinitionBuilder.Attribute(String,String)"] = Verb.NonEmitting,
             ["FunctionBlockDefinitionBuilder.AsEmptyTemplate(String)"] = Verb.Closed(new[]
                 { "program_simple", "events", "actions" }),
             ["FunctionBlockDefinitionBuilder.InputsNote(String)"] = Verb.NonEmitting,

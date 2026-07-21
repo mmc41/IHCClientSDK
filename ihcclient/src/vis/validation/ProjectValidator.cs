@@ -146,7 +146,7 @@ namespace Ihc.Vis.Validation
             }
             foreach ((string name, string value) in element.Attrs)
             {
-                if (!IsLatin1(value))
+                if (!Latin1.Contains(value))
                 {
                     findings.Error("attr-latin1", element,
                         $"attribute '{name}' on '{element.Tag}' has non-ISO-8859-1 text");
@@ -566,18 +566,6 @@ namespace Ihc.Vis.Validation
         }
 
         // ----- helpers -----
-
-        private static bool IsLatin1(string value)
-        {
-            foreach (char c in value)
-            {
-                if (c > 0xFF)
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
 
         private static void CollectIdTokens(ProjectElement element, HashSet<string> into)
         {

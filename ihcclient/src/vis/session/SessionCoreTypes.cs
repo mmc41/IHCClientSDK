@@ -53,6 +53,45 @@ namespace Ihc.Vis.Session
         EditStatus Status, string Label, string? Reason, ProjectChangeSet? Changes, T? Value)
         : EditOutcome(Status, Label, Reason, Changes);
 
+    /// <summary>The terminal state of a <see cref="PreviewOutcome"/> — the non-committing mirror of
+    /// <see cref="EditStatus"/> (M8/D05): previewing a command against the current project shows it either WOULD
+    /// change it, would make no change, was refused by a legality check, or FAULTED with an unexpected engine
+    /// error.</summary>
+    public enum PreviewStatus
+    {
+        /// <summary>The command would change the project; <see cref="PreviewOutcome.Changes"/> carries the delta.</summary>
+        WouldChange,
+
+        /// <summary>The command would produce an identical project — nothing to commit.</summary>
+        NoChange,
+
+        /// <summary>A legality check (or a deep engine guard) refused the command; the reason is preserved.</summary>
+        Refused,
+
+        /// <summary>The command's Execute threw an unexpected engine error; the message is preserved.</summary>
+        Faulted,
+    }
+
+    /// <summary>The result of previewing a command without committing (M8/D05) — the mirror of
+    /// <see cref="EditOutcome"/>: its terminal <see cref="Status"/>, the <see cref="Changes"/> it would commit (only
+    /// when <see cref="PreviewStatus.WouldChange"/>), and a <see cref="Reason"/> for a refuse/fault. Distinguishing a
+    /// legitimate refuse/no-change from an unexpected engine fault lets a caller surface a genuine bug instead of
+    /// swallowing it as "nothing to preview" (the bare-catch it replaces conflated all three as null).</summary>
+    public sealed record PreviewOutcome(PreviewStatus Status, ProjectChangeSet? Changes, string? Reason)
+    {
+        /// <summary>The command would commit <paramref name="changes"/>.</summary>
+        public static PreviewOutcome WouldChange(ProjectChangeSet changes) => new(PreviewStatus.WouldChange, changes, null);
+
+        /// <summary>The command would make no change.</summary>
+        public static PreviewOutcome NoChange { get; } = new(PreviewStatus.NoChange, null, null);
+
+        /// <summary>The command was refused for the stated reason.</summary>
+        public static PreviewOutcome Refused(string? reason) => new(PreviewStatus.Refused, null, reason);
+
+        /// <summary>The command faulted with an unexpected engine error.</summary>
+        public static PreviewOutcome Faulted(string? reason) => new(PreviewStatus.Faulted, null, reason);
+    }
+
     /// <summary>The read-only context a command's legality check runs against: the pre-edit project and its
     /// <see cref="ProjectIndex"/>. Internal — only the session builds and passes it.</summary>
     internal readonly record struct EditContext(Project Project, ProjectIndex Index)
@@ -62,6 +101,16 @@ namespace Ihc.Vis.Session
         /// checks route through, preserving each command's per-noun refusal message (review theme 2).</summary>
         public EditVerdict RequireExists(ElementId id, string noun) =>
             Index.FindById(id) is not null ? EditVerdict.Allow : EditVerdict.Refuse($"The {noun} no longer exists.");
+
+        /// <summary>Allow when <paramref name="id"/> resolves to an element whose tag is one of
+        /// <paramref name="tags"/>, else Refuse naming the expected <paramref name="noun"/> — the tag-aware peer of
+        /// <see cref="RequireExists"/> (review theme 2 / M5): the single "does the target exist AND carry the right
+        /// tag?" legality guard the command Evaluate checks route through, replacing the hand-inlined
+        /// <c>?.Tag == "…" ? Allow : Refuse</c> copies.</summary>
+        public EditVerdict RequireTag(ElementId id, string noun, params string[] tags) =>
+            Index.FindById(id) is { } element && System.Array.IndexOf(tags, element.Tag) >= 0
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse($"The target is not {noun}.");
     }
 
     /// <summary>Thrown by a deep engine guard that can only refuse a command once inside its Execute (proposal

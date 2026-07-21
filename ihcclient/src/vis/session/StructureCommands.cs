@@ -53,7 +53,11 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Delete";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireExists(Id, "node");
+            context.RequireExists(Id, "node") is { Ok: false } missing
+                ? missing
+                : ProjectEditor.DeletionRefusalReason(context.Project.Root, Id) is { } reason
+                    ? EditVerdict.Refuse(reason)                    // catalog pin / locked-block node (review3 H1)
+                    : EditVerdict.Allow;
         internal override void Execute(ProjectEditor editor) =>
             editor.DeleteById(Id, Cascade ? DeleteReferencePolicy.CascadeReferences : DeleteReferencePolicy.Strict);
     }

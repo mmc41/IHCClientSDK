@@ -170,7 +170,7 @@ in these apps.
 
 - Code-review checklist: background→UI only via explicit `Dispatcher.UIThread`; no locks in GUI/view-model code; no
   ambient-context reliance or dispatcher-bound object creation off the UI thread.
-- Architecture fitness test (NetArchTest, already a repo dependency): `ihcclient` must not reference Avalonia.
+- Architecture fitness test (ArchUnitNET, already a repo dependency): `ihcclient` must not reference Avalonia.
 - Unit tests: wrong-thread access to guarded state owners throws; headless suites exercise the UI-thread pipeline.
 
 ## Consultation

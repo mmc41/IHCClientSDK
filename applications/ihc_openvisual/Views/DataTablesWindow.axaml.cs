@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using ihc_openvisual.Services;
 using ihc_openvisual.ViewModels;
 
 namespace ihc_openvisual.Views;
@@ -16,7 +17,9 @@ public partial class DataTablesWindow : Window
         InitializeComponent();
     }
 
-    public static async Task ShowAsync(Window owner, DataTablesViewModel viewModel)
+    // Takes the IDataTablesDialogViewModel seam (T020); the runtime instance is a DataTablesViewModel, so the
+    // window's compiled bindings (x:DataType) resolve against it as the DataContext.
+    public static async Task ShowAsync(Window owner, IDataTablesDialogViewModel viewModel)
     {
         var window = new DataTablesWindow { DataContext = viewModel };
         await window.ShowDialog(owner);

@@ -24,11 +24,7 @@ public partial class PropertiesWindow : ResultDialog<PropertiesResult>
         var window = new PropertiesWindow { Title = title };
         window.NameBox.Text = name;
         window.NoteBox.Text = note;
-        window.Opened += (_, _) =>
-        {
-            window.NameBox.SelectAll();
-            window.NameBox.Focus();
-        };
+        window.FocusOnOpen(window.NameBox);
         return window.ShowDialogForResult(owner);
     }
 

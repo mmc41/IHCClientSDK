@@ -150,10 +150,10 @@ public sealed class FakeDialogService : IDialogService
 
     public ihc_openvisual.ViewModels.DataTablesViewModel? LastDataTablesViewModel { get; private set; }
     public int ShowDataTablesCalls { get; private set; }
-    public Task ShowDataTablesAsync(ihc_openvisual.ViewModels.DataTablesViewModel viewModel)
+    public Task ShowDataTablesAsync(IDataTablesDialogViewModel viewModel)
     {
         ShowDataTablesCalls++;
-        LastDataTablesViewModel = viewModel;
+        LastDataTablesViewModel = viewModel as ihc_openvisual.ViewModels.DataTablesViewModel;   // tests use the concrete VM (T020 seam)
         return Task.CompletedTask;
     }
 

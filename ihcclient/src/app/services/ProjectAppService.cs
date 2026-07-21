@@ -193,26 +193,18 @@ namespace Ihc.Vis
                                  LocalityLanguage language = LocalityLanguage.Vendor)
         {
             ArgumentNullException.ThrowIfNull(details);
-            using (var activity = StartActivity(nameof(CreateNew)))
+            return RunTraced(nameof(CreateNew), activity =>
             {
-                try
+                Project project = NewProjectBuilder.Build(catalog.Value, details, timeProvider.GetLocalNow(), seedLayout);
+                // Vendor (default) leaves the authentic Danish rooms untouched → byte-identical output. English
+                // replays the ten default-room renames for an English-language authoring frontend (US-002).
+                if (language == LocalityLanguage.English)
                 {
-                    Project project = NewProjectBuilder.Build(catalog.Value, details, timeProvider.GetLocalNow(), seedLayout);
-                    // Vendor (default) leaves the authentic Danish rooms untouched → byte-identical output. English
-                    // replays the ten default-room renames for an English-language authoring frontend (US-002).
-                    if (language == LocalityLanguage.English)
-                    {
-                        project = ApplyEnglishLocalities(project);
-                    }
-                    activity?.SetReturnValue(project);
-                    return project;
+                    project = ApplyEnglishLocalities(project);
                 }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+                activity?.SetReturnValue(project);
+                return project;
+            });
         }
 
         // The ten default localities in the fixed vendor order, in English — an English-language authoring frontend
@@ -250,41 +242,25 @@ namespace Ihc.Vis
         public async Task<Project> Load(string path)
         {
             ArgumentNullException.ThrowIfNull(path);
-            using (var activity = StartActivity(nameof(Load)))
+            return await RunTracedAsync(nameof(Load), async activity =>
             {
-                try
-                {
-                    byte[] bytes = await File.ReadAllBytesAsync(path).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    Project project = ProjectReader.Read(bytes);
-                    activity?.SetReturnValue(project);
-                    return project;
-                }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+                byte[] bytes = await File.ReadAllBytesAsync(path).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                Project project = ProjectReader.Read(bytes);
+                activity?.SetReturnValue(project);
+                return project;
+            });
         }
 
         /// <summary>Loads a project from a stream.</summary>
         public Task<Project> Load(Stream stream)
         {
             ArgumentNullException.ThrowIfNull(stream);
-            using (var activity = StartActivity(nameof(Load)))
+            return Task.FromResult(RunTraced(nameof(Load), activity =>
             {
-                try
-                {
-                    Project project = ProjectReader.Read(stream);
-                    activity?.SetReturnValue(project);
-                    return Task.FromResult(project);
-                }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+                Project project = ProjectReader.Read(stream);
+                activity?.SetReturnValue(project);
+                return project;
+            }));
         }
 
         /// <summary>
@@ -301,20 +277,12 @@ namespace Ihc.Vis
             ArgumentNullException.ThrowIfNull(project);
             ArgumentNullException.ThrowIfNull(path);
             ProjectSaveOptions effective = options ?? ProjectSaveOptions.Default;
-            using (var activity = StartActivity(nameof(Save)))
+            await RunTracedAsync(nameof(Save), async activity =>
             {
-                try
-                {
-                    byte[] bytes = SerializeForSave(project, effective);
-                    await WriteAtomically(path, bytes, effective.CreateBackup).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    activity?.SetReturnValue(bytes.Length);
-                }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+                byte[] bytes = SerializeForSave(project, effective);
+                await WriteAtomically(path, bytes, effective.CreateBackup).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                activity?.SetReturnValue(bytes.Length);
+            });
         }
 
         private async Task WriteAtomically(string path, byte[] bytes, bool createBackup)
@@ -370,20 +338,12 @@ namespace Ihc.Vis
         {
             ArgumentNullException.ThrowIfNull(project);
             ArgumentNullException.ThrowIfNull(stream);
-            using (var activity = StartActivity(nameof(Save)))
+            await RunTracedAsync(nameof(Save), async activity =>
             {
-                try
-                {
-                    byte[] bytes = SerializeForSave(project, options ?? ProjectSaveOptions.Default);
-                    await stream.WriteAsync(bytes).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    activity?.SetReturnValue(bytes.Length);
-                }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+                byte[] bytes = SerializeForSave(project, options ?? ProjectSaveOptions.Default);
+                await stream.WriteAsync(bytes).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                activity?.SetReturnValue(bytes.Length);
+            });
         }
 
         /// <summary>
@@ -407,116 +367,12 @@ namespace Ihc.Vis
             byte[] bytes = ProjectSerializer.Serialize(toWrite);
             if (options.VerifyRoundTrip)
             {
-                Project reparsed = ProjectReader.Read(new MemoryStream(bytes));
-                // Tolerant comparison: the serializer omits a Defaulted attribute whose value equals its DTD default
-                // (AttrSchema.OmitsOnWrite) and the reader never re-materializes it, so a model that explicitly
-                // carried such an attribute is a FAITHFUL write even though a naive re-parse equality would differ.
-                // Drop exactly those on both sides before comparing — Project equality is Root-only, so the stripped
-                // roots compare directly — and a foreign file with an explicit default-equal attribute round-trips
-                // while any genuine loss (a changed/absent non-default value, a dropped subtree) still diverges and
-                // throws. Both schema views are memoized (the reader warms the reparsed one eagerly).
-                ProjectElement expected = StripDefaultEqualAttrs(toWrite.Root, ProjectSchemaView.For(toWrite));
-                ProjectElement actual = StripDefaultEqualAttrs(reparsed.Root, ProjectSchemaView.For(reparsed));
-                if (!actual.Equals(expected))
-                {
-                    throw new InvalidOperationException(
-                        "Serialize/re-parse mismatch: the written bytes do not reproduce the in-memory project" +
-                        FirstDivergence(expected, actual, path: "utcs_project") +
-                        " — the model holds state the .vis format cannot represent.");
-                }
+                // The serializer's own write self-check (M2, ProjectRoundTripVerifier): re-parse the bytes and confirm
+                // they reproduce the model, so a project holding state the .vis format cannot represent throws before
+                // the file is handed back — instead of silently writing a lossy file.
+                ProjectRoundTripVerifier.Verify(toWrite, bytes);
             }
             return bytes;
-        }
-
-        private static string FirstDivergence(ProjectElement expected, ProjectElement actual, string path)
-        {
-            if (expected.Tag != actual.Tag)
-            {
-                return $" (first divergence at {path}: element <{expected.Tag}> re-read as <{actual.Tag}>)";
-            }
-            var actualAttrs = new Dictionary<string, string>(StringComparer.Ordinal);
-            if (!actual.Attrs.IsDefaultOrEmpty)
-            {
-                foreach ((string name, string value) in actual.Attrs)
-                {
-                    actualAttrs[name] = value;
-                }
-            }
-            if (!expected.Attrs.IsDefaultOrEmpty)
-            {
-                foreach ((string name, string value) in expected.Attrs)
-                {
-                    if (!actualAttrs.Remove(name, out string? reread))
-                    {
-                        return $" (first divergence at {path}/<{expected.Tag}>: attribute '{name}'='{value}' is absent after re-parse)";
-                    }
-                    if (reread != value)
-                    {
-                        return $" (first divergence at {path}/<{expected.Tag}>: attribute '{name}' expected '{value}', re-read '{reread}')";
-                    }
-                }
-            }
-            if (actualAttrs.Count > 0)
-            {
-                string extra = actualAttrs.Keys.First();
-                return $" (first divergence at {path}/<{expected.Tag}>: attribute '{extra}' appears only after re-parse)";
-            }
-            int expectedCount = expected.Children.IsDefaultOrEmpty ? 0 : expected.Children.Length;
-            int actualCount = actual.Children.IsDefaultOrEmpty ? 0 : actual.Children.Length;
-            if (expectedCount != actualCount)
-            {
-                return $" (first divergence at {path}/<{expected.Tag}>: {expectedCount} children re-read as {actualCount})";
-            }
-            for (int i = 0; i < expectedCount; i++)
-            {
-                if (!expected.Children[i].Equals(actual.Children[i]))
-                {
-                    return FirstDivergence(expected.Children[i], actual.Children[i], $"{path}/<{expected.Tag}>[{i}]");
-                }
-            }
-            return string.Empty;
-        }
-
-        // Drops every attribute the serializer omits on write (AttrSchema.OmitsOnWrite — the serializer's own omit
-        // rule), recursively, so the round-trip verification compares only the state that actually reaches the
-        // file: the benign omit-if-default asymmetry is normalized away on both sides, genuine differences are not.
-        // Copy-on-write: an element with nothing to strip anywhere below it — the overwhelmingly common case, and
-        // by construction always true for the reparsed side — is returned as-is, so the walk allocates nothing.
-        private static ProjectElement StripDefaultEqualAttrs(ProjectElement element, ProjectSchemaView view)
-        {
-            ElementSchema? schema = view.TryGet(element.Tag);
-            ImmutableArray<(string Name, string Value)> attrs = element.AttrsOrEmpty();
-            ImmutableArray<(string, string)>.Builder? keptAttrs = null;   // created on the first dropped attribute
-            for (int i = 0; i < attrs.Length; i++)
-            {
-                if (schema?.FindAttr(attrs[i].Name) is { } attr && attr.OmitsOnWrite(attrs[i].Value))
-                {
-                    if (keptAttrs is null)
-                    {
-                        keptAttrs = ImmutableArray.CreateBuilder<(string, string)>(attrs.Length);
-                        for (int j = 0; j < i; j++) { keptAttrs.Add(attrs[j]); }
-                    }
-                    continue;
-                }
-                keptAttrs?.Add(attrs[i]);
-            }
-            ImmutableArray<ProjectElement> children = element.ChildrenOrEmpty();
-            ImmutableArray<ProjectElement>.Builder? keptChildren = null;   // created on the first changed child
-            for (int i = 0; i < children.Length; i++)
-            {
-                ProjectElement stripped = StripDefaultEqualAttrs(children[i], view);
-                if (keptChildren is null && !ReferenceEquals(stripped, children[i]))
-                {
-                    keptChildren = ImmutableArray.CreateBuilder<ProjectElement>(children.Length);
-                    for (int j = 0; j < i; j++) { keptChildren.Add(children[j]); }
-                }
-                keptChildren?.Add(stripped);
-            }
-            return keptAttrs is null && keptChildren is null
-                ? element
-                : new ProjectElement(element.Tag, element.Id,
-                    keptAttrs?.ToImmutable() ?? attrs,
-                    keptChildren?.ToImmutable() ?? children);
         }
 
         /// <summary>
@@ -529,33 +385,25 @@ namespace Ihc.Vis
         public async Task<Project> DownloadFrom()
         {
             IControllerService controller = RequireController();
-            using (var activity = StartActivity(nameof(DownloadFrom)))
+            return await RunTracedAsync(nameof(DownloadFrom), async activity =>
             {
-                try
+                await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                ProjectFile file = await controller.GetProject().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                if (file?.Data is null)
                 {
-                    await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    ProjectFile file = await controller.GetProject().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    if (file?.Data is null)
-                    {
-                        throw new InvalidOperationException(
-                            "The controller returned no project — it likely has none stored. Check " +
-                            $"{nameof(IControllerService)}.{nameof(IControllerService.IsIHCProjectAvailable)}() " +
-                            $"before calling {nameof(DownloadFrom)}.");
-                    }
-                    // StrictEncoding (matching the upload side): a real controller only ever produces Latin-1 text,
-                    // so an alternative IControllerService that hands back a >U+00FF char is a bug that must fail
-                    // loudly here, not be silently transcoded to '?' by the lossy replacement fallback.
-                    using MemoryStream ms = new MemoryStream(ProjectFile.StrictEncoding.GetBytes(file.Data));
-                    Project project = await Load(ms).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    activity?.SetReturnValue(project);
-                    return project;
+                    throw new InvalidOperationException(
+                        "The controller returned no project — it likely has none stored. Check " +
+                        $"{nameof(IControllerService)}.{nameof(IControllerService.IsIHCProjectAvailable)}() " +
+                        $"before calling {nameof(DownloadFrom)}.");
                 }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+                // StrictEncoding (matching the upload side): a real controller only ever produces Latin-1 text,
+                // so an alternative IControllerService that hands back a >U+00FF char is a bug that must fail
+                // loudly here, not be silently transcoded to '?' by the lossy replacement fallback.
+                using MemoryStream ms = new MemoryStream(ProjectFile.StrictEncoding.GetBytes(file.Data));
+                Project project = await Load(ms).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                activity?.SetReturnValue(project);
+                return project;
+            });
         }
 
         /// <summary>
@@ -576,104 +424,56 @@ namespace Ihc.Vis
         {
             ArgumentNullException.ThrowIfNull(project);
             IControllerService controller = RequireController();
-            using (var activity = StartActivity(nameof(UploadTo)))
+            return await RunTracedAsync(nameof(UploadTo), async activity =>
             {
-                try
+                await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                if (validate)
                 {
-                    await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    if (validate)
+                    ProjectValidationResult validation = ProjectValidator.Validate(project);
+                    if (!validation.IsValid)
                     {
-                        ProjectValidationResult validation = ProjectValidator.Validate(project);
-                        if (!validation.IsValid)
-                        {
-                            throw new ProjectValidationException(validation);
-                        }
+                        throw new ProjectValidationException(validation);
                     }
-                    // Always verify the write on this path (controller EPROM has no .BAK to roll back to) — a
-                    // deliberate, documented postcondition, not a silent discard of the caller's option. The check is
-                    // tolerant of the benign omit-if-default asymmetry, so a foreign file with an explicit
-                    // default-equal attribute still uploads; only a genuinely non-reproducible model is refused.
-                    ProjectSaveOptions effective = (options ?? ProjectSaveOptions.Default) with { VerifyRoundTrip = true };
-                    // Serialize straight to the on-wire string — the controller takes a ProjectFile, not a stream — so
-                    // no MemoryStream/ToArray copy is needed (the byte[] → string is the only conversion required).
-                    ProjectFile file = new ProjectFile(filename ?? DefaultProjectFilename,
-                                                       ProjectFile.Encoding.GetString(SerializeForSave(project, effective)));
-                    bool stored = await controller.StoreProject(file).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    if (!stored)
-                    {
-                        throw new ProjectUploadException(
-                            $"The controller declined {nameof(IControllerService.StoreProject)} after entering change " +
-                            $"mode; its project state is uncertain — verify with " +
-                            $"{nameof(IControllerService)}.{nameof(IControllerService.GetProjectInfo)} before retrying.");
-                    }
-                    activity?.SetReturnValue(stored);
-                    return stored;
                 }
-                catch (Exception ex)
+                // Always verify the write on this path (controller EPROM has no .BAK to roll back to) — a
+                // deliberate, documented postcondition, not a silent discard of the caller's option. The check is
+                // tolerant of the benign omit-if-default asymmetry, so a foreign file with an explicit
+                // default-equal attribute still uploads; only a genuinely non-reproducible model is refused.
+                ProjectSaveOptions effective = (options ?? ProjectSaveOptions.Default) with { VerifyRoundTrip = true };
+                // Serialize straight to the on-wire string — the controller takes a ProjectFile, not a stream — so
+                // no MemoryStream/ToArray copy is needed (the byte[] → string is the only conversion required).
+                ProjectFile file = new ProjectFile(filename ?? DefaultProjectFilename,
+                                                   ProjectFile.Encoding.GetString(SerializeForSave(project, effective)));
+                bool stored = await controller.StoreProject(file).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                if (!stored)
                 {
-                    activity?.SetError(ex);
-                    throw;
+                    throw new ProjectUploadException(
+                        $"The controller declined {nameof(IControllerService.StoreProject)} after entering change " +
+                        $"mode; its project state is uncertain — verify with " +
+                        $"{nameof(IControllerService)}.{nameof(IControllerService.GetProjectInfo)} before retrying.");
                 }
-            }
+                activity?.SetReturnValue(stored);
+                return stored;
+            });
         }
 
         /// <summary>The products available for insertion, from the SDK-embedded catalog (plus any imported).</summary>
-        public IReadOnlyList<ProductDefinition> GetAvailableProducts()
-        {
-            using (var activity = StartActivity(nameof(GetAvailableProducts)))
+        public IReadOnlyList<ProductDefinition> GetAvailableProducts() =>
+            RunTraced(nameof(GetAvailableProducts), activity =>
             {
-                try
-                {
-                    IReadOnlyList<ProductDefinition> result = catalog.Value.Products;
-                    activity?.SetReturnValue(result.Count);
-                    return result;
-                }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
-        }
+                IReadOnlyList<ProductDefinition> result = catalog.Value.Products;
+                activity?.SetReturnValue(result.Count);
+                return result;
+            });
 
         /// <summary>The function blocks available for insertion, from the SDK-embedded catalog (plus any imported).</summary>
-        public IReadOnlyList<FunctionBlockDefinition> GetAvailableFunctionBlocks()
-        {
-            using (var activity = StartActivity(nameof(GetAvailableFunctionBlocks)))
+        public IReadOnlyList<FunctionBlockDefinition> GetAvailableFunctionBlocks() =>
+            RunTraced(nameof(GetAvailableFunctionBlocks), activity =>
             {
-                try
-                {
-                    IReadOnlyList<FunctionBlockDefinition> result = catalog.Value.FunctionBlocks;
-                    activity?.SetReturnValue(result.Count);
-                    return result;
-                }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
-        }
-
-        /// <summary>
-        /// The empty "from scratch" function-block template (<c>Tom blok</c>) — the five mandatory containers plus one
-        /// empty program — that <see cref="Ihc.Vis.Editing.GroupRef.AddEmptyFunctionBlock"/> scaffolds into a locality.
-        /// </summary>
-        public FunctionBlockDefinition GetEmptyFunctionBlockTemplate()
-        {
-            using (var activity = StartActivity(nameof(GetEmptyFunctionBlockTemplate)))
-            {
-                try
-                {
-                    return catalog.Value.EmptyFunctionBlockTemplate;
-                }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
-        }
+                IReadOnlyList<FunctionBlockDefinition> result = catalog.Value.FunctionBlocks;
+                activity?.SetReturnValue(result.Count);
+                return result;
+            });
 
         /// <summary>
         /// Imports one catalog component file at runtime so it resolves and inserts alongside the built-ins: a
@@ -689,33 +489,23 @@ namespace Ihc.Vis
         public void ImportCatalogFile(string path, Func<string, string?>? documentationProbe = null)
         {
             ArgumentNullException.ThrowIfNull(path);
-            using (var activity = StartActivity(nameof(ImportCatalogFile)))
+            RunTraced(nameof(ImportCatalogFile), activity =>
             {
-                try
+                string? summary = documentationProbe?.Invoke(path);
+                // The optional summary documentation is the same for either component kind — build it once (T028).
+                DefinitionDocumentation? documentation = summary is null
+                    ? null
+                    : new DefinitionDocumentation(summary, ImmutableDictionary<string, string>.Empty);
+                if (Path.GetExtension(path).Equals(".ifb", StringComparison.OrdinalIgnoreCase))
                 {
-                    string? summary = documentationProbe?.Invoke(path);
-                    if (Path.GetExtension(path).Equals(".ifb", StringComparison.OrdinalIgnoreCase))
-                    {
-                        DefinitionDocumentation? documentation = summary is null
-                            ? null
-                            : new DefinitionDocumentation(summary, ImmutableDictionary<string, string>.Empty);
-                        catalog.Value.Import(CatalogReader.ReadFunctionBlock(path, documentation));
-                    }
-                    else
-                    {
-                        DefinitionDocumentation? documentation = summary is null
-                            ? null
-                            : new DefinitionDocumentation(summary, ImmutableDictionary<string, string>.Empty);
-                        catalog.Value.Import(CatalogReader.ReadProduct(path, documentation));
-                    }
-                    activity?.SetReturnValue(path);
+                    catalog.Value.Import(CatalogReader.ReadFunctionBlock(path, documentation));
                 }
-                catch (Exception ex)
+                else
                 {
-                    activity?.SetError(ex);
-                    throw;
+                    catalog.Value.Import(CatalogReader.ReadProduct(path, documentation));
                 }
-            }
+                activity?.SetReturnValue(path);
+            });
         }
 
         /// <summary>
@@ -757,23 +547,15 @@ namespace Ihc.Vis
             string author, DateOnly? created = null, string? note = null)
         {
             ArgumentNullException.ThrowIfNull(path);
-            using (var activity = StartActivity(nameof(ExportFunctionBlock)))
+            await RunTracedAsync(nameof(ExportFunctionBlock), async activity =>
             {
-                try
-                {
-                    FunctionBlockDefinition definition = BuildExportDefinition(project, functionBlockId, name, author, created, note);
-                    using var buffer = new MemoryStream();
-                    CatalogFileWriter.Write(definition, buffer);
-                    await WriteAtomically(path, buffer.ToArray(), createBackup: false)
-                        .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    activity?.SetReturnValue(path);
-                }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+                FunctionBlockDefinition definition = BuildExportDefinition(project, functionBlockId, name, author, created, note);
+                using var buffer = new MemoryStream();
+                CatalogFileWriter.Write(definition, buffer);
+                await WriteAtomically(path, buffer.ToArray(), createBackup: false)
+                    .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                activity?.SetReturnValue(path);
+            });
         }
 
         /// <summary>
@@ -786,20 +568,12 @@ namespace Ihc.Vis
             string author, DateOnly? created = null, string? note = null)
         {
             ArgumentNullException.ThrowIfNull(stream);
-            using (var activity = StartActivity(nameof(ExportFunctionBlock)))
+            RunTraced(nameof(ExportFunctionBlock), activity =>
             {
-                try
-                {
-                    FunctionBlockDefinition definition = BuildExportDefinition(project, functionBlockId, name, author, created, note);
-                    CatalogFileWriter.Write(definition, stream);
-                    activity?.SetReturnValue(name);
-                }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+                FunctionBlockDefinition definition = BuildExportDefinition(project, functionBlockId, name, author, created, note);
+                CatalogFileWriter.Write(definition, stream);
+                activity?.SetReturnValue(name);
+            });
         }
 
         // Lifts a placed block to a keyless user-block definition (read-only over the immutable project — project.Edit()
@@ -826,20 +600,12 @@ namespace Ihc.Vis
         public InstallationReport GenerateInstallationReport(Project project)
         {
             ArgumentNullException.ThrowIfNull(project);
-            using (var activity = StartActivity(nameof(GenerateInstallationReport)))
+            return RunTraced(nameof(GenerateInstallationReport), activity =>
             {
-                try
-                {
-                    InstallationReport report = ReportBuilder.BuildInstallation(project);
-                    activity?.SetReturnValue(report.ProductDetails.Length);
-                    return report;
-                }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+                InstallationReport report = ReportBuilder.BuildInstallation(project);
+                activity?.SetReturnValue(report.ProductDetails.Length);
+                return report;
+            });
         }
 
         /// <summary>
@@ -852,20 +618,12 @@ namespace Ihc.Vis
         public EndUserReport GenerateEndUserReport(Project project)
         {
             ArgumentNullException.ThrowIfNull(project);
-            using (var activity = StartActivity(nameof(GenerateEndUserReport)))
+            return RunTraced(nameof(GenerateEndUserReport), activity =>
             {
-                try
-                {
-                    EndUserReport report = ReportBuilder.BuildEndUser(project);
-                    activity?.SetReturnValue(report.Localities.Length);
-                    return report;
-                }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+                EndUserReport report = ReportBuilder.BuildEndUser(project);
+                activity?.SetReturnValue(report.Localities.Length);
+                return report;
+            });
         }
 
         /// <summary>
@@ -877,32 +635,24 @@ namespace Ihc.Vis
         public FunctionBlockReport GenerateFunctionBlockReport(Project project)
         {
             ArgumentNullException.ThrowIfNull(project);
-            using (var activity = StartActivity(nameof(GenerateFunctionBlockReport)))
+            return RunTraced(nameof(GenerateFunctionBlockReport), activity =>
             {
-                try
-                {
-                    FunctionBlockReport report = ReportBuilder.BuildFunctionBlock(project);
-                    activity?.SetReturnValue(report.Blocks.Length);
-                    return report;
-                }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+                FunctionBlockReport report = ReportBuilder.BuildFunctionBlock(project);
+                activity?.SetReturnValue(report.Blocks.Length);
+                return report;
+            });
         }
 
         /// <summary>Validates a project against the pre-serialize checklist.</summary>
         public ProjectValidationResult Validate(Project project)
         {
             ArgumentNullException.ThrowIfNull(project);
-            using (var activity = StartActivity(nameof(Validate)))
+            return RunTraced(nameof(Validate), activity =>
             {
                 ProjectValidationResult result = ProjectValidator.Validate(project);
                 activity?.SetReturnValue(result);
                 return result;
-            }
+            });
         }
     }
 

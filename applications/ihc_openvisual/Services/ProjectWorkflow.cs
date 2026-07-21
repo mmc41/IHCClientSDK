@@ -35,12 +35,15 @@ public sealed class ProjectWorkflow : IDisposable
     private readonly RecentProjectsStore _recent;
     private readonly IDialogService _dialogs;
     private readonly ILogger<ProjectWorkflow> _logger;
-    private readonly TimeSpan _autoBackupInterval;
     private readonly int _changeBackupThreshold;
     private readonly TimeProvider _timeProvider;
     private readonly object _gate = new();
-    private readonly SemaphoreSlim _backupLock = new(1, 1);
-    private ITimer? _timer;
+
+    // T019: the non-lifecycle concerns split into their own collaborators — reporting, catalog imports/persist, and
+    // the auto-backup writer (timer + write lock). ProjectWorkflow retains the document lifecycle + editing/history.
+    private readonly ProjectReportWorkflow _reports;
+    private readonly CatalogImportWorkflow _catalog;
+    private readonly AutoBackupScheduler _autoBackup;
 
     private readonly string _catalogDir;
 
@@ -61,10 +64,24 @@ public sealed class ProjectWorkflow : IDisposable
         _dialogs = dialogs;
         _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<ProjectWorkflow>();
         _timeProvider = timeProvider ?? TimeProvider.System;   // D8: the auto-backup clock/timer, fakeable in tests
-        _autoBackupInterval = autoBackupInterval ?? TimeSpan.FromMinutes(10);
         _changeBackupThreshold = changeBackupThreshold < 1 ? 10 : changeBackupThreshold;
         _catalogDir = catalogDir ?? DefaultCatalogDir();
-        LoadPersistedCatalog();   // persisted imports load on startup (US-061)
+        _reports = new ProjectReportWorkflow(_service, _dialogs, _logger, () => Current);
+        _catalog = new CatalogImportWorkflow(_service, _dialogs, _logger, _catalogDir);
+        // The auto-backup writer captures the snapshot + origin under THIS workflow's gate (document state stays here);
+        // the change-threshold trigger stays in ApplyAsync (it owns the change counter).
+        _autoBackup = new AutoBackupScheduler(_backup, _service, _timeProvider, _logger,
+            autoBackupInterval ?? TimeSpan.FromMinutes(10), CaptureBackupSnapshot);
+        _catalog.LoadPersisted();   // persisted imports load on startup (US-061)
+    }
+
+    // Captures the current project snapshot + its origin path under the workflow gate, for the auto-backup writer.
+    private (Project? Snapshot, string? Origin) CaptureBackupSnapshot()
+    {
+        lock (_gate)
+        {
+            return (Current, FilePath);
+        }
     }
 
     /// <summary>The app-data folder persisted catalog imports are copied into and loaded from on startup (US-061).</summary>
@@ -173,7 +190,7 @@ public sealed class ProjectWorkflow : IDisposable
                     Project recovered = await _service.Load(_backup.RecoveryProjectPath);
                     SetProject(recovered, info?.OriginPath, dirty: true);
                     ResetChangeCount();
-                    StartTimer();
+                    _autoBackup.Start();
                     return;
                 }
                 catch (Exception ex)
@@ -191,7 +208,7 @@ public sealed class ProjectWorkflow : IDisposable
         }
 
         NewInternal();
-        StartTimer();
+        _autoBackup.Start();
     }
 
     /// <summary>File → New (US-002): prompt to save the open project, then open the standard empty project.</summary>
@@ -275,42 +292,19 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>The default name a freshly inserted locality carries until the installer renames it (US-008).</summary>
     public const string NewLocalityName = "Locality";
 
-    /// <summary>Builds the render-ready installation report model for the open project (US-040), or null if none.</summary>
-    public InstallationReport? GenerateInstallationReport() =>
-        Current is { } project ? _service.GenerateInstallationReport(project) : null;
+    // Reports (US-040/041) delegate to the ProjectReportWorkflow collaborator (T019).
+    /// <summary>The render-ready installation report model for the open project (US-040), or null if none.</summary>
+    public InstallationReport? GenerateInstallationReport() => _reports.Installation();
 
-    /// <summary>Builds the render-ready end-user report model for the open project (US-040), or null if none.</summary>
-    public EndUserReport? GenerateEndUserReport() =>
-        Current is { } project ? _service.GenerateEndUserReport(project) : null;
+    /// <summary>The render-ready end-user report model for the open project (US-040), or null if none.</summary>
+    public EndUserReport? GenerateEndUserReport() => _reports.EndUser();
 
-    /// <summary>Builds the render-ready function-block documentation report model for the open project (US-041), or
-    /// null when no project is open.</summary>
-    public FunctionBlockReport? GenerateFunctionBlockReport() =>
-        Current is { } project ? _service.GenerateFunctionBlockReport(project) : null;
+    /// <summary>The render-ready function-block documentation report model for the open project (US-041), or null.</summary>
+    public FunctionBlockReport? GenerateFunctionBlockReport() => _reports.FunctionBlock();
 
-    /// <summary>
-    /// Writes a rendered report HTML page to a temp file (US-040) and returns its path for the browser to open;
-    /// null on failure. The file is a self-contained static page — no controller contact.
-    /// </summary>
-    public async Task<string?> WriteReportHtmlAsync(string fileStem, string html)
-    {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(WriteReportHtmlAsync)}");
-        try
-        {
-            string dir = Path.Combine(Path.GetTempPath(), "ihc-openvisual-reports");
-            Directory.CreateDirectory(dir);
-            string path = Path.Combine(dir, fileStem + ".html");
-            await File.WriteAllTextAsync(path, html, System.Text.Encoding.UTF8);
-            return path;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to write report HTML {Stem}", fileStem);
-            await _dialogs.ShowMessageAsync("Report failed", ex.Message);
-            return null;
-        }
-    }
+    /// <summary>Writes a rendered report HTML page to a temp file (US-040) and returns its path for the browser to
+    /// open; null on failure — delegates to the ProjectReportWorkflow collaborator (T019).</summary>
+    public Task<string?> WriteReportHtmlAsync(string fileStem, string html) => _reports.WriteHtmlAsync(fileStem, html);
 
     /// <summary>Reads the current project/customer/installer information (US-039) to prefill the dialog. Delegates
     /// to the SDK projection (<c>Ihc.Vis.ProjectProjections</c>). Permanent: the GUI runs commands through a per-call
@@ -318,12 +312,9 @@ public sealed class ProjectWorkflow : IDisposable
     /// persistent-session goal), so there is no long-lived session query to delegate to.</summary>
     public ProjectInfoData GetProjectInfo() => Current?.GetProjectInfo() ?? ProjectInfoData.Empty;
 
-    /// <summary>The dedicated user enum definition that holds the data-tables "user-defined texts" (US-049).</summary>
-    public const string UserTextsTableName = ProjectProjections.UserTextsTableName;
-
     /// <summary>
     /// Reads the project's data tables (US-049): the read-only system tables (the built-in <c>typeid</c>-bearing enum
-    /// definitions) and the editable user-defined texts (the values of the <see cref="UserTextsTableName"/> enum).
+    /// definitions) and the editable user-defined texts (the values of the <see cref="ProjectProjections.UserTextsTableName"/> enum).
     /// Delegates to the SDK projection. Permanent (see <see cref="GetProjectInfo"/>): no persistent session to query.
     /// </summary>
     public DataTablesModel GetDataTables() => Current?.GetDataTables() ?? DataTablesModel.Empty;
@@ -387,117 +378,22 @@ public sealed class ProjectWorkflow : IDisposable
     // The catalog-bearing Product family (T004) relocated to the SDK gateway (ProjectAppService.Commands); the
     // families still below migrate in later R1 tasks. A null return = "could not be built". ----
 
+    // Catalog imports/persist (US-059/060/061/062) delegate to the CatalogImportWorkflow collaborator (T019);
+    // the startup LoadPersisted() ran in the ctor.
+
     /// <summary>Raised after a catalog import changes the available products/function blocks (US-059/US-060), so the
-    /// insertion menus can be rebuilt.</summary>
-    public event EventHandler? CatalogChanged;
-
-    private static IEnumerable<string> EnumerateCatalogFiles(string dir) =>
-        Directory.EnumerateFiles(dir, "*.*", SearchOption.AllDirectories)
-            .Where(f => f.EndsWith(".def", System.StringComparison.OrdinalIgnoreCase)
-                        || f.EndsWith(".ifb", System.StringComparison.OrdinalIgnoreCase));
-
-    // Loads persisted imports on startup (US-061), best-effort: a single unreadable persisted file is skipped (logged),
-    // it does not stop the load or crash startup (the folder-stop rule is for interactive folder imports, US-062).
-    private void LoadPersistedCatalog()
+    /// insertion menus rebuild — forwarded from the catalog collaborator.</summary>
+    public event EventHandler? CatalogChanged
     {
-        try
-        {
-            if (!Directory.Exists(_catalogDir))
-                return;
-            foreach (string file in EnumerateCatalogFiles(_catalogDir))
-            {
-                try
-                {
-                    _service.ImportCatalogFile(file);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Skipped unreadable persisted catalog file {File}", file);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to load persisted catalog from {Dir}", _catalogDir);
-        }
+        add => _catalog.CatalogChanged += value;
+        remove => _catalog.CatalogChanged -= value;
     }
 
-    private void PersistCatalogFile(string path)
-    {
-        Directory.CreateDirectory(_catalogDir);
-        File.Copy(path, Path.Combine(_catalogDir, Path.GetFileName(path)), overwrite: true);
-    }
+    /// <summary>Imports a single product/function-block file (US-059/061) — delegates to the catalog collaborator.</summary>
+    public Task<bool> ImportCatalogFileAsync(string path, bool persist) => _catalog.ImportFileAsync(path, persist);
 
-    /// <summary>
-    /// Imports a single product (<c>.def</c>) or function-block (<c>.ifb</c>) definition file (US-059); when
-    /// <paramref name="persist"/> is set it is also copied into the app-data catalog folder so it loads on later
-    /// startups (US-061). On success the component appears in <c>GetAvailableProducts</c>/<c>GetAvailableFunctionBlocks</c>
-    /// and <see cref="CatalogChanged"/> fires. On failure the available set is unchanged and the error **names the
-    /// file** (US-062). Returns true on success. No controller.
-    /// </summary>
-    public async Task<bool> ImportCatalogFileAsync(string path, bool persist)
-    {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(ImportCatalogFileAsync)}");
-        try
-        {
-            _service.ImportCatalogFile(path);
-            if (persist)
-                PersistCatalogFile(path);
-            CatalogChanged?.Invoke(this, EventArgs.Empty);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Ihc.ActivityExtensions.SetError(activity, ex);
-            _logger.LogError(ex, "Failed to import catalog file {File}", path);
-            await _dialogs.ShowMessageAsync("Import failed",
-                $"'{Path.GetFileName(path)}' is not a valid product or function-block definition file:\n{ex.Message}");
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Imports every <c>.def</c>/<c>.ifb</c> definition in a folder and its subfolders (US-060), optionally persisting
-    /// each (US-061). Returns the number of components imported; a **missing folder** returns -1 (reported, not silently
-    /// ignored). It **stops at the first unreadable file**, naming it, keeping the files imported before it (US-062).
-    /// Fires <see cref="CatalogChanged"/>. No controller.
-    /// </summary>
-    public async Task<int> ImportCatalogFolderAsync(string dir, bool persist)
-    {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(ImportCatalogFolderAsync)}");
-        if (!Directory.Exists(dir))
-        {
-            await _dialogs.ShowMessageAsync("Import failed", $"The folder '{dir}' does not exist.");
-            return -1;
-        }
-        int count = 0;
-        try
-        {
-            foreach (string file in EnumerateCatalogFiles(dir).OrderBy(f => f, System.StringComparer.Ordinal))
-            {
-                try
-                {
-                    _service.ImportCatalogFile(file);
-                    if (persist)
-                        PersistCatalogFile(file);
-                    count++;
-                }
-                catch (Exception ex)
-                {
-                    Ihc.ActivityExtensions.SetError(activity, ex);
-                    _logger.LogError(ex, "Folder import stopped at {File}", file);
-                    await _dialogs.ShowMessageAsync("Import stopped",
-                        $"'{Path.GetFileName(file)}' could not be imported ({count} imported before it):\n{ex.Message}");
-                    break;   // stop at the first unreadable file (US-062)
-                }
-            }
-        }
-        finally
-        {
-            CatalogChanged?.Invoke(this, EventArgs.Empty);
-        }
-        return count;
-    }
+    /// <summary>Imports every definition in a folder (US-060/062) — delegates to the catalog collaborator.</summary>
+    public Task<int> ImportCatalogFolderAsync(string dir, bool persist) => _catalog.ImportFolderAsync(dir, persist);
 
 
     // The single commit path for every project-mutating operation (US-052): snapshots the pre-edit project for undo,
@@ -575,14 +471,14 @@ public sealed class ProjectWorkflow : IDisposable
         return OpenScratch(current).CanApply(command);
     }
 
-    /// <summary>The structural change set the command would produce if applied now, without committing — or null when
-    /// it would refuse, fail or make no change. Drives the Preview→confirm→Apply flow (W2-13).</summary>
-    public ProjectChangeSet? Preview(ProjectCommand command)
-    {
-        if (Current is not { } current)
-            return null;
-        return OpenScratch(current).Preview(command);
-    }
+    /// <summary>The typed preview of a command applied now, without committing (M8/D05): the delta it would commit
+    /// when it <see cref="PreviewStatus.WouldChange"/>, else a refuse / no-change / engine-fault status. Drives the
+    /// Preview→confirm→Apply flow (W2-13). Currently exercised only by tests — the GUI's delete-confirm flow reads
+    /// <see cref="ProjectCommands.PreviewDelete"/> instead.</summary>
+    public PreviewOutcome Preview(ProjectCommand command) =>
+        Current is { } current
+            ? OpenScratch(current).Preview(command)
+            : PreviewOutcome.Refused("No project is open.");
 
     private async Task CommitAsync(Project updated, string label = "Edit", ProjectChangeSet? changes = null)
     {
@@ -662,40 +558,12 @@ public sealed class ProjectWorkflow : IDisposable
         }
         RaiseChanged(change);
         if (backup)
-            await AutoBackupAsync();
+            await _autoBackup.WriteAsync();
     }
 
-    /// <summary>Writes the current project to the recovery location. Invoked by the timer and the change counter;
-    /// exposed internally so tests can drive it deterministically without waiting on the timer.</summary>
-    internal async Task AutoBackupAsync()
-    {
-        // Serialize the timer path and the change-threshold path so two backups never write the recovery
-        // file concurrently (the atomic File.Replace/File.Move would otherwise race and throw).
-        await _backupLock.WaitAsync().ConfigureAwait(false);
-        try
-        {
-            Project? snapshot;
-            string? origin;
-            lock (_gate)
-            {
-                snapshot = Current;
-                origin = FilePath;
-            }
-            if (snapshot is null)
-                return;
-            _backup.EnsureDirectory();
-            await _service.Save(snapshot, _backup.RecoveryProjectPath);
-            _backup.WriteMarker(origin, _timeProvider.GetUtcNow());
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Auto-backup failed");
-        }
-        finally
-        {
-            _backupLock.Release();
-        }
-    }
+    /// <summary>Writes the current project to the recovery location — the change-counter (here) and timer paths
+    /// delegate to the AutoBackupScheduler collaborator (T019); exposed internally so tests can drive it.</summary>
+    internal Task AutoBackupAsync() => _autoBackup.WriteAsync();
 
     private async Task<bool> SaveToAsync(string path)
     {
@@ -773,10 +641,7 @@ public sealed class ProjectWorkflow : IDisposable
         }
     }
 
-    private void StartTimer()
-    {
-        _timer ??= _timeProvider.CreateTimer(_ => _ = AutoBackupAsync(), null, _autoBackupInterval, _autoBackupInterval);
-    }
+    // StartTimer / the auto-backup timer + write lock moved to the AutoBackupScheduler collaborator (T019).
 
     // Publishes the current state to the GUI. `change` is the incremental edit's change set (reconcile in place) or
     // null (full-rebuild fallback); it is set on LastChange before the event so the triggered refresh reads it.
@@ -791,12 +656,8 @@ public sealed class ProjectWorkflow : IDisposable
     public void Dispose()
     {
         if (_disposed)
-            return;   // idempotent: the guarded _backupLock.Wait() below would throw on a second (disposed) call
+            return;   // idempotent
         _disposed = true;
-        _timer?.Dispose();   // stop new timer-driven backups from firing
-        // Wait for any in-flight auto-backup (timer- or change-counter-triggered) to finish and release the lock
-        // before disposing it — disposing a SemaphoreSlim held by a running backup would fault that backup's Release.
-        _backupLock.Wait();
-        _backupLock.Dispose();
+        _autoBackup.Dispose();   // stops the timer and waits for any in-flight backup (T019)
     }
 }

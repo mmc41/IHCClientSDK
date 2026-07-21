@@ -52,9 +52,9 @@ namespace Ihc.Vis.Io
                 {
                     continue;                                   // omitted #IMPLIED / unset defaulted attribute
                 }
-                if (attr.Kind == AttrKind.Defaulted && value == attr.Default)
+                if (attr.OmitsOnWrite(value))
                 {
-                    continue;                                   // omit-if-default (exact string compare)
+                    continue;                                   // omit-if-default — the one AttrSchema.OmitsOnWrite rule (no drift)
                 }
                 attrs.Add((attr.Name, value));
             }

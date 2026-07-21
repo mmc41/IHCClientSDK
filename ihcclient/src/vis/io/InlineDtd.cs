@@ -68,7 +68,7 @@ namespace Ihc.Vis.Io
             while (i >= 0)
             {
                 int nameStart = i + marker.Length;
-                int end = DeclarationEnd(subset, nameStart);
+                int end = XmlText.FindDeclarationClose(subset, nameStart);
                 if (end < 0)
                 {
                     break;
@@ -80,23 +80,6 @@ namespace Ihc.Vis.Io
                 }
                 i = subset.IndexOf(marker, end + 1, StringComparison.Ordinal);
             }
-        }
-
-        // The index of the quote-aware '>' that closes a declaration starting at <paramref name="start"/>, or -1.
-        private static int DeclarationEnd(string s, int start)
-        {
-            char quote = '\0';
-            for (int i = start; i < s.Length; i++)
-            {
-                char c = s[i];
-                if (quote != '\0')
-                {
-                    if (c == quote) { quote = '\0'; }
-                }
-                else if (c is '"' or '\'') { quote = c; }
-                else if (c == '>') { return i; }
-            }
-            return -1;
         }
 
         private static string FirstToken(string s, int start, int end)

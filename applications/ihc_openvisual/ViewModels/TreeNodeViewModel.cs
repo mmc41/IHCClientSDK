@@ -118,10 +118,6 @@ public sealed partial class TreeNodeViewModel : ObservableObject
     /// toggle (A-22/&amp;Logmærke, US-068).</summary>
     public bool IsLogMarkPin { get; init; }
 
-    /// <summary>Context-menu gate: <i>Delete</i> is offered on nodes that address a real element — except a
-    /// catalog-declared pin, which the type owns (A-24). This is the GUI gate; the SDK engine guard is deferred.</summary>
-    public bool CanDelete => ElementId is not null && !IsCatalogPin;
-
     /// <summary>Context-menu gate: <i>Cut</i>/<i>Copy</i> are offered on the structural components — a locality, a
     /// product or a function block (A-5b/F-009). Not on the Localities root, link rows, pins, sections or the
     /// program-tree nodes.</summary>

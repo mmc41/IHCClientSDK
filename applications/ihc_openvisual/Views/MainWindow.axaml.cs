@@ -234,9 +234,9 @@ public partial class MainWindow : Window
             }
             e.Handled = true;
         }
-        else if (e.Key == Key.Delete && node.CanDelete)
+        else if (e.Key == Key.Delete && _viewModel?.DeleteCommand.CanExecute(node) == true)
         {
-            _viewModel?.DeleteCommand.Execute(node);   // delete any deletable node — link row, product, block, variable… (US-053/US-057)
+            _viewModel.DeleteCommand.Execute(node);   // one SDK-backed gate for every delete route — no locked-block bypass (T003/H1)
             e.Handled = true;
         }
     }

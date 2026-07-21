@@ -23,13 +23,13 @@ namespace ihc_openvisual.ViewModels;
 /// </summary>
 internal sealed class ProgramAuthoringCoordinator(
     ProjectWorkflow session,
+    IDialogService dialogs,
     Func<string, Func<Task>, Task> runAsync,
     Func<ProjectCommand, string, Task> applyAndReport,
     Action<TreeNodeViewModel> selectNode,
     Action<string> setStatus,
     Func<TreeNodeViewModel?> getSelectedNode,
-    Func<ElementId?> getProgrammingBlockId,
-    Func<ProjectElement, string, string> nameOr)
+    Func<ElementId?> getProgrammingBlockId)
 {
     /// <summary>The events a selected variable can raise, offered on a program's Events node (US-028).</summary>
     public ObservableCollection<ProductMenuItemViewModel> ProgramEventMenu { get; } = new();
@@ -199,7 +199,66 @@ internal sealed class ProgramAuthoringCoordinator(
                 continue;
             foreach (ProjectElement pin in section.ChildrenOrEmpty())
                 if (ProgramMethodCatalog.NumericVariableTags.Contains(pin.Tag) && pin.Id is { } pid)
-                    yield return (nameOr(pin, pin.Tag), pid);
+                    yield return (project.NameOr(pin, pin.Tag), pid);
         }
     }
+
+    // ---- T018: the stray program-authoring handlers consolidated here (US-029/031/033); the view-model keeps the
+    // thin [RelayCommand] entry points, delegating their bodies to these. ----
+
+    /// <summary>Adds a Powerup system event to the selected Events group (US-033) — no operand needed.</summary>
+    public Task AddPowerEventAsync(TreeNodeViewModel? node) => runAsync("AddPowerEvent", async () =>
+    {
+        if (node is { IsEventsContainer: true, ElementId: { } eventsId } && session.Current is { } project
+            && session.Commands.AddPowerEvent(project, eventsId) is { } command)
+            await applyAndReport(command, "Powerup event added to the program.");
+    });
+
+    /// <summary>Toggles an output's <i>Save current value</i> power-loss persistence (US-033).</summary>
+    public Task ToggleSaveValueAsync(TreeNodeViewModel? node) => runAsync("ToggleSaveValue", async () =>
+    {
+        if (node is { IsOutputPin: true, ElementId: { } outputId } && session.Current is { } project)
+            await applyAndReport(session.Commands.SetOutputBackup(project, outputId, !node.IsValueSaved),
+                node.IsValueSaved ? "Output value no longer saved on power loss." : "Output value saved on power loss.");
+    });
+
+    /// <summary>Inserts a conditional sub-program (Conditions + true/false command branches) into a Commands group (US-029).</summary>
+    public Task AddSubProgramAsync(TreeNodeViewModel? node) => runAsync("AddSubProgram", async () =>
+    {
+        if (node is { IsCommandsContainer: true, ElementId: { } id } && session.Current is { } project)
+            await applyAndReport(session.Commands.AddSubProgram(project, id), "Sub-program inserted.");
+    });
+
+    /// <summary>Inserts a nested logic group inside a Conditions group for a compound expression (US-029).</summary>
+    public Task AddLogicGroupAsync(TreeNodeViewModel? node) => runAsync("AddLogicGroup", async () =>
+    {
+        if (node is { IsConditionsContainer: true, ElementId: { } id } && session.Current is { } project)
+            await applyAndReport(session.Commands.AddLogicGroup(project, id), "Logic group inserted.");
+    });
+
+    /// <summary>Combines a Conditions group with OR (<c>&gt;=1</c>) (US-029).</summary>
+    public Task SetConditionsOrAsync(TreeNodeViewModel? node) => ToggleConditionsAsync(node, or: true);
+
+    /// <summary>Combines a Conditions group with AND (<c>&amp;</c>, the default) (US-029).</summary>
+    public Task SetConditionsAndAsync(TreeNodeViewModel? node) => ToggleConditionsAsync(node, or: false);
+
+    private Task ToggleConditionsAsync(TreeNodeViewModel? node, bool or) => runAsync("ToggleConditionsAsync", async () =>
+    {
+        if (node is { IsConditionsContainer: true, ElementId: { } id } && session.Current is { } project)
+            await applyAndReport(session.Commands.SetConditionsLogic(project, id, or),
+                or ? "Conditions combined with OR (>=1)." : "Conditions combined with AND (&).");
+    });
+
+    /// <summary>Adds a case value branch to the selected Case node (US-031): prompts for the criterion value, then
+    /// inserts a command group tagged with it (filled by the normal Add-command gesture).</summary>
+    public Task NewCaseValueAsync(TreeNodeViewModel? node) => runAsync("NewCaseValue", async () =>
+    {
+        if (node is not { IsCaseNode: true, ElementId: { } caseId } || session.Current is not { } project)
+            return;
+        PropertiesResult? result = await dialogs.EditPropertiesAsync("New case value", string.Empty, string.Empty);
+        if (result is null || string.IsNullOrWhiteSpace(result.Name))
+            return;
+        if (session.Commands.AddCaseValue(project, caseId, result.Name.Trim()) is { } command)
+            await applyAndReport(command, $"Case value '{result.Name.Trim()}' added.");
+    });
 }

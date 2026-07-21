@@ -23,20 +23,21 @@ namespace Ihc.Vis.Tests
             var session = new ProjectDocumentSession();
             session.Open(project);
 
-            ProjectChangeSet? preview = session.Preview(command);
+            PreviewOutcome preview = session.Preview(command);
             EditOutcome outcome = session.Apply(command);
             ProjectChangeSet applied = outcome.Changes!;
 
             Assert.Multiple(() =>
             {
                 Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed));
-                Assert.That(preview, Is.Not.Null, "a cascading delete previews a non-null change set");
-                Assert.That(preview!.Removed, Is.EquivalentTo(applied.Removed), "same removed ids");
-                Assert.That(preview.Added, Is.EquivalentTo(applied.Added), "same added ids");
-                Assert.That(preview.Changed, Is.EquivalentTo(applied.Changed), "same changed ids");
-                Assert.That(preview.ChildListChanged, Is.EquivalentTo(applied.ChildListChanged), "same child-list changes");
-                Assert.That(preview.MetadataChanged, Is.EqualTo(applied.MetadataChanged), "same metadata flag");
-                Assert.That(preview.Removed, Is.Not.Empty, "the cascade removed multiple ids");
+                Assert.That(preview.Status, Is.EqualTo(PreviewStatus.WouldChange), "a cascading delete previews a would-change delta");
+                ProjectChangeSet delta = preview.Changes!;
+                Assert.That(delta.Removed, Is.EquivalentTo(applied.Removed), "same removed ids");
+                Assert.That(delta.Added, Is.EquivalentTo(applied.Added), "same added ids");
+                Assert.That(delta.Changed, Is.EquivalentTo(applied.Changed), "same changed ids");
+                Assert.That(delta.ChildListChanged, Is.EquivalentTo(applied.ChildListChanged), "same child-list changes");
+                Assert.That(delta.MetadataChanged, Is.EqualTo(applied.MetadataChanged), "same metadata flag");
+                Assert.That(delta.Removed, Is.Not.Empty, "the cascade removed multiple ids");
             });
         }
     }

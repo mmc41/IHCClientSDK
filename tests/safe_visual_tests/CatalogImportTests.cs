@@ -172,6 +172,28 @@ public class CatalogImportTests
         }
     }
 
+    // M4 (T007): the startup persisted-catalog reload must import files in a DETERMINISTIC Ordinal path order, so
+    // last-import-wins resolution and the resulting menu order are stable across machines/filesystems — not the raw
+    // directory enumeration order (which on NTFS is case-INsensitive, and on other filesystems is unsorted). The
+    // filenames below make the Ordinal order ("B…" < "a…", case-sensitive) differ from the raw NTFS order ("a…" <
+    // "B…"), so before the fix the wrong file imports first and the two products land in the wrong relative order.
+    [Test]
+    public void PersistedCatalog_LoadsInDeterministicOrdinalOrder_RegardlessOfFilesystemOrder()
+    {
+        using var harness = ShellHarness.Create();
+        var catalogDir = Path.Combine(harness.TempDir, "catalog");
+        Directory.CreateDirectory(catalogDir);
+        File.Copy(SampleProductDef(), Path.Combine(catalogDir, "B_first.def"));   // _0x9f01 (Ordinal-first)
+        File.Copy(Path.Combine(TestDataRoot(), "products", "synthetic", "synthetic_9f02_output.def"),
+                  Path.Combine(catalogDir, "a_second.def"));                       // _0x9f02
+
+        using var restart = ShellHarness.Restart(harness.TempDir);
+        var ids = restart.Session.GetAvailableProducts().Select(p => p.ProductIdentifier).ToList();
+
+        Assert.That(ids.IndexOf("_0x9f01"), Is.LessThan(ids.IndexOf("_0x9f02")),
+            "the Ordinal-first file (B_first.def) imports first, so its product precedes the other — deterministic across filesystems");
+    }
+
     // US-059/US-044: the Library menu command imports the picked file and refreshes the insertion menus.
     [Test]
     public async Task ImportCatalogFileCommand_ImportsPickedFile()

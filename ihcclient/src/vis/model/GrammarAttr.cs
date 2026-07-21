@@ -116,10 +116,6 @@ namespace Ihc.Vis.Model
         public static GrammarAttr EnumeratedRequired(string name, IEnumerable<string> tokens) =>
             Create(name, GrammarAttrType.Enumerated, ToTokens(tokens), GrammarDefault.Required, rawLiteral: null);
 
-        /// <summary>An enumerated <c>#IMPLIED</c> attribute.</summary>
-        public static GrammarAttr EnumeratedImplied(string name, IEnumerable<string> tokens) =>
-            Create(name, GrammarAttrType.Enumerated, ToTokens(tokens), GrammarDefault.Implied, rawLiteral: null);
-
         private static ImmutableArray<string> ToTokens(IEnumerable<string> tokens)
         {
             ArgumentNullException.ThrowIfNull(tokens);

@@ -23,6 +23,10 @@ namespace Ihc.Vis.Catalog
         private protected string categoryPath = string.Empty;
         private protected CatalogGrammar grammar;
         private protected CatalogTextEncoding? sourceEncoding;   // From-carried physical encoding
+        // The definition's root/body attributes in authored order (M7): the shared list both concrete builders bake
+        // their fluent setters (Note/Locked/…) and the raw Attribute escape hatch through; each emits it from its own
+        // ComposeRoot/identity path.
+        private protected readonly List<(string Name, string Value)> rootAttrs = new();
         private string? docSummary;
         private readonly Dictionary<string, string> resourceDocs = new(StringComparer.Ordinal);
 
@@ -58,6 +62,20 @@ namespace Ihc.Vis.Catalog
             var builder = new CatalogGrammarBuilder(grammar);
             extend(builder);
             grammar = builder.Build();
+            return Self;
+        }
+
+        // ---- root/body attributes + the build-tail (shared plumbing, M7) ----
+
+        /// <summary>Bakes a raw definition-level attribute verbatim (the open-world escape hatch shared by both
+        /// builders); canonicalization still normalizes order and drops default-valued attributes on insert.</summary>
+        public TSelf Attribute(string name, string value) => SetRoot(name, value);
+
+        // Records a root attribute in authored order — the single seam every concrete fluent setter (Note/Locked/…)
+        // and the Attribute escape hatch route through, so the ordered-append rule lives once.
+        private protected TSelf SetRoot(string name, string value)
+        {
+            rootAttrs.Add((name, value));
             return Self;
         }
 

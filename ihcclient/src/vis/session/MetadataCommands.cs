@@ -78,8 +78,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Add variable";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(BlockId)?.Tag == "functionblock"
-                ? EditVerdict.Allow : EditVerdict.Refuse("The target is not a function block.");
+            context.RequireTag(BlockId, "a function block", "functionblock");
         internal override ElementId ExecuteCore(ProjectEditor editor)
         {
             FunctionBlockRef fb = editor.FunctionBlock(BlockId);
@@ -103,8 +102,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Add enumerator";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(BlockId)?.Tag == "functionblock"
-                ? EditVerdict.Allow : EditVerdict.Refuse("The target is not a function block.");
+            context.RequireTag(BlockId, "a function block", "functionblock");
         internal override ElementId ExecuteCore(ProjectEditor editor)
         {
             EnumDefinitionRef def = editor.AddEnumDefinition(TypeName, States.ToArray());
@@ -146,14 +144,8 @@ namespace Ihc.Vis.Session
         internal override void Execute(ProjectEditor editor)
         {
             ProjectElement product = editor.Require(ProductId);
-            void SetSetting(string tag, string value)
-            {
-                if (product.DescendantsAndSelf().FirstOrDefault(e => e.Tag == tag) is { Id: { } sid }
-                    && editor.TryResolve(sid, out ElementRef? h))
-                {
-                    h.SetAttribute("value", value);
-                }
-            }
+            void SetSetting(string tag, string value) =>
+                editor.SetDescendantAttribute(product, e => e.Tag == tag, "value", value);
             static string Dec(int v) => v.ToString(CultureInfo.InvariantCulture);
             SetSetting("dimmer_setting_fade_rate_up", Dec(Result.SoftOnMs));
             SetSetting("dimmer_setting_fade_rate_down", Dec(Result.SoftOffMs));
@@ -187,20 +179,14 @@ namespace Ihc.Vis.Session
             handle.SetAttribute("cablecolour_RS485Plus", Result.CableRS485Plus);
 
             ProjectElement modem = editor.Require(ModemId);
-            if (modem.DescendantsAndSelf().FirstOrDefault(e => e.Tag == "sms_modem_pincode") is { Id: { } pinId }
-                && editor.TryResolve(pinId, out ElementRef? pinHandle))
-            {
-                pinHandle.SetAttribute("value", string.IsNullOrEmpty(Result.PinCode) ? "0" : Result.PinCode);
-            }
+            editor.SetDescendantAttribute(modem, e => e.Tag == "sms_modem_pincode", "value",
+                string.IsNullOrEmpty(Result.PinCode) ? "0" : Result.PinCode);
             for (int i = 0; i < Result.PhoneNumbers.Count; i++)
             {
                 string slot = (i + 1).ToString(CultureInfo.InvariantCulture);
-                if (modem.DescendantsAndSelf().FirstOrDefault(e => e.Tag == "sms_modem_phonenumber"
-                        && e.GetAttribute("address") == slot) is { Id: { } pnId }
-                    && editor.TryResolve(pnId, out ElementRef? pnHandle))
-                {
-                    pnHandle.SetAttribute("phonenumber", Result.PhoneNumbers[i]);
-                }
+                editor.SetDescendantAttribute(modem,
+                    e => e.Tag == "sms_modem_phonenumber" && e.GetAttribute("address") == slot,
+                    "phonenumber", Result.PhoneNumbers[i]);
             }
             Relocation.Apply(editor, ModemId, CurrentLocalityId, Result.LocalityId);   // Location changed → re-parent
         }

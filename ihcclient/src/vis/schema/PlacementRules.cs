@@ -25,16 +25,10 @@ namespace Ihc.Vis.Schema
         private const string CatProgram = "Program";
 
         // Value-variable resource types (spec §6.3.1) — accepted by any function-block container; the full set the
-        // authentic oracles place across inputs/outputs/settings/internalsettings.
-        private static readonly string[] ValueTypes =
-        {
-            "resource_flag", "resource_integer", "resource_floating_point", "resource_counter",
-            "resource_date", "resource_time", "resource_timer", "resource_timertime", "resource_weekday",
-            "resource_holiday", "resource_enum", "resource_light", "resource_light_level",
-            "resource_temperature", "resource_humidity_level", "kW", "kWh", "W", "Wh",
-        };
-
-        private static readonly HashSet<string> ValueTypeSet = new(ValueTypes, StringComparer.Ordinal);
+        // authentic oracles place across inputs/outputs/settings/internalsettings. The single SDK-authoritative
+        // source is VariableTypeRegistry (ADR-002/D07): the engine admits value insertion by exactly this set and
+        // the UI variable palette projects labels over the same registry, so the two can never drift apart.
+        private static readonly HashSet<string> ValueTypeSet = new(VariableTypeRegistry.ValueTypeTags, StringComparer.Ordinal);
 
         // The four value/pin containers share their tag with product-level containers of the same name (e.g. a
         // product's own `settings` holds dataline_input config, not function-block variables). The §6.3.1 matrix
@@ -120,7 +114,7 @@ namespace Ihc.Vis.Schema
 
         private static void AddValueOptions(List<InsertOption> options)
         {
-            foreach (string tag in ValueTypes)
+            foreach (string tag in VariableTypeRegistry.ValueTypeTags)
             {
                 options.Add(new InsertOption(tag, CatVariable));
             }

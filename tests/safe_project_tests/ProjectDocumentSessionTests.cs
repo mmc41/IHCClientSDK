@@ -210,6 +210,37 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // M8/D05: the Preview mirror of the above. A bare `catch { return null; }` used to conflate an unexpected
+        // engine FAULT with a legitimate refuse / no-change (all null); the typed PreviewOutcome distinguishes them.
+        [Test]
+        public async Task Preview_DistinguishesEngineFault_FromRefuseAndNoChange()
+        {
+            (ProjectDocumentSession session, _, _) = await OpenWithLocality();
+            int before = session.Version;
+
+            PreviewOutcome change = session.Preview(new AddLocality("Preview Loc"));
+            PreviewOutcome noChange = session.Preview(new NoOpCommand());
+            PreviewOutcome refused = session.Preview(new AlwaysRefuse("nope"));
+            PreviewOutcome deepRefused = session.Preview(new ThrowingCommand(AsRefusal: true));
+            PreviewOutcome faulted = session.Preview(new ThrowingCommand(AsRefusal: false));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(change.Status, Is.EqualTo(PreviewStatus.WouldChange));
+                Assert.That(change.Changes, Is.Not.Null, "a real change previews its delta");
+                Assert.That(noChange.Status, Is.EqualTo(PreviewStatus.NoChange), "a no-op previews NoChange, not a fault");
+                Assert.That(refused.Status, Is.EqualTo(PreviewStatus.Refused));
+                Assert.That(refused.Reason, Is.EqualTo("nope"), "the refusal reason is preserved");
+                Assert.That(deepRefused.Status, Is.EqualTo(PreviewStatus.Refused), "a deep-guard EditRefusedException is a refuse, not a fault");
+                // the crux (D05/M8): an unexpected engine fault is its OWN status, not the swallowed null of a refuse/no-change
+                Assert.That(faulted.Status, Is.EqualTo(PreviewStatus.Faulted), "an unexpected engine exception is a fault");
+                Assert.That(faulted.Reason, Is.EqualTo("engine boom"), "the fault message is surfaced, not swallowed");
+                Assert.That(faulted.Status, Is.Not.EqualTo(refused.Status).And.Not.EqualTo(noChange.Status),
+                    "a fault is distinct from a refuse and a no-change (the bare-catch bug M8 fixed)");
+                Assert.That(session.Version, Is.EqualTo(before), "preview commits nothing");
+            });
+        }
+
         [Test]
         public async Task Apply_Generic_SurfacesTheProducedValue()
         {

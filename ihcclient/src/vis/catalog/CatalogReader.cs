@@ -162,7 +162,7 @@ namespace Ihc.Vis.Catalog
         // reader decodes with is exactly the one the writer re-encodes with, so an import→re-save is byte-faithful.
         internal static Encoding SniffEncoding(byte[] bytes)
         {
-            if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+            if (CatalogTextEncodingExtensions.HasUtf8Bom(bytes))
             {
                 return Encoding.UTF8;   // redundant with the StreamReader's own BOM detection, but explicit
             }

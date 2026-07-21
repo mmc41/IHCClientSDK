@@ -190,7 +190,7 @@ public sealed class AvaloniaDialogService : IDialogService
         return await ProjectInfoWindow.ShowAsync(Owner, current);
     }
 
-    public async Task ShowDataTablesAsync(ihc_openvisual.ViewModels.DataTablesViewModel viewModel)
+    public async Task ShowDataTablesAsync(IDataTablesDialogViewModel viewModel)
     {
         if (Owner is null)
             return;

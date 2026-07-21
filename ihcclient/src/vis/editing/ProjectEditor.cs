@@ -14,6 +14,8 @@ using Ihc.Vis.Projects;
 using Ihc.Vis.Schema;
 using Ihc.Vis.Validation;
 using TypeCode = Ihc.Vis.Schema.TypeCode;
+using static Ihc.Vis.Editing.ProjectTreeOps;   // T015: the pure immutable-tree primitives, imported so call sites are unchanged
+using static Ihc.Vis.Editing.DeleteCascade;    // T016: the delete/copy reference-integrity cluster (schema-bearing calls pass SchemaView)
 namespace Ihc.Vis.Editing
 {
     /// <summary>
@@ -501,6 +503,10 @@ namespace Ihc.Vis.Editing
             {
                 return this;                             // absent id → nothing to delete
             }
+            if (DeletionRefusalReason(root, id) is { } refusal)
+            {
+                throw new InvalidOperationException(refusal);   // catalog pin / locked-block node (review3 H1)
+            }
             var deletedIds = new HashSet<ElementId>();
             CollectIds(subtree, deletedIds);
             var partnerIds = new List<ElementId>();
@@ -520,9 +526,9 @@ namespace Ihc.Vis.Editing
             }
             if (policy == DeleteReferencePolicy.CascadeReferences)
             {
-                candidate = CascadeReferencingRows(candidate, deletedIds);
+                candidate = CascadeReferencingRows(candidate, deletedIds, SchemaView);
             }
-            List<string> dangling = FindDanglingReferences(candidate, deletedIds);
+            List<string> dangling = FindDanglingReferences(candidate, deletedIds, SchemaView);
             if (dangling.Count > 0)
             {
                 throw new InvalidOperationException(
@@ -533,79 +539,65 @@ namespace Ihc.Vis.Editing
             return this;
         }
 
-        // The vendor US-009 reference cascade (ENG2-A5, §18 M-B = row-only, any-link-slot): every
-        // action/condition/event row whose link1 or link2 points into the deleted set is removed WHOLE — its
-        // embedded operand children go with it — while parent groups stay (emptied containers survive). Fixpoint
-        // because a removed row's own ids join the set and may be referenced by further rows; anything the capture
-        // does not pin (scenes bindings, enum typedefs, case criteria) is left for the strict guard to refuse.
-        private ProjectElement CascadeReferencingRows(ProjectElement tree, HashSet<ElementId> deletedIds)
+        /// <summary>
+        /// The SDK-authoritative rule (review3 H1 / ADR-002, D09) for whether <paramref name="id"/> may be deleted as
+        /// the DIRECT target: a product's catalog-declared pin (a <c>resource_</c>/<c>dataline_</c>/<c>airlink_</c>
+        /// child of a product device root) and any node inside a LOCKED function block are owned by the
+        /// catalog/library, not the installer, so deleting them on their own is refused — the returned reason names
+        /// why, or <c>null</c> when the delete is allowed. Only the direct target is inspected, so a subtree delete
+        /// that removes such a node with its product or block (or after the block is unlocked) still works. Shared by
+        /// the engine (<see cref="DeleteById(ElementId, DeleteReferencePolicy)"/>), the <c>DeleteNode</c> command's
+        /// legality check and <c>PreviewDelete</c> so one owner decides deletability across every surface.
+        /// </summary>
+        internal static string? DeletionRefusalReason(ProjectElement root, ElementId id)
         {
-            bool removedAny = true;
-            while (removedAny)
+            var chain = new List<ProjectElement>();
+            string? reason = null;
+            if (BuildPath(root, id, chain))
             {
-                var rows = new List<ProjectElement>();
-                void Walk(ProjectElement element)
+                ProjectElement target = chain[^1];
+                ProjectElement? parent = chain.Count >= 2 ? chain[^2] : null;
+                // Link halves / scene members are wiring, removed via the link operations (US-057) — legitimate even
+                // on a locked block's pins — so the catalog/lock ownership rule never applies to them.
+                if (IsWiringNode(target.Tag))
                 {
-                    if (element.Tag is "action" or "condition" or "event" && element.Id is not null
-                        && RowReferencesDeleted(element, deletedIds))
-                    {
-                        rows.Add(element);    // the whole row goes; no need to look inside it
-                    }
-                    else
-                    {
-                        foreach (ProjectElement child in element.ChildrenOrEmpty())
-                        {
-                            Walk(child);
-                        }
-                    }
+                    reason = null;
                 }
-                Walk(tree);
-                foreach (ProjectElement row in rows)   // rows are disjoint — Walk never descends into a matched row
+                else if (parent is not null && ProductClassifier.IsProduct(parent.Tag) && IsCatalogPinTag(target.Tag))
                 {
-                    CollectIds(row, deletedIds);
-                    tree = RemoveById(tree, row.Id!.Value);
+                    reason = $"\"{target.GetAttribute("name") ?? target.Tag}\" is a catalog-declared pin of its "
+                           + "product and cannot be deleted on its own — delete the product to remove it.";
                 }
-                removedAny = rows.Count > 0;
-            }
-            return tree;
-        }
-
-        // A row hits when any of its schema-declared IDREFs (today link1/link2 on all three row tags) points into
-        // the deleted set — schema-driven like FindDanglingReferences, so a future row IDREF slot cannot be missed
-        // here while the strict guard still sees it.
-        private bool RowReferencesDeleted(ProjectElement row, HashSet<ElementId> deletedIds) =>
-            SchemaView.TryGet(row.Tag) is { } schema && !row.Attrs.IsDefaultOrEmpty
-            && row.Attrs.Any(a => IsDeletedIdRef(schema, a.Name, a.Value, deletedIds));
-
-        // The one IDREF-into-the-deleted-set test, shared by the cascade (RowReferencesDeleted) and the strict guard
-        // (FindDanglingReferences) so the two can never diverge on which references count as hits.
-        private static bool IsDeletedIdRef(ElementSchema schema, string name, string value, HashSet<ElementId> deletedIds) =>
-            schema.IsIdRef(name) && ElementId.TryParse(value, out ElementId target) && deletedIds.Contains(target);
-
-        private List<string> FindDanglingReferences(ProjectElement tree, HashSet<ElementId> deletedIds)
-        {
-            var hits = new List<string>();
-            void Walk(ProjectElement element)
-            {
-                ElementSchema? schema = SchemaView.TryGet(element.Tag);
-                if (schema is not null)
+                else if (chain.Take(chain.Count - 1).Any(IsLockedBlock))
                 {
-                    foreach ((string name, string value) in element.AttrsOrEmpty())
-                    {
-                        if (IsDeletedIdRef(schema, name, value, deletedIds))
-                        {
-                            hits.Add($"<{element.Tag}> {(element.Id is { } eid ? eid.ToToken() : "?")} {name}='{value}'");
-                        }
-                    }
-                }
-                foreach (ProjectElement child in element.ChildrenOrEmpty())
-                {
-                    Walk(child);
+                    reason = "This node is inside a locked function block and cannot be deleted — unlock the block first.";
                 }
             }
-            Walk(tree);
-            return hits;
+            return reason;
         }
+
+        // Wiring: link halves and scene members are attached/detached by the link operations (US-057), never owned by
+        // the catalog/library the way a pin or a locked program node is — so removing one is legitimate even inside a
+        // locked block's pin. Exempting them keeps RemoveLink/Unlink and the GUI's link-row delete working. The set is
+        // ReciprocalTags.All — the single source of truth the delete cascade and the link/scene bijection checks also
+        // read — so a new scene-capable family is exempted here automatically, without this literal to keep in sync.
+        private static bool IsWiringNode(string tag) => ReciprocalTags.All.Contains(tag);
+
+        // A catalog pin family: a product's resource_/dataline_/airlink_ child exists because the product's catalog
+        // type declares it (review3 H1). Function-block variables share the resource_ prefix but hang off a variable
+        // section, not a product, so DeletionRefusalReason's parent-is-a-product test distinguishes the two.
+        private static bool IsCatalogPinTag(string tag) =>
+            tag.StartsWith("resource_", StringComparison.Ordinal)
+            || tag.StartsWith("dataline_", StringComparison.Ordinal)
+            || tag.StartsWith("airlink_", StringComparison.Ordinal);
+
+        // A locked (library) function block: locking is the explicit locked="yes" flag (Unlock clears it to the "no"
+        // default the canonicalizer omits), so the raw attribute alone identifies it without a project/DTD view.
+        private static bool IsLockedBlock(ProjectElement element) =>
+            element.Tag == "functionblock" && element.GetAttribute("locked") == "yes";
+
+        // CascadeReferencingRows / RowReferencesDeleted / IsDeletedIdRef / FindDanglingReferences — the reference
+        // cascade + strict dangling guard — moved to DeleteCascade (T016); DeleteById passes SchemaView to them.
 
         /// <summary>
         /// Wires a reciprocal follow-link between two live resources, writing both halves in a single call.
@@ -662,23 +654,13 @@ namespace Ihc.Vis.Editing
         /// Both ids must resolve to existing elements, and the pair must satisfy <see cref="CanLink"/> — an illegal
         /// shape throws before anything is mutated. Returns <c>this</c> for optional chaining.
         /// </summary>
-        public ProjectEditor Link(ElementId fromId, ElementId toId)
-        {
-            ProjectElement from = Require(fromId);
-            ProjectElement to = Require(toId);
-            return Link(new ResourceRef(from.GetAttribute("name") ?? string.Empty, fromId),
-                        new ResourceRef(to.GetAttribute("name") ?? string.Empty, toId));
-        }
+        public ProjectEditor Link(ElementId fromId, ElementId toId) =>
+            Link(Resource(fromId), Resource(toId));
 
         /// <summary>Id-addressed <see cref="Unlink(ResourceRef,ResourceRef)"/> — removes the reciprocal follow-link
         /// pair between the two pins (US-057). Returns <c>this</c> for chaining.</summary>
-        public ProjectEditor Unlink(ElementId fromId, ElementId toId)
-        {
-            ProjectElement from = Require(fromId);
-            ProjectElement to = Require(toId);
-            return Unlink(new ResourceRef(from.GetAttribute("name") ?? string.Empty, fromId),
-                          new ResourceRef(to.GetAttribute("name") ?? string.Empty, toId));
-        }
+        public ProjectEditor Unlink(ElementId fromId, ElementId toId) =>
+            Unlink(Resource(fromId), Resource(toId));
 
         /// <summary>
         /// Removes the reciprocal follow-link between two live resources — the inverse of <see cref="Link(ResourceRef,ResourceRef)"/> with
@@ -780,9 +762,9 @@ namespace Ihc.Vis.Editing
         /// from a selected FB scene output pin and a product's scenes container (US-024).</summary>
         public ProjectEditor LinkScene(ElementId sceneOutputId, ElementId scenesId, SceneValue value)
         {
-            ProjectElement pin = Require(sceneOutputId);
+            ResourceRef sceneOutput = Resource(sceneOutputId);
             ProjectElement scenes = Require(scenesId);
-            return LinkScene(new ResourceRef(pin.GetAttribute("name") ?? string.Empty, sceneOutputId),
+            return LinkScene(sceneOutput,
                              new ScenesRef(scenes.GetAttribute("name") ?? string.Empty, scenesId), value);
         }
 
@@ -855,9 +837,9 @@ namespace Ihc.Vis.Editing
         /// between a scene output pin and a scenes container (US-057).</summary>
         public ProjectEditor UnlinkScene(ElementId sceneOutputId, ElementId scenesId)
         {
-            ProjectElement pin = Require(sceneOutputId);
+            ResourceRef sceneOutput = Resource(sceneOutputId);
             ProjectElement scenes = Require(scenesId);
-            return UnlinkScene(new ResourceRef(pin.GetAttribute("name") ?? string.Empty, sceneOutputId),
+            return UnlinkScene(sceneOutput,
                                new ScenesRef(scenes.GetAttribute("name") ?? string.Empty, scenesId));
         }
 
@@ -1033,26 +1015,7 @@ namespace Ihc.Vis.Editing
                 return parent with { Children = children.Insert(at, child) };
             });
 
-        /// <summary>
-        /// Returns a copy of <paramref name="source"/> with every reciprocal half (follow-link half or scene row)
-        /// whose partner lies outside the subtree removed — applied to the source body <b>before</b> the clone
-        /// allocates ids, so a dropped half consumes no id (matching the vendor paste for follow-links; the scene
-        /// extension is SDK-defined under the same rule, no parity capture yet). Internal pairs are left for
-        /// <see cref="InsertTransform"/> to deep-copy and remap.
-        /// </summary>
-        private static ProjectElement DropExternalReciprocalHalves(ProjectElement source)
-        {
-            var insideIds = new HashSet<ElementId>();
-            CollectIds(source, insideIds);
-            var external = new List<ElementId>();
-            CollectExternalReciprocalHalves(source, insideIds, external);
-            ProjectElement pruned = source;
-            foreach (ElementId halfId in external)
-            {
-                pruned = RemoveById(pruned, halfId);
-            }
-            return pruned;
-        }
+        // DropExternalReciprocalHalves (the copy-prune) moved to DeleteCascade (T016).
 
         // ----- placement legality (read; right-click "insert…" menus and gray-out) -----
 
@@ -1145,44 +1108,7 @@ namespace Ihc.Vis.Editing
         private static bool IsPathSignificant(string tag) =>
             tag is "group" or "functionblock" || PlacementRules.IsDeviceRoot(tag);
 
-        private static ProjectElement? FindParentOf(ProjectElement element, ElementId childId)
-        {
-            if (element.Children.IsDefaultOrEmpty)
-            {
-                return null;
-            }
-            foreach (ProjectElement child in element.Children)
-            {
-                if (child.Id == childId)
-                {
-                    return element;
-                }
-                ProjectElement? found = FindParentOf(child, childId);
-                if (found is not null)
-                {
-                    return found;
-                }
-            }
-            return null;
-        }
-
-        private static bool BuildPath(ProjectElement element, ElementId targetId, List<ProjectElement> chain)
-        {
-            chain.Add(element);
-            if (element.Id == targetId)
-            {
-                return true;
-            }
-            foreach (ProjectElement child in element.ChildrenOrEmpty())
-            {
-                if (BuildPath(child, targetId, chain))
-                {
-                    return true;
-                }
-            }
-            chain.RemoveAt(chain.Count - 1);
-            return false;
-        }
+        // FindParentOf / BuildPath moved to ProjectTreeOps (T015).
 
         /// <summary>
         /// Produces the immutable, canonical project snapshot: every existing id preserved, new ids already
@@ -1365,6 +1291,19 @@ namespace Ihc.Vis.Editing
                 return element.WithAttribute(name, value);
             });
 
+        /// <summary>Sets <paramref name="name"/> to <paramref name="value"/> on the first descendant of (or including)
+        /// <paramref name="parent"/> matching <paramref name="match"/> that resolves to a live handle, if any — the
+        /// "find descendant → resolve → set value" micro-pattern the metadata commands share (T029). A no-op when no
+        /// matching descendant resolves, matching the callers' original guarded form.</summary>
+        internal void SetDescendantAttribute(ProjectElement parent, Func<ProjectElement, bool> match, string name, string value)
+        {
+            if (parent.DescendantsAndSelf().FirstOrDefault(match) is { Id: { } id }
+                && TryResolve(id, out ElementRef? handle))
+            {
+                handle.SetAttribute(name, value);
+            }
+        }
+
         /// <summary>
         /// Resolves a resource handle to its live element, requiring both that the handle carries an id and that the
         /// element still exists in the session — wiring a stale handle into a program/link/scene would persist a
@@ -1424,50 +1363,8 @@ namespace Ihc.Vis.Editing
 
         // ----- tree machinery -----
 
-        // The reciprocal-pair tags (follow-link halves + scene rows, spec ch. 06 §6.4, ch. 08) — sourced from the
-        // schema layer so this editor's delete cascade, the validator's bijection checks and the copy-prune all read
-        // one definition; only elements of these types may be cascaded on a delete.
-        private static readonly IReadOnlySet<string> ReciprocalHalfTags = ReciprocalTags.All;
-
-        private static void CollectLinkPartners(ProjectElement element, List<ElementId> partners)
-        {
-            foreach (ProjectElement e in element.DescendantsAndSelf())
-            {
-                if (ReciprocalHalfTags.Contains(e.Tag)
-                    && ElementId.TryParse(e.GetAttribute("link"), out ElementId partner))
-                {
-                    partners.Add(partner);
-                }
-            }
-        }
-
-        private static void CollectIds(ProjectElement element, HashSet<ElementId> ids)
-        {
-            foreach (ProjectElement e in element.DescendantsAndSelf())
-            {
-                if (e.Id is { } id)
-                {
-                    ids.Add(id);
-                }
-            }
-        }
-
-        private static void CollectExternalReciprocalHalves(ProjectElement element, HashSet<ElementId> insideIds, List<ElementId> external)
-        {
-            foreach (ProjectElement e in element.DescendantsAndSelf())
-            {
-                // A null-token link is an unwired row, not an external one — the validator's scene-bijection rule
-                // deems that a legitimate authored state, so the prune must not make it vanish on copy.
-                if (ReciprocalTags.All.Contains(e.Tag)
-                    && e.Id is { } halfId
-                    && e.GetAttribute("link") is { } linkToken && linkToken != ElementId.NullToken
-                    && ElementId.TryParse(linkToken, out ElementId partner)
-                    && !insideIds.Contains(partner))
-                {
-                    external.Add(halfId);                  // reciprocal partner lies outside the copied subtree
-                }
-            }
-        }
+        // ReciprocalHalfTags / CollectLinkPartners / CollectExternalReciprocalHalves — the reciprocal-half
+        // collection primitives — moved to DeleteCascade (T016); CollectIds moved to ProjectTreeOps (T015).
 
         private ElementId? FindGroupByName(string name)
         {
@@ -1516,98 +1413,8 @@ namespace Ihc.Vis.Editing
             root = updated;
         }
 
-        private static ProjectElement? FindById(ProjectElement element, ElementId id) =>
-            element.FindDescendantOrSelf(e => e.Id == id);
-
-        private static ProjectElement ReplaceById(ProjectElement element, ElementId id,
-            Func<ProjectElement, ProjectElement> map, out bool found)
-        {
-            if (element.Id == id)
-            {
-                found = true;
-                return map(element);
-            }
-            if (element.Children.IsDefaultOrEmpty)
-            {
-                found = false;
-                return element;
-            }
-            bool changed = false;
-            found = false;
-            var builder = ImmutableArray.CreateBuilder<ProjectElement>(element.Children.Length);
-            foreach (ProjectElement child in element.Children)
-            {
-                if (found)
-                {
-                    builder.Add(child);   // ids are unique — once the target is replaced, the remaining siblings copy verbatim
-                    continue;
-                }
-                ProjectElement replaced = ReplaceById(child, id, map, out found);
-                changed |= !ReferenceEquals(replaced, child);
-                builder.Add(replaced);
-            }
-            return changed ? element with { Children = builder.ToImmutable() } : element;
-        }
-
-        private static ProjectElement RemoveById(ProjectElement element, ElementId id)
-        {
-            if (element.Children.IsDefaultOrEmpty)
-            {
-                return element;
-            }
-            var builder = ImmutableArray.CreateBuilder<ProjectElement>();
-            bool changed = false;
-            foreach (ProjectElement child in element.Children)
-            {
-                if (child.Id == id)
-                {
-                    changed = true;
-                    continue;
-                }
-                ProjectElement kept = RemoveById(child, id);
-                changed |= !ReferenceEquals(kept, child);
-                builder.Add(kept);
-            }
-            return changed ? element with { Children = builder.ToImmutable() } : element;
-        }
-
-        private static ProjectElement ReplaceChildByTag(ProjectElement parent, string tag, ProjectElement replacement)
-        {
-            if (parent.Children.IsDefaultOrEmpty)
-            {
-                return parent;
-            }
-            ImmutableArray<ProjectElement> children = parent.Children;
-            for (int i = 0; i < children.Length; i++)
-            {
-                if (children[i].Tag == tag)
-                {
-                    return parent with { Children = children.SetItem(i, replacement) };
-                }
-            }
-            return parent;
-        }
-
-        private static ProjectElement ApplyAttributes(ProjectElement element, IReadOnlyList<(string Name, string Value)> attrs)
-        {
-            ProjectElement result = element;
-            foreach ((string name, string value) in attrs)
-            {
-                result = result.WithAttribute(name, value);
-            }
-            return result;
-        }
-
-        private static ProjectElement SimpleElement(string tag, ElementId id, params (string Name, string Value)[] attrs)
-        {
-            var bag = ImmutableArray.CreateBuilder<(string, string)>(attrs.Length + 1);
-            bag.Add(("id", id.ToToken()));
-            bag.AddRange(attrs);
-            return new ProjectElement(tag, id, bag.ToImmutable(), ImmutableArray<ProjectElement>.Empty);
-        }
-
-        private static ImmutableArray<ProjectElement> AppendTo(ImmutableArray<ProjectElement> children, ProjectElement child) =>
-            (children.IsDefaultOrEmpty ? ImmutableArray<ProjectElement>.Empty : children).Add(child);
+        // FindById / ReplaceById / RemoveById / ReplaceChildByTag / ApplyAttributes / SimpleElement / AppendTo —
+        // the pure immutable-tree primitives — moved to ProjectTreeOps (T015), imported via `using static`.
 
     }
 

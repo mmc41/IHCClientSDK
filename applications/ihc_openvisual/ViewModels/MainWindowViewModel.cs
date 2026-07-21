@@ -47,6 +47,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     // this view-model's single outcome→status/dialog rule (ApplyAsync).
     private readonly PropertiesDialogCoordinator _properties;
     private readonly ProgramAuthoringCoordinator _programAuthoring;
+    // T017: the pin/scene linking engine (US-022/024/025); the VM keeps thin entry points delegating here.
+    private readonly LinkingCoordinator _linking;
 
     /// <summary>The tree drag-and-drop dispatcher (W3-9): drop legality/route, the drop mutation, and the drop-target
     /// highlight. The code-behind's DragOver/Drop handlers and the headless drag tests drive this.</summary>
@@ -85,6 +87,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [NotifyPropertyChangedFor(nameof(CanAddCondition))]
     [NotifyPropertyChangedFor(nameof(CanDeleteSelected))]
     [NotifyPropertyChangedFor(nameof(CanMoveSelected))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteCommand))]   // the Delete-key route gates on DeleteCommand.CanExecute (T003)
     private TreeNodeViewModel? _selectedNode;
 
     /// <summary>Whether the block currently being programmed is a locked (library) block. A locked block is
@@ -103,12 +106,15 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     public bool CanAddCaseValue => SelectedNode?.IsCaseNode == true && !IsProgrammingBlockLocked;
     public bool CanAddCondition => SelectedNode?.IsConditionsContainer == true && !IsProgrammingBlockLocked;
 
-    /// <summary>Context-menu gates for the mutation commands <i>Delete</i> and <i>Move up/down</i>. Each reads the
-    /// node's own capability AND that the programming block is not locked: a locked (library) block is fully
-    /// view-only — the vendor offers <i>Egenskaber</i> on every node but NEVER Delete or Move (F-087, measured
-    /// 2026-07-18). A-27 withdrew only the Add/Insert commands; these complete the view-only affordance. Properties
-    /// stays on <see cref="TreeNodeViewModel.CanEditNonLink"/> — only the two mutations are withdrawn on a locked block.</summary>
-    public bool CanDeleteSelected => SelectedNode?.CanDelete == true && !IsProgrammingBlockLocked;
+    /// <summary>Context-menu gate for <i>Delete</i>: a thin projection of the SDK deletion verdict
+    /// (<see cref="CanDeleteNode"/> → the engine's <c>CanDelete</c>, D09/T003), so the same rule that refuses a
+    /// catalog pin or a node inside a locked (library) block drives the context menu, Edit ▸ Delete AND the Delete
+    /// key — no route can bypass the guard. This subsumes the former locked-block special-case: a node inside a
+    /// locked block is not deletable per the SDK, so the vendor's view-only affordance (F-087) still holds.</summary>
+    public bool CanDeleteSelected => CanDeleteNode(SelectedNode);
+
+    /// <summary>Context-menu gate for <i>Move up/down</i>: still the node's own capability AND an unlocked
+    /// programming block — Move has no SDK verdict of its own, so it keeps the measured locked-block rule (F-087).</summary>
     public bool CanMoveSelected => SelectedNode?.CanEditNonLink == true && !IsProgrammingBlockLocked;
 
     /// <summary>Context-menu gate: <i>Paste</i> is offered on a locality only when the clipboard holds a cut/copied
@@ -171,20 +177,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     public ObservableCollection<TreeNodeViewModel> FunctionNodes { get; } = new();
     public ObservableCollection<RecentProjectViewModel> RecentProjects { get; } = new();
 
-    /// <summary>The wired-products insertion submenu (US-010), built once from the catalog; leaves insert under the
-    /// selected locality.</summary>
-    public ObservableCollection<ProductMenuItemViewModel> WiredProductsMenu { get; } = new();
-
-    /// <summary>The special-products insertion submenu (US-013): Controller Link, S0 Device, signal-strength tester,
-    /// and the Modified-wireless/Windows/Discontinued subcategories (A-11).</summary>
-    public ObservableCollection<ProductMenuItemViewModel> SpecialProductsMenu { get; } = new();
-
-    /// <summary>The Bus-products insertion submenu (A-11): the SMS Modem and the IHC LED Dimmer, both subject to the
-    /// one-modem rule where applicable.</summary>
-    public ObservableCollection<ProductMenuItemViewModel> BusProductsMenu { get; } = new();
-
-    /// <summary>The IHC Wireless products insertion submenu (US-014), built from the catalog.</summary>
-    public ObservableCollection<ProductMenuItemViewModel> WirelessProductsMenu { get; } = new();
+    /// <summary>The product insertion menu (US-010, H2/D08): a single tree of top-level category folders DERIVED from
+    /// the catalog products' own <c>CategoryPath</c> (Wired / IHC Wireless / Bus / Special, plus an
+    /// "Imported/Uncategorized" bucket for empty-category imported <c>.def</c> products), each nesting its
+    /// subcategories and product leaves that insert under the selected locality. The top categories are catalog data,
+    /// not a hardcoded set, so an imported product can never be dropped from the menu.</summary>
+    public ObservableCollection<ProductMenuItemViewModel> ProductsMenu { get; } = new();
 
     /// <summary>The library function-block insertion submenu (US-018), built from the catalog's FB folders.</summary>
     public ObservableCollection<ProductMenuItemViewModel> FunctionBlocksMenu { get; } = new();
@@ -193,25 +191,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// selection changes so it only offers the types that section accepts.</summary>
     public ObservableCollection<ProductMenuItemViewModel> VariablePaletteMenu { get; } = new();
 
-    // The variable palette: label, resource tag, and which section kind accepts it ('I'nput / 'O'utput / 'V'alue).
-    private static readonly (string Label, string Tag, char Kind)[] VariableTypes =
-    {
-        ("Input", "resource_input", 'I'),
-        ("Output", "resource_output", 'O'),
-        ("Flag", "resource_flag", 'V'),
-        ("Counter", "resource_counter", 'V'),
-        ("Integer", "resource_integer", 'V'),
-        ("Decimal", "resource_floating_point", 'V'),
-        ("Timer", "resource_timer", 'V'),
-        ("Timer value", "resource_timertime", 'V'),
-        ("Weekday", "resource_weekday", 'V'),
-        ("Date", "resource_date", 'V'),
-        ("Time of day", "resource_time", 'V'),
-        ("Temperature", "resource_temperature", 'V'),
-        ("Light", "resource_light", 'V'),
-        ("Holiday", "resource_holiday", 'V'),
-        ("Enum", "resource_enum", 'V'),
-    };
+    // The variable palette (label, resource tag, section kind) is projected over the SDK variable-type registry by
+    // VariablePalette (US-027, ADR-002/D07) — so the types the engine accepts and the types the UI offers cannot
+    // drift, and a dropped type is a deliberate, tested suppression rather than a silent omission.
 
     partial void OnSelectedNodeChanged(TreeNodeViewModel? value)
     {
@@ -221,7 +203,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             return;
         char kind = sectionTag switch { "inputs" => 'I', "outputs" => 'O', _ => 'V' };
         string sectionLabel = value.DisplayName;
-        foreach ((string label, string tag, char _) in VariableTypes.Where(t => t.Kind == kind))
+        foreach ((string label, string tag, char _) in VariablePalette.Entries.Where(t => t.Kind == kind))
         {
             VariablePaletteMenu.Add(new ProductMenuItemViewModel(label, tag,
                 new AsyncRelayCommand(() => InsertVariableAsync(sectionId, tag, label, sectionLabel))));
@@ -325,7 +307,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         string name = node?.DisplayName ?? Constants.AppName;
         string help = node?.ElementId is { } id && _session.Current?.FindById(id) is { } element
-            && View(element).Note is { Length: > 0 } note
+            && _session.Current!.View(element).Note is { Length: > 0 } note
             ? note
             : "No specific help is available for this element.";
         await _dialogs.ShowMessageAsync($"Help — {name}", help);
@@ -465,69 +447,37 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         StatusText = $"{(installation ? "Installation" : "End-user")} report opened in your browser.";
     });
 
-    /// <summary>Adds a Powerup system event to the selected Events group (US-033) — no operand needed.</summary>
+    // T018: AddPowerEvent / ToggleSaveValue / AddSubProgram / AddLogicGroup / SetConditionsOr / SetConditionsAnd /
+    // NewCaseValue (US-029/031/033) moved into ProgramAuthoringCoordinator; the VM keeps thin [RelayCommand] entry
+    // points delegating their bodies there (the XAML bindings and the *Command tests are unchanged).
+
+    /// <summary>Adds a Powerup system event to the selected Events group (US-033).</summary>
     [RelayCommand]
-    private Task AddPowerEvent(TreeNodeViewModel? node) => RunAsync(nameof(AddPowerEvent), async () =>
-    {
-        if (node is { IsEventsContainer: true, ElementId: { } eventsId } && _session.Current is { } project
-            && _session.Commands.AddPowerEvent(project, eventsId) is { } command)
-            await ApplyAsync(command, "Powerup event added to the program.");
-    });
+    private Task AddPowerEvent(TreeNodeViewModel? node) => _programAuthoring.AddPowerEventAsync(node);
 
     /// <summary>Toggles an output's <i>Save current value</i> power-loss persistence (US-033).</summary>
     [RelayCommand]
-    private Task ToggleSaveValue(TreeNodeViewModel? node) => RunAsync(nameof(ToggleSaveValue), async () =>
-    {
-        if (node is { IsOutputPin: true, ElementId: { } outputId } && _session.Current is { } project)
-            await ApplyAsync(_session.Commands.SetOutputBackup(project, outputId, !node.IsValueSaved),
-                node.IsValueSaved ? "Output value no longer saved on power loss." : "Output value saved on power loss.");
-    });
+    private Task ToggleSaveValue(TreeNodeViewModel? node) => _programAuthoring.ToggleSaveValueAsync(node);
 
-    /// <summary>Inserts a conditional sub-program (Conditions + true/false command branches) into a Commands
-    /// group (US-029).</summary>
+    /// <summary>Inserts a conditional sub-program into a Commands group (US-029).</summary>
     [RelayCommand]
-    private Task AddSubProgram(TreeNodeViewModel? node) => RunAsync(nameof(AddSubProgram), async () =>
-    {
-        if (node is { IsCommandsContainer: true, ElementId: { } id } && _session.Current is { } project)
-            await ApplyAsync(_session.Commands.AddSubProgram(project, id), "Sub-program inserted.");
-    });
+    private Task AddSubProgram(TreeNodeViewModel? node) => _programAuthoring.AddSubProgramAsync(node);
 
-    /// <summary>Inserts a nested logic group inside a Conditions group for a compound expression (US-029).</summary>
+    /// <summary>Inserts a nested logic group inside a Conditions group (US-029).</summary>
     [RelayCommand]
-    private Task AddLogicGroup(TreeNodeViewModel? node) => RunAsync(nameof(AddLogicGroup), async () =>
-    {
-        if (node is { IsConditionsContainer: true, ElementId: { } id } && _session.Current is { } project)
-            await ApplyAsync(_session.Commands.AddLogicGroup(project, id), "Logic group inserted.");
-    });
+    private Task AddLogicGroup(TreeNodeViewModel? node) => _programAuthoring.AddLogicGroupAsync(node);
 
     /// <summary>Combines a Conditions group with OR (<c>&gt;=1</c>) (US-029).</summary>
     [RelayCommand]
-    private Task SetConditionsOr(TreeNodeViewModel? node) => ToggleConditionsAsync(node, or: true);
+    private Task SetConditionsOr(TreeNodeViewModel? node) => _programAuthoring.SetConditionsOrAsync(node);
 
     /// <summary>Combines a Conditions group with AND (<c>&amp;</c>, the default) (US-029).</summary>
     [RelayCommand]
-    private Task SetConditionsAnd(TreeNodeViewModel? node) => ToggleConditionsAsync(node, or: false);
+    private Task SetConditionsAnd(TreeNodeViewModel? node) => _programAuthoring.SetConditionsAndAsync(node);
 
-    private Task ToggleConditionsAsync(TreeNodeViewModel? node, bool or) => RunAsync(nameof(ToggleConditionsAsync), async () =>
-    {
-        if (node is { IsConditionsContainer: true, ElementId: { } id } && _session.Current is { } project)
-            await ApplyAsync(_session.Commands.SetConditionsLogic(project, id, or),
-                or ? "Conditions combined with OR (>=1)." : "Conditions combined with AND (&).");
-    });
-
-    /// <summary>Adds a case value branch to the selected Case node (US-031): prompts for the criterion value, then
-    /// inserts a command group tagged with it (filled by the normal Add-command gesture).</summary>
+    /// <summary>Adds a case value branch to the selected Case node (US-031).</summary>
     [RelayCommand]
-    private Task NewCaseValue(TreeNodeViewModel? node) => RunAsync(nameof(NewCaseValue), async () =>
-    {
-        if (node is not { IsCaseNode: true, ElementId: { } caseId } || _session.Current is not { } project)
-            return;
-        PropertiesResult? result = await _dialogs.EditPropertiesAsync("New case value", string.Empty, string.Empty);
-        if (result is null || string.IsNullOrWhiteSpace(result.Name))
-            return;
-        if (_session.Commands.AddCaseValue(project, caseId, result.Name.Trim()) is { } command)
-            await ApplyAsync(command, $"Case value '{result.Name.Trim()}' added.");
-    });
+    private Task NewCaseValue(TreeNodeViewModel? node) => _programAuthoring.NewCaseValueAsync(node);
 
     /// <summary>Raised by the <i>Exit</i> command to ask the window to close (the close then runs the save prompt).</summary>
     public event EventHandler? CloseRequested;
@@ -550,10 +500,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _properties = new PropertiesDialogCoordinator(
             _session, _dialogs, (command, status) => ApplyAsync(command, status), status => StatusText = status);
         _programAuthoring = new ProgramAuthoringCoordinator(
-            _session, RunAsync, (command, status) => ApplyAsync(command, status), SelectNode,
-            status => StatusText = status, () => SelectedNode, () => _programmingBlockId, NameOr);
+            _session, _dialogs, RunAsync, (command, status) => ApplyAsync(command, status), SelectNode,
+            status => StatusText = status, () => SelectedNode, () => _programmingBlockId);
         _treePanes = new TreePaneCoordinator(
-            InstallationNodes, FunctionNodes, () => _session.Current, () => _session.LastChange, NameOr,
+            InstallationNodes, FunctionNodes, () => _session.Current, () => _session.LastChange,
             (installHeader, functionsHeader) => { InstallationPaneHeader = installHeader; FunctionsPaneHeader = functionsHeader; });
         DragDrop = new TreeDragDropController(
             _session,
@@ -563,6 +513,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             _programAuthoring.ArmAndSelect,
             status => StatusText = status,
             RunAsync);
+        _linking = new LinkingCoordinator(
+            _session, _dialogs, RunAsync, (command, status) => ApplyAsync(command, status), status => StatusText = status,
+            () => PendingLinkSource, node => PendingLinkSource = node, RevealAndSelectOpposite);
 
         _onSessionStateChanged = (_, _) => Refresh();
         _onSessionCatalogChanged = (_, _) => RebuildCatalogMenus();
@@ -588,33 +541,20 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     // the newly available components appear here).
     private void RebuildCatalogMenus()
     {
-        WiredProductsMenu.Clear();
-        WirelessProductsMenu.Clear();
-        SpecialProductsMenu.Clear();
-        BusProductsMenu.Clear();
+        ProductsMenu.Clear();
         FunctionBlocksMenu.Clear();
         BuildProductMenu();
     }
 
     private void BuildProductMenu()
     {
-        var products = _session.GetAvailableProducts();
         AsyncRelayCommand Insert(Ihc.Vis.Products.ProductDefinition def) =>
             new(() => InsertProductAsync(def.ProductIdentifier, def.DisplayName));
 
-        foreach (ProductMenuItemViewModel item in CatalogMenu.BuildWiredProducts(products, Insert))
-            WiredProductsMenu.Add(item);
-
-        foreach (ProductMenuItemViewModel item in CatalogMenu.Build(products, "LK IHC Wireless produkter", Insert))
-            WirelessProductsMenu.Add(item);
-
-        // Bus and Special are built from their catalog top category (A-11) — the SDK already partitions all 100
-        // products into four (Datalinie/Wireless/Bus/Specielle). The SMS Modem lives under Bus, not Special.
-        foreach (ProductMenuItemViewModel item in CatalogMenu.Build(products, "Bus Produkter", Insert))
-            BusProductsMenu.Add(item);
-
-        foreach (ProductMenuItemViewModel item in CatalogMenu.Build(products, "Specielle produkter", Insert))
-            SpecialProductsMenu.Add(item);
+        // The top categories are derived from the catalog data (H2/D08) — so an imported .def (empty CategoryPath)
+        // lands in the "Imported/Uncategorized" bucket instead of being dropped by a hardcoded four-category filter.
+        foreach (ProductMenuItemViewModel item in CatalogMenu.BuildProductForest(_session.GetAvailableProducts(), Insert))
+            ProductsMenu.Add(item);
 
         foreach (ProductMenuItemViewModel item in CatalogMenu.BuildFunctionBlocks(
                      _session.GetAvailableFunctionBlocks(),
@@ -777,8 +717,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         if (node?.ElementId is not { } id || _session.Current?.FindById(id) is not { } fb || fb.Kind != ElementKind.FunctionBlock)
             return;
-        string currentName = View(fb).Name ?? "block";
-        string currentNote = View(fb).Note ?? string.Empty;
+        string currentName = _session.Current!.View(fb).Name ?? "block";
+        string currentNote = _session.Current!.View(fb).Note ?? string.Empty;
         PropertiesResult? meta = await _dialogs.EditPropertiesAsync("Save function block", currentName, currentNote);
         if (meta is null)
             return;   // cancelled the name/note step
@@ -800,11 +740,20 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         await ApplyAsync(_session.Commands.UnlockFunctionBlock(project, id), $"Unlocked {name}.");
     });
 
+    /// <summary>The single SDK-backed delete gate (review3 H1 / T003, D09): a node is deletable exactly when the
+    /// engine's <see cref="DeleteImpact.Deletable"/> verdict allows it — a catalog pin or a node inside a locked
+    /// function block is refused. All three delete routes project THIS decision: the context menu / Edit ▸ Delete via
+    /// <see cref="CanDeleteSelected"/>, and the Delete key via this command's <c>CanExecute</c> — so none can bypass
+    /// the guard (the former Delete-key path gated on a raw per-node deletable flag, which ignored the lock).</summary>
+    private bool CanDeleteNode(TreeNodeViewModel? node) =>
+        node?.ElementId is { } id && _session.Current is { } project
+        && _session.Commands.CanDelete(project, id);
+
     /// <summary>Deletes the selected node (US-053), dispatching by type: a link row removes its reciprocal pair
     /// (US-057), a locality uses the US-009 cascade, and any other node (product, block, variable, program element)
     /// uses the general confirm-and-cascade delete. Reachable from the right-click item, Edit ▸ Delete, and the
-    /// Delete key (US-044) — all three routes call this command.</summary>
-    [RelayCommand]
+    /// Delete key (US-044) — all three routes call this command, gated by <see cref="CanDeleteNode"/>.</summary>
+    [RelayCommand(CanExecute = nameof(CanDeleteNode))]
     private Task Delete(TreeNodeViewModel? node) => RunAsync(nameof(Delete), async () =>
     {
         if (node?.ElementId is not { } id || _session.Current is not { } project)
@@ -1043,69 +992,32 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         StatusText = "Configuration mode.";
     }
 
-    /// <summary>Links two pins (US-022/US-023): the <paramref name="source"/> pin is linked onto the
-    /// <paramref name="target"/> pin (the target — the pin the link is dropped/completed onto — gets the
-    /// "link from" half). Both must be pins; a reciprocal link is created and confirmed.</summary>
-    public Task LinkPins(TreeNodeViewModel? source, TreeNodeViewModel? target) =>
-        RunAsync(nameof(LinkPins), async () =>
-        {
-            if (source?.ElementId is not { } fromId || target?.ElementId is not { } toId
-                || !source.IsPin || !target.IsPin || _session.Current is not { } project)
-                return;
-            await ApplyAsync(_session.Commands.LinkPins(project, fromId, toId), $"Linked {source.DisplayName} to {target.DisplayName}.");
-        });
+    /// <summary>Links two pins (US-022/US-023) — a thin entry point delegating to <see cref="LinkingCoordinator"/>
+    /// (the drag path and the LinkPins characterization test drive this).</summary>
+    public Task LinkPins(TreeNodeViewModel? source, TreeNodeViewModel? target) => _linking.LinkPinsAsync(source, target);
 
     /// <summary>The pin from which a link is being drawn — armed by <i>Link from here</i>, consumed by
     /// <i>Link to here</i> (US-022). The two-step gesture is the reliable, testable substitute for pin drag-and-drop.</summary>
     [ObservableProperty] private TreeNodeViewModel? _pendingLinkSource;
 
-    /// <summary>Arms a link from the given pin (US-022) — the next <i>Link to here</i> completes it.</summary>
+    /// <summary>Arms a link from the given pin (US-022) — delegates to <see cref="LinkingCoordinator"/>.</summary>
     [RelayCommand]
-    private void StartLink(TreeNodeViewModel? node)
-    {
-        if (node is { IsPin: true })
-        {
-            PendingLinkSource = node;
-            StatusText = $"Linking from {node.DisplayName} — choose 'Link to here' on the other pin.";
-        }
-    }
+    private void StartLink(TreeNodeViewModel? node) => _linking.StartLink(node);
 
-    /// <summary>Completes a link onto the given pin or scenes container (US-022/US-024), pairing it with the armed
-    /// <see cref="PendingLinkSource"/>. A scene output onto a scenes container makes a scenario link (opens the value
-    /// dialog); otherwise a follow-link between two pins.</summary>
+    /// <summary>Completes a link onto the given pin or scenes container (US-022/US-024) — delegates to
+    /// <see cref="LinkingCoordinator"/>.</summary>
     [RelayCommand]
-    private Task LinkToHere(TreeNodeViewModel? node) => RunAsync(nameof(LinkToHere), async () =>
-    {
-        if (node is not { } || (!node.IsPin && !node.IsSceneTarget))
-            return;
-        if (PendingLinkSource is not { } source || ReferenceEquals(source, node))
-        {
-            StatusText = "Choose 'Link from here' on the source pin first.";
-            return;
-        }
-        PendingLinkSource = null;
+    private Task LinkToHere(TreeNodeViewModel? node) => _linking.LinkToHereAsync(node);
 
-        if (node.IsSceneTarget && source.ElementId is { } srcId && node.ElementId is { } scenesId
-            && _session.Current?.FindById(srcId)?.IsSceneResource == true)
-        {
-            await CompleteSceneLinkAsync(srcId, scenesId);
-            return;
-        }
-        await LinkPins(source, node);
-    });
-
-    /// <summary>Navigates from a link row to the pin at the opposite end of the link (US-025, F4) — selecting it in
-    /// whichever pane holds it.</summary>
+    /// <summary>Jumps from a link row to the opposite end (US-025, F4) — delegates the link logic to
+    /// <see cref="LinkingCoordinator"/>, which calls back <see cref="RevealAndSelectOpposite"/> for the tree reveal.</summary>
     [RelayCommand]
-    private void NavigateLinkOpposite(TreeNodeViewModel? node)
+    private void NavigateLinkOpposite(TreeNodeViewModel? node) => _linking.NavigateLinkOpposite(node);
+
+    // Reveals + selects the opposite pin in whichever pane holds it — the tree-navigation view-state the linking
+    // coordinator calls back into after computing the opposite end (A-6/F-012).
+    private void RevealAndSelectOpposite(ElementId oppositeId)
     {
-        if (node is not { IsLinkRow: true } || node.ElementId is not { } linkId || _session.Current is not { } project
-            || project.FindById(linkId) is not { } linkRow
-            || !ElementId.TryParse(View(linkRow).Effective("link"), out ElementId partnerId)
-            || project.FindParent(partnerId) is not { Id: { } oppositeId })
-        {
-            return;
-        }
         if (FindNode(InstallationNodes, oppositeId) is { } installationNode)
         {
             ExpandAncestors(InstallationNodes, oppositeId);   // realize the target so the selection sticks (A-6)
@@ -1140,19 +1052,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         return false;
     }
 
-    private async Task CompleteSceneLinkAsync(ElementId sceneOutputId, ElementId scenesId)
-    {
-        if (_session.Current is not { } project || project.FindById(scenesId) is null)
-            return;
-        // The scene value variant (sliver #11) is the SDK's decision now — used to shape the dialog and stamp the command.
-        bool isDimmer = _session.Commands.IsSceneWirelessDimming(project, scenesId);
-        var input = new SceneValueInput("Scene value", isDimmer, On: true, LevelPercent: isDimmer ? 100 : 0, RampMinutes: 0, RampSeconds: 0);
-
-        SceneValueResult? result = await _dialogs.EditSceneValueAsync(input);
-        if (result is null)
-            return;
-        await ApplyAsync(_session.Commands.LinkScene(project, sceneOutputId, scenesId, result), "Scene link created.");
-    }
+    // CompleteSceneLinkAsync (the scenario-link value flow, US-024) moved to LinkingCoordinator (T017).
 
     // The Properties route (right-click / F2) dispatches by element type: a modem opens the modem dialog (US-013),
     // any other product the documentation dialog (US-011), an I/O pin the addressing dialog (US-012), a locality the
@@ -1212,6 +1112,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         Title = $"{_session.DocumentName} - {Constants.AppName}";
         OnPropertyChanged(nameof(UndoMenuHeader));   // the history may have grown/shrunk — refresh the Edit-menu labels (E14)
         OnPropertyChanged(nameof(RedoMenuHeader));
+        DeleteCommand.NotifyCanExecuteChanged();   // an edit (e.g. Unlock) can flip the selected node's delete verdict (T003)
+        OnPropertyChanged(nameof(CanDeleteSelected));
         if (IsProgrammingMode && _programmingBlockId is { } blockId
             && _session.Current?.FindById(blockId) is { } block && block.Kind == ElementKind.FunctionBlock)
         {
@@ -1272,15 +1174,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
         IsInstallationPaneActive = installationActive;
     }
-
-    // fablerefac W1-6: read element attributes through the SDK read surface (project.View) instead of raw
-    // GetAttribute. The projected element always belongs to the open project, so the schema context is _session.Current.
-    private ElementView View(ProjectElement element) => _session.Current!.View(element);
-
-    // The element's effective name, or the fallback when it is empty — preserving the old
-    // `GetAttribute("name") ?? fallback` (a canonicalized project omits an empty name, so it reads back as "").
-    private string NameOr(ProjectElement element, string fallback) =>
-        View(element).Name is { Length: > 0 } name ? name : fallback;
 
     private void RefreshRecent()
     {

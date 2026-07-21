@@ -44,6 +44,11 @@ jobs:
     - name: Test (controller-free unit tests)
       run: dotnet test tests/safe_unit_tests/safe_unit_tests.csproj --no-build
 
+    - name: Test (architecture / dependency rules)
+      # ArchUnitNET reads IL to enforce the SDK's directional layering rules; controller-free and
+      # render-free, so it runs on all three OSes like the unit and project-engine suites.
+      run: dotnet test tests/safe_architecture_tests/safe_architecture_tests.csproj --no-build
+
     - name: Test (project engine byte-fidelity)
       # Controller-free .vis project engine + ProjectAppService byte-fidelity corpus (the
       # hard-constraint gate). Needs no native render/font deps (unlike the Avalonia suites),

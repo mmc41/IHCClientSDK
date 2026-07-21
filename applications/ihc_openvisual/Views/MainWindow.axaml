@@ -55,16 +55,10 @@
         <MenuFlyout x:Key="NodeContextMenu" x:DataType="vm:MainWindowViewModel">
             <MenuItem Header="Insert _locality" Command="{Binding InsertLocalityCommand}"
                       IsVisible="{Binding SelectedNode.CanInsertLocality, FallbackValue=False}"/>
-            <MenuItem Header="Insert _product" IsVisible="{Binding CanInsertProduct, FallbackValue=False}">
-                <MenuItem Header="_Wired products" ItemsSource="{Binding WiredProductsMenu}"
-                          ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
-                <MenuItem Header="IHC _Wireless products" ItemsSource="{Binding WirelessProductsMenu}"
-                          ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
-                <MenuItem Header="_Bus products" ItemsSource="{Binding BusProductsMenu}"
-                          ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
-                <MenuItem Header="_Special products" ItemsSource="{Binding SpecialProductsMenu}"
-                          ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
-            </MenuItem>
+            <!-- Product category folders are data-driven (H2/D08) — see CatalogMenu.BuildProductForest. -->
+            <MenuItem Header="Insert _product" ItemsSource="{Binding ProductsMenu}"
+                      ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
+                      IsVisible="{Binding CanInsertProduct, FallbackValue=False}"/>
             <MenuItem Header="Insert _function block" ItemsSource="{Binding FunctionBlocksMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanInsertFunctionBlock, FallbackValue=False}"/>
@@ -245,16 +239,10 @@
 
             <!-- Insert: Products submenu is E3; the rest are owned by later epics. -->
             <MenuItem Header="_Insert" a:AutomationProperties.AutomationId="MenuInsert">
-                <MenuItem Header="_Products">
-                    <MenuItem Header="_Wired products" ItemsSource="{Binding WiredProductsMenu}"
-                              ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
-                    <MenuItem Header="IHC _Wireless products" ItemsSource="{Binding WirelessProductsMenu}"
-                              ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
-                    <MenuItem Header="_Bus products" ItemsSource="{Binding BusProductsMenu}"
-                              ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
-                    <MenuItem Header="_Special products" ItemsSource="{Binding SpecialProductsMenu}"
-                              ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
-                </MenuItem>
+                <!-- The product category folders are data-driven (H2/D08): Wired / IHC Wireless / Bus / Special plus an
+                     Imported/Uncategorized bucket, derived from the catalog's CategoryPath by CatalogMenu. -->
+                <MenuItem Header="_Products" ItemsSource="{Binding ProductsMenu}"
+                          ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
             </MenuItem>
             <MenuItem Header="_Library" a:AutomationProperties.AutomationId="MenuLibrary">
                 <MenuItem Header="Insert _function block" ItemsSource="{Binding FunctionBlocksMenu}"

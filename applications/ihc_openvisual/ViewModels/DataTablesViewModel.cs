@@ -18,7 +18,7 @@ public sealed record UserTextItem(string Id, string Text);
 /// The vendor deletes a text with no confirmation — per the story R-note this view-model guards Delete with an
 /// app-level confirm.
 /// </summary>
-public partial class DataTablesViewModel : ViewModelBase
+public partial class DataTablesViewModel : ViewModelBase, ihc_openvisual.Services.IDataTablesDialogViewModel
 {
     private readonly ProjectWorkflow _session;
     private readonly IDialogService _dialogs;
@@ -52,8 +52,7 @@ public partial class DataTablesViewModel : ViewModelBase
         PropertiesResult? result = await _dialogs.EditPropertiesAsync("New user-defined text", string.Empty, string.Empty);
         if (result is null || string.IsNullOrWhiteSpace(result.Name) || _session.Current is not { } project)
             return;
-        if ((await _session.ApplyAsync(_session.Commands.AddUserText(project, result.Name.Trim()))).Status == EditStatus.Committed)
-            Reload();
+        await ApplyAndReloadAsync(_session.Commands.AddUserText(project, result.Name.Trim()));
     }
 
     [RelayCommand]
@@ -65,8 +64,7 @@ public partial class DataTablesViewModel : ViewModelBase
         PropertiesResult? result = await _dialogs.EditPropertiesAsync("Edit user-defined text", selected.Text, string.Empty);
         if (result is null || string.IsNullOrWhiteSpace(result.Name))
             return;
-        if ((await _session.ApplyAsync(_session.Commands.UpdateUserText(project, id, result.Name.Trim()))).Status == EditStatus.Committed)
-            Reload();
+        await ApplyAndReloadAsync(_session.Commands.UpdateUserText(project, id, result.Name.Trim()));
     }
 
     [RelayCommand]
@@ -77,7 +75,28 @@ public partial class DataTablesViewModel : ViewModelBase
             return;
         if (!await _dialogs.ConfirmAsync("Delete text", $"Delete the text '{selected.Text}'?"))
             return;
-        if ((await _session.ApplyAsync(_session.Commands.DeleteUserText(project, id))).Status == EditStatus.Committed)
-            Reload();
+        await ApplyAndReloadAsync(_session.Commands.DeleteUserText(project, id));
+    }
+
+    // Applies a user-text command and surfaces its outcome (T021): a committed edit reloads the tables; a refused or
+    // failed edit is reported to the installer. A dialog view-model has no status bar, so the old inline
+    // Status==Committed checks silently swallowed a refusal (e.g. the selected row was deleted from under the dialog);
+    // this mirrors the main view-model's rule of never dropping a non-committed outcome on the floor. NoChange needs
+    // no report -- nothing changed and nothing failed.
+    private async Task ApplyAndReloadAsync(ProjectCommand command)
+    {
+        EditOutcome outcome = await _session.ApplyAsync(command);
+        switch (outcome.Status)
+        {
+            case EditStatus.Committed:
+                Reload();
+                break;
+            case EditStatus.Refused:
+                await _dialogs.ShowMessageAsync("Cannot edit", outcome.Reason ?? "The edit was refused.");
+                break;
+            case EditStatus.Failed:
+                await _dialogs.ShowMessageAsync("Edit failed", outcome.Reason ?? "The edit failed.");
+                break;
+        }
     }
 }

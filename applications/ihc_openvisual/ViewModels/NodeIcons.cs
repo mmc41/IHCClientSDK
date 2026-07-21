@@ -13,6 +13,15 @@ public static class NodeIcons
 {
     public const string Locality = "/Assets/locality.svg";
 
+    /// <summary>The two function-block glyphs: a locked library block vs an editable authored block.</summary>
+    public const string FunctionBlockLibrary = "/Assets/fb-lk.svg";
+    public const string FunctionBlockEditable = "/Assets/fb-editable.svg";
+
+    /// <summary>The function-block glyph, keyed by whether the block is a locked library block (<c>fb-lk</c>) or an
+    /// editable authored block (<c>fb-editable</c>) — the distinction the tree builders apply per the element's
+    /// <c>locked</c> attribute.</summary>
+    public static string FunctionBlock(bool locked) => locked ? FunctionBlockLibrary : FunctionBlockEditable;
+
     public static string For(string tag, string? iconCode) => tag switch
     {
         "groups" or "group" => Locality,
@@ -49,7 +58,7 @@ public static class NodeIcons
         "condition" => "/Assets/condition.svg",
         "conditions" => "/Assets/cond-and.svg",
         "conditions-or" => "/Assets/cond-or.svg",
-        "functionblock" => "/Assets/fb-lk.svg",
+        "functionblock" => FunctionBlockLibrary,
         "dataline_input_modules" or "dataline_output_modules" or "documentation_modules" => "/Assets/rs485-module.svg",
         _ => ByCode(iconCode),
     };

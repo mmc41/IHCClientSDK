@@ -60,6 +60,18 @@ public class NodeIconsTests
         });
     }
 
+    // US-046 (T023): the FunctionBlock glyph is keyed by the locked flag — a locked library block vs an editable one.
+    [Test]
+    public void FunctionBlock_IsKeyedByLockedFlag()
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That(NodeIcons.FunctionBlock(locked: true), Is.EqualTo("/Assets/fb-lk.svg"), "a locked library block shows the library badge");
+            Assert.That(NodeIcons.FunctionBlock(locked: false), Is.EqualTo("/Assets/fb-editable.svg"), "an editable block shows the editable icon");
+            Assert.That(NodeIcons.FunctionBlock(true), Is.Not.EqualTo(NodeIcons.FunctionBlock(false)));
+        });
+    }
+
     // US-046: the library function block and the editable function block render with two different icons.
     [Test]
     public async Task LibraryBlock_AndEditableBlock_ShowDifferentIcons()

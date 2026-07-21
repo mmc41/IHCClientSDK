@@ -28,9 +28,6 @@ internal sealed class PropertiesDialogCoordinator(
     Func<ProjectCommand, string, Task> applyAndReport,
     Action<string> setStatus)
 {
-    // Read element attributes through the SDK read surface; the element always belongs to the open project.
-    private ElementView View(ProjectElement element) => session.Current!.View(element);
-
     /// <summary>Opens the properties dialog appropriate to the element's type (the node dispatch, US-044). A modem, a
     /// product, a data-line pin, a scenes container, a scene value, an enum variable, and a locality/function block
     /// each route to their own flow.</summary>
@@ -52,7 +49,7 @@ internal sealed class PropertiesDialogCoordinator(
             await OpenEnumAsync(id);   // edit the enum type's states (US-030)
         else if (element.IsLocalityGroup || element.Kind is ElementKind.FunctionBlock)
             // A function block renames through the same Name/Note dialog as a locality (US-007/US-019).
-            await OpenLocalityAsync(id, View(element).Name ?? string.Empty);
+            await OpenLocalityAsync(id, session.Current!.View(element).Name ?? string.Empty);
     }
 
     /// <summary>Renames a locality or function block through the shared Name/Note dialog (US-007/US-019).</summary>
@@ -60,7 +57,7 @@ internal sealed class PropertiesDialogCoordinator(
     {
         if (session.Current is not { } project)
             return;
-        string currentNote = project.FindById(id) is { } locality ? View(locality).Note ?? string.Empty : string.Empty;
+        string currentNote = project.FindById(id) is { } locality ? project.View(locality).Note ?? string.Empty : string.Empty;
         PropertiesResult? result = await dialogs.EditPropertiesAsync($"Edit {currentName} properties", currentName, currentNote);
         if (result is null)
             return;   // cancelled — the locality keeps its original name and note
@@ -85,7 +82,7 @@ internal sealed class PropertiesDialogCoordinator(
                 Locality: parts.Count > 0 ? parts[0] : string.Empty,
                 Value: value, RampTime: ramp));
         }
-        ElementView scenesView = View(scenes);
+        ElementView scenesView = session.Current!.View(scenes);
         string name = scenesView.Name ?? "Scenarier";
         SceneContainerResult? result = await dialogs.EditSceneContainerAsync(
             new SceneContainerInput(name, scenesView.Note ?? string.Empty, rows));

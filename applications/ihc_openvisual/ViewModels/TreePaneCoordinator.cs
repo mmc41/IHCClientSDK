@@ -21,7 +21,6 @@ internal sealed class TreePaneCoordinator(
     ObservableCollection<TreeNodeViewModel> functionNodes,
     Func<Project?> currentProject,
     Func<ProjectChangeSet?> lastChange,
-    Func<ProjectElement, string, string> nameOr,
     Action<string, string> setHeaders)
 {
     // One reconciler per pane. It reconciles in place from a ProjectChangeSet, preserving node identity; a fallback
@@ -72,7 +71,7 @@ internal sealed class TreePaneCoordinator(
     /// program subtree (Programs > Program > { Events, Commands }); both headers carry the block's name.</summary>
     public void BuildProgrammingTrees(ProjectElement block, bool preserveExpansion)
     {
-        string name = nameOr(block, "block");
+        string name = currentProject()!.NameOr(block, "block");
         setHeaders(name, name);
 
         RebuildPreservingExpansion(installationNodes, preserveExpansion, () =>

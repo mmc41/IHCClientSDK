@@ -40,11 +40,7 @@ public partial class ModemPropertiesWindow : ResultDialog<ModemPropertiesResult>
         window.Phone4Box.Text = input.PhoneNumbers.ElementAtOrDefault(3) ?? string.Empty;
         window.LocationCombo.ItemsSource = input.Localities;
         window.LocationCombo.SelectedItem = input.Localities.FirstOrDefault(l => l.Id == input.CurrentLocalityId);
-        window.Opened += (_, _) =>
-        {
-            window.NameBox.SelectAll();
-            window.NameBox.Focus();
-        };
+        window.FocusOnOpen(window.NameBox);
         return window.ShowDialogForResult(owner);
     }
 

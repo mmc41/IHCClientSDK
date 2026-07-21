@@ -186,4 +186,28 @@ public class ReportRenderingTests
             Assert.That(vm.StatusText, Is.EqualTo("Installation report opened in your browser."));
         });
     }
+
+    // T014 characterization (M6/C guardrail before the reports collaborator extraction): the EndUser report path
+    // through ProjectWorkflow.GenerateEndUserReport (the wrapper T019 moves) via the VM command had NO workflow/VM
+    // test — only the SDK generator and the HTML renderer were covered independently. Drive the whole wrapper.
+    [Test]
+    public async Task EndUserReportCommand_WritesHtml_AndOpensInBrowser()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+
+        await vm.EndUserReportScreenCommand.ExecuteAsync(null);
+
+        var url = harness.Dialogs.LastOpenedUrl;
+        Assert.Multiple(() =>
+        {
+            Assert.That(url, Is.Not.Null.And.StartWith("file:"), "the end-user report opens in the standard browser");
+            var path = new Uri(url!).LocalPath;
+            Assert.That(File.Exists(path), Is.True, "the report HTML file is written");
+            Assert.That(File.ReadAllText(path), Does.Contain("Funktionsdokumentation"),
+                "the ProjectWorkflow.GenerateEndUserReport wrapper produced the rendered end-user report");
+            Assert.That(vm.StatusText, Is.EqualTo("End-user report opened in your browser."));
+        });
+    }
 }

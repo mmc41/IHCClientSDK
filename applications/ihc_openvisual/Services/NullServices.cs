@@ -26,7 +26,7 @@ public sealed class NullDialogService : IDialogService
     public Task<SceneValueResult?> EditSceneValueAsync(SceneValueInput input) => Task.FromResult<SceneValueResult?>(null);
     public Task<EnumDefinitionResult?> EditEnumDefinitionAsync(EnumDefinitionInput input) => Task.FromResult<EnumDefinitionResult?>(null);
     public Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current) => Task.FromResult<ProjectInfoData?>(null);
-    public Task ShowDataTablesAsync(ihc_openvisual.ViewModels.DataTablesViewModel viewModel) => Task.CompletedTask;
+    public Task ShowDataTablesAsync(IDataTablesDialogViewModel viewModel) => Task.CompletedTask;
     public Task ShowModuleMapAsync(ModuleAddressMap map) => Task.CompletedTask;
     public Task<string?> PickCatalogFileAsync() => Task.FromResult<string?>(null);
     public Task<string?> PickCatalogFolderAsync() => Task.FromResult<string?>(null);

@@ -50,7 +50,7 @@ namespace Ihc.Vis.FunctionBlocks
         private readonly string masterVersion;
         private readonly string masterName;
         private string? displayNameOverride;
-        private readonly List<(string Name, string Value)> rootAttrs = new();
+        // rootAttrs (the ordered root-attribute list) + SetRoot/Attribute live on DefinitionBuilderBase (M7).
         private bool stampResourceDefaults = true;
         private bool isEmptyTemplate;
         private string emptyIcon = "_0xf";
@@ -157,8 +157,7 @@ namespace Ihc.Vis.FunctionBlocks
         /// <summary>Sets the block note.</summary>
         public FunctionBlockDefinitionBuilder Note(string note) => SetRoot("note", note);
 
-        /// <summary>Bakes a raw block-level attribute verbatim (escape hatch, e.g. the block <c>icon</c>).</summary>
-        public FunctionBlockDefinitionBuilder Attribute(string name, string value) => SetRoot(name, value);
+        // Attribute(name, value) — the raw root-attribute escape hatch (e.g. the block icon) — lives on DefinitionBuilderBase (M7).
 
         /// <summary>Authors the empty "Tom blok" scaffold — the five containers plus one empty <c>program_simple</c>
         /// (<c>events</c>+<c>actions</c>) and the vendor icon — and flags
@@ -425,6 +424,7 @@ namespace Ihc.Vis.FunctionBlocks
                 IsEmptyTemplate = isEmptyTemplate,
                 Documentation = BuildDocumentation(),
             };
+            // Stamp the From-carried physical SourceEncoding when one was carried, else keep the definition's default.
             return sourceEncoding is { } encoding ? definition with { SourceEncoding = encoding } : definition;
         }
 
@@ -670,11 +670,7 @@ namespace Ihc.Vis.FunctionBlocks
             return new FbResourceHandle(name, id);
         }
 
-        private FunctionBlockDefinitionBuilder SetRoot(string name, string value)
-        {
-            rootAttrs.Add((name, value));
-            return this;
-        }
+        // SetRoot(name, value) lives on DefinitionBuilderBase (M7) — the shared ordered-append seam.
 
     }
 

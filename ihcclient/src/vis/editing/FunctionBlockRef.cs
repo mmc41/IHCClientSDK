@@ -159,12 +159,6 @@ namespace Ihc.Vis.Editing
         /// </summary>
         public ResourceRef Setting(string name) => ResolveResource("settings", name, "setting");
 
-        /// <summary>
-        /// References an internal (private) value variable by name, returning its live handle for wiring into
-        /// program rows. Scoped to the <c>internalsettings</c> container.
-        /// </summary>
-        public ResourceRef InternalVariable(string name) => ResolveResource("internalsettings", name, "internal variable");
-
         private ResourceRef ResolveResource(string container, string name, string kind)
         {
             ArgumentNullException.ThrowIfNull(name);

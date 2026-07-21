@@ -225,26 +225,40 @@ namespace Ihc.Vis.Session
             return new EditOutcome(EditStatus.Committed, entry.Label, null, changes);
         }
 
-        /// <summary>The change set the command would produce if applied now — without committing — or null when it
-        /// would refuse, fail, or make no change. Drives the Preview→confirm→Apply flow (W2-13).</summary>
-        public ProjectChangeSet? Preview(ProjectCommand command)
+        /// <summary>The typed preview of a command applied now — without committing — mirroring <see cref="Apply"/>
+        /// (M8/D05): <see cref="PreviewStatus.WouldChange"/> carries the delta the subsequent Apply would commit,
+        /// while a legality refusal, a deep-guard <see cref="EditRefusedException"/>, a no-change and an unexpected
+        /// engine fault are each their own status — so the GUI can report a genuine bug instead of swallowing it as
+        /// "nothing to preview". Drives the Preview→confirm→Apply flow (W2-13).</summary>
+        public PreviewOutcome Preview(ProjectCommand command)
         {
             VerifyAccess();
-            if (_current is not { } current || !command.Evaluate(new EditContext(current, _index!)).Ok)
+            if (_current is not { } current)
             {
-                return null;
+                return PreviewOutcome.Refused("No project is open.");
             }
+            EditVerdict verdict = command.Evaluate(new EditContext(current, _index!));
+            if (!verdict.Ok)
+            {
+                return PreviewOutcome.Refused(verdict.Reason);
+            }
+            Project? updated;
             try
             {
-                Project? updated = TryProduceUpdated(current, command.Execute);
-                return updated is null
-                    ? null
-                    : ProjectChangeSet.Diff(current, updated, _version, _version, OriginPreview, command.Describe(current));
+                updated = TryProduceUpdated(current, command.Execute);
             }
-            catch (Exception)
+            catch (EditRefusedException ex)   // a deep guard refuses only inside Execute — a refusal, not a fault
             {
-                return null;
+                return PreviewOutcome.Refused(ex.Message);
             }
+            catch (Exception ex)   // an unexpected engine fault — surfaced, not swallowed as "nothing to preview" (D05)
+            {
+                return PreviewOutcome.Faulted(ex.Message);
+            }
+            return updated is null
+                ? PreviewOutcome.NoChange
+                : PreviewOutcome.WouldChange(
+                    ProjectChangeSet.Diff(current, updated, _version, _version, OriginPreview, command.Describe(current)));
         }
 
         /// <summary>The command's legality verdict against the current project (cheap — no edit), for drag-over

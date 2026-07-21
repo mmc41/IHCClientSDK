@@ -36,8 +36,9 @@ namespace Ihc.Vis
         /// <summary>The pin's cable colour.</summary>
         public string? CableColour => Element.GetAttribute("cable_colour");
 
-        /// <summary>Whether this is an output pin (a <c>dataline_output</c>).</summary>
-        public bool IsOutput => Element.Tag == "dataline_output";
+        /// <summary>Whether this is an output pin (a <c>dataline_output</c>) — read through the shared
+        /// <c>IsOutputPin</c> predicate; exact here since a PinView is always a dataline pin.</summary>
+        public bool IsOutput => Element.IsOutputPin;
 
         /// <summary>Whether the pin's power-up initial value is on (US-012).</summary>
         public bool InitialValueOn => View.InitialValue == "on";
@@ -88,7 +89,7 @@ namespace Ihc.Vis
             {
                 Project project = Project;   // struct 'this' can't be captured by the projection lambda
                 return Element.DescendantsAndSelf()
-                    .Where(e => e.Tag is "dataline_input" or "dataline_output")
+                    .Where(e => e.Kind == ElementKind.DatalinePin)
                     .Select(e => new PinView(project, e));
             }
         }

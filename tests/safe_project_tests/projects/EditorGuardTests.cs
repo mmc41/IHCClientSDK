@@ -23,16 +23,20 @@ namespace Ihc.Vis.Tests
         // ----- DeleteById: dangling references block the delete; strays never cascade innocents -----
 
         [Test]
-        public async Task DeleteById_OutputBoundToScenes_Throws_InsteadOfDanglingTheBinding()
+        public async Task RemoveOutput_OfCatalogPin_IsRefused_AsCatalogOwned()
         {
+            // "Udgang" is a catalog-declared pin of the product (and its scenes container binds it). review3 H1
+            // makes the SDK refuse to delete a catalog pin on its own — a stronger guarantee than the former "would
+            // dangle the scene binding" refusal, and it reaches the public RemoveOutput handle too. The general
+            // dangling-reference guard stays covered by RefDeleteReplayByteFidelityTests (an unlocked FB output).
             Project project = await Load("Project1-SimpelWired.vis");
             ProjectEditor editor = project.Edit();
             GroupRef stue = editor.Group("Stue");
             ProductRef lamp = stue.Product("Lampeudtag");
 
             Assert.That(() => lamp.RemoveOutput(lamp.Output("Udgang")),
-                Throws.InvalidOperationException.With.Message.Contains("scene_resource"),
-                "the scenes container still binds this output — deleting it must not dangle the binding");
+                Throws.InvalidOperationException.With.Message.Contains("catalog"),
+                "a product's catalog pin cannot be deleted on its own — delete the product to remove it");
         }
 
         [Test]

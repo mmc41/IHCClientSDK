@@ -181,28 +181,13 @@ namespace Ihc.Vis.Schema
 
         private static int FindDeclarationEnd(string block, int start, string tag)
         {
-            char quote = '\0';
-            for (int i = start; i < block.Length; i++)
+            int close = XmlText.FindDeclarationClose(block, start);
+            if (close < 0)
             {
-                char c = block[i];
-                if (quote != '\0')
-                {
-                    if (c == quote)
-                    {
-                        quote = '\0';
-                    }
-                }
-                else if (c is '"' or '\'')
-                {
-                    quote = c;
-                }
-                else if (c == '>')
-                {
-                    return i;
-                }
+                throw new VisSchemaFormatException(
+                    $"Malformed <!ATTLIST declaration for '{tag}': no closing '>' (check for an unterminated quoted default).");
             }
-            throw new VisSchemaFormatException(
-                $"Malformed <!ATTLIST declaration for '{tag}': no closing '>' (check for an unterminated quoted default).");
+            return close;
         }
 
         private static string CollapseWhitespace(string s)

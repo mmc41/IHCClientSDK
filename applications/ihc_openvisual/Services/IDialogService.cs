@@ -5,6 +5,12 @@ using Ihc.Vis.Session;
 
 namespace ihc_openvisual.Services;
 
+/// <summary>The seam the Data tables dialog is shown through (T020): a marker for the view-model the dialog binds
+/// to (implemented app-side by the Data tables VM), so <see cref="IDialogService"/> — a Services-layer abstraction —
+/// is not coupled to a concrete ViewModels type. The dialog service passes the instance to the window as its
+/// DataContext; the window's compiled bindings resolve against the concrete VM at runtime.</summary>
+public interface IDataTablesDialogViewModel;
+
 /// <summary>The installer's answer to a "save changes before closing?" prompt.</summary>
 public enum SaveChangesResult
 {
@@ -166,8 +172,9 @@ public interface IDialogService
     /// returns the edited project/customer/installer info, or null when the installer cancels.</summary>
     Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current);
 
-    /// <summary>Opens the modal Data tables dialog (US-049) bound to the given view-model.</summary>
-    Task ShowDataTablesAsync(ihc_openvisual.ViewModels.DataTablesViewModel viewModel);
+    /// <summary>Opens the modal Data tables dialog (US-049) bound to the given view-model (T020: the
+    /// <see cref="IDataTablesDialogViewModel"/> seam, not the concrete VM).</summary>
+    Task ShowDataTablesAsync(IDataTablesDialogViewModel viewModel);
 
     /// <summary>Opens the read-only Wired module address map dialog (US-050).</summary>
     Task ShowModuleMapAsync(ModuleAddressMap map);

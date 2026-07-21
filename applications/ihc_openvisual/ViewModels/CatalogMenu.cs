@@ -17,14 +17,6 @@ namespace ihc_openvisual.ViewModels;
 /// </summary>
 public static class CatalogMenu
 {
-    /// <summary>The vendor top category for wired (data-line) products — shown as "Wired products" (E3 scope).</summary>
-    public const string WiredProductsCategory = "Datalinie produkter";
-
-    /// <summary>Builds the category subtree for the wired (data-line) products (US-010).</summary>
-    public static IReadOnlyList<ProductMenuItemViewModel> BuildWiredProducts(
-        IEnumerable<ProductDefinition> products, Func<ProductDefinition, ICommand> leafCommand) =>
-        Build(products, WiredProductsCategory, leafCommand);
-
     /// <summary>
     /// Builds the menu subtree for the products whose <c>CategoryPath</c> begins with <paramref name="topCategory"/>,
     /// dropping that top segment (its label is the hosting menu item).
@@ -34,13 +26,81 @@ public static class CatalogMenu
     {
         ArgumentNullException.ThrowIfNull(products);
         ArgumentNullException.ThrowIfNull(leafCommand);
-        return BuildForest(
+        return BuildSubtree(products, topCategory, leafCommand);
+    }
+
+    /// <summary>
+    /// Builds the FULL product insertion menu (US-010, H2/D08): the top-level categories are DERIVED from the
+    /// catalog products' own <c>CategoryPath</c> — never a hardcoded set — so a product whose top category is
+    /// unknown or empty (an imported <c>.def</c> has none) stays reachable, under an "Imported/Uncategorized"
+    /// bucket. The vendor top categories keep their app-side English labels and menu order
+    /// (<see cref="TopCategories"/>); any other named category appears by its own (stripped) name; the empty bucket
+    /// comes last. Taxonomy is catalog data; the labels and order are app presentation (D08).
+    /// </summary>
+    public static IReadOnlyList<ProductMenuItemViewModel> BuildProductForest(
+        IEnumerable<ProductDefinition> products, Func<ProductDefinition, ICommand> leafCommand)
+    {
+        ArgumentNullException.ThrowIfNull(products);
+        ArgumentNullException.ThrowIfNull(leafCommand);
+        var list = products as IReadOnlyCollection<ProductDefinition> ?? products.ToList();
+        var present = list.Select(p => Segments(p.CategoryPath).FirstOrDefault()).Distinct().ToList();
+        var forest = new List<ProductMenuItemViewModel>();
+        foreach (string? top in OrderTopCategories(present))
+        {
+            var folder = new ProductMenuItemViewModel(TopCategoryLabel(top));
+            foreach (ProductMenuItemViewModel child in BuildSubtree(list, top, leafCommand))
+                folder.Children.Add(child);
+            forest.Add(folder);
+        }
+        return forest;
+    }
+
+    // The subtree under one top category (null = the empty/imported top): the products whose CategoryPath begins
+    // with it, nested by their remaining segments, that top segment dropped (it labels the hosting menu item).
+    private static IReadOnlyList<ProductMenuItemViewModel> BuildSubtree(
+        IEnumerable<ProductDefinition> products, string? topCategory, Func<ProductDefinition, ICommand> leafCommand) =>
+        BuildForest(
             products.Where(p => Segments(p.CategoryPath).FirstOrDefault() == topCategory),
             p => Segments(p.CategoryPath).Skip(1).ToArray(),   // drop the top category itself
             p => p.DisplayName, leafCommand, p => p.ProductIdentifier,
             // Product-catalog subcategories render in English (A-29/R-1); the FB library folders stay verbatim.
             raw => TranslateSubcategory(Strip(raw)));
+
+    /// <summary>The label of the bucket that holds imported / empty-category products (H2/D08), so an imported
+    /// <c>.def</c> with no <c>CategoryPath</c> stays reachable in the insert menu.</summary>
+    public const string ImportedCategoryLabel = "Imported/Uncategorized";
+
+    // The vendor top-level product categories, in menu order, mapped to their English display labels (D08: the
+    // taxonomy is catalog data; these labels and this order are app presentation). A product whose top category is
+    // none of these — an imported .def with an empty CategoryPath — falls into ImportedCategoryLabel, appended last.
+    private static readonly (string Category, string Label)[] TopCategories =
+    {
+        ("Datalinie produkter", "Wired products"),
+        ("LK IHC Wireless produkter", "IHC Wireless products"),
+        ("Bus Produkter", "Bus products"),
+        ("Specielle produkter", "Special products"),
+    };
+
+    // The present top categories in menu order: the known vendor categories first (their declared order), then any
+    // other named category (ordinal), then the empty/imported bucket (null) last.
+    private static IEnumerable<string?> OrderTopCategories(IReadOnlyCollection<string?> present)
+    {
+        foreach ((string category, _) in TopCategories)
+            if (present.Contains(category))
+                yield return category;
+        foreach (string? other in present.Where(c => c is not null && !IsKnownTopCategory(c)).OrderBy(c => c, StringComparer.Ordinal))
+            yield return other;
+        if (present.Contains(null))
+            yield return null;
     }
+
+    private static bool IsKnownTopCategory(string category) => TopCategories.Any(t => t.Category == category);
+
+    // A top category's menu label: the vendor English label for a known category, ImportedCategoryLabel for the
+    // empty bucket, else the category's own stripped name (a defensive path for an unexpected non-empty category).
+    private static string TopCategoryLabel(string? category) =>
+        category is null ? ImportedCategoryLabel
+        : TopCategories.FirstOrDefault(t => t.Category == category).Label ?? Strip(category);
 
     // The product-catalog STRUCTURAL subcategories the vendor left Danish, mapped to English (R-1). Family/brand names
     // (LK FUGA, Vinduer, IR fjernbetjeninger…) are vendor data and stay as-is, like the FB library categories.

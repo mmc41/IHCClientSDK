@@ -164,6 +164,29 @@ namespace Ihc.Vis.Model
             return -1;
         }
 
+        /// <summary>
+        /// T027: the index of the quote-aware <c>&gt;</c> that closes a markup declaration (e.g. an
+        /// <c>&lt;!ATTLIST&gt;</c>) starting at <paramref name="start"/> — a single- or double-quoted default literal
+        /// may itself hold a <c>&gt;</c>, so quoted spans are skipped. Returns -1 when no closing <c>&gt;</c> is found.
+        /// The one shared declaration-close scan behind the schema registry's ATTLIST parse and the inline-DTD
+        /// orphan-ATTLIST capture (each supplies its own not-found behaviour).
+        /// </summary>
+        public static int FindDeclarationClose(string s, int start)
+        {
+            char quote = '\0';
+            for (int i = start; i < s.Length; i++)
+            {
+                char c = s[i];
+                if (quote != '\0')
+                {
+                    if (c == quote) { quote = '\0'; }
+                }
+                else if (c is '"' or '\'') { quote = c; }
+                else if (c == '>') { return i; }
+            }
+            return -1;
+        }
+
         private static string? DecodeCharRef(string entity)
         {
             if (entity.Length < 2 || entity[0] != '#')

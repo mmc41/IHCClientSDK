@@ -211,14 +211,7 @@ namespace Ihc.Vis.FunctionBlocks
             ProjectElement conditions = MaterializeConditionsGroup(sub.Conditions);
             ProjectElement trueActions = MaterializeBranch(sub.True);
             ProjectElement falseActions = MaterializeBranch(sub.False);
-            var subAttrs = new List<(string, string)>
-            {
-                ("name", sub.Name), ("icon", FbGrammar.SubProgramIcon),
-            };
-            if (sub.Note is { } subNote)
-            {
-                subAttrs.Add(("note", subNote));
-            }
+            var subAttrs = FbGrammar.LeafAttrs(sub.Name, FbGrammar.SubProgramIcon, sub.Note);
             return FbGrammar.Node("program_sub", subId, subAttrs, new[] { conditions, trueActions, falseActions });
         }
 
@@ -251,30 +244,16 @@ namespace Ihc.Vis.FunctionBlocks
             var children = new List<ProjectElement>();
             children.AddRange(plan.Cases.Select(MaterializeCaseAction));
             children.Add(MaterializeBranch(plan.Default));
-            var attrs = new List<(string, string)>
-            {
-                ("name", plan.Name), ("icon", FbGrammar.ProgramCaseIcon),
-            };
-            if (plan.Note is { } note)
-            {
-                attrs.Add(("note", note));   // the vendor writes note before link on program_case
-            }
-            attrs.Add(("link", plan.SwitchVariable.ToToken()));
+            var attrs = FbGrammar.LeafAttrs(plan.Name, FbGrammar.ProgramCaseIcon, plan.Note);
+            attrs.Add(("link", plan.SwitchVariable.ToToken()));   // the vendor writes note before link on program_case
             return FbGrammar.Node("program_case", caseId, attrs, children);
         }
 
         private ProjectElement MaterializeCaseAction(PlannedCaseAction ca)
         {
             ElementId id = ids.Allocate(TypeCode.RequireForTag("case_action"));
-            var attrs = new List<(string, string)>
-            {
-                ("name", ca.Name), ("icon", FbGrammar.CaseActionIcon),
-            };
-            if (ca.Note is { } note)
-            {
-                attrs.Add(("note", note));   // the vendor writes note before variable/value on case_action
-            }
-            attrs.Add(("variable", ca.Variable.ToToken()));
+            var attrs = FbGrammar.LeafAttrs(ca.Name, FbGrammar.CaseActionIcon, ca.Note);
+            attrs.Add(("variable", ca.Variable.ToToken()));   // the vendor writes note before variable/value on case_action
             attrs.Add(("value", ca.Operand.Id.ToToken()));
             var children = new List<ProjectElement>
             {
@@ -300,11 +279,7 @@ namespace Ihc.Vis.FunctionBlocks
 
         private ProjectElement MaterializeLeaf(PlannedLeaf leaf)
         {
-            var attrs = new List<(string, string)> { ("name", leaf.Name), ("icon", leaf.Icon) };
-            if (leaf.Note is { } note)
-            {
-                attrs.Add(("note", note));
-            }
+            var attrs = FbGrammar.LeafAttrs(leaf.Name, leaf.Icon, leaf.Note);
             if (leaf.Link1 is { } link1)
             {
                 attrs.Add(("link1", link1.ToToken()));

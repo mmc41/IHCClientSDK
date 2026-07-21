@@ -99,7 +99,7 @@ namespace Ihc.Vis.Io
                     "The content is gzip-compressed. Controller project blobs must be decompressed first " +
                     $"({nameof(IControllerService)}.{nameof(IControllerService.GetProject)} already returns decompressed XML).");
             }
-            if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+            if (CatalogTextEncodingExtensions.HasUtf8Bom(bytes))
             {
                 throw new ProjectFormatException(
                     ".vis files are ISO-8859-1 with no byte-order mark; found a UTF-8 BOM. Re-save the file as ISO-8859-1 without a BOM.");

@@ -31,6 +31,9 @@ dotnet test tests/safe_project_tests/safe_project_tests.csproj
 # Run IHC OpenVisual desktop app GUI tests (headless Avalonia UI tests, no controller)
 dotnet test tests/safe_visual_tests/safe_visual_tests.csproj
 
+# Run architecture / dependency-rule tests (ArchUnitNET; controller-free; enforces SDK layering)
+dotnet test tests/safe_architecture_tests/safe_architecture_tests.csproj
+
 # Run tests with detailed output
 dotnet test tests/safe_integration_tests/safe_integration_tests.csproj --verbosity detailed
 
@@ -85,6 +88,7 @@ This is a .NET 10 mono-repository containing an unofficial SDK for IHC (Intellig
 - `tests/safe_integration_tests/` - NUnit test suite for SDK integration tests (safe to run against active controllers)
 - `tests/safe_lab_tests/` - NUnit test suite for IHC Lab GUI tests (headless Avalonia UI tests with diagnostic features)
 - `tests/safe_unit_tests/` - NUnit test suite for controller-free unit tests (no Avalonia headless app; mocks IHC services with FakeItEasy)
+- `tests/safe_architecture_tests/` - NUnit test suite enforcing the SDK's directional layering rules via ArchUnitNET (controller-free; no Avalonia)
 - `tests/safe_visual_tests/` - NUnit test suite for the IHC OpenVisual desktop app (headless Avalonia UI tests against the real `ihc_openvisual.App`; no controller)
 - `applications/ihc_openvisual/` - Avalonia desktop application recreating IHC Visual project editing; pure GUI over `ProjectAppService` (all business logic stays in the SDK)
 - `examples/ihcclient_example1/` & `examples/ihcclient_example2/` - Console application examples
@@ -157,12 +161,18 @@ The `ihcclient` project follows a layered architecture:
 - **Language/BCL baseline (fablerefac §3.0)**: new and moved code targets C# 14 / .NET 10 idioms — the extension-member read surface (`element.Kind`, fine `Is…` predicates, `project.View(element)`), `Frozen*` collections for immutable indexes/change-sets, `readonly record struct` for keys/verdicts/policies, and partial-property (`[ObservableProperty] partial`) MVVM. Apply to **new/moved code only** — never churn existing syntax for its own sake.
 - **MVVM differs from `ihc_lab` — follow OpenVisual's, not the Lab's**: OpenVisual uses CommunityToolkit.Mvvm (`ObservableObject`/`[ObservableProperty]`/`[RelayCommand]`), thin code-behind, and an `IDialogService` abstraction so dialogs are fakeable in headless tests. `ihc_lab` predates this: hand-rolled `INotifyPropertyChanged`, an 833-line `MainWindow.axaml.cs`, and dialogs constructed inline. Do not copy Lab's MVVM into OpenVisual.
 
-**Documentation** lives in `applications/ihc_openvisual/docs/` — read the relevant doc before implementing an app feature:
+**Documentation** lives in `applications/ihc_openvisual/docs/` — read the relevant doc before implementing an app feature.
+
+**`product.md` and `stories/*.md` specify WHAT the app must do — not HOW, and not WHEN.** They are the product **specification** (requirements, intended behaviour, acceptance criteria) and are the source of truth for *what* is correct. They are **not**:
+- **HOW (implementation)** — class/method/file design, patterns, tech choices, code structure. That belongs in the code and in `ARCHITECTURE.md`, never in these docs.
+- **WHEN (plans)** — milestones, roadmaps, sequencing, task backlogs, or progress tracking. Keep planning artefacts out of these docs (use `tmp/` backlogs, issues, etc.).
+
+So when editing them, describe behaviour, not implementation or schedule. (The one allowed exception is the short per-story *Readiness* / *Implementation status* line — a status annotation that is a natural part of a user story, not a plan.)
 
 | Doc | Purpose |
 |-----|---------|
-| `product.md` | Authoritative vision + PRD-lite: features F1–F11, milestones M1–M5, quality attributes, test strategy, glossary |
-| `stories/*.md` | Epics **E1–E16** and their user stories (`US-NNN`) with acceptance criteria — the implementation spec; start here for any feature |
+| `product.md` | The product spec (WHAT): vision, features F1–F11, quality attributes, data requirements, test information, glossary |
+| `stories/*.md` | The behavioural spec (WHAT): epics **E1–E16** and their user stories (`US-NNN`) with Given-When-Then acceptance criteria — start here for any feature |
 | `icons_design.md` | Flat-line SVG icon design guidelines (24-unit grid, `currentColor`, legible at 16 px; state via glyph + colour, never colour alone) |
 | `icon_codes.md` | `.vis`/`.ifb` element (and vendor `_0xNN` code) → `Assets/*.svg` icon mapping |
 
@@ -215,6 +225,7 @@ Before running any code that connects to an IHC controller:
 - **safe_integration_tests** - SDK integration tests (safe to run against active controllers)
 - **safe_lab_tests** - Headless Avalonia UI tests for IHC Lab application with advanced diagnostic capabilities (using fake sevices instead of active controller)
 - **safe_unit_tests** - Controller-free unit tests for SDK and Lab business logic (no Avalonia headless app; mocks IHC services with FakeItEasy). UI control-construction tests belong in safe_lab_tests instead.
+- **safe_architecture_tests** - Controller-free architecture tests (ArchUnitNET) enforcing the SDK's directional layering rules at IL level: `Ihc.Vis` must not depend on `Ihc.Soap`, the catalog definition layer must not depend on the editing layer, and the SDK must not depend on Avalonia. Runs on all OSes in CI.
 - **safe_project_tests** - Controller-free tests for the `.vis` project engine and `ProjectAppService` (byte-fidelity round-trips against `testdata/` oracles, editing, catalog, validation). The regression gate for any change under `ihcclient/src/vis/`.
 - **safe_visual_tests** - Headless Avalonia UI tests for the `ihc_openvisual` desktop application (runs the real `ihc_openvisual.App`; no controller, no IHC API services needed for file-only flows).
 

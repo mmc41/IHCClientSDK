@@ -45,11 +45,7 @@ public partial class ProductPropertiesWindow : ResultDialog<ProductPropertiesRes
         window.ConfigInputButton.IsEnabled = inputs.Count > 0;    // disabled when the product has no input terminals
         window.ConfigOutputButton.IsEnabled = outputs.Count > 0;
         window.TerminalsPanel.IsVisible = terminals.Count > 0;
-        window.Opened += (_, _) =>
-        {
-            window.NameBox.SelectAll();
-            window.NameBox.Focus();
-        };
+        window.FocusOnOpen(window.NameBox);
         return window.ShowDialogForResult(owner);
     }
 

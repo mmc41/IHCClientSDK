@@ -179,6 +179,37 @@ namespace Ihc.Vis
                 && project.FindParent(target)?.Id == parentId;
         }
 
+        // The cheap delete classification shared by CanDelete and PreviewDelete: which DeleteKind a node needs, WITHOUT
+        // the (potentially expensive) strict-cascade simulation the confirm flag needs. Resolves the element once and
+        // hands it back so PreviewDelete can compute the confirm without a second lookup.
+        private static (DeleteKind Kind, ProjectElement? Element) ClassifyDelete(Project project, ElementId id)
+        {
+            ProjectElement? element = project.FindById(id);
+            DeleteKind kind;
+            if (element is null || ProjectEditor.DeletionRefusalReason(project.Root, id) is not null)
+            {
+                kind = DeleteKind.NotDeletable;   // missing, or a catalog pin / locked-block node (review3 H1)
+            }
+            else if (element.IsLinkHalf || element.IsSceneMember)
+            {
+                kind = DeleteKind.Link;   // link row → remove reciprocal (US-057)
+            }
+            else if (element.IsLocalityGroup)
+            {
+                kind = DeleteKind.Locality;   // US-009 cascade
+            }
+            else
+            {
+                kind = IsDeletableNode(element.Tag) ? DeleteKind.General : DeleteKind.NotDeletable;
+            }
+            return (kind, element);
+        }
+
+        /// <summary>Whether <paramref name="id"/> can be deleted at all (US-053) — the SDK verdict the GUI's Delete gate
+        /// (context menu / Edit ▸ Delete / Delete key) reads. Unlike <see cref="PreviewDelete"/> this skips the strict
+        /// cascade simulation, so it stays cheap to re-evaluate on every selection, menu-open and post-edit refresh.</summary>
+        public bool CanDelete(Project project, ElementId id) => ClassifyDelete(project, id).Kind != DeleteKind.NotDeletable;
+
         /// <summary>
         /// The non-mutating impact and dispatch of deleting <paramref name="id"/> (US-009/US-053, sliver #9 relocated
         /// from the app): which delete <see cref="DeleteKind"/> applies, whether it can be deleted at all, and whether
@@ -186,26 +217,18 @@ namespace Ihc.Vis
         /// a locality needs confirmation when it still holds contents (US-009); any other deletable node needs it when
         /// other logic references it (link halves, or a program row a strict delete would trip over). The GUI composes
         /// the confirmation WORDING from the returned kind (D05); this decides only the kind and whether one is needed.
+        /// The strict-cascade probe here is why the interactive gate reads the cheaper <see cref="CanDelete"/> instead.
         /// </summary>
         public DeleteImpact PreviewDelete(Project project, ElementId id)
         {
-            if (project.FindById(id) is not { } element)
+            (DeleteKind kind, ProjectElement? element) = ClassifyDelete(project, id);
+            bool needsConfirm = kind switch
             {
-                return new DeleteImpact(false, false, DeleteKind.NotDeletable);
-            }
-            if (element.IsLinkHalf || element.IsSceneMember)
-            {
-                return new DeleteImpact(true, false, DeleteKind.Link);   // link row → remove reciprocal (US-057)
-            }
-            if (element.IsLocalityGroup)
-            {
-                return new DeleteImpact(true, !element.Children.IsDefaultOrEmpty, DeleteKind.Locality);   // US-009 cascade
-            }
-            if (!IsDeletableNode(element.Tag))
-            {
-                return new DeleteImpact(false, false, DeleteKind.NotDeletable);
-            }
-            return new DeleteImpact(true, HasLinkHalves(element) || WouldThrowStrict(project, id), DeleteKind.General);
+                DeleteKind.Locality => !element!.Children.IsDefaultOrEmpty,   // US-009: confirm only when it still holds contents
+                DeleteKind.General => HasLinkHalves(element!) || WouldThrowStrict(project, id),   // link halves / strict cascade
+                _ => false,   // NotDeletable / Link never confirm
+            };
+            return new DeleteImpact(kind != DeleteKind.NotDeletable, needsConfirm, kind);
         }
 
         // ---- Link/Scene family (T006): pin links, link removal, scenario links + values (sliver #11 relocated) ----

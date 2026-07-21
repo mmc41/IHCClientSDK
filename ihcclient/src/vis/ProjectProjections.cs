@@ -151,11 +151,11 @@ namespace Ihc.Vis
                         string productName = DisplayName(project.View(product), product);
                         foreach (ProjectElement pin in product.ChildrenOrEmpty())
                         {
-                            bool isOutput = pin.Tag == "dataline_output";
-                            if (pin.Tag != "dataline_input" && !isOutput)
+                            if (pin.Kind != ElementKind.DatalinePin)
                             {
                                 continue;
                             }
+                            bool isOutput = pin.IsOutputPin;
                             ElementView pinView = project.View(pin);
                             if (!DatalineAddress.TryParse(pinView.Effective("address_dataline"), isOutput, out DatalineAddress addr))
                             {

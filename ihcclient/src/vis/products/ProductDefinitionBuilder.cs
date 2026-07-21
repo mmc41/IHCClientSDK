@@ -62,7 +62,7 @@ namespace Ihc.Vis.Products
         private string productIdentifier;
         private string displayName;
         private string? bodyName;
-        private readonly List<(string Name, string Value)> rootAttrs = new();
+        // rootAttrs (the ordered root-attribute list) + SetRoot/Attribute live on DefinitionBuilderBase (M7).
         private readonly List<ProjectElement> children = new();
         private ElementId? lastResourceId;
         private ElementId? builtRootId;     // memoized so repeated Build() is idempotent (no id drift off the allocator)
@@ -251,8 +251,7 @@ namespace Ihc.Vis.Products
 
         // ---- escape hatches (exotic families / open world) ----
 
-        /// <summary>Bakes a raw product-level attribute verbatim (canonicalization still normalizes order/defaults).</summary>
-        public ProductDefinitionBuilder Attribute(string name, string value) => SetRoot(name, value);
+        // Attribute(name, value) — the raw root-attribute escape hatch — lives on DefinitionBuilderBase (M7).
 
         /// <summary>Adds a resource child of an explicit family tag (e.g. <c>airlink_input</c>,
         /// <c>rs485_led_dimmer_channel</c>) for non-dataline families; <paramref name="configure"/> sets its address
@@ -379,6 +378,7 @@ namespace Ihc.Vis.Products
                 Grammar = grammar,
                 Documentation = BuildDocumentation(),
             };
+            // Stamp the From-carried physical SourceEncoding when one was carried, else keep the definition's default.
             return sourceEncoding is { } encoding ? definition with { SourceEncoding = encoding } : definition;
         }
 
@@ -405,12 +405,7 @@ namespace Ihc.Vis.Products
             }
             return root;
         }
-
-        private ProductDefinitionBuilder SetRoot(string name, string value)
-        {
-            rootAttrs.Add((name, value));
-            return this;
-        }
+        // SetRoot(name, value) lives on DefinitionBuilderBase (M7) — the shared ordered-append seam.
     }
 
     /// <summary>

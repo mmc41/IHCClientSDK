@@ -49,8 +49,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Edit scene value";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(MemberId)?.Tag is "scene_dimmer" or "scene_relay"
-                ? EditVerdict.Allow : EditVerdict.Refuse("Not a relay or dimmer scene member.");
+            context.RequireTag(MemberId, "a relay or dimmer scene member", "scene_dimmer", "scene_relay");
         internal override void Execute(ProjectEditor editor)
         {
             ElementRef handle = editor.Resolve(MemberId, "scene member");

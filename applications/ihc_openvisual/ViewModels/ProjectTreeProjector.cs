@@ -18,19 +18,14 @@ namespace ihc_openvisual.ViewModels;
 /// </summary>
 public sealed class ProjectTreeProjector(Project project)
 {
-    // Read element attributes through the SDK read surface (project.View), not raw GetAttribute (W1-6). The
-    // projected element always belongs to `project`, which supplies the schema context.
-    private ElementView View(ProjectElement element) => project.View(element);
-
-    // The element's effective name, or the fallback when it is empty.
-    private string NameOr(ProjectElement element, string fallback) =>
-        View(element).Name is { Length: > 0 } name ? name : fallback;
+    // Reads go through the SDK read surface (project.View, Ihc.Vis) and the shared project.NameOr projection
+    // (ProjectReadExtensions), not raw GetAttribute (W1-6). The projected element always belongs to `project`.
 
     /// <summary>The function block's Programs subtree (US-028/029): block → Programs → Program → Events/Commands.</summary>
     public TreeNodeViewModel BuildBlockProgramsNode(ProjectElement block, string name)
     {
-        bool locked = View(block).Locked;
-        var blockNode = new TreeNodeViewModel(name, locked ? "/Assets/fb-lk.svg" : "/Assets/fb-editable.svg",
+        bool locked = project.View(block).Locked;
+        var blockNode = new TreeNodeViewModel(name, NodeIcons.FunctionBlock(locked),
             isExpanded: true, elementId: block.Id) { Kind = TreeNodeKind.ProgramBlockRoot };
         ProjectElement? programs = block.FindChild("programs");
         var programsNode = new TreeNodeViewModel("Programs", NodeIcons.For("programs", null),
@@ -39,7 +34,7 @@ public sealed class ProjectTreeProjector(Project project)
         {
             foreach (ProjectElement program in programs.ChildrenOrEmpty().Where(p => p.IsProgram))
             {
-                var programNode = new TreeNodeViewModel(NameOr(program, "Program"),
+                var programNode = new TreeNodeViewModel(project.NameOr(program, "Program"),
                     NodeIcons.For("program_simple", null), isExpanded: true, elementId: program.Id)
                     { Kind = TreeNodeKind.Program };
                 if (program.FindChild("events") is { } events)
@@ -91,7 +86,7 @@ public sealed class ProjectTreeProjector(Project project)
         // The label is the user's stored name (A-26/F-075); a never-renamed sub-program carries the vendor
         // default "Under program", shown here as the English default token "Sub-program" (R-1 — the default is
         // chrome, but a user name stays verbatim). "Under program" is FbGrammar.SubProgramName (internal).
-        string stored = View(sub).Name ?? string.Empty;
+        string stored = project.View(sub).Name ?? string.Empty;
         string label = stored.Length == 0 || stored == "Under program" ? "Sub-program" : stored;
         var node = new TreeNodeViewModel(label, NodeIcons.For("program_sub", null),
             isExpanded: true, elementId: sub.Id) { Kind = TreeNodeKind.SubProgram };
@@ -99,7 +94,7 @@ public sealed class ProjectTreeProjector(Project project)
             node.Children.Add(BuildConditionsNode(conditions));
         foreach (ProjectElement branch in sub.ChildrenOrEmpty().Where(a => a.IsActionsContainer))
         {
-            bool isTrue = (View(branch).Effective("type") ?? "") == "_0x1";
+            bool isTrue = (project.View(branch).Effective("type") ?? "") == "_0x1";
             var branchNode = new TreeNodeViewModel(
                 isTrue ? "Commands when conditions true" : "Commands when conditions false",
                 NodeIcons.For("actions", null), isExpanded: true, elementId: branch.Id)
@@ -114,7 +109,7 @@ public sealed class ProjectTreeProjector(Project project)
     // the icon (& vs >=1) and a label suffix.
     private TreeNodeViewModel BuildConditionsNode(ProjectElement conditions, bool nested = false)
     {
-        bool or = View(conditions).Effective("type") == "or";
+        bool or = project.View(conditions).Effective("type") == "or";
         string label = $"{(nested ? "Logic group" : "Conditions")} ({(or ? ">=1" : "&")})";
         var node = new TreeNodeViewModel(label, NodeIcons.For(or ? "conditions-or" : "conditions", null),
             isExpanded: true, elementId: conditions.Id)
@@ -135,7 +130,7 @@ public sealed class ProjectTreeProjector(Project project)
     // Every branch is a command container, so commands can be added to it with the normal gesture.
     private TreeNodeViewModel BuildCaseNode(ProjectElement kase)
     {
-        string switchName = ResolveOperandName(View(kase).Effective("link"));
+        string switchName = ResolveOperandName(project.View(kase).Effective("link"));
         var node = new TreeNodeViewModel($"Case ({switchName})", NodeIcons.For("program_case", null),
             isExpanded: true, elementId: kase.Id) { Kind = TreeNodeKind.Case, CrossReferences = CrossReferencesOf(kase) };
         foreach (ProjectElement child in kase.ChildrenOrEmpty())
@@ -145,7 +140,7 @@ public sealed class ProjectTreeProjector(Project project)
                 // "caseValue", not "commands": this row's LABEL is user data and it is ALSO an
                 // IsCommandsContainer, so neither the label nor the flag can tell it from a real
                 // Commands container — it needs a kind of its own or the two merge in the census.
-                var valueNode = new TreeNodeViewModel(NameOr(child, "value"),
+                var valueNode = new TreeNodeViewModel(project.NameOr(child, "value"),
                     NodeIcons.For("case_action", null), isExpanded: true, elementId: child.Id)
                     { Kind = TreeNodeKind.CaseValue };
                 RenderActionsInto(valueNode, child);   // the embedded criterion operand is skipped (not a command)
@@ -165,9 +160,9 @@ public sealed class ProjectTreeProjector(Project project)
     // Renders a program event/action row (US-028): the stored %P/%S template resolved to its operands' live names.
     private string EventCommandLabel(ProjectElement leaf)
     {
-        string name = NameOr(leaf, leaf.Tag);
-        return name.Replace("%P", ResolveOperandName(View(leaf).Effective("link1")))
-                   .Replace("%S", ResolveOperandName(View(leaf).Effective("link2")));
+        string name = project.NameOr(leaf, leaf.Tag);
+        return name.Replace("%P", ResolveOperandName(project.View(leaf).Effective("link1")))
+                   .Replace("%S", ResolveOperandName(project.View(leaf).Effective("link2")));
     }
 
     private string ResolveOperandName(string? token) =>
@@ -203,7 +198,7 @@ public sealed class ProjectTreeProjector(Project project)
     {
         var ids = new List<ElementId>();
         foreach (string attr in attrs)
-            if (ElementId.TryParse(View(element).Effective(attr), out ElementId id) && project.FindById(id) is not null)
+            if (ElementId.TryParse(project.View(element).Effective(attr), out ElementId id) && project.FindById(id) is not null)
                 ids.Add(id);
         return ids;
     }
@@ -216,7 +211,7 @@ public sealed class ProjectTreeProjector(Project project)
             { Kind = TreeNodeKind.LocalitiesRoot };
         foreach (ProjectElement group in project.Groups)
         {
-            string name = NameOr(group, "(unnamed)");
+            string name = project.NameOr(group, "(unnamed)");
             var components = new List<ProjectElement>();
             foreach (ProjectElement child in group.ChildrenOrEmpty())
             {
@@ -237,13 +232,13 @@ public sealed class ProjectTreeProjector(Project project)
     // omitted); a function block shows its four variable sections (US-018/US-019).
     private TreeNodeViewModel BuildComponentNode(ProjectElement component)
     {
-        string name = NameOr(component, component.Tag);
+        string name = project.NameOr(component, component.Tag);
         if (component.Kind == ElementKind.FunctionBlock)
             return BuildFunctionBlockNode(component, name, programmingMode: false);
 
-        bool unlinked = View(component).IsUnlinkedWireless;
-        var node = new TreeNodeViewModel(TreeLabelFormatter.ProductLabel(name, View(component).Position),
-            NodeIcons.For(component.Tag, View(component).Icon),
+        bool unlinked = project.View(component).IsUnlinkedWireless;
+        var node = new TreeNodeViewModel(TreeLabelFormatter.ProductLabel(name, project.View(component).Position),
+            NodeIcons.For(component.Tag, project.View(component).Icon),
             elementId: component.Id, isUnlinked: unlinked)
             { Tooltip = BuildTooltip(component), Kind = TreeNodeKind.Product };
         foreach (ProjectElement resource in component.ChildrenOrEmpty())
@@ -251,7 +246,7 @@ public sealed class ProjectTreeProjector(Project project)
             if (resource.IsScenesContainer)
                 node.Children.Add(BuildScenesNode(resource));   // a product's scenario output (scene link target, US-024)
             else if (!ProductRows.IsStructuralChild(resource.Tag)
-                     && !ProductRows.IsHiddenFromTree(resource.Tag, View(resource).Effective("setting")))
+                     && !ProductRows.IsHiddenFromTree(resource.Tag, project.View(resource).Effective("setting")))
                 node.Children.Add(BuildPinNode(resource, catalogDeclared: true));   // catalog-declared pins (A-24, F-001/F-002)
         }
         return node;
@@ -260,7 +255,7 @@ public sealed class ProjectTreeProjector(Project project)
     // A product's scenes container — a scenario-link target — showing its scene member rows (US-024).
     private TreeNodeViewModel BuildScenesNode(ProjectElement scenes)
     {
-        var node = new TreeNodeViewModel(NameOr(scenes, "Scenarier"), "/Assets/scenario.svg",
+        var node = new TreeNodeViewModel(project.NameOr(scenes, "Scenarier"), "/Assets/scenario.svg",
             elementId: scenes.Id) { Kind = TreeNodeKind.Scenes };
         foreach (ProjectElement member in scenes.ChildrenOrEmpty())
         {
@@ -308,9 +303,8 @@ public sealed class ProjectTreeProjector(Project project)
     // adds Internal variables and keeps every section (US-018/US-026, A-17/A-18).
     public TreeNodeViewModel BuildFunctionBlockNode(ProjectElement fb, string name, bool programmingMode)
     {
-        bool locked = View(fb).Locked;
-        string icon = locked ? "/Assets/fb-lk.svg" : "/Assets/fb-editable.svg";
-        var node = new TreeNodeViewModel(name, icon, elementId: fb.Id, isLockedFunctionBlock: locked)
+        bool locked = project.View(fb).Locked;
+        var node = new TreeNodeViewModel(name, NodeIcons.FunctionBlock(locked), elementId: fb.Id, isLockedFunctionBlock: locked)
         {
             Tooltip = BuildTooltip(fb),
             Kind = TreeNodeKind.FunctionBlock,
@@ -341,7 +335,7 @@ public sealed class ProjectTreeProjector(Project project)
     private string? BuildTooltip(ProjectElement element)
     {
         var parts = new List<string>();
-        if (View(element).Note is { Length: > 0 } note)
+        if (project.View(element).Note is { Length: > 0 } note)
             parts.Add(note.Replace("\r\n", "\n"));
         if (element.HasResourceId && element.Id is { } id)
             parts.Add($"Resource ID: {id.Value}");
@@ -363,22 +357,22 @@ public sealed class ProjectTreeProjector(Project project)
     {
         if (!resource.IsTimeSetting)
             return null;
-        int Part(string attr) => int.TryParse(View(resource).Effective(attr), out int v) ? v : 0;
+        int Part(string attr) => int.TryParse(project.View(resource).Effective(attr), out int v) ? v : 0;
         return $"{Part("hour"):00}:{Part("minute"):00}:{Part("second"):00}";
     }
 
     private TreeNodeViewModel BuildPinNode(ProjectElement resource, bool inFunctionBlockSettings = false,
         bool catalogDeclared = false)
     {
-        string name = NameOr(resource, resource.Tag);
+        string name = project.NameOr(resource, resource.Tag);
         string? value = StateValue(resource)
                      ?? (inFunctionBlockSettings ? SettingsTimeLiteral(resource) : null)
-                     ?? View(resource).Value;
+                     ?? project.View(resource).Value;
         bool isOutput = resource.IsOutputPin;
-        bool saved = isOutput && View(resource).Backup;
+        bool saved = isOutput && project.View(resource).Backup;
         // The label carries the pin's name and, for a state row, its value; the save flag surfaces via IsValueSaved (F-019).
         string label = string.IsNullOrEmpty(value) ? name : $"{name} = {value}";
-        var node = new TreeNodeViewModel(label, NodeIcons.For(resource.Tag, View(resource).Icon),
+        var node = new TreeNodeViewModel(label, NodeIcons.For(resource.Tag, project.View(resource).Icon),
             elementId: resource.Id)
             {
                 IsOutputPin = isOutput, IsValueSaved = saved, Tooltip = BuildTooltip(resource),

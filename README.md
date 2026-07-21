@@ -153,6 +153,7 @@ This project is hosted in a mono-repo containing the following sub-projects:
 * SDK tests:
   * [Safe unit tests](tests/safe_unit_tests/README.md) contains unit tests written in C# that do not access a controller.
   * [Safe project tests](tests/safe_project_tests/) contains tests for the `.vis` project-file engine, driven by committed oracle files. Does not access a controller.
+  * [Safe architecture tests](tests/safe_architecture_tests/) contains ArchUnitNET rules enforcing the SDK's directional layering (e.g. `Ihc.Vis` must not depend on SOAP, the SDK must not depend on Avalonia). Does not access a controller.
   * [Safe Lab tests](tests/safe_lab_tests/README.md) contains headless gui tests for Ihc Lab utility. Does not access a controller.
   * [Safe integration tests](tests/safe_integration_tests/README.md) contains system integration tests written in C# that can be safely run against a controller in use.
   * [Safe visual tests](tests/safe_visual_tests/) contains incubating headless smoke tests for the ihc_openvisual application (in the solution and CI). Does not access a controller.

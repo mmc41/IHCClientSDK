@@ -15,13 +15,14 @@
     <PackageReference Include="CsCheck" />
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="FakeItEasy" />
-    <!-- Architecture tests: IL-level dependency rules that prose comments cannot enforce (designfix P3/C5). -->
-    <PackageReference Include="NetArchTest.Rules" />
   </ItemGroup>
 
     <ItemGroup>
     <Using Include="NUnit.Framework" />
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
     <ProjectReference Include="..\..\utilities\ihc_lab\ihc_lab.csproj" />
+    <!-- The catalog→insert-menu projection (CatalogMenu) is Avalonia-free VM logic in the OpenVisual app; unit-test
+         it here (H2/T004). Referencing the app assembly for its testable logic matches the existing ihc_lab ref. -->
+    <ProjectReference Include="..\..\applications\ihc_openvisual\ihc_openvisual.csproj" />
   </ItemGroup>
 </Project>

@@ -57,13 +57,13 @@ public class SessionApplyTests
         int groups = harness.Session.Current!.Groups.Count;
 
         EditVerdict verdict = harness.Session.CanApply(new AddLocality("X"));
-        ProjectChangeSet? preview = harness.Session.Preview(new AddLocality("X"));
+        PreviewOutcome preview = harness.Session.Preview(new AddLocality("X"));
 
         Assert.Multiple(() =>
         {
             Assert.That(verdict.Ok, Is.True, "a locality insert is always allowed");
-            Assert.That(preview, Is.Not.Null);
-            Assert.That(preview!.Added, Is.Not.Empty, "the preview names the new locality id");
+            Assert.That(preview.Status, Is.EqualTo(PreviewStatus.WouldChange));
+            Assert.That(preview.Changes!.Added, Is.Not.Empty, "the preview names the new locality id");
             Assert.That(harness.Session.Current!.Groups.Count, Is.EqualTo(groups), "neither query committed anything");
         });
     }

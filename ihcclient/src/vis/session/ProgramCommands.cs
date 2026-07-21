@@ -12,7 +12,7 @@ namespace Ihc.Vis.Session
         : ProjectCommand
     {
         internal override string Describe(Project project) => "Add event";
-        internal override EditVerdict Evaluate(EditContext context) => Programs.RequireTag(context, ProgramId, "program_simple");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(ProgramId, "a program", "program_simple");
         internal override void Execute(ProjectEditor editor) =>
             editor.Program(ProgramId).AddEvent(Name, editor.Resource(VariableId), Method, note: Note);
     }
@@ -21,7 +21,7 @@ namespace Ihc.Vis.Session
     public sealed record AddPowerEvent(ElementId ProgramId) : ProjectCommand
     {
         internal override string Describe(Project project) => "Add Powerup event";
-        internal override EditVerdict Evaluate(EditContext context) => Programs.RequireTag(context, ProgramId, "program_simple");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(ProgramId, "a program", "program_simple");
         internal override void Execute(ProjectEditor editor) =>
             editor.Program(ProgramId).AddPowerEvent("Powerup",
                 "Runs the program on controller power-up (also on project transfer and software restart).");
@@ -41,7 +41,7 @@ namespace Ihc.Vis.Session
     public sealed record AddSubProgram(ElementId CommandsId) : ProjectCommand
     {
         internal override string Describe(Project project) => "Add sub-program";
-        internal override EditVerdict Evaluate(EditContext context) => Programs.RequireTag(context, CommandsId, "actions");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(CommandsId, "a command container", "actions");
         internal override void Execute(ProjectEditor editor) => editor.Branch(CommandsId).AddSubProgram();
     }
 
@@ -50,7 +50,7 @@ namespace Ihc.Vis.Session
         : ProjectCommand
     {
         internal override string Describe(Project project) => "Add condition";
-        internal override EditVerdict Evaluate(EditContext context) => Programs.RequireTag(context, ConditionsId, "conditions");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(ConditionsId, "a conditions group", "conditions");
         internal override void Execute(ProjectEditor editor) =>
             editor.ConditionsGroup(ConditionsId).AddCondition(Name, editor.Resource(VariableId), Method, note: Note);
     }
@@ -59,7 +59,7 @@ namespace Ihc.Vis.Session
     public sealed record SetConditionsLogic(ElementId ConditionsId, bool Or) : ProjectCommand
     {
         internal override string Describe(Project project) => "Set condition logic";
-        internal override EditVerdict Evaluate(EditContext context) => Programs.RequireTag(context, ConditionsId, "conditions");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(ConditionsId, "a conditions group", "conditions");
         internal override void Execute(ProjectEditor editor)
         {
             ConditionsGroupRef group = editor.ConditionsGroup(ConditionsId);
@@ -78,7 +78,7 @@ namespace Ihc.Vis.Session
     public sealed record AddLogicGroup(ElementId ConditionsId) : ProjectCommand
     {
         internal override string Describe(Project project) => "Add logic group";
-        internal override EditVerdict Evaluate(EditContext context) => Programs.RequireTag(context, ConditionsId, "conditions");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(ConditionsId, "a conditions group", "conditions");
         internal override void Execute(ProjectEditor editor) => editor.ConditionsGroup(ConditionsId).AddConditionGroup();
     }
 
@@ -110,7 +110,7 @@ namespace Ihc.Vis.Session
     public sealed record AddCaseValue(ElementId CaseId, string Criterion, string SwitchTag) : ProjectCommand
     {
         internal override string Describe(Project project) => "Add case value";
-        internal override EditVerdict Evaluate(EditContext context) => Programs.RequireTag(context, CaseId, "program_case");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(CaseId, "a case", "program_case");
         internal override void Execute(ProjectEditor editor) =>
             editor.Case(CaseId).Case(Criterion, SwitchTag, op => op.SetAttribute("inivalue", Criterion));
     }
@@ -120,8 +120,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Save current value";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(OutputId)?.Tag is "resource_output" or "dataline_output" or "airlink_relay"
-                ? EditVerdict.Allow : EditVerdict.Refuse("Not an output.");
+            context.RequireTag(OutputId, "an output", "resource_output", "dataline_output", "airlink_relay");
         internal override void Execute(ProjectEditor editor) =>
             editor.Resolve(OutputId, "output").SetAttribute("backup", Save ? "yes" : "no");
     }
@@ -138,10 +137,6 @@ namespace Ihc.Vis.Session
 
     internal static class Programs
     {
-        public static EditVerdict RequireTag(EditContext context, ElementId id, string tag) =>
-            context.Index.FindById(id)?.Tag == tag
-                ? EditVerdict.Allow : EditVerdict.Refuse($"The target is not a '{tag}'.");
-
         public static bool IsCommandContainer(EditContext context, ElementId id) =>
             context.Index.FindById(id)?.Tag is "actions" or "case_action";
 

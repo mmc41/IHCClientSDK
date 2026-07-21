@@ -75,7 +75,7 @@ namespace Ihc.Vis.Io
                     for (int i = 0; i < value.Length; i++)
                     {
                         char c = value[i];
-                        if (c > 0xFF)
+                        if (!Latin1.Contains(c))
                         {
                             // An astral char is a surrogate pair; combine the halves so the report names the real
                             // scalar (U+1F600), not the lone high surrogate (U+D83D) iterated first.

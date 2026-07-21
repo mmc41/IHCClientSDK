@@ -136,13 +136,6 @@ namespace Ihc.Vis.Editing
             return new ResourceRef(name, id);
         }
 
-        /// <summary>Removes an input child, cascading any reciprocal link half; its retired id is not reused.</summary>
-        public void RemoveInput(ResourceRef input)
-        {
-            ArgumentNullException.ThrowIfNull(input);
-            editor.DeleteById(RequireId(input));
-        }
-
         /// <summary>Removes an output child, cascading any reciprocal link half; its retired id is not reused.</summary>
         public void RemoveOutput(ResourceRef output)
         {

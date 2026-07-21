@@ -32,4 +32,14 @@ public abstract class ResultDialog<TResult> : Window where TResult : class
 
     /// <summary>The shared Cancel handler: leaves the result null and closes.</summary>
     protected void OnCancel(object? sender, RoutedEventArgs e) => Close();
+
+    /// <summary>Selects and focuses <paramref name="textBox"/> once the window has opened — the shared "the pre-filled
+    /// name is selected and ready to overtype" behaviour of the editor dialogs (US-007/011/013). Call from
+    /// <c>ShowAsync</c> before showing.</summary>
+    protected void FocusOnOpen(TextBox textBox) =>
+        Opened += (_, _) =>
+        {
+            textBox.SelectAll();
+            textBox.Focus();
+        };
 }

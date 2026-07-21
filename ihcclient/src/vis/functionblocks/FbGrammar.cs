@@ -111,5 +111,18 @@ namespace Ihc.Vis.FunctionBlocks
         /// <summary>A leaf node with no children.</summary>
         public static ProjectElement Leaf(string tag, ElementId id, IEnumerable<(string Name, string Value)> attrs) =>
             Node(tag, id, attrs, NoChildren);
+
+        /// <summary>The <c>{name, icon, +optional note}</c> attribute seed the program-tree <c>Materialize*</c>
+        /// builders start from (T030) — a mutable list so a caller can append its node-specific attributes
+        /// (<c>link</c>/<c>variable</c>/<c>value</c>) after; the note leads them, matching the vendor attribute order.</summary>
+        public static List<(string, string)> LeafAttrs(string name, string icon, string? note)
+        {
+            var attrs = new List<(string, string)> { ("name", name), ("icon", icon) };
+            if (note is { } n)
+            {
+                attrs.Add(("note", n));
+            }
+            return attrs;
+        }
     }
 }

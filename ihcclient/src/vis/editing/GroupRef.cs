@@ -147,14 +147,5 @@ namespace Ihc.Vis.Editing
             editor.DeleteById(product.Id);
         }
 
-        /// <summary>
-        /// Removes a function block from this room, cascading the reciprocal follow-link halves outside it that
-        /// point into its resources (via <see cref="ProjectEditor.DeleteById(ElementId)"/>). Retired ids are not reused.
-        /// </summary>
-        public void RemoveFunctionBlock(FunctionBlockRef functionBlock)
-        {
-            ArgumentNullException.ThrowIfNull(functionBlock);
-            editor.DeleteById(functionBlock.Id);
-        }
     }
 }

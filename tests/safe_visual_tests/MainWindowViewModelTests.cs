@@ -284,7 +284,7 @@ public class MainWindowViewModelTests
         await vm.InitializeAsync();
         vm.SelectNode(vm.InstallationNodes[0].Children[2]);   // select "Kitchen"
 
-        var leaf = FirstLeaf(vm.WiredProductsMenu);
+        var leaf = FirstLeaf(Category(vm, "Wired products"));
         await ((IAsyncRelayCommand)leaf.Command!).ExecuteAsync(null);
 
         Assert.Multiple(() =>
@@ -302,7 +302,7 @@ public class MainWindowViewModelTests
         await vm.InitializeAsync();
         vm.SelectedNode = null;
 
-        var leaf = FirstLeaf(vm.WiredProductsMenu);
+        var leaf = FirstLeaf(Category(vm, "Wired products"));
         await ((IAsyncRelayCommand)leaf.Command!).ExecuteAsync(null);
 
         Assert.That(vm.StatusText, Does.Contain("Select a locality"));
@@ -382,23 +382,23 @@ public class MainWindowViewModelTests
         {
             // Root: only Insert locality.
             Assert.That(root.CanInsertLocality, Is.True);
-            Assert.That(root.CanCutCopy || root.CanEditNonLink || root.CanDelete, Is.False, "root has no cut/copy/edit/delete");
+            Assert.That(root.CanCutCopy || root.CanEditNonLink || SdkCanDelete(harness, root), Is.False, "root has no cut/copy/edit/delete");
 
             // Locality: Cut/Copy, Delete, Properties (+ Insert product/FB by pane).
-            Assert.That(locality.CanCutCopy && locality.CanEditNonLink && locality.CanDelete, Is.True);
+            Assert.That(locality.CanCutCopy && locality.CanEditNonLink && SdkCanDelete(harness, locality), Is.True);
             Assert.That(locality.NodeKind, Is.EqualTo("locality"));
 
             // Wired product: Cut/Copy, Delete, Properties — not a paste target.
-            Assert.That(productNode.CanCutCopy && productNode.CanEditNonLink && productNode.CanDelete, Is.True);
+            Assert.That(productNode.CanCutCopy && productNode.CanEditNonLink && SdkCanDelete(harness, productNode), Is.True);
 
             // Link row: exactly Jump-to-opposite + Delete — no Move up/down, no Properties, no Cut/Copy.
-            Assert.That(linkRow.IsLinkRow && linkRow.CanDelete, Is.True);
+            Assert.That(linkRow.IsLinkRow && SdkCanDelete(harness, linkRow), Is.True);
             Assert.That(linkRow.CanEditNonLink, Is.False, "no Move up/down or Properties on a link row");
             Assert.That(linkRow.CanCutCopy, Is.False, "no Cut/Copy on a link row");
 
             // Function block (locked library): Show program (IsFunctionBlock), Unlock, Cut/Copy, Delete, Properties.
             Assert.That(fbNode.IsFunctionBlock && fbNode.IsLockedFunctionBlock, Is.True);
-            Assert.That(fbNode.CanCutCopy && fbNode.CanEditNonLink && fbNode.CanDelete, Is.True);
+            Assert.That(fbNode.CanCutCopy && fbNode.CanEditNonLink && SdkCanDelete(harness, fbNode), Is.True);
         });
 
         // Paste is clipboard-state-dependent (F-010): absent when empty, present on a locality once populated.
@@ -428,9 +428,9 @@ public class MainWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(catalogPin.IsCatalogPin, Is.True);
-            Assert.That(catalogPin.CanDelete, Is.False, "Delete is absent on a catalog-declared product pin");
-            Assert.That(productNode.CanDelete, Is.True, "the product itself stays deletable");
-            Assert.That(vm.InstallationNodes[0].Children[0].CanDelete, Is.True, "a locality stays deletable");
+            Assert.That(SdkCanDelete(harness, catalogPin), Is.False, "Delete is absent on a catalog-declared product pin");
+            Assert.That(SdkCanDelete(harness, productNode), Is.True, "the product itself stays deletable");
+            Assert.That(SdkCanDelete(harness, vm.InstallationNodes[0].Children[0]), Is.True, "a locality stays deletable");
         });
     }
 
@@ -562,7 +562,7 @@ public class MainWindowViewModelTests
         var locality = vm.InstallationNodes[0].Children[0];   // "Living room"
         vm.SelectNode(locality);
 
-        var leaf = FirstLeaf(vm.WiredProductsMenu);
+        var leaf = FirstLeaf(Category(vm, "Wired products"));
         await ((IAsyncRelayCommand)leaf.Command!).ExecuteAsync(null);
 
         Assert.Multiple(() =>
@@ -884,7 +884,7 @@ public class MainWindowViewModelTests
         await vm.InitializeAsync();
         vm.SelectNode(vm.InstallationNodes[0].Children[0]);
 
-        var modemLeaf = vm.BusProductsMenu.First(m => m.Header == "SMS Modem");   // the modem is a Bus product (A-11)
+        var modemLeaf = Category(vm, "Bus products").First(m => m.Header == "SMS Modem");   // the modem is a Bus product (A-11)
         await ((IAsyncRelayCommand)modemLeaf.Command!).ExecuteAsync(null);
 
         Assert.Multiple(() =>
@@ -904,8 +904,8 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         Assert.Multiple(() =>
         {
-            Assert.That(vm.BusProductsMenu.Select(m => m.Header), Does.Contain("SMS Modem"));
-            Assert.That(vm.SpecialProductsMenu.Select(m => m.Header), Does.Not.Contain("SMS Modem"),
+            Assert.That(Category(vm, "Bus products").Select(m => m.Header), Does.Contain("SMS Modem"));
+            Assert.That(Category(vm, "Special products").Select(m => m.Header), Does.Not.Contain("SMS Modem"),
                 "the modem no longer lives under Special products");
         });
     }
@@ -967,7 +967,7 @@ public class MainWindowViewModelTests
         await vm.InitializeAsync();
         vm.SelectNode(vm.InstallationNodes[0].Children[0]);
 
-        var leaf = FirstLeaf(vm.WirelessProductsMenu);
+        var leaf = FirstLeaf(Category(vm, "IHC Wireless products"));
         await ((IAsyncRelayCommand)leaf.Command!).ExecuteAsync(null);
         Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(0), "no dialog auto-opens on insert (A-14)");
 
@@ -989,8 +989,8 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         Assert.Multiple(() =>
         {
-            Assert.That(vm.WirelessProductsMenu, Is.Not.Empty);
-            Assert.That(vm.WirelessProductsMenu.All(m => !m.Header.Contains('#')), Is.True, "NN# prefixes stripped");
+            Assert.That(Category(vm, "IHC Wireless products"), Is.Not.Empty);
+            Assert.That(Category(vm, "IHC Wireless products").All(m => !m.Header.Contains('#')), Is.True, "NN# prefixes stripped");
         });
     }
 
@@ -1886,20 +1886,63 @@ public class MainWindowViewModelTests
 
         vm.EnterProgrammingModeCommand.Execute(fbNode);
 
-        // A deletable-flagged program node: prefer a leaf (event/command/condition/sub-program), else a container.
+        // A selectable program node inside the locked block: prefer a leaf (event/command/condition/sub-program),
+        // else a container. Each addresses a real element, so a raw per-node rule would have shown Delete — but the
+        // SDK gate refuses it because it sits inside a locked block, which is the point of the test.
         var progNode =
-            FindByFlag(vm.FunctionNodes, n => n.CanDelete && n.NodeKind is "event" or "command" or "condition" or "subProgram")
-            ?? FindByFlag(vm.FunctionNodes, n => n.CanDelete && n.NodeKind is "program" or "programs" or "events" or "commands");
-        Assert.That(progNode, Is.Not.Null, "the locked block renders a deletable-flagged program node");
+            FindByFlag(vm.FunctionNodes, n => n.ElementId is not null && n.NodeKind is "event" or "command" or "condition" or "subProgram")
+            ?? FindByFlag(vm.FunctionNodes, n => n.ElementId is not null && n.NodeKind is "program" or "programs" or "events" or "commands");
+        Assert.That(progNode, Is.Not.Null, "the locked block renders a selectable program node");
 
         vm.SelectNode(progNode!);
         Assert.Multiple(() =>
         {
             Assert.That(vm.IsProgrammingBlockLocked, Is.True);
-            Assert.That(progNode!.CanDelete, Is.True, "the node itself is deletable-flagged — this is why the raw menu showed Delete");
             Assert.That(vm.CanDeleteSelected, Is.False, "Delete is withdrawn on a locked block's program node (F-087)");
             Assert.That(vm.CanMoveSelected, Is.False, "Move up/down is withdrawn on a locked block (F-087)");
             Assert.That(progNode!.CanEditNonLink, Is.True, "Properties stays available — the vendor shows Egenskaber on every locked node");
+        });
+    }
+
+    // review3 H1 / T003: the Delete KEY (MainWindow.OnKeyDown) used to gate on a raw per-node deletable flag, which
+    // ignores the locked-block state that the context/Edit-menu gate (CanDeleteSelected) applies — so a user could
+    // press Delete on a node inside a locked library block and bypass the guard. All three routes must now project
+    // ONE SDK-backed verdict (the engine's CanDelete): the DeleteCommand's CanExecute. Pressing Delete on a
+    // locked-block program node is then a silent no-op — no mutation, and no "Cannot delete" refusal dialog.
+    [Test]
+    public async Task DeleteKey_OnLockedBlockProgramNode_IsGatedOnSdkVerdict_NoMutation()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
+        var fbNode = vm.FunctionNodes[0].Children[0].Children[0];
+        Assert.That(fbNode.IsLockedFunctionBlock, Is.True, "a library block is locked");
+        vm.EnterProgrammingModeCommand.Execute(fbNode);
+
+        var progNode =
+            FindByFlag(vm.FunctionNodes, n => n.ElementId is not null && n.NodeKind is "event" or "command" or "condition" or "subProgram")
+            ?? FindByFlag(vm.FunctionNodes, n => n.ElementId is not null && n.NodeKind is "program" or "programs" or "events" or "commands");
+        Assert.That(progNode, Is.Not.Null, "the locked block renders a selectable program node (a raw per-node rule would have shown Delete)");
+        vm.SelectNode(progNode!);
+        var nodeId = progNode!.ElementId!.Value;
+
+        // The Delete-key gate is now the SAME SDK verdict the menu uses — false on a locked-block node (no bypass).
+        Assert.That(vm.DeleteCommand.CanExecute(progNode), Is.False,
+            "the Delete-key gate reflects the SDK verdict — a locked-block node is not deletable");
+
+        // Drive the key route exactly as MainWindow does — execute only when the shared gate allows.
+        string? beforeMessage = harness.Dialogs.LastMessage;
+        if (vm.DeleteCommand.CanExecute(progNode))
+            await vm.DeleteCommand.ExecuteAsync(progNode);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(harness.Session.Current!.FindById(nodeId), Is.Not.Null, "no mutation — the locked-block node survives the key press");
+            Assert.That(harness.Dialogs.LastMessage, Is.EqualTo(beforeMessage),
+                "no 'Cannot delete' error — the route was gated, not refused mid-flight");
         });
     }
 
@@ -2195,6 +2238,32 @@ public class MainWindowViewModelTests
             Assert.That(after.IsOrGroup, Is.True);
             Assert.That(after.DisplayName, Does.Contain(">=1"));
             Assert.That(harness.Session.Current!.FindById(after.ElementId!.Value)!.GetAttribute("type"), Is.EqualTo("or"));
+        });
+    }
+
+    // T014 characterization (M6/B guardrail before ProgramAuthoringCoordinator extraction): the SetConditionsAnd
+    // command's or:false branch of ToggleConditionsAsync had NO test at any level (only the or:true sibling). Toggle
+    // to OR, then back to AND, and pin that the OR combination is cleared.
+    [Test]
+    public async Task ToggleConditions_ToAnd_ClearsTheOrCombination()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        await vm.AddSubProgramCommand.ExecuteAsync(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+
+        await vm.SetConditionsOrCommand.ExecuteAsync(FindByFlag(vm.FunctionNodes, n => n.IsConditionsContainer)!);
+        await vm.SetConditionsAndCommand.ExecuteAsync(FindByFlag(vm.FunctionNodes, n => n.IsConditionsContainer)!);
+
+        var after = FindByFlag(vm.FunctionNodes, n => n.IsConditionsContainer)!;
+        Assert.Multiple(() =>
+        {
+            Assert.That(after.IsOrGroup, Is.False, "toggling to AND clears the OR combination");
+            Assert.That(after.DisplayName, Does.Not.Contain(">=1"));
+            Assert.That(harness.Session.Current!.FindById(after.ElementId!.Value)!.GetAttribute("type"), Is.Not.EqualTo("or"),
+                "the conditions group is no longer type='or' after toggling to AND");
         });
     }
 
@@ -2884,6 +2953,13 @@ public class MainWindowViewModelTests
         Assert.That(vm.StatusText, Does.Contain("programming mode"), "the shortcut guides the user into programming mode");
     }
 
+    // The SDK deletion verdict for a node — the SAME engine rule the GUI's Delete affordance reads
+    // (ProjectCommands.CanDelete via the VM's CanDeleteNode gate), so a test asserts deletability through the one
+    // owner rather than a duplicate app-side flag. False for a node that addresses no element (a synthetic root),
+    // exactly like the gate.
+    private static bool SdkCanDelete(ShellHarness harness, TreeNodeViewModel node) =>
+        node.ElementId is { } id && harness.Session.Current is { } project && harness.Session.Commands.CanDelete(project, id);
+
     private static TreeNodeViewModel? FindByFlag(IEnumerable<TreeNodeViewModel> nodes, Func<TreeNodeViewModel, bool> match)
     {
         foreach (var node in nodes)
@@ -2907,6 +2983,12 @@ public class MainWindowViewModelTests
         }
         return null;
     }
+
+    // The children of a top-level product-category folder in the data-driven ProductsMenu (H2/D08). The four vendor
+    // categories keep their English labels (Wired / IHC Wireless / Bus / Special); an imported .def with an empty
+    // CategoryPath lands under CatalogMenu.ImportedCategoryLabel instead of being dropped.
+    private static IReadOnlyList<ProductMenuItemViewModel> Category(MainWindowViewModel vm, string label) =>
+        vm.ProductsMenu.First(c => c.Header == label).Children;
 
     private static ProductMenuItemViewModel FirstLeaf(IEnumerable<ProductMenuItemViewModel> nodes)
     {

@@ -11,11 +11,11 @@ namespace safe_visual_tests;
 public class CatalogMenuTests
 {
     [Test]
-    public void BuildWiredProducts_GroupsByCategory_StripsSortPrefixes_AndWiresLeaves()
+    public void WiredProducts_GroupsByCategory_StripsSortPrefixes_AndWiresLeaves()
     {
         var products = new ProjectAppService(new IhcSettings()).GetAvailableProducts();
 
-        var menu = CatalogMenu.BuildWiredProducts(products, _ => new RelayCommand(() => { }));
+        var menu = CatalogMenu.Build(products, "Datalinie produkter", _ => new RelayCommand(() => { }));
         var leaves = AllLeaves(menu).ToList();
 
         Assert.Multiple(() =>
@@ -40,7 +40,7 @@ public class CatalogMenuTests
         var products = new ProjectAppService(new IhcSettings()).GetAvailableProducts();
         RelayCommand Cmd(Ihc.Vis.Products.ProductDefinition _) => new(() => { });
 
-        var wired = CatalogMenu.BuildWiredProducts(products, Cmd);
+        var wired = CatalogMenu.Build(products, "Datalinie produkter", Cmd);
         var wireless = CatalogMenu.Build(products, "LK IHC Wireless produkter", Cmd);
         var bus = CatalogMenu.Build(products, "Bus Produkter", Cmd);
         var special = CatalogMenu.Build(products, "Specielle produkter", Cmd);
@@ -64,7 +64,7 @@ public class CatalogMenuTests
     public void CatalogMenu_SubcategoriesInEnglish()
     {
         var app = new ProjectAppService(new IhcSettings());
-        var wired = CatalogMenu.BuildWiredProducts(app.GetAvailableProducts(), _ => new RelayCommand(() => { }));
+        var wired = CatalogMenu.Build(app.GetAvailableProducts(), "Datalinie produkter", _ => new RelayCommand(() => { }));
         var fb = CatalogMenu.BuildFunctionBlocks(app.GetAvailableFunctionBlocks(), _ => new RelayCommand(() => { }));
 
         var wiredFolders = AllFolders(wired).Select(f => f.Header).ToList();
