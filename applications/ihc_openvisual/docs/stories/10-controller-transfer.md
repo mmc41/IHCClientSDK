@@ -6,14 +6,14 @@ status: draft
 
 # E10 — Controller transfer
 
-> **Current scope:** 🕒 **Deferred** — controller send / retrieve needs a live controller / transfer
-> API and does not CRUD the local project; out of the current iteration.
+> **Scope:** In scope, but the observable transfer dialogs need a **live controller** to confirm; they are
+> specified in prose here and matched against hardware when one is available.
 
 **Goal:** Let a commissioning technician send the finished project to the controller (where it is
-stored in EPROM) and retrieve it back to the PC, so the installation runs and can be re‑edited later.
+stored in EPROM) and retrieve it back to the PC, so the installation runs and can be re-edited later.
 
-**Scope:** *Controller > Send project* and *Controller > Retrieve project*, the unlinked‑wireless warning,
-the overwrite confirmation, the transfer‑status dialog, and the *Close on success* option. **Scope
+**Scope:** *Controller > Send project* and *Controller > Retrieve project*, the unlinked-wireless warning,
+the overwrite confirmation, the transfer-status dialog, and the *Close on success* option. **Scope
 excludes:** wireless linking (E4), online simulation and runtime control (out of scope for this app).
 
 **Acceptance criteria (epic level):**
@@ -23,7 +23,7 @@ excludes:** wireless linking (E4), online simulation and runtime control (out of
   existing controller project.
 - SHOULD: Retrieve is disabled when the controller holds no project.
 
-**Readiness:** Not Ready — both stories describe live‑controller behaviour not yet confirmed against a
+**Readiness:** Not Ready — both stories describe live-controller behaviour not yet confirmed against a
 running installation; observable dialogs are described in prose only.
 
 ---
@@ -34,7 +34,7 @@ running installation; observable dialogs are described in prose only.
 unlinked wireless products and about overwriting an existing project, **so that** the installation runs
 the intended configuration.
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Send the project
@@ -64,17 +64,16 @@ Scenario: Auto-close on success
 
 - Sending a project with two unlinked wireless products shows the unlinked warning; choosing *Send*
   proceeds; because the controller already had a project, an overwrite warning follows; confirming
-  uploads and shows a success status that auto‑closes if *Close on success* is ticked.
+  uploads and shows a success status that auto-closes if *Close on success* is ticked.
 
 ### Constraints
 
 - Verification method — **Demonstration** against a live controller.
 
-**Readiness:** Not Ready.
-- [R4] External dependency: requires a connected controller; the exact upload‑status dialog layout is
-  described in prose only and not yet confirmed against a running installation.
+**Readiness:** Not Ready — depends on a connected controller; the exact upload-status dialog layout is
+described in prose only.
 
-**Implementation status:** ◑ Offline slice implemented; controller transfer deferred.
+**Implementation status:** 🟡 Partly implemented — offline slice done; controller transfer pending a live controller.
 
 ---
 
@@ -83,7 +82,7 @@ Scenario: Auto-close on success
 **As a** commissioning technician, **I want** to retrieve the project stored in the controller, **so
 that** I can edit an installation whose source file I do not have locally.
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Retrieve the controller's project
@@ -110,14 +109,10 @@ Scenario: Auto-close on success
 
 ### Constraints
 
-- Verification method - **Demonstration** against a live controller.
-- **Open discrepancy to resolve (do not implement blindly):** one part of the guidance
-  cites `F5` for both *Send project* and *Retrieve project*, while the keyboard shortcut set assigns `F5`
-  to *Send project* only. IHC OpenVisual should resolve during implementation whether `F5` opens retrieve
-  before assigning it to *Retrieve project*.
+- Verification method — **Demonstration** against a live controller.
+- `F5` is assigned to *Send project*; *Retrieve project* has no shortcut of its own.
 
-**Readiness:** Not Ready.
-- [R4] External dependency: requires a connected controller with a stored project; the retrieve dialog
-  contents are documented in prose only.
+**Readiness:** Not Ready — depends on a connected controller with a stored project; the retrieve dialog
+contents are documented in prose only.
 
-**Implementation status:** ◑ Menu present; retrieve transfer deferred.
+**Implementation status:** 🟡 Partly implemented — menu present; retrieve transfer pending a live controller.

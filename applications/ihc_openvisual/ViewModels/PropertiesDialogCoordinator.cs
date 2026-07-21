@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using ihc_openvisual.Services;
 using Ihc.Vis;
 using Ihc.Vis.Addressing;
-using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;

@@ -2,8 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Input;
-using Ihc.Vis.FunctionBlocks;
-using Ihc.Vis.Products;
+using Ihc.Vis;
 
 namespace ihc_openvisual.ViewModels;
 
@@ -22,7 +21,7 @@ public static class CatalogMenu
     /// dropping that top segment (its label is the hosting menu item).
     /// </summary>
     public static IReadOnlyList<ProductMenuItemViewModel> Build(
-        IEnumerable<ProductDefinition> products, string topCategory, Func<ProductDefinition, ICommand> leafCommand)
+        IEnumerable<CatalogItem> products, string topCategory, Func<CatalogItem, ICommand> leafCommand)
     {
         ArgumentNullException.ThrowIfNull(products);
         ArgumentNullException.ThrowIfNull(leafCommand);
@@ -38,11 +37,11 @@ public static class CatalogMenu
     /// comes last. Taxonomy is catalog data; the labels and order are app presentation (D08).
     /// </summary>
     public static IReadOnlyList<ProductMenuItemViewModel> BuildProductForest(
-        IEnumerable<ProductDefinition> products, Func<ProductDefinition, ICommand> leafCommand)
+        IEnumerable<CatalogItem> products, Func<CatalogItem, ICommand> leafCommand)
     {
         ArgumentNullException.ThrowIfNull(products);
         ArgumentNullException.ThrowIfNull(leafCommand);
-        var list = products as IReadOnlyCollection<ProductDefinition> ?? products.ToList();
+        var list = products as IReadOnlyCollection<CatalogItem> ?? products.ToList();
         var present = list.Select(p => Segments(p.CategoryPath).FirstOrDefault()).Distinct().ToList();
         var forest = new List<ProductMenuItemViewModel>();
         foreach (string? top in OrderTopCategories(present))
@@ -58,11 +57,11 @@ public static class CatalogMenu
     // The subtree under one top category (null = the empty/imported top): the products whose CategoryPath begins
     // with it, nested by their remaining segments, that top segment dropped (it labels the hosting menu item).
     private static IReadOnlyList<ProductMenuItemViewModel> BuildSubtree(
-        IEnumerable<ProductDefinition> products, string? topCategory, Func<ProductDefinition, ICommand> leafCommand) =>
+        IEnumerable<CatalogItem> products, string? topCategory, Func<CatalogItem, ICommand> leafCommand) =>
         BuildForest(
             products.Where(p => Segments(p.CategoryPath).FirstOrDefault() == topCategory),
             p => Segments(p.CategoryPath).Skip(1).ToArray(),   // drop the top category itself
-            p => p.DisplayName, leafCommand, p => p.ProductIdentifier,
+            p => p.DisplayName, leafCommand, p => p.Identifier,
             // Product-catalog subcategories render in English (A-29/R-1); the FB library folders stay verbatim.
             raw => TranslateSubcategory(Strip(raw)));
 
@@ -114,17 +113,17 @@ public static class CatalogMenu
     private static string TranslateSubcategory(string label) =>
         SubcategoryEnglish.TryGetValue(label, out string? english) ? english : label;
 
-    /// <summary>Builds the full library-folder tree for the catalog function blocks (US-018), keyed by
-    /// <see cref="FunctionBlockDefinition.MasterType"/>.</summary>
+    /// <summary>Builds the full library-folder tree for the catalog function blocks (US-018), keyed by their
+    /// <see cref="CatalogItem.Identifier"/> (the function block's <c>master_type</c>).</summary>
     public static IReadOnlyList<ProductMenuItemViewModel> BuildFunctionBlocks(
-        IEnumerable<FunctionBlockDefinition> blocks, Func<FunctionBlockDefinition, ICommand> leafCommand)
+        IEnumerable<CatalogItem> blocks, Func<CatalogItem, ICommand> leafCommand)
     {
         ArgumentNullException.ThrowIfNull(blocks);
         ArgumentNullException.ThrowIfNull(leafCommand);
         return BuildForest(
             blocks,
             b => Segments(b.CategoryPath),   // the whole path is the folder tree
-            b => b.DisplayName, leafCommand, b => b.MasterType,
+            b => b.DisplayName, leafCommand, b => b.Identifier,
             Strip);   // FB library category names stay Danish verbatim (US-018)
     }
 

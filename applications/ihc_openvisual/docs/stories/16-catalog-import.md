@@ -6,54 +6,48 @@ status: draft
 
 # E16 — Catalog import (products & function blocks)
 
-> **Current scope:** ✅ **In scope** — the IHC OpenVisual GUI for importing product and
-> function‑block definition files, and the app‑data folder those files are stored in when persisted.
-> **Note:** runtime catalog import is an IHC OpenVisual capability that lets an installer extend the
-> component library at runtime; its UI is IHC OpenVisual's own design.
+> **Scope:** In scope. Runtime catalog import is an IHC OpenVisual capability that lets an installer extend
+> the component library at runtime — its UI is IHC OpenVisual's own design.
 
-**Goal:** Let an IHC installer import product and function‑block definition files —
+**Goal:** Let an IHC installer import product and function-block definition files —
 a single file or a whole folder — from the *Library* menu, see the imported components become
-available to insert, and optionally persist them into an IHC OpenVisual app‑data folder that is loaded
+available to insert, and optionally persist them into an IHC OpenVisual app-data folder that is loaded
 on startup, so the components remain available in later sessions.
 
-**Scope:** the *Library*‑menu commands that launch a file or folder import (with their pickers); the
+**Scope:** the *Library*-menu commands that launch a file or folder import (with their pickers); the
 confirmation feedback (which/how many components were imported); the imported components appearing in
-the product and function‑block insertion menus; the persist option (defaulted on) that copies the
-imported files into the app‑data catalog folder; loading that folder on startup; and the error message
+the product and function-block insertion menus; the persist option (defaulted on) that copies the
+imported files into the app-data catalog folder; loading that folder on startup; and the error message
 shown when a file cannot be read. **Scope excludes:** authoring or editing definition files;
-importing a component's sibling help document for tooltips/reports (E13); removing or un‑importing a
-component; and any controller‑side catalog (E10).
+importing a component's sibling help document for tooltips/reports (E13); removing or un-importing a
+component; and any controller-side catalog (E10).
 
 **Acceptance criteria (epic level):**
-- MUST: From the *Library* menu the installer can import a single product or function‑block definition
+- MUST: From the *Library* menu the installer can import a single product or function-block definition
   file, or a folder of such files, and the imported components then appear among those available to
   insert (E3–E5).
 - MUST: A folder import reports how many components were imported and includes files in subfolders.
 - MUST: An import can be persisted (an option defaulted on) by copying the files into IHC OpenVisual's
-  app‑data catalog folder; that folder is loaded on startup so persisted components are available in
-  later sessions, while an un‑persisted import lasts only for the current session.
+  app-data catalog folder; that folder is loaded on startup so persisted components are available in
+  later sessions, while an un-persisted import lasts only for the current session.
 - SHOULD: A file that cannot be read is reported with a message that names it, and a folder import
   stops at that file.
 
-**Readiness:** Ready.
-- Design decisions taken: the import commands live in the **Library** menu; persisted files are copied
-  to an **app‑data** catalog folder that loads on startup (US-061); a folder import **stops at the
-  first unreadable file** (US-062). The former residual R‑notes are **closed as of 2026‑07‑17**: the
-  command labels are shipped and measured (`Import catalog file…` / `Import catalog folder…`, F‑042) and
-  the app‑data subpath is settled in source (`%APPDATA%\IHC OpenVisual\catalog`, US-061). **One open item
-  remains, and it is a ruling, not an implementation detail:** the file‑name collision policy —
-  overwrite vs keep both — **R‑7** (US-061).
+**Readiness:** Ready. The import commands live in the **Library** menu (`Import catalog file…` /
+`Import catalog folder…`); persisted files are copied to the app-data catalog folder
+(`%APPDATA%\IHC OpenVisual\catalog`) that loads on startup (US-061); a folder import **stops at the
+first unreadable file** (US-062); a file-name collision on persist **keeps both** files (US-061).
 
 ---
 
 ## US-059 — Import a catalog file from the Library menu
 
-**As an** IHC installer, **I want** to import a single product or function‑block definition
+**As an** IHC installer, **I want** to import a single product or function-block definition
 file from the *Library* menu, **so that** the component becomes available to place in my project.
 
 **Scope excludes:** importing a whole folder (US-060); persisting the import (US-061).
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Import a product definition file
@@ -78,20 +72,16 @@ Scenario: A file that cannot be read leaves the menus unchanged
 ### AC illustrations
 
 - Importing a product definition `MyDimmer` makes *MyDimmer* selectable from the same *Products*
-  insertion routes as the built‑ins (context menu on a locality, or the *Insert* menu); importing a
-  function‑block definition `MyTimer` makes *MyTimer* selectable among the function blocks — so the
+  insertion routes as the built-ins (context menu on a locality, or the *Insert* menu); importing a
+  function-block definition `MyTimer` makes *MyTimer* selectable among the function blocks — so the
   file's kind determines which insertion menu it appears in.
 
 ### Constraints
 
-- Verification method — **Demonstration** that a product definition and a function‑block definition each
+- Verification method — **Demonstration** that a product definition and a function-block definition each
   import and then appear in the matching insertion menu.
-- **R1 closed (2026‑07‑17)** — both halves are answered from the record, not pending at implementation.
-  The import commands live in the *Library* menu and ship as **`Import catalog file…`** and **`Import
-  catalog folder…`** (US-060), captured in a live IHC OpenVisual *Library*‑menu walk: `RESULTS.md`
-  **F‑042**. They **do** open a **native OS picker** — `AvaloniaDialogService.cs:97` calls Avalonia's
-  `StorageProvider.OpenFilePickerAsync` (`:110`, `OpenFolderPickerAsync` for the folder route). The AC
-  remain stated as observable outcomes, so they hold regardless of the label chosen.
+- The import commands live in the *Library* menu (`Import catalog file…` / `Import catalog folder…`) and
+  open a native OS file/folder picker.
 
 **Readiness:** Ready.
 
@@ -101,14 +91,14 @@ Scenario: A file that cannot be read leaves the menus unchanged
 
 ## US-060 — Import a folder of catalog files from the Library menu
 
-**As an** IHC installer, **I want** to import a folder that contains product and function‑block
+**As an** IHC installer, **I want** to import a folder that contains product and function-block
 definition files, including files in its subfolders, **so that** I can load a whole component library
 in one action instead of importing files one by one.
 
-**Scope excludes:** single‑file import (US-059); persisting the import (US-061); the message wording
-for a file that fails mid‑import (US-062).
+**Scope excludes:** single-file import (US-059); persisting the import (US-061); the message wording
+for a file that fails mid-import (US-062).
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Import a folder of catalog files
@@ -136,7 +126,7 @@ Scenario: A non-existent folder is reported, not silently ignored
 ### AC illustrations
 
 - Importing a folder `MyLibrary/` that holds two product definitions (`dimmer`, `relay`) and one
-  function‑block definition (`timer`) makes all three available (two products and one function block)
+  function-block definition (`timer`) makes all three available (two products and one function block)
   and reports `3`.
 
 ### Constraints
@@ -153,12 +143,12 @@ Scenario: A non-existent folder is reported, not silently ignored
 ## US-061 — Persist imports to the app-data folder and load them on startup
 
 **As an** IHC installer, **I want** an import to be persisted by default — copying the imported files
-into IHC OpenVisual's app‑data catalog folder — **so that** the imported components are available
+into IHC OpenVisual's app-data catalog folder — **so that** the imported components are available
 every time I start the application, not only in the session where I imported them.
 
 **Scope excludes:** the import mechanics themselves (US-059, US-060).
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Persist an import by default
@@ -179,7 +169,7 @@ Scenario: Decline persistence for a one-off import
   Then the components are available in the current session only
   And nothing is copied into the app-data catalog folder, so they are absent after a restart
 
-Scenario: A file-name collision keeps both files (R-7)
+Scenario: A file-name collision keeps both files
   Given a persisted catalog file named "MyDimmer.def" already exists in the app-data catalog folder
   When I import another file named "MyDimmer.def" with persistence on
   Then the existing persisted file is left untouched
@@ -189,8 +179,8 @@ Scenario: A file-name collision keeps both files (R-7)
 
 ### AC illustrations
 
-- Persisting an imported product definition `MyDimmer` copies it into the app‑data catalog folder;
-  closing and reopening IHC OpenVisual still lists *MyDimmer* among the products without re‑importing it.
+- Persisting an imported product definition `MyDimmer` copies it into the app-data catalog folder;
+  closing and reopening IHC OpenVisual still lists *MyDimmer* among the products without re-importing it.
 - Declining persistence for the same file lets me insert *MyDimmer* now, but after a restart it is gone
   until I import it again.
 
@@ -198,16 +188,11 @@ Scenario: A file-name collision keeps both files (R-7)
 
 - Verification method — **Test** that a persisted import is still available after an application
   restart, and that a declined import is absent after restart.
-- **Settled — the subpath.** The catalog folder is an app‑data directory, and its subpath is no longer
-  open: `ProjectWorkflow.DefaultCatalogDir()` resolves it as `Environment.SpecialFolder.ApplicationData` +
-  `IHC OpenVisual` + `catalog` — i.e. **`%APPDATA%\IHC OpenVisual\catalog`** on Windows. The `ProjectWorkflow`
-  constructor loads it on startup, which is this story's second AC. An override is accepted
-  via the `catalogDir` constructor argument (tests use it).
-- **Resolved 2026‑07‑17 (R‑7 — keep both on file‑name collision).** When a persisted import collides by file
-  name with an existing persisted file, IHC OpenVisual **keeps both**: the incoming file is written under a
-  disambiguating suffix rather than overwriting the existing one, so an earlier import is **never silently
-  lost**. (Runtime catalog import is an IHC OpenVisual‑only capability, so no vendor arbitrates this — it was
-  a product‑owner ruling, `tmp\research3.md` §7.) The collision case now has its own AC scenario above.
+- The catalog folder is an app-data directory — `%APPDATA%\IHC OpenVisual\catalog` on Windows — loaded on
+  startup.
+- **On a file-name collision, IHC OpenVisual keeps both**: the incoming file is written under a
+  disambiguating suffix rather than overwriting the existing one, so an earlier import is never silently
+  lost. (Keeping both is a deliberate IHC OpenVisual product-owner decision.)
 
 **Readiness:** Ready.
 
@@ -222,7 +207,7 @@ read, **so that** I can find and fix the offending file instead of guessing whic
 
 **Scope excludes:** the successful import paths (US-059, US-060).
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: A malformed single file names itself in the error
@@ -249,17 +234,17 @@ Scenario: A folder import stops at the first unreadable file
 
 - Importing a truncated definition file `broken` fails with a message that names it, and the
   products/function blocks available before the attempt are exactly the same afterwards.
-- Selecting a plain text file for single‑file import is reported as an invalid definition file naming
+- Selecting a plain text file for single-file import is reported as an invalid definition file naming
   that file, rather than being partly accepted.
 
 ### Constraints
 
 - Verification method — **Test** that a malformed file surfaces an error whose text contains the file
-  name, and that the available‑components set is unchanged after a failed single‑file import.
-- Decision: a folder import **stops at the first unreadable file** (it does not skip and continue);
-  files imported before it remain available and files after it are not imported. The message names the
-  offending file so it can be fixed and the import re‑run.
+  name, and that the available-components set is unchanged after a failed single-file import.
+- A folder import **stops at the first unreadable file** (it does not skip and continue); files imported
+  before it remain available and files after it are not imported. The message names the offending file so
+  it can be fixed and the import re-run.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented. Epic E16 complete.
+**Implementation status:** ✅ Implemented.

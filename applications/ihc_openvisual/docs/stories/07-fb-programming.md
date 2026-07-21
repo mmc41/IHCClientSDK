@@ -1,33 +1,30 @@
 ---
-version: 0.3.0
-last-updated: 2026-07-18
+version: 0.3.1
+last-updated: 2026-07-21
 status: draft
 ---
 
-# E7 — Function‑block programming
-
-> **Current scope:** ✅ **In scope** — authoring variables and program logic inside a block is
-> project CRUD.
+# E7 — Function-block programming
 
 **Goal:** Let an IHC programmer author the control logic inside a function block — declaring variables,
 building programs from events/conditions/commands by dragging variables, composing logic (AND/OR/NOT),
-using enumerators and case statements, doing arithmetic, and handling power‑up — so a block performs
+using enumerators and case statements, doing arithmetic, and handling power-up — so a block performs
 its intended function.
 
 **Scope:** programming mode; the four variable sections and the ~19 resource types; program vs.
-sub‑program structure (Events / Conditions / Commands); logic groups and operators; enumerators;
-case statements; arithmetic (decimals, ×/÷, integer conversion); power‑up events; and
-function‑block‑to‑function‑block variable links. **Scope excludes:** inserting the block (E5),
+sub-program structure (Events / Conditions / Commands); logic groups and operators; enumerators;
+case statements; arithmetic (decimals, ×/÷, integer conversion); power-up events; and
+function-block-to-function-block variable links. **Scope excludes:** inserting the block (E5),
 product↔block links, including scene links (E6, US-024), and simulation (E8).
 
 **Acceptance criteria (epic level):**
 - MUST: The programmer can switch a selected block into programming mode and back, add variables to the
   correct section, and build a working program by dragging variables onto event/condition/command
   groups.
-- MUST: The tool composes events with OR, lets conditions be AND/OR/NOT‑combined into nested logic
-  groups, and executes commands top‑to‑bottom.
-- SHOULD: Enumerators, case statements, arithmetic, power‑up handling, and direct
-  function‑block‑to‑function‑block variable links are available and behave as specified.
+- MUST: The tool composes events with OR, lets conditions be AND/OR/NOT-combined into nested logic
+  groups, and executes commands top-to-bottom.
+- SHOULD: Enumerators, case statements, arithmetic, power-up handling, and direct
+  function-block-to-function-block variable links are available and behave as specified.
 
 **Readiness:** Ready.
 
@@ -35,10 +32,10 @@ product↔block links, including scene links (E6, US-024), and simulation (E8).
 
 ## US-026 — Enter and leave programming mode
 
-**As an** IHC programmer, **I want** to open a function block’s program in programming mode and return
+**As an** IHC programmer, **I want** to open a function block's program in programming mode and return
 to configuration mode, **so that** I can edit logic and then go back to the installation view.
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Enter programming mode for a block
@@ -62,66 +59,23 @@ Scenario: Switch focus between the two panes
 
 ### Business rules (what a mode transition changes)
 
-- MUST: Entering programming mode **re‑roots both panes to the function block's own name** — the left pane
+- MUST: Entering programming mode **re-roots both panes to the function block's own name** — the left pane
   to its variable sections (*Input* / *Output* / *Settings* / *Internal variables*), the right pane to
   *Programs*.
-- MUST: Leaving programming mode re‑roots **both** panes back to *Localities*.
+- MUST: Leaving programming mode re-roots **both** panes back to *Localities*.
 - MUST: The pane roots are what tell the two modes apart — configuration mode roots at *Localities*,
-  programming mode roots at the block's name.
-- MUST: **`Internal variables` is a programming‑mode section.** It appears when the block's program is open
+  programming mode roots at the block's name. (This is the only reliable signal of which mode the view is
+  in; IHC OpenVisual additionally reports the transition in the status bar.)
+- MUST: **`Internal variables` is a programming-mode section.** It appears when the block's program is open
   and **not** in the configuration view (E5, US-018) — internals are the block author's business, not the
   installer's.
-- MUST: **Programming mode on a *locked* (library) block is view‑only.** Its program **renders for reading**
+- MUST: **Programming mode on a *locked* (library) block is view-only.** Its program **renders for reading**
   — the lock never gates viewing — but **every authoring command is gated on the block being unlocked**:
-  variable / program / enum inserts and `Ctrl+I` / `Ctrl+U` pin inserts, **and the mutations *Delete* and
-  *Move up/down***, are **removed (not greyed)** on a locked block, matching the vendor. *Properties*
-  (Egenskaber) stays — the vendor offers it on every node. Unlocking (US-020) is the separate, deliberate
-  act that enables editing.
-
-  > **Extended 2026‑07‑18 (F‑087, C15/E‑4 measurement run).** The A‑27 UI arm originally withdrew only the
-  > *Insert/Add* commands and left **Delete** and **Move up/down** active on a locked block's program nodes —
-  > so a user could still delete or reorder a node inside a locked library block (the same D10 integrity break).
-  > The vendor's locked‑FB program menu was measured to offer **only Egenskaber** on every node (leaves add
-  > Logmærke/Stoppunkt; no Delete/Move anywhere). Fixed: `Delete`/`Move` now gate on `!IsProgrammingBlockLocked`
-  > too. Evidence: `tmp\comptest\out\M\M4-census.json`.
-
-  > **Added 2026‑07‑17 (F‑076/F‑077, backlog A‑27).** The vendor lets you open a locked block's program to
-  > read it but **refuses to edit** it — the `&Program` insert command is **absent** from a locked FB's
-  > `Programmer` menu (2 items vs an unlocked FB's 3). IHC OpenVisual has **no such gate**: F3 → `Ctrl+I`
-  > inserted a pin into locked `_0x3de328` (11 → 12 pins) and `project save` **persisted a locked block the
-  > vendor could never produce** (an F‑077 D10 file‑integrity break). Implement it as a UI arm (remove the
-  > authoring commands) **and** an SDK guard (refuse mutating a `locked="yes"` block's internals, so the
-  > library block keeps matching its master whoever drives the editor). ⚠ Distinct from unlock — do **not**
-  > make unlock automatic, and viewing must still work. Evidence: `RESULTS.md` **F‑076**/**F‑077**; see
-  > US-020 (the FB‑structure arm) and US-068 (its menu already omits *Program* on a locked block).
-
-> **Closed 2026‑07‑17 — the rule is right; the app's breach is a plain implementation bug (A‑17).**
-> The *Functions* pane was diffed deep against IHC Visual, and the vendor renders `Internal variables`
-> **0 times out of 117 blocks** in configuration mode while IHC OpenVisual renders it **117 of 117** —
-> **+495 rows**, the single biggest divergence in that pane. So the app contradicts a rule its own story has
-> carried since it was written.
->
-> ✅ **The remaining capture landed and the rule stands as written.** **F‑069** was measured **both** ways
-> (reclassified E→B): programming‑mode / TV1 shows **4 sections** including `Interne variable`
-> (`P01-TV1-programming-d5.json`), while configuration‑mode / TV2 shows **3** (`C10-TV2-config-d5.json`).
-> So the vendor **does** show internals in programming mode and **never** in configuration mode — exactly
-> this section rule. ⇒ the fix is *hide the section in configuration mode* (not "do not model it at all"),
-> which makes backlog **A‑17** an **implementation‑only** bug, not a spec gap. ⚠ The earlier caution — that
-> the rule came from vendor documentation (the F‑013 arrow‑key hazard class) — is retired: this is now
-> measured. Evidence: `RESULTS.md` **F‑068**, **F‑069** (driven in **F‑073**'s run).
-
-> **Confirmed 2026‑07‑16 — aligned.** Both apps re‑root **both** panes identically: IHC Visual to
-> `Input`/`Output`/`Indstillinger`/`Interne variable` + `Programmer`, IHC OpenVisual to
-> `Input`/`Output`/`Settings`/`Internal variables` + `Programs` — byte‑for‑byte the same sections,
-> translated (language is an allowed difference). Esc exits and re‑roots both back on both apps. IHC
-> OpenVisual additionally reports the transition in the status bar, which the vendor does not — a harmless
-> addition. Evidence: `RESULTS.md` **F‑034** (`S06\20-programming-mode-vis.png` vs
-> `20-programming-mode-ov.png`; pane‑root reads on both, verified by effect).
->
-> Two notes worth keeping: (1) IHC OpenVisual starts the block's node **collapsed** where IHC Visual shows
-> its four sections expanded — a default‑expansion nicety, not a divergence to chase. (2) The pane root is
-> also the **only** reliable way to read which mode an app is in — there is no other passive signal, on
-> either app.
+  variable / program / enum inserts, `Ctrl+I` / `Ctrl+U` pin inserts, **and the mutations *Delete* and
+  *Move up/down***, are **removed (not greyed)** on a locked block. *Properties* stays — it is offered
+  on every node. Unlocking (US-020) is the separate, deliberate act that enables editing. This must be
+  enforced both by removing the commands (UI) and by an **engine guard**, so a locked block keeps matching
+  its master whoever drives the editor.
 
 ### AC illustrations
 
@@ -131,21 +85,16 @@ Scenario: Switch focus between the two panes
 
 ### Constraints
 
-- Verification method — **Demonstration** that entering re‑roots both panes to the block name and leaving
+- Verification method — **Demonstration** that entering re-roots both panes to the block name and leaving
   restores both to *Localities*.
-- The per‑node interaction census **inside** programming mode (variables, programs, events, conditions,
-  enum types, case nodes) was measured against the vendor (`RESULTS.md` **E‑4** → F‑087, fixed). The
-  **drag + method popup** the vendor uses to add events/commands **now ships** (A‑34): dragging a variable
-  onto an events or commands container opens the same method popup the two‑step *Use in program* arms —
-  which stays as the non‑drag **supplement**. The mode **transition** was already aligned.
+- Commands route to the **selected element**, not to whichever pane holds keyboard focus.
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Implemented — the mode **transition** is measured **aligned** with IHC Visual
-(F‑034). Two divergences remain: ⚠ the `Internal variables` section is shown in configuration mode too,
-where IHC Visual never shows it — now a settled implementation fix (**A‑17**; F‑068/F‑069 closed); and
-⚠ **there is no view‑only gate on a locked block** — authoring commands are not removed/refused on a
-`locked` block (**A‑27**; F‑076/F‑077).
+**Implementation status:** 🟡 Partly implemented — the mode transition works, `Internal variables` is correctly
+hidden in configuration mode, and the locked-block view-only **UI** gate withdraws the insert/delete/move
+commands. ⚠ The **engine-level** view-only guard is incomplete — a non-UI edit (or the still-ungated AND/OR
+toggle, save-current-value, log-mark, or *Properties*-driven rename/enum-edit) can still mutate a `locked` block.
 
 ---
 
@@ -158,18 +107,20 @@ their name/note/initial value/persistence, **so that** the program has the data 
 
 **Placement rules:**
 - MUST: Variables are added in programming mode by selecting the target section and choosing
-  *Insert > Variables > <type>*, or by right‑clicking the section and picking the type from the popup.
+  *Insert > Variables > <type>*, or by right-clicking the section and picking the type from the popup.
+  Two types sit **off** the flat variable bar: **`Input`** is inserted from the section's context menu or
+  via **`Ctrl+I`**, and **`Enum`** from the section context menu's **`Enum` submenu** (then pick an
+  enumerator type, US-030).
 - MUST: A section constrains which types it accepts:
   - **Input** / **Output** — for a *function link*, no further variables may be added; otherwise the
-    block’s input/output pins.
-  - **Settings** — all variables **except** inputs, outputs and function blocks
-    (user‑adjustable settings).
+    block's input/output pins.
+  - **Settings** — all variables **except** inputs, outputs and function blocks (user-adjustable settings).
   - **Internal variables** (Internal) — all variable types (hidden from block users).
 
-**Property rules (select variable, press `F2` or right‑click > Properties):**
+**Property rules (select variable, press `F2` or right-click > Properties):**
 - MUST: Set **Name**, **Note**, and an **initial value**.
-- SHOULD: A checkbox **Save value on power loss** — leave unchecked unless
-  needed, as enabling it weakens performance.
+- SHOULD: A checkbox **Save value on power loss** — leave unchecked unless needed, as enabling it weakens
+  performance.
 
 **Variable types (the resource palette):**
 
@@ -183,7 +134,7 @@ their name/note/initial value/persistence, **so that** the program has the data 
 | Timer | **Timer** | hh:mm:ss.sss 00:00:00.000…23:59:59.999 |
 | Timer value | **Timer value** | hh:mm:ss.sss; to preset a timer or store a measured value |
 | Humidity | **Humidity** | relative humidity % |
-| Time‑of‑day | **Time of day** | hh:mm:ss 00:00:00…23:59:59 |
+| Time-of-day | **Time of day** | hh:mm:ss 00:00:00…23:59:59 |
 | Holiday | **Holiday** | holiday flag from an online server (configured in a separate administration tool) |
 | Weekday | **Weekday** | Monday…Sunday |
 | Date | **Date** | any date |
@@ -200,7 +151,7 @@ their name/note/initial value/persistence, **so that** the program has the data 
 
 ### AC illustrations
 
-- Filling a block’s *Internal variables* section shows rows like `Weekday = Monday`, `Number = 0`,
+- Filling a block's *Internal variables* section shows rows like `Weekday = Monday`, `Number = 0`,
   `Flag = OFF`, `Counter = 0`, `Date = 01:01`, `Timer = 00:00:00.000`, `Decimal = 0.00`,
   `Humidity = 0.0% RH`, `Temperature = 0.0 °C` — each with its type icon and localized default; the
   status bar confirms each add, e.g. `Temperature was inserted under Internal variables`.
@@ -212,7 +163,10 @@ their name/note/initial value/persistence, **so that** the program has the data 
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented (core palette + section matrix).
+**Implementation status:** 🟡 Partly implemented — the wired variable palette and section matrix work. ⚠
+Editing a generic variable's Name/Note/initial value via *Properties* has no dialog route (the item is offered
+but no-ops); adding an enum variable always creates a new type instead of offering existing ones; and the
+kW/kWh/W/Wh power/energy types are suppressed from the palette pending a decision.
 
 ---
 
@@ -221,7 +175,7 @@ their name/note/initial value/persistence, **so that** the program has the data 
 **As an** IHC programmer, **I want** to insert a program and build it by dragging variables onto its
 event and command groups, **so that** events trigger the commands that realise the function.
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Insert a standard program
@@ -247,16 +201,42 @@ Scenario: Event and command semantics
     a command that activates another program runs that program immediately before continuing
 ```
 
+### Business rules (the operator vocabulary)
+
+- MUST: **The target group decides the row family; the dragged pin's type decides the operator list.**
+  Dropping a pin on an **Events** group raises the event popup, on a **Commands** group the command popup, on
+  a **Conditions** group the condition popup (US-029) — one drag gesture, three families. There is **no
+  separate "add event" verb**: an event is authored by dropping a pin on the Events group like any other row.
+- MUST: The operator each popup offers is a function of the pin's type. The per-type lists are the authoring
+  vocabulary IHC OpenVisual reproduces:
+
+  | Pin type → target group | Operators offered |
+  |---|---|
+  | **bool input → Events** | `→ ON` · `→ OFF` · `→ <pin>` · `NOT → <pin>` · `is changed` · `is written` |
+  | **bool output → Commands** | `= ON` · `= OFF` · `= <pin>` · `= NOT` · **`Toggle`** *(bool-output only)* |
+  | **bool → Conditions** | `= ON` · `= OFF` · `= <pin>` · `NOT =` |
+  | **analog (humidity, …) → Events** | `is changed` · `is written` |
+  | **weekday → Events** | `System weekday → <pin>` · `is changed` · `is written` |
+  | **timer → Commands** | `= 0` · `= initial value` · `= <pin>` · `= Timer +` · `= Timer −` · `Activate count-down … with initial value` · `Activate count-up` · `Activate count-down` · `Stop counting` |
+
+- MUST: A **two-operand** operator (`→ <pin>`, `= <pin>`, `NOT → <pin>`, `NOT =`) takes a **second pin**.
+  IHC OpenVisual lets the author **pick both ends** of such a row (US-029) — it must not silently auto-bind
+  the second operand.
+
 ### AC illustrations
 
-- A `<function block>` with one input and one output: the program’s single event `Input -> ON` runs
+- A `<function block>` with one input and one output: the program's single event `Input -> ON` runs
   the single command `Toggle Output`, so each ON press toggles the output.
-- A press‑and‑release string sets the output to follow the input: event `Input is changed`,
+- A press-and-release string sets the output to follow the input: event `Input is changed`,
   command sets `Output` to follow `Input` (output ON while the button is held).
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented (events + commands authoring; explicit-program-insert deferred).
+**Implementation status:** 🟡 Partly implemented — bool event and command authoring works. ⚠ The operator list
+is keyed by category, not by the pin's type: the bool lists are incomplete, the `NOT`-condition is a unary
+`%P <> ON` rather than the two-operand `NOT =`, the analog/weekday/timer operator sets are absent, `Toggle` is
+offered on any variable (not only bool outputs), two-operand comparison rows can't be authored, and a pin can't
+be dragged onto a **Conditions** group (only Events/Commands).
 
 ---
 
@@ -265,7 +245,7 @@ Scenario: Event and command semantics
 **As an** IHC programmer, **I want** to add conditions and combine them with AND/OR/NOT into nested
 logic groups, **so that** commands run only when the intended logical expression is true.
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Turn a program into a conditional sub-program
@@ -293,30 +273,28 @@ Scenario: Nest a logic group for a compound expression
     "(Output1=OFF) OR ((Output2=ON) AND ((Output3 NOT = Output1) OR (Output4=ON)))"
 ```
 
+### Business rules (tree label)
+
+- MUST: A conditional-command node (`program_sub`, *"Betinget kommando"*) that carries a user-set **`name`**
+  renders that name as its tree label — e.g. `Kip udgang`, `Tænd`, `Sluk` — falling back to the default
+  *Sub-program* token (in English) **only when `name` is absent or default**. A fixed *Sub-program* for every
+  one would discard the name and collapse distinct sub-programs to indistinguishable rows.
+- MUST: Inserting a sub-program appends the four-node skeleton the first scenario describes — *Sub-program →
+  { Conditions, Commands when conditions true, Commands when conditions false }*.
+
 ### AC illustrations
 
 - Two conditions `Output1=OFF` and `Output2=ON` in one group with `&` mean `(Output1=OFF) AND
   (Output2=ON)`; switching the group to `>=1` makes it `(Output1=OFF) OR (Output2=ON)`.
-- When one of the program’s events fires, the sub‑program evaluates the conditions; if all true it runs
+- When one of the program's events fires, the sub-program evaluates the conditions; if all true it runs
   the *true* commands, otherwise the *false* commands. Events and conditions are independent — a
   condition is only evaluated when an event occurs.
 
-### Business rules (tree label)
-
-- MUST: A conditional‑command node (`program_sub`, *"Betinget kommando"*) that carries a user‑set **`name`**
-  renders that name as its tree label — e.g. `Kip udgang`, `Tænd`, `Sluk` — falling back to the default
-  *Sub‑program* token (in English per the R‑1 ruling) **only when `name` is absent or default**. Today IHC
-  OpenVisual renders a fixed *Sub‑program* for every one, discarding the name and collapsing distinct
-  sub‑programs to indistinguishable rows.
-
-  > **Added 2026‑07‑17 (F‑075, backlog A‑26).** The vendor renders the stored name; IHC OpenVisual's
-  > `BuildSubProgramNode` (`MainWindowViewModel.cs:1433`) hard‑codes the default token. It is not cosmetic —
-  > it is the same failure family as F‑061 (a name that distinguishes siblings, dropped). Evidence:
-  > `RESULTS.md` **F‑075**.
-
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented (sub-program + conditions authoring; nested-branch sub-programs deferred). ⚠ Sub‑program **name** rendering is a measured gap — backlog **A‑26** (F‑075).
+**Implementation status:** ✅ Implemented — sub-program + conditions authoring with AND/OR logic groups, and the
+user-set sub-program **name** renders as the tree label (falling back to the default *Sub-program* token only
+when the name is absent or still the default).
 
 ---
 
@@ -325,12 +303,14 @@ Scenario: Nest a logic group for a compound expression
 **As an** IHC programmer, **I want** to define an enumerator type with named states and use it as a
 variable, **so that** the program reads more clearly than with many flags.
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Two built-in enumerators exist
   Given any project
-  Then two default enumerator types are available: "Alarm state" and "Home simulation"
+  Then two read-only built-in enumerator types are always present: "Persienne tilstand"
+    (blind state, 5 ordered values) and "Logning" (logging, 6 ordered values)
+  And both remain listed whether or not any variable references them
 
 Scenario: Create a new enumerator type and its states
   Given a block's "Settings" section
@@ -354,21 +334,28 @@ Scenario: Edit an existing enumerator type's states
   Then a screen opens where I can add or change the type's states
 ```
 
+### Business rules
+
+- MUST: The two built-in enumerator types are `Persienne tilstand` (5 ordered values) and `Logning`
+  (6 ordered values). These names are **project data, rendered verbatim** (not translated), and both types
+  are **always present** whether or not any variable references them — so a `Logning` type with zero
+  references is the built-in, never deleted-resource residue.
+- **Known gap:** a **standalone / empty** custom enumerator *type* (0 states, referenced by no variable) is
+  not currently authorable — enumerator types are created only while adding an enum variable to a *Settings*
+  section, and there is no bare-enum-type route.
+
 ### AC illustrations
 
 - A `Mode` enum with states `Direct`, `With delay`, `Switched off` lets one block behave as a
-  direct link, a delayed link, or off, selected by the enum’s value — testable with a cascade of
+  direct link, a delayed link, or off, selected by the enum's value — testable with a cascade of
   conditional commands.
-
-> **Noted 2026‑07‑18 (comparereal, F‑089 — class E, open).** A **standalone / empty** custom enumerator *type*
-> (0 states, referenced by no variable) is **not** currently authorable in IHC OpenVisual — enumerator types
-> are created only while adding an enum variable to a *Settings* section (above), matching the vendor, which
-> likewise exposes no bare‑enum‑type route. Whether a bare empty enumerator type *should* be authorable is an
-> open question. Evidence: **F‑089** (comparereal study, `tmp\comparereal\out\RESULTS.md`).
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented (create/edit enum type + typed variable; enum-in-logic operand deferred).
+**Implementation status:** 🟡 Partly implemented — creating a new enum type + typed variable, and the two
+built-ins, work. ⚠ Adding an enum variable always creates a new type instead of offering existing ones; editing
+is append-only — an existing state's label can't be *changed*; and a standalone/empty enum type has no
+authoring route (the Known gap above).
 
 ---
 
@@ -377,7 +364,7 @@ Scenario: Edit an existing enumerator type's states
 **As an** IHC programmer, **I want** to add a case structure keyed on a variable, **so that** the block
 runs different commands per value without a long condition cascade.
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Insert a case structure
@@ -403,12 +390,13 @@ Scenario: Default branch
 
 ### AC illustrations
 
-- A toilet‑cleaning counter drives a case: value branches for `100` (little clean) and `1000` (main
+- A toilet-cleaning counter drives a case: value branches for `100` (little clean) and `1000` (main
   clean) set the respective outputs; all other counts fall through to `Else`.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented (case + literal value branches; enum-criterion values deferred).
+**Implementation status:** 🟡 Partly implemented — case insert and literal value branches work. ⚠ On an
+enum-keyed case, adding a value no-ops — the enum-criterion branch path is unreachable from the app.
 
 ---
 
@@ -421,7 +409,7 @@ operation per command line, **so that** the block can derive values like average
 
 **Rules:**
 - MUST: A command line performs **at most one** arithmetic operation; larger formulas are built as a
-  sequence of one‑operation command lines using a running "display" register.
+  sequence of one-operation command lines using a running "display" register.
 - MUST: Decimal (**Decimal**) variables support +, −, ×, ÷; the tool shows which other variable types
   may combine with a decimal.
 - SHOULD: To convert a decimal to an integer, add the decimal to an integer variable (previously set to
@@ -442,22 +430,22 @@ operation per command line, **so that** the block can derive values like average
 
 ### Constraints
 
-- Verification method — **Test** the one‑operation‑per‑line rule and the truncation behaviour of
+- Verification method — **Test** the one-operation-per-line rule and the truncation behaviour of
   decimal→integer conversion.
-- Localization note: decimals display with a point separator (`0.33`, `38.96`) per English locale.
+- Decimals display with a point separator (`0.33`, `38.96`) per English locale.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented (add/subtract, one-operation-per-line; ×/÷ deferred).
+**Implementation status:** 🟡 Partly implemented (add/subtract, one-operation-per-line; ×/÷ pending).
 
 ---
 
-## US-033 — Handle power‑up (system) events
+## US-033 — Handle power-up (system) events
 
-**As an** IHC programmer, **I want** to react to controller power‑up and control which values survive a
+**As an** IHC programmer, **I want** to react to controller power-up and control which values survive a
 power loss, **so that** the installation restores a sensible state after an outage.
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Add a Powerup event
@@ -477,6 +465,11 @@ Scenario: Persist a physical output's state
   Then the physical output restores its pre-outage state on power-up
 ```
 
+### Business rules
+
+- MUST: *Powerup* is inserted as a **menu** event — *Insert ▸ Special ▸ Powerup event* — not by a drag onto
+  the Events group, and it carries **no operand or link** (it triggers on the block, unconditionally).
+
 ### AC illustrations
 
 - A light meant to stay on for 10 s: on power loss the timer value is saved, and on `Powerup` the
@@ -494,17 +487,17 @@ Scenario: Persist a physical output's state
 same or another function block, **so that** blocks can share state — or a block can feed its own output back
 to its own input — without routing every signal through physical product pins.
 
-**Scope excludes:** product↔function‑block links (E6, US-022/US-023); the internal logic that consumes
+**Scope excludes:** product↔function-block links (E6, US-022/US-023); the internal logic that consumes
 the linked variable (US-028/US-029).
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Link a variable from one block to a variable in another block
   Given two function blocks exist in the "Functions" pane, each carrying variables
   When I link a source variable of block A (e.g. a "Flag" or "Output") onto a compatible
     target variable of block B (e.g. a "Flag" or "Input")
-  Then a direct function‑block‑to‑function‑block variable link is created between them
+  Then a direct function-block-to-function-block variable link is created between them
 
 Scenario: Link a block's output back to its own input (self-link)
   Given a function block whose output and input are both shown in the "Functions" pane
@@ -522,33 +515,16 @@ Scenario: An incompatible pair is refused
 
 ### Business rules (legality)
 
-- MUST: A block‑to‑block variable link is legal when the **source** is an output or a flag and the
+- MUST: A block-to-block variable link is legal when the **source** is an output or a flag and the
   **target** is an input or a flag — **including a block's output to its own input** (a legitimate feedback
   pattern). Anything else is refused and explained.
 - MUST: This is the **same predicate** US-022 applies to the other link families — one rule, three families,
   not three parallel rules. US-022 owns the statement of it; this story is the block↔block case of it.
 
-> **Confirmed 2026‑07‑17 — aligned, and this rule became the template for the whole epic.** ⭐ This story's
-> rule was **already exactly right**: every measured cell matches IHC Visual — an output→input link is
-> accepted, and output→output, input→input and input→output are all refused, with IHC OpenVisual's
-> *Incompatible link* message where the vendor just declines the drop. It is corroborated by the measured
-> project's own wiring, where a block's `Indgang` is fed by another block's output.
->
-> **What makes this notable is the contrast**: block↔block was the **one link family IHC OpenVisual
-> checked**, and the other two were unchecked entirely — so this correct rule sat next to a product‑to‑
-> product link with no function block in between (US-022, F‑058/F‑059). The A‑16 fix **extended this
-> predicate** to the other families rather than writing a second one. Evidence: `RESULTS.md` **F‑060**.
->
-> ⚠ **The flag half is unmeasured (F‑082, open E).** This story admits `Flag` at **both** ends and the
-> vendor's flag behaviour was **never driven** — no flag link exists in the measured corpus either. That is
-> a **gap, not a known divergence**: the rule is kept as written, and the SDK deliberately leaves flags
-> permissive rather than guessing. Next step **[P2]**: in programming mode, wire a flag as a link source and
-> as a target on the vendor and record whether any shape is refused. Evidence: `RESULTS.md` **F‑082**.
-
 ### AC illustrations
 
 - Linking block A's `Output` to block B's `Input` (or a `Flag` in each) lets block A drive block B
-  directly, with no physical product in between — the function‑block‑to‑function‑block linking case.
+  directly, with no physical product in between — the function-block-to-function-block linking case.
 - Dragging block A's `Output` onto block B's `Output` is refused with an *Incompatible link* message —
   **both are "outputs", and that is not what makes it illegal**: the rule is about which end produces a
   signal and which consumes one (US-022).
@@ -556,30 +532,17 @@ Scenario: An incompatible pair is refused
 ### Constraints
 
 - Verification method — **Demonstration** that a variable link between two blocks propagates the source
-  value to the target, and **Test** of the refusals (the measured matrix lives in US-022).
-- MUST: Linking variables between compatible endpoints is done **by dragging one pin onto another**,
-  matching IHC Visual (US-022's gesture and legality rule apply); the two‑step *Link from here* /
-  *Link to here* is the non‑drag **supplement**. The exact drop affordance is matched to the vendor at
-  implementation. (Was an R‑note deferring "the exact drag gesture"; drag is now **required** — 2026‑07‑18.)
-- ✅ A block's output feeding **its own** input is **allowed** — measured on the vendor (`_0x511228`: output
-  *Udgang for åbne* → own input *Tryk for åbne*, undone cleanly), so the earlier different‑blocks refusal is
-  **dropped** (F‑080 amends A‑16). IHC OpenVisual's `LinkPins` command (via `project.Edit()`) wrongly refuses it and the
-  SDK `CanLink` never carried the check. ⚠ Do **not** re‑tighten by symmetry.
-- The *Incompatible link* message is a **granted exception** — IHC Visual refuses silently. It stays
-  (US-069's ruling); only its ergonomics are in scope for fixing. **The ergonomic defect is measured and
-  named**: the modal has an **OK button only** and **ignores `Esc`** (`RESULTS.md` **F‑060**,
-  `RESULTS.md:218` — `dialog.cancel` fails on it, `dialog.click --button OK` works). That is the **same
-  Esc‑inert signature** as the *Delete* confirm (**F‑018**, **F‑024**), so it is not a quirk of this dialog.
-  Fix it under **A‑9** (let `Esc` dismiss) and **A‑10** (focus the safe button) applied **across every modal,
-  not per‑dialog** — the backlog's own instruction is *"Check every confirm dialog, not just Delete."*
-  ⚠ Do not fix this one in isolation: a one‑dialog fix leaves the class defect in place and re‑spends the
-  measurement.
+  value to the target, and **Test** of the refusals (the legality matrix lives in US-022).
+- MUST: Linking variables between compatible endpoints is done **by dragging one pin onto another**
+  (US-022's gesture and legality rule apply); the two-step *Link from here* /
+  *Link to here* is the non-drag **supplement**.
+- A block's output feeding **its own** input is **allowed**; do not re-tighten to a different-blocks-only
+  rule by symmetry.
+- The *Incompatible link* message is a **deliberate feature** — IHC OpenVisual explains the refusal rather than failing silently. It stays; only
+  its ergonomics are in scope (letting `Esc` dismiss it and focusing the safe button, applied across every
+  modal — US-069).
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Implemented — the data‑flow legality rule is measured **aligned** on every
-cell driven (F‑060), **except** the self‑link case: IHC OpenVisual wrongly refuses a block's output → own
-input, which the vendor allows (F‑080) — dropping that refusal is a pending **A‑16** amendment; the flag end
-remains unmeasured (F‑082). Epic E7's authoring surfaces are now measured against the vendor (compare3), and
-the residual gaps are implementation‑level: **A‑17** (internal‑vars display), **A‑26** (sub‑program name)
-and **A‑27** (locked‑block gate).
+**Implementation status:** ✅ Implemented — the data-flow legality rule works, **including** the self-link
+case: a block's output → its own input is allowed (a legitimate feedback pattern).

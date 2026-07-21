@@ -6,21 +6,10 @@ status: out-of-scope
 
 # E8 — Simulation & debugging
 
-> **Current scope:** ⛔ **Out of scope** — the offline simulation engine is not yet specified in enough
-> detail to build faithfully; it also only *validates* a project rather than doing CRUD on its content.
-> Kept as documentation, not slated for implementation.
-
-> **Implementation status:** ⛔ Out of scope.
-
-> **This exclusion is the grant for IHC OpenVisual's missing Simulation UI (2026‑07‑16).** The vendor
-> comparison measured the shell delta precisely, and it is **exactly this epic and nothing else**: IHC
-> Visual's menu bar has **9** titles to IHC OpenVisual's **8** — the delta is exactly `Simulering`, with the
-> same set and the same order otherwise — and its toolbar has 11 buttons to IHC OpenVisual's 9, the delta
-> being exactly the Play/Stop pair. Both are **deliberate**, granted by this epic's out‑of‑scope ruling and
-> by `product.md`; the ruling of 2026‑07‑16 explicitly declined to re‑litigate simulation on vendor parity.
-> Recorded here so the delta reads as a decision rather than an oversight. Evidence: `RESULTS.md` **F‑021**;
-> the eight‑title menu bar is specified in **US-001**, and US-045 documents the simulation key bindings for
-> completeness without implementing them.
+> **Out of scope.** The offline simulation engine is not specified in enough detail to build faithfully,
+> and it only *validates* a project rather than doing CRUD on its content. This is why IHC OpenVisual's
+> shell omits the *Simulation* menu and the toolbar Play/Stop pair (the shell carries eight menu titles,
+> US-001). The stories below are retained as documentation for if the capability is ever taken on.
 
 **Goal:** Let a commissioning technician or programmer validate the project offline — driving inputs
 and outputs, watching red/green states, setting breakpoints, stepping, simulating clock/date, and
@@ -38,17 +27,16 @@ controller transfer (E10).
 - SHOULD: Breakpoints, step execution, a settable simulation clock/date, and a configurable log are
   available.
 
-**Readiness:** Out of scope — not slated for implementation (the simulation engine is not yet specified
-in enough detail to build faithfully). The stories below are retained as documentation only.
+**Readiness:** Out of scope — retained as documentation only.
 
 ---
 
 ## US-034 — Start and stop offline simulation
 
 **As a** commissioning technician, **I want** to start and stop offline simulation and see states
-colour‑coded, **so that** I can verify behaviour without a controller.
+colour-coded, **so that** I can verify behaviour without a controller.
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Start simulation
@@ -77,16 +65,14 @@ Scenario: Power-up check on entry
 - In the configuration view, starting simulation recolours an input pin red (OFF) and its driven lamp
   output red; toggling the input green (US-035) turns the lamp green if the logic connects them.
 
-**Readiness:** Ready.
-
 ---
 
 ## US-035 — Drive inputs and outputs during simulation
 
 **As a** commissioning technician, **I want** to actuate inputs and outputs while simulating, **so
-that** I can verify a sensor’s effect on an actuator or a block’s behaviour.
+that** I can verify a sensor's effect on an actuator or a block's behaviour.
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Toggle an input
@@ -113,10 +99,8 @@ Scenario: Simulate a power outage
 
 ### AC illustrations
 
-- Holding `Space` on a push‑button input in a `<function block>` keeps the linked output green
-  only while held; using `Ctrl+Space` on a `<function block>`’s input toggles the output on each press.
-
-**Readiness:** Ready.
+- Holding `Space` on a push-button input in a `<function block>` keeps the linked output green
+  only while held; using `Ctrl+Space` on a `<function block>`'s input toggles the output on each press.
 
 ---
 
@@ -125,7 +109,7 @@ Scenario: Simulate a power outage
 **As an** IHC programmer, **I want** to place breakpoints and step a program line by line, **so that**
 I can localise a fault to a specific command.
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Insert a breakpoint
@@ -155,16 +139,14 @@ Scenario: Remove a breakpoint
 - Placing a breakpoint on the event line (`<pin>`) of a clock block, then pressing `F9`,
   advances one line per press so the technician can watch the output flip at 21:00 (see US-037).
 
-**Readiness:** Ready.
-
 ---
 
 ## US-037 — Simulate system time and date
 
 **As a** commissioning technician, **I want** to set the simulated clock and date, **so that** I can
-trigger time‑ and date‑driven programs on demand.
+trigger time- and date-driven programs on demand.
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Open the simulation time/date dialog
@@ -187,39 +169,35 @@ Scenario: Simulation clock is not remembered between runs
 ### AC illustrations
 
 - Setting *Time* = `20:59:55` and *Date* = a Thursday shows `20:59:55` and `Thursday 29 June 2017`
-  bottom‑right; the light output flips ON as the simulated clock ticks past 21:00.
+  bottom-right; the light output flips ON as the simulated clock ticks past 21:00.
 
 ### Constraints
 
-- Verification method — **Demonstration** of the event‑driven trigger and the non‑persistence of the
+- Verification method — **Demonstration** of the event-driven trigger and the non-persistence of the
   simulation clock.
-
-**Readiness:** Ready.
 
 ---
 
 ## US-038 — Capture a simulation log
 
 **As a** commissioning technician, **I want** to log selected simulation activity and export it, **so
-that** I can analyse behaviour over time or during fault‑finding.
+that** I can analyse behaviour over time or during fault-finding.
 
 ### Acceptance criteria (Checklist)
 
-- [ ] MUST: `Ctrl+L` toggles a simulation‑log dialog (shown and hidden alternately).
-- [ ] MUST: The log offers checkboxes to include: **Events**, **Conditions**,
+- MUST: `Ctrl+L` toggles a simulation-log dialog (shown and hidden alternately).
+- MUST: The log offers checkboxes to include: **Events**, **Conditions**,
   **Commands**, **Value change**, **Links**, and **Log marked** (marked
   only); checked items appear in the window as the program executes them.
-- [ ] SHOULD: Selecting **Log marked** means only inputs/outputs flagged as *marked* are logged; when
+- SHOULD: Selecting **Log marked** means only inputs/outputs flagged as *marked* are logged; when
   using it, **Value change** should not also be checked.
-- [ ] SHOULD: An input/output can be marked by right‑click > *Log marked* (works during simulation too)
+- SHOULD: An input/output can be marked by right-click > *Log marked* (works during simulation too)
   or `Ctrl+M`, so only marked terminals are logged.
-- [ ] SHOULD: Three buttons are present — **Clear log** (clear), **Stop** (pause logging; renames to
+- SHOULD: Three buttons are present — **Clear log** (clear), **Stop** (pause logging; renames to
   *Start*; simulation itself keeps running), and **Save** (export the log to an Excel file).
-- [ ] MAY: The log is useful alongside step execution (`F9`) and for long‑running fault‑finding.
+- MAY: The log is useful alongside step execution (`F9`) and for long-running fault-finding.
 
 ### AC illustrations
 
 - Checking only *Commands* logs each command as it runs; pressing *Stop* freezes the log (button
   becomes *Start*) while simulation continues; *Save* writes the accumulated log to Excel.
-
-**Readiness:** Ready.

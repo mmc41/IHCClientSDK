@@ -6,16 +6,16 @@ status: draft
 
 # E13 — Tree node tooltips
 
-> **Current scope:** ✅ **In scope (foundational)** — hover tooltips make the trees self‑documenting and
-> expose each node's IHC resource ID, which installers need when cross‑referencing the controller.
+> **Scope:** In scope (foundational) — hover tooltips make the trees self-documenting and expose each
+> node's IHC resource ID, which installers need when cross-referencing the controller.
 
 **Goal:** Let an IHC installer read a tree node's documentation note **and** its IHC resource ID by simply
 hovering the mouse over the node — with no modifier key — so that the note text authored in the project is
-discoverable at a glance and the resource ID needed to cross‑reference the controller is always visible.
+discoverable at a glance and the resource ID needed to cross-reference the controller is always visible.
 
-**Scope:** on‑hover tooltips for nodes in both the *Installation* and *Functions* panes (localities,
-products, product inputs/outputs, function blocks, and function‑block pins); the tooltip's content (the
-node's documentation note and its IHC resource ID); and the always‑on behaviour that shows the resource ID
+**Scope:** on-hover tooltips for nodes in both the *Installation* and *Functions* panes (localities,
+products, product inputs/outputs, function blocks, and function-block pins); the tooltip's content (the
+node's documentation note and its IHC resource ID); and the always-on behaviour that shows the resource ID
 without holding a modifier key. **Scope excludes:** editing the note or the resource ID (that is the
 *Properties* dialog, E2–E5); tooltips on toolbar buttons, menus, or dialog controls; and the visual
 icon/state language (E12).
@@ -37,30 +37,18 @@ icon/state language (E12).
 showing the documentation note authored for that node, **so that** I can read the installer's guidance for
 that input, output, or function block without opening its properties.
 
-**Scope excludes:** editing the note (done via *Properties*, E2–E5); tooltips on non‑tree UI (toolbar,
+**Scope excludes:** editing the note (done via *Properties*, E2–E5); tooltips on non-tree UI (toolbar,
 menus, dialogs).
 
 ### Acceptance criteria (Checklist)
 
-- [ ] MUST: Hovering the mouse pointer over a tree node whose model carries a non‑empty documentation note
+- MUST: Hovering the mouse pointer over a tree node whose model carries a non-empty documentation note
   shows a tooltip containing that note text, preserving the note's line breaks.
-- [ ] MUST: The tooltip requires **no modifier key** — plain hover is sufficient. ⚠ **The evidence is a
-  single node kind:** plain hover was measured showing the note on a **function‑block group node** (see the
-  note under US-048), and this MUST generalises that to **every** node kind — **products, product
-  inputs/outputs and function‑block pins are unmeasured**. Scheduled as **C23** in `tmp\research3.md` §4 —
-  the vendor hover/tooltip census, the last unowned piece of `RESULTS.md`'s **E‑5**. (R‑note.)
-
-  > **Corrected 2026‑07‑17 (was: "… see the note under US-048; any `Ctrl`‑hover requirement is an
-  > unverified observation").** The `Ctrl`‑hover clause is struck — it was this file's **last** mention of a
-  > behaviour the spec does not have. The epic scope (`:18-19`), this MUST and US-048's (`:88`) all mandate
-  > **no modifier key**, so there was no `Ctrl`‑hover requirement to verify *or* deny; the clause denied one
-  > that never existed, which is why every gap‑sweep kept re‑finding it. Same remnant as the one struck
-  > under US-048 the same day (`:116-127`). ⭐ **The evidentiary caveat is the half that mattered and it
-  > stays** — sharpened to name what is actually unmeasured, which is the node kinds, not the modifier.
-- [ ] MUST: Hovering a node that has **no** documentation note and **no** resource ID (for example the
+- MUST: The tooltip requires **no modifier key** — plain hover is sufficient.
+- MUST: Hovering a node that has **no** documentation note and **no** resource ID (for example the
   *Localities* root or an empty locality) shows **no** tooltip.
-- [ ] SHOULD: The tooltip is available for nodes in both the *Installation* and *Functions* panes.
-- [ ] SHOULD: The tooltip dismisses when the pointer leaves the node.
+- SHOULD: The tooltip is available for nodes in both the *Installation* and *Functions* panes.
+- SHOULD: The tooltip dismisses when the pointer leaves the node.
 
 ### AC illustrations
 
@@ -78,19 +66,18 @@ menus, dialogs).
 ## US-048 — Always see a node's IHC resource ID in its tooltip
 
 **As an** IHC installer, **I want** every input, output, and function block to show its IHC resource ID in
-the hover tooltip automatically, **so that** I can cross‑reference the node against the controller without
+the hover tooltip automatically, **so that** I can cross-reference the node against the controller without
 holding a modifier key or opening a dialog.
 
 ### Acceptance criteria (Checklist)
 
-- [ ] MUST: Hovering an input, output, or function block node shows the node's IHC resource ID in the
+- MUST: Hovering an input, output, or function block node shows the node's IHC resource ID in the
   tooltip, labelled so the number is identifiable as the resource ID.
-- [ ] MUST: The resource ID is shown on **plain hover** — the user holds **no** modifier key. (Showing the
-  IHC resource ID in the tooltip is an IHC OpenVisual enhancement; the base requirements do not mandate a
-  resource ID in any tooltip — see the note below.)
-- [ ] MUST: When a node has both a documentation note (US-047) and a resource ID, the tooltip shows both,
+- MUST: The resource ID is shown on **plain hover** — the user holds **no** modifier key. (Showing the
+  IHC resource ID in the tooltip is an IHC OpenVisual enhancement.)
+- MUST: When a node has both a documentation note (US-047) and a resource ID, the tooltip shows both,
   with the note text and the resource ID each on their own line(s).
-- [ ] SHOULD: A node that has no assigned IHC resource ID shows no resource‑ID line (rather than a blank or
+- SHOULD: A node that has no assigned IHC resource ID shows no resource-ID line (rather than a blank or
   placeholder ID).
 
 ### AC illustrations
@@ -98,43 +85,16 @@ holding a modifier key or opening a dialog.
 - Hovering a product output that maps to IHC resource id `3954853` shows a tooltip line identifying that
   number as the resource ID, on plain hover.
 - Hovering an input that carries both a note and resource id `2109445` shows the note text followed by the
-  resource‑ID line in one tooltip.
+  resource-ID line in one tooltip.
 
 ### Constraints
 
 - Verification method — **Demonstration**: hover an input, output, and function block that each have a
   resource ID and confirm the ID appears on plain hover; hover a node with no resource ID and confirm no
-  resource‑ID line appears.
-- Note (design basis): a documentation *note* appears on **plain** mouse‑hover for a function‑block
-  group node, with no modifier key. **For a product, the note is what the hover shows** — it is *not* in the
-  tree label; the parenthetical in a product's label is its **`Placering`**, a different field (US-010,
-  US-011). The note also appears in reports (US-040). Notes on hover for product inputs/outputs and the IHC
-  resource‑ID tooltip are IHC OpenVisual enhancements. The **resource‑ID tooltip** is IHC OpenVisual's own
-  design; verify it before treating it as a fixed requirement — it is scheduled as **C21.5** in
-  `tmp\research3.md` §3. (R‑note.)
-
-  > **Corrected 2026‑07‑17 (was: "The `Ctrl`‑hover behaviour and the resource‑ID tooltip are IHC OpenVisual's
-  > own design; verify them during implementation").** The `Ctrl`‑hover clause **contradicted this story's own
-  > MUSTs** and is struck. The epic scope (`13-tooltips.md:18-19`) and **both** MUSTs — US-047's (`:47`) and
-  > US-048's (`:88`) — mandate **no modifier key**; plain hover is sufficient. So there was no `Ctrl`‑hover
-  > behaviour left to verify, and anyone verifying it literally would have been verifying **something the
-  > spec forbids**. This was an unswept remnant of the 2026‑07‑16 correction below, which fixed a different,
-  > adjacent error (the `note`‑vs‑`position` label mix‑up, **F‑003**) and left this clause standing.
-  >
-  > **The resource‑ID half stays as the live open question.** It is an IHC OpenVisual enhancement the vendor
-  > does not have, so **no vendor measurement can settle it** — the census has nothing to say here. It is
-  > answerable only by driving IHC OpenVisual, which is what **C21.5** does. ⚠ Per `:47`/`:88`, **no modifier
-  > path should exist**; if C21.5 finds one, the **code** is wrong, not the MUSTs.
-
-  > **Corrected 2026‑07‑16 (was: "For products the note is shown inline in the tree label, in parentheses
-  > after *Name*").** That attribution was **wrong**, and load‑bearing: it was labelled a vendor‑derived
-  > design basis, so it would have been trusted. IHC Visual renders the **`position`** attribute in the
-  > parentheses — `Lampeudtag (i loft på langs i rummet, 2 stk) ` — and never puts the `note` in the label,
-  > even though the same element carries one (a long description such as *"Til styring af Silent Gliss
-  > 4760/10522 gardin…"*). The note surfaces on **hover**, which is this story. Getting these two backwards
-  > is the exact trap the tree‑label rule warns about: an implementer reaching for the obvious attribute
-  > name gets the wrong string. Evidence: `RESULTS.md` **F‑003** (verified byte‑for‑byte against 4
-  > products); the label rule lives in **US-010**.
+  resource-ID line appears.
+- For a **product**, the note is what the hover shows — it is *not* in the tree label; the parenthetical in
+  a product's label is its **`Placering`**, a different field (US-010, US-011). The note also appears in
+  reports (US-040). The **resource-ID tooltip** is IHC OpenVisual's own enhancement.
 
 **Readiness:** Ready.
 

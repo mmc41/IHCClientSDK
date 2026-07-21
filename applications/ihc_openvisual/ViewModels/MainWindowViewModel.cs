@@ -12,7 +12,6 @@ using ihc_openvisual.Services;
 using Ihc.Vis;
 using Ihc.Vis.Addressing;
 using Ihc.Vis.Session;
-using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
 using Ihc.Vis.Programs;
@@ -548,17 +547,17 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     private void BuildProductMenu()
     {
-        AsyncRelayCommand Insert(Ihc.Vis.Products.ProductDefinition def) =>
-            new(() => InsertProductAsync(def.ProductIdentifier, def.DisplayName));
+        AsyncRelayCommand Insert(CatalogItem product) =>
+            new(() => InsertProductAsync(product.Identifier, product.DisplayName));
 
         // The top categories are derived from the catalog data (H2/D08) — so an imported .def (empty CategoryPath)
         // lands in the "Imported/Uncategorized" bucket instead of being dropped by a hardcoded four-category filter.
-        foreach (ProductMenuItemViewModel item in CatalogMenu.BuildProductForest(_session.GetAvailableProducts(), Insert))
+        foreach (ProductMenuItemViewModel item in CatalogMenu.BuildProductForest(_session.GetProductCatalogItems(), Insert))
             ProductsMenu.Add(item);
 
         foreach (ProductMenuItemViewModel item in CatalogMenu.BuildFunctionBlocks(
-                     _session.GetAvailableFunctionBlocks(),
-                     def => new AsyncRelayCommand(() => InsertFunctionBlockAsync(def.MasterType, def.DisplayName))))
+                     _session.GetFunctionBlockCatalogItems(),
+                     fb => new AsyncRelayCommand(() => InsertFunctionBlockAsync(fb.Identifier, fb.DisplayName))))
         {
             FunctionBlocksMenu.Add(item);
         }

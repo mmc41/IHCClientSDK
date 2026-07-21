@@ -9,12 +9,10 @@ using System.Threading.Tasks;
 using ihc_openvisual.Configuration;
 using Ihc.Vis;
 using Ihc.Vis.Addressing;
-using Ihc.Vis.Editing;
 using Ihc.Vis.FunctionBlocks;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
-using Ihc.Vis.Reporting;
 using Ihc.Vis.Session;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -341,13 +339,19 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>The catalog library function blocks available for insertion (SDK-embedded catalog; no controller).</summary>
     public IReadOnlyList<FunctionBlockDefinition> GetAvailableFunctionBlocks() => _service.GetAvailableFunctionBlocks();
 
+    /// <summary>The catalog products as slim insert-menu items (<see cref="CatalogItem"/>) — what the insert menu binds to.</summary>
+    public IReadOnlyList<CatalogItem> GetProductCatalogItems() => _service.GetProductCatalogItems();
+
+    /// <summary>The catalog function blocks as slim insert-menu items (<see cref="CatalogItem"/>).</summary>
+    public IReadOnlyList<CatalogItem> GetFunctionBlockCatalogItems() => _service.GetFunctionBlockCatalogItems();
+
     /// <summary>The default name a freshly inserted empty function block carries until renamed (US-019).</summary>
     public const string EmptyBlockName = "Empty block";
 
 
     /// <summary>
     /// Saves a placed function block to a reusable <c>.ifb</c> catalog file (US-021): lifts the block (by id) to a
-    /// keyless user-block definition via <see cref="FunctionBlockRef.ExportDefinition"/> and writes it with
+    /// keyless user-block definition via <see cref="Ihc.Vis.Editing.FunctionBlockRef.ExportDefinition"/> and writes it with
     /// <see cref="Ihc.Vis.Catalog.CatalogFileWriter"/>. Read-only over the project (nothing is mutated, so no dirty
     /// flag). Returns false (with a diagnostic) when the id is not a function block or the write fails.
     /// </summary>

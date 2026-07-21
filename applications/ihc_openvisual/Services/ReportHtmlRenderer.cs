@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
-using Ihc.Vis.Reporting;
+using Ihc.Vis;
 
 namespace ihc_openvisual.Services;
 

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Ihc.Vis;
-using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;

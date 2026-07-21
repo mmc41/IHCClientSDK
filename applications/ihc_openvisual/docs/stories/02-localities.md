@@ -6,13 +6,6 @@ status: draft
 
 # E2 — Locality management
 
-> **Implementation status:** ✅ Implemented — and measured **fully aligned** with IHC Visual across insert
-> (F‑025), the rename/note dialog (F‑037), and both delete paths (F‑023, F‑038). **This epic is the
-> comparison's regression baseline**: it is the one editing area where every measured cell came back
-> aligned, so a future change that diverges here is a regression, not a decision.
-
-> **Current scope:** ✅ **In scope** — locality create / rename / delete is project CRUD.
-
 **Goal:** Let an IHC installer model the rooms and places of the installation as a *Localities*
 tree — renaming the defaults, adding new ones, and deleting ones not needed — so that
 every product and function block has a meaningful location.
@@ -40,17 +33,15 @@ both panes, **so that** I have realistic starting rooms to adapt to my installat
 
 ### Acceptance criteria (Checklist)
 
-- [x] MUST: Both panes show a root node **Localities** with an expand/collapse control, expanded by
+- MUST: Both panes show a root node **Localities** with an expand/collapse control, expanded by
   default.
-- [x] MUST: Under *Localities* are exactly these ten localities, in this order: **Living room, Hall, Kitchen,
+- MUST: Under *Localities* are exactly these ten localities, in this order: **Living room, Hall, Kitchen,
   Bedroom, Room, Bathroom, Utility room, Garage, Basement, Outdoors**.
-- [x] MUST: Each locality renders as a node with a small square (checkbox‑style) icon followed by its
+- MUST: Each locality renders as a node with a small square (checkbox-style) icon followed by its
   bold name; the same ten localities appear in the *Functions* pane as in the *Installation* pane.
-- [x] SHOULD: A locality is a container: expanding it reveals the products (Installation pane) or
+- SHOULD: A locality is a container: expanding it reveals the products (Installation pane) or
   function blocks (Functions pane) placed in it; when empty it has no expand control.
-  *(Avalonia `TreeView` shows the expander only when a node has children, so an empty room has none;
-  product/FB children arrive with E3–E5.)*
-- [x] MAY: The *Functions* pane groups a locality’s function blocks under the same locality node used
+- MAY: The *Functions* pane groups a locality's function blocks under the same locality node used
   in the *Installation* pane, keeping one shared locality structure across the two views.
 
 ### AC illustrations
@@ -71,7 +62,7 @@ reflects the real rooms of the installation and carries documentation text.
 
 **Scope excludes:** renaming products or function blocks (same dialog pattern, different stories).
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Rename a locality from its context menu
@@ -100,16 +91,8 @@ Scenario: Cancel discards the edit
 - MUST: The dialog carries **exactly two** fields — **Name** and **Note** — plus its OK/Cancel buttons.
   Nothing else: a locality has no placement, no addressing and no type of its own.
 - MUST: The dialog title follows the pattern `Edit <current name> properties`.
-- MUST: `F2` on a selected locality opens it, and so does double‑click (US-067) and right‑click >
+- MUST: `F2` on a selected locality opens it, and so does double-click (US-067) and right-click >
   *Properties*.
-
-> **Confirmed 2026‑07‑16 — regression baseline, fully aligned.** IHC Visual's `Rediger <name> egenskaber`
-> is exactly Navn + Note + OK/Annuller, and IHC OpenVisual's *Edit `<name>` properties* is exactly Name +
-> Note + OK/Cancel — **same field set, same title pattern**, translated (language is an allowed difference).
-> This is the epic's regression baseline: it is worth stating as a measured fact because the **product**
-> dialog, which looks like the same kind of dialog, diverges hard (US-011/US-012) — so the divergence there
-> is product‑specific, not a general dialog problem. Evidence: `RESULTS.md` **F‑037**
-> (`S02b\50-locality-props-vis.png` vs `50-locality-props-ov.png`, F2 on the same locality) and **F‑014**.
 
 ### AC illustrations
 
@@ -120,7 +103,7 @@ Scenario: Cancel discards the edit
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented — measured **fully aligned** with IHC Visual (F‑037).
+**Implementation status:** ✅ Implemented.
 
 ---
 
@@ -129,7 +112,7 @@ Scenario: Cancel discards the edit
 **As an** IHC installer, **I want** to add a locality under *Localities*, **so that** I can represent
 a room the defaults do not cover.
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Insert a new locality under the root
@@ -158,13 +141,6 @@ Scenario: Insertion targets the current selection
 - MUST: It is created with a **default name**, ready to rename.
 - MUST: **No properties dialog opens** on insert. The installer renames it on demand via US-007.
 
-> **Confirmed 2026‑07‑16 — regression baseline, fully aligned.** Insert on both apps appends at the same
-> index (24 of 24), gives the new node a default name (IHC Visual `Lokalitet`, IHC OpenVisual `Locality` —
-> language is an allowed difference), and opens **no dialog**. Evidence: `RESULTS.md` **F‑025** (placement
-> verified by index probe on both). ⚠ The **no‑dialog‑on‑insert** rule is the one to hold on to: the
-> equivalent *product* story asserted the opposite and was wrong (US-011's corrected auto‑open MUST, F‑027)
-> — localities were right all along.
-
 ### AC illustrations
 
 - With `Localities` selected, inserting a locality yields a new node named `Locality` at the bottom
@@ -173,8 +149,7 @@ Scenario: Insertion targets the current selection
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented — placement, default name and the no‑dialog rule are measured
-**aligned** with IHC Visual (F‑025).
+**Implementation status:** ✅ Implemented.
 
 ---
 
@@ -183,7 +158,7 @@ Scenario: Insertion targets the current selection
 **As an** IHC installer, **I want** to delete a locality, being warned when it still holds products,
 **so that** I can remove a room without silently orphaning the logic that used its products.
 
-### Acceptance criteria (Given‑When‑Then)
+### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Delete an empty locality
@@ -207,14 +182,14 @@ Scenario: Decline the confirmation
 ### AC illustrations
 
 - Deleting a locality that holds a lamp output which a function block switched removes the locality, the
-  product, and the function‑block command/condition that referenced that output — the installer is
+  product, and the function-block command/condition that referenced that output — the installer is
   warned before this cascade happens.
 
 ### Constraints
 
-- Verification method — **Demonstration**: delete a non‑empty locality and confirm both the
+- Verification method — **Demonstration**: delete a non-empty locality and confirm both the
   confirmation gate and the cascade removal of dependent commands/conditions.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented. Epic E2 complete.
+**Implementation status:** ✅ Implemented.

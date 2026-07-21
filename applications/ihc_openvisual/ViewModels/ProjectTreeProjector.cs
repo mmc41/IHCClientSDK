@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Ihc.Vis;
-using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
@@ -377,7 +376,7 @@ public sealed class ProjectTreeProjector(Project project)
             {
                 IsOutputPin = isOutput, IsValueSaved = saved, Tooltip = BuildTooltip(resource),
                 IsCatalogPin = catalogDeclared,
-                IsLogMarkPin = ProjectEditor.IsLogRow(resource, project),
+                IsLogMarkPin = resource.IsLogRow(project),
                 KindDetail = resource.Tag, Kind = TreeNodeKind.Pin,
             };
         // A linked pin reveals its follow-link / scene-link rows (US-022/025).

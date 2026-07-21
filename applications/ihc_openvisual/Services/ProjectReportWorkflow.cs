@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Ihc;
 using Ihc.Vis;
 using Ihc.Vis.Projects;
-using Ihc.Vis.Reporting;
 using Microsoft.Extensions.Logging;
 
 namespace ihc_openvisual.Services;
