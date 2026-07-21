@@ -120,6 +120,20 @@ namespace Ihc.Tests
                 "the GUI renders report DTOs but must generate them through ProjectAppService, not run ReportBuilder itself");
 
         /// <summary>
+        /// Applying a command belongs to the SDK: <c>ProjectAppService.Apply</c>/<c>CanApply</c>/<c>Preview</c> open a
+        /// throwaway <c>ProjectDocumentSession</c> internally and run the command once. The GUI must not open that
+        /// engine runner itself — <c>ProjectWorkflow</c> delegates to the facade and layers only its document
+        /// lifecycle (Current, undo/redo, dirty/version, auto-backup) on top. This bans the one engine TYPE by name,
+        /// NEVER the <c>Ihc.Vis.Session</c> namespace: the command / outcome / change-set contract types live there
+        /// and the GUI legitimately consumes them. (Armed by <see cref="CustomScans_DetectKnownFacadeEdges"/>, the
+        /// positive control over the same <c>AssertNoDependencyOnTypeNames</c> scan.)
+        /// </summary>
+        [Test]
+        public void Gui_DoesNotDependOn_ProjectDocumentSession() =>
+            AssertNoDependencyOnTypeNames(Gui, GuiRoot, ProjectDocumentSessionTypeName(), "the ProjectDocumentSession engine runner",
+                "the GUI must apply commands through ProjectAppService.Apply/CanApply/Preview, not open a ProjectDocumentSession itself");
+
+        /// <summary>
         /// View-models carry the app's presentation logic and must stay free of Avalonia types so that logic is
         /// testable headlessly (the same layering the SDK's no-Avalonia rule protects, applied one tier up). This
         /// rule is scoped to the view-model namespace only — Views, Controls and Converters legitimately depend on
@@ -348,6 +362,15 @@ namespace Ihc.Tests
             typeof(global::ihc_openvisual.Services.ProjectWorkflow).FullName!,
             typeof(global::Ihc.Vis.ProjectAppService).FullName!,
             typeof(global::Ihc.Vis.ProjectCommands).FullName!,
+        };
+
+        /// <summary>The engine's <see cref="Ihc.Vis.Session.ProjectDocumentSession"/> command-runner, by full name —
+        /// the single <c>Ihc.Vis.Session</c> type the GUI must reach only behind the <c>ProjectAppService</c> facade
+        /// (the command / outcome / change-set contract types in that namespace stay allowed, so this is a
+        /// single-TYPE ban, never a namespace ban).</summary>
+        private static IReadOnlyCollection<string> ProjectDocumentSessionTypeName() => new HashSet<string>
+        {
+            typeof(global::Ihc.Vis.Session.ProjectDocumentSession).FullName!,
         };
 
         // ---- Reflection helpers for the identity (ElementId-not-reference) rule ------------------------------------

@@ -76,7 +76,7 @@ public class DragProgramTests : AvaloniaTestBase
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
         var fbNode = vm.FunctionNodes[0].Children[0].Children[0];
         vm.EnterProgrammingModeCommand.Execute(fbNode);

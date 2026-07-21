@@ -80,7 +80,7 @@ public class NodeIconsTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var library = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var library = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddFunctionBlockAsync(loc, library.MasterType);   // a locked library block
         await harness.Session.AddEmptyFunctionBlockAsync(loc);                   // an editable block
 

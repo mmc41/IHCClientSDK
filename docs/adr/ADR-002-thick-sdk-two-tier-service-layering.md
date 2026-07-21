@@ -40,14 +40,15 @@ SDK is then a thin GUI or command-line shell that only wires presentation to a f
 - Frontends are measurably thin: `ihc_admin` is argument parsing plus `AdminAppService` calls; `ihc_lab`'s
   view-model synchronizes GUI state with `LabAppService`; `ihc_openvisual` routes every mutation through the
   `Ihc.Vis.Session` command layer (each command executing via `project.Edit()`) driven from an Avalonia-free
-  session wrapper — with the command vocabulary slated to become discoverable from `ProjectAppService` (see
+  session wrapper — obtaining each command from the `ProjectAppService.Commands` gateway and executing it through `ProjectAppService.Apply` (see
   Decision).
 - Enforcement is partial: ArchUnitNET (`tests/safe_architecture_tests/`) pins `Ihc.Vis` ↛ `Ihc.Soap`,
   SDK ↛ Avalonia, and the OpenVisual GUI's thin-shell *dependency* boundary (GUI ↛ `Ihc.Soap`, GUI ↛ `System.Xml`,
-  GUI ↛ `Ihc.Vis.Io`, GUI ↛ `Ihc.Vis.Editing`, view-models ↛ Avalonia). The downward service-tier direction and the *absence of complex logic* in the frontend
-  (a complexity property ArchUnitNET cannot judge) remain review conventions (`ARCHITECTURE.md` invariants 4 and 9). Two deviations are documented, both being retired: command-selection
-  and legality logic that accumulated in OpenVisual's `ProjectWorkflow` and view-models (`ARCHITECTURE.md`,
-  design challenge 7) is slated to move into the SDK by a planned refactoring — *display* interpretation of
+  GUI ↛ `Ihc.Vis.Io`, GUI ↛ `Ihc.Vis.Editing`, GUI ↛ `ProjectDocumentSession` (command execution goes through `ProjectAppService.Apply`), view-models ↛ Avalonia). The downward service-tier direction and the *absence of complex logic* in the frontend
+  (a complexity property ArchUnitNET cannot judge) remain review conventions (`ARCHITECTURE.md` invariants 4 and 9). Two deviations were documented and are now resolved or retiring: command-selection
+  and legality logic that had accumulated in OpenVisual's `ProjectWorkflow` and view-models (`ARCHITECTURE.md`,
+  design challenge 7) has since moved into the SDK (the `ProjectAppService.Commands` gateway mints the commands and
+  `ProjectAppService.Apply`/`CanApply`/`Preview` run them, leaving `ProjectWorkflow` with document lifecycle only) — *display* interpretation of
   model values, by contrast, stays frontend-owned by design (see Decision) — and `ihc_project_io_extractor`'s
   standalone `.vis` parser is deprecated; the standalone `ihc_httpproxyrecorder` operates below the SDK by
   design.

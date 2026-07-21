@@ -255,7 +255,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
 
-        var product = harness.Session.GetAvailableProducts()
+        var product = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
         var localityId = vm.InstallationNodes[0].Children[0].ElementId!.Value;   // "Living room"
 
@@ -363,9 +363,9 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.Session.GetAvailableProducts()
+        var product = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
         var productPin = vm.InstallationNodes[0].Children[0].Children[0].Children.First(c => c.NodeKind == "pin:dataline_input");
@@ -418,7 +418,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.Session.GetAvailableProducts()
+        var product = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
 
@@ -443,7 +443,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var sensor = harness.Session.GetAvailableProducts().First(p => p.DisplayName.Contains("Temperatur sensor med logning"));
+        var sensor = harness.ProjectService.GetAvailableProducts().First(p => p.DisplayName.Contains("Temperatur sensor med logning"));
         await harness.Session.AddProductAsync(loc, sensor.ProductIdentifier);
         var productNode = vm.InstallationNodes[0].Children[0].Children[0];
         var logPin = productNode.Children.First(c => c.DisplayName.StartsWith("Log "));
@@ -469,9 +469,9 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.Session.GetAvailableProducts()
+        var product = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
         var productPin = vm.InstallationNodes[0].Children[0].Children[0].Children.First(c => c.NodeKind == "pin:dataline_input");
@@ -505,7 +505,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var product = harness.Session.GetAvailableProducts()
+        var product = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
         var localityId = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var pid = (await harness.Session.AddProductAsync(localityId, product.ProductIdentifier))!.Value;
@@ -534,7 +534,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var product = harness.Session.GetAvailableProducts()
+        var product = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
         var livingRoomId = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var kitchenId = vm.InstallationNodes[0].Children[2].ElementId!.Value;
@@ -581,7 +581,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var lampeudtag = harness.Session.GetAvailableProducts().First(p => p.ProductIdentifier == "_0x2202");
+        var lampeudtag = harness.ProjectService.GetAvailableProducts().First(p => p.ProductIdentifier == "_0x2202");
         await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, lampeudtag.ProductIdentifier);
         var productNode = vm.InstallationNodes[0].Children[0].Children[0];
 
@@ -600,7 +600,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var product = harness.Session.GetAvailableProducts()
+        var product = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
@@ -629,7 +629,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var product = harness.Session.GetAvailableProducts()
+        var product = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
         await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier);
         var productNode = vm.InstallationNodes[0].Children[0].Children[0];
@@ -691,7 +691,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var product = harness.Session.GetAvailableProducts()
+        var product = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
         await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier);
         var productNode = vm.InstallationNodes[0].Children[0].Children[0];
@@ -726,7 +726,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var product = harness.Session.GetAvailableProducts()
+        var product = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
         await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier);
         var productNode = vm.InstallationNodes[0].Children[0].Children[0];
@@ -750,7 +750,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var product = harness.Session.GetAvailableProducts()
+        var product = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
         await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier);
         var pinId = vm.InstallationNodes[0].Children[0].Children[0].Children[0].ElementId!.Value;   // product's first pin
@@ -775,7 +775,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var product = harness.Session.GetAvailableProducts().First(p => p.CategoryPath.Contains("02#Output"));
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.Contains("02#Output"));
         var pid = (await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier))!.Value;
         var outputPin = harness.Session.Current!.FindById(pid)!.ChildrenOrEmpty().First(c => c.Tag == "dataline_output");
 
@@ -797,7 +797,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var product = harness.Session.GetAvailableProducts()
+        var product = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 1);
         await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier);
 
@@ -826,7 +826,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var modem = harness.Session.GetAvailableProducts().First(p => ProductClassifier.IsModem(p.Body.Tag));
+        var modem = harness.ProjectService.GetAvailableProducts().First(p => ProductClassifier.IsModem(p.Body.Tag));
         var loc0 = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var loc1 = vm.InstallationNodes[0].Children[1].ElementId!.Value;
 
@@ -851,7 +851,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var modem = harness.Session.GetAvailableProducts().First(p => ProductClassifier.IsModem(p.Body.Tag));
+        var modem = harness.ProjectService.GetAvailableProducts().First(p => ProductClassifier.IsModem(p.Body.Tag));
         var loc = vm.InstallationNodes[0].Children[7].ElementId!.Value;   // Garage
         var mid = (await harness.Session.AddProductAsync(loc, modem.ProductIdentifier))!.Value;
 
@@ -917,7 +917,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var wireless = harness.Session.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("LK IHC Wireless"));
+        var wireless = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("LK IHC Wireless"));
         var loc = vm.InstallationNodes[0].Children[3].ElementId!.Value;   // Bedroom
 
         var pid = await harness.Session.AddProductAsync(loc, wireless.ProductIdentifier);
@@ -939,7 +939,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var wireless = harness.Session.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("LK IHC Wireless"));
+        var wireless = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("LK IHC Wireless"));
         var loc = vm.InstallationNodes[0].Children[3].ElementId!.Value;
         var pid = (await harness.Session.AddProductAsync(loc, wireless.ProductIdentifier))!.Value;
 
@@ -1001,7 +1001,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var dimmer = harness.Session.GetAvailableProducts()
+        var dimmer = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("LK IHC Wireless") && p.CategoryPath.Contains("Dimmer"));
         var pid = (await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[3].ElementId!.Value, dimmer.ProductIdentifier))!.Value;
 
@@ -1028,7 +1028,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var dimmer = harness.Session.GetAvailableProducts()
+        var dimmer = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("LK IHC Wireless") && p.CategoryPath.Contains("Dimmer"));
         var pid = (await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[3].ElementId!.Value, dimmer.ProductIdentifier))!.Value;
         var node = vm.InstallationNodes[0].Children[3].Children[0];
@@ -1056,7 +1056,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var wireless = harness.Session.GetAvailableProducts()
+        var wireless = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("LK IHC Wireless") && !p.CategoryPath.Contains("Dimmer"));
         await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[3].ElementId!.Value, wireless.ProductIdentifier);
 
@@ -1074,7 +1074,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var block = harness.Session.GetAvailableFunctionBlocks()
+        var block = harness.ProjectService.GetAvailableFunctionBlocks()
             .First(f => f.Inputs.Count > 0 && f.Outputs.Count > 0 && f.Settings.Count > 0);
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;   // Living room
 
@@ -1102,7 +1102,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var block = harness.Session.GetAvailableFunctionBlocks()
+        var block = harness.ProjectService.GetAvailableFunctionBlocks()
             .First(f => f.Inputs.Count > 0 && f.Outputs.Count > 0 && f.Settings.Count > 0 && f.InternalVariables.Count > 0);
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
@@ -1259,7 +1259,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var fbId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
 
@@ -1288,7 +1288,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
         await harness.Session.AddEmptyFunctionBlockAsync(loc);
 
@@ -1311,7 +1311,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var fbId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
         string path = harness.TempPath("MyStairLight.ifb");
@@ -1337,7 +1337,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, block.MasterType);
         var fbNode = vm.FunctionNodes[0].Children[0].Children[0];
 
@@ -1362,8 +1362,8 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;   // Living room
-        var product = harness.Session.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
 
@@ -1401,8 +1401,8 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.Session.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
         var productInput = vm.InstallationNodes[0].Children[0].Children[0].Children[0];
@@ -1428,8 +1428,8 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.Session.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
         var productInput = vm.InstallationNodes[0].Children[0].Children[0].Children[0];
@@ -1456,8 +1456,8 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;   // Living room
-        var product = harness.Session.GetAvailableProducts().First(p => p.CategoryPath.Contains("02#Output"));
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Outputs.Count > 0);
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.Contains("02#Output"));
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Outputs.Count > 0);
         var pid = (await harness.Session.AddProductAsync(loc, product.ProductIdentifier))!.Value;
         var fbId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
         var productOutputId = harness.Session.Current!.FindById(pid)!.ChildrenOrEmpty().First(c => c.Tag == "dataline_output").Id!.Value;
@@ -1595,8 +1595,8 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.Session.GetAvailableProducts().First(p => p.Body.ChildrenOrEmpty().Any(c => c.Tag == "scenes"));
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Outputs.Any(o => o.Tag == "resource_scene"));
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.Body.ChildrenOrEmpty().Any(c => c.Tag == "scenes"));
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Outputs.Any(o => o.Tag == "resource_scene"));
         var pid = (await harness.Session.AddProductAsync(loc, product.ProductIdentifier))!.Value;
         var fbId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
         var scenes = harness.Session.Current!.FindById(pid)!.ChildrenOrEmpty().First(c => c.Tag == "scenes");
@@ -1629,8 +1629,8 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.Session.GetAvailableProducts().First(p => p.Body.ChildrenOrEmpty().Any(c => c.Tag == "scenes"));
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Outputs.Any(o => o.Tag == "resource_scene"));
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.Body.ChildrenOrEmpty().Any(c => c.Tag == "scenes"));
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Outputs.Any(o => o.Tag == "resource_scene"));
         var pid = (await harness.Session.AddProductAsync(loc, product.ProductIdentifier))!.Value;
         var fbId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
         var scenesId = harness.Session.Current!.FindById(pid)!.ChildrenOrEmpty().First(c => c.Tag == "scenes").Id!.Value;
@@ -1660,8 +1660,8 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.Session.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
         var productInputId = vm.InstallationNodes[0].Children[0].Children[0].Children[0].ElementId!.Value;
@@ -1694,8 +1694,8 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.Session.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 1);
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 1);
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
         var productInputId = vm.InstallationNodes[0].Children[0].Children[0].Children[0].ElementId!.Value;
@@ -1726,8 +1726,8 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.Session.GetAvailableProducts().First(p => p.Body.ChildrenOrEmpty().Any(c => c.Tag == "scenes"));
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Outputs.Any(o => o.Tag == "resource_scene"));
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.Body.ChildrenOrEmpty().Any(c => c.Tag == "scenes"));
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Outputs.Any(o => o.Tag == "resource_scene"));
         var pid = (await harness.Session.AddProductAsync(loc, product.ProductIdentifier))!.Value;
         var fbId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
         var scenes = harness.Session.Current!.FindById(pid)!.ChildrenOrEmpty().First(c => c.Tag == "scenes");
@@ -1758,8 +1758,8 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.Session.GetAvailableProducts().First(p => p.Body.ChildrenOrEmpty().Any(c => c.Tag == "scenes"));
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Outputs.Any(o => o.Tag == "resource_scene"));
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.Body.ChildrenOrEmpty().Any(c => c.Tag == "scenes"));
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Outputs.Any(o => o.Tag == "resource_scene"));
         var pid = (await harness.Session.AddProductAsync(loc, product.ProductIdentifier))!.Value;
         var fbId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
         var scenes = harness.Session.Current!.FindById(pid)!.ChildrenOrEmpty().First(c => c.Tag == "scenes");
@@ -1834,7 +1834,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var fbId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
         var fbNode = vm.FunctionNodes[0].Children[0].Children[0];
@@ -1878,7 +1878,7 @@ public class MainWindowViewModelTests
             Assert.That(vm.CanMoveSelected, Is.True, "a config-mode locality stays movable");
         });
 
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
         var fbNode = vm.FunctionNodes[0].Children[0].Children[0];
@@ -1915,7 +1915,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
         var fbNode = vm.FunctionNodes[0].Children[0].Children[0];
@@ -2727,7 +2727,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var relayProduct = harness.Session.GetAvailableProducts()
+        var relayProduct = harness.ProjectService.GetAvailableProducts()
             .First(p => p.Resources.Any(r => r.Tag == "airlink_relay"));
         await harness.Session.AddProductAsync(loc, relayProduct.ProductIdentifier);
         var relayId = FindTagged(harness.Session.Current!.Groups, "airlink_relay")!.Value;
@@ -3062,7 +3062,7 @@ public class MainWindowViewModelTests
     // the vendor-comparison oracle for which of a product's children the Installation pane shows (A-1/A-2/A-3).
     private static async Task<string[]> ProductRowLabelsAsync(ShellHarness harness, MainWindowViewModel vm, string displayName)
     {
-        ProductDefinition product = harness.Session.GetAvailableProducts().First(p => p.DisplayName == displayName);
+        ProductDefinition product = harness.ProjectService.GetAvailableProducts().First(p => p.DisplayName == displayName);
         ElementId localityId = vm.InstallationNodes[0].Children[0].ElementId!.Value;   // "Living room"
         await harness.Session.AddProductAsync(localityId, product.ProductIdentifier);
         return vm.InstallationNodes[0].Children[0].Children[0].Children.Select(c => c.DisplayName).ToArray();
@@ -3154,7 +3154,7 @@ public class MainWindowViewModelTests
     private static async Task<(TreeNodeViewModel Product, TreeNodeViewModel Pin)> InsertLampeudtagAsync(
         ShellHarness harness, MainWindowViewModel vm)
     {
-        ProductDefinition definition = harness.Session.GetAvailableProducts().First(p => p.DisplayName == "Lampeudtag");
+        ProductDefinition definition = harness.ProjectService.GetAvailableProducts().First(p => p.DisplayName == "Lampeudtag");
         ElementId localityId = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         await harness.Session.AddProductAsync(localityId, definition.ProductIdentifier);
         var product = vm.InstallationNodes[0].Children[0].Children[0];

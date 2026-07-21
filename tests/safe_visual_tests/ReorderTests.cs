@@ -52,7 +52,7 @@ public class ReorderTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var products = harness.Session.GetAvailableProducts().Where(p => p.Resources.Any(r => r.Tag == "dataline_input")).Take(2).ToList();
+        var products = harness.ProjectService.GetAvailableProducts().Where(p => p.Resources.Any(r => r.Tag == "dataline_input")).Take(2).ToList();
         await harness.Session.AddProductAsync(loc, products[0].ProductIdentifier);
         await harness.Session.AddProductAsync(loc, products[1].ProductIdentifier);
         var group = harness.Session.Current!.FindById(loc)!;

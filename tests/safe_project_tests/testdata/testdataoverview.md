@@ -406,6 +406,28 @@ element types.
 Designed for: optional G5 vendor-parity mode replay (in-doc re-attribution); passive round-trip in
 `ProjectByteFidelityTests` + `DtdConformanceTests` from day one.
 
+### project4-PrgTokens.vis (16.2 KB, 300 lines) — program-method token oracle
+
+Authentic IHC Visual (03.04.72.03) output authored from scratch (File→New template, 10 default rooms) in
+one recorded session (e2, 2026-07-21; session artifacts in `tmp/e2/out/`, method map in
+`tmp/prgmode/out/method-map.md` rows tagged `e2 2026-07-21`). One unlocked FB **"Tom blok"** in Stue with
+Interne variable {Timer ×2, Kommatal ×2, Tal ×2, Tæller ×2, Timertid ×1} and a single program whose
+Kommandoer group carries **17 vendor-authored `action` rows — one per drop-popup pick** — plus an empty
+`program_sub` skeleton. Its purpose is attesting the **program `method` tokens** for the six previously
+unpinned timer command operators and the ×/÷ arithmetic operators (D13 / PG-8):
+
+- **Timer six:** `= Initialværdi`→`_0x19`, `Aktiver optælling`→`_0xc8`, bare `Aktiver nedtælling`→`_0xd2`,
+  `Stands tælling`→`_0xdc`; `=Timer +`/`=Timer -` store the **generic** arithmetic pair `_0x5a`/`_0x64`.
+- **Arithmetic:** multiply `_0x7d` (float·int AND int·float rows), divide `_0x73` (int dividend, float
+  divisor), mixed float←int add `_0x5f` (≠ `_0x5a`), counter `+ 1`/`- 1` → `_0x54`/`_0x57`
+  (single-operand, literal in template).
+- **Controls in-file:** `= 0`→`_0xa`, `… med initial værdi`→`_0xbe`, same-type `+`/`−` → `_0x5a`/`_0x64`.
+
+Float-dividend divide (`Kommatal = Kommatal /`) is deliberately ABSENT — the vendor would not commit it
+(enablement rule undetermined; its token remains unknown, see `tmp/e2/out/findings.md` F-098). Passive
+round-trip in `ProjectByteFidelityTests` (both batteries) from day one — the 9 new method codes ride the
+open-world serializer as opaque attributes with zero engine changes.
+
 ## Authentic oracles (`projects/LiveAuthored/`)
 
 Minimal single-purpose projects captured live in IHC Visual during experiment B3, each isolating

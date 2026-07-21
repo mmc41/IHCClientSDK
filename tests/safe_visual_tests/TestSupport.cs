@@ -178,6 +178,11 @@ public sealed class ShellHarness : IDisposable
     public RecentProjectsStore Recent { get; }
     public ProjectWorkflow Session { get; }
 
+    /// <summary>The same <see cref="ProjectAppService"/> instance <see cref="Session"/> runs on — the SDK facade
+    /// tests read the rich catalog (<c>GetAvailableProducts</c>/<c>GetAvailableFunctionBlocks</c>) and other SDK
+    /// operations from directly, without going through the GUI workflow's thin delegators (refac3 T007).</summary>
+    public ProjectAppService ProjectService { get; }
+
     private readonly bool _ownsDir;
 
     private ShellHarness(string dir, bool ownsDir, int changeThreshold,
@@ -188,10 +193,10 @@ public sealed class ShellHarness : IDisposable
         Directory.CreateDirectory(TempDir);
         Backup = new BackupService(Path.Combine(TempDir, "recovery"));
         Recent = new RecentProjectsStore(Path.Combine(TempDir, "recent.json"));
-        var service = new ProjectAppService(new IhcSettings());
+        ProjectService = new ProjectAppService(new IhcSettings());
         // By default a one-hour timer never fires during a test; a FakeTimeProvider (passed in) drives it
         // deterministically. The catalog dir is a subfolder of TempDir so Restart(dir) reuses it (US-061).
-        Session = new ProjectWorkflow(service, Backup, Recent, Dialogs, null,
+        Session = new ProjectWorkflow(ProjectService, Backup, Recent, Dialogs, null,
             autoBackupInterval ?? TimeSpan.FromHours(1), changeThreshold, Path.Combine(TempDir, "catalog"), timeProvider);
     }
 

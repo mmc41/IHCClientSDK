@@ -391,19 +391,19 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         StatusText = "Controller transfer requires a connected controller.";
     });
 
-    /// <summary>Documentation ▸ Reports (US-040): render the installation/end-user report to HTML and open it in
-    /// the standard browser, in a screen or a printer-friendly variant.</summary>
+    /// <summary>Documentation ▸ Reports (US-040/041): render a report to HTML and open it in the standard
+    /// browser, in a screen or a printer-friendly variant.</summary>
     [RelayCommand]
-    private Task InstallationReportScreen() => ShowReportAsync(installation: true, print: false);
+    private Task InstallationReportScreen() => ShowInstallationReportAsync(print: false);
 
     [RelayCommand]
-    private Task InstallationReportPrint() => ShowReportAsync(installation: true, print: true);
+    private Task InstallationReportPrint() => ShowInstallationReportAsync(print: true);
 
     [RelayCommand]
-    private Task EndUserReportScreen() => ShowReportAsync(installation: false, print: false);
+    private Task EndUserReportScreen() => ShowEndUserReportAsync(print: false);
 
     [RelayCommand]
-    private Task EndUserReportPrint() => ShowReportAsync(installation: false, print: true);
+    private Task EndUserReportPrint() => ShowEndUserReportAsync(print: true);
 
     [RelayCommand]
     private Task FunctionBlockReportScreen() => ShowFunctionBlockReportAsync(print: false);
@@ -411,40 +411,27 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private Task FunctionBlockReportPrint() => ShowFunctionBlockReportAsync(print: true);
 
-    private Task ShowFunctionBlockReportAsync(bool print) => RunAsync(nameof(ShowFunctionBlockReportAsync), async () =>
-    {
-        if (_session.GenerateFunctionBlockReport() is not { } model)
-            return;   // no project open
-        string html = ReportHtmlRenderer.RenderFunctionBlocks(model, print);
-        if (await _session.WriteReportHtmlAsync(print ? "functionblocks-print" : "functionblocks", html) is not { } path)
-            return;
-        await _dialogs.OpenExternalUrlAsync(new System.Uri(path).AbsoluteUri);
-        StatusText = "Function-block report opened in your browser.";
-    });
+    private Task ShowInstallationReportAsync(bool print) => ShowReportAsync("installation", "Installation", print,
+        () => _session.GenerateInstallationReport() is { } model ? ReportHtmlRenderer.RenderInstallation(model, print) : null);
 
-    private Task ShowReportAsync(bool installation, bool print) => RunAsync(nameof(ShowReportAsync), async () =>
-    {
-        string html;
-        string stem;
-        if (installation)
+    private Task ShowEndUserReportAsync(bool print) => ShowReportAsync("enduser", "End-user", print,
+        () => _session.GenerateEndUserReport() is { } model ? ReportHtmlRenderer.RenderEndUser(model, print) : null);
+
+    private Task ShowFunctionBlockReportAsync(bool print) => ShowReportAsync("functionblocks", "Function-block", print,
+        () => _session.GenerateFunctionBlockReport() is { } model ? ReportHtmlRenderer.RenderFunctionBlocks(model, print) : null);
+
+    /// <summary>The shared report tail: render (null when no project is open), write the HTML to a temp file and
+    /// open it in the standard browser (the print variant gets a "-print" file stem).</summary>
+    private Task ShowReportAsync(string stem, string label, bool print, Func<string?> render) =>
+        RunAsync(nameof(ShowReportAsync), async () =>
         {
-            if (_session.GenerateInstallationReport() is not { } model)
+            if (render() is not { } html)
+                return;   // no project open
+            if (await _session.WriteReportHtmlAsync(print ? stem + "-print" : stem, html) is not { } path)
                 return;
-            html = ReportHtmlRenderer.RenderInstallation(model, print);
-            stem = print ? "installation-print" : "installation";
-        }
-        else
-        {
-            if (_session.GenerateEndUserReport() is not { } model)
-                return;
-            html = ReportHtmlRenderer.RenderEndUser(model, print);
-            stem = print ? "enduser-print" : "enduser";
-        }
-        if (await _session.WriteReportHtmlAsync(stem, html) is not { } path)
-            return;
-        await _dialogs.OpenExternalUrlAsync(new System.Uri(path).AbsoluteUri);
-        StatusText = $"{(installation ? "Installation" : "End-user")} report opened in your browser.";
-    });
+            await _dialogs.OpenExternalUrlAsync(new System.Uri(path).AbsoluteUri);
+            StatusText = $"{label} report opened in your browser.";
+        });
 
     // T018: AddPowerEvent / ToggleSaveValue / AddSubProgram / AddLogicGroup / SetConditionsOr / SetConditionsAnd /
     // NewCaseValue (US-029/031/033) moved into ProgramAuthoringCoordinator; the VM keeps thin [RelayCommand] entry

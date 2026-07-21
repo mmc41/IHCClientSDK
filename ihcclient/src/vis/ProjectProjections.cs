@@ -62,9 +62,10 @@ namespace Ihc.Vis
     /// information, the data tables, the unlinked-wireless pre-flight list, and the Wired module address map. Moved
     /// down from <c>ProjectSession</c> so they read through the SDK read surface (<c>project.View(element)</c>)
     /// rather than hand-parsing attributes, and so they are testable controller-free. The GUI (<c>ProjectWorkflow</c>)
-    /// keeps thin delegators over these: they stay, because the GUI runs commands through a per-call scratch session
-    /// rather than one persistent <c>ProjectDocumentSession</c> (the thread-affinity decision D12 superseded the
-    /// persistent-session goal), so there is no long-lived session for the VM to query directly.
+    /// keeps thin delegators over these: they stay, because command execution runs on a per-call scratch session
+    /// inside <c>ProjectAppService</c> (which the GUI delegates to) rather than one persistent
+    /// <c>ProjectDocumentSession</c> the VM holds (the thread-affinity decision D12 superseded the persistent-session
+    /// goal), so there is no long-lived session for the VM to query directly.
     /// </summary>
     public static class ProjectProjections
     {

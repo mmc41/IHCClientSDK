@@ -15,7 +15,7 @@ public class ControllerTransferTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var wireless = harness.Session.GetAvailableProducts()
+        var wireless = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("LK IHC Wireless produkter"));
         await harness.Session.AddProductAsync(loc, wireless.ProductIdentifier);
 
@@ -32,7 +32,7 @@ public class ControllerTransferTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var wireless = harness.Session.GetAvailableProducts()
+        var wireless = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("LK IHC Wireless produkter"));
         await harness.Session.AddProductAsync(loc, wireless.ProductIdentifier);
         harness.Dialogs.ConfirmResult = false;   // decline the "send anyway?" warning
@@ -50,7 +50,7 @@ public class ControllerTransferTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var wireless = harness.Session.GetAvailableProducts()
+        var wireless = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("LK IHC Wireless produkter"));
         await harness.Session.AddProductAsync(loc, wireless.ProductIdentifier);
         harness.Dialogs.ConfirmResult = true;

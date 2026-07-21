@@ -46,7 +46,7 @@ public class ModuleMapTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.Session.GetAvailableProducts()
+        var product = harness.ProjectService.GetAvailableProducts()
             .First(p => p.Resources.Any(r => r.Tag == "dataline_input"));
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         var pinId = FindTagged(harness.Session.Current!.Groups, "dataline_input")!.Value;

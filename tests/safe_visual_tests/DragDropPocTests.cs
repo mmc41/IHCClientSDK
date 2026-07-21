@@ -33,7 +33,7 @@ public class DragDropPocTests : AvaloniaTestBase
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var locA = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.Session.GetAvailableProducts().First(p => p.Resources.Any(r => r.Tag == "dataline_input"));
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.Resources.Any(r => r.Tag == "dataline_input"));
         await harness.Session.AddProductAsync(locA, product.ProductIdentifier);
         var productId = harness.Session.Current!.FindById(locA)!.ChildrenOrEmpty().First(c => c.Tag.StartsWith("product_")).Id!.Value;
         var locB = (await harness.Session.AddLocalityAsync())!.Value;

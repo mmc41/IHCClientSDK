@@ -17,6 +17,7 @@ using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Reporting;
 using Ihc.Vis.Schema;
+using Ihc.Vis.Session;
 using Ihc.Vis.Validation;
 namespace Ihc.Vis
 {
@@ -37,7 +38,11 @@ namespace Ihc.Vis
     /// overloads). Editing a loaded/created project goes through the <see cref="Commands"/> gateway — the single
     /// discoverable authoring door (a stateless <see cref="ProjectCommands"/> planner that mints the undoable
     /// command vocabulary a frontend applies through its session); its <c>project.Edit()</c> extension is the
-    /// low-level mutation entry the gateway is built on. The catalog is the
+    /// low-level mutation entry the gateway is built on. A frontend can also <b>execute</b> those commands here —
+    /// <see cref="Apply(Project, ProjectCommand)"/> / <see cref="Apply{T}(Project, ProjectCommand{T})"/> /
+    /// <see cref="CanApply"/> / <see cref="Preview"/> run one command against a project on a throwaway single-use
+    /// session and return the resulting <see cref="ProjectApplyResult"/> — so the same door both mints and runs the
+    /// vocabulary; a GUI layers only its document lifecycle (undo/redo, dirty/version, backup) on top. The catalog is the
     /// SDK-embedded <see cref="BuiltInCatalog"/>, materialized lazily on first catalog use, so no operation —
     /// file/controller IO, <see cref="CreateNew"/>, or the <c>GetAvailable*</c> methods — requires an IHC Visual
     /// install at runtime.
@@ -180,6 +185,93 @@ namespace Ihc.Vis
         /// undoable command vocabulary) or, at the low level, its <c>Edit()</c> extension.
         /// </summary>
         public ProjectCommands Commands => commandsGateway ??= new ProjectCommands(catalog, timeProvider);
+
+        // ---- Stateless command execution (D02): run a command minted by Commands against a project on a throwaway,
+        // single-use ProjectDocumentSession created on the CALLING thread. The session is thread-affine (it captures
+        // its owner thread at construction), so there is deliberately NO persistent session — each call opens one, uses
+        // it once as a stateless runner, and discards it. A frontend that owns document lifecycle (Current/undo/dirty)
+        // layers those on top; this door owns only the one-shot apply/probe. ----
+
+        /// <summary>
+        /// Applies <paramref name="command"/> to <paramref name="project"/> and returns the resulting snapshot paired
+        /// with the <see cref="EditOutcome"/> (D02). The command runs on a fresh single-use
+        /// <see cref="ProjectDocumentSession"/> over the project; the immutable <paramref name="project"/> is never
+        /// mutated. See <see cref="ProjectApplyResult"/> for the snapshot contract (Committed → the changed project;
+        /// NoChange/Refused/Failed → the original input, reference-identical, never null).
+        /// </summary>
+        public ProjectApplyResult Apply(Project project, ProjectCommand command)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            ArgumentNullException.ThrowIfNull(command);
+            return RunTraced(nameof(Apply), activity =>
+            {
+                ProjectDocumentSession document = OpenScratch(project);
+                EditOutcome outcome = document.Apply(command);
+                activity?.SetReturnValue(outcome.Status);
+                return new ProjectApplyResult(document.Current!, outcome);
+            });
+        }
+
+        /// <summary>
+        /// The value-producing overload of <see cref="Apply(Project, ProjectCommand)"/>: surfaces the command's
+        /// produced value (e.g. a new element's id) through the returned <see cref="ProjectApplyResult{T}"/>'s
+        /// <see cref="EditOutcome{T}.Value"/> on a committed outcome (<c>default</c> otherwise). Same snapshot contract.
+        /// </summary>
+        public ProjectApplyResult<T> Apply<T>(Project project, ProjectCommand<T> command)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            ArgumentNullException.ThrowIfNull(command);
+            return RunTraced(nameof(Apply), activity =>
+            {
+                ProjectDocumentSession document = OpenScratch(project);
+                EditOutcome<T> outcome = document.Apply(command);
+                activity?.SetReturnValue(outcome.Status);
+                return new ProjectApplyResult<T>(document.Current!, outcome);
+            });
+        }
+
+        /// <summary>
+        /// The command's legality verdict against <paramref name="project"/> (cheap — no edit), for drag-over probes
+        /// and menu gates (D02). Runs the command's own <c>Evaluate</c> on a fresh single-use session.
+        /// </summary>
+        public EditVerdict CanApply(Project project, ProjectCommand command)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            ArgumentNullException.ThrowIfNull(command);
+            return RunTraced(nameof(CanApply), activity =>
+            {
+                EditVerdict verdict = OpenScratch(project).CanApply(command);
+                activity?.SetReturnValue(verdict.Ok);
+                return verdict;
+            });
+        }
+
+        /// <summary>
+        /// The typed preview of <paramref name="command"/> applied to <paramref name="project"/> now, without
+        /// committing (D02/M8): the delta it would commit (<see cref="PreviewStatus.WouldChange"/>), else a
+        /// refuse / no-change / engine-fault status. Runs on a fresh single-use session.
+        /// </summary>
+        public PreviewOutcome Preview(Project project, ProjectCommand command)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            ArgumentNullException.ThrowIfNull(command);
+            return RunTraced(nameof(Preview), activity =>
+            {
+                PreviewOutcome preview = OpenScratch(project).Preview(command);
+                activity?.SetReturnValue(preview.Status);
+                return preview;
+            });
+        }
+
+        // Opens a throwaway, single-use document session over the project on the CALLING thread (D02): the stateless
+        // runner behind every facade Apply/CanApply/Preview. ProjectDocumentSession is thread-affine, so this must
+        // never be hoisted into a persistent field — a fresh one is created, used once, and discarded per call.
+        private static ProjectDocumentSession OpenScratch(Project project)
+        {
+            var document = new ProjectDocumentSession();
+            document.Open(project, startClean: true);
+            return document;
+        }
 
         /// <summary>
         /// Creates a new empty project replicating IHC Visual's File→New: seeds the default rooms, the

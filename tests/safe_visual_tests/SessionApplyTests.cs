@@ -74,7 +74,7 @@ public class SessionApplyTests
         using var harness = ShellHarness.Create();
         await harness.Session.NewAsync();
         ElementId loc = harness.Session.Current!.Groups[0].Id!.Value;
-        string master = harness.Session.GetAvailableFunctionBlocks()[0].MasterType;
+        string master = harness.ProjectService.GetAvailableFunctionBlocks()[0].MasterType;
 
         Assert.Multiple(() =>
         {

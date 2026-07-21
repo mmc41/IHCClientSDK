@@ -102,7 +102,7 @@ public class SmokeTests : AvaloniaTestBase
         using var harness = ShellHarness.Create();
         var viewModel = harness.CreateViewModel();
         await viewModel.InitializeAsync();
-        var product = harness.Session.GetAvailableProducts()
+        var product = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
         await harness.Session.AddProductAsync(viewModel.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier);
 
@@ -123,7 +123,7 @@ public class SmokeTests : AvaloniaTestBase
         using var harness = ShellHarness.Create();
         var viewModel = harness.CreateViewModel();
         await viewModel.InitializeAsync();
-        var wireless = harness.Session.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("LK IHC Wireless"));
+        var wireless = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("LK IHC Wireless"));
         await harness.Session.AddProductAsync(viewModel.InstallationNodes[0].Children[0].ElementId!.Value, wireless.ProductIdentifier);
 
         var window = new MainWindow { DataContext = viewModel };
@@ -147,7 +147,7 @@ public class SmokeTests : AvaloniaTestBase
         using var harness = ShellHarness.Create();
         var viewModel = harness.CreateViewModel();
         await viewModel.InitializeAsync();
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddFunctionBlockAsync(viewModel.InstallationNodes[0].Children[0].ElementId!.Value, block.MasterType);
 
         var window = new MainWindow { DataContext = viewModel };
@@ -189,7 +189,7 @@ public class SmokeTests : AvaloniaTestBase
         using var harness = ShellHarness.Create();
         var viewModel = harness.CreateViewModel();
         await viewModel.InitializeAsync();
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddFunctionBlockAsync(viewModel.InstallationNodes[0].Children[0].ElementId!.Value, block.MasterType);
 
         var window = new MainWindow { DataContext = viewModel };
@@ -219,8 +219,8 @@ public class SmokeTests : AvaloniaTestBase
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.Session.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
-        var block = harness.Session.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+        var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
         var productInput = vm.InstallationNodes[0].Children[0].Children[0].Children[0];
@@ -534,7 +534,7 @@ public class SmokeTests : AvaloniaTestBase
         await vm.InitializeAsync();
         // The locality must actually HOLD something, or it is a leaf and there is no toggle to suppress — the
         // expansion half of this assertion would pass vacuously.
-        var product = harness.Session.GetAvailableProducts().First(p => p.DisplayName == "Lampeudtag");
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.DisplayName == "Lampeudtag");
         await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier);
 
         var window = new MainWindow { DataContext = vm };

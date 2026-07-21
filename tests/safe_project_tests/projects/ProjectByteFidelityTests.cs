@@ -45,6 +45,7 @@ namespace Ihc.Vis.Tests
         [TestCase("project3-KompleksWired-scenelinks.vis")]
         [TestCase("project3-KompleksWired-enumappend.vis")]
         [TestCase("project3-KompleksWired-gemsideeffect.vis")]
+        [TestCase("project4-PrgTokens.vis")]
         public void Serialize_RoundTrip_IsByteIdentical(string file)
         {
             byte[] original = TestData.ReadBytes("projects/" + file);
@@ -69,6 +70,7 @@ namespace Ihc.Vis.Tests
         [TestCase("project3-KompleksWired-scenelinks.vis")]
         [TestCase("project3-KompleksWired-enumappend.vis")]
         [TestCase("project3-KompleksWired-gemsideeffect.vis")]
+        [TestCase("project4-PrgTokens.vis")]
         public async Task Save_PreserveExistingMetadata_IsByteIdentical(string file)
         {
             byte[] original = TestData.ReadBytes("projects/" + file);

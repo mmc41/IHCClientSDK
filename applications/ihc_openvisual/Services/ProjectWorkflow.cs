@@ -9,9 +9,7 @@ using System.Threading.Tasks;
 using ihc_openvisual.Configuration;
 using Ihc.Vis;
 using Ihc.Vis.Addressing;
-using Ihc.Vis.FunctionBlocks;
 using Ihc.Vis.Model;
-using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Session;
 using Microsoft.Extensions.Logging;
@@ -305,9 +303,9 @@ public sealed class ProjectWorkflow : IDisposable
     public Task<string?> WriteReportHtmlAsync(string fileStem, string html) => _reports.WriteHtmlAsync(fileStem, html);
 
     /// <summary>Reads the current project/customer/installer information (US-039) to prefill the dialog. Delegates
-    /// to the SDK projection (<c>Ihc.Vis.ProjectProjections</c>). Permanent: the GUI runs commands through a per-call
-    /// scratch session, not one persistent <c>ProjectDocumentSession</c> (D12 thread-affinity superseded W2's
-    /// persistent-session goal), so there is no long-lived session query to delegate to.</summary>
+    /// to the SDK projection (<c>Ihc.Vis.ProjectProjections</c>). Permanent: there is no long-lived session to query —
+    /// command execution runs on a per-call scratch session inside <c>ProjectAppService</c> (D12 thread-affinity
+    /// superseded W2's persistent-session goal), and reads go straight to that SDK projection.</summary>
     public ProjectInfoData GetProjectInfo() => Current?.GetProjectInfo() ?? ProjectInfoData.Empty;
 
     /// <summary>
@@ -332,12 +330,6 @@ public sealed class ProjectWorkflow : IDisposable
     /// </summary>
     public ModuleAddressMap GetModuleAddressMap() =>
         Current?.GetModuleAddressMap() ?? ModuleAddressMap.Empty;
-
-    /// <summary>The catalog products available for insertion (from the SDK-embedded catalog; no controller needed).</summary>
-    public IReadOnlyList<ProductDefinition> GetAvailableProducts() => _service.GetAvailableProducts();
-
-    /// <summary>The catalog library function blocks available for insertion (SDK-embedded catalog; no controller).</summary>
-    public IReadOnlyList<FunctionBlockDefinition> GetAvailableFunctionBlocks() => _service.GetAvailableFunctionBlocks();
 
     /// <summary>The catalog products as slim insert-menu items (<see cref="CatalogItem"/>) — what the insert menu binds to.</summary>
     public IReadOnlyList<CatalogItem> GetProductCatalogItems() => _service.GetProductCatalogItems();
@@ -402,22 +394,22 @@ public sealed class ProjectWorkflow : IDisposable
 
     // The single commit path for every project-mutating operation (US-052): snapshots the pre-edit project for undo,
     // invalidates the redo history, swaps in the new project, then marks changed (dirty + backup + StateChanged).
-    // fablerefac W2-5 (migrate): route a command through a document session, then persist the result via the
-    // existing commit path so ProjectWorkflow's Current/undo/dirty stay the source of truth. A fresh session per call
-    // is created on the calling thread, sidestepping the session's thread-affinity guard; it is used once as a
-    // stateless command runner.
+    // ApplyAsync routes a command through ProjectAppService.Apply — the SDK's stateless command runner, which opens a
+    // throwaway ProjectDocumentSession per call on the calling thread (refac3 T003/T004) — then persists the result
+    // via this commit path so ProjectWorkflow's Current/undo/dirty stay the source of truth.
     //
-    // DESIGN NOTE (do not "finish W2" by swapping this for one persistent ProjectDocumentSession): W2-14 originally
-    // envisioned a single persistent session the VM drives directly. That was SUPERSEDED by the later D12 decision to
-    // make ProjectDocumentSession thread-affine (owner thread captured at construction). A persistent session would
+    // DESIGN NOTE (do not "finish W2" by hoisting a single persistent ProjectDocumentSession into the GUI): W2-14
+    // originally envisioned a persistent session the VM drives directly. That was SUPERSEDED by the later D12 decision
+    // to make ProjectDocumentSession thread-affine (owner thread captured at construction). A persistent session would
     // be constructible only on the exact thread it is later operated from, forcing every session-touching test onto
     // [AvaloniaTest] and coupling core correctness to Avalonia's async-continuation marshalling (under-documented and
-    // evolving across major versions). Deep research (2026-07-20) confirmed that approach is *feasible* in Avalonia
-    // 12 but strictly worse on simplicity/testability/stability/portability than this OpenScratch runner, which
-    // depends on nothing Avalonia-specific. Keep the per-call scratch session; keep undo/redo/version here.
+    // evolving across major versions). Deep research (2026-07-20) confirmed that approach is *feasible* in Avalonia 12
+    // but strictly worse on simplicity/testability/stability/portability than the per-call scratch runner, which
+    // depends on nothing Avalonia-specific and now lives behind the facade (ProjectAppService.Apply). Keep command
+    // execution in the facade; keep undo/redo/version here.
     /// <summary>
     /// Applies a command to the open project and commits it on success (W2-14): the single edit entry the VM drives.
-    /// Runs the command through a stateless document session over <see cref="Current"/>, then — only on
+    /// Runs the command through the SDK facade (<c>ProjectAppService.Apply</c>) over <see cref="Current"/>, then — only on
     /// <see cref="EditStatus.Committed"/> — swaps in the result, snapshots for undo (labelled by the command) and
     /// marks changed. Returns the raw <see cref="EditOutcome"/>; the caller maps it to status text / dialogs (the
     /// single outcome→status/dialog rule). When <paramref name="baseVersion"/> is supplied and no longer matches
@@ -427,11 +419,10 @@ public sealed class ProjectWorkflow : IDisposable
     {
         if (StaleOrClosed(command, baseVersion) is { } refusal)
             return refusal;
-        ProjectDocumentSession document = OpenScratch(Current!);
-        EditOutcome outcome = document.Apply(command);
-        if (outcome.Status == EditStatus.Committed)
-            await CommitAsync(document.Current!, outcome.Label, outcome.Changes);
-        return outcome;
+        ProjectApplyResult result = _service.Apply(Current!, command);
+        if (result.Outcome.Status == EditStatus.Committed)
+            await CommitAsync(result.Project, result.Outcome.Label, result.Outcome.Changes);
+        return result.Outcome;
     }
 
     /// <summary>The value-producing overload of <see cref="ApplyAsync(ProjectCommand,int?)"/> (e.g. a new element's id).</summary>
@@ -439,11 +430,10 @@ public sealed class ProjectWorkflow : IDisposable
     {
         if (StaleOrClosed(command, baseVersion) is { } refusal)
             return new EditOutcome<T>(refusal.Status, refusal.Label, refusal.Reason, null, default);
-        ProjectDocumentSession document = OpenScratch(Current!);
-        EditOutcome<T> outcome = document.Apply(command);
-        if (outcome.Status == EditStatus.Committed)
-            await CommitAsync(document.Current!, outcome.Label, outcome.Changes);
-        return outcome;
+        ProjectApplyResult<T> result = _service.Apply(Current!, command);
+        if (result.Outcome.Status == EditStatus.Committed)
+            await CommitAsync(result.Project, result.Outcome.Label, result.Outcome.Changes);
+        return result.Outcome;
     }
 
     // The shared no-project / stale-base-version guard: returns a Refused outcome to short-circuit, or null to proceed.
@@ -457,22 +447,13 @@ public sealed class ProjectWorkflow : IDisposable
         return null;
     }
 
-    // Opens a throwaway document session over a snapshot of the given project — the stateless runner behind every
-    // command probe/apply/preview against Current (nothing persists back except through CommitAsync).
-    private static ProjectDocumentSession OpenScratch(Project project)
-    {
-        var document = new ProjectDocumentSession();
-        document.Open(project, startClean: true);
-        return document;
-    }
-
     /// <summary>The command's legality verdict against the open project (cheap — no edit), for drag-over probes and
     /// menu gates. Refused when no project is open.</summary>
     public EditVerdict CanApply(ProjectCommand command)
     {
         if (Current is not { } current)
             return EditVerdict.Refuse("No project is open.");
-        return OpenScratch(current).CanApply(command);
+        return _service.CanApply(current, command);
     }
 
     /// <summary>The typed preview of a command applied now, without committing (M8/D05): the delta it would commit
@@ -481,7 +462,7 @@ public sealed class ProjectWorkflow : IDisposable
     /// <see cref="ProjectCommands.PreviewDelete"/> instead.</summary>
     public PreviewOutcome Preview(ProjectCommand command) =>
         Current is { } current
-            ? OpenScratch(current).Preview(command)
+            ? _service.Preview(current, command)
             : PreviewOutcome.Refused("No project is open.");
 
     private async Task CommitAsync(Project updated, string label = "Edit", ProjectChangeSet? changes = null)

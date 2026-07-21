@@ -30,14 +30,14 @@ public class CatalogImportTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        int before = harness.Session.GetAvailableProducts().Count;
+        int before = harness.ProjectService.GetAvailableProducts().Count;
 
         var ok = await harness.Session.ImportCatalogFileAsync(SampleProductDef(), persist: false);
 
         Assert.Multiple(() =>
         {
             Assert.That(ok, Is.True);
-            Assert.That(harness.Session.GetAvailableProducts().Count, Is.EqualTo(before + 1), "the imported product is available");
+            Assert.That(harness.ProjectService.GetAvailableProducts().Count, Is.EqualTo(before + 1), "the imported product is available");
         });
     }
 
@@ -47,14 +47,14 @@ public class CatalogImportTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        int before = harness.Session.GetAvailableFunctionBlocks().Count;
+        int before = harness.ProjectService.GetAvailableFunctionBlocks().Count;
 
         var ok = await harness.Session.ImportCatalogFileAsync(SampleFunctionBlockIfb(), persist: false);
 
         Assert.Multiple(() =>
         {
             Assert.That(ok, Is.True);
-            Assert.That(harness.Session.GetAvailableFunctionBlocks().Count, Is.EqualTo(before + 1));
+            Assert.That(harness.ProjectService.GetAvailableFunctionBlocks().Count, Is.EqualTo(before + 1));
         });
     }
 
@@ -64,8 +64,8 @@ public class CatalogImportTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        int productsBefore = harness.Session.GetAvailableProducts().Count;
-        int blocksBefore = harness.Session.GetAvailableFunctionBlocks().Count;
+        int productsBefore = harness.ProjectService.GetAvailableProducts().Count;
+        int blocksBefore = harness.ProjectService.GetAvailableFunctionBlocks().Count;
         var folder = harness.TempPath("import");
         Directory.CreateDirectory(Path.Combine(folder, "sub"));
         File.Copy(SampleProductDef(), Path.Combine(folder, "a.def"));
@@ -77,8 +77,8 @@ public class CatalogImportTests
         Assert.Multiple(() =>
         {
             Assert.That(count, Is.EqualTo(3), "the folder import reports the number of definition files (incl. subfolders)");
-            Assert.That(harness.Session.GetAvailableProducts().Count, Is.EqualTo(productsBefore + 2));
-            Assert.That(harness.Session.GetAvailableFunctionBlocks().Count, Is.EqualTo(blocksBefore + 1));
+            Assert.That(harness.ProjectService.GetAvailableProducts().Count, Is.EqualTo(productsBefore + 2));
+            Assert.That(harness.ProjectService.GetAvailableFunctionBlocks().Count, Is.EqualTo(blocksBefore + 1));
         });
     }
 
@@ -105,7 +105,7 @@ public class CatalogImportTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        int before = harness.Session.GetAvailableProducts().Count;
+        int before = harness.ProjectService.GetAvailableProducts().Count;
         var broken = harness.TempPath("broken.def");
         File.WriteAllText(broken, "this is not a valid catalog definition <<<");
 
@@ -115,7 +115,7 @@ public class CatalogImportTests
         {
             Assert.That(ok, Is.False);
             Assert.That(harness.Dialogs.LastMessage, Does.Contain("broken.def"), "the error names the offending file");
-            Assert.That(harness.Session.GetAvailableProducts().Count, Is.EqualTo(before), "the available set is unchanged");
+            Assert.That(harness.ProjectService.GetAvailableProducts().Count, Is.EqualTo(before), "the available set is unchanged");
         });
     }
 
@@ -125,7 +125,7 @@ public class CatalogImportTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        int productsBefore = harness.Session.GetAvailableProducts().Count;
+        int productsBefore = harness.ProjectService.GetAvailableProducts().Count;
         var folder = harness.TempPath("mixed");
         Directory.CreateDirectory(folder);
         File.Copy(SampleProductDef(), Path.Combine(folder, "1_good.def"));   // sorts first
@@ -138,7 +138,7 @@ public class CatalogImportTests
         {
             Assert.That(count, Is.EqualTo(1), "the import stops at the first unreadable file, keeping earlier ones");
             Assert.That(harness.Dialogs.LastMessage, Does.Contain("2_broken.def"), "the message names the offending file");
-            Assert.That(harness.Session.GetAvailableProducts().Count, Is.EqualTo(productsBefore + 1), "only the file before it imported");
+            Assert.That(harness.ProjectService.GetAvailableProducts().Count, Is.EqualTo(productsBefore + 1), "only the file before it imported");
         });
     }
 
@@ -150,11 +150,11 @@ public class CatalogImportTests
         {
             var vm = harness.CreateViewModel();
             await vm.InitializeAsync();
-            int baseline = harness.Session.GetAvailableProducts().Count;
+            int baseline = harness.ProjectService.GetAvailableProducts().Count;
             await harness.Session.ImportCatalogFileAsync(SampleProductDef(), persist: true);
 
             using var restart = ShellHarness.Restart(harness.TempDir);
-            Assert.That(restart.Session.GetAvailableProducts().Count, Is.EqualTo(baseline + 1),
+            Assert.That(restart.ProjectService.GetAvailableProducts().Count, Is.EqualTo(baseline + 1),
                 "a persisted import loads from the app-data catalog folder on startup");
         }
 
@@ -163,11 +163,11 @@ public class CatalogImportTests
         {
             var vm = harness.CreateViewModel();
             await vm.InitializeAsync();
-            int baseline = harness.Session.GetAvailableProducts().Count;
+            int baseline = harness.ProjectService.GetAvailableProducts().Count;
             await harness.Session.ImportCatalogFileAsync(SampleProductDef(), persist: false);
 
             using var restart = ShellHarness.Restart(harness.TempDir);
-            Assert.That(restart.Session.GetAvailableProducts().Count, Is.EqualTo(baseline),
+            Assert.That(restart.ProjectService.GetAvailableProducts().Count, Is.EqualTo(baseline),
                 "an un-persisted import is absent after a restart");
         }
     }
@@ -188,7 +188,7 @@ public class CatalogImportTests
                   Path.Combine(catalogDir, "a_second.def"));                       // _0x9f02
 
         using var restart = ShellHarness.Restart(harness.TempDir);
-        var ids = restart.Session.GetAvailableProducts().Select(p => p.ProductIdentifier).ToList();
+        var ids = restart.ProjectService.GetAvailableProducts().Select(p => p.ProductIdentifier).ToList();
 
         Assert.That(ids.IndexOf("_0x9f01"), Is.LessThan(ids.IndexOf("_0x9f02")),
             "the Ordinal-first file (B_first.def) imports first, so its product precedes the other — deterministic across filesystems");
@@ -201,14 +201,14 @@ public class CatalogImportTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        int before = harness.Session.GetAvailableProducts().Count;
+        int before = harness.ProjectService.GetAvailableProducts().Count;
         harness.Dialogs.CatalogFilePath = SampleProductDef();
 
         await vm.ImportCatalogFileCommand.ExecuteAsync(null);
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Session.GetAvailableProducts().Count, Is.EqualTo(before + 1));
+            Assert.That(harness.ProjectService.GetAvailableProducts().Count, Is.EqualTo(before + 1));
             Assert.That(vm.StatusText, Does.Contain("Imported 1 component"));
         });
     }

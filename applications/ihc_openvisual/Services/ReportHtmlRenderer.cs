@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
@@ -35,26 +36,15 @@ public static class ReportHtmlRenderer
         CrossReference(sb, "Datalinie indgange", r.DatalineInputs);
         CrossReference(sb, "Datalinie udgange", r.DatalineOutputs);
 
-        if (r.SpecialProducts.Length > 0)
-        {
-            sb.Append("<h3>Specielle Produkter</h3><table><tr>")
-              .Append("<th>Produkt</th><th>Terminal</th><th>Note</th><th>Lokalitet</th><th>Placering</th>")
-              .Append("<th>Id-kode</th><th>0V</th><th>24V</th><th>RS485-</th><th>RS485+</th></tr>");
-            foreach (SpecialProductRow s in r.SpecialProducts)
-                Row(sb, s.Product, s.Terminal, s.Note, s.Locality, s.Position, s.IdCode,
-                    s.WireColour0V, s.WireColour24V, s.WireColourRs485Minus, s.WireColourRs485Plus);
-            sb.Append("</table>");
-        }
+        Table(sb, "Specielle Produkter",
+            ["Produkt", "Terminal", "Note", "Lokalitet", "Placering", "Id-kode", "0V", "24V", "RS485-", "RS485+"],
+            r.SpecialProducts, s => [s.Product, s.Terminal, s.Note, s.Locality, s.Position, s.IdCode,
+                s.WireColour0V, s.WireColour24V, s.WireColourRs485Minus, s.WireColourRs485Plus]);
 
-        if (r.S0Devices.Length > 0)
-        {
-            sb.Append("<h3>S0 Device</h3><table><tr>")
-              .Append("<th>Produkt</th><th>Note</th><th>Lokalitet</th><th>Placering</th><th>Id-kode</th>")
-              .Append("<th>S0-</th><th>S0+</th></tr>");
-            foreach (S0DeviceRow s in r.S0Devices)
-                Row(sb, s.Product, s.Note, s.Locality, s.Position, s.IdCode, s.CableColourS0Minus, s.CableColourS0Plus);
-            sb.Append("</table>");
-        }
+        Table(sb, "S0 Device",
+            ["Produkt", "Note", "Lokalitet", "Placering", "Id-kode", "S0-", "S0+"],
+            r.S0Devices, s => [s.Product, s.Note, s.Locality, s.Position, s.IdCode,
+                s.CableColourS0Minus, s.CableColourS0Plus]);
 
         CloseDocument(sb);
         return sb.ToString();
@@ -133,16 +123,9 @@ public static class ReportHtmlRenderer
         sb.Append("<tr><th>Telefon</th><td>").Append(Esc(p.Telefon)).Append("</td></tr></table>");
     }
 
-    private static void ModuleTable(StringBuilder sb, string heading, ImmutableArray<ModuleRow> rows)
-    {
-        if (rows.Length == 0)
-            return;
-        sb.Append("<h3>").Append(Esc(heading)).Append("</h3><table>")
-          .Append("<tr><th>Datalinie</th><th>Modultype</th><th>Lokalitet</th><th>Beskrivelse</th></tr>");
-        foreach (ModuleRow m in rows)
-            Row(sb, m.Dataline, m.ModuleType, m.Locality, m.Description);
-        sb.Append("</table>");
-    }
+    private static void ModuleTable(StringBuilder sb, string heading, ImmutableArray<ModuleRow> rows) =>
+        Table(sb, heading, ["Datalinie", "Modultype", "Lokalitet", "Beskrivelse"],
+            rows, m => [m.Dataline, m.ModuleType, m.Locality, m.Description]);
 
     private static void ProductDetail(StringBuilder sb, ProductDetailTable t)
     {
@@ -159,17 +142,26 @@ public static class ReportHtmlRenderer
         }
     }
 
-    private static void CrossReference(StringBuilder sb, string heading, ImmutableArray<DatalineCrossReferenceRow> rows)
+    private static void CrossReference(StringBuilder sb, string heading, ImmutableArray<DatalineCrossReferenceRow> rows) =>
+        Table(sb, heading,
+            ["Adresse", "Produkt", "Terminal", "Note", "Lokalitet", "Placering", "Id-kode",
+             "Kabeltype", "Kabelnummer", "Lysgruppe", "Ledningsfarve"],
+            rows, c => [c.Address, c.Product, c.Terminal, c.Note, c.Locality, c.Position, c.IdCode,
+                c.CableType, c.CableNumber, c.PowerGroup, c.WireColour]);
+
+    /// <summary>One flat report table — heading, header row, a <see cref="Row"/> per item — omitted entirely
+    /// when it has no rows (an empty section never renders).</summary>
+    private static void Table<T>(
+        StringBuilder sb, string heading, string[] headers, ImmutableArray<T> rows, Func<T, string[]> cells)
     {
         if (rows.Length == 0)
             return;
-        sb.Append("<h3>").Append(Esc(heading)).Append("</h3><table><tr>")
-          .Append("<th>Adresse</th><th>Produkt</th><th>Terminal</th><th>Note</th><th>Lokalitet</th>")
-          .Append("<th>Placering</th><th>Id-kode</th><th>Kabeltype</th><th>Kabelnummer</th>")
-          .Append("<th>Lysgruppe</th><th>Ledningsfarve</th></tr>");
-        foreach (DatalineCrossReferenceRow c in rows)
-            Row(sb, c.Address, c.Product, c.Terminal, c.Note, c.Locality, c.Position, c.IdCode,
-                c.CableType, c.CableNumber, c.PowerGroup, c.WireColour);
+        sb.Append("<h3>").Append(Esc(heading)).Append("</h3><table><tr>");
+        foreach (string header in headers)
+            sb.Append("<th>").Append(Esc(header)).Append("</th>");
+        sb.Append("</tr>");
+        foreach (T row in rows)
+            Row(sb, cells(row));
         sb.Append("</table>");
     }
 

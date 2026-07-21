@@ -68,6 +68,56 @@ public class ReportRenderingTests
         });
     }
 
+    private static InstallationReport FlatTablesInstallation() => new(
+        "Installationsdokumentation",
+        new ReportPartyInfo("--", "--", "--"),
+        new ReportPartyInfo("--", "--", "--"),
+        ImmutableArray.Create(new ModuleRow("1", "Input 8", "Hall", "Main input")),
+        ImmutableArray.Create(new ModuleRow("2", "Output 8", "Hall", "Main output")),
+        ImmutableArray<ProductDetailTable>.Empty,
+        ImmutableArray<ProductDetailTable>.Empty,
+        ImmutableArray.Create(new DatalineCrossReferenceRow(
+            "1.1", "Push", "T1", "note", "Hall", "door", "K1", "5x0,75", "12", "L1", "red")),
+        ImmutableArray<DatalineCrossReferenceRow>.Empty,
+        ImmutableArray.Create(new SpecialProductRow("Modem", "T2", "n", "Hall", "shelf", "K2", "wh", "bk", "gn", "ye")),
+        ImmutableArray.Create(new S0DeviceRow("Meter", "n2", "Garage", "wall", "K3", "bl", "br")));
+
+    // Characterization of the four flat installation tables (modules, cross-references, special products, S0):
+    // heading + header row + one cell row per item, and an empty section renders nothing at all.
+    [Test]
+    public void Installation_FlatTables_RenderHeadingsHeadersAndCells()
+    {
+        var html = ReportHtmlRenderer.RenderInstallation(FlatTablesInstallation(), print: false);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Contain(
+                "<h3>Datalinie input-moduler</h3><table><tr><th>Datalinie</th><th>Modultype</th><th>Lokalitet</th><th>Beskrivelse</th></tr>"));
+            Assert.That(html, Does.Contain("<tr><td>1</td><td>Input 8</td><td>Hall</td><td>Main input</td></tr>"));
+            Assert.That(html, Does.Contain("<h3>Datalinie output-moduler</h3>"));
+            Assert.That(html, Does.Contain("<tr><td>2</td><td>Output 8</td><td>Hall</td><td>Main output</td></tr>"));
+            Assert.That(html, Does.Contain(
+                "<h3>Datalinie indgange</h3><table><tr><th>Adresse</th><th>Produkt</th><th>Terminal</th><th>Note</th>"
+                + "<th>Lokalitet</th><th>Placering</th><th>Id-kode</th><th>Kabeltype</th><th>Kabelnummer</th>"
+                + "<th>Lysgruppe</th><th>Ledningsfarve</th></tr>"));
+            Assert.That(html, Does.Contain(
+                "<tr><td>1.1</td><td>Push</td><td>T1</td><td>note</td><td>Hall</td><td>door</td><td>K1</td>"
+                + "<td>5x0,75</td><td>12</td><td>L1</td><td>red</td></tr>"));
+            Assert.That(html, Does.Not.Contain("Datalinie udgange"), "an empty section renders no heading/table");
+            Assert.That(html, Does.Contain(
+                "<h3>Specielle Produkter</h3><table><tr><th>Produkt</th><th>Terminal</th><th>Note</th><th>Lokalitet</th>"
+                + "<th>Placering</th><th>Id-kode</th><th>0V</th><th>24V</th><th>RS485-</th><th>RS485+</th></tr>"));
+            Assert.That(html, Does.Contain(
+                "<tr><td>Modem</td><td>T2</td><td>n</td><td>Hall</td><td>shelf</td><td>K2</td>"
+                + "<td>wh</td><td>bk</td><td>gn</td><td>ye</td></tr>"));
+            Assert.That(html, Does.Contain(
+                "<h3>S0 Device</h3><table><tr><th>Produkt</th><th>Note</th><th>Lokalitet</th><th>Placering</th>"
+                + "<th>Id-kode</th><th>S0-</th><th>S0+</th></tr>"));
+            Assert.That(html, Does.Contain(
+                "<tr><td>Meter</td><td>n2</td><td>Garage</td><td>wall</td><td>K3</td><td>bl</td><td>br</td></tr>"));
+        });
+    }
+
     [Test]
     public void EndUser_Screen_HasTocAndDifferingLocalitySuffix()
     {

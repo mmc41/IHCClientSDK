@@ -226,8 +226,8 @@ internal sealed class PropertiesDialogCoordinator(
             string currentLocalityId = project.FindParent(productId)?.Id?.ToToken() ?? string.Empty;
             // The dialog is titled with the product TYPE (the catalog name), not the generic "Product properties" —
             // it is how the vendor tells two open product dialogs apart (A-8/F-015).
-            string productType = session.GetAvailableProducts()
-                .FirstOrDefault(p => p.ProductIdentifier == view.ProductIdentifier)?.DisplayName
+            string productType = session.GetProductCatalogItems()
+                .FirstOrDefault(p => p.Identifier == view.ProductIdentifier)?.DisplayName
                 ?? view.Name ?? "Product properties";
             var input = new ProductPropertiesInput(
                 productType,

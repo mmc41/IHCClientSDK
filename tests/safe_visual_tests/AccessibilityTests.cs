@@ -234,7 +234,7 @@ public class AccessibilityTests : AvaloniaTestBase
         var viewModel = harness.CreateViewModel();
         await viewModel.InitializeAsync();
 
-        var product = harness.Session.GetAvailableProducts()
+        var product = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
         var localityId = viewModel.InstallationNodes[0].Children[0].ElementId!.Value;   // "Living room"
         await harness.Session.AddProductAsync(localityId, product.ProductIdentifier);
