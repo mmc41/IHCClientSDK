@@ -5,7 +5,6 @@ using System.Windows.Input;
 using ihc_openvisual.ViewModels;
 using Ihc;
 using Ihc.Vis;
-using Ihc.Vis.Products;
 
 namespace safe_unit_tests;
 
@@ -24,17 +23,17 @@ public class CatalogMenuForestTests
         public event EventHandler? CanExecuteChanged { add { } remove { } }
     }
 
-    private static ICommand Cmd(ProductDefinition _) => new NoopCommand();
+    private static ICommand Cmd(CatalogItem _) => new NoopCommand();
 
     [Test]
     public void BuildProductForest_ReachesEmptyCategoryProduct_InImportedBucket()
     {
-        var real = new ProjectAppService(new IhcSettings()).GetAvailableProducts();
-        // An imported .def has an empty CategoryPath (CatalogReader.ReadProduct) — model one by cloning a real product.
+        var real = new ProjectAppService(new IhcSettings()).GetProductCatalogItems();
+        // An imported .def has an empty CategoryPath (CatalogReader.ReadProduct) — model one by cloning a real item.
         var imported = real.First() with
         {
             CategoryPath = "",
-            ProductIdentifier = "_0ximported",
+            Identifier = "_0ximported",
             DisplayName = "Imported Widget",
         };
         var products = real.Append(imported).ToList();

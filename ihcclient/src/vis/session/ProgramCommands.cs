@@ -130,7 +130,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Toggle log mark";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(LogRowId) is { } row && ProjectEditor.IsLogRow(row, context.Project)
+            context.Index.FindById(LogRowId) is { } row && row.IsLogRow(context.Project)
                 ? EditVerdict.Allow : EditVerdict.Refuse("Not a Logning row.");
         internal override void Execute(ProjectEditor editor) => editor.ToggleLogMark(LogRowId);
     }

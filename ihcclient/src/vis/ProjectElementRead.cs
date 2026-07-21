@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using Ihc.Vis.Model;
+using Ihc.Vis.Projects;
 
 namespace Ihc.Vis
 {
@@ -13,6 +14,11 @@ namespace Ihc.Vis
     /// </summary>
     public static class ProjectElementRead
     {
+        /// <summary>The vendor enum <c>typeid</c> of the "Logning" state type behind the "Log …" rows — the schema
+        /// signal that identifies a log-mark row (A-22/US-068), read by the <c>IsLogRow</c> predicate below and by the
+        /// editing layer's log-mark toggle.</summary>
+        public const string LogEnumTypeId = "_0x16";
+
         extension(ProjectElement element)
         {
             /// <summary>
@@ -102,6 +108,15 @@ namespace Ihc.Vis
 
             /// <summary>A wireless dimmer's dimming resource (<c>airlink_dimming</c>) — the Advanced dimmer target (US-015).</summary>
             public bool IsWirelessDimming => element.Tag == "airlink_dimming";
+
+            /// <summary>Whether this element is a "Log …" row — a <c>resource_enum</c> whose enum type is the Logning
+            /// type (<see cref="LogEnumTypeId"/>), resolved against <paramref name="project"/>. The signal a GUI uses
+            /// to offer the log-mark toggle only where the vendor does (A-22/US-068). Unlike the context-free
+            /// predicates above, this one needs the project to resolve the row's enum-type reference.</summary>
+            public bool IsLogRow(Project project) =>
+                element.Tag == "resource_enum"
+                && ElementId.TryParse(element.GetAttribute("typedef"), out ElementId defId)
+                && project.FindById(defId)?.GetAttribute("typeid") == LogEnumTypeId;
         }
 
         /// <summary>

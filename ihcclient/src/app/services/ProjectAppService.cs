@@ -475,6 +475,17 @@ namespace Ihc.Vis
                 return result;
             });
 
+        /// <summary>The available products projected to slim insert-menu items (<see cref="CatalogItem"/>: the
+        /// insert identifier, display name and category path) — the narrow surface a menu needs, without exposing the
+        /// full authoring <see cref="ProductDefinition"/>.</summary>
+        public IReadOnlyList<CatalogItem> GetProductCatalogItems() =>
+            GetAvailableProducts().Select(p => new CatalogItem(p.ProductIdentifier, p.DisplayName, p.CategoryPath)).ToList();
+
+        /// <summary>The available function blocks projected to slim insert-menu items (<see cref="CatalogItem"/>,
+        /// keyed by <c>master_type</c>) — the narrow surface a menu needs, without the full authoring definition.</summary>
+        public IReadOnlyList<CatalogItem> GetFunctionBlockCatalogItems() =>
+            GetAvailableFunctionBlocks().Select(b => new CatalogItem(b.MasterType, b.DisplayName, b.CategoryPath)).ToList();
+
         /// <summary>
         /// Imports one catalog component file at runtime so it resolves and inserts alongside the built-ins: a
         /// <c>.ifb</c> is read as a function block, any other extension (<c>.def</c>) as a product, via the same

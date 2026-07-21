@@ -55,6 +55,40 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // The slim CatalogItem projection (insert-menu surface) carries exactly the identifier the gateway inserts by
+        // (product_identifier / master_type), the display name and the category path — copied from the full definition.
+        [Test]
+        public void GetCatalogItems_ProjectIdentifierNameAndCategory()
+        {
+            var products = new[]
+            {
+                new ProductDefinition("_0x2101", "LK FUGA Tryk 2 tast", "Datalinie produkter\\01#Input", EmptyBody("product_dataline")),
+            };
+            var functionBlocks = new[]
+            {
+                new FunctionBlockDefinition("1.1.01", "e", "Kip tænd sluk", "1.1.01.e. Kip tænd sluk", "01. Lysstyring", EmptyBody("functionblock")),
+            };
+            var catalog = A.Fake<ICatalog>();
+            A.CallTo(() => catalog.Products).Returns(products);
+            A.CallTo(() => catalog.FunctionBlocks).Returns(functionBlocks);
+
+            var app = new ProjectAppService(Settings, catalog, Clock());
+            var productItems = app.GetProductCatalogItems();
+            var blockItems = app.GetFunctionBlockCatalogItems();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(productItems, Has.Count.EqualTo(1));
+                Assert.That(productItems[0].Identifier, Is.EqualTo(products[0].ProductIdentifier), "product item id is product_identifier");
+                Assert.That(productItems[0].DisplayName, Is.EqualTo(products[0].DisplayName));
+                Assert.That(productItems[0].CategoryPath, Is.EqualTo(products[0].CategoryPath));
+                Assert.That(blockItems, Has.Count.EqualTo(1));
+                Assert.That(blockItems[0].Identifier, Is.EqualTo(functionBlocks[0].MasterType), "function-block item id is master_type");
+                Assert.That(blockItems[0].DisplayName, Is.EqualTo(functionBlocks[0].DisplayName));
+                Assert.That(blockItems[0].CategoryPath, Is.EqualTo(functionBlocks[0].CategoryPath));
+            });
+        }
+
         [Test]
         public void GetAvailable_ThroughTheSettingsOnlyCtor_DiscoversTheEmbeddedCatalog()
         {

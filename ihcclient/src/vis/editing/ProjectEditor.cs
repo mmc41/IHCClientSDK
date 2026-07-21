@@ -791,22 +791,6 @@ namespace Ihc.Vis.Editing
             return this;
         }
 
-        /// <summary>The vendor enum <c>typeid</c> of the "Logning" state type behind the "Log …" rows — the target of
-        /// <see cref="ToggleLogMark"/> and the signal a GUI uses to offer the &amp;Logmærke toggle (A-22/US-068).</summary>
-        public const string LogEnumTypeId = "_0x16";
-
-        /// <summary>Whether <paramref name="resource"/> is a "Log …" row — a <c>resource_enum</c> whose enum type is the
-        /// Logning type (<see cref="LogEnumTypeId"/>), resolved against <paramref name="project"/>. The signal a GUI
-        /// uses to offer the log-mark toggle only where the vendor does.</summary>
-        public static bool IsLogRow(ProjectElement resource, Project project)
-        {
-            ArgumentNullException.ThrowIfNull(resource);
-            ArgumentNullException.ThrowIfNull(project);
-            return resource.Tag == "resource_enum"
-                && ElementId.TryParse(resource.GetAttribute("typedef"), out ElementId defId)
-                && project.FindById(defId)?.GetAttribute("typeid") == LogEnumTypeId;
-        }
-
         /// <summary>
         /// Toggles a "Log …" row's log mark (US-068, the vendor's &amp;Logmærke): a Logning <c>resource_enum</c> flips
         /// its <c>inivalue</c> between "Off" and its first logging mode. Throws when the target is not a Logning row,
@@ -816,7 +800,7 @@ namespace Ihc.Vis.Editing
         {
             ProjectElement row = Require(logRowId);
             if (row.Tag != "resource_enum" || !ElementId.TryParse(row.GetAttribute("typedef"), out ElementId defId)
-                || FindById(root, defId) is not { } def || def.GetAttribute("typeid") != LogEnumTypeId)
+                || FindById(root, defId) is not { } def || def.GetAttribute("typeid") != ProjectElementRead.LogEnumTypeId)
             {
                 throw new InvalidOperationException($"{logRowId.ToToken()} is not a Logning 'Log …' row.");
             }

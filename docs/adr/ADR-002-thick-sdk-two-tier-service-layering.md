@@ -42,9 +42,10 @@ SDK is then a thin GUI or command-line shell that only wires presentation to a f
   `Ihc.Vis.Session` command layer (each command executing via `project.Edit()`) driven from an Avalonia-free
   session wrapper — with the command vocabulary slated to become discoverable from `ProjectAppService` (see
   Decision).
-- Enforcement is partial: ArchUnitNET (`tests/safe_architecture_tests/ArchitectureTests.cs`) pins `Ihc.Vis` ↛ `Ihc.Soap`
-  and SDK ↛ Avalonia; the downward service-tier direction and frontend thinness are review conventions
-  (`ARCHITECTURE.md` invariants 4 and 9). Two deviations are documented, both being retired: command-selection
+- Enforcement is partial: ArchUnitNET (`tests/safe_architecture_tests/`) pins `Ihc.Vis` ↛ `Ihc.Soap`,
+  SDK ↛ Avalonia, and the OpenVisual GUI's thin-shell *dependency* boundary (GUI ↛ `Ihc.Soap`, GUI ↛ `System.Xml`,
+  GUI ↛ `Ihc.Vis.Io`, GUI ↛ `Ihc.Vis.Editing`, view-models ↛ Avalonia). The downward service-tier direction and the *absence of complex logic* in the frontend
+  (a complexity property ArchUnitNET cannot judge) remain review conventions (`ARCHITECTURE.md` invariants 4 and 9). Two deviations are documented, both being retired: command-selection
   and legality logic that accumulated in OpenVisual's `ProjectWorkflow` and view-models (`ARCHITECTURE.md`,
   design challenge 7) is slated to move into the SDK by a planned refactoring — *display* interpretation of
   model values, by contrast, stays frontend-owned by design (see Decision) — and `ihc_project_io_extractor`'s

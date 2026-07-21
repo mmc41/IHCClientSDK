@@ -59,7 +59,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project3-KompleksWired.vis");
             ProjectElement logRow = project.Root.Descendants()
-                .First(e => e.Id is not null && ProjectEditor.IsLogRow(e, project));
+                .First(e => e.Id is not null && e.IsLogRow(project));
             ElementId id = logRow.Id!.Value;
             ProjectDocumentSession session = Session(project);
             Project before = session.Current!;

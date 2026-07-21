@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using ihc_openvisual.Services;
 using Ihc.Vis;
-using Ihc.Vis.Reporting;
 
 namespace safe_visual_tests;
 

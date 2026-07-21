@@ -21,6 +21,10 @@
   <ItemGroup>
     <Using Include="NUnit.Framework" />
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
+    <!-- The desktop GUI assembly is referenced so OpenVisualArchitectureTests can load its IL into the
+         ArchUnitNET model and enforce the "thin GUI" boundary. This pulls Avalonia into this test project's
+         output (never into the SDK — Sdk_DoesNotDependOn_Avalonia loads only the SDK assembly). -->
+    <ProjectReference Include="..\..\applications\ihc_openvisual\ihc_openvisual.csproj" />
   </ItemGroup>
 
 </Project>

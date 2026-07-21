@@ -1,7 +1,7 @@
 #nullable enable
 using System.Collections.Immutable;
 
-namespace Ihc.Vis.Reporting
+namespace Ihc.Vis
 {
     // The render-ready backing model for the IHC project documentation reports. Every value here is already
     // display-final: blanks are resolved to "--" (per-product/module tables) or the empty string (flat
