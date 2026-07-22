@@ -418,9 +418,33 @@ namespace Ihc.Vis.Tests
 
             Assert.That(app.Commands.UpdateEnumStates(project, locality, new[] { "x" }), Is.Null, "a non-enum target builds nothing");
 
-            ProjectElement? enumVar = project.Root.DescendantsAndSelf().FirstOrDefault(e => e.Kind == ElementKind.EnumResource);
-            if (enumVar is { Id: { } enumId } && app.Commands.UpdateEnumStates(project, enumId, new[] { "BrandNewStateXYZ" }) is { } cmd)
-                Assert.That(cmd.Added, Does.Contain("BrandNewStateXYZ"), "a genuinely new state is in the delta");
+            // project3's function blocks are mostly library-locked; pick the first enum variable the gateway accepts
+            // (an EnumResource NOT inside a locked block) so the diff is exercised on an editable type.
+            ElementId enumId = project.Root.DescendantsAndSelf()
+                .Where(e => e.Kind == ElementKind.EnumResource)
+                .Select(e => e.Id!.Value)
+                .First(id => app.Commands.UpdateEnumStates(project, id, new[] { "probe" }) is not null);
+            Assert.That(ElementId.TryParse(project.View(project.FindById(enumId)!).Effective("typedef"), out ElementId defId), Is.True);
+            List<string> current = project.FindById(defId)!.ChildrenOrEmpty().Where(c => c.IsEnumValue)
+                .Select(c => project.View(c).Name ?? string.Empty).ToList();
+            Assert.That(current, Is.Not.Empty, "the referenced type has states");
+
+            // The dialog returns the type's FULL ordered list. Appending a brand-new tail state is an append, not a relabel.
+            var append = app.Commands.UpdateEnumStates(project, enumId, current.Append("BrandNewStateXYZ").ToList())!;
+            Assert.Multiple(() =>
+            {
+                Assert.That(append.Added, Does.Contain("BrandNewStateXYZ"), "a genuinely new state is an append");
+                Assert.That(append.Relabels, Is.Empty, "unchanged existing labels are not relabels");
+            });
+
+            // Changing an existing label in place (same count) is a relabel, not an append (T013).
+            List<string> edited = new(current) { [0] = current[0] + " (edited)" };
+            var relabel = app.Commands.UpdateEnumStates(project, enumId, edited)!;
+            Assert.Multiple(() =>
+            {
+                Assert.That(relabel.Added, Is.Empty, "an in-place label change is not an append");
+                Assert.That(relabel.Relabels.Select(r => r.NewName), Does.Contain(current[0] + " (edited)"), "the changed label is a relabel");
+            });
         }
     }
 }

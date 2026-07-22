@@ -137,10 +137,10 @@ conditions):
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Partly implemented (in-scope shortcuts) — **except `F6`, which is bound but
-does not switch panes**. The arrow-key quadrants, clipboard shortcuts, and undo/redo are implemented, and the
-history is unlimited (E14/US-052). The **simulation** half is out of scope (E8) — specified for completeness,
-not for implementation.
+**Implementation status:** ✅ Implemented (in-scope shortcuts) — **`F6` now swaps keyboard focus** between the two
+tree panes (and back), preserving each pane's selection. The arrow-key quadrants, clipboard shortcuts, and undo/redo
+are implemented, and the history is unlimited (E14/US-052). The **simulation** half is out of scope (E8) — specified
+for completeness, not for implementation.
 
 ---
 
@@ -291,13 +291,15 @@ English — the *language* of a label is an allowed difference, the *inventory* 
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Partly implemented — a per-node-type matrix exists (one shared menu with per-type
-visibility): clipboard *Cut*/*Copy*/*Paste*, *show program*, *Unlock*, the link-row *jump*/*Delete* pair, the
-pane-split of the insert vocabulary, and the `Logning` *log mark* are all present. ⚠ Three divergences remain:
-*Insert product* / *function block* and *Move up*/*Move down* are still offered on a **pin** (and other
-non-locality addressable nodes), and a **scene container**'s menu lacks *Copy* — all stemming from a too-broad
-"is this node addressable?" gate instead of a per-node-type one. The pin half is the highest-priority part: it
-is the only inventory gap that can write a project contradicting its own catalog type.
+**Implementation status:** ⛔ Blocked — the three confirmed divergences are now fixed: *Insert product* / *Insert
+function block* are gated to a **locality** (by pane, no longer any addressable node), *Move up*/*Move down* to the
+reorderable structural nodes (locality / product / function block — **absent** from pins, sections and scene
+containers), and a **scene container**'s menu now offers *Copy* (never *Cut*). What remains needs **owner
+confirmation** before US-068 can close: the exact **log-mark scope** (which pins/rows carry the *Log mark* toggle —
+today it is offered wherever a `Logning` log row is projected, `IsLogRow`) and the precise **leaf routes** (the pin
+/ log-row / link-row inventories). Verified residual behaviour: *jump to the opposite end* is on **link rows only**
+(F4, US-025); the *log mark* toggle is on **projected log rows** (US-010); and there is **no** stop-point /
+breakpoint command anywhere in the app.
 
 ---
 

@@ -28,6 +28,10 @@ namespace Ihc.Vis.Editing
         /// <summary>The token to assign to a <c>resource_enum</c>'s <c>typedef</c> attribute.</summary>
         public string Typedef => Id.ToToken();
 
+        /// <summary>The <c>inivalue</c> token for this definition's first value (its default initial state), or null
+        /// when the type has no values — used when inserting a variable of an EXISTING enum type (US-030, PG-4).</summary>
+        public string? FirstValue => values.IsDefaultOrEmpty ? null : values[0].Id.ToToken();
+
         /// <summary>The <c>inivalue</c> token for the value with the given name.</summary>
         public string InitialValue(string valueName)
         {

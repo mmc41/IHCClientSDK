@@ -118,6 +118,26 @@ namespace Ihc.Vis
                 return new DataTablesModel(system.ToImmutable(), texts.ToImmutable());
             }
 
+            /// <summary>The enumerator types available as a variable's type (US-030 enum-type picker, PG-4): every
+            /// project-global enum definition — the two built-ins and any user-authored type — EXCEPT the
+            /// user-defined-texts data table. Returns each type's display name in document order, for the
+            /// insert-variable picker (choosing one references its def-id; no new type is authored).</summary>
+            public IReadOnlyList<string> GetEnumeratorTypes()
+            {
+                var types = new List<string>();
+                if (project.Child("enum_definitions") is { } container)
+                {
+                    foreach (ProjectElement def in container.ChildrenOrEmpty().Where(c => c.Tag == "enum_definition"))
+                    {
+                        if (project.View(def).Name is { } name && name != UserTextsTableName)
+                        {
+                            types.Add(name);
+                        }
+                    }
+                }
+                return types;
+            }
+
             /// <summary>Names the wireless products in the project not yet linked to the controller (US-042
             /// pre-flight): the offline half of the "warn about unlinked wireless products before sending" check.</summary>
             public IReadOnlyList<string> GetUnlinkedWirelessProducts()

@@ -338,6 +338,43 @@ public class AccessibilityTests : AvaloniaTestBase
         Assert.That(tv1.IsKeyboardFocusWithin, Is.True, "F6 again returns focus to the Installation pane");
     }
 
+    // T038 / US-045: F6 swaps keyboard focus but leaves each pane's SELECTION untouched — the caret crosses panes,
+    // the highlighted rows do not move.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task F6_PreservesEachPaneSelection()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var window = new MainWindow { DataContext = vm };
+        CurrentTestWindow = window;
+        window.Show();
+        window.CaptureRenderedFrame();
+
+        var tv1 = window.FindControl<TreeView>("InstallationTree")!;
+        var tv2 = window.FindControl<TreeView>("FunctionsTree")!;
+        vm.SelectedInstallationNode = vm.InstallationNodes[0].Children[0];
+        vm.SelectedFunctionsNode = vm.FunctionNodes[0].Children[0];
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        var installSelection = tv1.SelectedItem;
+        var functionsSelection = tv2.SelectedItem;
+        Assert.That(installSelection, Is.Not.Null.And.Not.SameAs(functionsSelection), "each pane starts with its own selection");
+
+        tv1.GetVisualDescendants().OfType<TreeViewItem>().First().Focus();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        window.KeyPress(Avalonia.Input.Key.F6, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.F6, null);   // to Functions
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        window.KeyPress(Avalonia.Input.Key.F6, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.F6, null);   // back to Installation
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(tv1.SelectedItem, Is.SameAs(installSelection), "the Installation pane keeps its selection across F6");
+            Assert.That(tv2.SelectedItem, Is.SameAs(functionsSelection), "the Functions pane keeps its selection across F6");
+        });
+    }
+
     // The About "source" link must be a real, keyboard-focusable and keyboard-activatable control with an
     // accessible name — not a TextBlock that only responds to a mouse click.
     [AvaloniaTest]

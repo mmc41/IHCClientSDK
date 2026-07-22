@@ -63,6 +63,11 @@ namespace Ihc.Tests
         private static readonly string Reporting =
             typeof(global::Ihc.Vis.Reporting.ReportBuilder).Namespace!; // Ihc.Vis.Reporting
 
+        // The GUI's report RENDERER layer (T021/T035), anchored to the renderer type so it is isolated from the other
+        // Services (which legitimately hold a Project) and its DTO-only purity can be scoped and pinned.
+        private static readonly string Renderer =
+            typeof(global::ihc_openvisual.Services.Reporting.ReportHtmlRenderer).Namespace!; // ihc_openvisual.Services.Reporting
+
         /// <summary>
         /// The GUI is a thin shell over the <c>ProjectAppService</c> facade; it reaches the controller only through
         /// that facade's API-service interfaces, so it must never touch the generated <c>Ihc.Soap.*</c> layer. If
@@ -118,6 +123,22 @@ namespace Ihc.Tests
         public void Gui_DoesNotDependOn_Reporting() =>
             AssertAssemblyHasNoDependency(Gui, Reporting,
                 "the GUI renders report DTOs but must generate them through ProjectAppService, not run ReportBuilder itself");
+
+        /// <summary>
+        /// The GUI's report RENDERER (<c>ReportHtmlRenderer</c>) is a pure 1-to-1 transform of the render-ready
+        /// combined model into HTML (D14: "the app renders and applies switches, it computes nothing"). It must see
+        /// ONLY the render-ready DTOs — never the mutable project tree (<c>Project</c>/<c>ProjectElement</c>), the
+        /// report generator's tree indexer (<c>TreeIndex</c>) or any live-session <c>Ihc.Vis.Editing</c> type — so it
+        /// cannot re-derive report content the SDK owns. <c>ElementId</c> stays sanctioned: the switch data on the
+        /// combined model legitimately carries per-element ids. Scoped to the isolated renderer namespace (the other
+        /// Services legitimately hold a <c>Project</c>). Armed by the shared <c>AssertNoDependencyOnTypeNames</c> scan
+        /// whose positive control is <see cref="CustomScans_DetectKnownFacadeEdges"/>.
+        /// </summary>
+        [Test]
+        public void Renderer_SeesOnlyRenderReadyDtos() =>
+            AssertNoDependencyOnTypeNames(Gui, Renderer, RenderReadyPurityForbiddenTypeNames(),
+                "the mutable project tree / tree indexer / editing layer",
+                "the report renderer must transform the render-ready combined model 1-to-1 and never touch Project/ProjectElement/TreeIndex or a live-session editing type (ElementId stays sanctioned)");
 
         /// <summary>
         /// Applying a command belongs to the SDK: <c>ProjectAppService.Apply</c>/<c>CanApply</c>/<c>Preview</c> open a
@@ -266,6 +287,7 @@ namespace Ihc.Tests
                 Assert.That(VisIo, Is.EqualTo("Ihc.Vis.Io"), $"{nameof(global::Ihc.Vis.Io.ProjectSerializer)} anchors the offline IO engine");
                 Assert.That(Editing, Is.EqualTo("Ihc.Vis.Editing"), $"{nameof(global::Ihc.Vis.Editing.ProjectEditor)} anchors the editing layer");
                 Assert.That(Reporting, Is.EqualTo("Ihc.Vis.Reporting"), $"{nameof(global::Ihc.Vis.Reporting.ReportBuilder)} anchors the report generator");
+                Assert.That(Renderer, Is.EqualTo("ihc_openvisual.Services.Reporting"), $"{nameof(global::ihc_openvisual.Services.Reporting.ReportHtmlRenderer)} anchors the GUI report renderer");
                 Assert.That(SoapNs, Is.EqualTo("Ihc.Soap"), "the generated SOAP parent namespace");
             });
 
@@ -363,6 +385,25 @@ namespace Ihc.Tests
             typeof(global::Ihc.Vis.ProjectAppService).FullName!,
             typeof(global::Ihc.Vis.ProjectCommands).FullName!,
         };
+
+        /// <summary>The types the DTO-only report renderer must not depend on (T035): the mutable project tree
+        /// (<c>Project</c>/<c>ProjectElement</c>), the report generator's private tree indexer (<c>TreeIndex</c>,
+        /// reflected by name), and every live-session <c>Ihc.Vis.Editing</c> type (reflected from the SDK assembly).
+        /// <c>ElementId</c> is deliberately NOT here — it is sanctioned switch data on the combined model.</summary>
+        private static IReadOnlyCollection<string> RenderReadyPurityForbiddenTypeNames()
+        {
+            var names = new HashSet<string>
+            {
+                typeof(global::Ihc.Vis.Projects.Project).FullName!,
+                typeof(global::Ihc.Vis.Model.ProjectElement).FullName!,
+            };
+            if (typeof(global::Ihc.Vis.Reporting.ReportBuilder).GetNestedType("TreeIndex", BindingFlags.NonPublic)?.FullName is { } treeIndex)
+                names.Add(treeIndex);
+            foreach (Type t in typeof(global::Ihc.Vis.Editing.ProjectEditor).Assembly.GetTypes())
+                if (t.Namespace == "Ihc.Vis.Editing")
+                    names.Add(t.FullName!);
+            return names;
+        }
 
         /// <summary>The engine's <see cref="Ihc.Vis.Session.ProjectDocumentSession"/> command-runner, by full name —
         /// the single <c>Ihc.Vis.Session</c> type the GUI must reach only behind the <c>ProjectAppService</c> facade

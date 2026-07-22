@@ -46,10 +46,21 @@ namespace Ihc.Vis
         public Session.AddLocality AddLocality(Project project, string name) =>
             new Session.AddLocality(name);
 
-        /// <summary>Command to rename the locality (or function block) <paramref name="id"/> (US-007/US-019),
-        /// setting its name and note.</summary>
+        /// <summary>Command to edit the Name and Note of a locality, function block, or ordinary FB resource variable
+        /// <paramref name="id"/> (US-007/US-019/US-026/US-027) — one generic name/note command serves all three (T015).</summary>
         public Session.RenameLocality RenameLocality(Project project, ElementId id, string name, string note) =>
             new Session.RenameLocality(id, name, note);
+
+        /// <summary>Command to set an ordinary FB resource variable's typed initial value (US-027, T016); refused
+        /// inside a locked block by T003.</summary>
+        public Session.SetResourceInitialValue SetResourceInitialValue(Project project, ElementId id, Session.ResourceInitialValue value) =>
+            new Session.SetResourceInitialValue(id, value);
+
+        /// <summary>Command to edit a resource variable's Name, Note, and typed initial value in ONE undoable step
+        /// (US-027, T016), refused inside a locked block by T003. A <see cref="Session.ResourceValueKind.None"/> value
+        /// leaves the initial value untouched.</summary>
+        public Session.SetVariableProperties SetVariableProperties(Project project, ElementId id, string name, string note, Session.ResourceInitialValue value) =>
+            new Session.SetVariableProperties(id, name, note, value);
 
         /// <summary>Command to delete the locality <paramref name="id"/>, cascading through its contents (US-009).</summary>
         public Session.DeleteLocality DeleteLocality(Project project, ElementId id) =>
@@ -95,6 +106,21 @@ namespace Ihc.Vis
                 ? new Session.AddEnumVariable(blockId, section.Tag, variableName, typeName, states)
                 : null;
 
+        /// <summary>Command to add a variable of an EXISTING project-global enumerator type to a function-block section
+        /// (US-030 enum-type picker, PG-4) — authors no new type; null when the section is not a function-block variable
+        /// section.</summary>
+        public Session.AddEnumVariableOfExistingType? AddEnumVariableOfType(
+            Project project, ElementId sectionId, string variableName, string typeName) =>
+            project.FindById(sectionId) is { } section
+                && project.FindParent(sectionId) is { Id: { } blockId } block && block.Kind == ElementKind.FunctionBlock
+                ? new Session.AddEnumVariableOfExistingType(blockId, section.Tag, variableName, typeName)
+                : null;
+
+        /// <summary>Command to author a standalone project-global enumerator TYPE (no variable) — a 0-state,
+        /// unreferenced type when <paramref name="states"/> is empty (US-030 standalone-type route, PG-7/D02).</summary>
+        public Session.AddStandaloneEnumType AddStandaloneEnumType(Project project, string typeName, IReadOnlyList<string> states) =>
+            new Session.AddStandaloneEnumType(typeName, states);
+
         /// <summary>Command to apply edited product documentation (US-011), capturing the product's current locality
         /// so the command can re-parent it when the Location changed.</summary>
         public Session.UpdateProduct UpdateProduct(Project project, ElementId productId, Session.ProductPropertiesResult result) =>
@@ -107,6 +133,12 @@ namespace Ihc.Vis
         /// <summary>Command to unlock a locked library function block for editing (US-020).</summary>
         public Session.UnlockFunctionBlock UnlockFunctionBlock(Project project, ElementId id) =>
             new Session.UnlockFunctionBlock(id);
+
+        /// <summary>Command to transform an in-project function block into a locked library instance (US-021), stamping
+        /// the export date from the service clock (never <c>DateTime.Now</c>).</summary>
+        public Session.SaveFunctionBlockToLibrary SaveFunctionBlockToLibrary(Project project, ElementId id, string name, string programmer, string? note) =>
+            new Session.SaveFunctionBlockToLibrary(id, name, programmer,
+                DateOnly.FromDateTime(_timeProvider.GetLocalNow().DateTime), note);
 
         /// <summary>Whether inserting the product would break the at-most-one-modem rule (US-013, sliver #10 relocated
         /// from the app): the product is a modem and the project already holds one. The confirm <i>wording</i> stays
@@ -268,9 +300,9 @@ namespace Ihc.Vis
 
         /// <summary>Command to add a resource-triggered program event to an <c>events</c> container (US-028), or null
         /// when the target is not a program's events container (the owning program is resolved here).</summary>
-        public Session.AddProgramEvent? AddProgramEvent(Project project, ElementId containerId, ElementId variableId, string method, string name, string? note) =>
+        public Session.AddProgramEvent? AddProgramEvent(Project project, ElementId containerId, ElementId variableId, string method, string name, string? note, ElementId? operandId = null) =>
             ProgramOfEventsContainer(project, containerId) is { } programId
-                ? new Session.AddProgramEvent(programId, variableId, method, name, note) : null;
+                ? new Session.AddProgramEvent(programId, variableId, method, name, note, operandId) : null;
 
         /// <summary>Command to add a Powerup system event to an <c>events</c> container (US-033), or null for a
         /// non-events target.</summary>
@@ -286,8 +318,8 @@ namespace Ihc.Vis
             new Session.AddSubProgram(commandsId);
 
         /// <summary>Command to add a condition to a conditions group (US-029).</summary>
-        public Session.AddCondition AddCondition(Project project, ElementId conditionsId, ElementId variableId, string method, string name, string? note) =>
-            new Session.AddCondition(conditionsId, variableId, method, name, note);
+        public Session.AddCondition AddCondition(Project project, ElementId conditionsId, ElementId variableId, string method, string name, string? note, ElementId? operandId = null) =>
+            new Session.AddCondition(conditionsId, variableId, method, name, note, operandId);
 
         /// <summary>Command to toggle a conditions group's AND/OR combination (US-029).</summary>
         public Session.SetConditionsLogic SetConditionsLogic(Project project, ElementId conditionsId, bool or) =>
@@ -305,14 +337,29 @@ namespace Ihc.Vis
         public Session.AddCase AddCase(Project project, ElementId commandsId, ElementId switchVariableId) =>
             new Session.AddCase(commandsId, switchVariableId);
 
-        /// <summary>Command to add a case-value branch to a <c>program_case</c> for a literal criterion (US-031), or
-        /// null for a non-case target, a missing switch, or an enum switch (whose case values need the type's states).
-        /// The switch tag is resolved here from the case's linked switch.</summary>
-        public Session.AddCaseValue? AddCaseValue(Project project, ElementId caseId, string criterion) =>
-            project.FindById(caseId) is { } kase && kase.IsProgramCase
-            && ElementId.TryParse(project.View(kase).Effective("link"), out ElementId switchId)
-            && project.FindById(switchId) is { } switchVar && switchVar.Kind != ElementKind.EnumResource
-                ? new Session.AddCaseValue(caseId, criterion, switchVar.Tag) : null;
+        /// <summary>Command to add a case-value branch to a <c>program_case</c> (US-031), or null for a non-case target
+        /// or a missing switch. A literal switch takes the criterion verbatim; an ENUM switch (T014, PG-6) accepts the
+        /// criterion only when it names one of the switch's enum-type states, carrying the type name so the command
+        /// routes to the enum overload (typedef + the state's inivalue). The switch is resolved here from the case's link.</summary>
+        public Session.AddCaseValue? AddCaseValue(Project project, ElementId caseId, string criterion)
+        {
+            if (project.FindById(caseId) is not { } kase || !kase.IsProgramCase
+                || !ElementId.TryParse(project.View(kase).Effective("link"), out ElementId switchId)
+                || project.FindById(switchId) is not { } switchVar)
+            {
+                return null;
+            }
+            if (switchVar.Kind != ElementKind.EnumResource)
+            {
+                return new Session.AddCaseValue(caseId, criterion, switchVar.Tag);
+            }
+            // Enum switch: the criterion is a STATE name of the switch's enum type. Resolve the type and accept only a
+            // real state so the branch operand can carry the right typedef + inivalue.
+            return ElementId.TryParse(project.View(switchVar).Effective("typedef"), out ElementId defId)
+                && project.FindById(defId) is { } def && project.View(def).Name is { } typeName
+                && def.ChildrenOrEmpty().Any(v => v.IsEnumValue && project.View(v).Name == criterion)
+                    ? new Session.AddCaseValue(caseId, criterion, switchVar.Tag, typeName) : null;
+        }
 
         /// <summary>Command to set an output's "Save current value" power-loss persistence (US-033).</summary>
         public Session.SetOutputBackup SetOutputBackup(Project project, ElementId outputId, bool save) =>
@@ -348,21 +395,35 @@ namespace Ihc.Vis
         public Session.DeleteUserText DeleteUserText(Project project, ElementId textId) =>
             new Session.DeleteUserText(textId);
 
-        /// <summary>Command to append the not-yet-present states to the enumerator type referenced by a
-        /// <c>resource_enum</c> variable (US-030), or null for a non-enum target. The caller-provided states are
-        /// diffed against the type's existing values here, so an append of nothing new falls out as a NoChange.</summary>
+        /// <summary>Command to edit the enumerator type referenced by a <c>resource_enum</c> variable (US-030), or null
+        /// for a non-enum (or locked-block) target. The dialog's full ordered state list is diffed here against the
+        /// type's current values by POSITION: a changed label at an existing position becomes a relabel (T013), the tail
+        /// beyond the existing count becomes appends — so an edit of nothing falls out as a NoChange. (Reorder / remove
+        /// are out of scope, D05, so the list is an in-order prefix of existing values plus appends.)</summary>
         public Session.UpdateEnumStates? UpdateEnumStates(Project project, ElementId enumVariableId, IReadOnlyList<string> states)
         {
             if (project.FindById(enumVariableId) is not { } variable
                 || variable.Kind != ElementKind.EnumResource
+                // T004: withdraw the enum-state edit when its entry-point variable is inside a locked block (the enum
+                // TYPE it would edit is project-global, so the lock is checked on the variable acted upon, not the def).
+                || ProjectEditor.IsWithinLockedBlock(project.Root, enumVariableId, inclusive: true)
                 || !ElementId.TryParse(project.View(variable).Effective("typedef"), out ElementId defId)
                 || project.FindById(defId) is not { } def || project.View(def).Name is not { } defName)
             {
                 return null;
             }
-            var existing = def.ChildrenOrEmpty().Where(c => c.IsEnumValue).Select(c => project.View(c).Name).ToHashSet();
-            string[] added = states.Where(s => !existing.Contains(s)).ToArray();
-            return new Session.UpdateEnumStates(defName, added);
+            var existingValues = def.ChildrenOrEmpty().Where(c => c.IsEnumValue).ToList();
+            var relabels = new List<(ElementId ValueId, string NewName)>();
+            int prefix = Math.Min(existingValues.Count, states.Count);
+            for (int i = 0; i < prefix; i++)
+            {
+                if (states[i] != (project.View(existingValues[i]).Name ?? string.Empty))
+                {
+                    relabels.Add((existingValues[i].Id!.Value, states[i]));
+                }
+            }
+            string[] added = states.Skip(existingValues.Count).ToArray();
+            return new Session.UpdateEnumStates(defName, added) { Relabels = relabels };
         }
 
         /// <summary>Command to apply edited advanced wireless-dimmer settings (US-015).</summary>

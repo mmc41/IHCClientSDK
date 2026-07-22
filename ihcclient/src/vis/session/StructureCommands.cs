@@ -13,13 +13,14 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Move";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(SourceId) is { } source
+            (context.Index.FindById(SourceId) is { } source
             && context.Index.FindById(TargetParentId) is { } target
             && StructurePlacement.CanContain(source.Tag, target.Tag)
             && context.Index.FindParent(SourceId)?.Id != TargetParentId
             && context.Project.Edit().CanMoveSubtree(SourceId, TargetParentId)
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("That move is not allowed.");
+                : EditVerdict.Refuse("That move is not allowed."))
+            .And(context.RequireUnlockedTarget(TargetParentId, inclusive: true));   // T003: no move INTO a locked block
         internal override void Execute(ProjectEditor editor) => editor.MoveSubtree(SourceId, TargetParentId);
     }
 
@@ -29,7 +30,8 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Reorder";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireExists(Id, "node");
+            context.RequireExists(Id, "node")
+                .And(context.RequireUnlockedTarget(Id, inclusive: false));   // T003: no reorder INSIDE a locked block
         internal override void Execute(ProjectEditor editor) => editor.ReorderSubtree(Id, SameTagIndex);
     }
 
@@ -39,11 +41,12 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Paste";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(SourceId) is { } source
+            (context.Index.FindById(SourceId) is { } source
             && context.Index.FindById(TargetParentId) is { } target
             && StructurePlacement.CanContain(source.Tag, target.Tag)
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("That container cannot hold this node.");
+                : EditVerdict.Refuse("That container cannot hold this node."))
+            .And(context.RequireUnlockedTarget(TargetParentId, inclusive: true));   // T003: no copy INTO a locked block
         internal override ElementId ExecuteCore(ProjectEditor editor) => editor.CopySubtree(SourceId, TargetParentId);
     }
 

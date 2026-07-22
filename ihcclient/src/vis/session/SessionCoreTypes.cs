@@ -30,6 +30,11 @@ namespace Ihc.Vis.Session
 
         /// <summary>The command is refused for the stated reason.</summary>
         public static EditVerdict Refuse(string reason) => new(false, reason);
+
+        /// <summary>Chains a second legality check after this one, keeping the FIRST failure (short-circuits on a
+        /// refusal) — lets a command Evaluate compose "target exists / has the right tag" with "target is not locked"
+        /// (T003) in one expression.</summary>
+        public EditVerdict And(EditVerdict next) => Ok ? next : this;
     }
 
     /// <summary>The undo-history retention policy (proposal §3.3/D1): a <see cref="Cap"/> of null means unbounded
@@ -111,6 +116,17 @@ namespace Ihc.Vis.Session
             Index.FindById(id) is { } element && System.Array.IndexOf(tags, element.Tag) >= 0
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse($"The target is not {noun}.");
+
+        /// <summary>Allow unless <paramref name="id"/> lies at/within a locked function block's subtree, in which case
+        /// Refuse — the session half of the central locked-ancestor authorization (T003): a structural
+        /// insert/reorder/move/copy targeting a locked block is refused cleanly (a verdict, so <c>CanApply</c>/Preview
+        /// agree with Apply) exactly where a direct engine call throws. <paramref name="inclusive"/> per
+        /// <see cref="Ihc.Vis.Editing.ProjectEditor.IsWithinLockedBlock"/> (an insert/move/copy TARGET counts itself; a
+        /// reorder does not, so the block may still be reordered among its siblings).</summary>
+        public EditVerdict RequireUnlockedTarget(ElementId id, bool inclusive) =>
+            Ihc.Vis.Editing.ProjectEditor.IsWithinLockedBlock(Project.Root, id, inclusive)
+                ? EditVerdict.Refuse(Ihc.Vis.Editing.ProjectEditor.LockedBlockEditRefusal)
+                : EditVerdict.Allow;
     }
 
     /// <summary>Thrown by a deep engine guard that can only refuse a command once inside its Execute (proposal

@@ -91,6 +91,31 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // T013: a Relabels entry changes an existing USER value's label in place (no append) and matches the engine.
+        [Test]
+        public async Task UpdateEnumStates_RelabelsExistingValue_MatchesEngine()
+        {
+            Project project = await Load("project3-KompleksWired.vis");
+            ProjectElement def = project.Root.Descendants().First(e => e.Tag == "enum_definition"
+                && e.GetAttribute("typeid") is null && e.ChildrenOrEmpty().Any(v => v.IsEnumValue));
+            string name = project.View(def).Name!;
+            ElementId valueId = def.ChildrenOrEmpty().First(v => v.IsEnumValue).Id!.Value;
+            ProjectDocumentSession session = Session(project);
+
+            EditOutcome outcome = session.Apply(new UpdateEnumStates(name, []) { Relabels = [(valueId, "Relabeled")] });
+
+            ProjectEditor editor = project.Edit();
+            editor.RelabelEnumValue(editor.EnumDefinition(name), valueId, "Relabeled");
+            Project viaEngine = editor.ToProject();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed));
+                Assert.That(session.Current!.FindById(valueId)!.GetAttribute("name"), Is.EqualTo("Relabeled"), "the label changed in place");
+                Assert.That(session.Current!.Equals(viaEngine), Is.True, "matches the engine's own RelabelEnumValue");
+            });
+        }
+
         [Test]
         public async Task UpdateDimmerSettings_WritesTheSixSettingValues()
         {

@@ -213,10 +213,13 @@ Scenario: Locked blocks resist internal edits
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Partly implemented — the unlock is silent and undoable, undo re-locks the block
-with the app still running, and the view-only **UI** gate withdraws the insert/delete/move commands on a locked
-block. ⚠ The **engine-level** guard is incomplete: a direct (non-UI) insert, reorder, AND/OR toggle,
-save-current-value, log-mark or enum-state edit can still reach a `locked` block's internals.
+**Implementation status:** ✅ Implemented — the unlock is silent and undoable, undo re-locks the block with the
+app still running, and the view-only **UI** gate withdraws the insert/delete/move commands on a locked block.
+A single central **engine-level** guard now refuses **every** mutation targeting a locked block's subtree,
+whoever drives the editor: the **structural** edits (insert variable/enum/program-row/pin, reorder, and move/copy
+whose target parent is inside the locked subtree) and the **in-place** edits (AND/OR condition toggle,
+save-current-value, log-mark, enum-state edit, and the function-block rename). A direct engine call throws; a
+session command surfaces a clean refusal.
 
 ---
 
@@ -275,8 +278,9 @@ Scenario: Add and use a favourite
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Partly implemented — Save block works and folder/favourites management is
-adapted for the install-free design. ⚠ Saving must auto-lock the in-project copy (rename + `master_*` stamp
-+ `locked="yes"` + library badge), after which US-020's view-only guard covers the result; and the written
-`.ifb` master must itself carry `locked="yes"` even when exported from an unlocked block (it currently keeps
-the source's value).
+**Implementation status:** ✅ Implemented — Save block works and folder/favourites management is adapted for the
+install-free design, the written `.ifb` master always carries `locked="yes"` even when exported from an unlocked
+block, and saving now **auto-locks the in-project copy** in place: after the `.ifb` write, the block is renamed to
+the saved name, `master_*`-stamped, badged and set `locked="yes"` via an undoable command — so the T003/T004
+guard makes it view-only (Show program stays), and one undo restores the prior unlocked block. The export runs
+first, so a failed export leaves the project unmutated.

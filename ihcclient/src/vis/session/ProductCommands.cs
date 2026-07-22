@@ -66,6 +66,18 @@ namespace Ihc.Vis.Session
             editor.Resolve(Id, "function block").SetAttribute("locked", "no");
     }
 
+    /// <summary>Transforms an in-project function block into a locked library instance (US-021 Save-to-library, PG-3a):
+    /// rename to <paramref name="Name"/>, stamp <c>master_*</c>, apply the library badge and <paramref name="Note"/>,
+    /// and set <c>locked="yes"</c> — no re-insertion. Undoable, so one undo restores the prior unlocked block.</summary>
+    public sealed record SaveFunctionBlockToLibrary(ElementId Id, string Name, string Programmer, DateOnly Date, string? Note)
+        : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Save function block to library";
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(Id, "a function block", "functionblock");
+        internal override void Execute(ProjectEditor editor) =>
+            editor.FunctionBlock(Id).SaveAsLibraryInstance(Name, Programmer, Date, Note);
+    }
+
     /// <summary>Applies edited pin addressing (US-012): terminal address, cable colour, note, and (outputs) initial
     /// value. Refuses an out-of-range terminal rather than clearing the address.</summary>
     public sealed record UpdatePin(ElementId Id, PinPropertiesResult Result) : ProjectCommand

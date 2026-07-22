@@ -98,12 +98,12 @@ namespace Ihc.Vis.Tests
             });
         }
 
-        // Review Low: CanLink(pin, pin) must AGREE with Link. A value FB pin (resource_flag) linked to itself is
-        // legal — source==sink, both a function-block pin — and Link/the vendor accept it. CanLink previously refused
-        // it via a `fromId != toId` guard that Link never applied, so a GUI drag-over hint would wrongly forbid a
-        // link Link accepts. The gate below is that both agree.
+        // D06 (T019): CanLink(pin, pin) must AGREE with Link — and both now REFUSE a pin-to-itself link. A value FB
+        // pin (resource_flag) is tag-linkable, so id == id is the only reason it is refused; the engine rejects the
+        // self-link the vendor never produces, closing the earlier divergence where CanLink allowed what only the
+        // session refused. The refusal is clean — it fails before any half is written.
         [Test]
-        public async Task SelfLink_SamePin_CanLinkAgreesWithLink()
+        public async Task SelfLink_SamePin_CanLinkAndLinkBothRefuse()
         {
             Project project = await new ProjectAppService(TestSetup.Settings)
                 .Load("testdata/projects/project2-CustomBlock.vis");
@@ -111,18 +111,15 @@ namespace Ihc.Vis.Tests
             ElementId flag = project.Root.Descendants()
                 .First(e => e.Tag == "resource_flag" && e.Id is not null).Id!.Value;
 
-            Assert.That(editor.CanLink(flag, flag), Is.True,
-                "a value pin linked to itself is legal — CanLink now agrees with Link and the vendor");
-            Assert.DoesNotThrow(() => editor.Link(flag, flag),
-                "Link already accepts the self-link — CanLink must not disagree with it");
-
-            ProjectElement pinAfter = editor.ToProject().FindById(flag)!;
             Assert.Multiple(() =>
             {
-                Assert.That(pinAfter.ChildrenOrEmpty().Count(c => c.Tag == "link_from_resource"), Is.EqualTo(1),
-                    "the pin carries the from-half");
-                Assert.That(pinAfter.ChildrenOrEmpty().Count(c => c.Tag == "link_to_resource"), Is.EqualTo(1),
-                    "and the to-half — both ends are the same pin");
+                Assert.That(editor.CanLink(flag, flag), Is.False,
+                    "a pin cannot link to itself (D06) — CanLink agrees with Link");
+                Assert.That(() => editor.Link(flag, flag), Throws.InvalidOperationException,
+                    "Link refuses the self-link too — no engine/session/doc divergence");
+                ProjectElement pin = editor.ToProject().FindById(flag)!;
+                Assert.That(pin.ChildrenOrEmpty().Any(c => c.Tag is "link_from_resource" or "link_to_resource"), Is.False,
+                    "the refused self-link wrote no half — it fails before any mutation");
             });
         }
 

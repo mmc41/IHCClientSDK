@@ -93,8 +93,8 @@ public class TreeNodeKindTests
             Assert.That(Node(TreeNodeKind.Case).IsCaseNode, Is.True);
             Assert.That(Node(TreeNodeKind.SceneMember).IsLinkRow, Is.True);
             Assert.That(Node(TreeNodeKind.LocalitiesRoot).IsLocalitiesRoot, Is.True);
-            Assert.That(Node(TreeNodeKind.Locality).CanCutCopy, Is.True);
-            Assert.That(Node(TreeNodeKind.Pin, "x").CanCutCopy, Is.False, "a pin is not cut/copyable");
+            Assert.That(Node(TreeNodeKind.Locality).CanCut, Is.True);
+            Assert.That(Node(TreeNodeKind.Pin, "x").CanCut, Is.False, "a pin is not cut/copyable");
         });
     }
 

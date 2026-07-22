@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using ihc_openvisual.Services;
+using ihc_openvisual.Services.Reporting;
 using Ihc.Vis;
 
 namespace safe_visual_tests;
@@ -32,7 +33,7 @@ public class ReportRenderingTests
     private static EndUserReport SampleEndUser() => new(
         "Funktionsdokumentation",
         ImmutableArray.Create(new EndUserLocality("Living room", "_0x2132",
-            ImmutableArray.Create(new EndUserProduct("Push", "By door", "prod",
+            ImmutableArray.Create(new EndUserProduct("Push", "By door", "Tryk 4-tryk",
                 ImmutableArray.Create(new EndUserTerminal("Left",
                     ImmutableArray.Create(new EndUserNote("Turns on the lamp", "Kitchen")))))))));
 
@@ -131,6 +132,22 @@ public class ReportRenderingTests
         });
     }
 
+    // T031 / D16: a product is identified by its resolved catalog TYPE-NAME text (image-free), beside its name/placement
+    // — never by a product image key.
+    [Test]
+    public void EndUser_RendersImageFreeProductTypeName()
+    {
+        var html = ReportHtmlRenderer.RenderEndUser(SampleEndUser(), print: false);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Contain("class=\"product-type\"").And.Contain("Tryk 4-tryk"),
+                "the product type name renders as image-free identity text");
+            Assert.That(html, Does.Contain("Push By door"), "the name/placement text renders beside the type name");
+            Assert.That(html, Does.Not.Contain("<img"), "no product image is emitted");
+        });
+    }
+
     [Test]
     public void EndUser_Print_DropsTocAndSuffix()
     {
@@ -179,9 +196,9 @@ public class ReportRenderingTests
         });
     }
 
-    // US-041: the command gathers the project's blocks and opens the report in the browser.
+    // US-041 / T021: the single Reports command opens the Reports view over the combined document, which lists the blocks.
     [Test]
-    public async Task FunctionBlockReportCommand_ListsBlocks_AndOpensBrowser()
+    public async Task Reports_OpenReports_CombinedDocument_ListsBlocks()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
@@ -189,16 +206,15 @@ public class ReportRenderingTests
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         await harness.Session.AddEmptyFunctionBlockAsync(loc);
 
-        await vm.FunctionBlockReportScreenCommand.ExecuteAsync(null);
+        await vm.OpenReportsCommand.ExecuteAsync(null);
 
-        var url = harness.Dialogs.LastOpenedUrl;
         Assert.Multiple(() =>
         {
-            Assert.That(url, Is.Not.Null.And.StartWith("file:"));
-            var text = File.ReadAllText(new Uri(url!).LocalPath);
-            Assert.That(text, Does.Contain("Functionsblok dokumentation"));
-            Assert.That(text, Does.Contain(ProjectWorkflow.EmptyBlockName), "the inserted block is listed");
-            Assert.That(vm.StatusText, Is.EqualTo("Function-block report opened in your browser."));
+            Assert.That(harness.Dialogs.ShowReportsCalls, Is.EqualTo(1), "the Reports view opened");
+            Assert.That(harness.Dialogs.LastReportsViewModel, Is.Not.Null);
+            Assert.That(harness.Dialogs.LastReportsViewModel!.Html,
+                Does.Contain("Functionsblok dokumentation").And.Contain(ProjectWorkflow.EmptyBlockName),
+                "the combined document lists the inserted block");
         });
     }
 
@@ -213,8 +229,9 @@ public class ReportRenderingTests
         File.WriteAllText(Path.Combine(dir, "sample-functionblocks.html"), ReportHtmlRenderer.RenderFunctionBlocks(SampleFb(), false));
     }
 
+    // T021: the combined document composes the installation section — the entered installer info reaches it.
     [Test]
-    public async Task InstallationReportCommand_WritesHtml_AndOpensInBrowser()
+    public async Task Reports_CombinedDocument_ContainsInstallationContent()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
@@ -222,41 +239,341 @@ public class ReportRenderingTests
         await harness.Session.UpdateProjectInfoAsync(
             ProjectInfoData.Empty with { Installer = new ContactInfo("Eve", "", "", "", "", "", "", "") });
 
-        await vm.InstallationReportScreenCommand.ExecuteAsync(null);
+        await vm.OpenReportsCommand.ExecuteAsync(null);
 
-        var url = harness.Dialogs.LastOpenedUrl;
-        Assert.Multiple(() =>
-        {
-            Assert.That(url, Is.Not.Null.And.StartWith("file:"), "the report opens in the standard browser");
-            var path = new Uri(url!).LocalPath;
-            Assert.That(File.Exists(path), Is.True, "the report HTML file is written");
-            Assert.That(File.ReadAllText(path), Does.Contain("Installationsdokumentation").And.Contain("Eve"),
-                "the entered installer info reaches the rendered report");
-            Assert.That(vm.StatusText, Is.EqualTo("Installation report opened in your browser."));
-        });
+        Assert.That(harness.Dialogs.LastReportsViewModel!.Html, Does.Contain("Installationsdokumentation").And.Contain("Eve"),
+            "the entered installer info reaches the combined document's installation section");
     }
 
-    // T014 characterization (M6/C guardrail before the reports collaborator extraction): the EndUser report path
-    // through ProjectWorkflow.GenerateEndUserReport (the wrapper T019 moves) via the VM command had NO workflow/VM
-    // test — only the SDK generator and the HTML renderer were covered independently. Drive the whole wrapper.
+    // T021: the screen variant carries the report navigation; the printer variant drops it; one document composes all
+    // three sections; and the six old report commands are gone.
     [Test]
-    public async Task EndUserReportCommand_WritesHtml_AndOpensInBrowser()
+    public async Task Reports_ScreenHasNavigation_PrintDropsIt_AndSixOldCommandsGone()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
+        await vm.OpenReportsCommand.ExecuteAsync(null);
+        var reports = harness.Dialogs.LastReportsViewModel!;
 
-        await vm.EndUserReportScreenCommand.ExecuteAsync(null);
+        reports.IsPrint = false;
+        string screen = reports.Html;
+        reports.IsPrint = true;
+        string print = reports.Html;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(screen, Does.Contain("toc overview").And.Contain("#section-installation").And.Contain("back-to-top"),
+                "the on-screen variant is one navigable document (overview / section-jump / back-to-top)");
+            Assert.That(print, Does.Not.Contain("overview").And.Not.Contain("back-to-top"),
+                "the printer variant drops the on-screen navigation");
+            Assert.That(screen, Does.Contain("Installationsdokumentation").And.Contain("Funktionsdokumentation").And.Contain("Functionsblok dokumentation"),
+                "one document composes all three sections");
+            foreach (string name in new[] { "InstallationReportScreenCommand", "InstallationReportPrintCommand",
+                "EndUserReportScreenCommand", "EndUserReportPrintCommand", "FunctionBlockReportScreenCommand", "FunctionBlockReportPrintCommand" })
+                Assert.That(typeof(ihc_openvisual.ViewModels.MainWindowViewModel).GetProperty(name), Is.Null, $"{name} was removed");
+        });
+    }
+
+    // T021: the Reports view's Open-in-browser writes the combined HTML to a temp file and opens it in the browser.
+    [Test]
+    public async Task Reports_OpenInBrowser_WritesCombinedHtml_AndOpens()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await vm.OpenReportsCommand.ExecuteAsync(null);
+
+        await harness.Dialogs.LastReportsViewModel!.OpenInBrowserCommand.ExecuteAsync(null);
 
         var url = harness.Dialogs.LastOpenedUrl;
         Assert.Multiple(() =>
         {
-            Assert.That(url, Is.Not.Null.And.StartWith("file:"), "the end-user report opens in the standard browser");
-            var path = new Uri(url!).LocalPath;
-            Assert.That(File.Exists(path), Is.True, "the report HTML file is written");
-            Assert.That(File.ReadAllText(path), Does.Contain("Funktionsdokumentation"),
-                "the ProjectWorkflow.GenerateEndUserReport wrapper produced the rendered end-user report");
-            Assert.That(vm.StatusText, Is.EqualTo("End-user report opened in your browser."));
+            Assert.That(url, Is.Not.Null.And.StartWith("file:"), "the combined report opens in the standard browser");
+            Assert.That(File.ReadAllText(new Uri(url!).LocalPath), Does.Contain("Projektdokumentation"),
+                "the written HTML is the combined project-documentation document");
+        });
+    }
+
+    // T022: with a fixed injected clock, the rendered heading metadata shows the report GENERATION timestamp (in the
+    // fixed yyyy-MM-dd HH:mm format) and the programmer — from the project info, not only the Projekt section.
+    [Test]
+    public async Task ReportHeading_ShowsGenerationTimestampAndProgrammer_FromInjectedClock()
+    {
+        var clock = new Microsoft.Extensions.Time.Testing.FakeTimeProvider(new DateTimeOffset(2026, 7, 21, 14, 30, 0, TimeSpan.Zero));
+        using var harness = ShellHarness.Create(timeProvider: clock);
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.UpdateProjectInfoAsync(ProjectInfoData.Empty with { Programmer = "Ada" });
+
+        await vm.OpenReportsCommand.ExecuteAsync(null);
+        string html = harness.Dialogs.LastReportsViewModel!.Html;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Contain("report-meta"), "the timestamp + programmer live in the heading metadata line");
+            Assert.That(html, Does.Contain("2026-07-21 14:30"), "the heading shows the generation time in the fixed format");
+            Assert.That(html, Does.Contain("Ada"), "the heading shows the programmer");
+        });
+    }
+
+    // T023 / US-039: the Projekt identity section (description / number / programmer) renders near the top.
+    [Test]
+    public async Task ProjektSection_RendersDescriptionNumberProgrammer()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.UpdateProjectInfoAsync(
+            ProjectInfoData.Empty with { Description = "Villa", Number = "P-42", Programmer = "Ada" });
+
+        await vm.OpenReportsCommand.ExecuteAsync(null);
+        string html = harness.Dialogs.LastReportsViewModel!.Html;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Contain("class=\"projekt\"").And.Contain("Projekt"), "the Projekt section is rendered");
+            Assert.That(html, Does.Contain("Beskrivelse").And.Contain("Villa"), "the description");
+            Assert.That(html, Does.Contain("Nummer").And.Contain("P-42"), "the number");
+            Assert.That(html, Does.Contain("Programmør").And.Contain("Ada"), "the programmer");
+        });
+    }
+
+    // A minimal combined report over the sample sub-reports, with the given terminal details, cabling rows and map.
+    private static ProjectDocumentationReport SampleCombined(
+        ImmutableArray<ReportTerminalDetail> terminals, ImmutableArray<ReportKablerRow> kabler,
+        ModuleAddressMap? moduleMap = null, ImmutableArray<ReportCompletenessRow> completeness = default,
+        ImmutableArray<ReportFbBlock> functionBlocks = default) => new(
+        new ReportValue("Project", "Project"),
+        new ReportProjektInfo(new ReportValue("d", "d"), new ReportValue("n", "n"), new ReportValue("Ada", "Ada")),
+        "2026-01-01 00:00",
+        ImmutableArray.Create(
+            new ReportSectionEntry("s-installation", ReportSectionKind.Installation, "Installationsdokumentation", true),
+            new ReportSectionEntry("s-enduser", ReportSectionKind.EndUser, "Funktionsdokumentation", true),
+            new ReportSectionEntry("s-fb", ReportSectionKind.FunctionBlock, "Functionsblok dokumentation", true)),
+        ImmutableArray<ReportLocality>.Empty,
+        ImmutableArray<ReportElementRef>.Empty,
+        terminals,
+        kabler,
+        moduleMap ?? ModuleAddressMap.Empty,
+        completeness.IsDefault ? ImmutableArray<ReportCompletenessRow>.Empty : completeness,
+        functionBlocks.IsDefault ? ImmutableArray<ReportFbBlock>.Empty : functionBlocks,
+        SampleInstallation(), SampleEndUser(), SampleFb());
+
+    // T024: the technical terminal-connections table renders the link-display path and the function note.
+    [Test]
+    public void TerminalDetail_Render_ShowsConnectionsTableWithLinkPathAndNote()
+    {
+        var report = SampleCombined(ImmutableArray.Create(
+            new ReportTerminalDetail("Tryk 1", "Knap A", "-> Tænd -> Stue-blok -> Stue", new ReportValue("Tænder lyset", "Tænder lyset"))),
+            ImmutableArray<ReportKablerRow>.Empty);
+
+        string html = ReportHtmlRenderer.RenderProjectDocumentation(report, print: false);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Contain("Terminal-forbindelser"), "the terminal-connections table renders");
+            Assert.That(html, Does.Contain("-&gt; Tænd -&gt; Stue-blok -&gt; Stue"), "the link-display path (arrows HTML-escaped)");
+            Assert.That(html, Does.Contain("Tænder lyset"), "the function note");
+        });
+    }
+
+    // T025: the consolidated Kabler cabling table renders its ten columns and a row's values.
+    [Test]
+    public void Kabler_Render_ShowsCablingTableWithColumns()
+    {
+        var report = SampleCombined(ImmutableArray<ReportTerminalDetail>.Empty, ImmutableArray.Create(
+            new ReportKablerRow("Grøn", "1.02", "1", "Tavle", "Gruppe A", "ID9", "Stue", "Ved dør", "Tryk", "Indgang")));
+
+        string html = ReportHtmlRenderer.RenderProjectDocumentation(report, print: false);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Contain("Kabler").And.Contain("Ledningsfarve").And.Contain("Ind-Udgang"), "the Kabler table + its columns render");
+            Assert.That(html, Does.Contain("Grøn").And.Contain("1.02").And.Contain("Gruppe A").And.Contain("Indgang"), "a cabling row's values render");
+        });
+    }
+
+    // T026: the per-terminal module address map renders which product terminal occupies each address, per direction.
+    [Test]
+    public void ModuleMap_Render_ShowsPerTerminalOccupancy()
+    {
+        var map = new ModuleAddressMap(
+            ImmutableArray.Create(new ModuleAddressEntry("1.01", "Tryk", "Knap A")),
+            ImmutableArray.Create(new ModuleAddressEntry("2.03", "Relæ", "Ud 1")));
+        var report = SampleCombined(ImmutableArray<ReportTerminalDetail>.Empty, ImmutableArray<ReportKablerRow>.Empty, map);
+
+        string html = ReportHtmlRenderer.RenderProjectDocumentation(report, print: false);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Contain("Input-modul adressekort").And.Contain("Output-modul adressekort"), "both module-map tables render");
+            Assert.That(html, Does.Contain("1.01").And.Contain("Knap A"), "an input occupancy row");
+            Assert.That(html, Does.Contain("2.03").And.Contain("Ud 1"), "an output occupancy row");
+        });
+    }
+
+    // T027: the documentation-completeness section renders the issues; a clean report renders "none found".
+    [Test]
+    public void Completeness_Render_ShowsIssuesOrNoneFound()
+    {
+        var withIssue = SampleCombined(ImmutableArray<ReportTerminalDetail>.Empty, ImmutableArray<ReportKablerRow>.Empty,
+            completeness: ImmutableArray.Create(new ReportCompletenessRow("Stue", "Tryk", "Knap A", "Ikke forbundet")));
+        var clean = SampleCombined(ImmutableArray<ReportTerminalDetail>.Empty, ImmutableArray<ReportKablerRow>.Empty);
+
+        string issueHtml = ReportHtmlRenderer.RenderProjectDocumentation(withIssue, print: false);
+        string cleanHtml = ReportHtmlRenderer.RenderProjectDocumentation(clean, print: false);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(issueHtml, Does.Contain("Fejl i dokumentation").And.Contain("Ikke forbundet").And.Contain("Knap A"), "issues render grouped by locality/product/terminal");
+            Assert.That(cleanHtml, Does.Contain("Fejl i dokumentation").And.Contain("Ingen fejl fundet"), "a clean project renders none-found");
+        });
+    }
+
+    // T028: the deep function-block layout renders description, notes, name=value variables, the program outline, and
+    // "Tom blok" for an unprogrammed block.
+    [Test]
+    public void FunctionBlockReport_Deep_RendersLayoutAndTomBlok()
+    {
+        var programmed = new ReportFbBlock("Kip", "Anvendelse: kip tænd/sluk",
+            ImmutableArray.Create(new ReportFbPin("Tænd", "Tænder udgang")),
+            ImmutableArray.Create(new ReportFbPin("Udgang", "Til lampe")),
+            ImmutableArray.Create(new ReportFbVariable("Timer", "0:3:0")),
+            ImmutableArray.Create(new ReportFbVariable("Puls", "0:0:1")),
+            ImmutableArray.Create("Program: Kip", "  Hændelse: %P -> ON", "    Kommando: %P = ON"), IsEmpty: false);
+        var empty = new ReportFbBlock("Ny blok", string.Empty,
+            ImmutableArray<ReportFbPin>.Empty, ImmutableArray<ReportFbPin>.Empty,
+            ImmutableArray<ReportFbVariable>.Empty, ImmutableArray<ReportFbVariable>.Empty,
+            ImmutableArray<string>.Empty, IsEmpty: true);
+        var report = SampleCombined(ImmutableArray<ReportTerminalDetail>.Empty, ImmutableArray<ReportKablerRow>.Empty,
+            functionBlocks: ImmutableArray.Create(programmed, empty));
+
+        string html = ReportHtmlRenderer.RenderProjectDocumentation(report, print: false);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Contain("Anvendelse: kip tænd/sluk"), "the block description renders");
+            Assert.That(html, Does.Contain("Tænder udgang").And.Contain("Til lampe"), "input and output notes render");
+            Assert.That(html, Does.Contain("Timer = 0:3:0"), "a setting renders as name = value");
+            Assert.That(html, Does.Contain("Kommando: %P = ON"), "the program outline renders");
+            Assert.That(html, Does.Contain("Tom blok"), "an unprogrammed block renders as Tom blok");
+        });
+    }
+
+    // A report exercising every switch: 3 sections, a blank Projekt field, an element id, a linked terminal with a
+    // note, and a wire-coloured cabling row.
+    private static ProjectDocumentationReport SwitchTestReport() => new(
+        new ReportValue("Project", "Project"),
+        new ReportProjektInfo(new ReportValue("Villa", "Villa"), new ReportValue(string.Empty, "--"), new ReportValue("Ada", "Ada")),
+        "2026-01-01 00:00",
+        ImmutableArray.Create(
+            new ReportSectionEntry("s-installation", ReportSectionKind.Installation, "Installationsdokumentation", true),
+            new ReportSectionEntry("s-enduser", ReportSectionKind.EndUser, "Funktionsdokumentation", true),
+            new ReportSectionEntry("s-fb", ReportSectionKind.FunctionBlock, "Functionsblok dokumentation", true)),
+        ImmutableArray<ReportLocality>.Empty,
+        ImmutableArray.Create(new ReportElementRef("Tryk", "_0xABC", ReportSectionKind.Installation, true)),
+        ImmutableArray.Create(new ReportTerminalDetail("Tryk 1", "Knap A", "-> Tænd -> Stue-blok -> Stue", new ReportValue("Tænder lyset", "Tænder lyset"))),
+        ImmutableArray.Create(new ReportKablerRow("Grøn", "1.02", "1", "Tavle", "Gruppe A", "ID9", "Stue", "Ved dør", "Tryk", "Indgang")),
+        ModuleAddressMap.Empty,
+        ImmutableArray<ReportCompletenessRow>.Empty,
+        ImmutableArray<ReportFbBlock>.Empty,
+        SampleInstallation(), SampleEndUser(), SampleFb());
+
+    // T029 / US-071: the Reports view-model's switches toggle each content section and detail option; an off section
+    // emits nothing.
+    [Test]
+    public void ReportSwitch_TogglesEachSectionAndDetailOption()
+    {
+        var vm = new ihc_openvisual.ViewModels.ReportsViewModel(SwitchTestReport(),
+            (_, _) => Task.FromResult<string?>(null), _ => Task.CompletedTask);
+
+        Assert.Multiple(() =>
+        {
+            // Content-section switches: off emits nothing (the heading is absent, not empty).
+            Assert.That(vm.Html, Does.Contain("Installationsdokumentation"), "installation on by default");
+            vm.ShowInstallation = false;
+            Assert.That(vm.Html, Does.Not.Contain("Installationsdokumentation"), "an off section emits nothing");
+            vm.ShowInstallation = true;
+            vm.ShowEndUser = false;
+            Assert.That(vm.Html, Does.Not.Contain("Funktionsdokumentation"), "end-user section off");
+            vm.ShowEndUser = true;
+            vm.ShowFunctionBlocks = false;
+            Assert.That(vm.Html, Does.Not.Contain("Functionsblok dokumentation"), "function-block section off");
+            vm.ShowFunctionBlocks = true;
+
+            // Internal ids.
+            Assert.That(vm.Html, Does.Not.Contain("Interne id'er"), "internal ids off by default");
+            vm.ShowInternalIds = true;
+            Assert.That(vm.Html, Does.Contain("Interne id'er").And.Contain("_0xABC"), "internal ids on shows the element ids");
+            vm.ShowInternalIds = false;
+
+            // Wire colours (Kabler column).
+            Assert.That(vm.Html, Does.Contain("Grøn"), "wire colours on by default");
+            vm.ShowWireColours = false;
+            Assert.That(vm.Html, Does.Not.Contain("Grøn"), "wire colour hidden when off");
+            vm.ShowWireColours = true;
+
+            // Link display (terminal-detail).
+            Assert.That(vm.Html, Does.Contain("Stue-blok"), "link display on by default");
+            vm.ShowLinkDisplay = false;
+            Assert.That(vm.Html, Does.Not.Contain("Stue-blok"), "link display hidden when off");
+            vm.ShowLinkDisplay = true;
+
+            // Function documentation (terminal-detail note).
+            Assert.That(vm.Html, Does.Contain("Tænder lyset"), "function docs on by default");
+            vm.ShowFunctionDocs = false;
+            Assert.That(vm.Html, Does.Not.Contain("Tænder lyset"), "function docs hidden when off");
+            vm.ShowFunctionDocs = true;
+
+            // Show empty fields: the blank Projekt Number shows "--" when on, blank when off.
+            Assert.That(vm.Html, Does.Contain("Nummer</th><td>--</td>"), "empty fields show the placeholder by default");
+            vm.ShowEmptyFields = false;
+            Assert.That(vm.Html, Does.Contain("Nummer</th><td></td>"), "empty field collapses to blank when off");
+        });
+    }
+
+    // T030 / US-040: the purpose presets seed the switches — each shows the right sections and detail and hides the rest.
+    [Test]
+    public void ReportPreset_SeedsTheSwitchesForEachPurpose()
+    {
+        var vm = new ihc_openvisual.ViewModels.ReportsViewModel(SwitchTestReport(),
+            (_, _) => Task.FromResult<string?>(null), _ => Task.CompletedTask);
+
+        Assert.Multiple(() =>
+        {
+            // Installation / technical: installation section only, cabling + link technical detail on, internal ids off.
+            vm.ApplyPresetCommand.Execute(ReportPreset.Installation);
+            Assert.That(vm.ShowInstallation, Is.True, "installation preset shows the installation section");
+            Assert.That(vm.ShowEndUser || vm.ShowFunctionBlocks, Is.False, "installation preset hides the other sections");
+            Assert.That(vm.ShowWireColours && vm.ShowLinkDisplay, Is.True, "installation preset keeps the technical detail");
+            Assert.That(vm.ShowInternalIds, Is.False, "installation preset hides internal ids");
+            Assert.That(vm.Html, Does.Contain("Installationsdokumentation").And.Not.Contain("Funktionsdokumentation"),
+                "installation preset renders only the installation section");
+
+            // End-user / function: end-user section only, function docs on, cabling/link detail dropped.
+            vm.ApplyPresetCommand.Execute(ReportPreset.EndUser);
+            Assert.That(vm.ShowEndUser, Is.True, "end-user preset shows the end-user section");
+            Assert.That(vm.ShowInstallation || vm.ShowFunctionBlocks, Is.False, "end-user preset hides the other sections");
+            Assert.That(vm.ShowFunctionDocs, Is.True, "end-user preset keeps function documentation");
+            Assert.That(vm.ShowWireColours, Is.False, "end-user preset drops the wire colours");
+            Assert.That(vm.Html, Does.Contain("Funktionsdokumentation").And.Not.Contain("Installationsdokumentation"),
+                "end-user preset renders only the end-user section");
+
+            // Function-block: function-block section only.
+            vm.ApplyPresetCommand.Execute(ReportPreset.FunctionBlock);
+            Assert.That(vm.ShowFunctionBlocks, Is.True, "function-block preset shows the function-block section");
+            Assert.That(vm.ShowInstallation || vm.ShowEndUser, Is.False, "function-block preset hides the other sections");
+            Assert.That(vm.Html, Does.Contain("Functionsblok dokumentation").And.Not.Contain("Installationsdokumentation"),
+                "function-block preset renders only the function-block section");
+
+            // Full: every section and every detail, including internal ids.
+            vm.ApplyPresetCommand.Execute(ReportPreset.Full);
+            Assert.That(vm.ShowInstallation && vm.ShowEndUser && vm.ShowFunctionBlocks, Is.True, "full preset shows every section");
+            Assert.That(vm.ShowInternalIds, Is.True, "full preset shows internal ids");
+            Assert.That(vm.Html, Does.Contain("Installationsdokumentation")
+                    .And.Contain("Funktionsdokumentation").And.Contain("Functionsblok dokumentation").And.Contain("Interne id'er"),
+                "full preset renders all three sections and internal ids");
         });
     }
 }

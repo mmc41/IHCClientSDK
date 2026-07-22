@@ -77,7 +77,7 @@ namespace Ihc.Vis.Tests
             ProjectElement root = new("utcs_project", null,
                 ImmutableArray<(string, string)>.Empty, ImmutableArray.Create(group));
             InstallationReport report = new ProjectAppService(TestSetup.Settings)
-                .GenerateInstallationReport(new Project(root));
+                .GenerateProjectDocumentationReport(new Project(root)).Installation;
 
             Assert.Multiple(() =>
             {

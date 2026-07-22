@@ -49,6 +49,10 @@ public sealed partial class TreeNodeViewModel : ObservableObject
     /// <summary>Whether this node is a function block — the target of <i>Save block…</i> (US-021).</summary>
     public bool IsFunctionBlock => Kind is TreeNodeKind.FunctionBlock;
 
+    /// <summary>Whether this node is a locality — the only node that hosts <i>Insert product</i>/<i>Insert function
+    /// block</i> (US-068, by pane).</summary>
+    public bool IsLocality => Kind is TreeNodeKind.Locality;
+
     /// <summary>Whether this node is a resource pin — a drag source/target for linking (US-022).</summary>
     public bool IsPin => Kind is TreeNodeKind.Pin;
 
@@ -118,10 +122,19 @@ public sealed partial class TreeNodeViewModel : ObservableObject
     /// toggle (A-22/&amp;Logmærke, US-068).</summary>
     public bool IsLogMarkPin { get; init; }
 
-    /// <summary>Context-menu gate: <i>Cut</i>/<i>Copy</i> are offered on the structural components — a locality, a
-    /// product or a function block (A-5b/F-009). Not on the Localities root, link rows, pins, sections or the
+    /// <summary>Context-menu gate: <i>Cut</i> is offered on the structural components — a locality, a product or a
+    /// function block (A-5b/F-009). Not on the Localities root, link rows, pins, sections, a scene container or the
     /// program-tree nodes.</summary>
-    public bool CanCutCopy => Kind is TreeNodeKind.Locality or TreeNodeKind.Product or TreeNodeKind.FunctionBlock;
+    public bool CanCut => Kind is TreeNodeKind.Locality or TreeNodeKind.Product or TreeNodeKind.FunctionBlock;
+
+    /// <summary>Context-menu gate: <i>Copy</i> is offered on every <see cref="CanCut">cuttable</see> node PLUS a
+    /// scene container (US-068: a scene container's menu is <i>Copy</i>/Properties, no Cut).</summary>
+    public bool CanCopy => CanCut || Kind is TreeNodeKind.Scenes;
+
+    /// <summary>Context-menu gate: <i>Move up</i>/<i>Move down</i> stay on the reorderable structural nodes — the same
+    /// locality/product/function-block set as <see cref="CanCut"/> (US-068, D07). Absent from link rows, pins,
+    /// sections, scene containers and program-tree nodes.</summary>
+    public bool CanReorder => CanCut;
 
     /// <summary>Context-menu gate: <i>Move up</i>/<i>Move down</i> and <i>Properties</i> are offered on any addressable
     /// node EXCEPT a link row — the link row's only items are <i>Jump to opposite</i> and <i>Delete</i> (A-5b).</summary>

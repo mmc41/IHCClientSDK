@@ -6,8 +6,11 @@ using Ihc.Vis;
 using Ihc.Vis.Catalog;
 using Ihc.Vis.Editing;
 using Ihc.Vis.FunctionBlocks;
+using Ihc.Vis.Io;
 using Ihc.Vis.Products;
 using Ihc.Vis.Programs;
+using Ihc.Vis.Reporting;
+using Ihc.Vis.Session;
 using static Ihc.Tests.ArchRuleHelpers;
 
 namespace Ihc.Tests
@@ -43,6 +46,9 @@ namespace Ihc.Tests
         private static readonly string ApiRoot = typeof(AuthenticationService).Namespace!;// Ihc (controller API-service tier)
         private static readonly string VisRoot = typeof(ProjectAppService).Namespace!;    // Ihc.Vis (engine + its facade)
         private static readonly string Editing = typeof(ProjectEditor).Namespace!;        // Ihc.Vis.Editing
+        private static readonly string Session = typeof(ProjectDocumentSession).Namespace!;// Ihc.Vis.Session (command runner)
+        private static readonly string Io = typeof(ProjectSerializer).Namespace!;         // Ihc.Vis.Io
+        private static readonly string Reporting = typeof(ReportBuilder).Namespace!;      // Ihc.Vis.Reporting
 
         /// <summary>
         /// The whole catalog definition layer — every code-authoring/catalog namespace, not just one of them.
@@ -67,6 +73,30 @@ namespace Ihc.Tests
         public void DefinitionLayer_DoesNotDependOn_Editing(string definitionNamespace) =>
             AssertNoDependency(Sdk, Subtree(definitionNamespace), Editing,
                 "the definition layer composes catalog definitions but must not reach back into live-session editing types");
+
+        /// <summary>
+        /// The mutating/IO layers the read-only reporting boundary forbids (D20, T034): the editing engine, the
+        /// session command runner, and the IO serializer. Anchored to a representative public type per namespace.
+        /// </summary>
+        private static IEnumerable<string> MutatingAndIoLayers()
+        {
+            yield return typeof(ProjectEditor).Namespace!;          // Ihc.Vis.Editing
+            yield return typeof(ProjectDocumentSession).Namespace!; // Ihc.Vis.Session
+            yield return typeof(ProjectSerializer).Namespace!;      // Ihc.Vis.Io
+        }
+
+        /// <summary>
+        /// The read-only reporting boundary (D20, T034): <c>Ihc.Vis.Reporting</c> reads the project and never mutates
+        /// it or does IO, so it must not depend on the editing, session (command runner) or IO layers. Currently true —
+        /// the report builder uses only the read side (Addressing/Model/Products/Projects) — so this is a born-green
+        /// D08 characterization that pins the boundary before the report builder grows. The shared vacuity guard in
+        /// <see cref="ArchRuleHelpers.AssertNoDependency(Architecture,string,string,string)"/> keeps it armed: the
+        /// <c>Ihc.Vis.Reporting</c> subtree must match at least one type, so the rule is seen to apply.
+        /// </summary>
+        [TestCaseSource(nameof(MutatingAndIoLayers))]
+        public void Reporting_DoesNotDependOn_MutatingOrIoLayers(string mutatingOrIoNamespace) =>
+            AssertNoDependency(Sdk, Subtree(Reporting), mutatingOrIoNamespace,
+                "reports read the project and never mutate it or do IO — Ihc.Vis.Reporting must stay independent of the editing, session and IO layers");
 
         /// <summary>
         /// The <c>.vis</c> engine is a pure offline file engine: it must stay independent of the SOAP/controller
@@ -145,6 +175,9 @@ namespace Ihc.Tests
                 Assert.That(ApiRoot, Is.EqualTo("Ihc"), $"{nameof(AuthenticationService)} anchors the API-service tier");
                 Assert.That(VisRoot, Is.EqualTo("Ihc.Vis"), $"{nameof(ProjectAppService)} anchors the .vis engine root");
                 Assert.That(Editing, Is.EqualTo("Ihc.Vis.Editing"), $"{nameof(ProjectEditor)} anchors the editing layer");
+                Assert.That(Session, Is.EqualTo("Ihc.Vis.Session"), $"{nameof(ProjectDocumentSession)} anchors the session command layer");
+                Assert.That(Io, Is.EqualTo("Ihc.Vis.Io"), $"{nameof(ProjectSerializer)} anchors the IO layer");
+                Assert.That(Reporting, Is.EqualTo("Ihc.Vis.Reporting"), $"{nameof(ReportBuilder)} anchors the reporting layer");
                 Assert.That(SoapNs, Is.EqualTo("Ihc.Soap"), "the SOAP parent namespace spans the generated per-service namespaces");
             });
 

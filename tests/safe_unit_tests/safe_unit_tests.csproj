@@ -25,4 +25,12 @@
          it here (H2/T004). Referencing the app assembly for its testable logic matches the existing ihc_lab ref. -->
     <ProjectReference Include="..\..\applications\ihc_openvisual\ihc_openvisual.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- T002 characterization: the ProjectTreeProjector sub-program-name branch needs a real oracle carrying
+         user-named sub-programs (no public rename-sub-program command exists to synthesise one). Reuse the
+         safe_project_tests Project1 oracle as a linked copied asset (no content duplication). -->
+    <None Include="..\safe_project_tests\testdata\projects\Project1-SimpelWired.vis"
+          Link="testdata\Project1-SimpelWired.vis" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

@@ -48,9 +48,10 @@ public sealed class TreeDragDropController(
                 ? DropVerdict.PinLink()
                 : DropVerdict.Refused("Those two pins can't be linked in that direction.");
         }
-        // Program build: dropping a variable/pin onto an events or commands container arms the method popup (US-028).
-        // Gated on the A-27 locked-block rule — no authoring drop into a locked library block.
-        if (draggedNode.IsPin && (targetNode.IsEventsContainer || targetNode.IsCommandsContainer))
+        // Program build: dropping a variable/pin onto an events, commands OR conditions container arms the method
+        // popup for that family (US-028 "one drag gesture, three families" — the target group picks Event/Command/
+        // Condition). Gated on the A-27 locked-block rule — no authoring drop into a locked library block.
+        if (draggedNode.IsPin && (targetNode.IsEventsContainer || targetNode.IsCommandsContainer || targetNode.IsConditionsContainer))
         {
             return isProgrammingBlockLocked()
                 ? DropVerdict.Refused("This block is locked — unlock it to edit its program.")

@@ -112,9 +112,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// locked block is not deletable per the SDK, so the vendor's view-only affordance (F-087) still holds.</summary>
     public bool CanDeleteSelected => CanDeleteNode(SelectedNode);
 
-    /// <summary>Context-menu gate for <i>Move up/down</i>: still the node's own capability AND an unlocked
-    /// programming block — Move has no SDK verdict of its own, so it keeps the measured locked-block rule (F-087).</summary>
-    public bool CanMoveSelected => SelectedNode?.CanEditNonLink == true && !IsProgrammingBlockLocked;
+    /// <summary>Context-menu gate for <i>Move up/down</i>: a reorderable structural node (locality/product/function
+    /// block, US-068/D07) AND an unlocked programming block — Move has no SDK verdict of its own, so it keeps the
+    /// measured locked-block rule (F-087).</summary>
+    public bool CanMoveSelected => SelectedNode?.CanReorder == true && !IsProgrammingBlockLocked;
 
     /// <summary>Context-menu gate: <i>Paste</i> is offered on a locality only when the clipboard holds a cut/copied
     /// node (A-5b/F-010) — the vendor shows it conditionally (6 items empty, 7 full).</summary>
@@ -127,14 +128,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [NotifyPropertyChangedFor(nameof(CanInsertFunctionBlock))]
     private bool _isInstallationPaneActive;
 
-    /// <summary>Context-menu gate: <i>Insert product</i> is offered only on an addressable node in the Installation
-    /// pane — the Functions pane hosts function blocks, and the Localities root hosts localities (US-010).</summary>
-    public bool CanInsertProduct => IsInstallationPaneActive && SelectedNode?.CanEditProperties == true;
+    /// <summary>Context-menu gate: <i>Insert product</i> is offered only on a <b>locality</b> in the Installation pane
+    /// — the Functions pane hosts function blocks, and the Localities root hosts localities (US-010/US-068).</summary>
+    public bool CanInsertProduct => IsInstallationPaneActive && SelectedNode?.IsLocality == true;
 
-    /// <summary>Context-menu gate: <i>Insert function block</i> / <i>Empty function block</i> are offered only on an
-    /// addressable node in the <i>Functions</i> pane — function blocks belong there, products to the Installation pane
-    /// (A-5a/F-008). Mirrors <see cref="CanInsertProduct"/> on the opposite pane.</summary>
-    public bool CanInsertFunctionBlock => !IsInstallationPaneActive && SelectedNode?.CanEditProperties == true;
+    /// <summary>Context-menu gate: <i>Insert function block</i> / <i>Empty function block</i> are offered only on a
+    /// <b>locality</b> in the <i>Functions</i> pane — function blocks belong there, products to the Installation pane
+    /// (A-5a/F-008/US-068). Mirrors <see cref="CanInsertProduct"/> on the opposite pane.</summary>
+    public bool CanInsertFunctionBlock => !IsInstallationPaneActive && SelectedNode?.IsLocality == true;
 
     /// <summary>The <i>Installation</i> pane's current selection (two-way bound); also set programmatically to
     /// highlight a just-inserted locality (US-008).</summary>
@@ -204,8 +205,28 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         string sectionLabel = value.DisplayName;
         foreach ((string label, string tag, char _) in VariablePalette.Entries.Where(t => t.Kind == kind))
         {
-            VariablePaletteMenu.Add(new ProductMenuItemViewModel(label, tag,
-                new AsyncRelayCommand(() => InsertVariableAsync(sectionId, tag, label, sectionLabel))));
+            if (tag == "resource_enum")
+            {
+                // PG-4: an enum insertion offers a TYPE PICKER — the existing enumerator types (pick one → reference
+                // its def-id, no new type) plus a "New…" that authors a new type through the enumerator dialog.
+                var enumNode = new ProductMenuItemViewModel(label);
+                foreach (string typeName in _session.Current?.GetEnumeratorTypes() ?? System.Array.Empty<string>())
+                {
+                    enumNode.Children.Add(new ProductMenuItemViewModel(typeName, "enum-type",
+                        new AsyncRelayCommand(() => InsertEnumOfExistingTypeAsync(sectionId, typeName, sectionLabel))));
+                }
+                enumNode.Children.Add(new ProductMenuItemViewModel("New…", "enum-new",
+                    new AsyncRelayCommand(() => InsertEnumAsync(sectionId, sectionLabel))));
+                // PG-7/D02: a DISTINCT route that authors a standalone (0-state, unreferenced) type — NO variable.
+                enumNode.Children.Add(new ProductMenuItemViewModel("New standalone type…", "enum-standalone",
+                    new AsyncRelayCommand(AddStandaloneEnumTypeAsync)));
+                VariablePaletteMenu.Add(enumNode);
+            }
+            else
+            {
+                VariablePaletteMenu.Add(new ProductMenuItemViewModel(label, tag,
+                    new AsyncRelayCommand(() => InsertVariableAsync(sectionId, tag, label, sectionLabel))));
+            }
         }
     }
 
@@ -391,47 +412,18 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         StatusText = "Controller transfer requires a connected controller.";
     });
 
-    /// <summary>Documentation ▸ Reports (US-040/041): render a report to HTML and open it in the standard
-    /// browser, in a screen or a printer-friendly variant.</summary>
+    /// <summary>Documentation ▸ Reports… (US-040 / D14 / T021): open the single Reports view rendering the combined
+    /// project-documentation model as ONE navigable HTML document (on-screen or printer variant) — the one command
+    /// that replaces the former six direct installation/end-user/function-block screen/print commands.</summary>
     [RelayCommand]
-    private Task InstallationReportScreen() => ShowInstallationReportAsync(print: false);
-
-    [RelayCommand]
-    private Task InstallationReportPrint() => ShowInstallationReportAsync(print: true);
-
-    [RelayCommand]
-    private Task EndUserReportScreen() => ShowEndUserReportAsync(print: false);
-
-    [RelayCommand]
-    private Task EndUserReportPrint() => ShowEndUserReportAsync(print: true);
-
-    [RelayCommand]
-    private Task FunctionBlockReportScreen() => ShowFunctionBlockReportAsync(print: false);
-
-    [RelayCommand]
-    private Task FunctionBlockReportPrint() => ShowFunctionBlockReportAsync(print: true);
-
-    private Task ShowInstallationReportAsync(bool print) => ShowReportAsync("installation", "Installation", print,
-        () => _session.GenerateInstallationReport() is { } model ? ReportHtmlRenderer.RenderInstallation(model, print) : null);
-
-    private Task ShowEndUserReportAsync(bool print) => ShowReportAsync("enduser", "End-user", print,
-        () => _session.GenerateEndUserReport() is { } model ? ReportHtmlRenderer.RenderEndUser(model, print) : null);
-
-    private Task ShowFunctionBlockReportAsync(bool print) => ShowReportAsync("functionblocks", "Function-block", print,
-        () => _session.GenerateFunctionBlockReport() is { } model ? ReportHtmlRenderer.RenderFunctionBlocks(model, print) : null);
-
-    /// <summary>The shared report tail: render (null when no project is open), write the HTML to a temp file and
-    /// open it in the standard browser (the print variant gets a "-print" file stem).</summary>
-    private Task ShowReportAsync(string stem, string label, bool print, Func<string?> render) =>
-        RunAsync(nameof(ShowReportAsync), async () =>
-        {
-            if (render() is not { } html)
-                return;   // no project open
-            if (await _session.WriteReportHtmlAsync(print ? stem + "-print" : stem, html) is not { } path)
-                return;
-            await _dialogs.OpenExternalUrlAsync(new System.Uri(path).AbsoluteUri);
-            StatusText = $"{label} report opened in your browser.";
-        });
+    private Task OpenReports() => RunAsync(nameof(OpenReports), async () =>
+    {
+        if (_session.GenerateProjectDocumentationReport() is not { } report)
+            return;   // no project open
+        var viewModel = new ReportsViewModel(report, _session.WriteReportHtmlAsync, _dialogs.OpenExternalUrlAsync);
+        await _dialogs.ShowReportsAsync(viewModel);
+        StatusText = "Reports opened.";
+    });
 
     // T018: AddPowerEvent / ToggleSaveValue / AddSubProgram / AddLogicGroup / SetConditionsOr / SetConditionsAnd /
     // NewCaseValue (US-029/031/033) moved into ProgramAuthoringCoordinator; the VM keeps thin [RelayCommand] entry
@@ -1056,6 +1048,29 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             && _session.Commands.AddEnumVariable(project, sectionId, result.TypeName, result.TypeName, result.States) is { } command)
             await ApplyAsync(command, $"Enumerator '{result.TypeName}' was inserted under {sectionLabel}");
     });
+
+    // PG-7/D02: authors a standalone (0-state, unreferenced) enumerator TYPE — no variable is inserted, decoupled from
+    // any section. The enumerator dialog supplies the name (and any states); an empty type is authored when none given.
+    private Task AddStandaloneEnumTypeAsync() => RunAsync(nameof(AddStandaloneEnumTypeAsync), async () =>
+    {
+        EnumDefinitionResult? result = await _dialogs.EditEnumDefinitionAsync(
+            new EnumDefinitionInput("New standalone enumerator type", string.Empty, System.Array.Empty<string>(), IsNew: true));
+        if (result is null || string.IsNullOrWhiteSpace(result.TypeName))
+            return;
+        if (_session.Current is { } project)
+            await ApplyAsync(_session.Commands.AddStandaloneEnumType(project, result.TypeName, result.States),
+                $"Enumerator type '{result.TypeName}' was created");
+    });
+
+    // PG-4: inserts a variable of an EXISTING enumerator type — references its def-id, authoring NO new type (the "New…"
+    // option above authors a new one).
+    private Task InsertEnumOfExistingTypeAsync(ElementId sectionId, string typeName, string sectionLabel) =>
+        RunAsync(nameof(InsertEnumOfExistingTypeAsync), async () =>
+        {
+            if (_session.Current is { } project
+                && _session.Commands.AddEnumVariableOfType(project, sectionId, typeName, typeName) is { } command)
+                await ApplyAsync(command, $"Enumerator '{typeName}' was inserted under {sectionLabel}");
+        });
 
 
     [RelayCommand]

@@ -7,9 +7,10 @@ namespace safe_unit_tests;
 
 /// <summary>
 /// M3 / ADR-002 / D07 (T008): the OpenVisual "Insert variable" palette is a PROJECTION of the SDK-authoritative
-/// <see cref="VariableTypeRegistry"/>, so every variable type the engine supports is either presented (with an app
-/// label) or on an explicit suppression list — a supported type can never silently vanish from the UI (the drift
-/// that had dropped six types: resource_light_level/resource_humidity_level and kW/kWh/W/Wh).
+/// <see cref="VariableTypeRegistry"/>, so every variable type the engine supports is presented (with an app label) —
+/// a supported type can never silently vanish from the UI (the drift that had dropped six types:
+/// resource_light_level/resource_humidity_level and kW/kWh/W/Wh, all now offered — T017 un-suppressed the four
+/// power/energy types, D03).
 /// </summary>
 public class VariablePaletteCompletenessTests
 {
@@ -18,31 +19,28 @@ public class VariablePaletteCompletenessTests
     {
         var registry = VariableTypeRegistry.All.Select(t => t.Tag).ToHashSet();
         var presented = VariablePalette.Entries.Select(e => e.Tag).ToHashSet();
-        var suppressed = VariablePalette.Suppressed.ToHashSet();
 
         Assert.Multiple(() =>
         {
-            var uncovered = registry.Where(t => !presented.Contains(t) && !suppressed.Contains(t)).ToList();
+            var uncovered = registry.Where(t => !presented.Contains(t)).ToList();
             Assert.That(uncovered, Is.Empty,
-                "every SDK variable type must be presented or explicitly suppressed; unaccounted: " + string.Join(", ", uncovered));
-            Assert.That(presented.IsSubsetOf(registry), Is.True, "the palette offers only SDK-supported types");
-            Assert.That(suppressed.IsSubsetOf(registry), Is.True, "the suppression list names only real SDK types");
-            Assert.That(presented.Overlaps(suppressed), Is.False, "a type is either presented or suppressed, never both");
+                "every SDK variable type must be presented; unaccounted: " + string.Join(", ", uncovered));
+            Assert.That(presented.SetEquals(registry), Is.True, "the palette presents exactly the SDK registry — no suppression");
         });
     }
 
-    // The six types M3 found silently dropped are now explicitly accounted for: the two sensor value types are
-    // presented; the four power/energy meter-unit types are on the suppression list (D07).
+    // The six types M3 found silently dropped are now all OFFERED: the two sensor value types and (T017, D03) the
+    // four power/energy meter-unit types.
     [Test]
-    public void PreviouslyDroppedTypes_AreNowAccountedFor()
+    public void PreviouslyDroppedTypes_AreNowAllOffered()
     {
         var presented = VariablePalette.Entries.Select(e => e.Tag).ToHashSet();
         Assert.Multiple(() =>
         {
-            Assert.That(presented, Does.Contain("resource_light_level"), "light level is now offered");
-            Assert.That(presented, Does.Contain("resource_humidity_level"), "humidity is now offered");
+            Assert.That(presented, Does.Contain("resource_light_level"), "light level is offered");
+            Assert.That(presented, Does.Contain("resource_humidity_level"), "humidity is offered");
             foreach (string unit in new[] { "kW", "kWh", "W", "Wh" })
-                Assert.That(VariablePalette.Suppressed, Does.Contain(unit), $"{unit} is explicitly suppressed, not silently dropped");
+                Assert.That(presented, Does.Contain(unit), $"{unit} is now a user-insertable variable type (T017)");
         });
     }
 

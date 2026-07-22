@@ -8,20 +8,25 @@ namespace Ihc.Vis.Session
 {
     /// <summary>Authors a program event (US-028) on the program owning the events container. The caller resolves the
     /// owning program id (parent of the "events" container).</summary>
-    public sealed record AddProgramEvent(ElementId ProgramId, ElementId VariableId, string Method, string Name, string? Note)
+    public sealed record AddProgramEvent(ElementId ProgramId, ElementId VariableId, string Method, string Name, string? Note, ElementId? OperandId = null)
         : ProjectCommand
     {
         internal override string Describe(Project project) => "Add event";
-        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(ProgramId, "a program", "program_simple");
-        internal override void Execute(ProjectEditor editor) =>
-            editor.Program(ProgramId).AddEvent(Name, editor.Resource(VariableId), Method, note: Note);
+        internal override EditVerdict Evaluate(EditContext context) =>
+            context.RequireTag(ProgramId, "a program", "program_simple")
+                .And(context.RequireUnlockedTarget(ProgramId, inclusive: true));   // T003
+        internal override void Execute(ProjectEditor editor) =>   // OperandId is the second operand %S (T008), else unary
+            editor.Program(ProgramId).AddEvent(Name, editor.Resource(VariableId), Method,
+                OperandId is { } op ? editor.Resource(op) : null, note: Note);
     }
 
     /// <summary>Adds a Powerup system event (US-033) to a program.</summary>
     public sealed record AddPowerEvent(ElementId ProgramId) : ProjectCommand
     {
         internal override string Describe(Project project) => "Add Powerup event";
-        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(ProgramId, "a program", "program_simple");
+        internal override EditVerdict Evaluate(EditContext context) =>
+            context.RequireTag(ProgramId, "a program", "program_simple")
+                .And(context.RequireUnlockedTarget(ProgramId, inclusive: true));   // T003
         internal override void Execute(ProjectEditor editor) =>
             editor.Program(ProgramId).AddPowerEvent("Powerup",
                 "Runs the program on controller power-up (also on project transfer and software restart).");
@@ -32,7 +37,9 @@ namespace Ihc.Vis.Session
         : ProjectCommand
     {
         internal override string Describe(Project project) => "Add command";
-        internal override EditVerdict Evaluate(EditContext context) => Programs.RequireCommandContainer(context, ContainerId);
+        internal override EditVerdict Evaluate(EditContext context) =>
+            Programs.RequireCommandContainer(context, ContainerId)
+                .And(context.RequireUnlockedTarget(ContainerId, inclusive: true));   // T003
         internal override void Execute(ProjectEditor editor) =>
             editor.Branch(ContainerId).AddAction(Name, editor.Resource(VariableId), Method, note: Note);
     }
@@ -41,25 +48,32 @@ namespace Ihc.Vis.Session
     public sealed record AddSubProgram(ElementId CommandsId) : ProjectCommand
     {
         internal override string Describe(Project project) => "Add sub-program";
-        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(CommandsId, "a command container", "actions");
+        internal override EditVerdict Evaluate(EditContext context) =>
+            context.RequireTag(CommandsId, "a command container", "actions")
+                .And(context.RequireUnlockedTarget(CommandsId, inclusive: true));   // T003
         internal override void Execute(ProjectEditor editor) => editor.Branch(CommandsId).AddSubProgram();
     }
 
     /// <summary>Adds a condition (US-029) to a conditions group.</summary>
-    public sealed record AddCondition(ElementId ConditionsId, ElementId VariableId, string Method, string Name, string? Note)
+    public sealed record AddCondition(ElementId ConditionsId, ElementId VariableId, string Method, string Name, string? Note, ElementId? OperandId = null)
         : ProjectCommand
     {
         internal override string Describe(Project project) => "Add condition";
-        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(ConditionsId, "a conditions group", "conditions");
-        internal override void Execute(ProjectEditor editor) =>
-            editor.ConditionsGroup(ConditionsId).AddCondition(Name, editor.Resource(VariableId), Method, note: Note);
+        internal override EditVerdict Evaluate(EditContext context) =>
+            context.RequireTag(ConditionsId, "a conditions group", "conditions")
+                .And(context.RequireUnlockedTarget(ConditionsId, inclusive: true));   // T003
+        internal override void Execute(ProjectEditor editor) =>   // OperandId is the second operand %S (T008), else unary
+            editor.ConditionsGroup(ConditionsId).AddCondition(Name, editor.Resource(VariableId), Method,
+                OperandId is { } op ? editor.Resource(op) : null, note: Note);
     }
 
     /// <summary>Toggles a conditions group's AND/OR combination (US-029).</summary>
     public sealed record SetConditionsLogic(ElementId ConditionsId, bool Or) : ProjectCommand
     {
         internal override string Describe(Project project) => "Set condition logic";
-        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(ConditionsId, "a conditions group", "conditions");
+        internal override EditVerdict Evaluate(EditContext context) =>
+            context.RequireTag(ConditionsId, "a conditions group", "conditions")
+                .And(context.RequireUnlockedTarget(ConditionsId, inclusive: true));   // T004
         internal override void Execute(ProjectEditor editor)
         {
             ConditionsGroupRef group = editor.ConditionsGroup(ConditionsId);
@@ -78,7 +92,9 @@ namespace Ihc.Vis.Session
     public sealed record AddLogicGroup(ElementId ConditionsId) : ProjectCommand
     {
         internal override string Describe(Project project) => "Add logic group";
-        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(ConditionsId, "a conditions group", "conditions");
+        internal override EditVerdict Evaluate(EditContext context) =>
+            context.RequireTag(ConditionsId, "a conditions group", "conditions")
+                .And(context.RequireUnlockedTarget(ConditionsId, inclusive: true));   // T003
         internal override void Execute(ProjectEditor editor) => editor.ConditionsGroup(ConditionsId).AddConditionGroup();
     }
 
@@ -87,7 +103,9 @@ namespace Ihc.Vis.Session
         : ProjectCommand
     {
         internal override string Describe(Project project) => "Add arithmetic";
-        internal override EditVerdict Evaluate(EditContext context) => Programs.RequireCommandContainer(context, CommandsId);
+        internal override EditVerdict Evaluate(EditContext context) =>
+            Programs.RequireCommandContainer(context, CommandsId)
+                .And(context.RequireUnlockedTarget(CommandsId, inclusive: true));   // T003
         internal override void Execute(ProjectEditor editor) =>
             editor.Branch(CommandsId).AddAction(Name, editor.Resource(TargetId), Method, editor.Resource(OperandId));
     }
@@ -97,22 +115,37 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Add case";
         internal override EditVerdict Evaluate(EditContext context) =>
-            Programs.IsCommandContainer(context, CommandsId)
+            (Programs.IsCommandContainer(context, CommandsId)
             && context.Index.FindById(SwitchVariableId) is { } v && ProgramMethodCatalog.EligibleCaseVariableTags.Contains(v.Tag)
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Not an eligible case switch on a command container.");
+                : EditVerdict.Refuse("Not an eligible case switch on a command container."))
+            .And(context.RequireUnlockedTarget(CommandsId, inclusive: true));   // T003
         internal override void Execute(ProjectEditor editor) =>
             editor.Branch(CommandsId).AddCase("Case", editor.Resource(SwitchVariableId));
     }
 
-    /// <summary>Adds a case-value branch (US-031) for a literal criterion. The caller supplies the switch variable's
-    /// tag (resolved from the case's switch).</summary>
-    public sealed record AddCaseValue(ElementId CaseId, string Criterion, string SwitchTag) : ProjectCommand
+    /// <summary>Adds a case-value branch (US-031). For a literal switch the <paramref name="Criterion"/> is embedded as
+    /// the operand's <c>inivalue</c> on a <paramref name="SwitchTag"/>-typed operand; for an ENUM switch (T014, PG-6)
+    /// <paramref name="EnumTypeName"/> is set and the criterion is a STATE name — routed to the engine's enum overload
+    /// so the operand carries the type's <c>typedef</c> plus the state's <c>inivalue</c>. The caller supplies the
+    /// switch tag / enum type resolved from the case's switch.</summary>
+    public sealed record AddCaseValue(ElementId CaseId, string Criterion, string SwitchTag, string? EnumTypeName = null) : ProjectCommand
     {
         internal override string Describe(Project project) => "Add case value";
-        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(CaseId, "a case", "program_case");
-        internal override void Execute(ProjectEditor editor) =>
-            editor.Case(CaseId).Case(Criterion, SwitchTag, op => op.SetAttribute("inivalue", Criterion));
+        internal override EditVerdict Evaluate(EditContext context) =>
+            context.RequireTag(CaseId, "a case", "program_case")
+                .And(context.RequireUnlockedTarget(CaseId, inclusive: true));   // T003
+        internal override void Execute(ProjectEditor editor)
+        {
+            if (EnumTypeName is { } typeName)
+            {
+                editor.Case(CaseId).Case(Criterion, editor.EnumDefinition(typeName), Criterion);
+            }
+            else
+            {
+                editor.Case(CaseId).Case(Criterion, SwitchTag, op => op.SetAttribute("inivalue", Criterion));
+            }
+        }
     }
 
     /// <summary>Sets an output's "Save current value" power-loss persistence (US-033).</summary>
@@ -120,7 +153,8 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Save current value";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireTag(OutputId, "an output", "resource_output", "dataline_output", "airlink_relay");
+            context.RequireTag(OutputId, "an output", "resource_output", "dataline_output", "airlink_relay")
+                .And(context.RequireUnlockedTarget(OutputId, inclusive: true));   // T004
         internal override void Execute(ProjectEditor editor) =>
             editor.Resolve(OutputId, "output").SetAttribute("backup", Save ? "yes" : "no");
     }
@@ -130,8 +164,9 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Toggle log mark";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(LogRowId) is { } row && row.IsLogRow(context.Project)
-                ? EditVerdict.Allow : EditVerdict.Refuse("Not a Logning row.");
+            (context.Index.FindById(LogRowId) is { } row && row.IsLogRow(context.Project)
+                ? EditVerdict.Allow : EditVerdict.Refuse("Not a Logning row."))
+            .And(context.RequireUnlockedTarget(LogRowId, inclusive: true));   // T004 (defensive: log rows are product-scoped)
         internal override void Execute(ProjectEditor editor) => editor.ToggleLogMark(LogRowId);
     }
 

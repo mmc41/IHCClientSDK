@@ -19,7 +19,21 @@ namespace Ihc.Vis.Tests
     {
         private static IhcSettings Settings => TestSetup.Settings;
 
-        private static Task<Project> Load() => new ProjectAppService(Settings).Load("testdata/projects/Project1-SimpelWired.vis");
+        private static async Task<Project> Load()
+        {
+            Project loaded = await new ProjectAppService(Settings).Load("testdata/projects/Project1-SimpelWired.vis");
+            // Project1's function blocks ship library-locked; these tests exercise ProgramBuilder authoring, which the
+            // T003 locked-ancestor guard (correctly) refuses inside a locked block. Unlock the blocks first — exactly
+            // as the GUI's Unlock (US-020) precedes any edit. Unlock only clears the `locked` flag (no id allocation),
+            // so the allocation-order / LastUniqueId assertions are unchanged.
+            ProjectEditor editor = loaded.Edit();
+            foreach (ElementId fbId in loaded.Root.Descendants()
+                         .Where(e => e.Tag == "functionblock").Select(e => e.Id!.Value).ToList())
+            {
+                editor.FunctionBlock(fbId).Unlock();
+            }
+            return editor.ToProject();
+        }
 
         private static long HexCounter(string? token) =>
             long.Parse(token!.AsSpan(3), NumberStyles.HexNumber, CultureInfo.InvariantCulture);

@@ -21,10 +21,56 @@ namespace Ihc.Vis.Tests
             return session;
         }
 
+        // T037: each authorable arithmetic cell (incl. the mixed-conversion codes _0x5f/_0x69/_0x6e/_0x78) authors via
+        // the engine with the F-108 grid opcode and survives a save→reload byte round-trip.
+        [Test]
+        public async Task Arithmetic_AuthorableCells_AuthorWithGridOpcodesAndRoundTrip()
+        {
+            Project project = await Load("project2-CustomBlock.vis");
+            ProjectEditor editor = project.Edit();
+            FunctionBlockRef fb = editor.Group("Stue").FunctionBlock("Custom blok");   // unlocked custom block
+            ResourceRef intT = fb.AddSetting("resource_integer", "IntT");
+            ResourceRef intO = fb.AddSetting("resource_integer", "IntO");
+            ResourceRef fltT = fb.AddSetting("resource_floating_point", "FltT");
+            ResourceRef fltO = fb.AddSetting("resource_floating_point", "FltO");
+            BranchRef branch = fb.Program().AddSubProgram().WhenTrue;
+
+            string add = ProgramMethodCatalog.ArithmeticToken("+", "resource_integer", "resource_floating_point")!;        // _0x5f
+            string sub = ProgramMethodCatalog.ArithmeticToken("-", "resource_floating_point", "resource_integer")!;        // _0x69
+            string div = ProgramMethodCatalog.ArithmeticToken("/", "resource_integer", "resource_integer")!;              // _0x6e
+            string mul = ProgramMethodCatalog.ArithmeticToken("*", "resource_floating_point", "resource_floating_point")!; // _0x78
+            branch.AddAction("%P = %P + %S", intT, add, fltO);
+            branch.AddAction("%P = %P - %S", fltT, sub, intO);
+            branch.AddAction("%P = %P / %S", intT, div, intO);
+            branch.AddAction("%P = %P * %S", fltT, mul, fltO);
+
+            using var ms = new MemoryStream();
+            await new ProjectAppService(TestSetup.Settings).Save(editor.ToProject(), ms);
+            var authored = ProjectReader.Read(ms.ToArray()).Root.Descendants()
+                .Where(e => e.Tag == "action" && e.GetAttribute("method") is not null)
+                .Select(e => e.GetAttribute("method")).ToList();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That((add, sub, div, mul), Is.EqualTo(("_0x5f", "_0x69", "_0x6e", "_0x78")), "the grid opcodes");
+                Assert.That(authored, Does.Contain("_0x5f").And.Contain("_0x69").And.Contain("_0x6e").And.Contain("_0x78"),
+                    "every authored cell survives the save→reload round-trip");
+            });
+        }
+
         [Test]
         public async Task AddSubProgram_OnCommandContainer_MatchesEngine()
         {
-            Project project = await Load("project3-KompleksWired.vis");
+            Project loaded = await Load("project3-KompleksWired.vis");
+            // project3's first command container lives in a library-locked block; unlock the blocks so both the
+            // session and engine paths can author into it (T003 refuses authoring into a locked block). Id-neutral.
+            ProjectEditor prep = loaded.Edit();
+            foreach (ElementId fbId in loaded.Root.Descendants()
+                         .Where(e => e.Tag == "functionblock").Select(e => e.Id!.Value).ToList())
+            {
+                prep.FunctionBlock(fbId).Unlock();
+            }
+            Project project = prep.ToProject();
             ProjectElement actions = project.Root.Descendants().First(e => e.Tag == "actions" && e.Id is not null);
             ElementId id = actions.Id!.Value;
             ProjectDocumentSession session = Session(project);

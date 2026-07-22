@@ -62,7 +62,7 @@ public class ReorderTests
 
         var afterOrder = harness.Session.Current!.FindById(loc)!.ChildrenOrEmpty()
             .Where(c => c.Tag.StartsWith("product_")).Select(c => c.Id!.Value).ToList();
-        var report = harness.Session.GenerateInstallationReport()!;
+        var report = harness.Session.GenerateProjectDocumentationReport()!.Installation;
         Assert.Multiple(() =>
         {
             Assert.That(afterOrder[0], Is.EqualTo(second), "the reordered product is now first in the tree");

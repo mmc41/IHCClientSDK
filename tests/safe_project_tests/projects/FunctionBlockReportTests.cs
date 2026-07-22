@@ -4,16 +4,17 @@ using System.Linq;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// US-041: the SDK function-block report builder (<see cref="ProjectAppService.GenerateFunctionBlockReport"/>)
-    /// over the <c>project3-KompleksWired.vis</c> oracle — every function block in Functions-pane document order,
-    /// each carrying the four variable sections and their variable names.
+    /// US-041: the SDK function-block report section, composed by the combined
+    /// <see cref="ProjectAppService.GenerateProjectDocumentationReport"/> over the <c>project3-KompleksWired.vis</c>
+    /// oracle — every function block in Functions-pane document order, each carrying the four variable sections and
+    /// their variable names.
     /// </summary>
     public class FunctionBlockReportTests
     {
         private static FunctionBlockReport Report(string name = "project3-KompleksWired.vis") =>
-            new ProjectAppService(TestSetup.Settings).GenerateFunctionBlockReport(
+            new ProjectAppService(TestSetup.Settings).GenerateProjectDocumentationReport(
                 new ProjectAppService(TestSetup.Settings).Load(
-                    new MemoryStream(TestData.ReadBytes(Path.Combine("projects", name)))).GetAwaiter().GetResult());
+                    new MemoryStream(TestData.ReadBytes(Path.Combine("projects", name)))).GetAwaiter().GetResult()).FunctionBlock;
 
         [Test]
         public void FunctionBlockReport_HasHeadingAndBlocksInDocumentOrder()

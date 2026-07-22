@@ -53,7 +53,7 @@ public class DragProgramTests : AvaloniaTestBase
         // The drop armed the variable and populated the Events method popup for that container — identical to the
         // two-step Use-in-program menu (US-028).
         Assert.That(vm.ProgramEventMenu.Select(m => m.Header),
-            Is.EquivalentTo(new[] { "Doorbell changes to ON", "Doorbell changes state", "Doorbell is assigned" }),
+            Is.EquivalentTo(new[] { "Doorbell changes to ON", "Doorbell changes to OFF", "Doorbell changes state", "Doorbell is assigned" }),
             "the drop offers the same method set as Use-in-program");
 
         var option = vm.ProgramEventMenu.First(m => m.Header == "Doorbell changes to ON");
@@ -64,6 +64,34 @@ public class DragProgramTests : AvaloniaTestBase
         {
             Assert.That(eventsAfter.Children.Any(c => c.DisplayName == "Doorbell -> ON"), Is.True, "the chosen method builds the event");
             Assert.That(harness.Session.IsDirty, Is.True);
+        });
+    }
+
+    // PG-1e / US-028: "one drag gesture, three families" — a pin dropped on a CONDITIONS group raises the condition
+    // popup (not the command/event popup), exactly as a drop on Events/Commands raises theirs.
+    [Test]
+    public async Task DropVariableOnConditions_OffersConditionPopup()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        await harness.Session.AddVariableAsync(vm.InstallationNodes[0].Children[2].ElementId!.Value, "resource_flag", "Away");
+        await vm.AddSubProgramCommand.ExecuteAsync(TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+
+        var pin = TreeNodes.FindFirst(vm.InstallationNodes, n => n.IsPin && n.DisplayName == "Away")!;
+        var conditions = TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsConditionsContainer)!;
+
+        DropVerdict verdict = vm.DragDrop.CanDropOn(pin.ElementId!.Value, conditions.ElementId!.Value);
+        await vm.DragDrop.PerformDropAsync(pin.ElementId!.Value, conditions.ElementId!.Value);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(verdict.Ok, Is.True, "a pin over a Conditions group is a legal authoring drop");
+            Assert.That(vm.ProgramConditionMenu, Is.Not.Empty, "the drop raises the CONDITION popup");
+            Assert.That(vm.ProgramCommandMenu, Is.Empty, "not the command popup");
+            Assert.That(vm.ProgramEventMenu, Is.Empty, "not the event popup");
         });
     }
 

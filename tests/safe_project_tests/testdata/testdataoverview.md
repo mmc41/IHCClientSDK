@@ -428,6 +428,33 @@ Float-dividend divide (`Kommatal = Kommatal /`) is deliberately ABSENT — the v
 round-trip in `ProjectByteFidelityTests` (both batteries) from day one — the 9 new method codes ride the
 open-world serializer as opaque attributes with zero engine changes.
 
+### project4-PrgTokens-round2.vis (33.6 KB, 507 lines) — derived program-method token oracle (round 2)
+
+Authentic IHC Visual (03.04.72.03) output **derived from `project4-PrgTokens.vis`** in one recorded
+session (progmode3, 2026-07-21; artifacts in `tmp/progmode3/out/`, method-map rows tagged
+`progmode3 2026-07-21`). The base FB "Tom blok" (Stue) gained 10 rows — one control action, two events
+and seven conditions (in the pre-existing `program_sub`) — and nine single-purpose probe/pair-rig FBs
+(one per room Entré…Udendørs, all default-named "Tom blok") carry the remaining eight arithmetic action
+rows. 35 `method`-bearing rows total (17 base + 18 new). Attests:
+
+- **Timer events:** `-> 0` → `_0xa` (`%P -> 0`) and `bliver tilskrevet` → `_0x9b`. The third popup
+  entry (`Timer ->`, 2-operand transfer) never commits — dead entry, F-106 — deliberately absent.
+- **Timer conditions:** `= 0` → `_0xa`; the first condition-family comparison codes `>` → `_0x32`,
+  `>=` → `_0x46`, `<=` → `_0x50`; the state predicates `tæller op`/`tæller ned`/`stoppet` REUSE the
+  command opcodes `_0xc8`/`_0xd2`/`_0xdc` (method semantics are (code, family)-scoped, F-105).
+  `Timer <` never commits — dead entry, F-106 — absent.
+- **Arithmetic grid completion (F-108):** mixed subtract `_0x69`, int÷int `_0x6e`, float×float `_0x78`
+  — completing the 8-code grid (mixed-float column = generic column + 0x5); direction-independence
+  re-attested (tal+kommatal → `_0x5f`); counter is generic-class (tæller+tæller → `_0x5a`).
+- **Controls in-file:** kommatal−kommatal → `_0x64`, tal+tal → `_0x5a`, tæller+tal → `_0x5a`.
+
+Float-target divide is deliberately ABSENT — refused across the whole engineered-population ladder
+(P1–P6, 16 attempts including e2's; F-107), resolved 2026-07-21 by owner ruling as not offered
+(US-032: division targets integers only; the manual confirmation rung was waived). The other dead
+cells (float+float `+`, int−int / int←float `−`, counter `−`, int×int `×`) are likewise absent
+(F-109). Passive round-trip in `ProjectByteFidelityTests` (both batteries) — the 6 new codes ride the
+open-world serializer with zero engine changes.
+
 ## Authentic oracles (`projects/LiveAuthored/`)
 
 Minimal single-purpose projects captured live in IHC Visual during experiment B3, each isolating

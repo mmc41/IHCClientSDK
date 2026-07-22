@@ -24,6 +24,9 @@ public sealed class FakeDialogService : IDialogService
     public string? LastPropertiesName { get; private set; }
     public string? LastPropertiesNote { get; private set; }
     public int EditPropertiesCalls { get; private set; }
+    public VariablePropertiesResult? VariablePropertiesResult { get; set; }
+    public VariablePropertiesInput? LastVariablePropertiesInput { get; private set; }
+    public int EditVariablePropertiesCalls { get; private set; }
     public ProductPropertiesResult? ProductPropertiesResult { get; set; }
     public ProductPropertiesInput? LastProductPropertiesInput { get; private set; }
     public int EditProductPropertiesCalls { get; private set; }
@@ -92,6 +95,13 @@ public sealed class FakeDialogService : IDialogService
         return Task.FromResult(PropertiesResult);
     }
 
+    public Task<VariablePropertiesResult?> EditVariablePropertiesAsync(VariablePropertiesInput input)
+    {
+        EditVariablePropertiesCalls++;
+        LastVariablePropertiesInput = input;
+        return Task.FromResult(VariablePropertiesResult);
+    }
+
     public Task<ProductPropertiesResult?> EditProductPropertiesAsync(ProductPropertiesInput input)
     {
         EditProductPropertiesCalls++;
@@ -157,6 +167,15 @@ public sealed class FakeDialogService : IDialogService
         return Task.CompletedTask;
     }
 
+    public ihc_openvisual.ViewModels.ReportsViewModel? LastReportsViewModel { get; private set; }
+    public int ShowReportsCalls { get; private set; }
+    public Task ShowReportsAsync(IReportsDialogViewModel viewModel)
+    {
+        ShowReportsCalls++;
+        LastReportsViewModel = viewModel as ihc_openvisual.ViewModels.ReportsViewModel;   // tests use the concrete VM (T021 seam)
+        return Task.CompletedTask;
+    }
+
     public ModuleAddressMap? LastModuleMap { get; private set; }
     public int ShowModuleMapCalls { get; private set; }
     public Task ShowModuleMapAsync(ModuleAddressMap map)
@@ -193,7 +212,11 @@ public sealed class ShellHarness : IDisposable
         Directory.CreateDirectory(TempDir);
         Backup = new BackupService(Path.Combine(TempDir, "recovery"));
         Recent = new RecentProjectsStore(Path.Combine(TempDir, "recent.json"));
-        ProjectService = new ProjectAppService(new IhcSettings());
+        // When a clock is injected (a FakeTimeProvider), the facade uses it too — so report generation timestamps
+        // (T022) are deterministic; otherwise the default file-only service on the system clock (kept lazy).
+        ProjectService = timeProvider is null
+            ? new ProjectAppService(new IhcSettings())
+            : new ProjectAppService(new IhcSettings(), new Ihc.Vis.Catalog.BuiltInCatalog(), timeProvider);
         // By default a one-hour timer never fires during a test; a FakeTimeProvider (passed in) drives it
         // deterministically. The catalog dir is a subfolder of TempDir so Restart(dir) reuses it (US-061).
         Session = new ProjectWorkflow(ProjectService, Backup, Recent, Dialogs, null,

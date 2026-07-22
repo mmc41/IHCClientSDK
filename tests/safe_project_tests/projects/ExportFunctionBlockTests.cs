@@ -66,6 +66,22 @@ namespace Ihc.Vis.Tests
             }
         }
 
+        // PG-3(b)/US-021: the exported .ifb master is ALWAYS locked, even when exported from an UNLOCKED source — a
+        // library block is view-only until unlocked. (The gemoracle-kip source is locked, which hid this omission.)
+        [Test]
+        public async Task ExportDefinition_FromUnlockedSource_IsAlwaysLocked()
+        {
+            Project project = await App.Load(Original);
+            ProjectEditor editor = project.Edit();
+            FunctionBlockRef fb = editor.FunctionBlock(KipBlockId(project));
+            fb.Unlock();   // the source block is now unlocked (US-020)
+
+            FunctionBlockDefinition def = fb.ExportDefinition("Blk", "Author", new DateOnly(2026, 7, 11));
+
+            Assert.That(def.Body.GetAttribute("locked"), Is.EqualTo("yes"),
+                "the exported master is locked regardless of the source's lock state");
+        }
+
         [Test]
         public async Task ExportFunctionBlock_NonFunctionBlockId_ThrowsInvalidOperation()
         {

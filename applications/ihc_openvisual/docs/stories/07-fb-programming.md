@@ -163,10 +163,11 @@ their name/note/initial value/persistence, **so that** the program has the data 
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Partly implemented — the wired variable palette and section matrix work. ⚠
-Editing a generic variable's Name/Note/initial value via *Properties* has no dialog route (the item is offered
-but no-ops); adding an enum variable always creates a new type instead of offering existing ones; and the
-kW/kWh/W/Wh power/energy types are suppressed from the palette pending a decision.
+**Implementation status:** ✅ Implemented — the section-aware variable palette offers **every** SDK variable type
+(the kW/kWh/W/Wh power/energy types included) and inserts each of its mapped resource type; adding an enum variable
+offers the existing types (or a new one); and a generic variable edits its **Name, Note, and typed initial value**
+via *Properties* (a bool checkbox, a number box, or an H/M/S(/ms) group per type) as one undoable, locked-block-
+refused step that round-trips byte-faithfully.
 
 ---
 
@@ -218,10 +219,15 @@ Scenario: Event and command semantics
   | **analog (humidity, …) → Events** | `is changed` · `is written` |
   | **weekday → Events** | `System weekday → <pin>` · `is changed` · `is written` |
   | **timer → Commands** | `= 0` · `= initial value` · `= <pin>` · `= Timer +` · `= Timer −` · `Activate count-down … with initial value` · `Activate count-up` · `Activate count-down` · `Stop counting` |
+  | **timer → Events** | `→ 0` · `is written` *(a timer raises no two-operand transfer event)* |
+  | **timer → Conditions** | `= 0` · `> <pin>` · `>= <pin>` · `<= <pin>` · `counting up` · `counting down` · `stopped` *(no strict `<` — express "less than" by swapping the operands of `>`)* |
 
-- MUST: A **two-operand** operator (`→ <pin>`, `= <pin>`, `NOT → <pin>`, `NOT =`) takes a **second pin**.
-  IHC OpenVisual lets the author **pick both ends** of such a row (US-029) — it must not silently auto-bind
-  the second operand.
+- MUST: The timer state tests `counting up` / `counting down` / `stopped` are **conditions** mirroring
+  the corresponding commands (`Activate count-up` / `Activate count-down` / `Stop counting`): the
+  command changes the timer's running state, the condition tests it.
+- MUST: A **two-operand** operator (`→ <pin>`, `= <pin>`, `NOT → <pin>`, `NOT =`, the timer comparisons
+  `>` / `>=` / `<=`, and `= Timer +` / `= Timer −`) takes a **second pin**. IHC OpenVisual lets the
+  author **pick both ends** of such a row (US-029) — it must not silently auto-bind the second operand.
 
 ### AC illustrations
 
@@ -232,11 +238,21 @@ Scenario: Event and command semantics
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Partly implemented — bool event and command authoring works. ⚠ The operator list
-is keyed by category, not by the pin's type: the bool lists are incomplete, the `NOT`-condition is a unary
-`%P <> ON` rather than the two-operand `NOT =`, the analog/weekday/timer operator sets are absent, `Toggle` is
-offered on any variable (not only bool outputs), two-operand comparison rows can't be authored, and a pin can't
-be dragged onto a **Conditions** group (only Events/Commands).
+**Implementation status:** ✅ Implemented — bool event and command authoring works, `Toggle` is now
+offered only for bool-output pins (PG-1c), the one-drag gesture holds for all three families (a pin dropped on an
+Events, Commands **or Conditions** group raises that family's popup), and the operator popup is now **keyed by the
+dragged pin's type**: analog offers only *is changed*/*is written*, weekday adds *System weekday →*, timer offers
+the pinned command subset, and a timer/analog/weekday pin no longer inherits the bool list. The bool lists are now
+**complete** (Events add `-> OFF`/`-> <pin>`/`NOT -> <pin>`; Commands add `= <pin>`/`= NOT`; Conditions add
+`= <pin>` and the `NOT`-condition is the pinned two-operand `%P <> %S`, not the old unary `%P <> ON`), and
+**two-operand rows are authorable**: the author picks the second pin `%S` from a submenu (no silent auto-bind), and
+the stored `method` + both operands match the spec. The **timer command list is complete** — the full vendor set
+of nine (`= 0`, `= initial value`, `= <pin>`, `= Timer +`/`= Timer -`, count-down-with-initial-value, count-up,
+count-down, stop counting), byte-fidelity templates pinned against the authentic oracle. The **timer event and
+condition lists are complete** too: a timer on Events offers `-> 0` and `is written`; on Conditions it offers
+`= 0`, the two-operand `>`/`>=`/`<=`, and the `counting up`/`counting down`/`stopped` predicates — the vendor's
+dead `Timer ->` event and `<` condition are never offered, and the count-state predicates reuse the command
+opcodes with condition-family semantics ((code, family)-scoped).
 
 ---
 
@@ -340,9 +356,9 @@ Scenario: Edit an existing enumerator type's states
   (6 ordered values). These names are **project data, rendered verbatim** (not translated), and both types
   are **always present** whether or not any variable references them — so a `Logning` type with zero
   references is the built-in, never deleted-resource residue.
-- **Known gap:** a **standalone / empty** custom enumerator *type* (0 states, referenced by no variable) is
-  not currently authorable — enumerator types are created only while adding an enum variable to a *Settings*
-  section, and there is no bare-enum-type route.
+- A **standalone / empty** custom enumerator *type* (0 states, referenced by no variable) is authorable via a
+  distinct **"New standalone type…"** action in the enum picker — decoupled from inserting a variable, so an empty
+  project-global type can be created and referenced later.
 
 ### AC illustrations
 
@@ -352,10 +368,12 @@ Scenario: Edit an existing enumerator type's states
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Partly implemented — creating a new enum type + typed variable, and the two
-built-ins, work. ⚠ Adding an enum variable always creates a new type instead of offering existing ones; editing
-is append-only — an existing state's label can't be *changed*; and a standalone/empty enum type has no
-authoring route (the Known gap above).
+**Implementation status:** ✅ Implemented — creating a new enum type + typed variable, the two built-ins, an
+**enum-type picker** on insert (the existing enumerator types plus a "New…" that authors a new one — picking an
+existing type references its def-id and authors no new type), a distinct **"New standalone type…"** route that
+authors a 0-state, unreferenced project-global type (no variable), and editing an existing user type — a state's
+label can be **relabeled** in place (id/index preserved) as well as appended, while built-in ("[read only]") types
+refuse edits — all work. (Reorder / remove / rename-type are deliberately out of scope.)
 
 ---
 
@@ -395,8 +413,9 @@ Scenario: Default branch
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Partly implemented — case insert and literal value branches work. ⚠ On an
-enum-keyed case, adding a value no-ops — the enum-criterion branch path is unreachable from the app.
+**Implementation status:** ✅ Implemented — case insert plus literal *and* enum-criterion value branches work. On
+an enum-keyed case, adding a value takes one of the switch type's states (surfaced in the prompt) and creates a
+branch tagged with it, carrying a `resource_enum` operand; a value that is not a state is reported, not applied.
 
 ---
 
@@ -410,14 +429,28 @@ operation per command line, **so that** the block can derive values like average
 **Rules:**
 - MUST: A command line performs **at most one** arithmetic operation; larger formulas are built as a
   sequence of one-operation command lines using a running "display" register.
-- MUST: Decimal (**Decimal**) variables support +, −, ×, ÷; the tool shows which other variable types
-  may combine with a decimal.
+- MUST: The four operations are offered **per the type-pairing matrix** — a pairing outside the matrix
+  is simply not offered in the popup (no error state, no greyed entry):
+
+  | Operation | Offered pairings (target register ← operand) |
+  |---|---|
+  | `+` | every pairing of integers, counters and decimals **except** decimal + decimal (grow a decimal via decimal + integer) |
+  | `−` | decimal − decimal · decimal − integer · timer − timer |
+  | `×` | at least one operand is a decimal: decimal × decimal · decimal × integer (either order) |
+  | `÷` | integer targets only: integer ÷ integer · integer ÷ decimal |
+  | `+ 1` / `− 1` | counters only — dedicated one-operand step operations |
+
+- MUST: A **counter** is adjusted with `+ 1` / `− 1`, two-operand `+`, or a reset to `0`; it offers no
+  two-operand `−`, `×` or `÷`. Timer `+` / `−` (timer with timer) belongs to the timer command set
+  (US-028).
 - SHOULD: To convert a decimal to an integer, add the decimal to an integer variable (previously set to
   0); the assignment to the integer truncates toward zero (drops the fractional part).
 
 **Worked pattern for `(N1 + N2) * C / D`:**
 - Display = 0; Display = Display + N1; Display = Display + N2; Display = Display × C; Display = Display ÷ D.
 - For parenthesised formulas, evaluate the innermost parenthesis first.
+- Each line must use a pairing from the matrix — in particular, run the `÷` step on an **integer**
+  display register.
 
 **Output:**
 - A decimal or integer result stored in a variable, shown inline as `name = value` (e.g. `Display =
@@ -425,18 +458,25 @@ operation per command line, **so that** the block can derive values like average
 
 ### AC illustrations
 
-- `F1 / F2` with `F1`, `F2` decimals stores `Display = 0.33`.
+- `Number ÷ F2` (integer target, decimal divisor) stores the truncated quotient in `Number`.
 - Converting `2.5` via an integer `Number` yields `Number = 2` (truncation); `−3.9` yields `−3`.
+- Deriving a decimal average: sum with decimal + integer lines, then multiply by a decimal reciprocal
+  (`× 0.5` for a two-value average) — division onto a decimal register is not offered.
 
 ### Constraints
 
-- Verification method — **Test** the one-operation-per-line rule and the truncation behaviour of
-  decimal→integer conversion.
+- Verification method — **Test** the one-operation-per-line rule, the pairing matrix (offered vs
+  absent pairings), and the truncation behaviour of decimal→integer conversion.
 - Decimals display with a point separator (`0.33`, `38.96`) per English locale.
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Partly implemented (add/subtract, one-operation-per-line; ×/÷ pending).
+**Implementation status:** ✅ Implemented — the full arithmetic opcode grid (+/−/÷/×, each with its
+generic same-class opcode and its mixed float↔int variant) and the commit-legality matrix are wired: the
+app offers ONLY the authorable cells per pin-type pair and never surfaces a dead vendor popup entry (float+float
+`+`, int−int / int←float `−`, counter `−`, int×int `×` and float-target `÷` are withheld), plus the 1-op
+counter `± 1`. Division onto a decimal register is **not offered** (the ÷ row is final). Opcodes are
+byte-fidelity-pinned and every authorable cell round-trips through a save→reload.
 
 ---
 

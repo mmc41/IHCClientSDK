@@ -34,6 +34,8 @@ public class DataTablesOutcomeTests
         public Task ShowSettingsAsync(string settingsText) => Task.CompletedTask;
         public Task OpenExternalUrlAsync(string url) => Task.CompletedTask;
         public Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note) => Task.FromResult<PropertiesResult?>(null);
+        public Task<VariablePropertiesResult?> EditVariablePropertiesAsync(VariablePropertiesInput input) => Task.FromResult<VariablePropertiesResult?>(null);
+        public Task ShowReportsAsync(IReportsDialogViewModel viewModel) => Task.CompletedTask;
         public Task<ProductPropertiesResult?> EditProductPropertiesAsync(ProductPropertiesInput input) => Task.FromResult<ProductPropertiesResult?>(null);
         public Task<SceneContainerResult?> EditSceneContainerAsync(SceneContainerInput input) => Task.FromResult<SceneContainerResult?>(null);
         public Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input) => Task.FromResult<PinPropertiesResult?>(null);

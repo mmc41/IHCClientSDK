@@ -679,6 +679,30 @@ namespace Ihc.Vis
             });
         }
 
+        /// <summary>
+        /// Save-to-library (US-021, PG-3a): exports the block to <paramref name="ifbStream"/> as a keyless <c>.ifb</c>
+        /// master, THEN transforms the in-project block into a locked library instance (rename + <c>master_*</c> stamp
+        /// + badge + note + <c>locked="yes"</c>, no re-insertion). <b>Failure ordering:</b> the export runs FIRST, so a
+        /// failed export throws before any project mutation and the project is left unmutated. Returns the transform's
+        /// <see cref="ProjectApplyResult"/> — the caller commits it, which makes one undo restore the prior unlocked block.
+        /// </summary>
+        public ProjectApplyResult SaveFunctionBlockToLibrary(Project project, ElementId functionBlockId, Stream ifbStream,
+            string author, string name, string? note = null)
+        {
+            ExportFunctionBlock(project, functionBlockId, ifbStream, name, author, note: note);   // FIRST — throws → no transform
+            return Apply(project, Commands.SaveFunctionBlockToLibrary(project, functionBlockId, name, author, note));
+        }
+
+        /// <summary>The atomic-file-write overload of
+        /// <see cref="SaveFunctionBlockToLibrary(Project, ElementId, Stream, string, string, string)"/> — writes the
+        /// <c>.ifb</c> to <paramref name="path"/> before transforming the in-project block (same failure ordering).</summary>
+        public async Task<ProjectApplyResult> SaveFunctionBlockToLibrary(Project project, ElementId functionBlockId, string path,
+            string author, string name, string? note = null)
+        {
+            await ExportFunctionBlock(project, functionBlockId, path, name, author, note: note);   // FIRST — throws → no transform
+            return Apply(project, Commands.SaveFunctionBlockToLibrary(project, functionBlockId, name, author, note));
+        }
+
         // Lifts a placed block to a keyless user-block definition (read-only over the immutable project — project.Edit()
         // makes a private mutable copy that is never committed back). The date defaults to today from the service clock.
         private FunctionBlockDefinition BuildExportDefinition(Project project, ElementId functionBlockId, string name,
@@ -693,55 +717,30 @@ namespace Ihc.Vis
         }
 
         /// <summary>
-        /// Builds the render-ready installation ("Installationsdokumentation") report model from a loaded
-        /// project: masthead, per-product detail tables (Installation-pane order), the flat data-line
-        /// cross-reference tables, and the module/special-product/S0 tables, in the fixed output order. Every
-        /// value is display-final (blank→"--" or empty cell, addresses decoded); the installation report never
-        /// omits undocumented products (omission is end-user-report-only). All report business logic lives here —
-        /// a GUI transforms the result 1-to-1 into HTML.
+        /// Builds the COMBINED project-documentation report model (D14/T020): ONE render-ready model composing the
+        /// installation, end-user and function-block content in the fixed section order and carrying the
+        /// switch-supporting data — per-section/per-element internal ids + inclusion flags, raw-blank-beside-display
+        /// values, and a unified locality representation. The app renders this and applies switches; it computes
+        /// nothing. All report business logic lives in the SDK (<see cref="ReportBuilder.BuildProjectDocumentation"/>).
         /// </summary>
-        public InstallationReport GenerateInstallationReport(Project project)
+        public ProjectDocumentationReport GenerateProjectDocumentationReport(Project project)
         {
             ArgumentNullException.ThrowIfNull(project);
-            return RunTraced(nameof(GenerateInstallationReport), activity =>
+            return RunTraced(nameof(GenerateProjectDocumentationReport), activity =>
             {
-                InstallationReport report = ReportBuilder.BuildInstallation(project);
-                activity?.SetReturnValue(report.ProductDetails.Length);
-                return report;
-            });
-        }
-
-        /// <summary>
-        /// Builds the render-ready end-user ("Funktionsdokumentation") report model from a loaded project: every
-        /// locality in Installation-pane order (never omitted), each carrying only the products flagged for
-        /// end-user documentation, with note propagation resolved (one function-block-input note per link on each
-        /// physical terminal) and the screen-only differing-locality suffix marked. All report business logic
-        /// lives here — a GUI transforms the result 1-to-1 into HTML (screen and print variants).
-        /// </summary>
-        public EndUserReport GenerateEndUserReport(Project project)
-        {
-            ArgumentNullException.ThrowIfNull(project);
-            return RunTraced(nameof(GenerateEndUserReport), activity =>
-            {
-                EndUserReport report = ReportBuilder.BuildEndUser(project);
-                activity?.SetReturnValue(report.Localities.Length);
-                return report;
-            });
-        }
-
-        /// <summary>
-        /// Builds the render-ready function-block ("Functionsblok dokumentation") report model from a loaded
-        /// project (US-041): every function block in Installation/Functions-pane document order, each with its
-        /// variable sections and their variables. A minimal US-041 listing (extend when the full vendor per-field
-        /// layout is transcribed); all logic lives in the SDK — a GUI transforms the result 1-to-1 into HTML.
-        /// </summary>
-        public FunctionBlockReport GenerateFunctionBlockReport(Project project)
-        {
-            ArgumentNullException.ThrowIfNull(project);
-            return RunTraced(nameof(GenerateFunctionBlockReport), activity =>
-            {
-                FunctionBlockReport report = ReportBuilder.BuildFunctionBlock(project);
-                activity?.SetReturnValue(report.Blocks.Length);
+                // D16/T031: the report identifies a product by its resolved catalog TYPE-NAME text (image-free), not the
+                // raw product_identifier image key. The catalog lives here (above the pure ReportBuilder), so resolve
+                // the identifier→type-name map once and hand the builder a resolver keyed by each product's identifier.
+                Dictionary<string, string> typeNames = catalog.Value.Products
+                    .GroupBy(p => p.ProductIdentifier, StringComparer.Ordinal)
+                    .ToDictionary(g => g.Key, g => g.First().DisplayName, StringComparer.Ordinal);
+                string ResolveProductType(ProjectElement element) =>
+                    element.GetAttribute("product_identifier") is { } id && typeNames.TryGetValue(id, out string? name)
+                        ? name
+                        : string.Empty;
+                ProjectDocumentationReport report = ReportBuilder.BuildProjectDocumentation(
+                    project, timeProvider.GetLocalNow(), ResolveProductType);
+                activity?.SetReturnValue(report.Sections.Length);
                 return report;
             });
         }

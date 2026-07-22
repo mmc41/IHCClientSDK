@@ -102,11 +102,12 @@ namespace Ihc.Vis
 
     /// <summary>
     /// An end-user product block: its <see cref="Name"/>, the <see cref="Position"/> (empty when blank — the
-    /// transform appends it only when non-empty), the <see cref="ProductIdentifier"/> (the product image key),
-    /// and its terminals (inputs then outputs for wired products, inputs for airlink).
+    /// transform appends it only when non-empty), the <see cref="ProductType"/> (the product's resolved catalog
+    /// type-name TEXT — image-free product identity per D16, empty when unresolved), and its terminals (inputs then
+    /// outputs for wired products, inputs for airlink).
     /// </summary>
     public sealed record EndUserProduct(
-        string Name, string Position, string ProductIdentifier,
+        string Name, string Position, string ProductType,
         ImmutableArray<EndUserTerminal> Terminals);
 
     /// <summary>

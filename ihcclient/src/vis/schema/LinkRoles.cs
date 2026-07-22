@@ -24,6 +24,11 @@ namespace Ihc.Vis.Schema
     /// </summary>
     internal static class LinkRoles
     {
+        /// <summary>Why a pin-to-itself follow-link (id == id) is refused (D06): the vendor never produces one, and a
+        /// pin driving itself is not an authorable feedback link. The id equality is checked by the caller (which holds
+        /// the ids); this is the shared wording the engine throw uses.</summary>
+        internal const string SelfLinkReason = "a pin cannot be both the source and the target of a follow-link";
+
         /// <summary>
         /// Pins that never own a <c>link_from_resource</c> half: an FB input is a trigger the block consumes,
         /// so it cannot feed anything. (Vendor cells 7/8/T2/T4; 0 of 314 corpus halves.)

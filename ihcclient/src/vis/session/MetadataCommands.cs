@@ -78,7 +78,8 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Add variable";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireTag(BlockId, "a function block", "functionblock");
+            context.RequireTag(BlockId, "a function block", "functionblock")
+                .And(context.RequireUnlockedTarget(BlockId, inclusive: true));   // T003
         internal override ElementId ExecuteCore(ProjectEditor editor)
         {
             FunctionBlockRef fb = editor.FunctionBlock(BlockId);
@@ -102,7 +103,8 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Add enumerator";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireTag(BlockId, "a function block", "functionblock");
+            context.RequireTag(BlockId, "a function block", "functionblock")
+                .And(context.RequireUnlockedTarget(BlockId, inclusive: true));   // T003
         internal override ElementId ExecuteCore(ProjectEditor editor)
         {
             EnumDefinitionRef def = editor.AddEnumDefinition(TypeName, States.ToArray());
@@ -125,14 +127,72 @@ namespace Ihc.Vis.Session
         }
     }
 
-    /// <summary>Appends newly-listed states to an existing enumerator type (US-030). The caller computes the not-yet-
-    /// present states; an empty append is a no-op (NoChange) — the old hand-rolled bypass and its early-return die.</summary>
+    /// <summary>Adds a variable of an EXISTING project-global enumerator type to a block section (US-030 enum-type
+    /// picker, PG-4): references the type's def-id (wiring <c>typedef</c> + the default <c>inivalue</c>), authoring NO
+    /// new type. The caller resolves the owning block id and the existing type name.</summary>
+    public sealed record AddEnumVariableOfExistingType(ElementId BlockId, string SectionTag, string VariableName, string TypeName)
+        : ProjectCommand<ElementId>
+    {
+        internal override string Describe(Project project) => "Add enumerator";
+        internal override EditVerdict Evaluate(EditContext context) =>
+            context.RequireTag(BlockId, "a function block", "functionblock")
+                .And(context.RequireUnlockedTarget(BlockId, inclusive: true));   // T003
+        internal override ElementId ExecuteCore(ProjectEditor editor)
+        {
+            EnumDefinitionRef def = editor.EnumDefinition(TypeName);   // resolve the EXISTING type — no new def authored
+            FunctionBlockRef fb = editor.FunctionBlock(BlockId);
+            void Configure(ElementRef r)
+            {
+                r.SetAttribute("typedef", def.Typedef);
+                if (def.FirstValue is { } inivalue)
+                {
+                    r.SetAttribute("inivalue", inivalue);
+                }
+            }
+            ResourceRef added = SectionTag switch
+            {
+                "settings" => fb.AddSetting("resource_enum", VariableName, Configure),
+                "internalsettings" => fb.AddInternalVariable("resource_enum", VariableName, Configure),
+                _ => throw new EditRefusedException($"<{SectionTag}> does not accept an enum variable."),
+            };
+            return added.Id ?? throw new EditRefusedException("The variable was not added.");
+        }
+    }
+
+    /// <summary>Authors a project-global enumerator TYPE with no variable (US-030 standalone/empty-type route, PG-7,
+    /// D02): a 0-state, unreferenced type when <paramref name="States"/> is empty — distinct from the variable-insert
+    /// "New…" which also inserts a resource_enum. The type lands in the project-global <c>enum_definitions</c> container.</summary>
+    public sealed record AddStandaloneEnumType(string TypeName, IReadOnlyList<string> States) : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Add enumerator type";
+        internal override EditVerdict Evaluate(EditContext context) => EditVerdict.Allow;   // project-global — no block target
+        internal override void Execute(ProjectEditor editor) => editor.AddEnumDefinition(TypeName, States.ToArray());
+    }
+
+    /// <summary>Edits an existing enumerator type (US-030): relabels changed existing states in place (T013) then
+    /// appends the newly-listed ones. The caller diffs the dialog's full ordered list into <see cref="Relabels"/> and
+    /// <paramref name="Added"/>; with both empty the command is a no-op (NoChange). Relabels run first (a built-in
+    /// "[read only]" type is refused by the engine); reorder / remove / rename-type are out of scope (D05).</summary>
     public sealed record UpdateEnumStates(string DefName, IReadOnlyList<string> Added) : ProjectCommand
     {
+        /// <summary>Position-keyed relabels of EXISTING values (T013): each targeted value's id paired with its new
+        /// label. Defaults to none, so the append-only construction stays valid.</summary>
+        public IReadOnlyList<(ElementId ValueId, string NewName)> Relabels { get; init; } = [];
+
         internal override string Describe(Project project) => "Edit enumerator";
         internal override EditVerdict Evaluate(EditContext context) => EditVerdict.Allow;
-        internal override void Execute(ProjectEditor editor) =>
-            editor.AddEnumValues(editor.EnumDefinition(DefName), Added.ToArray());
+        internal override void Execute(ProjectEditor editor)
+        {
+            EnumDefinitionRef def = editor.EnumDefinition(DefName);
+            foreach ((ElementId valueId, string newName) in Relabels)
+            {
+                def = editor.RelabelEnumValue(def, valueId, newName);
+            }
+            if (Added.Count > 0)
+            {
+                editor.AddEnumValues(def, Added.ToArray());
+            }
+        }
     }
 
     /// <summary>Applies edited advanced wireless-dimmer settings (US-015): the six dimmer_setting values.</summary>

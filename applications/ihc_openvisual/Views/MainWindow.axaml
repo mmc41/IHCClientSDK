@@ -117,10 +117,10 @@
             </MenuItem>
             <MenuItem Header="Cu_t" Command="{Binding CutCommand}" CommandParameter="{Binding SelectedNode}"
                       InputGesture="Ctrl+X"
-                      IsVisible="{Binding SelectedNode.CanCutCopy, FallbackValue=False}"/>
+                      IsVisible="{Binding SelectedNode.CanCut, FallbackValue=False}"/>
             <MenuItem Header="_Copy" Command="{Binding CopyCommand}" CommandParameter="{Binding SelectedNode}"
                       InputGesture="Ctrl+C"
-                      IsVisible="{Binding SelectedNode.CanCutCopy, FallbackValue=False}"/>
+                      IsVisible="{Binding SelectedNode.CanCopy, FallbackValue=False}"/>
             <MenuItem Header="_Paste" Command="{Binding PasteCommand}" CommandParameter="{Binding SelectedNode}"
                       InputGesture="Ctrl+V"
                       IsVisible="{Binding CanPaste, FallbackValue=False}"/>
@@ -260,14 +260,7 @@
                 <MenuItem Header="_Data tables…" Command="{Binding DataTablesCommand}"/>
                 <MenuItem Header="_Wired module map…" Command="{Binding ModuleMapCommand}"/>
                 <Separator/>
-                <MenuItem Header="_Reports">
-                    <MenuItem Header="_Installation documentation" Command="{Binding InstallationReportScreenCommand}"/>
-                    <MenuItem Header="Installation documentation (_print)" Command="{Binding InstallationReportPrintCommand}"/>
-                    <MenuItem Header="_Function / end-user documentation" Command="{Binding EndUserReportScreenCommand}"/>
-                    <MenuItem Header="Function / end-user documentation (p_rint)" Command="{Binding EndUserReportPrintCommand}"/>
-                    <MenuItem Header="Function-_block documentation" Command="{Binding FunctionBlockReportScreenCommand}"/>
-                    <MenuItem Header="Function-block documentation (pr_int)" Command="{Binding FunctionBlockReportPrintCommand}"/>
-                </MenuItem>
+                <MenuItem Header="_Reports…" Command="{Binding OpenReportsCommand}"/>
             </MenuItem>
 
             <MenuItem Header="_Help" a:AutomationProperties.AutomationId="MenuHelp">

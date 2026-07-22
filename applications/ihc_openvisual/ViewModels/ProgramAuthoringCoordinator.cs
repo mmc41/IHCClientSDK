@@ -8,6 +8,7 @@ using ihc_openvisual.Services;
 using Ihc.Vis;
 using Ihc.Vis.Model;
 using Ihc.Vis.Programs;
+using Ihc.Vis.Projects;
 using Ihc.Vis.Session;
 
 namespace ihc_openvisual.ViewModels;
@@ -67,29 +68,62 @@ internal sealed class ProgramAuthoringCoordinator(
     // or resize can never mis-label a menu item or throw IndexOutOfRange. A method absent from this map is simply not
     // surfaced (the app owns which methods it presents and how it phrases them; the SDK owns the tokens/names/notes/
     // semantics). The (Category, Token) pair is the method's identity — the token alone is reused across categories.
-    private static readonly FrozenDictionary<(ProgramMethodCategory Category, string Token), string> MethodVerbs =
-        new Dictionary<(ProgramMethodCategory, string), string>
+    private static readonly FrozenDictionary<(ProgramPinType PinType, ProgramMethodCategory Category, string Token), string> MethodVerbs =
+        new Dictionary<(ProgramPinType, ProgramMethodCategory, string), string>
         {
-            [(ProgramMethodCategory.Event, "_0xa")] = "changes to ON",
-            [(ProgramMethodCategory.Event, "_0x96")] = "changes state",
-            [(ProgramMethodCategory.Event, "_0x9b")] = "is assigned",
-            [(ProgramMethodCategory.Command, "_0xa")] = "set to ON",
-            [(ProgramMethodCategory.Command, "_0x14")] = "set to OFF",
-            [(ProgramMethodCategory.Command, "_0x23")] = "toggled",
-            [(ProgramMethodCategory.Condition, "_0xa")] = "is ON",
-            [(ProgramMethodCategory.Condition, "_0x14")] = "is OFF",
-            [(ProgramMethodCategory.Condition, "_0x28")] = "is NOT ON",
+            [(ProgramPinType.Bool, ProgramMethodCategory.Event, "_0xa")] = "changes to ON",
+            [(ProgramPinType.Bool, ProgramMethodCategory.Event, "_0x14")] = "changes to OFF",
+            [(ProgramPinType.Bool, ProgramMethodCategory.Event, "_0x1e")] = "changes to",           // 2-operand (second pin)
+            [(ProgramPinType.Bool, ProgramMethodCategory.Event, "_0x28")] = "changes to NOT",       // 2-operand
+            [(ProgramPinType.Bool, ProgramMethodCategory.Event, "_0x96")] = "changes state",
+            [(ProgramPinType.Bool, ProgramMethodCategory.Event, "_0x9b")] = "is assigned",
+            [(ProgramPinType.Bool, ProgramMethodCategory.Command, "_0xa")] = "set to ON",
+            [(ProgramPinType.Bool, ProgramMethodCategory.Command, "_0x14")] = "set to OFF",
+            [(ProgramPinType.Bool, ProgramMethodCategory.Command, "_0x1e")] = "set to",             // 2-operand
+            [(ProgramPinType.Bool, ProgramMethodCategory.Command, "_0x28")] = "set to NOT",         // 2-operand
+            [(ProgramPinType.Bool, ProgramMethodCategory.Command, "_0x23")] = "toggled",
+            [(ProgramPinType.Bool, ProgramMethodCategory.Condition, "_0xa")] = "is ON",
+            [(ProgramPinType.Bool, ProgramMethodCategory.Condition, "_0x14")] = "is OFF",
+            [(ProgramPinType.Bool, ProgramMethodCategory.Condition, "_0x1e")] = "equals",           // 2-operand
+            [(ProgramPinType.Bool, ProgramMethodCategory.Condition, "_0x28")] = "differs from",     // 2-operand (was unary "is NOT ON")
+            // Weekday (PG-1b): the System-weekday assignment reads pin-first in the menu though it stores "System ugedag -> %P".
+            [(ProgramPinType.Weekday, ProgramMethodCategory.Event, "_0x5")] = "= system weekday",
+            // Timer (D21/D22, the full nine) — a shared token (_0xa) means something different than the bool verb.
+            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0xa")] = "= 0",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0x19")] = "= initial value",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0x1e")] = "= another timer",           // 2-operand
+            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0x5a")] = "increased by",              // 2-operand
+            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0x64")] = "decreased by",              // 2-operand
+            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0xbe")] = "count-down from initial value",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0xc8")] = "count-up activated",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0xd2")] = "count-down activated",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0xdc")] = "stop counting",
+            // Timer events (D22/progmode3).
+            [(ProgramPinType.Timer, ProgramMethodCategory.Event, "_0xa")] = "reaches 0",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Event, "_0x9b")] = "is written",
+            // Timer conditions (D22/progmode3) — the comparisons are two-operand; the count-state predicates reuse
+            // the command opcodes but are (code, family)-scoped, so their verbs live under the Condition family here.
+            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0xa")] = "is 0",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0x32")] = "greater than",   // 2-operand
+            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0x46")] = "at least",       // 2-operand
+            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0x50")] = "at most",        // 2-operand
+            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0xc8")] = "counting up",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0xd2")] = "counting down",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0xdc")] = "stopped",
         }.ToFrozenDictionary();
 
     /// <summary>Pairs each catalog method with its GUI menu label ("<paramref name="varName"/> &lt;verb&gt;") by the
-    /// method's (Category, Token) — order-independent and resize-safe: a method with no <see cref="MethodVerbs"/> verb
-    /// is dropped rather than mis-labelled or throwing. The pure core each Event/Command/Condition menu is built from
-    /// (internal so it is unit-testable against a reordered/resized method list).</summary>
+    /// method's (<paramref name="pinType"/>, Category, Token) — a timer's <c>_0xa</c> ("= 0") differs from a bool's
+    /// ("set to ON") for the same token, so the pin type is part of the key; a type without its own verb falls back to
+    /// the bool verb (analog/weekday reuse the bool changes-state/is-assigned verbs). Order-independent and
+    /// resize-safe: a method with no verb is dropped rather than mis-labelled or throwing. The pure core each
+    /// Event/Command/Condition menu is built from (internal so it is unit-testable against a reordered method list).</summary>
     internal static IEnumerable<(ProgramMethod Method, string Label)> MethodMenuItems(
-        IEnumerable<ProgramMethod> methods, string varName)
+        IEnumerable<ProgramMethod> methods, string varName, ProgramPinType pinType)
     {
         foreach (ProgramMethod m in methods)
-            if (MethodVerbs.TryGetValue((m.Category, m.Token), out string? verb))
+            if (MethodVerbs.TryGetValue((pinType, m.Category, m.Token), out string? verb)
+                || MethodVerbs.TryGetValue((ProgramPinType.Bool, m.Category, m.Token), out verb))
                 yield return (m, $"{varName} {verb}");
     }
 
@@ -126,40 +160,61 @@ internal sealed class ProgramAuthoringCoordinator(
         ProgramArithmeticMenu.Clear();
         if (PendingProgramVariable is not { ElementId: { } varId, DisplayName: { } varName })
             return;
+        // PG-1b: the dragged pin's TYPE picks the operator list per container, so a timer/analog/weekday pin no
+        // longer inherits the bool operators (a tag outside those families stays on the bool default).
+        ProgramPinType pinType = ProgramMethodCatalog.ClassifyPin(session.Current?.FindById(varId)?.Tag ?? string.Empty);
         if (value is { IsEventsContainer: true, ElementId: { } eventsId })
         {
-            foreach ((ProgramMethod m, string label) in MethodMenuItems(ProgramMethodCatalog.Events, varName))
-                ProgramEventMenu.Add(new ProductMenuItemViewModel(label, m.Token,
-                    new AsyncRelayCommand(() => AddProgramEventAsync(eventsId, varId, m.Token, m.NameTemplate, m.Note))));
+            foreach ((ProgramMethod m, string label) in MethodMenuItems(ProgramMethodCatalog.EventsFor(pinType), varName, pinType))
+                AddOperator(ProgramEventMenu, m, label, pinType, varId,
+                    one => AddProgramEventAsync(eventsId, varId, one.Token, one.NameTemplate, one.Note),
+                    (two, opId) => AddTwoOperandEventAsync(eventsId, varId, opId, two.Token, two.NameTemplate, two.Note));
         }
         if (value is { IsCommandsContainer: true, ElementId: { } actionsId })
         {
-            foreach ((ProgramMethod m, string label) in MethodMenuItems(ProgramMethodCatalog.Commands, varName))
-                ProgramCommandMenu.Add(new ProductMenuItemViewModel(label, m.Token,
-                    new AsyncRelayCommand(() => AddProgramCommandAsync(actionsId, varId, m.Token, m.NameTemplate, m.Note))));
+            // PG-1c: Toggle (and any bool-output-only command) is offered only when the armed variable is a bool
+            // OUTPUT pin — resolved from the SDK read model, not the VM flag, matching the case/arithmetic checks below.
+            bool boolOutput = session.Current?.FindById(varId) is { } armed && armed.IsOutputPin;
+            foreach ((ProgramMethod m, string label) in MethodMenuItems(ProgramMethodCatalog.CommandsFor(pinType), varName, pinType))
+            {
+                if (ProgramMethodCatalog.BoolOutputOnlyCommandTokens.Contains(m.Token) && !boolOutput)
+                    continue;
+                // A two-operand command (%P = %S / %P <> %S) reuses the arithmetic-shape command (link1 target, link2 operand).
+                AddOperator(ProgramCommandMenu, m, label, pinType, varId,
+                    one => AddProgramCommandAsync(actionsId, varId, one.Token, one.NameTemplate, one.Note),
+                    (two, opId) => AddArithmeticAsync(actionsId, varId, two.Token, opId, two.NameTemplate));
+            }
             // A case can be built here when the armed variable is an eligible switch type (US-031).
             if (session.Current?.FindById(varId)?.Tag is { } varTag && ProgramMethodCatalog.EligibleCaseVariableTags.Contains(varTag))
                 ProgramCaseMenu.Add(new ProductMenuItemViewModel($"Case ({varName})", "case",
                     new AsyncRelayCommand(() => AddCaseAsync(actionsId, varId))));
-            // Arithmetic can be built here when the armed variable is a numeric target register (US-032).
-            if (session.Current?.FindById(varId)?.Tag is { } t && ProgramMethodCatalog.NumericVariableTags.Contains(t))
+            // Arithmetic (US-032, F-108/F-109): a numeric target register offers each operator as a second-operand
+            // submenu, but ONLY the authorable cells — the opcode and legality per (op, target-type, operand-type)
+            // come from the SDK grid; a dead cell is never offered. A counter target additionally gets the 1-op steps.
+            if (session.Current?.FindById(varId)?.Tag is { } targetTag && ProgramMethodCatalog.NumericVariableTags.Contains(targetTag))
             {
                 foreach (ProgramMethod op in ProgramMethodCatalog.Arithmetic)
                 {
                     var opNode = new ProductMenuItemViewModel($"{varName} {op.OperatorSymbol}= …");   // category
-                    foreach ((string opName, ElementId opId) in NumericOperandsInBlock())
-                        opNode.Children.Add(new ProductMenuItemViewModel(opName, "arith",
-                            new AsyncRelayCommand(() => AddArithmeticAsync(actionsId, varId, op.Token, opId, op.NameTemplate))));
+                    foreach ((string opName, ElementId opId, string operandTag) in NumericOperandsInBlock())
+                        if (ProgramMethodCatalog.ArithmeticToken(op.OperatorSymbol!, targetTag, operandTag) is { } token)
+                            opNode.Children.Add(new ProductMenuItemViewModel(opName, token,
+                                new AsyncRelayCommand(() => AddArithmeticAsync(actionsId, varId, token, opId, op.NameTemplate))));
                     if (opNode.Children.Count > 0)
                         ProgramArithmeticMenu.Add(opNode);
                 }
+                if (targetTag == "resource_counter")
+                    foreach (ProgramMethod step in ProgramMethodCatalog.CounterSteps)
+                        ProgramArithmeticMenu.Add(new ProductMenuItemViewModel($"{varName} {step.OperatorSymbol} 1", step.Token,
+                            new AsyncRelayCommand(() => AddProgramCommandAsync(actionsId, varId, step.Token, step.NameTemplate, step.Note))));
             }
         }
         if (value is { IsConditionsContainer: true, ElementId: { } conditionsId })
         {
-            foreach ((ProgramMethod m, string label) in MethodMenuItems(ProgramMethodCatalog.Conditions, varName))
-                ProgramConditionMenu.Add(new ProductMenuItemViewModel(label, m.Token,
-                    new AsyncRelayCommand(() => AddConditionAsync(conditionsId, varId, m.Token, m.NameTemplate, m.Note))));
+            foreach ((ProgramMethod m, string label) in MethodMenuItems(ProgramMethodCatalog.ConditionsFor(pinType), varName, pinType))
+                AddOperator(ProgramConditionMenu, m, label, pinType, varId,
+                    one => AddConditionAsync(conditionsId, varId, one.Token, one.NameTemplate, one.Note),
+                    (two, opId) => AddTwoOperandConditionAsync(conditionsId, varId, opId, two.Token, two.NameTemplate, two.Note));
         }
     }
 
@@ -186,9 +241,22 @@ internal sealed class ProgramAuthoringCoordinator(
         runAsync(nameof(AddArithmeticAsync), () =>
             applyAndReport(session.Commands.AddArithmeticCommand(session.Current!, commandsId, targetId, method, operandId, name), "Arithmetic command added."));
 
+    // T008: the two-operand event / condition authors — the arithmetic peer for the Events/Conditions families
+    // (%P <op> %S with the author-chosen operand %S), through the extended AddProgramEvent/AddCondition (link2).
+    private Task AddTwoOperandEventAsync(ElementId eventsId, ElementId variableId, ElementId operandId, string method, string name, string note) =>
+        runAsync(nameof(AddTwoOperandEventAsync), async () =>
+        {
+            if (session.Commands.AddProgramEvent(session.Current!, eventsId, variableId, method, name, note, operandId) is { } command)
+                await applyAndReport(command, "Event added to the program.");
+        });
+
+    private Task AddTwoOperandConditionAsync(ElementId conditionsId, ElementId variableId, ElementId operandId, string method, string name, string note) =>
+        runAsync(nameof(AddTwoOperandConditionAsync), () =>
+            applyAndReport(session.Commands.AddCondition(session.Current!, conditionsId, variableId, method, name, note, operandId), "Condition added."));
+
     // The numeric variables (decimal/integer/counter) in the programming block — the operand candidates for an
     // arithmetic command line (US-032).
-    private IEnumerable<(string Name, ElementId Id)> NumericOperandsInBlock()
+    private IEnumerable<(string Name, ElementId Id, string Tag)> NumericOperandsInBlock()
     {
         if (session.Current is not { } project || getProgrammingBlockId() is not { } blockId
             || project.FindById(blockId) is not { } block)
@@ -199,6 +267,42 @@ internal sealed class ProgramAuthoringCoordinator(
                 continue;
             foreach (ProjectElement pin in section.ChildrenOrEmpty())
                 if (ProgramMethodCatalog.NumericVariableTags.Contains(pin.Tag) && pin.Id is { } pid)
+                    yield return (project.NameOr(pin, pin.Tag), pid, pin.Tag);   // tag drives the F-108 opcode grid
+        }
+    }
+
+    // T008: builds one operator menu item into <paramref name="target"/> — a flat item for a 1-operand method, or a
+    // second-pin submenu for a two-operand row (%P <op> %S), reusing the arithmetic submenu shape. The author picks
+    // %S from the block's same-type pins; a two-operand method with no candidate operand is dropped, never silently
+    // auto-bound. <paramref name="authorOne"/>/<paramref name="authorTwo"/> author the unary / two-operand row.
+    private void AddOperator(ObservableCollection<ProductMenuItemViewModel> target, ProgramMethod m, string label,
+        ProgramPinType pinType, ElementId varId, Func<ProgramMethod, Task> authorOne, Func<ProgramMethod, ElementId, Task> authorTwo)
+    {
+        if (m.OperandCount < 2)
+        {
+            target.Add(new ProductMenuItemViewModel(label, m.Token, new AsyncRelayCommand(() => authorOne(m))));
+            return;
+        }
+        var node = new ProductMenuItemViewModel($"{label} …");
+        foreach ((string opName, ElementId opId) in SecondOperandCandidates(pinType, varId))
+            node.Children.Add(new ProductMenuItemViewModel(opName, m.Token, new AsyncRelayCommand(() => authorTwo(m, opId))));
+        if (node.Children.Count > 0)
+            target.Add(node);
+    }
+
+    // T008: the block's pins of the same type family as the armed pin (the same ClassifyPin the popup keys on),
+    // excluding the armed pin itself — the %S candidates a two-operand row lets the author pick.
+    private IEnumerable<(string Name, ElementId Id)> SecondOperandCandidates(ProgramPinType type, ElementId exclude)
+    {
+        if (session.Current is not { } project || getProgrammingBlockId() is not { } blockId
+            || project.FindById(blockId) is not { } block)
+            yield break;
+        foreach ((string container, string _) in FunctionBlockSections.All)
+        {
+            if (block.FindChild(container) is not { } section)
+                continue;
+            foreach (ProjectElement pin in section.ChildrenOrEmpty())
+                if (pin.Id is { } pid && pid != exclude && ProgramMethodCatalog.ClassifyPin(pin.Tag) == type)
                     yield return (project.NameOr(pin, pin.Tag), pid);
         }
     }
@@ -250,15 +354,46 @@ internal sealed class ProgramAuthoringCoordinator(
     });
 
     /// <summary>Adds a case value branch to the selected Case node (US-031): prompts for the criterion value, then
-    /// inserts a command group tagged with it (filled by the normal Add-command gesture).</summary>
+    /// inserts a command group tagged with it (filled by the normal Add-command gesture). For an ENUM-keyed case the
+    /// criterion must name one of the type's states (T014) — they are surfaced in the prompt and a non-state is
+    /// reported rather than silently dropped.</summary>
     public Task NewCaseValueAsync(TreeNodeViewModel? node) => runAsync("NewCaseValue", async () =>
     {
         if (node is not { IsCaseNode: true, ElementId: { } caseId } || session.Current is not { } project)
             return;
-        PropertiesResult? result = await dialogs.EditPropertiesAsync("New case value", string.Empty, string.Empty);
+        // An enum switch takes one of its type's STATE names as the criterion (the gateway rejects any other value);
+        // surface the states so the user enters a real one. A literal switch (counter/integer/…) takes a free value.
+        IReadOnlyList<string> states = EnumSwitchStates(project, caseId);
+        string title = states.Count > 0 ? $"New case value ({string.Join(", ", states)})" : "New case value";
+        PropertiesResult? result = await dialogs.EditPropertiesAsync(title, string.Empty, string.Empty);
         if (result is null || string.IsNullOrWhiteSpace(result.Name))
             return;
-        if (session.Commands.AddCaseValue(project, caseId, result.Name.Trim()) is { } command)
-            await applyAndReport(command, $"Case value '{result.Name.Trim()}' added.");
+        string criterion = result.Name.Trim();
+        if (session.Commands.AddCaseValue(project, caseId, criterion) is { } command)
+            await applyAndReport(command, $"Case value '{criterion}' added.");
+        else if (states.Count > 0)
+            setStatus($"'{criterion}' is not a state of this enumerator — choose one of: {string.Join(", ", states)}.");
     });
+
+    // The state names of an enum-keyed case's switch (US-031/T014), or an empty list when the switch is not an enum —
+    // read straight off the case's linked switch and its enum type.
+    private static IReadOnlyList<string> EnumSwitchStates(Project project, ElementId caseId)
+    {
+        var states = new List<string>();
+        if (project.FindById(caseId) is { } kase
+            && ElementId.TryParse(kase.GetAttribute("link"), out ElementId switchId)
+            && project.FindById(switchId) is { Tag: "resource_enum" } switchVar
+            && ElementId.TryParse(switchVar.GetAttribute("typedef"), out ElementId defId)
+            && project.FindById(defId) is { } def)
+        {
+            foreach (ProjectElement value in def.ChildrenOrEmpty())
+            {
+                if (value.Tag == "enum_value")
+                {
+                    states.Add(value.GetAttribute("name") ?? string.Empty);
+                }
+            }
+        }
+        return states;
+    }
 }

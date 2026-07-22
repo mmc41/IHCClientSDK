@@ -5,6 +5,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Linq;
 
+using Ihc.Vis;
 using Ihc.Vis.Addressing;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
@@ -27,6 +28,13 @@ namespace Ihc.Vis.Reporting
         private const string EndUserHeading = "Funktionsdokumentation";
         private const string FunctionBlockHeading = "Functionsblok dokumentation";
         private const string Unknown = "?";
+
+        // T031/D16: the report identifies a product by its resolved catalog TYPE-NAME text (image-free), never by the
+        // raw product image key. The identifier→type-name resolution needs the catalog, which lives above this pure
+        // builder, so the caller (ProjectAppService, which owns the catalog) supplies a resolver; a null resolver
+        // degrades gracefully to no type name (the product still identifies by name/placement).
+        private static readonly Func<ProjectElement, string> NoProductType = static _ => string.Empty;
+
         private static readonly ImmutableHashSet<string> DetailProductTags =
             ImmutableHashSet.Create(StringComparer.Ordinal, "product_dataline", "product_airlink", "product_rs485_led_dimmer");
         // `product_rs485_modem` is an open-world tag with no built-in TypeCode (see TypeCode.cs) but is still reported
@@ -39,6 +47,14 @@ namespace Ihc.Vis.Reporting
 
         /// <summary>The raw <c>value-of</c> value: the value verbatim, or the empty string when the attribute is absent.</summary>
         private static string Raw(string? value) => value ?? string.Empty;
+
+        /// <summary>A switch-ready <see cref="ReportValue"/> for an element attribute (T022/T023): the raw value beside
+        /// its display value (blank→"--"), so the app can toggle blank rendering without recomputing.</summary>
+        private static ReportValue Value(ProjectElement? element, string attribute)
+        {
+            string? raw = element?.GetAttribute(attribute);
+            return new ReportValue(Raw(raw), Ver(raw));
+        }
 
         /// <summary>Builds the installation ("Installationsdokumentation") report model.</summary>
         public static InstallationReport BuildInstallation(Project project)
@@ -90,13 +106,15 @@ namespace Ihc.Vis.Reporting
                 s0);
         }
 
-        /// <summary>Builds the end-user ("Funktionsdokumentation") report model.</summary>
-        public static EndUserReport BuildEndUser(Project project)
+        /// <summary>Builds the end-user ("Funktionsdokumentation") report model. <paramref name="resolveProductType"/>
+        /// maps each product element to its catalog type-name text (image-free identity, D16); null → no type name.</summary>
+        public static EndUserReport BuildEndUser(Project project, Func<ProjectElement, string>? resolveProductType = null)
         {
             ArgumentNullException.ThrowIfNull(project);
+            Func<ProjectElement, string> resolveType = resolveProductType ?? NoProductType;
             var index = new TreeIndex(project.Root);
             ImmutableArray<EndUserLocality> localities = project.Groups
-                .Select(g => BuildEndUserLocality(g, index))
+                .Select(g => BuildEndUserLocality(g, index, resolveType))
                 .ToImmutableArray();
             return new EndUserReport(EndUserHeading + Raw(project.Root.GetAttribute("name")), localities);
         }
@@ -122,6 +140,273 @@ namespace Ihc.Vis.Reporting
                 }
             }
             return new FunctionBlockReport(FunctionBlockHeading, blocks.ToImmutable());
+        }
+
+        /// <summary>
+        /// Builds the COMBINED project-documentation report (D14/T020): the three sub-reports composed in the fixed
+        /// section order plus the switch-supporting data (section ids + inclusion flags, per-element internal ids +
+        /// inclusion flags, unified localities, and the raw/display project name). Enrichment of the composed content
+        /// with ids/raw values lands here in later tasks; this foundation carries the switch scaffolding.
+        /// </summary>
+        /// <summary>The fixed report generation-timestamp format (T022): <c>yyyy-MM-dd HH:mm</c>, invariant.</summary>
+        private const string GeneratedAtFormat = "yyyy-MM-dd HH:mm";
+
+        public static ProjectDocumentationReport BuildProjectDocumentation(
+            Project project, DateTimeOffset generatedAt, Func<ProjectElement, string>? resolveProductType = null)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            InstallationReport installation = BuildInstallation(project);
+            EndUserReport endUser = BuildEndUser(project, resolveProductType);
+            FunctionBlockReport functionBlock = BuildFunctionBlock(project);
+
+            var sections = ImmutableArray.Create(
+                new ReportSectionEntry("section-installation", ReportSectionKind.Installation, installation.Heading, IncludedByDefault: true),
+                new ReportSectionEntry("section-enduser", ReportSectionKind.EndUser, endUser.Heading, IncludedByDefault: true),
+                new ReportSectionEntry("section-functionblock", ReportSectionKind.FunctionBlock, functionBlock.Heading, IncludedByDefault: true));
+
+            ImmutableArray<ReportLocality> localities = project.Groups
+                .Select(g => new ReportLocality(Raw(g.Id?.ToToken()), Raw(g.GetAttribute("name")), IncludedByDefault: true))
+                .ToImmutableArray();
+
+            var projectName = new ReportValue(Raw(project.Root.GetAttribute("name")), Ver(project.Root.GetAttribute("name")));
+            ProjectElement? projectInfo = project.Child("project_info");
+            var projekt = new ReportProjektInfo(
+                Value(projectInfo, "description"), Value(projectInfo, "number"), Value(projectInfo, "programmer"));
+            string generatedAtText = generatedAt.ToString(GeneratedAtFormat, CultureInfo.InvariantCulture);
+            var index = new TreeIndex(project.Root);
+
+            return new ProjectDocumentationReport(projectName, projekt, generatedAtText, sections, localities,
+                BuildElementRefs(project), BuildTerminalDetails(project, index), BuildKablerRows(project, index),
+                project.GetModuleAddressMap(), BuildCompleteness(project), BuildFbBlocks(project),
+                installation, endUser, functionBlock);
+        }
+
+        // The deep per-block function-block layout (US-041, T028): description (the block's @note), input/output pins
+        // with notes, settings + internal variables as name=value, and a flattened program outline. A block with no
+        // programs is flagged empty ("Tom blok").
+        private static ImmutableArray<ReportFbBlock> BuildFbBlocks(Project project)
+        {
+            var blocks = ImmutableArray.CreateBuilder<ReportFbBlock>();
+            foreach (ProjectElement group in project.Groups)
+            {
+                foreach (ProjectElement fb in group.ChildrenOrEmpty().Where(c => c.Tag == "functionblock"))
+                {
+                    ProjectElement? programs = fb.FindChild("programs");
+                    // Tom blok: a block with no actual program logic. A freshly-inserted "empty" block still carries an
+                    // empty program_simple(events, actions), so emptiness is the absence of events/commands/conditions.
+                    bool empty = programs is null ||
+                        !programs.Descendants().Any(d => d.Tag is "event" or "event_power" or "action" or "condition" or "program_case");
+                    var outline = ImmutableArray.CreateBuilder<string>();
+                    if (programs is not null && !empty)
+                    {
+                        Outline(programs, 0, outline);
+                    }
+                    blocks.Add(new ReportFbBlock(
+                        Raw(fb.GetAttribute("name")),
+                        Raw(fb.GetAttribute("note")),
+                        Pins(fb, "inputs"),
+                        Pins(fb, "outputs"),
+                        Variables(fb, "settings"),
+                        Variables(fb, "internalsettings"),
+                        outline.ToImmutable(),
+                        empty));
+                }
+            }
+            return blocks.ToImmutable();
+        }
+
+        private static ImmutableArray<ReportFbPin> Pins(ProjectElement fb, string container) =>
+            fb.FindChild(container)?.ChildrenOrEmpty()
+                .Where(r => r.Tag.StartsWith("resource_", StringComparison.Ordinal))
+                .Select(r => new ReportFbPin(Raw(r.GetAttribute("name")), Raw(r.GetAttribute("note"))))
+                .ToImmutableArray() ?? ImmutableArray<ReportFbPin>.Empty;
+
+        private static ImmutableArray<ReportFbVariable> Variables(ProjectElement fb, string container) =>
+            fb.FindChild(container)?.ChildrenOrEmpty()
+                .Where(r => r.Tag.StartsWith("resource_", StringComparison.Ordinal))
+                .Select(r => new ReportFbVariable(Raw(r.GetAttribute("name")), FbValue(r)))
+                .ToImmutableArray() ?? ImmutableArray<ReportFbVariable>.Empty;
+
+        // A variable's display value: a timer/time as h:m:s, otherwise its inivalue (blank when neither applies).
+        private static string FbValue(ProjectElement resource) => resource.Tag switch
+        {
+            "resource_timer" or "resource_time" =>
+                $"{Dec(resource, "hour")}:{Dec(resource, "minute")}:{Dec(resource, "second")}",
+            _ => Raw(resource.GetAttribute("inivalue")),
+        };
+
+        private static string Dec(ProjectElement e, string attr) => e.GetAttribute(attr) ?? "0";
+
+        // Flattens a program subtree into indented outline lines (T028): programs, events, commands, conditions, cases
+        // and scene-invocation commands, in document order. Unlabelled containers are descended into transparently.
+        private static void Outline(ProjectElement element, int depth, ImmutableArray<string>.Builder lines)
+        {
+            foreach (ProjectElement child in element.ChildrenOrEmpty())
+            {
+                string? label = child.Tag switch
+                {
+                    "program_simple" or "program_sub" => "Program: " + Raw(child.GetAttribute("name")),
+                    "events" => Raw(child.GetAttribute("name")),
+                    "event" or "event_power" => "Hændelse: " + Raw(child.GetAttribute("name")),
+                    "conditions" => Raw(child.GetAttribute("name")),
+                    "condition" => "Betingelse: " + Raw(child.GetAttribute("name")),
+                    "actions" => Raw(child.GetAttribute("name")),
+                    "action" => "Kommando: " + Raw(child.GetAttribute("name")),
+                    "program_case" => "Case: " + Raw(child.GetAttribute("name")),
+                    "case_action" => "Case-værdi: " + Raw(child.GetAttribute("name")),
+                    _ => null,
+                };
+                if (label is not null)
+                {
+                    lines.Add(new string(' ', depth * 2) + label);
+                    Outline(child, depth + 1, lines);
+                }
+                else
+                {
+                    Outline(child, depth, lines);
+                }
+            }
+        }
+
+        // The documentation-completeness issues ("Fejl i dokumentation", T027): per locality → wired product →
+        // terminal, one row per missing/blank documentation item. Fully-documented elements produce no rows; an empty
+        // result is rendered as "none found".
+        private static ImmutableArray<ReportCompletenessRow> BuildCompleteness(Project project)
+        {
+            var rows = ImmutableArray.CreateBuilder<ReportCompletenessRow>();
+            foreach (ProjectElement group in project.Groups)
+            {
+                string locality = Raw(group.GetAttribute("name"));
+                foreach (ProjectElement product in group.ChildrenOrEmpty().Where(c => c.Tag == "product_dataline"))
+                {
+                    string name = Raw(product.GetAttribute("name"));
+                    void Product(string attribute, string problem)
+                    {
+                        if (Blank(product, attribute)) { rows.Add(new ReportCompletenessRow(locality, name, string.Empty, problem)); }
+                    }
+                    Product("documentation_tag", "Mangler Id-kode");
+                    Product("power_group", "Mangler Lysgruppe");
+                    Product("cabletype", "Mangler Kabeltype");
+                    Product("cablenumber", "Mangler Kabelnummer");
+                    Product("position", "Mangler Placering");
+
+                    foreach (ProjectElement terminal in product.ChildrenOrEmpty().Where(c => c.Tag is "dataline_input" or "dataline_output"))
+                    {
+                        string term = Raw(terminal.GetAttribute("name"));
+                        void Terminal(bool missing, string problem)
+                        {
+                            if (missing) { rows.Add(new ReportCompletenessRow(locality, name, term, problem)); }
+                        }
+                        bool linked = terminal.ChildrenOrEmpty().Any(c => c.Tag is "link_from_resource" or "link_to_resource");
+                        Terminal(!linked, "Ikke forbundet");
+                        Terminal(Blank(terminal, "cable_colour"), "Mangler Ledningsfarve");
+                        Terminal(!DatalineAddress.TryParse(terminal.GetAttribute("address_dataline"), terminal.Tag == "dataline_output", out _), "Mangler Adresse");
+                    }
+                }
+            }
+            return rows.ToImmutable();
+        }
+
+        private static bool Blank(ProjectElement element, string attribute) => string.IsNullOrWhiteSpace(element.GetAttribute(attribute));
+
+        // The consolidated Kabler cabling table (T025): one row per ADDRESSED dataline terminal (inputs + outputs),
+        // sorted by packed data-line address. Unaddressed terminals (TryParse fails) are excluded. Modul is the
+        // terminal's data-line number; Modul-lokation is that module's @location, looked up per direction.
+        private static ImmutableArray<ReportKablerRow> BuildKablerRows(Project project, TreeIndex index)
+        {
+            IReadOnlyList<ProjectElement> all = project.Root.DescendantsAndSelf();
+            var moduleLocation = new Dictionary<(bool IsOutput, int DataLine), string>();
+            foreach (ProjectElement m in all.Where(e => e.Tag is "dataline_input_module" or "dataline_output_module"))
+            {
+                if (int.TryParse(m.GetAttribute("dataline"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int dl))
+                {
+                    moduleLocation[(m.Tag == "dataline_output_module", dl)] = Raw(m.GetAttribute("location"));
+                }
+            }
+
+            var rows = new List<(string Key, ReportKablerRow Row)>();
+            foreach (ProjectElement terminal in all.Where(e => e.Tag is "dataline_input" or "dataline_output"))
+            {
+                bool isOutput = terminal.Tag == "dataline_output";
+                if (!DatalineAddress.TryParse(terminal.GetAttribute("address_dataline"), isOutput, out DatalineAddress addr))
+                {
+                    continue;   // unaddressed terminal — excluded from the cabling table
+                }
+                ProjectElement? product = index.NearestProduct(terminal);
+                string ProductAttr(string name) => product is null ? Unknown : Raw(product.GetAttribute(name));
+                moduleLocation.TryGetValue((isOutput, addr.DataLine), out string? modLoc);
+                rows.Add((AddressSortKey(terminal), new ReportKablerRow(
+                    Raw(terminal.GetAttribute("cable_colour")),
+                    DatalineAddress.ToVendorLabel(terminal.GetAttribute("address_dataline"), isOutput),
+                    addr.DataLine.ToString(CultureInfo.InvariantCulture),
+                    Raw(modLoc),
+                    ProductAttr("power_group"),
+                    ProductAttr("documentation_tag"),
+                    product is null ? Unknown : Raw(index.Parent(product)?.GetAttribute("name")),
+                    ProductAttr("position"),
+                    ProductAttr("name"),
+                    isOutput ? "Udgang" : "Indgang")));
+            }
+            return rows.OrderBy(r => r.Key, StringComparer.Ordinal).Select(r => r.Row).ToImmutableArray();
+        }
+
+        // The technical detail of every LINKED dataline product terminal (T024): its link-display path and the
+        // behaviour note of the driving FB input. Unlinked terminals carry neither, so they are omitted.
+        private static ImmutableArray<ReportTerminalDetail> BuildTerminalDetails(Project project, TreeIndex index)
+        {
+            var details = ImmutableArray.CreateBuilder<ReportTerminalDetail>();
+            foreach (ProjectElement product in project.Root.DescendantsAndSelf().Where(e => e.Tag == "product_dataline"))
+            {
+                string productName = Raw(product.GetAttribute("name"));
+                foreach (ProjectElement terminal in product.ChildrenOrEmpty().Where(c => c.Tag is "dataline_input" or "dataline_output"))
+                {
+                    string linkTag = terminal.Tag == "dataline_output" ? "link_to_resource" : "link_from_resource";
+                    if (ResolveLink(terminal, linkTag, index) is { } resolved)
+                    {
+                        details.Add(new ReportTerminalDetail(productName, Raw(terminal.GetAttribute("name")),
+                            resolved.LinkDisplay, new ReportValue(Raw(resolved.Note), Ver(resolved.Note))));
+                    }
+                }
+            }
+            return details.ToImmutable();
+        }
+
+        // Follows a terminal's first link to the driving FB input, building the "-> <FB input> -> <function block> ->
+        // <its locality>" display path and reading the input's @note; null when the terminal drives nothing (no link
+        // row, or a dangling IDREF). Mirrors the end-user note resolution: Parent=FB input, Ancestor(3)=block,
+        // Ancestor(4)=locality.
+        private static (string LinkDisplay, string Note)? ResolveLink(ProjectElement terminal, string linkTag, TreeIndex index)
+        {
+            foreach (ProjectElement linkRow in terminal.ChildrenOrEmpty().Where(c => c.Tag == linkTag))
+            {
+                if (index.ById(linkRow.GetAttribute("link")) is { } target)
+                {
+                    string fbInput = Raw(index.Parent(target)?.GetAttribute("name"));
+                    string block = Raw(index.Ancestor(target, 3)?.GetAttribute("name"));
+                    string locality = Raw(index.Ancestor(target, 4)?.GetAttribute("name"));
+                    return ($"-> {fbInput} -> {block} -> {locality}", Raw(index.Parent(target)?.GetAttribute("note")));
+                }
+            }
+            return null;
+        }
+
+        // Every product and function block as a switchable element (D14): its internal id, name, section and default
+        // inclusion — the hooks the per-product inclusion switches (later tasks) bind to.
+        private static ImmutableArray<ReportElementRef> BuildElementRefs(Project project)
+        {
+            var elements = ImmutableArray.CreateBuilder<ReportElementRef>();
+            foreach (ProjectElement e in project.Root.DescendantsAndSelf())
+            {
+                if (e.Tag.StartsWith("product_", StringComparison.Ordinal))
+                {
+                    elements.Add(new ReportElementRef(Raw(e.Id?.ToToken()), Raw(e.GetAttribute("name")), ReportSectionKind.Installation, IncludedByDefault: true));
+                }
+                else if (e.Tag == "functionblock")
+                {
+                    elements.Add(new ReportElementRef(Raw(e.Id?.ToToken()), Raw(e.GetAttribute("name")), ReportSectionKind.FunctionBlock, IncludedByDefault: true));
+                }
+            }
+            return elements.ToImmutable();
         }
 
         // ----- installation: masthead & section rows -----
@@ -233,18 +518,18 @@ namespace Ihc.Vis.Reporting
 
         // ----- end-user: locality → product → terminal → note -----
 
-        private static EndUserLocality BuildEndUserLocality(ProjectElement group, TreeIndex index)
+        private static EndUserLocality BuildEndUserLocality(ProjectElement group, TreeIndex index, Func<ProjectElement, string> resolveType)
         {
             string localityName = Raw(group.GetAttribute("name"));
             ImmutableArray<EndUserProduct> products = group.ChildrenOrEmpty()
                 .Where(c => (c.Tag == "product_dataline" || c.Tag == "product_airlink")
                             && c.GetAttribute("enduser_report") == "yes")
-                .Select(p => BuildEndUserProduct(p, localityName, index))
+                .Select(p => BuildEndUserProduct(p, localityName, index, resolveType))
                 .ToImmutableArray();
             return new EndUserLocality(localityName, Raw(group.GetAttribute("id")), products);
         }
 
-        private static EndUserProduct BuildEndUserProduct(ProjectElement product, string localityName, TreeIndex index)
+        private static EndUserProduct BuildEndUserProduct(ProjectElement product, string localityName, TreeIndex index, Func<ProjectElement, string> resolveType)
         {
             string? position = product.GetAttribute("position");
             ImmutableArray<ProjectElement> children = product.ChildrenOrEmpty();
@@ -254,7 +539,7 @@ namespace Ihc.Vis.Reporting
             return new EndUserProduct(
                 Raw(product.GetAttribute("name")),
                 string.IsNullOrWhiteSpace(position) ? string.Empty : position,
-                Raw(product.GetAttribute("product_identifier")),
+                resolveType(product),   // D16: image-free type-name text (resolved by the caller's catalog), not the image key
                 terminals.Select(t => BuildEndUserTerminal(t, localityName, index)).ToImmutableArray());
         }
 

@@ -238,6 +238,34 @@ namespace Ihc.Vis.Editing
             return ToEnumRef(updated);
         }
 
+        /// <summary>
+        /// Relabels one existing value of a USER enum type (US-030 relabel, PG-5): changes the value's <c>name</c> in
+        /// place, preserving its id and <c>index</c> — so only the label byte-differs and the change round-trips
+        /// faithfully (reorder / remove / rename-type are out of scope, D05). Refuses a built-in catalog type
+        /// (<c>typeid</c>-bearing, "[read only]" in IHC Visual) and a value id that is not part of the definition.
+        /// Returns the updated handle.
+        /// </summary>
+        public EnumDefinitionRef RelabelEnumValue(EnumDefinitionRef definition, ElementId valueId, string newName)
+        {
+            ArgumentNullException.ThrowIfNull(definition);
+            ArgumentNullException.ThrowIfNull(newName);
+            ProjectElement def = FindById(root, definition.Id)
+                ?? throw new InvalidOperationException($"Enum definition '{definition.Typedef}' is no longer part of the project.");
+            if (def.GetAttribute("typeid") is { } typeid && typeid != ElementId.NullToken)
+            {
+                throw new InvalidOperationException(
+                    $"Enum definition '{def.GetAttribute("name")}' is a built-in catalog type — \"[read only]\" " +
+                    "in IHC Visual — so its values cannot be edited.");
+            }
+            if (!def.ChildrenOrEmpty().Any(v => v.Tag == "enum_value" && v.Id == valueId))
+            {
+                throw new InvalidOperationException(
+                    $"Enum definition '{def.GetAttribute("name")}' has no value with id {valueId.ToToken()}.");
+            }
+            SetAttributeById(valueId, "name", newName);   // in-place relabel — id and index preserved (byte-faithful)
+            return ToEnumRef(FindById(root, definition.Id)!);
+        }
+
         /// <summary>Builds the wiring handle for an in-tree <c>enum_definition</c> element.</summary>
         private static EnumDefinitionRef ToEnumRef(ProjectElement definition)
         {
@@ -568,7 +596,7 @@ namespace Ihc.Vis.Editing
                     reason = $"\"{target.GetAttribute("name") ?? target.Tag}\" is a catalog-declared pin of its "
                            + "product and cannot be deleted on its own — delete the product to remove it.";
                 }
-                else if (chain.Take(chain.Count - 1).Any(IsLockedBlock))
+                else if (IsWithinLockedBlock(root, id, inclusive: false))
                 {
                     reason = "This node is inside a locked function block and cannot be deleted — unlock the block first.";
                 }
@@ -596,6 +624,44 @@ namespace Ihc.Vis.Editing
         private static bool IsLockedBlock(ProjectElement element) =>
             element.Tag == "functionblock" && element.GetAttribute("locked") == "yes";
 
+        /// <summary>
+        /// T003 — the ONE central locked-ancestor authorization (generalising <see cref="DeletionRefusalReason"/>'s
+        /// locked clause): whether a STRUCTURAL mutation whose subtree/target is <paramref name="id"/> must be refused
+        /// because <paramref name="id"/> lies within a locked (<c>locked="yes"</c>) function block — the library owns
+        /// that subtree until it is unlocked. <paramref name="inclusive"/> counts <paramref name="id"/> itself being
+        /// the locked block: inserting/moving/copying a child INTO the block (inclusive) is refused, while reordering
+        /// the block among its own siblings or deleting the whole block (exclusive) is not. Shared by the engine
+        /// insert/reorder/move/copy primitives (which throw <see cref="InvalidOperationException"/>) and the session
+        /// commands' <c>Evaluate</c> (which returns a refusal verdict), so one rule decides "is this locked?" for every
+        /// surface and whoever drives the editor.
+        /// </summary>
+        internal static bool IsWithinLockedBlock(ProjectElement root, ElementId id, bool inclusive)
+        {
+            var chain = new List<ProjectElement>();
+            if (!BuildPath(root, id, chain))
+            {
+                return false;                       // absent id → not this rule's refusal to make
+            }
+            IEnumerable<ProjectElement> scope = inclusive ? chain : chain.Take(chain.Count - 1);
+            return scope.Any(IsLockedBlock);
+        }
+
+        /// <summary>The refusal a structural edit targeting a locked block's subtree reports — the engine throw and the
+        /// session verdict share this one message (T003).</summary>
+        internal const string LockedBlockEditRefusal =
+            "This node is inside a locked function block and cannot be edited — unlock the block first.";
+
+        // Throws when a structural insert/move/copy would mutate a locked block's subtree (T003) — the engine half of
+        // the central authorization, so a direct engine caller is refused exactly where a session command's Evaluate
+        // returns a refusal verdict. `inclusive` per IsWithinLockedBlock (an insert/copy/move TARGET counts itself).
+        private void RefuseIfLockedTarget(ElementId targetId, bool inclusive)
+        {
+            if (IsWithinLockedBlock(root, targetId, inclusive))
+            {
+                throw new InvalidOperationException(LockedBlockEditRefusal);
+            }
+        }
+
         // CascadeReferencingRows / RowReferencesDeleted / IsDeletedIdRef / FindDanglingReferences — the reference
         // cascade + strict dangling guard — moved to DeleteCascade (T016); DeleteById passes SchemaView to them.
 
@@ -613,6 +679,10 @@ namespace Ihc.Vis.Editing
             ProjectElement toEl = RequireLive(to);       // appended: a stale handle must fail here, not half-write a link
             ElementId fromId = fromEl.Id!.Value;
             ElementId toId = toEl.Id!.Value;
+
+            if (fromId == toId)   // D06: a pin cannot link to itself — refused for direct engine callers too, matching the session
+                throw new InvalidOperationException(
+                    $"Cannot link '{fromEl.GetAttribute("name")}' to itself: {LinkRoles.SelfLinkReason}.");
 
             if (!LinkRoles.CanLink(fromEl.Tag, toEl.Tag))
                 throw new InvalidOperationException(
@@ -636,15 +706,15 @@ namespace Ihc.Vis.Editing
         /// offering the gesture, so it can refuse with its own message instead of catching. <paramref name="fromId"/>
         /// is the source end (it would receive the <c>link_from_resource</c> half), <paramref name="toId"/> the sink.
         /// False when either id does not resolve, or when the shape is one IHC Visual refuses (see
-        /// <see cref="Ihc.Vis.Schema.LinkRoles"/>). A pin to itself is <em>not</em> refused here: for a value FB pin
-        /// (source==sink) it is a legal feedback link the vendor accepts and <see cref="Link(ElementId,ElementId)"/>
-        /// already allows, so this stays in lock-step with <c>Link</c> (the data-flow rule alone decides).
+        /// <see cref="Ihc.Vis.Schema.LinkRoles"/>). A pin to <em>itself</em> (<paramref name="fromId"/> ==
+        /// <paramref name="toId"/>) is also refused (D06): the vendor never produces a self-link, so
+        /// <see cref="Link(ElementId,ElementId)"/> rejects it too and this stays in lock-step.
         /// </summary>
         public bool CanLink(ElementId fromId, ElementId toId)
         {
             ProjectElement? from = FindById(root, fromId);
             ProjectElement? to = FindById(root, toId);
-            return from is not null && to is not null && LinkRoles.CanLink(from.Tag, to.Tag);
+            return fromId != toId && from is not null && to is not null && LinkRoles.CanLink(from.Tag, to.Tag);
         }
 
         /// <summary>
@@ -798,6 +868,7 @@ namespace Ihc.Vis.Editing
         /// </summary>
         public ProjectEditor ToggleLogMark(ElementId logRowId)
         {
+            RefuseIfLockedTarget(logRowId, inclusive: true);   // T004: no log-mark toggle inside a locked block
             ProjectElement row = Require(logRowId);
             if (row.Tag != "resource_enum" || !ElementId.TryParse(row.GetAttribute("typedef"), out ElementId defId)
                 || FindById(root, defId) is not { } def || def.GetAttribute("typeid") != ProjectElementRead.LogEnumTypeId)
@@ -878,6 +949,7 @@ namespace Ihc.Vis.Editing
         {
             ProjectElement source = Require(sourceId);
             Require(targetParentId);                      // fail fast if the paste target does not exist
+            RefuseIfLockedTarget(targetParentId, inclusive: true);   // T003: no copy INTO a locked block's subtree
             if (FindById(source, targetParentId) is not null)
             {
                 // The target is the source itself or lives inside it — the clone would nest inside a copy of itself.
@@ -945,6 +1017,8 @@ namespace Ihc.Vis.Editing
         {
             ProjectElement subtree = Require(sourceId);   // the exact node — ids preserved verbatim
             Require(targetParentId);
+            RefuseIfLockedTarget(targetParentId, inclusive: true);   // T003: no move INTO a locked block (checked
+                                                                     // before the detach, so a refused move is atomic)
             if (!CanMoveSubtree(sourceId, targetParentId))
             {
                 throw new InvalidOperationException(
@@ -981,6 +1055,8 @@ namespace Ihc.Vis.Editing
         /// </summary>
         public ProjectEditor ReorderSubtree(ElementId id, int index)
         {
+            RefuseIfLockedTarget(id, inclusive: false);   // T003: no reorder of a node INSIDE a locked block (the
+                                                          // block itself may still be reordered among its siblings)
             ProjectElement node = Require(id);
             ProjectElement parent = FindParentOf(root, id)
                 ?? throw new InvalidOperationException($"Cannot reorder {id.ToToken()}: it has no parent.");
@@ -1211,6 +1287,7 @@ namespace Ihc.Vis.Editing
         internal ResourceRef AddResourceChild(ElementId parentId, string tag, string name,
             IReadOnlyList<(string Name, string Value)> attrs)
         {
+            RefuseIfLockedTarget(parentId, inclusive: true);   // T003: no variable/pin insert into a locked block
             ElementId id = allocator.Allocate(TypeCode.RequireForTag(tag));
             ProjectElement resource = ApplyAttributes(SimpleElement(tag, id, ("name", name)),
                 ResourceMaterialization.NewResourceDefaults(tag));
@@ -1311,6 +1388,7 @@ namespace Ihc.Vis.Editing
         /// </summary>
         internal ElementId AllocateChild(ElementId parentId, string tag, params (string Name, string Value)[] attrs)
         {
+            RefuseIfLockedTarget(parentId, inclusive: true);   // T003: no insert into a locked block's subtree
             ElementId id = allocator.Allocate(TypeCode.RequireForTag(tag));
             AppendChild(parentId, SimpleElement(tag, id, attrs));
             return id;
@@ -1321,6 +1399,7 @@ namespace Ihc.Vis.Editing
         internal ElementId AllocateChildAt(ElementId parentId, string tag, int index,
             params (string Name, string Value)[] attrs)
         {
+            RefuseIfLockedTarget(parentId, inclusive: true);   // T003: no insert into a locked block's subtree
             ElementId id = allocator.Allocate(TypeCode.RequireForTag(tag));
             InsertChildAt(parentId, SimpleElement(tag, id, attrs), index);
             return id;

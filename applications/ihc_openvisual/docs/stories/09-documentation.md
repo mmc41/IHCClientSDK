@@ -170,9 +170,21 @@ project, **so that** I can hand over complete, dated documentation of the instal
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Installation and end-user content implemented; the single navigable
-document, the purpose presets, and the **image-free redesign** (product-type text instead of icons; no
-logo; tabular module map instead of diagrams) are the remaining work of this story, tracked with US-071.
+**Implementation status:** 🟡 Installation and end-user content implemented; the SDK builds ONE combined
+project-documentation model (all three sections in fixed order, with the switch-supporting data — per-section and
+per-element internal ids + inclusion flags, raw-blank-beside-display values, a unified locality view); and a single
+**Reports…** view renders it as ONE navigable HTML document (a screen overview / section-jump / back-to-top that the
+printer variant drops), replacing the former six direct report commands. The heading carries the report **generation
+timestamp** (from an injected clock, fixed format) and the **programmer**, a **Projekt** identity section
+(description / number / programmer) renders near the top, the technical terminal detail now carries the **link
+display** (`→ FB input → function block → its locality`) and the **function note** of each linked terminal's driving
+FB input, a consolidated **Kabler** cabling table lists one row per addressed terminal in address order, and the
+module section is a **per-terminal address map** (which product terminal occupies each address, per input/output
+module). The content-section and detail-option switches over that model, and the **purpose presets** (Installation /
+technical, End-user / function, Function-block, Full — each a named starting combination of the switches, selectable
+in the Reports… view), are implemented. The **image-free redesign** is also in place: a product is identified by its
+**resolved catalog type-name text** (beside its name/placement) rather than a product-image key or icon, the module
+section is a tabular per-terminal address map (no diagram), and the document carries no logo or banner image.
 
 <!-- BEGIN appendix — report output format (delimited; removable wholesale) -->
 
@@ -306,8 +318,10 @@ that** I can hand over and review the control logic alongside the installation a
 
 **Readiness:** Ready — the per-field layout is itemised in the appendix below.
 
-**Implementation status:** 🟡 Implemented as a minimal listing; the deep per-field layout (inputs/outputs
-notes, settings, internal variables, and the program outline) is the remaining work.
+**Implementation status:** ✅ Implemented — the combined report renders the deep per-block layout: the block
+description, input/output notes, settings and internal variables as `name = value`, and a flattened program outline
+(events → commands, sub-programs with conditions and commands, scene invocations); an unprogrammed block renders as
+*Tom blok*.
 
 <!-- BEGIN appendix — function-block layout (delimited; removable wholesale) -->
 
@@ -387,7 +401,11 @@ an end-user guide, a cabling list, or the full record — without maintaining se
 
 **Readiness:** Ready.
 
-**Implementation status:** 🔴 Planned — depends on US-040's single navigable-document rework.
+**Implementation status:** 🟡 Implemented in the Reports view — the three **content sections** toggle on/off (an
+off section emits nothing), and the render-level **detail options** (show empty fields, internal ids, wire colours,
+link display, function documentation) apply within the sections that are on; the view-model owns the toggles for the
+session. ⚠ The two rebuild-level options (all-vs-in-use terminals, end-user omission filter) remain, as they need
+both the filtered and unfiltered data carried on the combined model rather than a render toggle.
 
 ---
 
@@ -437,7 +455,10 @@ across the project, **so that** I get a punch-list of everything to finish befor
 
 **Readiness:** Ready.
 
-**Implementation status:** 🔴 Planned.
+**Implementation status:** 🟡 Implemented in the combined report — a **Fejl i dokumentation** section lists every
+missing/blank item (unlinked terminal; missing id-code / light group / cable type / cable number / wire colour /
+placement / data-line address) located by locality → product → terminal, listing only elements with an issue and
+rendering "Ingen fejl fundet." when the project is clean. Surfaced through the single Reports view (US-040).
 
 ---
 

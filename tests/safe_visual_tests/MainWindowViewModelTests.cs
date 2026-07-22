@@ -382,23 +382,27 @@ public class MainWindowViewModelTests
         {
             // Root: only Insert locality.
             Assert.That(root.CanInsertLocality, Is.True);
-            Assert.That(root.CanCutCopy || root.CanEditNonLink || SdkCanDelete(harness, root), Is.False, "root has no cut/copy/edit/delete");
+            Assert.That(root.CanCut || root.CanCopy || root.CanEditNonLink || SdkCanDelete(harness, root), Is.False, "root has no cut/copy/edit/delete");
 
-            // Locality: Cut/Copy, Delete, Properties (+ Insert product/FB by pane).
-            Assert.That(locality.CanCutCopy && locality.CanEditNonLink && SdkCanDelete(harness, locality), Is.True);
+            // Locality: Cut/Copy, Delete, Properties, reorderable (+ Insert product/FB by pane).
+            Assert.That(locality.CanCut && locality.CanCopy && locality.CanReorder && locality.CanEditNonLink && SdkCanDelete(harness, locality), Is.True);
             Assert.That(locality.NodeKind, Is.EqualTo("locality"));
 
-            // Wired product: Cut/Copy, Delete, Properties — not a paste target.
-            Assert.That(productNode.CanCutCopy && productNode.CanEditNonLink && SdkCanDelete(harness, productNode), Is.True);
+            // Wired product: Cut/Copy, Delete, Properties, reorderable — not a paste target.
+            Assert.That(productNode.CanCut && productNode.CanCopy && productNode.CanReorder && productNode.CanEditNonLink && SdkCanDelete(harness, productNode), Is.True);
 
             // Link row: exactly Jump-to-opposite + Delete — no Move up/down, no Properties, no Cut/Copy.
             Assert.That(linkRow.IsLinkRow && SdkCanDelete(harness, linkRow), Is.True);
             Assert.That(linkRow.CanEditNonLink, Is.False, "no Move up/down or Properties on a link row");
-            Assert.That(linkRow.CanCutCopy, Is.False, "no Cut/Copy on a link row");
+            Assert.That(linkRow.CanCut || linkRow.CanCopy || linkRow.CanReorder, Is.False, "no Cut/Copy/Move on a link row");
 
             // Function block (locked library): Show program (IsFunctionBlock), Unlock, Cut/Copy, Delete, Properties.
             Assert.That(fbNode.IsFunctionBlock && fbNode.IsLockedFunctionBlock, Is.True);
-            Assert.That(fbNode.CanCutCopy && fbNode.CanEditNonLink && SdkCanDelete(harness, fbNode), Is.True);
+            Assert.That(fbNode.CanCut && fbNode.CanCopy && fbNode.CanReorder && fbNode.CanEditNonLink && SdkCanDelete(harness, fbNode), Is.True);
+
+            // Product pin: log mark + Properties only — NO Cut/Copy and NO Move up/down (US-068, D07).
+            Assert.That(productPin.IsPin, Is.True);
+            Assert.That(productPin.CanCut || productPin.CanCopy || productPin.CanReorder, Is.False, "a pin has no Cut/Copy/Move");
         });
 
         // Paste is clipboard-state-dependent (F-010): absent when empty, present on a locality once populated.
@@ -407,6 +411,34 @@ public class MainWindowViewModelTests
         vm.CopyCommand.Execute(productNode);
         vm.SelectedInstallationNode = locality;
         Assert.That(vm.CanPaste, Is.True, "Paste appears once the clipboard is non-empty");
+    }
+
+    // T018 / US-068 / D07: Insert product is offered on a LOCALITY only (not a product), and Move up/down only on the
+    // reorderable structural nodes (not a pin).
+    [Test]
+    public async Task ContextMenu_InsertAndMove_GatedByNodeType()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        var product = harness.ProjectService.GetAvailableProducts()
+            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
+        await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
+        var locality = vm.InstallationNodes[0].Children[0];
+        var productNode = locality.Children[0];
+        var productPin = productNode.Children.First(c => c.NodeKind == "pin:dataline_input");
+
+        vm.SelectedInstallationNode = locality;
+        Assert.That(vm.CanInsertProduct, Is.True, "Insert product is offered on a locality");
+        Assert.That(vm.CanMoveSelected, Is.True, "a locality is movable");
+
+        vm.SelectedInstallationNode = productNode;
+        Assert.That(vm.CanInsertProduct, Is.False, "Insert product is NOT offered on a product (locality-only, US-068)");
+        Assert.That(vm.CanMoveSelected, Is.True, "a product is movable");
+
+        vm.SelectedInstallationNode = productPin;
+        Assert.That(vm.CanMoveSelected, Is.False, "a pin has no Move up/down (D07)");
     }
 
     // A-24 (F-067, US-068): Delete is absent from a catalog-declared product pin's context menu — a product's pins
@@ -1354,6 +1386,88 @@ public class MainWindowViewModelTests
         });
     }
 
+    // T010 / US-021 / PG-3a: Save-to-library transforms the in-project block into a locked library instance (rename +
+    // stamp + locked) after the .ifb write — the tree then shows it as a locked library block.
+    [Test]
+    public async Task SaveToLibrary_Headless_TransformsInProjectBlockToLockedLibraryInstance()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);   // UNLOCKED
+        var fbNode = vm.FunctionNodes[0].Children[0].Children[0];
+        var fbId = fbNode.ElementId!.Value;
+
+        harness.Dialogs.PropertiesResult = new PropertiesResult("MyLib", "note");
+        harness.Dialogs.SaveBlockPath = harness.TempPath("mylib.ifb");
+        await vm.SaveFunctionBlockCommand.ExecuteAsync(fbNode);
+
+        ProjectElement after = harness.Session.Current!.FindById(fbId)!;
+        var reNode = TreeNodes.FindById(vm.FunctionNodes, fbId)!;
+        Assert.Multiple(() =>
+        {
+            Assert.That(after.GetAttribute("locked"), Is.EqualTo("yes"), "the in-project block is now a locked library instance");
+            Assert.That(after.GetAttribute("name"), Is.EqualTo("MyLib"), "renamed to the saved name");
+            Assert.That(reNode.IsLockedFunctionBlock, Is.True, "the tree shows it as a locked library block");
+            Assert.That(vm.StatusText, Is.EqualTo("Saved function block 'MyLib'."));
+        });
+    }
+
+    // T011 / US-030 / PG-4: the enum insert offers a TYPE PICKER submenu — the existing enumerator types plus "New…";
+    // picking an existing type inserts a variable of it and authors NO new type.
+    [Test]
+    public async Task EnumPicker_Headless_OffersExistingTypesAndNew_PickExistingAddsNoNewType()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        var settingsNode = vm.InstallationNodes[0].Children[2];   // "Settings"
+        vm.SelectNode(settingsNode);
+
+        var enumEntry = vm.VariablePaletteMenu.First(m => m.Children.Any());   // the enum type-picker submenu
+        int defsBefore = harness.Session.Current!.Root.Descendants().Count(e => e.Tag == "enum_definition");
+        await ((IAsyncRelayCommand)enumEntry.Children.First(c => c.Header == "Persienne tilstand").Command!).ExecuteAsync(null);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(enumEntry.Children.Select(c => c.Header), Does.Contain("Persienne tilstand").And.Contain("New…"),
+                "the picker lists the existing types plus New…");
+            Assert.That(harness.Session.Current!.Root.Descendants().Count(e => e.Tag == "enum_definition"),
+                Is.EqualTo(defsBefore), "picking an existing type authors no new enum type");
+            Assert.That(harness.Session.Current!.FindById(settingsNode.ElementId!.Value)!.ChildrenOrEmpty().Any(c => c.Tag == "resource_enum"),
+                Is.True, "the enum variable was inserted");
+        });
+    }
+
+    // T012 / US-030 / PG-7 / D02: the enum submenu's "New standalone type…" authors a 0-state, unreferenced type —
+    // no variable is inserted (distinct from "New…").
+    [Test]
+    public async Task StandaloneEnum_Headless_AuthorsTypeWithoutInsertingAVariable()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        var settingsNode = vm.InstallationNodes[0].Children[2];   // "Settings"
+        vm.SelectNode(settingsNode);
+        harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Standalone", System.Array.Empty<string>());
+
+        var enumEntry = vm.VariablePaletteMenu.First(m => m.Children.Any());
+        int enumsInSectionBefore = harness.Session.Current!.FindById(settingsNode.ElementId!.Value)!.ChildrenOrEmpty().Count(c => c.Tag == "resource_enum");
+        await ((IAsyncRelayCommand)enumEntry.Children.First(c => c.Header == "New standalone type…").Command!).ExecuteAsync(null);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(harness.Session.Current!.Root.Descendants().Any(e => e.Tag == "enum_definition" && e.GetAttribute("name") == "Standalone"),
+                Is.True, "the standalone type is authored");
+            Assert.That(harness.Session.Current!.FindById(settingsNode.ElementId!.Value)!.ChildrenOrEmpty().Count(c => c.Tag == "resource_enum"),
+                Is.EqualTo(enumsInSectionBefore), "no variable was inserted");
+        });
+    }
+
     // US-022: linking a product input to a block input shows reciprocal rows naming each other's full path.
     [Test]
     public async Task LinkProductInputToBlockInput_ShowsReciprocalRows()
@@ -2037,6 +2151,33 @@ public class MainWindowViewModelTests
         });
     }
 
+    // T017 / US-027 / D03: the four power/energy meter types (kW/kWh/W/Wh) are un-suppressed — offered in a value
+    // section's palette and insertable as variables of their mapped SDK resource type.
+    [Test]
+    public async Task VariablePalette_OffersAndInsertsPowerEnergyTypes()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        await harness.Session.AddEmptyFunctionBlockAsync(loc);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        var internalSection = vm.InstallationNodes[0].Children[3];   // "Internal variables" (a value section)
+        vm.SelectNode(internalSection);
+
+        var palette = vm.VariablePaletteMenu.Select(m => m.Header).ToList();
+        var kwLeaf = vm.VariablePaletteMenu.First(m => m.Header == "Power (kW)");
+        await ((CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)kwLeaf.Command!).ExecuteAsync(null);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(palette, Does.Contain("Power (kW)").And.Contain("Energy (kWh)").And.Contain("Power (W)").And.Contain("Energy (Wh)"),
+                "all four power/energy types are offered (T017)");
+            Assert.That(harness.Session.Current!.FindById(internalSection.ElementId!.Value)!.ChildrenOrEmpty().Any(c => c.Tag == "kW"),
+                Is.True, "inserting 'Power (kW)' adds a variable of the mapped SDK type kW");
+        });
+    }
+
     // US-028: arming a variable then choosing an event on the program's Events node authors and renders the event.
     [Test]
     public async Task AddEvent_FromArmedVariable_AuthorsAndRendersEvent()
@@ -2060,7 +2201,7 @@ public class MainWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(vm.ProgramEventMenu.Select(m => m.Header),
-                Is.EquivalentTo(new[] { "Doorbell changes to ON", "Doorbell changes state", "Doorbell is assigned" }));
+                Is.EquivalentTo(new[] { "Doorbell changes to ON", "Doorbell changes to OFF", "Doorbell changes state", "Doorbell is assigned" }));
             Assert.That(eventsAfter.Children.Any(c => c.DisplayName == "Doorbell -> ON"), Is.True, "the event renders under Events");
             Assert.That(harness.Session.IsDirty, Is.True);
         });
@@ -2079,7 +2220,7 @@ public class MainWindowViewModelTests
             new ProgramMethod(ProgramMethodCategory.Event, "_0xZZ", "unknown", "", 1, null),           // no verb → dropped
         };
 
-        var items = ProgramAuthoringCoordinator.MethodMenuItems(reorderedResized, "Kip").ToList();
+        var items = ProgramAuthoringCoordinator.MethodMenuItems(reorderedResized, "Kip", ProgramPinType.Bool).ToList();
 
         Assert.Multiple(() =>
         {
@@ -2116,6 +2257,204 @@ public class MainWindowViewModelTests
             Assert.That(commandsAfter.Children.Any(c => c.DisplayName == "Toggle Chime"), Is.True, "the command renders under Commands");
             Assert.That(authored.GetAttribute("method"), Is.EqualTo("_0x23"), "toggle uses the vendor token _0x23");
             Assert.That(vm.StatusText, Is.EqualTo("Command added to the program."));
+        });
+    }
+
+    // T008 / US-028: a two-operand command "%P = %S" (token _0x1e) — the author picks the second pin %S from a
+    // submenu; the stored action wires link1 (armed pin) and link2 (chosen pin), with no silent auto-bind.
+    [Test]
+    public async Task AddCommand_TwoOperand_AssignFromSecondPin_WiresBothOperands()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        var outputSectionId = vm.InstallationNodes[0].Children[1].ElementId!.Value;   // "Output"
+        await harness.Session.AddVariableAsync(outputSectionId, "resource_output", "Out1");
+        await harness.Session.AddVariableAsync(outputSectionId, "resource_output", "Out2");
+
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[1].Children.First(c => c.DisplayName == "Out1"));
+        var commandsNode = FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!;
+        vm.SelectNode(commandsNode);
+        var assignSubmenu = vm.ProgramCommandMenu.First(m => m.Header == "Out1 set to …");
+        await ((IAsyncRelayCommand)assignSubmenu.Children.First(c => c.Header == "Out2").Command!).ExecuteAsync(null);
+
+        var action = harness.Session.Current!.FindById(commandsNode.ElementId!.Value)!.ChildrenOrEmpty().First(a => a.Tag == "action");
+        ElementId.TryParse(action.GetAttribute("link1"), out var l1);
+        ElementId.TryParse(action.GetAttribute("link2"), out var l2);
+        Assert.Multiple(() =>
+        {
+            Assert.That(action.GetAttribute("method"), Is.EqualTo("_0x1e"), "the two-operand assign token");
+            Assert.That(action.GetAttribute("name"), Is.EqualTo("%P = %S"), "the pinned two-operand template");
+            Assert.That(harness.Session.Current!.FindById(l1)!.GetAttribute("name"), Is.EqualTo("Out1"), "link1 is the armed pin");
+            Assert.That(harness.Session.Current!.FindById(l2)!.GetAttribute("name"), Is.EqualTo("Out2"), "link2 is the chosen second pin");
+        });
+    }
+
+    // PG-1c / US-028: the Toggle command "Sets %P to the opposite value" is offered only for a bool OUTPUT pin
+    // (resource_output / dataline_output / airlink_relay); it is meaningless for an input or a non-bool variable and
+    // must be withdrawn there — while the other Commands (= ON / = OFF) stay (T005 restricts Toggle only).
+    [Test]
+    public async Task Toggle_IsOfferedOnlyForBoolOutputPins()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        await harness.Session.AddEmptyFunctionBlockAsync(loc);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        var inputSectionId = vm.InstallationNodes[0].Children[0].ElementId!.Value;    // "Input"
+        var outputSectionId = vm.InstallationNodes[0].Children[1].ElementId!.Value;   // "Output"
+        await harness.Session.AddVariableAsync(outputSectionId, "resource_output", "Relay");
+        await harness.Session.AddVariableAsync(inputSectionId, "resource_input", "Sensor");
+        var commandsNode = FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!;
+
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[1].Children[0]);   // arm the bool OUTPUT
+        vm.SelectNode(commandsNode);
+        bool toggleForOutput = vm.ProgramCommandMenu.Any(m => m.Header.Contains("toggled"));
+
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[0].Children[0]);   // arm the INPUT
+        vm.SelectNode(commandsNode);
+        bool toggleForInput = vm.ProgramCommandMenu.Any(m => m.Header.Contains("toggled"));
+        bool setOnForInput = vm.ProgramCommandMenu.Any(m => m.Header.Contains("set to ON"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(toggleForOutput, Is.True, "Toggle is offered for a bool output pin");
+            Assert.That(toggleForInput, Is.False, "Toggle is withdrawn for a non-output (input) pin");
+            Assert.That(setOnForInput, Is.True, "the other commands remain — T005 restricts only Toggle");
+        });
+    }
+
+    // T007 / PG-1b: the operator popup is keyed by the dragged pin's TYPE. A timer offers exactly the pinned command
+    // subset and no bool events; an analog offers only its two event triggers and no bool commands; a weekday offers
+    // its System-weekday assignment plus the two triggers.
+    private static async Task<(ShellHarness harness, MainWindowViewModel vm)> ProgrammingBlockWithVariableAsync(
+        string tag, string name)
+    {
+        var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        await harness.Session.AddVariableAsync(vm.InstallationNodes[0].Children[3].ElementId!.Value, tag, name);   // Internal variables
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[3].Children[0]);
+        return (harness, vm);
+    }
+
+    // Flattens a program-operator menu to its operator tokens: a flat 1-operand item's own token, or a two-operand
+    // submenu's (single) child token — the submenu node itself carries no token.
+    private static IEnumerable<string?> AllOperatorTokens(IEnumerable<ProductMenuItemViewModel> menu) =>
+        menu.SelectMany(m => m.ProductIdentifier is { } id ? new[] { id } : m.Children.Select(c => c.ProductIdentifier).Distinct());
+
+    [Test]
+    public async Task ProgramPopup_TimerPin_OffersExactlyThePinnedTimerCommands_NoBoolEvents()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        var internalId = vm.InstallationNodes[0].Children[3].ElementId!.Value;
+        await harness.Session.AddVariableAsync(internalId, "resource_timer", "T");
+        await harness.Session.AddVariableAsync(internalId, "resource_timer", "T2");   // the %S candidate for "= <pin>"
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[3].Children.First(c => c.DisplayName == "T"));
+
+        vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+        var commandTokens = AllOperatorTokens(vm.ProgramCommandMenu).ToArray();
+        vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsEventsContainer)!);
+        var eventTokens = vm.ProgramEventMenu.Select(m => m.ProductIdentifier).ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(commandTokens, Is.EqualTo(new[] { "_0xa", "_0x19", "_0x1e", "_0x5a", "_0x64", "_0xbe", "_0xc8", "_0xd2", "_0xdc" }),
+                "timer Commands = the full vendor set of nine (the = <pin> / = Timer +/- are second-pin submenus)");
+            Assert.That(eventTokens, Is.EqualTo(new[] { "_0xa", "_0x9b" }), "timer Events = -> 0 and is written (not the bool events)");
+        });
+    }
+
+    // T039 / D22: a timer on a Conditions group offers exactly = 0, the two-operand comparisons >, >=, <=, and the
+    // count-state predicates counting up/down/stopped — the vendor's dead "<" is never offered.
+    [Test]
+    public async Task ProgramPopup_TimerPin_ConditionsList_OffersThePinnedPredicates()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        var internalId = vm.InstallationNodes[0].Children[3].ElementId!.Value;
+        await harness.Session.AddVariableAsync(internalId, "resource_timer", "T");
+        await harness.Session.AddVariableAsync(internalId, "resource_timer", "T2");   // %S for the two-operand comparisons
+        await vm.AddSubProgramCommand.ExecuteAsync(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[3].Children.First(c => c.DisplayName == "T"));
+        vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsConditionsContainer)!);
+        var conditionTokens = AllOperatorTokens(vm.ProgramConditionMenu).ToArray();
+
+        Assert.That(conditionTokens, Is.EqualTo(new[] { "_0xa", "_0x32", "_0x46", "_0x50", "_0xc8", "_0xd2", "_0xdc" }),
+            "timer Conditions = = 0, >, >=, <=, counting up/down/stopped (the dead < is never offered)");
+    }
+
+    [Test]
+    public async Task ProgramPopup_AnalogPin_OffersExactlyTheTwoTriggers_NoBoolCommands()
+    {
+        var (harness, vm) = await ProgrammingBlockWithVariableAsync("resource_floating_point", "F");
+        using var _ = harness;
+
+        vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsEventsContainer)!);
+        var eventTokens = vm.ProgramEventMenu.Select(m => m.ProductIdentifier).ToArray();
+        vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+        var commandTokens = vm.ProgramCommandMenu.Select(m => m.ProductIdentifier).ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(eventTokens, Is.EqualTo(new[] { "_0x96", "_0x9b" }), "analog Events = is changed / is written");
+            Assert.That(commandTokens, Is.Empty, "an analog no longer inherits the bool command list");
+        });
+    }
+
+    [Test]
+    public async Task ProgramPopup_WeekdayPin_OffersSystemWeekdayPlusTheTwoTriggers()
+    {
+        var (harness, vm) = await ProgrammingBlockWithVariableAsync("resource_weekday", "W");
+        using var _ = harness;
+
+        vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsEventsContainer)!);
+        var eventTokens = vm.ProgramEventMenu.Select(m => m.ProductIdentifier).ToArray();
+
+        Assert.That(eventTokens, Is.EqualTo(new[] { "_0x5", "_0x96", "_0x9b" }), "weekday Events = System weekday + the two triggers");
+    }
+
+    // T037 / F-109: the arithmetic submenu offers ONLY the authorable cells. For a float target: + withholds
+    // float+float (offers float+int), − and × offer both operands, and ÷ is withheld entirely (float-target ÷ dead).
+    [Test]
+    public async Task ProgramArithmeticSubmenu_OffersOnlyAuthorableCells_ForAFloatTarget()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        var settingsId = vm.InstallationNodes[0].Children[2].ElementId!.Value;
+        await harness.Session.AddVariableAsync(settingsId, "resource_floating_point", "FltTarget");
+        await harness.Session.AddVariableAsync(settingsId, "resource_floating_point", "FltOp");
+        await harness.Session.AddVariableAsync(settingsId, "resource_integer", "IntOp");
+
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => c.DisplayName == "FltTarget"));
+        vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+        var add = vm.ProgramArithmeticMenu.FirstOrDefault(m => m.Header.StartsWith("FltTarget +"));
+        var sub = vm.ProgramArithmeticMenu.FirstOrDefault(m => m.Header.StartsWith("FltTarget -"));
+        var div = vm.ProgramArithmeticMenu.FirstOrDefault(m => m.Header.StartsWith("FltTarget /"));
+        var mul = vm.ProgramArithmeticMenu.FirstOrDefault(m => m.Header.StartsWith("FltTarget *"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(add!.Children.Select(c => c.Header), Does.Contain("IntOp").And.Not.Contain("FltOp"), "+ offers float+int, withholds float+float");
+            Assert.That(sub!.Children.Select(c => c.Header), Does.Contain("FltOp").And.Contain("IntOp"), "− offers float−float and float−int");
+            Assert.That(mul!.Children.Select(c => c.Header), Does.Contain("FltOp").And.Contain("IntOp"), "× offers float×float and mixed");
+            Assert.That(div, Is.Null, "float-target ÷ is withheld entirely (F-107)");
         });
     }
 
@@ -2191,31 +2530,39 @@ public class MainWindowViewModelTests
         });
     }
 
-    // US-029: the popup's NOT variant negates the condition — persisted with the vendor "<>" token _0x28.
+    // US-029 / T008: the NOT-equals condition is the two-operand "%P <> %S" (token _0x28) — the author picks the
+    // second pin %S from a submenu; the stored row wires link1 (armed pin) and link2 (chosen pin), no auto-bind.
     [Test]
-    public async Task AddCondition_NotVariant_UsesNotToken()
+    public async Task AddCondition_NotVariant_TwoOperand_UsesNotTokenAndBothOperands()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
         vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
-        await harness.Session.AddVariableAsync(vm.InstallationNodes[0].Children[2].ElementId!.Value, "resource_flag", "Away");
+        var settingsId = vm.InstallationNodes[0].Children[2].ElementId!.Value;
+        await harness.Session.AddVariableAsync(settingsId, "resource_flag", "Away");
+        await harness.Session.AddVariableAsync(settingsId, "resource_flag", "Home");
         await vm.AddSubProgramCommand.ExecuteAsync(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
 
-        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children[0]);   // arm the Away flag
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => c.DisplayName == "Away"));
         var conditionsNode = FindByFlag(vm.FunctionNodes, n => n.IsConditionsContainer)!;
         vm.SelectNode(conditionsNode);
-        var notOption = vm.ProgramConditionMenu.First(m => m.Header == "Away is NOT ON");
-        await ((IAsyncRelayCommand)notOption.Command!).ExecuteAsync(null);
+        var notSubmenu = vm.ProgramConditionMenu.First(m => m.Header == "Away differs from …");
+        await ((IAsyncRelayCommand)notSubmenu.Children.First(c => c.Header == "Home").Command!).ExecuteAsync(null);
 
         var condition = harness.Session.Current!.FindById(conditionsNode.ElementId!.Value)!
             .ChildrenOrEmpty().First(c => c.Tag == "condition");
+        ElementId.TryParse(condition.GetAttribute("link1"), out var l1);
+        ElementId.TryParse(condition.GetAttribute("link2"), out var l2);
         var rendered = FindByFlag(vm.FunctionNodes, n => n.IsConditionsContainer)!;
         Assert.Multiple(() =>
         {
             Assert.That(condition.GetAttribute("method"), Is.EqualTo("_0x28"), "NOT uses the vendor token _0x28");
-            Assert.That(rendered.Children.Any(c => c.DisplayName == "Away <> ON"), Is.True, "the condition renders");
+            Assert.That(condition.GetAttribute("name"), Is.EqualTo("%P <> %S"), "the pinned two-operand template is stored");
+            Assert.That(harness.Session.Current!.FindById(l1)!.GetAttribute("name"), Is.EqualTo("Away"), "link1 is the armed pin");
+            Assert.That(harness.Session.Current!.FindById(l2)!.GetAttribute("name"), Is.EqualTo("Home"), "link2 is the chosen second pin");
+            Assert.That(rendered.Children.Any(c => c.DisplayName == "Away <> Home"), Is.True, "the condition renders both operands");
         });
     }
 
@@ -2298,7 +2645,7 @@ public class MainWindowViewModelTests
         harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Mode", new[] { "Direct", "With delay", "Switched off" });
 
         vm.SelectNode(vm.InstallationNodes[0].Children[2]);
-        var enumLeaf = vm.VariablePaletteMenu.First(m => m.Header == "Enum");
+        var enumLeaf = vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "New…");
         await ((IAsyncRelayCommand)enumLeaf.Command!).ExecuteAsync(null);
 
         var enumVar = harness.Session.Current!.FindById(settingsSectionId)!.ChildrenOrEmpty().First(c => c.Tag == "resource_enum");
@@ -2330,7 +2677,7 @@ public class MainWindowViewModelTests
         harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("TestEnum", System.Array.Empty<string>());
 
         vm.SelectNode(vm.InstallationNodes[0].Children[2]);
-        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Command!).ExecuteAsync(null);
+        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "New…").Command!).ExecuteAsync(null);
 
         var enumVar = harness.Session.Current!.FindById(settingsSectionId)!.ChildrenOrEmpty()
             .FirstOrDefault(c => c.Tag == "resource_enum" && c.GetAttribute("name") == "TestEnum");
@@ -2359,7 +2706,7 @@ public class MainWindowViewModelTests
         var settingsSectionId = vm.InstallationNodes[0].Children[2].ElementId!.Value;
         harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Mode", new[] { "Direct", "With delay" });
         vm.SelectNode(vm.InstallationNodes[0].Children[2]);
-        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Command!).ExecuteAsync(null);
+        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "New…").Command!).ExecuteAsync(null);
         var enumVarId = harness.Session.Current!.FindById(settingsSectionId)!.ChildrenOrEmpty().First(c => c.Tag == "resource_enum").Id!.Value;
 
         // Re-run Properties: keep the two existing states and add one new one; a duplicate must not double.
@@ -2373,6 +2720,118 @@ public class MainWindowViewModelTests
             Assert.That(values.Count, Is.EqualTo(3), "one new state appended, no duplication of the existing two");
             Assert.That(values[^1].GetAttribute("name"), Is.EqualTo("Switched off"));
             Assert.That(values[^1].GetAttribute("index"), Is.EqualTo("2"), "the appended state continues the 0-based index");
+        });
+    }
+
+    // T013 / US-030: editing an existing state's label in the dialog relabels that value in place — it keeps its id and
+    // does not append a duplicate.
+    [Test]
+    public async Task EditEnum_RelabelsExistingStateInPlace()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        var settingsSectionId = vm.InstallationNodes[0].Children[2].ElementId!.Value;
+        harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Mode", new[] { "Direct", "With delay" });
+        vm.SelectNode(vm.InstallationNodes[0].Children[2]);
+        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "New…").Command!).ExecuteAsync(null);
+        var enumVarId = harness.Session.Current!.FindById(settingsSectionId)!.ChildrenOrEmpty().First(c => c.Tag == "resource_enum").Id!.Value;
+        ElementId.TryParse(harness.Session.Current!.FindById(enumVarId)!.GetAttribute("typedef"), out var defId);
+        ElementId firstValueId = harness.Session.Current!.FindById(defId)!.ChildrenOrEmpty().First(c => c.Tag == "enum_value").Id!.Value;
+
+        // Re-run Properties: relabel the first state in place, keep the second; the count must not grow.
+        harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Mode", new[] { "Direkte", "With delay" });
+        await vm.PropertiesCommand.ExecuteAsync(FindNodeById(vm.InstallationNodes, enumVarId));
+
+        var values = harness.Session.Current!.FindById(defId)!.ChildrenOrEmpty().Where(c => c.Tag == "enum_value").ToList();
+        Assert.Multiple(() =>
+        {
+            Assert.That(values.Count, Is.EqualTo(2), "a relabel does not append");
+            Assert.That(harness.Session.Current!.FindById(firstValueId)!.GetAttribute("name"), Is.EqualTo("Direkte"), "the first state was relabeled in place");
+            Assert.That(values[0].Id, Is.EqualTo(firstValueId), "the relabeled value keeps its id (no delete+recreate)");
+        });
+    }
+
+    // T015 / US-027 / US-026: Properties (F2) on an ordinary FB resource variable edits its Name and Note (previously
+    // a no-op — the dispatch had no branch for a plain variable).
+    [Test]
+    public async Task GenericVarProperties_EditsNameAndNoteOnAGenericVariable()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        await harness.Session.AddVariableAsync(vm.InstallationNodes[0].Children[3].ElementId!.Value, "resource_counter", "Cleanings");
+        var varId = vm.InstallationNodes[0].Children[3].Children[0].ElementId!.Value;
+
+        harness.Dialogs.VariablePropertiesResult = new VariablePropertiesResult("Renamed", "a note", ResourceInitialValue.None);
+        await vm.PropertiesCommand.ExecuteAsync(FindNodeById(vm.InstallationNodes, varId));
+
+        var variable = harness.Session.Current!.FindById(varId)!;
+        Assert.Multiple(() =>
+        {
+            Assert.That(variable.GetAttribute("name"), Is.EqualTo("Renamed"), "the variable was renamed via Properties");
+            Assert.That(variable.GetAttribute("note"), Is.EqualTo("a note"), "the note was edited via Properties");
+        });
+    }
+
+    // T016 / US-027: Properties on a resource variable also edits its typed initial value (here a numeric counter →
+    // inivalue), applied together with Name/Note as one undoable step.
+    [Test]
+    public async Task GenericVarProperties_EditsTypedInitialValue()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        await harness.Session.AddVariableAsync(vm.InstallationNodes[0].Children[3].ElementId!.Value, "resource_counter", "Cleanings");
+        var varId = vm.InstallationNodes[0].Children[3].Children[0].ElementId!.Value;
+
+        harness.Dialogs.VariablePropertiesResult = new VariablePropertiesResult("Cleanings", string.Empty, ResourceInitialValue.OfNumber(250));
+        await vm.PropertiesCommand.ExecuteAsync(FindNodeById(vm.InstallationNodes, varId));
+
+        Assert.That(harness.Session.Current!.FindById(varId)!.GetAttribute("inivalue"), Is.EqualTo("250"),
+            "the typed initial value was applied via Properties");
+    }
+
+    // T014 / US-031: adding a case value on an ENUM-keyed case tags the branch with the chosen state and gives it a
+    // resource_enum operand (previously a no-op for enum switches).
+    [Test]
+    public async Task AddCaseValue_OnEnumKeyedCase_TagsBranchWithChosenState()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+
+        // An enum variable "Mode" (Direct, With delay) in Settings — the case switch.
+        var settingsSectionId = vm.InstallationNodes[0].Children[2].ElementId!.Value;
+        harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Mode", new[] { "Direct", "With delay" });
+        vm.SelectNode(vm.InstallationNodes[0].Children[2]);
+        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "New…").Command!).ExecuteAsync(null);
+        var enumVarId = harness.Session.Current!.FindById(settingsSectionId)!.ChildrenOrEmpty().First(c => c.Tag == "resource_enum").Id!.Value;
+
+        // Arm it and insert a Case (Mode) on the Commands container.
+        vm.UseInProgramCommand.Execute(FindNodeById(vm.InstallationNodes, enumVarId));
+        vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+        await ((IAsyncRelayCommand)vm.ProgramCaseMenu.First(m => m.Header.StartsWith("Case (")).Command!).ExecuteAsync(null);
+        var caseNode = FindByFlag(vm.FunctionNodes, n => n.IsCaseNode)!;
+
+        // Add a value on the enum case: the entered criterion is a state name.
+        harness.Dialogs.PropertiesResult = new PropertiesResult("Direct", string.Empty);
+        await vm.NewCaseValueCommand.ExecuteAsync(caseNode);
+
+        var kase = harness.Session.Current!.FindById(caseNode.ElementId!.Value)!;
+        var branch = kase.ChildrenOrEmpty().FirstOrDefault(c => c.Tag == "case_action" && c.GetAttribute("name") == "Direct");
+        Assert.Multiple(() =>
+        {
+            Assert.That(branch, Is.Not.Null, "a branch tagged with the chosen state is added");
+            Assert.That(branch!.ChildrenOrEmpty().Any(c => c.Tag == "resource_enum"), Is.True, "the enum case branch carries a resource_enum operand");
         });
     }
 
@@ -2596,8 +3055,8 @@ public class MainWindowViewModelTests
         await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
         vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
         var settingsId = vm.InstallationNodes[0].Children[2].ElementId!.Value;
-        await harness.Session.AddVariableAsync(settingsId, "resource_floating_point", "F1");
-        await harness.Session.AddVariableAsync(settingsId, "resource_floating_point", "F2");
+        await harness.Session.AddVariableAsync(settingsId, "resource_integer", "F1");   // int+int + → _0x5a (float+float + is a dead cell, F-109)
+        await harness.Session.AddVariableAsync(settingsId, "resource_integer", "F2");
 
         vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => c.DisplayName == "F1"));
         vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);

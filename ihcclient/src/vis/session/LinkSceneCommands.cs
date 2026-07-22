@@ -11,7 +11,8 @@ namespace Ihc.Vis.Session
     public sealed record SceneValueResult(bool On, int LevelPercent, int RampMinutes, int RampSeconds);
 
     /// <summary>Creates a follow-link from a source pin to a target pin (US-022/US-023): the source drives, the target
-    /// is driven. Legality is the vendor data-flow rule (<see cref="ProjectEditor.CanLink"/>).</summary>
+    /// is driven. Legality is the vendor data-flow rule (<see cref="ProjectEditor.CanLink"/>), which also refuses a
+    /// pin-to-itself link (D06); the explicit <c>Source != Target</c> guard is kept as a belt-and-suspenders check.</summary>
     public sealed record LinkPins(ElementId Source, ElementId Target) : ProjectCommand
     {
         internal override string Describe(Project project) => "Link";

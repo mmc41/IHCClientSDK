@@ -19,17 +19,10 @@ namespace ihc_openvisual.Services;
 internal sealed class ProjectReportWorkflow(
     ProjectAppService service, IDialogService dialogs, ILogger logger, Func<Project?> getCurrent)
 {
-    /// <summary>The render-ready installation report model for the open project (US-040), or null if none.</summary>
-    public InstallationReport? Installation() =>
-        getCurrent() is { } project ? service.GenerateInstallationReport(project) : null;
-
-    /// <summary>The render-ready end-user report model for the open project (US-040), or null if none.</summary>
-    public EndUserReport? EndUser() =>
-        getCurrent() is { } project ? service.GenerateEndUserReport(project) : null;
-
-    /// <summary>The render-ready function-block documentation report model for the open project (US-041), or null.</summary>
-    public FunctionBlockReport? FunctionBlock() =>
-        getCurrent() is { } project ? service.GenerateFunctionBlockReport(project) : null;
+    /// <summary>The COMBINED project-documentation report model for the open project (US-040/D14/T021), or null if none
+    /// — the single model the Reports view renders and toggles.</summary>
+    public ProjectDocumentationReport? ProjectDocumentation() =>
+        getCurrent() is { } project ? service.GenerateProjectDocumentationReport(project) : null;
 
     /// <summary>Writes a rendered report HTML page to a temp file (US-040) and returns its path for the browser to
     /// open; null on failure. The file is a self-contained static page — no controller contact.</summary>

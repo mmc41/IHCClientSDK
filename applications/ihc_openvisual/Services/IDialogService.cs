@@ -11,6 +11,11 @@ namespace ihc_openvisual.Services;
 /// DataContext; the window's compiled bindings resolve against the concrete VM at runtime.</summary>
 public interface IDataTablesDialogViewModel;
 
+/// <summary>The seam the Reports view is shown through (T021): a marker for the view-model the Reports window binds
+/// to (the app-side <c>ReportsViewModel</c>), so <see cref="IDialogService"/> stays uncoupled from a concrete
+/// ViewModels type. The dialog service passes the instance to the window as its DataContext.</summary>
+public interface IReportsDialogViewModel;
+
 /// <summary>The installer's answer to a "save changes before closing?" prompt.</summary>
 public enum SaveChangesResult
 {
@@ -21,6 +26,15 @@ public enum SaveChangesResult
 
 /// <summary>The edited values returned from the element Properties dialog (US-007): the new name and note.</summary>
 public sealed record PropertiesResult(string Name, string Note);
+
+/// <summary>The current values shown by the ordinary-variable Properties dialog (US-027, T016): name, note, and the
+/// typed initial value whose <see cref="ResourceInitialValue.Kind"/> selects the value control (a Bool checkbox, a
+/// Number box, a Time h/m/s(/ms) group, or nothing for <see cref="ResourceValueKind.None"/>).</summary>
+public sealed record VariablePropertiesInput(string Title, string Name, string Note, ResourceInitialValue Current);
+
+/// <summary>The edited values returned from the ordinary-variable Properties dialog (US-027, T016): the new name,
+/// note, and typed initial value.</summary>
+public sealed record VariablePropertiesResult(string Name, string Note, ResourceInitialValue Value);
 
 /// <summary>A locality option for the product-properties <i>Location</i> drop-down (US-011).</summary>
 public sealed record LocalityChoice(string Id, string Name);
@@ -140,6 +154,10 @@ public interface IDialogService
     /// values, or null when the installer cancels.</summary>
     Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note);
 
+    /// <summary>Shows the ordinary-variable Properties dialog (US-027, T016): edits Name, Note, and the typed initial
+    /// value (the control shown depends on the value's <see cref="ResourceValueKind"/>). Returns null on Cancel.</summary>
+    Task<VariablePropertiesResult?> EditVariablePropertiesAsync(VariablePropertiesInput input);
+
     /// <summary>Opens the modal product-documentation Properties dialog (US-011); returns the edited documentation,
     /// or null when the installer cancels.</summary>
     Task<ProductPropertiesResult?> EditProductPropertiesAsync(ProductPropertiesInput input);
@@ -175,6 +193,10 @@ public interface IDialogService
     /// <summary>Opens the modal Data tables dialog (US-049) bound to the given view-model (T020: the
     /// <see cref="IDataTablesDialogViewModel"/> seam, not the concrete VM).</summary>
     Task ShowDataTablesAsync(IDataTablesDialogViewModel viewModel);
+
+    /// <summary>Shows the Reports view (US-040 / T021) — the single navigable project-documentation document —
+    /// bound to the given view-model (through the <see cref="IReportsDialogViewModel"/> seam, not the concrete VM).</summary>
+    Task ShowReportsAsync(IReportsDialogViewModel viewModel);
 
     /// <summary>Opens the read-only Wired module address map dialog (US-050).</summary>
     Task ShowModuleMapAsync(ModuleAddressMap map);

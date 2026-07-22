@@ -57,6 +57,30 @@ namespace Ihc.Vis.Editing
         }
 
         /// <summary>
+        /// Transforms this in-project block into a locked library instance (US-021 Save-to-library, PG-3a): renames it
+        /// and its <c>master_name</c> to <paramref name="name"/>, stamps the export <paramref name="programmer"/> and
+        /// <paramref name="date"/>, applies the user-library badge (<c>icon _0x10</c>) and <paramref name="note"/>, and
+        /// locks it — no re-insertion (the same in-project element, re-attributed in place). After this the T003/T004
+        /// locked-ancestor guard makes it view-only, while <i>Show program</i> stays available. Returns this.
+        /// </summary>
+        public FunctionBlockRef SaveAsLibraryInstance(string name, string programmer, DateOnly date, string? note)
+        {
+            editor.SetAttributeById(Id, "name", name);
+            editor.SetAttributeById(Id, "master_name", name);
+            editor.SetAttributeById(Id, "master_programmer", programmer);
+            editor.SetAttributeById(Id, "master_date_year", DecToken.Format(date.Year));
+            editor.SetAttributeById(Id, "master_date_month", DecToken.Format(date.Month));
+            editor.SetAttributeById(Id, "master_date_day", DecToken.Format(date.Day));
+            editor.SetAttributeById(Id, "icon", "_0x10");
+            if (note is not null)
+            {
+                editor.SetAttributeById(Id, "note", note);
+            }
+            editor.SetAttributeById(Id, "locked", "yes");   // lock last, so the block is fully stamped before it is sealed
+            return this;
+        }
+
+        /// <summary>
         /// Overrides one named setting whose default came from the catalog; returns this. The lookup is scoped
         /// to the block's two value-variable containers (<c>settings</c>, then <c>internalsettings</c>) — vendor
         /// blocks reuse display names across sections, so a whole-block search could silently write onto an
@@ -203,7 +227,8 @@ namespace Ihc.Vis.Editing
         /// no catalog file does — and the root is re-attributed to a keyless user block:
         /// <c>master_schneider_electric</c>/<c>master_type</c>/<c>master_version</c> removed, <c>name</c> and
         /// <c>master_name</c> = <paramref name="name"/>, <c>master_programmer</c>/<c>master_date_*</c> stamped,
-        /// <c>locked</c> retained, user-library icon <c>_0x10</c>. The grammar is assembled from the session's own
+        /// <c>locked</c> forced to <c>yes</c> (a library master is always locked, PG-3b/US-021), user-library icon
+        /// <c>_0x10</c>. The grammar is assembled from the session's own
         /// schema view — one declaration per element type the body uses, in first-occurrence order, the vendor head
         /// shape — so the result writes to an <c>.ifb</c> via <see cref="Ihc.Vis.Catalog.CatalogFileWriter"/> and
         /// reads back via <see cref="Ihc.Vis.Catalog.CatalogReader"/>.
@@ -261,6 +286,7 @@ namespace Ihc.Vis.Editing
                 ("master_date_year", DecToken.Format(exported.Year)),
                 ("master_date_month", DecToken.Format(exported.Month)),
                 ("master_date_day", DecToken.Format(exported.Day)),
+                ("locked", "yes"),   // PG-3(b)/US-021: a library master is ALWAYS locked, even from an unlocked source
                 ("icon", "_0x10"),
             };
             if (note is not null)

@@ -288,15 +288,10 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>The default name a freshly inserted locality carries until the installer renames it (US-008).</summary>
     public const string NewLocalityName = "Locality";
 
-    // Reports (US-040/041) delegate to the ProjectReportWorkflow collaborator (T019).
-    /// <summary>The render-ready installation report model for the open project (US-040), or null if none.</summary>
-    public InstallationReport? GenerateInstallationReport() => _reports.Installation();
-
-    /// <summary>The render-ready end-user report model for the open project (US-040), or null if none.</summary>
-    public EndUserReport? GenerateEndUserReport() => _reports.EndUser();
-
-    /// <summary>The render-ready function-block documentation report model for the open project (US-041), or null.</summary>
-    public FunctionBlockReport? GenerateFunctionBlockReport() => _reports.FunctionBlock();
+    // Reports (US-040/041) delegate to the ProjectReportWorkflow collaborator (T019). The app renders ONE combined
+    // model (D14); the former per-section report entry points were retired in T032.
+    /// <summary>The COMBINED project-documentation report model for the open project (D14/T021), or null if none.</summary>
+    public ProjectDocumentationReport? GenerateProjectDocumentationReport() => _reports.ProjectDocumentation();
 
     /// <summary>Writes a rendered report HTML page to a temp file (US-040) and returns its path for the browser to
     /// open; null on failure — delegates to the ProjectReportWorkflow collaborator (T019).</summary>
@@ -342,24 +337,23 @@ public sealed class ProjectWorkflow : IDisposable
 
 
     /// <summary>
-    /// Saves a placed function block to a reusable <c>.ifb</c> catalog file (US-021): lifts the block (by id) to a
-    /// keyless user-block definition via <see cref="Ihc.Vis.Editing.FunctionBlockRef.ExportDefinition"/> and writes it with
-    /// <see cref="Ihc.Vis.Catalog.CatalogFileWriter"/>. Read-only over the project (nothing is mutated, so no dirty
-    /// flag). Returns false (with a diagnostic) when the id is not a function block or the write fails.
+    /// Saves a placed function block to the library (US-021, PG-3a): exports it to a keyless <c>.ifb</c> file
+    /// (<see cref="ProjectAppService.SaveFunctionBlockToLibrary(Project, ElementId, string, string, string, string)"/>,
+    /// atomic write, clock-defaulted date, app-supplied author) and THEN transforms the in-project block into a locked
+    /// library instance (rename + <c>master_*</c> + badge + <c>locked="yes"</c>). The export runs first, so a failed
+    /// export leaves the project unmutated; the in-place transform is committed (undoable — one undo restores the prior
+    /// unlocked block). Returns false (with a diagnostic) when the id is not a function block or the write fails.
     /// </summary>
     public async Task<bool> SaveFunctionBlockAsync(ElementId functionBlockId, string filePath, string name, string note)
     {
         if (Current is not { } project)
             return false;
         using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(SaveFunctionBlockAsync)}");
+        ProjectApplyResult result;
         try
         {
-            // The Gem… composition now lives behind the one door (ProjectAppService.ExportFunctionBlock, R3):
-            // explicit author (the OS user is an app-side concern), clock-defaulted date, atomic write. The app
-            // supplies only the author.
-            await _service.ExportFunctionBlock(project, functionBlockId, filePath, name, Environment.UserName,
-                note: string.IsNullOrEmpty(note) ? null : note);
-            return true;
+            result = await _service.SaveFunctionBlockToLibrary(project, functionBlockId, filePath, Environment.UserName,
+                name, string.IsNullOrEmpty(note) ? null : note);
         }
         catch (Exception ex)
         {
@@ -368,6 +362,11 @@ public sealed class ProjectWorkflow : IDisposable
             await _dialogs.ShowMessageAsync("Save failed", ex.Message);
             return false;
         }
+        if (result.Outcome.Status == EditStatus.Committed)
+        {
+            await CommitAsync(result.Project, result.Outcome.Label, result.Outcome.Changes);   // undoable in-project transform
+        }
+        return result.Outcome.Status == EditStatus.Committed;
     }
 
     // ---- Command factories (W2-14): resolve parent context into a ready-to-apply command (a query, no mutation).

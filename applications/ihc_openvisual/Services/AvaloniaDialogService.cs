@@ -134,6 +134,13 @@ public sealed class AvaloniaDialogService : IDialogService
         return await PropertiesWindow.ShowAsync(Owner, title, name, note);
     }
 
+    public async Task<VariablePropertiesResult?> EditVariablePropertiesAsync(VariablePropertiesInput input)
+    {
+        if (Owner is null)
+            return null;
+        return await VariablePropertiesWindow.ShowAsync(Owner, input);
+    }
+
     public async Task<ProductPropertiesResult?> EditProductPropertiesAsync(ProductPropertiesInput input)
     {
         if (Owner is null)
@@ -188,6 +195,13 @@ public sealed class AvaloniaDialogService : IDialogService
         if (Owner is null)
             return null;
         return await ProjectInfoWindow.ShowAsync(Owner, current);
+    }
+
+    public async Task ShowReportsAsync(IReportsDialogViewModel viewModel)
+    {
+        if (Owner is null)
+            return;
+        await ReportsWindow.ShowAsync(Owner, viewModel);
     }
 
     public async Task ShowDataTablesAsync(IDataTablesDialogViewModel viewModel)

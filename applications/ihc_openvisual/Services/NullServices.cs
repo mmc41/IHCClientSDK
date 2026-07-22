@@ -18,6 +18,7 @@ public sealed class NullDialogService : IDialogService
     public Task ShowSettingsAsync(string settingsText) => Task.CompletedTask;
     public Task OpenExternalUrlAsync(string url) => Task.CompletedTask;
     public Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note) => Task.FromResult<PropertiesResult?>(null);
+    public Task<VariablePropertiesResult?> EditVariablePropertiesAsync(VariablePropertiesInput input) => Task.FromResult<VariablePropertiesResult?>(null);
     public Task<ProductPropertiesResult?> EditProductPropertiesAsync(ProductPropertiesInput input) => Task.FromResult<ProductPropertiesResult?>(null);
     public Task<SceneContainerResult?> EditSceneContainerAsync(SceneContainerInput input) => Task.FromResult<SceneContainerResult?>(null);
     public Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input) => Task.FromResult<PinPropertiesResult?>(null);
@@ -27,6 +28,7 @@ public sealed class NullDialogService : IDialogService
     public Task<EnumDefinitionResult?> EditEnumDefinitionAsync(EnumDefinitionInput input) => Task.FromResult<EnumDefinitionResult?>(null);
     public Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current) => Task.FromResult<ProjectInfoData?>(null);
     public Task ShowDataTablesAsync(IDataTablesDialogViewModel viewModel) => Task.CompletedTask;
+    public Task ShowReportsAsync(IReportsDialogViewModel viewModel) => Task.CompletedTask;
     public Task ShowModuleMapAsync(ModuleAddressMap map) => Task.CompletedTask;
     public Task<string?> PickCatalogFileAsync() => Task.FromResult<string?>(null);
     public Task<string?> PickCatalogFolderAsync() => Task.FromResult<string?>(null);

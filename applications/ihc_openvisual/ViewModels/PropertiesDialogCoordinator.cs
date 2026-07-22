@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using ihc_openvisual.Services;
@@ -46,13 +47,17 @@ internal sealed class PropertiesDialogCoordinator(
             await OpenSceneValueAsync(id, element);   // edit a scenario link's value (US-058)
         else if (element.Kind == ElementKind.EnumResource)
             await OpenEnumAsync(id);   // edit the enum type's states (US-030)
+        else if (element.Kind == ElementKind.Resource)
+            // An ordinary FB resource variable edits Name/Note plus its typed initial value (US-026/US-027, T015/T016).
+            await OpenVariableAsync(id, element);
         else if (element.IsLocalityGroup || element.Kind is ElementKind.FunctionBlock)
             // A function block renames through the same Name/Note dialog as a locality (US-007/US-019).
-            await OpenLocalityAsync(id, session.Current!.View(element).Name ?? string.Empty);
+            await OpenNameNoteAsync(id, session.Current!.View(element).Name ?? string.Empty);
     }
 
-    /// <summary>Renames a locality or function block through the shared Name/Note dialog (US-007/US-019).</summary>
-    public async Task OpenLocalityAsync(ElementId id, string currentName)
+    /// <summary>Edits a locality's or function block's Name and Note through the shared dialog and generic rename
+    /// command (US-007/US-019) — refused inside a locked block by T003.</summary>
+    public async Task OpenNameNoteAsync(ElementId id, string currentName)
     {
         if (session.Current is not { } project)
             return;
@@ -62,6 +67,48 @@ internal sealed class PropertiesDialogCoordinator(
             return;   // cancelled — the locality keeps its original name and note
         await applyAndReport(session.Commands.RenameLocality(project, id, result.Name, result.Note), $"Renamed to {result.Name}.");
     }
+
+    /// <summary>Edits an ordinary FB resource variable's Name, Note, and typed initial value (US-026/US-027, T015/T016)
+    /// through the variable dialog, applying all three as one undoable step (refused inside a locked block by T003).
+    /// The value control shown depends on the variable's type; a type with no editable initial value edits Name/Note
+    /// only.</summary>
+    public async Task OpenVariableAsync(ElementId id, ProjectElement variable)
+    {
+        if (session.Current is not { } project)
+            return;
+        ElementView view = project.View(variable);
+        VariablePropertiesResult? result = await dialogs.EditVariablePropertiesAsync(new VariablePropertiesInput(
+            $"Edit {view.Name} properties", view.Name ?? string.Empty, view.Note ?? string.Empty, ReadInitialValue(variable)));
+        if (result is null)
+            return;   // cancelled
+        await applyAndReport(session.Commands.SetVariableProperties(project, id, result.Name, result.Note, result.Value),
+            $"'{result.Name}' updated.");
+    }
+
+    // Maps a resource variable's tag + current attributes to its typed initial value (US-027, T016) — the inverse of
+    // SetResourceInitialValue's serialization, used to pre-fill the dialog. An unrecognised type has no editable value.
+    private static ResourceInitialValue ReadInitialValue(ProjectElement variable)
+    {
+        switch (variable.Tag)
+        {
+            case "resource_flag":
+            case "resource_input":
+            case "resource_output":
+                return ResourceInitialValue.OfBool(variable.GetAttribute("inivalue") == "on");
+            case "resource_counter":
+            case "resource_integer":
+                return ResourceInitialValue.OfNumber(
+                    long.TryParse(variable.GetAttribute("inivalue"), NumberStyles.Integer, CultureInfo.InvariantCulture, out long n) ? n : 0);
+            case "resource_timer":
+            case "resource_time":
+                return ResourceInitialValue.OfTime(Int(variable, "hour"), Int(variable, "minute"), Int(variable, "second"), Int(variable, "millisecond"));
+            default:
+                return ResourceInitialValue.None;
+        }
+    }
+
+    private static int Int(ProjectElement variable, string attribute) =>
+        int.TryParse(variable.GetAttribute(attribute), NumberStyles.Integer, CultureInfo.InvariantCulture, out int value) ? value : 0;
 
     // The product's scene container (US-024): its fixed name, its note, and a row per membership naming the
     // scenario, the function block driving it and that block's locality — the same triple the membership's link row

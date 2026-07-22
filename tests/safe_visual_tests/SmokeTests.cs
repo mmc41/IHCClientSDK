@@ -336,7 +336,7 @@ public class SmokeTests : AvaloniaTestBase
         vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
         harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Mode", new[] { "Direct", "With delay", "Switched off" });
         vm.SelectNode(vm.InstallationNodes[0].Children[2]);   // Settings
-        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Command!).ExecuteAsync(null);
+        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "New…").Command!).ExecuteAsync(null);
 
         var window = new MainWindow { DataContext = vm };
         CurrentTestWindow = window;
@@ -405,8 +405,8 @@ public class SmokeTests : AvaloniaTestBase
         await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
         vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
         var settingsId = vm.InstallationNodes[0].Children[2].ElementId!.Value;
-        await harness.Session.AddVariableAsync(settingsId, "resource_floating_point", "F1");
-        await harness.Session.AddVariableAsync(settingsId, "resource_floating_point", "F2");
+        await harness.Session.AddVariableAsync(settingsId, "resource_integer", "F1");   // int+int + is authorable (float+float + is a dead cell, F-109)
+        await harness.Session.AddVariableAsync(settingsId, "resource_integer", "F2");
         vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => c.DisplayName == "F1"));
         vm.SelectNode(FindFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
         var addCategory = vm.ProgramArithmeticMenu.First(m => m.Header.StartsWith("F1 +"));
