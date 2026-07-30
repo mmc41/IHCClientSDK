@@ -54,6 +54,6 @@ scope (D05) because the value-id reallocation semantics are unknown.
   counter two-operand `−` · int×int `×` · the 2-operand `Timer ->` event · the `Timer <` condition
   (authors express "less than" by swapping the operands of `>`).
 - **Never invent method tokens** (D09). The token oracle is `tmp/prgmode/out/method-map.md` (e2 +
-  progmode3 rows) attested by `tests/safe_project_tests/testdata/projects/project4-PrgTokens.vis` and
+  progmode3 rows) attested by `tests/testdata/projects/project4-PrgTokens.vis` and
   `…-round2.vis`.
 - The F-096 vendor quirk (`= Timer +` greyed until a Timertid pin exists) must **not** be copied.

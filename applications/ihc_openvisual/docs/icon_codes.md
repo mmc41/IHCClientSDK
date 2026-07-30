@@ -3,6 +3,8 @@
 Companion to [`icons_design.md`](./icons_design.md), which defines our SVG glyph set (semantic
 keys like `fb-lk.svg`). This doc maps each `.vis`/`.ifb` XML element — and the vendor
 `icon="_0xNN"` code it may carry — onto the SVG a GUI editor should render for it.
+[§7](#7-text-only-rendering--unicode-stand-ins) carries the same mapping one step further, onto
+1–3 Unicode characters, for surfaces that cannot embed SVG (plain-text reports, console dumps).
 
 **Select the icon by element *type*, not by the `_0xNN` code** (plus lock state / product
 identity / condition method where noted). The code is unreliable as a key because:
@@ -179,3 +181,157 @@ These never carry `icon` and render from the DTD default (`_0x0`, **except `reso
 
 (The `kW`/`kWh`/`W`/`Wh` energy element tags also carry no `icon`, but they *do* get a glyph —
 `var-energy` — so they live in §3b, not here.)
+
+---
+
+## 7. Text-only rendering — Unicode stand-ins
+
+Plain-text surfaces cannot embed the SVGs: `.txt` report exports, console/CLI tree dumps, log and
+diff output, clipboard "copy as text", and any report variant that must survive without a styled
+`<svg>` sprite. This section maps each asset onto a **1–3 character** stand-in keyed on the same
+`Our key` used by §1–§6, so a text renderer can reuse the element→key resolution unchanged and
+only swap the final lookup table.
+
+Two candidate columns, because no single character is simultaneously exact, monochrome and
+single-width for every glyph:
+
+- **Text** — BMP, text-presentation, monospace-safe. Renders monochrome at a predictable width in
+  terminals, monospace fonts and `<pre>`. **Use this by default.**
+- **Emoji** — the exact-likeness alternative where one exists. Renders in colour, is usually
+  double-width, and is absent from many monospace fonts. Use only when the output surface is known
+  to be proportional and emoji-capable.
+
+**Fidelity** — `exact`: the character *is* the shape the SVG draws; `close`: same subject, drawn
+differently; `tag`: a mnemonic that only reads with the legend (§7.4).
+
+### 7.1 The mapping
+
+| Our key | SVG draws | Text | Emoji | Fidelity |
+|---|---|:--:|:--:|---|
+| **§1 Structure & sections** | | | | |
+| `locality` | two overlapping rounded cards | `⧉` | | exact (U+29C9 *two joined squares*) |
+| `fb-lk` | closed rounded box | `▢` | | exact |
+| `fb-editable` | open-top "U" box | `⊔` | | exact |
+| `section-input` | arrow entering a box | `⇥` | | close |
+| `section-output` | box with arrow entering from the right | `⇤` | | close |
+| `section-settings` | pencil (barrel + nib) | `✎` | `✏️` | exact |
+| `section-internal-vars` | wrench (ring + toothed shaft) | `⚙` | `🔧` | close (gear ≠ wrench) |
+| *(containers `programs`, `conditions`)* | — no asset | | | — |
+| **§2 Programs & logic** | | | | |
+| `prog-program` | banner → stem → diamond node | `◆` | | **tag** |
+| `prog-subprogram` | same + elbow connector | `↳◆` | | **tag** |
+| `event-group` | two offset exclamation marks | `!!` | `‼️` | exact — see §7.3 on `‼` |
+| `event` | filled bar over a dot | `!` | | exact |
+| `command-group` | two overlapping checkmarks | `✓✓` | | exact |
+| `command` | a checkmark | `✓` | | exact (prefer U+2713 over `✔`) |
+| `condition` | hook + dot = question mark | `?` | | exact |
+| `cond-and` | an ampersand | `∧` | | exact shape is `&`; prefer `∧` — see §7.3 |
+| `cond-or` | `>` + underbar + a "1" = IEC ≥1 | `∨` | | exact shape is `≥1`; prefer `∨` — see §7.3 |
+| **§3a Resources with a code** | | | | |
+| `pin-in` | right arrow, filled head | `→` | | exact |
+| `pin-out` | left arrow, filled head | `←` | | exact |
+| `var-flag` | pole + filled pennant | `⚑` | `🚩` | exact |
+| `var-enum` | 2 slanted verticals × 2 horizontals | `#` | | exact |
+| `var-timer` | outlined hourglass with end bars | `⧖` | `⌛` | exact |
+| `var-date` | page + header rule + two tabs | `▤` | `📅` | close (Text) / exact (Emoji) |
+| `var-time` | clock face + hands | `◷` | `🕐` | close (Text) / exact (Emoji) |
+| `var-weekday` | 4 stacked bars + a digit "7" | `≣7` | | exact (`≣` = four bars) |
+| `var-timer-duration` | stopwatch (crown, lugs, hand) | `⏱` | | exact |
+| `var-holiday` | parasol (canopy + pole + base) | `☂` | `⛱` | exact |
+| **§3b Resources with no code** | | | | |
+| `var-integer` | the letter **N** | `ℕ` | | exact |
+| `var-decimal` | letter **F** + dot | `0.0` | | close (`𝔽` U+1D53D is exact but non-BMP) |
+| `var-counter` | odometer window, two dividers | `123` | `🔢` | **tag** |
+| `var-temperature` | thermometer (tube + bulb) | `℃` | `🌡` | close (Text) / exact (Emoji) |
+| `var-humidity` | a droplet | `RH` | `💧` | **tag** (Text) / exact (Emoji) |
+| `var-illuminance` | disc + 8 rays = sun | `☼` | `☀️` | exact |
+| `var-light-level` | light bulb (glass, neck, base) | `☼%` | `💡` | **tag** (Text) / exact (Emoji) |
+| `scenario` | square inside a square | `⧈` | | exact (U+29C8 *squared square*) |
+| `var-energy` | filled lightning bolt | `↯` | `⚡` | close (Text) / exact (Emoji) |
+| **§4 Links** | | | | |
+| `link-from` | short left arrow, outline head | `⇠` | | close — see §7.3 on arrows |
+| `link-to` | short right arrow, outline head | `⇢` | | close — see §7.3 on arrows |
+| **§5 Products** | | | | |
+| `product-button` | hand pressing a button | `☟` | `👆` | close |
+| `product-lamp` | pendant lamp (cord, shade, glow) | `▽` | `💡` | **tag** (Text) / close (Emoji) |
+| `product-socket` | socket body + prongs + cord | `⊓` | `🔌` | **tag** (Text) / exact (Emoji) |
+| `product-sensor` | the word **AUTO** on a rail | `◉` | | **tag** — a 3-char field cannot hold a wordmark |
+| `product-s0` | the letters **S0** | `S0` | | exact |
+| `rs485-module` | box with 3 + 3 terminal stubs | `▥` | | close |
+| **Non-report** | | | | |
+| `breakpoint` | ring + slash | `⊘` | `🚫` | exact — simulation UI only, never in a report |
+| `openvisual-logo` | house + "IHC" / "OpenVisual" wordmarks | — | | print the product name instead |
+
+`toolbar_*.svg` are chrome, not document content, and need no text form.
+
+### 7.2 Layout
+
+Render the stand-in in its **own fixed-width column**, padded to 3, before the label — never
+inline in the prose. That is what keeps the multi-character entries (`✓✓`, `≣7`, `↳◆`, `☼%`,
+`123`) distinguishable from their 1-character prefixes (`✓`, `◆`, `☼`), and what keeps the
+punctuation entries from being read as part of the text next to them:
+
+```
+▢   Kip med timer
+ ⇥  Input
+  → Kip                    Tænd/sluk. (Udfyldes af installatøren)
+ ⇥  Indstillinger
+  ⧖ Timer               = 00:03:00,000
+ ↳◆ Programmer
+  ◆ Kip
+  !! Hændelser
+   ! Kip -> ON
+  ∧ Betingelser
+   ? Udgang              = OFF
+  ✓✓ Kommandoer
+   ✓ Udgang              = ON
+```
+
+Indentation already carries the tree depth, so the stand-in only has to carry *type*.
+
+### 7.3 Collisions to design around
+
+Several icons want the same scarce characters, and some characters collide with the report's own
+text. Measured against the function-block documentation oracle
+(`tests/testdata/reports/functionblockdokumentation.html`, ~1 100 icon instances):
+
+- **`≥1` is unusable for `cond-or`.** Condition rows contain literal comparison operators —
+  `<`, `>=`, `<>` occur 56× — so a `≥1` group marker sits directly above text like
+  `System tid >= Tænd-tidspunkt`. Use `∨`, and `∧` for `cond-and` to keep the pair symmetric.
+  (`&` is the exact shape for `cond-and` and is safe — 0 literal `&` in the text — but pairing
+  `&` with `∨` reads worse than `∧`/`∨`.)
+- **Four assets want arrows.** Reserve the solid arrows for pins (`→` `←`, by far the more common)
+  and give links the dashed pair (`⇢` `⇠`); the SVGs make the same distinction with filled vs
+  outline arrowheads. Note that event rows print a literal ASCII `->`, which rhymes with `→` but
+  is a different character, so the two never actually merge.
+- **`#` for `var-enum`** collides with 2 literal `#` in note text. Low severity given a separate
+  icon column; swap to `≡` if the surface has no column separation.
+- **Two "light" assets.** `var-illuminance` (lux) is the exact `☼`; `var-light-level` (%) then has
+  to take `☼%` in text, or `💡` where emoji are allowed.
+- **Verified free of collisions** in that oracle: `?`, `!`, `&`, `*`, `✓` — zero literal
+  occurrences in visible text.
+- **`‼` (U+203C) is emoji-presentation by default** and renders as a colour glyph or tofu in many
+  monospace fonts, so the Text column uses `!!`. The same caution applies to `✔` (U+2714) — use
+  `✓` (U+2713), which is text-presentation.
+
+### 7.4 What still needs a legend
+
+Six keys are mnemonics rather than likenesses and do not read on sight: `prog-program`,
+`prog-subprogram`, `var-counter`, `product-lamp`, `product-socket`, `product-sensor`. The first two
+matter most — they are the 8th and 4th most frequent icons in a function-block report (≈12 % of all
+instances) — because the SVG is a vertical composite (banner → stem → decision node) that no
+character sequence resembles. A text report that uses stand-ins should print a legend, in the
+report's own language, for at least these six.
+
+Everything else — ≈87 % of icon instances, and 8 keys alone (`command`, `command-group`,
+`condition`, `cond-and`, `event`, `event-group`, `pin-in`, `pin-out`) covering ≈78 % of a
+function-block report — reads without one.
+
+### 7.5 What to omit entirely
+
+The section and group markers sit on a row whose label already names them (`Input`, `Output`,
+`Indstillinger`, `Interne variable`, `Kommandoer`, `Hændelser`, `Programmer`), so a text renderer
+may drop `section-*`, `command-group`, `event-group` and `prog-subprogram`-as-container without
+losing information. **The two exceptions are `cond-and` and `cond-or`**: the label is just
+`Betingelser` in both cases, and the icon is the only thing carrying the group's logic method — it
+must survive into the text form.

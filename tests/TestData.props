@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+
+  <!--
+    The shared oracle fixtures under tests\testdata\, copied into the importing test project's
+    output directory as testdata\... .
+
+    Imported explicitly rather than auto-discovered: these globs must NOT go into the repo-root
+    Directory.Build.props, which is imported by all 17 projects and would copy ~3 MB of fixtures
+    into every output including the SDK and the apps. Only suites that actually read oracles
+    import this file.
+
+    Before this file existed the same fixtures were reached three different ways: an in-project
+    glob (safe_project_tests), a hand-written per-file None/Link item (safe_unit_tests), and a
+    runtime walk up the directory tree into the source checkout (safe_visual_tests). The third
+    bypassed the output directory entirely and hardcoded the repo layout in C#.
+
+    LinkBase is load-bearing. Items outside the importing project's own directory cone are
+    flattened into the output root without it, so testdata\projects\Project0-Tomt.vis would land
+    as Project0-Tomt.vis and every "testdata/projects/..." path in the suites would break.
+  -->
+
+  <PropertyGroup>
+    <SharedTestDataRoot>$(MSBuildThisFileDirectory)testdata\</SharedTestDataRoot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- .vis project oracles, .def product / .ifb function-block catalog oracles, and the vendor-captured
+         .html report oracles. -->
+    <None Include="$(SharedTestDataRoot)**\*.vis;$(SharedTestDataRoot)**\*.def;$(SharedTestDataRoot)**\*.ifb;$(SharedTestDataRoot)**\*.html"
+          LinkBase="testdata"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

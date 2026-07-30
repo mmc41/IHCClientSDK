@@ -502,6 +502,41 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        /// <summary>
+        /// The same propagation over the AUTHORED sibling. project3's three links all land on pins 1–3 of an
+        /// untouched <c>4.1.01. AND ("Og"- blok)</c> master, so the vendor placeholder is the only thing the
+        /// report can print there — that is the SOURCE data, not a rendering gap, and the vendor's own render
+        /// of project3 prints the same three lines. <c>project3-KompleksWired-enduserdoc.vis</c> is that same
+        /// project with those three pin notes authored in IHC Visual and nothing else changed, which is what
+        /// makes it the oracle for an end-user report carrying real behaviour text. The order is the LINK
+        /// order, so the two notes under "Tryk (venstre)" must stay distinguishable and in pin order — a
+        /// distinction the placeholder fixture cannot detect, because there both notes are the same string.
+        /// </summary>
+        [Test]
+        public void EndUser_AuthoredFbInputNotes_PrintPerLinkInPinOrder()
+        {
+            EndUserProduct lkFuga = EndUser("project3-KompleksWired-enduserdoc.vis").Localities[0].Products[0];
+            Assert.Multiple(() =>
+            {
+                Assert.That(lkFuga.Terminals[0].Name, Is.EqualTo("Tryk (venstre)"));
+                Assert.That(lkFuga.Terminals[0].Notes, Is.EqualTo(new[]
+                {
+                    new EndUserNote("Kort tryk < 1 sek. Tænd / sluk: Loftlampe i stue", "Værelse"),
+                    new EndUserNote("Langt tryk > 1 sek. Sluk alt lys i stue og køkken", "Værelse"),
+                }));
+                Assert.That(lkFuga.Terminals[1].Name, Is.EqualTo("Tryk (højre)"));
+                Assert.That(lkFuga.Terminals[1].Notes, Is.EqualTo(new[]
+                {
+                    new EndUserNote("Kort tryk < 1 sek. Tænd / sluk: Spot over køkkenbord", "Værelse"),
+                }));
+                // The model carries the LOGICAL text: '<' and '>' are stored escaped in the .vis and the GUI
+                // re-escapes them on render, so a leaked '&lt;' here would double-escape downstream.
+                Assert.That(lkFuga.Terminals.SelectMany(t => t.Notes).Select(n => n.Text),
+                    Has.None.Contains("&lt;").And.None.Contains(Note),
+                    "the authored pins carry unescaped behaviour text, not the vendor placeholder");
+            });
+        }
+
         [Test]
         public void EndUser_UnlinkedTerminal_HasNoNoteSubLines()
         {

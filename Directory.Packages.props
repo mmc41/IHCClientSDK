@@ -42,11 +42,12 @@
     <PackageVersion Include="System.ServiceModel.Security" Version="6.0.0" />
     <!-- Overrides the vulnerable 8.0.2 pulled in transitively by System.ServiceModel.Primitives
          (advisories GHSA-37gx-xxp4-5rgx and GHSA-w3x6-4m5h-cxqf). 8.0.3 is the patched 8.x release. -->
-    <PackageVersion Include="System.Security.Cryptography.Xml" Version="8.0.3" />
+    <PackageVersion Include="System.Security.Cryptography.Xml" Version="8.0.4" />
   </ItemGroup>
 
   <ItemGroup Label="Avalonia / GUI">
     <PackageVersion Include="Avalonia" Version="12.1.0" />
+    <PackageVersion Include="Avalonia.Controls.WebView" Version="12.0.1" />
     <PackageVersion Include="Avalonia.Desktop" Version="12.1.0" />
     <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.1.0" />
     <PackageVersion Include="Avalonia.Headless" Version="12.1.0" />

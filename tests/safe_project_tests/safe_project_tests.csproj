@@ -23,14 +23,9 @@
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Include="testdata\**\*.vis" CopyToOutputDirectory="PreserveNewest" />
-    <!-- Synthetic catalog oracle files (Products\*.def, FunctionBlocks\*.ifb) used to test the
-         code-authoring builders. Same copy rule as the .vis testdata so tests can read them from
-         the output dir; without this only *.vis is copied and the .def/.ifb oracles go missing. -->
-    <None Include="testdata\**\*.def" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="testdata\**\*.ifb" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
+  <!-- Oracle fixtures live in tests\testdata\ and are shared with safe_unit_tests and
+       safe_visual_tests; this copies them to $(OutDir)\testdata\... . -->
+  <Import Project="..\TestData.props" />
 
   <Target Name="CopyConfigFiles" AfterTargets="AfterBuild">
     <!-- NB: Settings file is required for running/testing but allow build without the file to support compilation in a DevOps pipeline -->

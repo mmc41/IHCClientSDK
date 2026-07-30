@@ -36,7 +36,7 @@ public class ProjectTreeProjectorTests
     private static ProjectAppService Service() => new(new IhcSettings());
 
     private static Task<Project> Project1Oracle() =>
-        Service().Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", "Project1-SimpelWired.vis"));
+        Service().Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", "projects", "Project1-SimpelWired.vis"));
 
     // The function blocks of a project, reached exactly as the projector reaches them (direct children of a locality).
     private static IEnumerable<ProjectElement> FunctionBlocks(Project project) =>

@@ -601,11 +601,11 @@
                   note CDATA ""
                   udf CDATA "">
 ]>
-<utcs_project version_major="4" version_minor="0" id1="_0x1d0e2923" id2="_0xb0d001e" last_unique_id="_0x579">
-   <modified year="2026" month="7" day="11" hour="13" minute="0"/>
-   <customer_info name="kundeNavn-A1" address="kundeVej-A1" city="kundeBy-A1" zipcode="kundePost-A1" country="kundeLand-A1" phone="kundeTlf-A1" email="kunde-email-A1"/>
-   <installer_info name="instNavn-A1" address="instVej-A1" city="instBy-A1" zipcode="instPost-A1" country="instLand-A1" phone="instTlf-A1" mobilephone="instMob-A1" email="inst-email-A1"/>
-   <project_info programmer="prog-æøå-A1" number="num-A1" drawing="draw&amp;A1" type="type-A1" description="desc-&quot;Q&quot;-A1"/>
+<utcs_project version_major="4" version_minor="0" id1="_0x1d0e2923" id2="_0x1e0c3726" last_unique_id="_0x579">
+   <modified year="2026" month="7" day="30" hour="12" minute="55"/>
+   <customer_info/>
+   <installer_info name="Morten" country="Danmark"/>
+   <project_info programmer="Morten Christensen"/>
    <enum_definitions id="_0x3046" name="Enumerator definitioner">
       <enum_definition id="_0xf647" name="Kort tryk tænder lys på">
          <enum_value id="_0xf748" name="Højt niveau"/>
@@ -2149,13 +2149,13 @@
          </product_airlink>
          <functionblock id="_0x47028" name="4.1.01. AND (&quot;Og&quot;- blok)" master_schneider_electric="yes" master_type="4.1.01" master_name="AND (&quot;Og&quot;- blok)" master_programmer="Schneider Electric&#xD;&#xA;Copyrights © 2009" master_date_year="2017" master_date_month="4" master_date_day="29" locked="yes" icon="_0xe" note="4.1.01. AND (&quot;Og&quot;- blok)&#xD;&#xA;&#xD;&#xA;Anvendelse:&#xD;&#xA;Logik funktionsblok - AND (&quot;Og&quot;- blok) med 10 indgange samt puls og scenarie udgange.&#xD;&#xA;&#xD;&#xA;For at se den fulde beskrivelse marker denne linje og tryk &quot;F1&quot;.&#xD;&#xA;Bemærk: Dette virker kun hvis &quot;Blokken&quot; er rød-markeret.">
             <inputs id="_0x47123" name="Input" icon="_0x4" note="Variablene i denne gruppering er input til funktionsblokken">
-               <resource_input id="_0x47211" name="Indgang 1" icon="_0x36" note="(Udfyldes af installatøren)" inivalue="on">
+               <resource_input id="_0x47211" name="Indgang 1" icon="_0x36" note="Kort tryk &lt; 1 sek. Tænd / sluk: Loftlampe i stue" inivalue="on">
                   <link_to_resource id="_0x5552c" name="Følg Link" icon="_0x4a" link="_0x5542d"/>
                </resource_input>
-               <resource_input id="_0x47311" name="Indgang 2" icon="_0x36" note="(Udfyldes af installatøren)" inivalue="on">
+               <resource_input id="_0x47311" name="Indgang 2" icon="_0x36" note="Langt tryk &gt; 1 sek. Sluk alt lys i stue og køkken" inivalue="on">
                   <link_to_resource id="_0x5572c" name="Følg Link" icon="_0x4a" link="_0x5562d"/>
                </resource_input>
-               <resource_input id="_0x47411" name="Indgang 3" icon="_0x36" note="(Udfyldes af installatøren)" inivalue="on">
+               <resource_input id="_0x47411" name="Indgang 3" icon="_0x36" note="Kort tryk &lt; 1 sek. Tænd / sluk: Spot over køkkenbord" inivalue="on">
                   <link_to_resource id="_0x5592c" name="Følg Link" icon="_0x4a" link="_0x5582d"/>
                </resource_input>
                <resource_input id="_0x47511" name="Indgang 4" icon="_0x36" note="(Udfyldes af installatøren)" inivalue="on"/>

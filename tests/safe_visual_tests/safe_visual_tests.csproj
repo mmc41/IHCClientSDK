@@ -27,4 +27,8 @@
     <ProjectReference Include="..\..\applications\ihc_openvisual\ihc_openvisual.csproj" />
   </ItemGroup>
 
+  <!-- Catalog-import tests read the synthetic .def/.ifb oracles; this copies them to
+       $(OutDir)\testdata\... so they are reached the same way as in the other suites. -->
+  <Import Project="..\TestData.props" />
+
 </Project>

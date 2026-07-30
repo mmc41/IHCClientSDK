@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Funktionsdokumentation &mdash; IHC OpenVisual</title>
+<style>
+
+body { font-family: sans-serif; font-size: 14px; line-height: 1.5; margin: 24px; }
+.banner { display: flex; align-items: center; gap: 10px; background: #2455a4; color: #fff; padding: 10px 16px; }
+.banner-logo { width: 28px; height: 28px; color: #fff; }
+ul.tree { list-style: none; padding-left: 20px; }
+ul.tree.root { padding-left: 0; }
+.name { font-weight: bold; }
+.note { color: #666; }
+
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none"><symbol id="icon-logo" viewBox="0 0 120 140" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><title id="ov-title">IHC OpenVisual</title>
+  <path id="house" d="M16 128 L16 56 L60 16 L104 56 L104 128 Z"/>
+  <text id="wordmark-ihc" x="60" y="84" text-anchor="middle"
+        font-family="'Segoe UI','Arial',sans-serif" font-size="32" font-weight="700"
+        fill="currentColor" stroke="none">IHC</text>
+  <line id="rule" x1="34" y1="95" x2="86" y2="95" stroke-width="3"/>
+  <text id="wordmark-ov" x="60" y="115" text-anchor="middle"
+        font-family="'Segoe UI','Arial',sans-serif" font-size="14" font-weight="600"
+        fill="currentColor" stroke="none">OpenVisual</text></symbol></svg>
+<header class="banner">
+  <svg class="banner-logo" aria-hidden="true"><use href="#icon-logo"/></svg>
+  <strong>IHC OpenVisual</strong>
+</header>
+<h1>Funktionsdokumentation</h1>
+
+<ul class="tree root">
+  <li><span class="name">Stue &amp; Køkken "åben"</span>
+    <ul class="tree">
+      <li><span class="name">LK FUGA Tryk 2 tast</span>
+        <ul class="tree">
+          <li>Tryk (venstre)
+            <ul class="tree">
+              <li class="note">Kort tryk &lt; 1 sek. Tænd / sluk: Loftlampe i stue</li>
+              <li class="note">Langt tryk &gt; 1 sek. Sluk alt lys i stue og køkken</li>
+            </ul>
+          </li>
+          <li>Tryk (højre)
+            <ul class="tree">
+              <li class="note">Kort tryk &lt; 1 sek. Tænd / sluk: Spot over køkkenbord</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li><span class="name">Diode</span>
+        <ul class="tree">
+          <li>Lampe</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li><span class="name">Entré</span></li>
+  <li><span class="name">Køkken</span></li>
+  <li><span class="name">Soveværelse</span></li>
+  <li><span class="name">Værelse</span>
+    <ul class="tree">
+      <li><span class="name">Tryk 2 tast</span>
+        <ul class="tree">
+          <li>Tryk (venstre)</li>
+          <li>Tryk (højre)</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li><span class="name">Bad</span></li>
+  <li><span class="name">Bryggers</span></li>
+  <li><span class="name">Garage</span></li>
+  <li><span class="name">Kælder</span></li>
+  <li><span class="name">Udendørs</span></li>
+  <li><span class="name">Lokalitet</span></li>
+</ul>
+
+</body>
+</html>

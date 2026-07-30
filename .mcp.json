@@ -3,6 +3,14 @@
     "ihcvisual": {
       "command": "D:\\repos\\IHCReverseEnginneredInfo\\tools\\IHCVisualAutomation\\.artifacts\\mcp\\mcp.exe",
       "args": []
+    },
+    "chrome-devtools": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "chrome-devtools-mcp@latest"
+      ]
     }
   }
 }

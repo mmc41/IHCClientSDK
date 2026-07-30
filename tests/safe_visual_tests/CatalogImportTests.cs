@@ -9,14 +9,9 @@ namespace safe_visual_tests;
 /// file, folder (recursive, counted), persistence across restart, and clear errors that name the offending file.</summary>
 public class CatalogImportTests
 {
-    // Walk up to the repo's shared test data (the byte-fidelity synthetic .def/.ifb oracles).
-    private static string TestDataRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "tests", "safe_project_tests", "testdata")))
-            dir = dir.Parent;
-        return Path.Combine(dir!.FullName, "tests", "safe_project_tests", "testdata");
-    }
+    // The shared oracle fixtures (tests\testdata\), copied next to the test assembly by tests\TestData.props.
+    private static string TestDataRoot() =>
+        Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata");
 
     private static string SampleProductDef() =>
         Path.Combine(TestDataRoot(), "products", "synthetic", "synthetic_9f01_input.def");

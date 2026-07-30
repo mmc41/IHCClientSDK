@@ -190,14 +190,18 @@
                 <Separator/>
                 <MenuItem Header="_Close project" Command="{Binding CloseCommand}"/>
                 <Separator/>
-                <MenuItem Header="Recent projects" ItemsSource="{Binding RecentProjects}">
+                <MenuItem Name="RecentProjectsMenu" Header="Recent projects" ItemsSource="{Binding RecentProjects}">
                     <MenuItem.ItemTemplate>
                         <DataTemplate x:DataType="vm:RecentProjectViewModel">
                             <TextBlock Text="{Binding DisplayName}"/>
                         </DataTemplate>
                     </MenuItem.ItemTemplate>
                     <MenuItem.Styles>
-                        <Style Selector="MenuItem > MenuItem">
+                        <!-- Scoped to #RecentProjectsMenu's own children: an unscoped "MenuItem > MenuItem" also
+                             matches this MenuItem itself (its real parent, the File menu, is a MenuItem too),
+                             applying these setters against MainWindowViewModel instead of the per-item
+                             RecentProjectViewModel — Path doesn't exist there, hence a binding warning. -->
+                        <Style Selector="MenuItem#RecentProjectsMenu > MenuItem">
                             <Setter Property="Command" Value="{ReflectionBinding OpenCommand}"/>
                             <Setter Property="CommandParameter" Value="{ReflectionBinding Path}"/>
                         </Style>
