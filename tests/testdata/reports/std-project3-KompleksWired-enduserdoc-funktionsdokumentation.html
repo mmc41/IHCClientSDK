@@ -9,12 +9,29 @@
 body { font-family: sans-serif; font-size: 14px; line-height: 1.5; margin: 24px; }
 .banner { display: flex; align-items: center; gap: 10px; background: #2455a4; color: #fff; padding: 10px 16px; }
 .banner-logo { width: 28px; height: 28px; color: #fff; }
+hr.divider { border: none; border-top: 4px solid #ccc; margin: 6px 0; }
+h2 { font-size: 16px; }
+.kicker, .report-meta { color: #666; font-size: 12px; }
+.kicker { margin: 0; }
+.report-meta { margin: 4px 0 16px; }
+.note { color: #666; }
 ul.tree { list-style: none; padding-left: 20px; }
 ul.tree.root { padding-left: 0; }
+.row { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 6px; }
+.icon { width: 14px; height: 14px; flex: none; align-self: flex-start; margin-top: 2px; }
+.name, .eq, .value { white-space: nowrap; }
 .name { font-weight: bold; }
-.note { color: #666; }
+.value, .id { font-family: monospace; }
+.note { flex: 1 1 260px; }
 
-/* Print */
+table { border-collapse: collapse; width: 100%; margin-bottom: 16px; }
+table.people, table.locality, table.datalines, table.meta { table-layout: fixed; }
+th, td { border: 1px solid #333; padding: 6px 10px; text-align: left; }
+tr.title-row th, .party-heading { text-align: center; }
+.table-scroll { overflow-x: auto; }
+.table-scroll table { min-width: 800px; }
+.id { font-size: 12px; font-weight: normal; color: #666; }
+
 @page { margin: 15mm 12mm; }
 h1, h2, h3, caption { break-after: avoid; page-break-after: avoid; }
 table.people, table.locality, table.meta { break-inside: avoid; page-break-inside: avoid; }
@@ -27,7 +44,6 @@ thead { display: table-header-group; }
   .table-scroll { overflow-x: visible; }
   .table-scroll table { min-width: 0; }
 }
-
 </style>
 </head>
 <body>
