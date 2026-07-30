@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE functionblock[
+   <!ELEMENT enum_definition ANY>
+   <!ATTLIST enum_definition id ID #REQUIRED
+                  typeid CDATA "_0x0"
+                  name CDATA ""
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT enum_value ANY>
+   <!ATTLIST enum_value id ID #REQUIRED
+                  typeid CDATA "_0x0"
+                  name CDATA ""
+                  note CDATA ""
+                  index CDATA "0"
+                  udf CDATA "">
+   <!ELEMENT functionblock ANY>
+   <!ATTLIST functionblock id ID #REQUIRED
+                  name CDATA ""
+                  master_schneider_electric (yes | no) "no"
+                  master_type CDATA ""
+                  master_version CDATA ""
+                  master_name CDATA ""
+                  master_programmer CDATA ""
+                  master_date_year CDATA "0"
+                  master_date_month CDATA "0"
+                  master_date_day CDATA "0"
+                  locked (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  helpfile CDATA ""
+                  udf CDATA "">
+   <!ELEMENT inputs ANY>
+   <!ATTLIST inputs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_input ANY>
+   <!ATTLIST resource_input id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT outputs ANY>
+   <!ATTLIST outputs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_output ANY>
+   <!ATTLIST resource_output id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT settings ANY>
+   <!ATTLIST settings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_enum ANY>
+   <!ATTLIST resource_enum id ID #REQUIRED
+                  name CDATA ""
+                  typedef IDREF #REQUIRED
+                  inivalue IDREF #REQUIRED
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT internalsettings ANY>
+   <!ATTLIST internalsettings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT programs ANY>
+   <!ATTLIST programs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT program_simple ANY>
+   <!ATTLIST program_simple id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT events ANY>
+   <!ATTLIST events id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT event ANY>
+   <!ATTLIST event id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT actions ANY>
+   <!ATTLIST actions id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  type CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT program_sub ANY>
+   <!ATTLIST program_sub id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT conditions ANY>
+   <!ATTLIST conditions id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  type (and | or) "and"
+                  udf CDATA "">
+   <!ELEMENT condition ANY>
+   <!ATTLIST condition id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT action ANY>
+   <!ATTLIST action id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+]>
+<functionblock id="_0x5128" name="9.2.01.a. Mode selector" master_schneider_electric="yes" master_type="9.2.01" master_version="a" master_name="Mode selector" master_programmer="Morten Christensen" master_date_year="2026" master_date_month="4" master_date_day="3" locked="yes" icon="_0xe" note="9.2.01.a. Mode selector&#xD;&#xA;&#xD;&#xA;Kan fungere som enten kip- eller følgefunktion afhængigt af valgt tilstand.">
+  <enum_definition id="_0x5247" name="Funktionsvalg">
+    <enum_value id="_0x5348" name="Automatik" index="1" />
+    <enum_value id="_0x5448" name="Manuel" />
+  </enum_definition>
+  <inputs id="_0x5523" name="Input" icon="_0x4" note="Indgange til vælgerblokken">
+    <resource_input id="_0x5611" name="Indgang" icon="_0x36" note="Styreindgang til blokken." />
+  </inputs>
+  <outputs id="_0x5724" name="Output" icon="_0x14" note="Udgange fra vælgerblokken">
+    <resource_output id="_0x5812" name="Udgang" icon="_0x39" note="Følger eller kipper afhængigt af tilstanden." />
+  </outputs>
+  <settings id="_0x5925" name="Indstillinger" icon="_0xd" note="Indstillinger som brugeren kan ændre">
+    <resource_enum id="_0x5a0f" name="Funktionsvalg" icon="_0x22" typedef="_0x5247" inivalue="_0x5448" backup="yes" note="Vælg mellem automatisk og manuel styring." />
+  </settings>
+  <internalsettings id="_0x5b29" name="Interne variable" icon="_0x13" note="Private variable til blokkens eget brug" />
+  <programs id="_0x5c26" name="Programmer" icon="_0x19" note="Gruppering af blokkens programmer">
+    <program_simple id="_0x5d1e" name="Vælg funktion" icon="_0x7">
+      <events id="_0x5e64" name="Hændelser" icon="_0xb" note="Hændelser der udløser programmet">
+        <event id="_0x5fc8" name="%P bliver ændret" icon="_0xc" note="Start når %P skifter værdi" link1="_0x5611" method="_0x96" />
+      </events>
+      <actions id="_0x6066" name="Kommandoer" icon="_0x8" note="Kommandoer der udføres når en hændelse indtræffer" type="_0x2">
+        <program_sub id="_0x611f" name="Under program" icon="_0x7">
+          <conditions id="_0x6265" name="Betingelser" icon="_0x16" note="Betingelser der testes logisk">
+            <condition id="_0x63c9" name="%P = %S" icon="_0x1a" note="Betingelse: valgt tilstand er %S" link1="_0x5a0f" link2="_0x640f" method="_0x1e">
+              <resource_enum id="_0x640f" name="Enumerator" typedef="_0x5247" inivalue="_0x5348" icon="_0x22" />
+            </condition>
+          </conditions>
+          <actions id="_0x6566" name="Kommandoer ved betingelser sande" icon="_0x8" note="Kommandoer der udføres når betingelserne er opfyldt" type="_0x1">
+            <program_sub id="_0x661f" name="Under program" icon="_0x7">
+              <conditions id="_0x6765" name="Betingelser" icon="_0x16" note="Betingelser der testes logisk">
+                <condition id="_0x68c9" name="%P = ON" icon="_0x1a" note="Betingelse: %P er tændt" link1="_0x5611" method="_0xa" />
+              </conditions>
+              <actions id="_0x6966" name="Kommandoer ved betingelser sande" icon="_0x8" note="Kommandoer der udføres når betingelserne er opfyldt" type="_0x1">
+                <action id="_0x6aca" name="Kip %P" icon="_0x9" note="Skifter %P til modsat værdi" link1="_0x5812" method="_0x23" />
+              </actions>
+              <actions id="_0x6b66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Kommandoer der udføres når betingelserne ikke er opfyldt" />
+            </program_sub>
+          </actions>
+          <actions id="_0x6c66" name="Kommandoer ved betingelser falske" icon="_0x8" note="Kommandoer der udføres når betingelserne ikke er opfyldt">
+            <action id="_0x6dca" name="%P = %S" icon="_0x9" note="Sætter %P lig med %S" link1="_0x5812" link2="_0x5611" method="_0x1e" />
+          </actions>
+        </program_sub>
+      </actions>
+    </program_simple>
+  </programs>
+</functionblock>

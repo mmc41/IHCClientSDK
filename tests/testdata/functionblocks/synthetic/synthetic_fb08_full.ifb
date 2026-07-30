@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE functionblock[
+   <!ELEMENT functionblock ANY>
+   <!ATTLIST functionblock id ID #REQUIRED
+                  name CDATA ""
+                  master_schneider_electric (yes | no) "no"
+                  master_type CDATA ""
+                  master_version CDATA ""
+                  master_name CDATA ""
+                  master_programmer CDATA ""
+                  master_date_year CDATA "0"
+                  master_date_month CDATA "0"
+                  master_date_day CDATA "0"
+                  locked (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  helpfile CDATA ""
+                  udf CDATA "">
+   <!ELEMENT inputs ANY>
+   <!ATTLIST inputs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_input ANY>
+   <!ATTLIST resource_input id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT outputs ANY>
+   <!ATTLIST outputs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_output ANY>
+   <!ATTLIST resource_output id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT settings ANY>
+   <!ATTLIST settings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT internalsettings ANY>
+   <!ATTLIST internalsettings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT programs ANY>
+   <!ATTLIST programs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT program_simple ANY>
+   <!ATTLIST program_simple id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT events ANY>
+   <!ATTLIST events id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT event ANY>
+   <!ATTLIST event id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT event_power ANY>
+   <!ATTLIST event_power id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  type (up | down) "up"
+                  udf CDATA "">
+   <!ELEMENT actions ANY>
+   <!ATTLIST actions id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  type CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT program_sub ANY>
+   <!ATTLIST program_sub id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT conditions ANY>
+   <!ATTLIST conditions id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  type (and | or) "and"
+                  udf CDATA "">
+   <!ELEMENT condition ANY>
+   <!ATTLIST condition id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT action ANY>
+   <!ATTLIST action id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT program_case ANY>
+   <!ATTLIST program_case id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link IDREF #IMPLIED
+                  udf CDATA "">
+   <!ELEMENT case_action ANY>
+   <!ATTLIST case_action id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  variable IDREF #REQUIRED
+                  value IDREF #REQUIRED
+                  udf CDATA "">
+   <!ELEMENT enum_definition ANY>
+   <!ATTLIST enum_definition id ID #REQUIRED
+                  typeid CDATA "_0x0"
+                  name CDATA ""
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT enum_value ANY>
+   <!ATTLIST enum_value id ID #REQUIRED
+                  typeid CDATA "_0x0"
+                  name CDATA ""
+                  note CDATA ""
+                  index CDATA "0"
+                  udf CDATA "">
+   <!ELEMENT resource_enum ANY>
+   <!ATTLIST resource_enum id ID #REQUIRED
+                  name CDATA ""
+                  typedef IDREF #REQUIRED
+                  inivalue IDREF #REQUIRED
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+]>
+<functionblock id="_0x2128" name="9.1.08.a. Fuld flade" master_schneider_electric="yes" master_type="9.1.08" master_version="a" master_name="Fuld flade" master_programmer="Morten Christensen" master_date_year="2026" master_date_month="3" master_date_day="2" locked="yes" icon="_0xe" note="9.1.08.a. Fuld flade&#xD;&#xA;&#xD;&#xA;Syntetisk demoblok der dækker hele program-fladen (case, power-up, enum).">
+  <enum_definition id="_0x147" name="Tilstand">
+    <enum_value id="_0x248" name="Fra" />
+    <enum_value id="_0x348" name="Til" index="1" />
+  </enum_definition>
+  <inputs id="_0x923" name="Input" icon="_0x4" note="Variablene i denne gruppering er indgange til blokken">
+    <resource_input id="_0x411" name="Start" icon="_0x36" />
+  </inputs>
+  <outputs id="_0xa24" name="Output" icon="_0x14" note="Variablene i denne gruppering er udgange fra blokken">
+    <resource_output id="_0x512" name="Udgang" icon="_0x39" />
+  </outputs>
+  <settings id="_0xb25" name="Indstillinger" icon="_0xd" note="Indstillinger som brugeren kan ændre">
+    <resource_enum id="_0x60f" name="Tilstandsvalg" icon="_0x22" typedef="_0x147" inivalue="_0x248" note="Vælger blokkens tilstand." />
+  </settings>
+  <internalsettings id="_0xc29" name="Interne variable" icon="_0x13" note="Private variable til blokkens eget brug" />
+  <programs id="_0x2026" name="Programmer" icon="_0x19" note="Gruppering af blokkens programmer">
+    <program_simple id="_0xd1e" name="Skift" icon="_0x7">
+      <events id="_0x1064" name="Hændelser" icon="_0xb" note="Hændelser der udløser programmet">
+        <event_power id="_0xec8" name="Opstart" icon="_0xc" />
+        <event id="_0xfc8" name="%P -&gt; ON" icon="_0xc" note="Start når %P skifter til ON" link1="_0x411" method="_0xa" />
+      </events>
+      <actions id="_0x1166" name="Kommandoer" icon="_0x8" note="Kommandoer der udføres når en hændelse indtræffer" type="_0x2">
+        <program_sub id="_0x121f" name="Under program" icon="_0x7">
+          <conditions id="_0x1365" name="Betingelser" icon="_0x16" note="Betingelser der testes logisk">
+            <condition id="_0x14c9" name="%P = OFF" icon="_0x1a" note="Betingelse: %P er slukket" link1="_0x512" method="_0x14" />
+          </conditions>
+          <actions id="_0x1566" name="Kommandoer ved betingelser sande" icon="_0x8" note="Kommandoer der udføres når betingelserne er opfyldt" type="_0x1">
+            <action id="_0x16ca" name="%P = ON" icon="_0x9" note="Tænder udgangen" link1="_0x512" method="_0xa" />
+          </actions>
+          <actions id="_0x1766" name="Kommandoer ved betingelser falske" icon="_0x8" note="Kommandoer der udføres når betingelserne ikke er opfyldt">
+            <action id="_0x18ca" name="%P = OFF" icon="_0x9" note="Slukker udgangen" link1="_0x512" method="_0x14" />
+          </actions>
+        </program_sub>
+        <program_case id="_0x1921" name="Vælg tilstand" icon="_0x7" note="Skifter på tilstandsvalget" link="_0x60f">
+          <case_action id="_0x1a66" name="Tilstand Fra" icon="_0x8" variable="_0x60f" value="_0x70f">
+            <resource_enum id="_0x70f" typedef="_0x147" inivalue="_0x248" />
+            <action id="_0x1bca" name="%P = OFF" icon="_0x9" link1="_0x512" method="_0x14" />
+          </case_action>
+          <case_action id="_0x1c66" name="Tilstand Til" icon="_0x8" variable="_0x60f" value="_0x80f">
+            <resource_enum id="_0x80f" typedef="_0x147" inivalue="_0x348" />
+            <action id="_0x1dca" name="%P = ON" icon="_0x9" link1="_0x512" method="_0xa" />
+          </case_action>
+          <actions id="_0x1e66" name="Udføres når ingen case er lig case værdien" icon="_0x8" note="Udføres når ingen case er lig case værdien" type="_0x1">
+            <action id="_0x1fca" name="%P = OFF" icon="_0x9" link1="_0x512" method="_0x14" />
+          </actions>
+        </program_case>
+      </actions>
+    </program_simple>
+  </programs>
+</functionblock>

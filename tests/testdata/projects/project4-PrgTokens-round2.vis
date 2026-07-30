@@ -1,0 +1,507 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE utcs_project [
+   <!ELEMENT utcs_project ANY>
+   <!ATTLIST utcs_project version_major CDATA #REQUIRED
+                  version_minor CDATA #REQUIRED
+                  id1 CDATA #REQUIRED
+                  id2 CDATA #REQUIRED
+                  icon CDATA "_0x0"
+                  last_unique_id CDATA #REQUIRED>
+   <!ELEMENT modified ANY>
+   <!ATTLIST modified year CDATA #REQUIRED
+                  month CDATA #REQUIRED
+                  day CDATA #REQUIRED
+                  hour CDATA #REQUIRED
+                  minute CDATA #REQUIRED>
+   <!ELEMENT customer_info ANY>
+   <!ATTLIST customer_info name CDATA ""
+                  address CDATA ""
+                  city CDATA ""
+                  zipcode CDATA ""
+                  country CDATA ""
+                  phone CDATA ""
+                  mobilephone CDATA ""
+                  email CDATA ""
+                  udf CDATA "">
+   <!ELEMENT installer_info ANY>
+   <!ATTLIST installer_info name CDATA ""
+                  address CDATA ""
+                  city CDATA ""
+                  zipcode CDATA ""
+                  country CDATA ""
+                  phone CDATA ""
+                  mobilephone CDATA ""
+                  email CDATA ""
+                  udf CDATA "">
+   <!ELEMENT project_info ANY>
+   <!ATTLIST project_info programmer CDATA ""
+                  number CDATA ""
+                  drawing CDATA ""
+                  type CDATA ""
+                  description CDATA ""
+                  udf CDATA "">
+   <!ELEMENT enum_definitions ANY>
+   <!ATTLIST enum_definitions id ID #REQUIRED
+                  name CDATA ""
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT enum_definition ANY>
+   <!ATTLIST enum_definition id ID #REQUIRED
+                  typeid CDATA "_0x0"
+                  name CDATA ""
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT enum_value ANY>
+   <!ATTLIST enum_value id ID #REQUIRED
+                  typeid CDATA "_0x0"
+                  name CDATA ""
+                  note CDATA ""
+                  index CDATA "0"
+                  udf CDATA "">
+   <!ELEMENT groups ANY>
+   <!ATTLIST groups id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT group ANY>
+   <!ATTLIST group id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT functionblock ANY>
+   <!ATTLIST functionblock id ID #REQUIRED
+                  name CDATA ""
+                  master_schneider_electric (yes | no) "no"
+                  master_type CDATA ""
+                  master_version CDATA ""
+                  master_name CDATA ""
+                  master_programmer CDATA ""
+                  master_date_year CDATA "0"
+                  master_date_month CDATA "0"
+                  master_date_day CDATA "0"
+                  locked (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  helpfile CDATA ""
+                  udf CDATA "">
+   <!ELEMENT inputs ANY>
+   <!ATTLIST inputs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT outputs ANY>
+   <!ATTLIST outputs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT settings ANY>
+   <!ATTLIST settings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT internalsettings ANY>
+   <!ATTLIST internalsettings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_timer ANY>
+   <!ATTLIST resource_timer id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  hour CDATA #REQUIRED
+                  minute CDATA #REQUIRED
+                  second CDATA #REQUIRED
+                  millisecond CDATA #REQUIRED
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_floating_point ANY>
+   <!ATTLIST resource_floating_point id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  note CDATA ""
+                  inivalue CDATA "0.00"
+                  accessibility (read | write | read-write) "read-write"
+                  setting (yes | no) "no"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_integer ANY>
+   <!ATTLIST resource_integer id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  note CDATA ""
+                  inivalue CDATA "0"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_counter ANY>
+   <!ATTLIST resource_counter id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  note CDATA ""
+                  inivalue CDATA "0"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_timertime ANY>
+   <!ATTLIST resource_timertime id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  hour CDATA #REQUIRED
+                  minute CDATA #REQUIRED
+                  second CDATA #REQUIRED
+                  millisecond CDATA #REQUIRED
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT programs ANY>
+   <!ATTLIST programs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT program_simple ANY>
+   <!ATTLIST program_simple id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT events ANY>
+   <!ATTLIST events id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT event ANY>
+   <!ATTLIST event id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT actions ANY>
+   <!ATTLIST actions id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  type CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT action ANY>
+   <!ATTLIST action id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT program_sub ANY>
+   <!ATTLIST program_sub id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT conditions ANY>
+   <!ATTLIST conditions id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  type (and | or) "and"
+                  udf CDATA "">
+   <!ELEMENT condition ANY>
+   <!ATTLIST condition id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  link1 IDREF #IMPLIED
+                  link2 IDREF #IMPLIED
+                  method CDATA "_0x0"
+                  udf CDATA "">
+   <!ELEMENT documentation_modules ANY>
+   <!ATTLIST documentation_modules id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT dataline_input_modules ANY>
+   <!ATTLIST dataline_input_modules id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT dataline_output_modules ANY>
+   <!ATTLIST dataline_output_modules id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+]>
+<utcs_project version_major="4" version_minor="0" id1="_0x1510170c" id2="_0x15113006" last_unique_id="_0x14e">
+   <modified year="2026" month="7" day="21" hour="17" minute="48"/>
+   <customer_info/>
+   <installer_info name="instNavn-A1" address="instVej-A1" city="instBy-A1" zipcode="instPost-A1" country="instLand-A1" phone="instTlf-A1" mobilephone="instMob-A1" email="inst-email-A1"/>
+   <project_info programmer="Morten Christensen"/>
+   <enum_definitions id="_0x3046" name="Enumerator definitioner">
+      <enum_definition id="_0x8847" typeid="_0x10" name="Persienne tilstand">
+         <enum_value id="_0x8948" typeid="_0x11" name="Ukendt"/>
+         <enum_value id="_0x8a48" typeid="_0x12" name="Oppe" index="1"/>
+         <enum_value id="_0x8b48" typeid="_0x13" name="Nede" index="2"/>
+         <enum_value id="_0x8c48" typeid="_0x14" name="Kører op" index="3"/>
+         <enum_value id="_0x8d48" typeid="_0x15" name="Kører ned" index="4"/>
+      </enum_definition>
+      <enum_definition id="_0x8e47" typeid="_0x16" name="Logning">
+         <enum_value id="_0x8f48" typeid="_0x17" name="Off"/>
+         <enum_value id="_0x9048" typeid="_0x18" name="Kun ændringer" index="1"/>
+         <enum_value id="_0x9148" typeid="_0x19" name="Hver Time" index="2"/>
+         <enum_value id="_0x9248" typeid="_0x20" name="Dagligt" index="3"/>
+         <enum_value id="_0x9348" typeid="_0x21" name="Ugentligt" index="4"/>
+         <enum_value id="_0x9448" typeid="_0x22" name="Månedligt" index="5"/>
+      </enum_definition>
+   </enum_definitions>
+   <groups id="_0x2031" name="Lokaliteter" icon="_0x15" note="Gruppering af produkter og funktionsblokke">
+      <group id="_0x2132" name="Stue" icon="_0x15">
+         <functionblock id="_0x5128" name="Tom blok" master_date_year="2026" master_date_month="7" master_date_day="21" icon="_0xf">
+            <inputs id="_0x5223" name="Input" icon="_0x4" note="Variablene i denne gruppering er input til funktionsblokken"/>
+            <outputs id="_0x5324" name="Output" icon="_0x14" note="Variablene i denne gruppering er output fra funktionsblokken"/>
+            <settings id="_0x5425" name="Indstillinger" icon="_0xd" note="Variablene i denne gruppering er indstillinger til funktionsblokken"/>
+            <internalsettings id="_0x5529" name="Interne variable" icon="_0x13" note="Variablene i denne gruppe er private variable til funktionsblokken">
+               <resource_timer id="_0x5a10" name="Timer" icon="_0x43" hour="0" minute="0" second="0" millisecond="0"/>
+               <resource_timer id="_0x5b10" name="Timer" icon="_0x43" hour="0" minute="0" second="0" millisecond="0"/>
+               <resource_floating_point id="_0x5c15" name="Kommatal"/>
+               <resource_floating_point id="_0x5d15" name="Kommatal"/>
+               <resource_integer id="_0x5e0b" name="Tal"/>
+               <resource_integer id="_0x5f0b" name="Tal"/>
+               <resource_counter id="_0x600c" name="Tæller"/>
+               <resource_counter id="_0x610c" name="Tæller"/>
+               <resource_timertime id="_0x6e17" name="Timertid" icon="_0x4d" hour="0" minute="0" second="0" millisecond="0"/>
+            </internalsettings>
+            <programs id="_0x5626" name="Programmer" icon="_0x19" note="Gruppering af funktionblokkens programmer">
+               <program_simple id="_0x571e" name="Program" icon="_0x7">
+                  <events id="_0x5864" name="Hændelser" icon="_0xb" note="Hændelser som starter program">
+                     <event id="_0x96c8" name="%P bliver tilskrevet" icon="_0xc" note="Start program når %P bliver tilskrevet" link1="_0x5a10" method="_0x9b"/>
+                     <event id="_0x97c8" name="%P -&gt; 0" icon="_0xc" note="Start program når %P skifter til 0" link1="_0x5a10" method="_0xa"/>
+                  </events>
+                  <actions id="_0x5966" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <action id="_0x62ca" name="%P = 0" icon="_0x9" note="Sætter %P til 0" link1="_0x5a10" method="_0xa"/>
+                     <action id="_0x63ca" name="Aktiver nedtælling på %P med initial værdi" icon="_0x9" note="Aktiver nedtælling på %P med initial værdi" link1="_0x5a10" method="_0xbe"/>
+                     <action id="_0x64ca" name="%P = Initialværdi" icon="_0x9" note="Sætter %P til dens initialværdi" link1="_0x5a10" method="_0x19"/>
+                     <action id="_0x6bca" name="%P = %P - %S" icon="_0x9" note="Sætter %P til sin egen værdi minus %S" link1="_0x5a10" link2="_0x5b10" method="_0x64"/>
+                     <action id="_0x6fca" name="%P = %P + %S" icon="_0x9" note="Sætter %P til sin egen værdi plus %S" link1="_0x5a10" link2="_0x5b10" method="_0x5a"/>
+                     <action id="_0x70ca" name="Aktiver optælling på %P" icon="_0x9" note="Aktiver optælling på %P" link1="_0x5a10" method="_0xc8"/>
+                     <action id="_0x71ca" name="Aktiver nedtælling på %P" icon="_0x9" note="Aktiver nedtælling på %P" link1="_0x5a10" method="_0xd2"/>
+                     <action id="_0x72ca" name="Stands tælling på %P" icon="_0x9" note="Standser evt. igangværende optælling eller nedtælling på %P" link1="_0x5a10" method="_0xdc"/>
+                     <action id="_0x73ca" name="%P = %P + %S" icon="_0x9" note="Sætter %P til sin egen værdi plus %S" link1="_0x5c15" link2="_0x5f0b" method="_0x5f"/>
+                     <action id="_0x74ca" name="%P = %P - %S" icon="_0x9" note="Sætter %P til sin egen værdi minus %S" link1="_0x5c15" link2="_0x5d15" method="_0x64"/>
+                     <action id="_0x79ca" name="%P = %P * %S" icon="_0x9" note="Sætter %P til sin egen værdi ganget med %S" link1="_0x5c15" link2="_0x5e0b" method="_0x7d"/>
+                     <action id="_0x7eca" name="%P = %P / %S" icon="_0x9" note="Tilskrev værdien %P med %S" link1="_0x5e0b" link2="_0x5c15" method="_0x73"/>
+                     <action id="_0x7fca" name="%P = %P * %S" icon="_0x9" note="Tilskrev værdien %P til %S" link1="_0x5e0b" link2="_0x5d15" method="_0x7d"/>
+                     <action id="_0x80ca" name="%P = %P + %S" icon="_0x9" note="Sætter %P til sin egen værdi plus %S" link1="_0x5e0b" link2="_0x5f0b" method="_0x5a"/>
+                     <action id="_0x81ca" name="%P = %P + 1" icon="_0x9" note="Sætter %P til sin egen værdi plus 1" link1="_0x600c" method="_0x54"/>
+                     <action id="_0x82ca" name="%P = %P - 1" icon="_0x9" note="Sætter %P til sin egen værdi minus 1" link1="_0x600c" method="_0x57"/>
+                     <action id="_0x83ca" name="%P = %P + %S" icon="_0x9" note="Sætter %P til sin egen værdi plus %S" link1="_0x600c" link2="_0x5e0b" method="_0x5a"/>
+                     <program_sub id="_0x841f" name="Under program" icon="_0x7">
+                        <conditions id="_0x8565" name="Betingelser" icon="_0x16" note="Gruppering af betingelser til logisk test">
+                           <condition id="_0x9ec9" name="%P = 0" icon="_0x1a" note="Betingelse at %P er 0" link1="_0x5a10" method="_0xa"/>
+                           <condition id="_0x9fc9" name="%P &gt; %S" icon="_0x1a" note="Betingelse at %P er større end %S" link1="_0x5a10" link2="_0x6e17" method="_0x32"/>
+                           <condition id="_0xa6c9" name="%P &gt;= %S" icon="_0x1a" note="Betingelse at %P er større end eller samme som %S" link1="_0x5a10" link2="_0x5b10" method="_0x46"/>
+                           <condition id="_0xa7c9" name="%P &lt;= %S" icon="_0x1a" note="Betingelse at %P er mindre end eller samme som %S" link1="_0x5a10" link2="_0x6e17" method="_0x50"/>
+                           <condition id="_0xa8c9" name="%P tæller op" icon="_0x1a" note="Betingelse at %P er aktiveret til at tælle op" link1="_0x5a10" method="_0xc8"/>
+                           <condition id="_0xa9c9" name="%P tæller ned" icon="_0x1a" note="Betingelse at %P er aktiveret til at tælle ned" link1="_0x5a10" method="_0xd2"/>
+                           <condition id="_0xaac9" name="%P stoppet" icon="_0x1a" note="Betingelse at %P er stoppet" link1="_0x5a10" method="_0xdc"/>
+                        </conditions>
+                        <actions id="_0x8666" name="Kommandoer ved betingelser sande" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er sande" type="_0x1"/>
+                        <actions id="_0x8766" name="Kommandoer ved betingelser falske" icon="_0x8" note="Gruppering af kommandoer som udføres når betingelser er falske"/>
+                     </program_sub>
+                     <action id="_0x95ca" name="%P = 0" icon="_0x9" note="Sætter %P til 0" link1="_0x5a10" method="_0xa"/>
+                  </actions>
+               </program_simple>
+            </programs>
+         </functionblock>
+      </group>
+      <group id="_0x2232" name="Entré" icon="_0x15">
+         <functionblock id="_0xab28" name="Tom blok" master_date_year="2026" master_date_month="7" master_date_day="21" icon="_0xf">
+            <inputs id="_0xac23" name="Input" icon="_0x4" note="Variablene i denne gruppering er input til funktionsblokken"/>
+            <outputs id="_0xad24" name="Output" icon="_0x14" note="Variablene i denne gruppering er output fra funktionsblokken"/>
+            <settings id="_0xae25" name="Indstillinger" icon="_0xd" note="Variablene i denne gruppering er indstillinger til funktionsblokken"/>
+            <internalsettings id="_0xaf29" name="Interne variable" icon="_0x13" note="Variablene i denne gruppe er private variable til funktionsblokken">
+               <resource_floating_point id="_0xb415" name="Kommatal"/>
+               <resource_floating_point id="_0xb515" name="Kommatal"/>
+            </internalsettings>
+            <programs id="_0xb026" name="Programmer" icon="_0x19" note="Gruppering af funktionblokkens programmer">
+               <program_simple id="_0xb11e" name="Program" icon="_0x7">
+                  <events id="_0xb264" name="Hændelser" icon="_0xb" note="Hændelser som starter program"/>
+                  <actions id="_0xb366" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <action id="_0xbaca" name="%P = %P * %S" icon="_0x9" note="Sætter %P til sin egen værdi ganget med %S" link1="_0xb415" link2="_0xb515" method="_0x78"/>
+                     <action id="_0x119ca" name="%P = %P - %S" icon="_0x9" note="Sætter %P til sin egen værdi minus %S" link1="_0xb415" link2="_0xb515" method="_0x64"/>
+                  </actions>
+               </program_simple>
+            </programs>
+         </functionblock>
+      </group>
+      <group id="_0x2332" name="Køkken" icon="_0x15">
+         <functionblock id="_0xbb28" name="Tom blok" master_date_year="2026" master_date_month="7" master_date_day="21" icon="_0xf">
+            <inputs id="_0xbc23" name="Input" icon="_0x4" note="Variablene i denne gruppering er input til funktionsblokken"/>
+            <outputs id="_0xbd24" name="Output" icon="_0x14" note="Variablene i denne gruppering er output fra funktionsblokken"/>
+            <settings id="_0xbe25" name="Indstillinger" icon="_0xd" note="Variablene i denne gruppering er indstillinger til funktionsblokken"/>
+            <internalsettings id="_0xbf29" name="Interne variable" icon="_0x13" note="Variablene i denne gruppe er private variable til funktionsblokken">
+               <resource_floating_point id="_0xc415" name="Kommatal"/>
+               <resource_integer id="_0xc50b" name="Tal"/>
+            </internalsettings>
+            <programs id="_0xc026" name="Programmer" icon="_0x19" note="Gruppering af funktionblokkens programmer">
+               <program_simple id="_0xc11e" name="Program" icon="_0x7">
+                  <events id="_0xc264" name="Hændelser" icon="_0xb" note="Hændelser som starter program"/>
+                  <actions id="_0xc366" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <action id="_0xcaca" name="%P = %P - %S" icon="_0x9" note="Sætter %P til sin egen værdi minus %S" link1="_0xc415" link2="_0xc50b" method="_0x69"/>
+                     <action id="_0xcbca" name="%P = %P + %S" icon="_0x9" note="Sætter %P til sin egen værdi plus %S" link1="_0xc50b" link2="_0xc415" method="_0x5f"/>
+                  </actions>
+               </program_simple>
+            </programs>
+         </functionblock>
+      </group>
+      <group id="_0x2432" name="Soveværelse" icon="_0x15">
+         <functionblock id="_0xd028" name="Tom blok" master_date_year="2026" master_date_month="7" master_date_day="21" icon="_0xf">
+            <inputs id="_0xd123" name="Input" icon="_0x4" note="Variablene i denne gruppering er input til funktionsblokken"/>
+            <outputs id="_0xd224" name="Output" icon="_0x14" note="Variablene i denne gruppering er output fra funktionsblokken"/>
+            <settings id="_0xd325" name="Indstillinger" icon="_0xd" note="Variablene i denne gruppering er indstillinger til funktionsblokken"/>
+            <internalsettings id="_0xd429" name="Interne variable" icon="_0x13" note="Variablene i denne gruppe er private variable til funktionsblokken">
+               <resource_floating_point id="_0xd915" name="Kommatal"/>
+               <resource_floating_point id="_0xda15" name="Kommatal"/>
+               <resource_timertime id="_0xdb17" name="Timertid" icon="_0x4d" hour="0" minute="0" second="0" millisecond="0"/>
+            </internalsettings>
+            <programs id="_0xd526" name="Programmer" icon="_0x19" note="Gruppering af funktionblokkens programmer">
+               <program_simple id="_0xd61e" name="Program" icon="_0x7">
+                  <events id="_0xd764" name="Hændelser" icon="_0xb" note="Hændelser som starter program"/>
+                  <actions id="_0xd866" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2"/>
+               </program_simple>
+            </programs>
+         </functionblock>
+      </group>
+      <group id="_0x2532" name="Værelse" icon="_0x15">
+         <functionblock id="_0xe028" name="Tom blok" master_date_year="2026" master_date_month="7" master_date_day="21" icon="_0xf">
+            <inputs id="_0xe123" name="Input" icon="_0x4" note="Variablene i denne gruppering er input til funktionsblokken"/>
+            <outputs id="_0xe224" name="Output" icon="_0x14" note="Variablene i denne gruppering er output fra funktionsblokken"/>
+            <settings id="_0xe325" name="Indstillinger" icon="_0xd" note="Variablene i denne gruppering er indstillinger til funktionsblokken"/>
+            <internalsettings id="_0xe429" name="Interne variable" icon="_0x13" note="Variablene i denne gruppe er private variable til funktionsblokken">
+               <resource_floating_point id="_0xe915" name="Kommatal"/>
+               <resource_floating_point id="_0xea15" name="Kommatal"/>
+               <resource_counter id="_0xeb0c" name="Tæller"/>
+            </internalsettings>
+            <programs id="_0xe526" name="Programmer" icon="_0x19" note="Gruppering af funktionblokkens programmer">
+               <program_simple id="_0xe61e" name="Program" icon="_0x7">
+                  <events id="_0xe764" name="Hændelser" icon="_0xb" note="Hændelser som starter program"/>
+                  <actions id="_0xe866" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2"/>
+               </program_simple>
+            </programs>
+         </functionblock>
+      </group>
+      <group id="_0x2632" name="Bad" icon="_0x15">
+         <functionblock id="_0xf228" name="Tom blok" master_date_year="2026" master_date_month="7" master_date_day="21" icon="_0xf">
+            <inputs id="_0xf323" name="Input" icon="_0x4" note="Variablene i denne gruppering er input til funktionsblokken"/>
+            <outputs id="_0xf424" name="Output" icon="_0x14" note="Variablene i denne gruppering er output fra funktionsblokken">
+               <resource_floating_point id="_0xfb15" name="Kommatal"/>
+               <resource_floating_point id="_0xfc15" name="Kommatal"/>
+            </outputs>
+            <settings id="_0xf525" name="Indstillinger" icon="_0xd" note="Variablene i denne gruppering er indstillinger til funktionsblokken"/>
+            <internalsettings id="_0xf629" name="Interne variable" icon="_0x13" note="Variablene i denne gruppe er private variable til funktionsblokken"/>
+            <programs id="_0xf726" name="Programmer" icon="_0x19" note="Gruppering af funktionblokkens programmer">
+               <program_simple id="_0xf81e" name="Program" icon="_0x7">
+                  <events id="_0xf964" name="Hændelser" icon="_0xb" note="Hændelser som starter program"/>
+                  <actions id="_0xfa66" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2"/>
+               </program_simple>
+            </programs>
+         </functionblock>
+      </group>
+      <group id="_0x2732" name="Bryggers" icon="_0x15">
+         <functionblock id="_0x10128" name="Tom blok" master_date_year="2026" master_date_month="7" master_date_day="21" icon="_0xf">
+            <inputs id="_0x10223" name="Input" icon="_0x4" note="Variablene i denne gruppering er input til funktionsblokken"/>
+            <outputs id="_0x10324" name="Output" icon="_0x14" note="Variablene i denne gruppering er output fra funktionsblokken"/>
+            <settings id="_0x10425" name="Indstillinger" icon="_0xd" note="Variablene i denne gruppering er indstillinger til funktionsblokken"/>
+            <internalsettings id="_0x10529" name="Interne variable" icon="_0x13" note="Variablene i denne gruppe er private variable til funktionsblokken">
+               <resource_timer id="_0x10a10" name="Timer" icon="_0x43" hour="0" minute="0" second="0" millisecond="0"/>
+               <resource_timer id="_0x10b10" name="Timer" icon="_0x43" hour="0" minute="0" second="0" millisecond="0"/>
+               <resource_floating_point id="_0x10c15" name="Kommatal"/>
+               <resource_floating_point id="_0x10d15" name="Kommatal"/>
+               <resource_integer id="_0x10e0b" name="Tal"/>
+               <resource_integer id="_0x10f0b" name="Tal"/>
+               <resource_timertime id="_0x11017" name="Timertid" icon="_0x4d" hour="0" minute="0" second="0" millisecond="0"/>
+            </internalsettings>
+            <programs id="_0x10626" name="Programmer" icon="_0x19" note="Gruppering af funktionblokkens programmer">
+               <program_simple id="_0x1071e" name="Program" icon="_0x7">
+                  <events id="_0x10864" name="Hændelser" icon="_0xb" note="Hændelser som starter program"/>
+                  <actions id="_0x10966" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2"/>
+               </program_simple>
+            </programs>
+         </functionblock>
+      </group>
+      <group id="_0x2832" name="Garage" icon="_0x15">
+         <functionblock id="_0x11a28" name="Tom blok" master_date_year="2026" master_date_month="7" master_date_day="21" icon="_0xf">
+            <inputs id="_0x11b23" name="Input" icon="_0x4" note="Variablene i denne gruppering er input til funktionsblokken"/>
+            <outputs id="_0x11c24" name="Output" icon="_0x14" note="Variablene i denne gruppering er output fra funktionsblokken"/>
+            <settings id="_0x11d25" name="Indstillinger" icon="_0xd" note="Variablene i denne gruppering er indstillinger til funktionsblokken"/>
+            <internalsettings id="_0x11e29" name="Interne variable" icon="_0x13" note="Variablene i denne gruppe er private variable til funktionsblokken">
+               <resource_integer id="_0x1230b" name="Tal"/>
+               <resource_integer id="_0x1240b" name="Tal"/>
+            </internalsettings>
+            <programs id="_0x11f26" name="Programmer" icon="_0x19" note="Gruppering af funktionblokkens programmer">
+               <program_simple id="_0x1201e" name="Program" icon="_0x7">
+                  <events id="_0x12164" name="Hændelser" icon="_0xb" note="Hændelser som starter program"/>
+                  <actions id="_0x12266" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <action id="_0x129ca" name="%P = %P + %S" icon="_0x9" note="Sætter %P til sin egen værdi plus %S" link1="_0x1230b" link2="_0x1240b" method="_0x5a"/>
+                     <action id="_0x12eca" name="%P = %P / %S" icon="_0x9" note="Tilskrev værdien %P med %S" link1="_0x1230b" link2="_0x1240b" method="_0x6e"/>
+                  </actions>
+               </program_simple>
+            </programs>
+         </functionblock>
+      </group>
+      <group id="_0x2932" name="Kælder" icon="_0x15">
+         <functionblock id="_0x12f28" name="Tom blok" master_date_year="2026" master_date_month="7" master_date_day="21" icon="_0xf">
+            <inputs id="_0x13023" name="Input" icon="_0x4" note="Variablene i denne gruppering er input til funktionsblokken"/>
+            <outputs id="_0x13124" name="Output" icon="_0x14" note="Variablene i denne gruppering er output fra funktionsblokken"/>
+            <settings id="_0x13225" name="Indstillinger" icon="_0xd" note="Variablene i denne gruppering er indstillinger til funktionsblokken"/>
+            <internalsettings id="_0x13329" name="Interne variable" icon="_0x13" note="Variablene i denne gruppe er private variable til funktionsblokken">
+               <resource_counter id="_0x1380c" name="Tæller"/>
+               <resource_counter id="_0x1390c" name="Tæller"/>
+            </internalsettings>
+            <programs id="_0x13426" name="Programmer" icon="_0x19" note="Gruppering af funktionblokkens programmer">
+               <program_simple id="_0x1351e" name="Program" icon="_0x7">
+                  <events id="_0x13664" name="Hændelser" icon="_0xb" note="Hændelser som starter program"/>
+                  <actions id="_0x13766" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <action id="_0x13aca" name="%P = %P + %S" icon="_0x9" note="Sætter %P til sin egen værdi plus %S" link1="_0x1380c" link2="_0x1390c" method="_0x5a"/>
+                  </actions>
+               </program_simple>
+            </programs>
+         </functionblock>
+      </group>
+      <group id="_0x2a32" name="Udendørs" icon="_0x15">
+         <functionblock id="_0x13f28" name="Tom blok" master_date_year="2026" master_date_month="7" master_date_day="21" icon="_0xf">
+            <inputs id="_0x14023" name="Input" icon="_0x4" note="Variablene i denne gruppering er input til funktionsblokken"/>
+            <outputs id="_0x14124" name="Output" icon="_0x14" note="Variablene i denne gruppering er output fra funktionsblokken"/>
+            <settings id="_0x14225" name="Indstillinger" icon="_0xd" note="Variablene i denne gruppering er indstillinger til funktionsblokken"/>
+            <internalsettings id="_0x14329" name="Interne variable" icon="_0x13" note="Variablene i denne gruppe er private variable til funktionsblokken">
+               <resource_counter id="_0x1480c" name="Tæller"/>
+               <resource_integer id="_0x1490b" name="Tal"/>
+            </internalsettings>
+            <programs id="_0x14426" name="Programmer" icon="_0x19" note="Gruppering af funktionblokkens programmer">
+               <program_simple id="_0x1451e" name="Program" icon="_0x7">
+                  <events id="_0x14664" name="Hændelser" icon="_0xb" note="Hændelser som starter program"/>
+                  <actions id="_0x14766" name="Kommandoer" icon="_0x8" note="Gruppering af kommandoer som udføres når hændelse er indtruffet" type="_0x2">
+                     <action id="_0x14eca" name="%P = %P + %S" icon="_0x9" note="Sætter %P til sin egen værdi plus %S" link1="_0x1480c" link2="_0x1490b" method="_0x5a"/>
+                  </actions>
+               </program_simple>
+            </programs>
+         </functionblock>
+      </group>
+   </groups>
+   <documentation_modules id="_0x4e34">
+      <dataline_input_modules id="_0x4f35"/>
+      <dataline_output_modules id="_0x5036"/>
+   </documentation_modules>
+</utcs_project>

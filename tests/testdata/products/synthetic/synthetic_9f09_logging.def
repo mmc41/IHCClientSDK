@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE product_dataline[
+   <!ELEMENT product_dataline ANY>
+   <!ATTLIST product_dataline id ID #REQUIRED
+                  product_identifier CDATA #REQUIRED
+                  name CDATA ""
+                  locked (yes | no) "yes"
+                  enduser_report (yes | no) "no"
+                  icon CDATA ""
+                  note CDATA ""
+                  position CDATA ""
+                  documentation_tag CDATA ""
+                  power_group CDATA ""
+                  cabletype CDATA ""
+                  cablenumber CDATA "">
+   <!ELEMENT resource_temperature ANY>
+   <!ATTLIST resource_temperature id ID #REQUIRED
+                  name CDATA ""
+                  note CDATA ""
+                  backup (yes | no) "no"
+                  inivalue CDATA "20.00"
+                  accessibility (read | write | read-write) "read-write">
+	<!ATTLIST resource_enum
+				id ID #REQUIRED
+				name CDATA "Enumerator"
+				typedef IDREF #IMPLIED
+				inivalue IDREF #IMPLIED
+				backup (yes | no) "no"
+				icon CDATA "_0x22"
+				note CDATA ""
+				helpid CDATA "_0x5dc"
+				accessibility (read | write | read-write) "read-write">
+	<!ATTLIST resource_sample_log
+				id ID #REQUIRED
+				name CDATA ""
+				note CDATA ""
+				backup (yes | no) "no"
+				icon CDATA "_0x2c"
+				inivalue CDATA "500.00"
+				interval CDATA "300"
+				accessibility (read | write | read-write) "read">
+]>
+<product_dataline id="_0x01" product_identifier="_0x9f09" name="11#Synthetic sensor med logning" note="Synthetic oracle - orphan ATTLIST defaults drive insert materialization (æøå)" icon="_0x83">
+<enum_definition id="_0x50" typeid="_0x16">
+		<enum_value id="_0x51" typeid="_0x17" />
+	  </enum_definition>
+  <resource_temperature id="_0x02" name="Rumtemperatur" note="" accessibility="read" />
+  <resource_enum id="_0x03" name="Log Rumtemperatur" typedef="_0x50" inivalue="_0x51" />
+  <resource_sample_log id="_0x04" name="Prøvekanal" note="Synthetic non-registry orphan type" />
+</product_dataline>

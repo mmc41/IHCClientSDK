@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE utcs_project [
+   <!ELEMENT utcs_project ANY>
+   <!ATTLIST utcs_project version_major CDATA #REQUIRED
+                  version_minor CDATA #REQUIRED
+                  id1 CDATA #REQUIRED
+                  id2 CDATA #REQUIRED
+                  icon CDATA "_0x0"
+                  last_unique_id CDATA #REQUIRED>
+   <!ELEMENT modified ANY>
+   <!ATTLIST modified year CDATA #REQUIRED
+                  month CDATA #REQUIRED
+                  day CDATA #REQUIRED
+                  hour CDATA #REQUIRED
+                  minute CDATA #REQUIRED>
+   <!ELEMENT customer_info ANY>
+   <!ATTLIST customer_info name CDATA ""
+                  address CDATA ""
+                  city CDATA ""
+                  zipcode CDATA ""
+                  country CDATA ""
+                  phone CDATA ""
+                  mobilephone CDATA ""
+                  email CDATA ""
+                  udf CDATA "">
+   <!ELEMENT installer_info ANY>
+   <!ATTLIST installer_info name CDATA ""
+                  address CDATA ""
+                  city CDATA ""
+                  zipcode CDATA ""
+                  country CDATA ""
+                  phone CDATA ""
+                  mobilephone CDATA ""
+                  email CDATA ""
+                  udf CDATA "">
+   <!ELEMENT project_info ANY>
+   <!ATTLIST project_info programmer CDATA ""
+                  number CDATA ""
+                  drawing CDATA ""
+                  type CDATA ""
+                  description CDATA ""
+                  udf CDATA "">
+   <!ELEMENT enum_definitions ANY>
+   <!ATTLIST enum_definitions id ID #REQUIRED
+                  name CDATA ""
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT enum_definition ANY>
+   <!ATTLIST enum_definition id ID #REQUIRED
+                  typeid CDATA "_0x0"
+                  name CDATA ""
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT enum_value ANY>
+   <!ATTLIST enum_value id ID #REQUIRED
+                  typeid CDATA "_0x0"
+                  name CDATA ""
+                  note CDATA ""
+                  index CDATA "0"
+                  udf CDATA "">
+   <!ELEMENT groups ANY>
+   <!ATTLIST groups id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT group ANY>
+   <!ATTLIST group id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT product_dataline ANY>
+   <!ATTLIST product_dataline id ID #REQUIRED
+                  product_identifier CDATA #REQUIRED
+                  name CDATA ""
+                  locked (yes | no) "no"
+                  enduser_report (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  helpfile CDATA ""
+                  position CDATA ""
+                  cabletype CDATA ""
+                  cablenumber CDATA ""
+                  documentation_tag CDATA ""
+                  power_group CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_temperature ANY>
+   <!ATTLIST resource_temperature id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  note CDATA ""
+                  inivalue CDATA "0.00"
+                  accessibility (read | write | read-write) "read-write"
+                  setting (yes | no) "no"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_input ANY>
+   <!ATTLIST resource_input id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_enum ANY>
+   <!ATTLIST resource_enum id ID #REQUIRED
+                  name CDATA ""
+                  typedef IDREF #REQUIRED
+                  inivalue IDREF #REQUIRED
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  accessibility (read | write | read-write) "read-write"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT settings ANY>
+   <!ATTLIST settings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT dataline_input ANY>
+   <!ATTLIST dataline_input id ID #REQUIRED
+                  name CDATA ""
+                  note CDATA ""
+                  inivalue (on | off) "off"
+                  address_dataline CDATA "_0x0"
+                  cable_colour CDATA ""
+                  udf CDATA "">
+   <!ELEMENT resource_light ANY>
+   <!ATTLIST resource_light id ID #REQUIRED
+                  name CDATA ""
+                  backup (yes | no) "no"
+                  note CDATA ""
+                  inivalue CDATA "0"
+                  accessibility (read | write | read-write) "read-write"
+                  setting (yes | no) "no"
+                  note-2 CDATA ""
+                  udf CDATA "">
+   <!ELEMENT documentation_modules ANY>
+   <!ATTLIST documentation_modules id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT dataline_input_modules ANY>
+   <!ATTLIST dataline_input_modules id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT dataline_output_modules ANY>
+   <!ATTLIST dataline_output_modules id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+]>
+<utcs_project version_major="4" version_minor="0" id1="_0x3101e29" id2="_0x3102107" last_unique_id="_0x73">
+   <modified year="2026" month="7" day="3" hour="16" minute="33"/>
+   <customer_info/>
+   <installer_info name="Morten" country="Danmark"/>
+   <project_info programmer="Morten Christensen"/>
+   <enum_definitions id="_0x3046" name="Enumerator definitioner">
+      <enum_definition id="_0x4147" typeid="_0x10" name="Persienne tilstand">
+         <enum_value id="_0x4248" typeid="_0x11" name="Ukendt"/>
+         <enum_value id="_0x4348" typeid="_0x12" name="Oppe" index="1"/>
+         <enum_value id="_0x4448" typeid="_0x13" name="Nede" index="2"/>
+         <enum_value id="_0x4548" typeid="_0x14" name="Kører op" index="3"/>
+         <enum_value id="_0x4648" typeid="_0x15" name="Kører ned" index="4"/>
+      </enum_definition>
+      <enum_definition id="_0x4747" typeid="_0x16" name="Logning">
+         <enum_value id="_0x4848" typeid="_0x17" name="Off"/>
+         <enum_value id="_0x4948" typeid="_0x18" name="Kun ændringer" index="1"/>
+         <enum_value id="_0x4a48" typeid="_0x19" name="Hver Time" index="2"/>
+         <enum_value id="_0x4b48" typeid="_0x20" name="Dagligt" index="3"/>
+         <enum_value id="_0x4c48" typeid="_0x21" name="Ugentligt" index="4"/>
+         <enum_value id="_0x4d48" typeid="_0x22" name="Månedligt" index="5"/>
+      </enum_definition>
+   </enum_definitions>
+   <groups id="_0x2031" name="Lokaliteter" icon="_0x15" note="Gruppering af produkter og funktionsblokke">
+      <group id="_0x2132" name="Stue" icon="_0x15">
+         <product_dataline id="_0x5153" product_identifier="_0x2125" name="Temperatur sensor med logning" locked="yes" icon="_0x83" note="Temperatur sensor med rum- og gulvføler with logging">
+            <resource_temperature id="_0x5414" name="Rumtemperatur" inivalue="20.00" accessibility="read"/>
+            <resource_temperature id="_0x5514" name="Gulvtemperatur" note="Valgfri ekstern gulvføler" inivalue="20.00" accessibility="read"/>
+            <resource_input id="_0x5611" name="Alarm" icon="_0x36" note="Høj ved fejl" accessibility="read"/>
+            <resource_temperature id="_0x5714" name="Kalibrering af rumføler" note="Offset fra målt temperatur" setting="yes"/>
+            <resource_temperature id="_0x5814" name="Kalibrering af gulvføler" note="Offset fra målt temperatur" setting="yes"/>
+            <resource_enum id="_0x590f" name="Log Rumtemperatur" typedef="_0x4747" inivalue="_0x4848" icon="_0x22"/>
+            <resource_enum id="_0x5a0f" name="Log Gulvtemperatur" typedef="_0x4747" inivalue="_0x4848" icon="_0x22"/>
+            <settings id="_0x5b25" name="Indstillinger" note="Produkt indstillinger">
+               <dataline_input id="_0x5c5a" name="Temperatur sensor indgang"/>
+            </settings>
+         </product_dataline>
+      </group>
+      <group id="_0x2232" name="Entré" icon="_0x15">
+         <product_dataline id="_0x5d53" product_identifier="_0x2125" name="Temperatur sensor med logning" locked="yes" icon="_0x83" note="Temperatur sensor med rum- og gulvføler with logging">
+            <resource_temperature id="_0x6014" name="Rumtemperatur" inivalue="20.00" accessibility="read"/>
+            <resource_temperature id="_0x6114" name="Gulvtemperatur" note="Valgfri ekstern gulvføler" inivalue="20.00" accessibility="read"/>
+            <resource_input id="_0x6211" name="Alarm" icon="_0x36" note="Høj ved fejl" accessibility="read"/>
+            <resource_temperature id="_0x6314" name="Kalibrering af rumføler" note="Offset fra målt temperatur" setting="yes"/>
+            <resource_temperature id="_0x6414" name="Kalibrering af gulvføler" note="Offset fra målt temperatur" setting="yes"/>
+            <resource_enum id="_0x650f" name="Log Rumtemperatur" typedef="_0x4747" inivalue="_0x4848" icon="_0x22"/>
+            <resource_enum id="_0x660f" name="Log Gulvtemperatur" typedef="_0x4747" inivalue="_0x4848" icon="_0x22"/>
+            <settings id="_0x6725" name="Indstillinger" note="Produkt indstillinger">
+               <dataline_input id="_0x685a" name="Temperatur sensor indgang"/>
+            </settings>
+         </product_dataline>
+      </group>
+      <group id="_0x2332" name="Køkken" icon="_0x15">
+         <product_dataline id="_0x6953" product_identifier="_0x2139" name="Lux / Temperatur sensor med logning" locked="yes" icon="_0x83" note="Sensor for måling af lysniveau og temperatur">
+            <resource_light id="_0x6c16" name="Lys" note="0-60.000 Lux" inivalue="500" accessibility="read"/>
+            <resource_temperature id="_0x6d14" name="Temperatur" note="Rumtemperatur" inivalue="20.00" accessibility="read"/>
+            <resource_input id="_0x6e11" name="Alarm" icon="_0x36" note="Høj ved fejl" accessibility="read"/>
+            <resource_temperature id="_0x6f14" name="Kalibrering af temperaturføler" note="Offset fra målt temperatur" setting="yes"/>
+            <resource_enum id="_0x700f" name="Log Lys" typedef="_0x4747" inivalue="_0x4848" icon="_0x22"/>
+            <resource_enum id="_0x710f" name="Log Temperatur" typedef="_0x4747" inivalue="_0x4848" icon="_0x22"/>
+            <settings id="_0x7225" name="Indstillinger">
+               <dataline_input id="_0x735a" name="Lux / Temperatur sensor"/>
+            </settings>
+         </product_dataline>
+      </group>
+      <group id="_0x2432" name="Soveværelse" icon="_0x15"/>
+      <group id="_0x2532" name="Værelse" icon="_0x15"/>
+      <group id="_0x2632" name="Bad" icon="_0x15"/>
+      <group id="_0x2732" name="Bryggers" icon="_0x15"/>
+      <group id="_0x2832" name="Garage" icon="_0x15"/>
+      <group id="_0x2932" name="Kælder" icon="_0x15"/>
+      <group id="_0x2a32" name="Udendørs" icon="_0x15"/>
+   </groups>
+   <documentation_modules id="_0x4e34">
+      <dataline_input_modules id="_0x4f35"/>
+      <dataline_output_modules id="_0x5036"/>
+   </documentation_modules>
+</utcs_project>

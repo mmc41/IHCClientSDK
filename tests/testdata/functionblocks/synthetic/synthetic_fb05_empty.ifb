@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE functionblock[
+   <!ELEMENT functionblock ANY>
+   <!ATTLIST functionblock id ID #REQUIRED
+                  name CDATA ""
+                  master_schneider_electric (yes | no) "no"
+                  master_type CDATA ""
+                  master_version CDATA ""
+                  master_name CDATA ""
+                  master_programmer CDATA ""
+                  master_date_year CDATA "0"
+                  master_date_month CDATA "0"
+                  master_date_day CDATA "0"
+                  locked (yes | no) "no"
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  helpfile CDATA ""
+                  udf CDATA "">
+   <!ELEMENT inputs ANY>
+   <!ATTLIST inputs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT outputs ANY>
+   <!ATTLIST outputs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT settings ANY>
+   <!ATTLIST settings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT internalsettings ANY>
+   <!ATTLIST internalsettings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT programs ANY>
+   <!ATTLIST programs id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT program_simple ANY>
+   <!ATTLIST program_simple id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT events ANY>
+   <!ATTLIST events id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT actions ANY>
+   <!ATTLIST actions id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  type CDATA "_0x0"
+                  udf CDATA "">
+]>
+<functionblock id="_0x5128" name="Tomt demoblok" icon="_0xf">
+  <inputs id="_0x5223" name="Input" icon="_0x4" note="Indgange til funktionsblokken" />
+  <outputs id="_0x5324" name="Output" icon="_0x14" note="Udgange fra funktionsblokken" />
+  <settings id="_0x5425" name="Indstillinger" icon="_0xd" note="Indstillinger som brugeren kan ændre" />
+  <internalsettings id="_0x5529" name="Interne variable" icon="_0x13" note="Private variable til blokkens eget brug" />
+  <programs id="_0x5626" name="Programmer" icon="_0x19" note="Gruppering af blokkens programmer">
+    <program_simple id="_0x571e" name="Program" icon="_0x7">
+      <events id="_0x5864" name="Hændelser" icon="_0xb" note="Hændelser der udløser programmet" />
+      <actions id="_0x5966" name="Kommandoer" icon="_0x8" note="Kommandoer der udføres" type="_0x2" />
+    </program_simple>
+  </programs>
+</functionblock>

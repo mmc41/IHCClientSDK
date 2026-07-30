@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE product_dataline[
+   <!ELEMENT product_dataline ANY>
+   <!ATTLIST product_dataline id ID #REQUIRED
+                  product_identifier CDATA #REQUIRED
+                  name CDATA ""
+                  locked (yes | no) "yes"
+                  icon CDATA ""
+                  note CDATA "">
+   <!ELEMENT resource_soil_moisture ANY>
+   <!ATTLIST resource_soil_moisture id ID #REQUIRED
+                  name CDATA ""
+                  note CDATA ""
+                  backup (yes | no) "no"
+                  icon CDATA "_0x0"
+                  inivalue CDATA "0.00"
+                  unit CDATA "%"
+                  accessibility (read | write | read-write) "read">
+]>
+<product_dataline id="_0x01" product_identifier="_0x9f08" name="Synthetic Open-World Product (åben)" note="Synthetic oracle - non-registry element type">
+  <resource_soil_moisture id="_0x02" name="Custom reading" unit="%" inivalue="42.00" />
+</product_dataline>
