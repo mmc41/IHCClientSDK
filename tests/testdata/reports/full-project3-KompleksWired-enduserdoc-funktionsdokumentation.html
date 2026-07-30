@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Funktionsdokumentation &mdash; IHC OpenVisual</title>
+<style>
+
+body { font-family: sans-serif; font-size: 14px; line-height: 1.5; margin: 24px; }
+.banner { display: flex; align-items: center; gap: 10px; background: #2455a4; color: #fff; padding: 10px 16px; }
+.banner-logo { width: 28px; height: 28px; color: #fff; }
+ul.tree { list-style: none; padding-left: 20px; }
+ul.tree.root { padding-left: 0; }
+.name { font-weight: bold; }
+.note { color: #666; }
+
+/* Full mode */
+hr.divider { border: none; border-top: 4px solid #ccc; margin: 6px 0; }
+h2 { font-size: 16px; }
+table { border-collapse: collapse; width: 100%; margin-bottom: 16px; }
+th, td { border: 1px solid #333; padding: 6px 10px; text-align: left; }
+tr.title-row th { text-align: center; }
+table.meta { table-layout: fixed; }
+.report-meta { color: #666; font-size: 12px; margin: 4px 0 16px; }
+.id { font-family: monospace; font-size: 12px; font-weight: normal; color: #666; }
+
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none"><symbol id="icon-logo" viewBox="0 0 120 140" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><title id="ov-title">IHC OpenVisual</title>
+  <path id="house" d="M16 128 L16 56 L60 16 L104 56 L104 128 Z"/>
+  <text id="wordmark-ihc" x="60" y="84" text-anchor="middle"
+        font-family="'Segoe UI','Arial',sans-serif" font-size="32" font-weight="700"
+        fill="currentColor" stroke="none">IHC</text>
+  <line id="rule" x1="34" y1="95" x2="86" y2="95" stroke-width="3"/>
+  <text id="wordmark-ov" x="60" y="115" text-anchor="middle"
+        font-family="'Segoe UI','Arial',sans-serif" font-size="14" font-weight="600"
+        fill="currentColor" stroke="none">OpenVisual</text></symbol></svg>
+<header class="banner">
+  <svg class="banner-logo" aria-hidden="true"><use href="#icon-logo"/></svg>
+  <strong>IHC OpenVisual</strong>
+</header>
+<h1>Funktionsdokumentation</h1>
+
+<p class="report-meta">Fuld rapport &mdash; Genereret: 2026-07-30 12:00 &mdash; Programmør: Morten Christensen</p>
+
+<table class="meta">
+  <colgroup><col style="width:25%"><col></colgroup>
+  <tr class="title-row"><th colspan="2">Projekt</th></tr>
+  <tr><th>Beskrivelse</th><td>--</td></tr>
+  <tr><th>Nummer</th><td>--</td></tr>
+  <tr><th>Programmør</th><td>Morten Christensen</td></tr>
+</table>
+
+<ul class="tree root">
+  <li><span class="name">Stue &amp; Køkken "åben"</span> <span class="id">(ID _0x2132)</span>
+    <ul class="tree">
+      <li><span class="name">LK FUGA Tryk 2 tast</span> <span class="id">(ID _0x5153)</span>
+        <ul class="tree">
+          <li>Tryk (venstre) <span class="id">(ID _0x525a)</span>
+            <ul class="tree">
+              <li class="note">Kort tryk &lt; 1 sek. Tænd / sluk: Loftlampe i stue (Værelse)</li>
+              <li class="note">Langt tryk &gt; 1 sek. Sluk alt lys i stue og køkken (Værelse)</li>
+            </ul>
+          </li>
+          <li>Tryk (højre) <span class="id">(ID _0x535a)</span>
+            <ul class="tree">
+              <li class="note">Kort tryk &lt; 1 sek. Tænd / sluk: Spot over køkkenbord (Værelse)</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li><span class="name">Diode</span> <span class="id">(ID _0x5753)</span>
+        <ul class="tree">
+          <li>Lampe <span class="id">(ID _0x585b)</span></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li><span class="name">Entré</span> <span class="id">(ID _0x2232)</span></li>
+  <li><span class="name">Køkken</span> <span class="id">(ID _0x2332)</span></li>
+  <li><span class="name">Soveværelse</span> <span class="id">(ID _0x2432)</span></li>
+  <li><span class="name">Værelse</span> <span class="id">(ID _0x2532)</span>
+    <ul class="tree">
+      <li><span class="name">Tryk 2 tast</span> <span class="id">(ID _0x7854)</span>
+        <ul class="tree">
+          <li>Tryk (venstre) <span class="id">(ID _0x795c)</span></li>
+          <li>Tryk (højre) <span class="id">(ID _0x7a5c)</span></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li><span class="name">Bad</span> <span class="id">(ID _0x2632)</span></li>
+  <li><span class="name">Bryggers</span> <span class="id">(ID _0x2732)</span></li>
+  <li><span class="name">Garage</span> <span class="id">(ID _0x2832)</span></li>
+  <li><span class="name">Kælder</span> <span class="id">(ID _0x2932)</span></li>
+  <li><span class="name">Udendørs</span> <span class="id">(ID _0x2a32)</span></li>
+  <li><span class="name">Lokalitet</span> <span class="id">(ID _0x56c32)</span></li>
+</ul>
+
+<hr class="divider">
+<h2>Fejl i dokumentation</h2>
+
+<table>
+  <tr><th>Lokalitet</th><th>Produkt</th><th>Terminal</th><th>Fejl</th></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>LK FUGA Tryk 2 tast</td><td></td><td>Mangler Id-kode</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>LK FUGA Tryk 2 tast</td><td></td><td>Mangler Lysgruppe</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>LK FUGA Tryk 2 tast</td><td></td><td>Mangler Kabeltype</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>LK FUGA Tryk 2 tast</td><td></td><td>Mangler Kabelnummer</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>LK FUGA Tryk 2 tast</td><td></td><td>Mangler Placering</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>LK FUGA Tryk 2 tast</td><td>Tryk (venstre)</td><td>Mangler Ledningsfarve</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>LK FUGA Tryk 2 tast</td><td>Tryk (venstre)</td><td>Mangler Adresse</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>LK FUGA Tryk 2 tast</td><td>Tryk (højre)</td><td>Mangler Ledningsfarve</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>LK FUGA Tryk 2 tast</td><td>Tryk (højre)</td><td>Mangler Adresse</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>Lampeudtag</td><td></td><td>Mangler Id-kode</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>Lampeudtag</td><td></td><td>Mangler Lysgruppe</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>Lampeudtag</td><td></td><td>Mangler Kabeltype</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>Lampeudtag</td><td></td><td>Mangler Kabelnummer</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>Lampeudtag</td><td></td><td>Mangler Placering</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>Lampeudtag</td><td>Udgang</td><td>Ikke forbundet</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>Lampeudtag</td><td>Udgang</td><td>Mangler Ledningsfarve</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>Lampeudtag</td><td>Udgang</td><td>Mangler Adresse</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>Diode</td><td></td><td>Mangler Id-kode</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>Diode</td><td></td><td>Mangler Lysgruppe</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>Diode</td><td></td><td>Mangler Kabeltype</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>Diode</td><td></td><td>Mangler Kabelnummer</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>Diode</td><td></td><td>Mangler Placering</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>Diode</td><td>Lampe</td><td>Ikke forbundet</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>Diode</td><td>Lampe</td><td>Mangler Ledningsfarve</td></tr>
+  <tr><td>Stue &amp; Køkken "åben"</td><td>Diode</td><td>Lampe</td><td>Mangler Adresse</td></tr>
+  <tr><td>Entré</td><td>PIR</td><td></td><td>Mangler Id-kode</td></tr>
+  <tr><td>Entré</td><td>PIR</td><td></td><td>Mangler Lysgruppe</td></tr>
+  <tr><td>Entré</td><td>PIR</td><td></td><td>Mangler Kabeltype</td></tr>
+  <tr><td>Entré</td><td>PIR</td><td></td><td>Mangler Kabelnummer</td></tr>
+  <tr><td>Entré</td><td>PIR</td><td></td><td>Mangler Placering</td></tr>
+  <tr><td>Entré</td><td>PIR</td><td>Tilstedeværelses indikering</td><td>Ikke forbundet</td></tr>
+  <tr><td>Entré</td><td>PIR</td><td>Tilstedeværelses indikering</td><td>Mangler Ledningsfarve</td></tr>
+  <tr><td>Entré</td><td>PIR</td><td>Tilstedeværelses indikering</td><td>Mangler Adresse</td></tr>
+  <tr><td>Entré</td><td>Stikkontakt</td><td></td><td>Mangler Id-kode</td></tr>
+  <tr><td>Entré</td><td>Stikkontakt</td><td></td><td>Mangler Lysgruppe</td></tr>
+  <tr><td>Entré</td><td>Stikkontakt</td><td></td><td>Mangler Kabeltype</td></tr>
+  <tr><td>Entré</td><td>Stikkontakt</td><td></td><td>Mangler Kabelnummer</td></tr>
+  <tr><td>Entré</td><td>Stikkontakt</td><td></td><td>Mangler Placering</td></tr>
+  <tr><td>Entré</td><td>Stikkontakt</td><td>Udgang</td><td>Ikke forbundet</td></tr>
+  <tr><td>Entré</td><td>Stikkontakt</td><td>Udgang</td><td>Mangler Ledningsfarve</td></tr>
+  <tr><td>Entré</td><td>Stikkontakt</td><td>Udgang</td><td>Mangler Adresse</td></tr>
+  <tr><td>Køkken</td><td>Temperatur sensor med logning</td><td></td><td>Mangler Id-kode</td></tr>
+  <tr><td>Køkken</td><td>Temperatur sensor med logning</td><td></td><td>Mangler Lysgruppe</td></tr>
+  <tr><td>Køkken</td><td>Temperatur sensor med logning</td><td></td><td>Mangler Kabeltype</td></tr>
+  <tr><td>Køkken</td><td>Temperatur sensor med logning</td><td></td><td>Mangler Kabelnummer</td></tr>
+  <tr><td>Køkken</td><td>Temperatur sensor med logning</td><td></td><td>Mangler Placering</td></tr>
+  <tr><td>Køkken</td><td>Lux / Temperatur sensor med logning</td><td></td><td>Mangler Id-kode</td></tr>
+  <tr><td>Køkken</td><td>Lux / Temperatur sensor med logning</td><td></td><td>Mangler Lysgruppe</td></tr>
+  <tr><td>Køkken</td><td>Lux / Temperatur sensor med logning</td><td></td><td>Mangler Kabeltype</td></tr>
+  <tr><td>Køkken</td><td>Lux / Temperatur sensor med logning</td><td></td><td>Mangler Kabelnummer</td></tr>
+  <tr><td>Køkken</td><td>Lux / Temperatur sensor med logning</td><td></td><td>Mangler Placering</td></tr>
+  <tr><td>Soveværelse</td><td>Dimmer touch</td><td></td><td>Mangler Id-kode</td></tr>
+  <tr><td>Soveværelse</td><td>Dimmer touch</td><td></td><td>Mangler Lysgruppe</td></tr>
+  <tr><td>Soveværelse</td><td>Dimmer touch</td><td></td><td>Mangler Kabeltype</td></tr>
+  <tr><td>Soveværelse</td><td>Dimmer touch</td><td></td><td>Mangler Kabelnummer</td></tr>
+  <tr><td>Soveværelse</td><td>Dimmer touch</td><td></td><td>Mangler Placering</td></tr>
+  <tr><td>Soveværelse</td><td>Dimmer touch</td><td>Touch</td><td>Ikke forbundet</td></tr>
+  <tr><td>Soveværelse</td><td>Dimmer touch</td><td>Touch</td><td>Mangler Ledningsfarve</td></tr>
+  <tr><td>Soveværelse</td><td>Dimmer touch</td><td>Touch</td><td>Mangler Adresse</td></tr>
+  <tr><td>Soveværelse</td><td>Dimmer touch</td><td>Sluk</td><td>Ikke forbundet</td></tr>
+  <tr><td>Soveværelse</td><td>Dimmer touch</td><td>Sluk</td><td>Mangler Ledningsfarve</td></tr>
+  <tr><td>Soveværelse</td><td>Dimmer touch</td><td>Sluk</td><td>Mangler Adresse</td></tr>
+</table>
+
+<hr class="divider">
+<h2>Interne id'er</h2>
+
+<table>
+  <tr><th>Element</th><th>Internt id</th></tr>
+  <tr><td>LK FUGA Tryk 2 tast</td><td>_0x5153</td></tr>
+  <tr><td>Lampeudtag</td><td>_0x5453</td></tr>
+  <tr><td>Diode</td><td>_0x5753</td></tr>
+  <tr><td>1.1.01.e. Kip tænd sluk</td><td>_0x8b28</td></tr>
+  <tr><td>PIR</td><td>_0x5953</td></tr>
+  <tr><td>Stikkontakt</td><td>_0x5b53</td></tr>
+  <tr><td>1.4.02.a. PIR styring </td><td>_0x2e528</td></tr>
+  <tr><td>Temperatur sensor med logning</td><td>_0x5e53</td></tr>
+  <tr><td>Lux / Temperatur sensor med logning</td><td>_0x6a53</td></tr>
+  <tr><td>2.1.01.a. Ur, med 1 tidspunkt</td><td>_0x42a28</td></tr>
+  <tr><td>Dimmer touch</td><td>_0x7553</td></tr>
+  <tr><td>Dimmer Universal</td><td>_0x7e54</td></tr>
+  <tr><td>1.2.04.e. Trådløs / Bus lysdæmper</td><td>_0xf528</td></tr>
+  <tr><td>Tryk 2 tast</td><td>_0x7854</td></tr>
+  <tr><td>Lampeudtag</td><td>_0x7b54</td></tr>
+  <tr><td>4.1.01. AND ("Og"- blok)</td><td>_0x47028</td></tr>
+  <tr><td>Tom blok</td><td>_0x54b28</td></tr>
+  <tr><td>4.1.04. Driftstimetæller</td><td>_0x4b928</td></tr>
+  <tr><td>Tom blok</td><td>_0x55a28</td></tr>
+  <tr><td>Tom blok</td><td>_0x51228</td></tr>
+  <tr><td>S0 Device</td><td>_0x51b57</td></tr>
+  <tr><td>IHC LED Dimmer 2 kanaler</td><td>_0x52758</td></tr>
+</table>
+
+</body>
+</html>
