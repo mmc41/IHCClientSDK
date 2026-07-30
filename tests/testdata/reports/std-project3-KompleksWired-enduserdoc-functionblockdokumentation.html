@@ -22,6 +22,20 @@ ul.tree.root { padding-left: 0; }
 .value { font-family: monospace; }
 .note { flex: 1 1 260px; }
 
+/* Print */
+@page { margin: 15mm 12mm; }
+h1, h2, h3, caption { break-after: avoid; page-break-after: avoid; }
+table.people, table.locality, table.meta { break-inside: avoid; page-break-inside: avoid; }
+tr, .row { break-inside: avoid; page-break-inside: avoid; }
+thead { display: table-header-group; }
+@media print {
+  body { margin: 0; }
+  .banner { background: none; color: #000; border-bottom: 2px solid #000; }
+  .banner-logo { color: #000; }
+  .table-scroll { overflow-x: visible; }
+  .table-scroll table { min-width: 0; }
+}
+
 </style>
 </head>
 <body>

@@ -19,6 +19,20 @@ tr.title-row th, .party-heading { text-align: center; }
 .table-scroll { overflow-x: auto; }
 .table-scroll table { min-width: 800px; }
 
+/* Print */
+@page { margin: 15mm 12mm; }
+h1, h2, h3, caption { break-after: avoid; page-break-after: avoid; }
+table.people, table.locality, table.meta { break-inside: avoid; page-break-inside: avoid; }
+tr, .row { break-inside: avoid; page-break-inside: avoid; }
+thead { display: table-header-group; }
+@media print {
+  body { margin: 0; }
+  .banner { background: none; color: #000; border-bottom: 2px solid #000; }
+  .banner-logo { color: #000; }
+  .table-scroll { overflow-x: visible; }
+  .table-scroll table { min-width: 0; }
+}
+
 </style>
 </head>
 <body>
@@ -54,13 +68,17 @@ tr.title-row th, .party-heading { text-align: center; }
   </table>
 
   <table>
+    <thead>
     <tr class="title-row"><th colspan="4">Datalinie inputmoduler</th></tr>
     <tr><th>Datalinie</th><th>Modul type</th><th>Lokalitet</th><th>Beskrivelse</th></tr>
+    </thead>
   </table>
 
   <table>
+    <thead>
     <tr class="title-row"><th colspan="4">Datalinie outputmoduler</th></tr>
     <tr><th>Datalinie</th><th>Modul type</th><th>Lokalitet</th><th>Beskrivelse</th></tr>
+    </thead>
   </table>
 
   <hr class="divider">
@@ -219,11 +237,14 @@ tr.title-row th, .party-heading { text-align: center; }
         <col style="width:5%"><col style="width:18%"><col style="width:16%"><col style="width:6%"><col style="width:12%">
         <col style="width:6%"><col style="width:6%"><col style="width:7%"><col style="width:8%"><col style="width:7%"><col style="width:9%">
       </colgroup>
+      <thead>
       <tr class="title-row"><th colspan="11">Datalinie indgange</th></tr>
       <tr>
         <th>Adresse</th><th>Produkt</th><th>Indgang</th><th>Note</th><th>Lokalitet</th>
         <th>Placering</th><th>Id-kode</th><th>Kabeltype</th><th>Kabelnummer</th><th>Lysgruppe</th><th>Ledningsfarve</th>
       </tr>
+      </thead>
+      <tbody>
       <tr>
         <td>?</td><td>LK FUGA Tryk 2 tast</td><td>Tryk (venstre)</td><td></td><td>Stue &amp; Køkken "åben"</td>
         <td></td><td></td><td></td><td></td><td></td><td></td>
@@ -244,6 +265,7 @@ tr.title-row th, .party-heading { text-align: center; }
         <td>?</td><td>Lux / Temperatur sensor med logning</td><td>Lux / Temperatur sensor</td><td></td><td>Køkken</td>
         <td></td><td></td><td></td><td></td><td></td><td></td>
       </tr>
+      </tbody>
     </table>
   </div>
 
@@ -253,11 +275,14 @@ tr.title-row th, .party-heading { text-align: center; }
         <col style="width:5%"><col style="width:18%"><col style="width:16%"><col style="width:6%"><col style="width:12%">
         <col style="width:6%"><col style="width:6%"><col style="width:7%"><col style="width:8%"><col style="width:7%"><col style="width:9%">
       </colgroup>
+      <thead>
       <tr class="title-row"><th colspan="11">Datalinie udgange</th></tr>
       <tr>
         <th>Adresse</th><th>Produkt</th><th>Udgang</th><th>Note</th><th>Lokalitet</th>
         <th>Placering</th><th>Id-kode</th><th>Kabeltype</th><th>Kabelnummer</th><th>Lysgruppe</th><th>Ledningsfarve</th>
       </tr>
+      </thead>
+      <tbody>
       <tr>
         <td>?</td><td>Lampeudtag</td><td>Udgang</td><td></td><td>Stue &amp; Køkken "åben"</td>
         <td></td><td></td><td></td><td></td><td></td><td></td>
@@ -278,30 +303,37 @@ tr.title-row th, .party-heading { text-align: center; }
         <td>?</td><td>Dimmer touch</td><td>Sluk</td><td></td><td>Soveværelse</td>
         <td></td><td></td><td></td><td></td><td></td><td></td>
       </tr>
+      </tbody>
     </table>
   </div>
 
   <div class="table-scroll">
     <table>
+      <thead>
       <tr class="title-row"><th colspan="10">Specielle Produkter</th></tr>
       <tr>
         <th>Produkt</th><th>Indgang</th><th>Note</th><th>Lokalitet</th><th>Placering</th><th>Id-kode</th>
         <th>Ledningsfarve 0V</th><th>Ledningsfarve 24V</th><th>Ledningsfarve RS485Minus</th><th>Ledningsfarve RS485Plus</th>
       </tr>
+      </thead>
     </table>
   </div>
 
   <div class="table-scroll">
     <table>
+      <thead>
       <tr class="title-row"><th colspan="7">S0 Device</th></tr>
       <tr>
         <th>Produkt</th><th>Note</th><th>Lokalitet</th><th>Placering</th><th>Id-kode</th>
         <th>Cable Colour S0Minus</th><th>Cable Colour S0Plus</th>
       </tr>
+      </thead>
+      <tbody>
       <tr>
         <td>S0 Device</td><td>PRODUCT_2315_NOTE</td><td>Kælder</td><td></td><td></td>
         <td></td><td></td>
       </tr>
+      </tbody>
     </table>
   </div>
 

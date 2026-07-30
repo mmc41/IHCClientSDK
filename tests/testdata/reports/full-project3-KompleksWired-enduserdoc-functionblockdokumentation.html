@@ -30,6 +30,20 @@ table.meta { table-layout: fixed; }
 .report-meta { color: #666; font-size: 12px; margin: 4px 0 16px; }
 .id { font-family: monospace; font-size: 12px; font-weight: normal; color: #666; }
 
+/* Print */
+@page { margin: 15mm 12mm; }
+h1, h2, h3, caption { break-after: avoid; page-break-after: avoid; }
+table.people, table.locality, table.meta { break-inside: avoid; page-break-inside: avoid; }
+tr, .row { break-inside: avoid; page-break-inside: avoid; }
+thead { display: table-header-group; }
+@media print {
+  body { margin: 0; }
+  .banner { background: none; color: #000; border-bottom: 2px solid #000; }
+  .banner-logo { color: #000; }
+  .table-scroll { overflow-x: visible; }
+  .table-scroll table { min-width: 0; }
+}
+
 </style>
 </head>
 <body>
@@ -275,35 +289,6 @@ table.meta { table-layout: fixed; }
   <tr><td>Soveværelse</td><td>Dimmer touch</td><td>Sluk</td><td>Ikke forbundet</td></tr>
   <tr><td>Soveværelse</td><td>Dimmer touch</td><td>Sluk</td><td>Mangler Ledningsfarve</td></tr>
   <tr><td>Soveværelse</td><td>Dimmer touch</td><td>Sluk</td><td>Mangler Adresse</td></tr>
-</table>
-
-<hr class="divider">
-<h2>Interne id'er</h2>
-
-<table>
-  <tr><th>Element</th><th>Internt id</th></tr>
-  <tr><td>LK FUGA Tryk 2 tast</td><td>_0x5153</td></tr>
-  <tr><td>Lampeudtag</td><td>_0x5453</td></tr>
-  <tr><td>Diode</td><td>_0x5753</td></tr>
-  <tr><td>1.1.01.e. Kip tænd sluk</td><td>_0x8b28</td></tr>
-  <tr><td>PIR</td><td>_0x5953</td></tr>
-  <tr><td>Stikkontakt</td><td>_0x5b53</td></tr>
-  <tr><td>1.4.02.a. PIR styring </td><td>_0x2e528</td></tr>
-  <tr><td>Temperatur sensor med logning</td><td>_0x5e53</td></tr>
-  <tr><td>Lux / Temperatur sensor med logning</td><td>_0x6a53</td></tr>
-  <tr><td>2.1.01.a. Ur, med 1 tidspunkt</td><td>_0x42a28</td></tr>
-  <tr><td>Dimmer touch</td><td>_0x7553</td></tr>
-  <tr><td>Dimmer Universal</td><td>_0x7e54</td></tr>
-  <tr><td>1.2.04.e. Trådløs / Bus lysdæmper</td><td>_0xf528</td></tr>
-  <tr><td>Tryk 2 tast</td><td>_0x7854</td></tr>
-  <tr><td>Lampeudtag</td><td>_0x7b54</td></tr>
-  <tr><td>4.1.01. AND ("Og"- blok)</td><td>_0x47028</td></tr>
-  <tr><td>Tom blok</td><td>_0x54b28</td></tr>
-  <tr><td>4.1.04. Driftstimetæller</td><td>_0x4b928</td></tr>
-  <tr><td>Tom blok</td><td>_0x55a28</td></tr>
-  <tr><td>Tom blok</td><td>_0x51228</td></tr>
-  <tr><td>S0 Device</td><td>_0x51b57</td></tr>
-  <tr><td>IHC LED Dimmer 2 kanaler</td><td>_0x52758</td></tr>
 </table>
 
 </body>
