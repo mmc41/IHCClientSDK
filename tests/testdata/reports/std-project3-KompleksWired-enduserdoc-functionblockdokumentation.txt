@@ -1,0 +1,1181 @@
+IHC OpenVisual
+
+Functionsblok dokumentation
+===========================
+
+------------------------------------------------------------------------------
+1.1.01.e. Kip tænd sluk
+
+Anvendelse
+Kip, tænd og sluk af udgang, eller som trappeautomat
+For at se den fulde beskrivelse marker denne linje og tryk "F1".
+Bemærk: Dette virker kun hvis "Blokken" er rød-markeret.
+------------------------------------------------------------------------------
+
+ ⇥  Input
+  → Kip                  Tænd/sluk. (Udfyldes af installatøren)
+  → Kip med timer        Tænd/sluk med timer. Hvis der ikke slukkes manuelt vil timer slukke udgang. (Udfyldes af installatøren)
+  → Tænd med timer       Tænd med timer. Ved genaktivering genstarter timer. Hvis der ikke slukkes manuelt vil timer slukke udgang. (Udfyldes af installatøren)
+  → Tænd                 Tænd. (Udfyldes af installatøren)
+  → Sluk                 Sluk. (Udfyldes af installatøren)
+ ⇤  Output
+  ← Udgang               Forbindes til f.eks lampe eller stikkontakt.
+  ← ON puls              Giver kort puls ved tænding. Anvendes til styring af andre blokke.
+  ← OFF puls             Giver kort puls ved slukning. Anvendes til styring af andre blokke.
+  ⧈ Scenarie Tænd        Fremkalder scenarie ved tænding.
+  ⧈ Scenarie Sluk        Fremkalder scenarie ved slukning.
+ ✎  Indstillinger
+  ⧖ Timer               = 00:03:00,000
+ ⚙  Interne variable
+  ⧖ Puls timer          = 00:00:00,250
+ ↳◆ Programmer
+  ◆ Kip
+   !! Hændelser
+    ! Kip -> ON
+   ✓✓ Kommandoer
+    ↳◆ Under program
+     ∧ Betingelser
+      ? Udgang          = OFF
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Udgang          = ON
+      ✓ ON puls         = ON
+      ✓ Fremkald Scenarie Tænd
+      ✓ Aktiver nedtælling på Puls timer med initial værdi
+     ✓✓ Kommandoer ved betingelser falske
+      ✓ Udgang          = OFF
+      ✓ OFF puls        = ON
+      ✓ Fremkald Scenarie Sluk
+      ✓ Aktiver nedtælling på Puls timer med initial værdi
+    ✓ Stands tælling på Timer
+    ✓ Timer             = Initialværdi
+  ◆ Kip med timer
+   !! Hændelser
+    ! Kip med timer -> ON
+   ✓✓ Kommandoer
+    ↳◆ Under program
+     ∧ Betingelser
+      ? Udgang          = OFF
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Udgang          = ON
+      ✓ ON puls         = ON
+      ✓ Fremkald Scenarie Tænd
+      ✓ Aktiver nedtælling på Timer med initial værdi
+     ✓✓ Kommandoer ved betingelser falske
+      ✓ Udgang          = OFF
+      ✓ Stands tælling på Timer
+      ✓ Timer           = Initialværdi
+      ✓ OFF puls        = ON
+      ✓ Fremkald Scenarie Sluk
+    ✓ Aktiver nedtælling på Puls timer med initial værdi
+  ◆ Tænd med timer
+   !! Hændelser
+    ! Tænd med timer bliver ændret
+   ✓✓ Kommandoer
+    ↳◆ Under program
+     ∧ Betingelser
+      ? Tænd med timer  = ON
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Udgang          = ON
+      ✓ ON puls         = ON
+      ✓ Fremkald Scenarie Tænd
+      ✓ Aktiver nedtælling på Puls timer med initial værdi
+      ✓ Stands tælling på Timer
+      ✓ Timer           = Initialværdi
+     ✓✓ Kommandoer ved betingelser falske
+      ✓ Aktiver nedtælling på Timer med initial værdi
+  ◆ Timer udløber
+   !! Hændelser
+    ! Timer -> 0
+   ✓✓ Kommandoer
+    ✓ Udgang            = OFF
+    ✓ OFF puls          = ON
+    ✓ Fremkald Scenarie Sluk
+    ✓ Aktiver nedtælling på Puls timer med initial værdi
+  ◆ Tænd
+   !! Hændelser
+    ! Tænd -> ON
+   ✓✓ Kommandoer
+    ✓ Udgang            = ON
+    ✓ ON puls           = ON
+    ✓ Fremkald Scenarie Tænd
+    ✓ Aktiver nedtælling på Puls timer med initial værdi
+    ✓ Stands tælling på Timer
+    ✓ Timer             = Initialværdi
+  ◆ Sluk
+   !! Hændelser
+    ! Sluk -> ON
+   ✓✓ Kommandoer
+    ✓ Udgang            = OFF
+    ✓ OFF puls          = ON
+    ✓ Fremkald Scenarie Sluk
+    ✓ Aktiver nedtælling på Puls timer med initial værdi
+    ✓ Stands tælling på Timer
+    ✓ Timer             = Initialværdi
+  ◆ Puls Timer = 0
+   !! Hændelser
+    ! Puls timer -> 0
+   ✓✓ Kommandoer
+    ✓ OFF puls          = OFF
+    ✓ ON puls           = OFF
+
+------------------------------------------------------------------------------
+1.4.02.a. PIR styring
+
+Anvendelse
+Til simpel styring af IHC Wireless produkter og relæer ifm. PIR og manuel betjening.
+For at se den fulde beskrivelse marker denne linje og tryk "F1".
+Bemærk: Dette virker kun hvis blokken er rød-markeret.
+------------------------------------------------------------------------------
+
+ ⇥  Input
+  → PIR                                  Forbindes til tilstedeværelses indikering fra PIR sensor. Virkemåde defineres under indstillinger: "# PIR funktion" "# PIR funktion nat" (Udfyldes af installatøren)
+  → Skumring                             Forbindes fra skumringssensor eller luxsensor ifm. funktionsblok 1.1.12 Alternativt via ur funktionsblok. (Udfyldes af installatøren)
+  → Tilbagemelding                       Opret link mellem produktets "Udgang" og "Tilbagemelding". Ved tilbagemelding begrænses genkald af IHC Wireless produkter ifm. PIR aktivitet.
+  → Natdrift                             Anvendes som begrænsning for PIR funktion om natten. (Udfyldes af installatøren)
+  → Kip                                  Kipper udgang og scenarier (Udfyldes af installatøren)
+  → Tænd                                 Tænder udgang og scenarie (Udfyldes af installatøren)
+  → Sluk                                 Slukker udgang og scenarie. (Udfyldes af installatøren)
+  → Spærring                             Når denne indgang er on, vil al automatik være spærret. Dette giver mulighed for total spærring i både tændt og slukket tilstand. (Udfyldes af installatøren)
+ ⇤  Output
+  ← Udgang                               Forbindes til relæ hvis scenariefunktion ikke benyttes.
+  ← ON puls                              Giver kort puls ved tænding. Anvendes til styring af andre blokke.
+  ← OFF puls                             Giver kort puls ved slukning. Anvendes til styring af andre blokke.
+  ← Manuelt betjent                      Visning af overstyring af PIR. Kan benyttes til diode eller Viewer. Ifm. manuel sluk vil udgang blinke (default 15 sek.) som kvittéring for spærring af PIR.
+  ⧈ Scenarie tænd                        Forbindes til relæ og/eller IHC Wireless lysdæmper.
+  ⧈ Scenarie sluk                        Forbindes til relæ og/eller IHC Wireless lysdæmper.
+ ✎  Indstillinger
+  ⧖ Efterløb                            = 00:03:00,000      Her indstilles efterløbstiden.
+  # PIR funktion                        = Tænder lys        Her er det muligt, at vælge hvilken funktion PIR'en skal have dag/aften. Vælg mellem: "Tænder lys" "Kun efterløb"
+  # PIR funktion nat                    = Kun efterløb      Her er det muligt, at vælge hvilken funktion PIR'en skal have om natten. Natdrift indgangen skal benyttes for at opnå funktion. Vælg mellem: "Tænder lys" "Kun efterløb"
+  # Manuel tænding                      = Starter efterløb  Her er det muligt, at vælge funktion på manuel tænding. Vælg mellem: Ved "Starter efterløb" vil lys slukke på efterløb efter sidste påvirking af PIR eller tryk. Ved "Spærrer efterløb" vil lys ikke slukke ved skumringsfrafald når manuel betjening er aktiv.
+ ⚙  Interne variable
+  ⧖ Blokkering efter manuel sluk        = 00:00:15,000
+  ⧖ Puls                                = 00:00:00,250
+  ⧖ Kvittér med blink efter manuel sluk = 00:00:01,000
+ ↳◆ Programmer
+  ◆ PIR
+   !! Hændelser
+    ! PIR bliver ændret
+    ! Blokkering efter manuel sluk -> 0
+    ! Skumring bliver ændret
+    ! Natdrift bliver ændret
+    ! Spærring -> OFF
+   ✓✓ Kommandoer
+    ↳◆ Under program
+     ∧ Betingelser
+      ? PIR                             = ON
+      ? Skumring                        = ON
+      ? Blokkering efter manuel sluk stoppet
+      ? Spærring                        = OFF
+      ∨ Betingelser
+       ? Manuel tænding                 = Starter efterløb
+       ? Manuelt betjent                = OFF
+       ? Udgang                         = OFF
+     ✓✓ Kommandoer ved betingelser sande
+      ↳◆ Tænd
+       ∧ Betingelser
+        ∨ Betingelser
+         ∧ Betingelser
+          ? PIR funktion                = Tænder lys
+          ? Natdrift                    = OFF
+         ∧ Betingelser
+          ? Natdrift                    = ON
+          ? PIR funktion nat            = Tænder lys
+        ∨ Betingelser
+         ? Udgang                       = OFF
+         ? Tilbagemelding               = OFF
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Fremkald Scenarie tænd
+        ✓ Udgang                        = ON
+        ✓ ON puls                       = ON
+        ✓ Aktiver nedtælling på Puls med initial værdi
+       ✓✓ Kommandoer ved betingelser falske
+      ✓ Stands tælling på Efterløb
+      ✓ Efterløb                        = Initialværdi
+     ✓✓ Kommandoer ved betingelser falske
+      ↳◆ Efterløb start
+       ∧ Betingelser
+        ? Udgang                        = ON
+        ? Skumring                      = ON
+        ? Kip                           = OFF
+        ? Tænd                          = OFF
+        ? Spærring                      = OFF
+        ∨ Betingelser
+         ? Manuel tænding               = Starter efterløb
+         ? Manuelt betjent              = OFF
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Aktiver nedtælling på Efterløb med initial værdi
+       ✓✓ Kommandoer ved betingelser falske
+      ↳◆ Efterløb start
+       ∧ Betingelser
+        ? Skumring                      = OFF
+        ? Udgang                        = ON
+        ? Efterløb stoppet
+        ? Spærring                      = OFF
+        ∨ Betingelser
+         ? Manuel tænding               = Starter efterløb
+         ? Manuelt betjent              = OFF
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Aktiver nedtælling på Efterløb med initial værdi
+       ✓✓ Kommandoer ved betingelser falske
+  ◆ Efterløb sluk
+   !! Hændelser
+    ! Efterløb -> 0
+   ✓✓ Kommandoer
+    ✓ Fremkald Scenarie sluk
+    ✓ Udgang                            = OFF
+    ✓ OFF puls                          = ON
+    ✓ Aktiver nedtælling på Puls med initial værdi
+    ✓ Manuelt betjent                   = OFF
+  ◆ Tilbagemelding
+   !! Hændelser
+    ! Tilbagemelding bliver ændret
+   ✓✓ Kommandoer
+    ↳◆ Under program
+     ∧ Betingelser
+      ? Tilbagemelding                  = ON
+     ✓✓ Kommandoer ved betingelser sande
+      ↳◆ ON
+       ∧ Betingelser
+        ? Udgang                        = OFF
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Udgang                        = ON
+       ✓✓ Kommandoer ved betingelser falske
+      ↳◆ Aktiver nedtælling
+       ∧ Betingelser
+        ? Spærring                      = OFF
+        ? PIR                           = OFF
+        ? Manuelt betjent               = OFF
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Aktiver nedtælling på Efterløb med initial værdi
+       ✓✓ Kommandoer ved betingelser falske
+     ✓✓ Kommandoer ved betingelser falske
+      ✓ Stands tælling på Efterløb
+      ✓ Efterløb                        = Initialværdi
+      ↳◆ OFF
+       ∧ Betingelser
+        ? Udgang                        = ON
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Udgang                        = OFF
+        ✓ Manuelt betjent               = OFF
+       ✓✓ Kommandoer ved betingelser falske
+  ◆ Kip
+   !! Hændelser
+    ! Kip bliver ændret
+   ✓✓ Kommandoer
+    ↳◆ Under program
+     ∧ Betingelser
+      ? Kip                             = ON
+     ✓✓ Kommandoer ved betingelser sande
+      ↳◆ Tænd eller sluk
+       ∧ Betingelser
+        ? Udgang                        = OFF
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Fremkald Scenarie tænd
+        ✓ Udgang                        = ON
+        ✓ ON puls                       = ON
+        ✓ Aktiver nedtælling på Puls med initial værdi
+        ✓ Stands tælling på Efterløb
+        ✓ Efterløb                      = Initialværdi
+        ✓ Stands tælling på Blokkering efter manuel sluk
+        ✓ Blokkering efter manuel sluk  = Initialværdi
+        ↳◆ Under program
+         ∧ Betingelser
+          ? Manuel tænding              = Spærrer efterløb
+         ✓✓ Kommandoer ved betingelser sande
+          ✓ Manuelt betjent             = ON
+         ✓✓ Kommandoer ved betingelser falske
+          ✓ Manuelt betjent             = OFF
+        ✓ Manuelt betjent               = ON
+       ✓✓ Kommandoer ved betingelser falske
+        ↳◆ Blokkering af PIR efter sluk
+         ∨ Betingelser
+          ∧ Betingelser
+           ? Natdrift                   = OFF
+           ? PIR funktion               = Tænder lys
+          ∧ Betingelser
+           ? Natdrift                   = ON
+           ? PIR funktion nat           = Tænder lys
+         ✓✓ Kommandoer ved betingelser sande
+          ↳◆ Start blokkering
+           ∧ Betingelser
+            ? Spærring                  = OFF
+           ✓✓ Kommandoer ved betingelser sande
+            ✓ Aktiver nedtælling på Blokkering efter manuel sluk med initial værdi
+           ✓✓ Kommandoer ved betingelser falske
+         ✓✓ Kommandoer ved betingelser falske
+        ✓ Fremkald Scenarie sluk
+        ✓ Udgang                        = OFF
+        ✓ OFF puls                      = ON
+        ✓ Aktiver nedtælling på Puls med initial værdi
+        ✓ Stands tælling på Efterløb
+        ✓ Efterløb                      = Initialværdi
+        ✓ Manuelt betjent               = OFF
+        ✓ Aktiver nedtælling på Kvittér med blink efter manuel sluk med initial værdi
+     ✓✓ Kommandoer ved betingelser falske
+      ↳◆ Efterløb start
+       ∧ Betingelser
+        ? Spærring                      = OFF
+        ? PIR                           = OFF
+        ? Udgang                        = ON
+        ? Manuel tænding                = Starter efterløb
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Aktiver nedtælling på Efterløb med initial værdi
+       ✓✓ Kommandoer ved betingelser falske
+  ◆ Tænd
+   !! Hændelser
+    ! Tænd bliver ændret
+   ✓✓ Kommandoer
+    ↳◆ Tænd
+     ∧ Betingelser
+      ? Tænd                            = ON
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Fremkald Scenarie tænd
+      ✓ Udgang                          = ON
+      ✓ ON puls                         = ON
+      ✓ Aktiver nedtælling på Puls med initial værdi
+      ✓ Stands tælling på Efterløb
+      ✓ Efterløb                        = Initialværdi
+      ✓ Stands tælling på Blokkering efter manuel sluk
+      ✓ Blokkering efter manuel sluk    = Initialværdi
+      ↳◆ Under program
+       ∧ Betingelser
+        ? Manuel tænding                = Spærrer efterløb
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Manuelt betjent               = ON
+       ✓✓ Kommandoer ved betingelser falske
+        ✓ Manuelt betjent               = OFF
+      ✓ Manuelt betjent                 = ON
+     ✓✓ Kommandoer ved betingelser falske
+    ↳◆ Efterløb start
+     ∧ Betingelser
+      ? Tænd                            = OFF
+      ? PIR                             = OFF
+      ? Spærring                        = OFF
+      ? Manuel tænding                  = Starter efterløb
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Aktiver nedtælling på Efterløb med initial værdi
+     ✓✓ Kommandoer ved betingelser falske
+  ◆ Sluk
+   !! Hændelser
+    ! Sluk bliver ændret
+   ✓✓ Kommandoer
+    ✓ Stands tælling på Efterløb
+    ✓ Efterløb                          = Initialværdi
+    ↳◆ Sluk
+     ∧ Betingelser
+      ? Sluk                            = ON
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Fremkald Scenarie sluk
+      ✓ Udgang                          = OFF
+      ✓ OFF puls                        = ON
+      ✓ Aktiver nedtælling på Puls med initial værdi
+      ✓ Manuelt betjent                 = OFF
+      ↳◆ Blokkering af PIR efter sluk
+       ∨ Betingelser
+        ∧ Betingelser
+         ? Natdrift                     = OFF
+         ? PIR funktion                 = Tænder lys
+        ∧ Betingelser
+         ? Natdrift                     = ON
+         ? PIR funktion nat             = Tænder lys
+       ✓✓ Kommandoer ved betingelser sande
+        ↳◆ Start blokkering
+         ∧ Betingelser
+          ? Spærring                    = OFF
+         ✓✓ Kommandoer ved betingelser sande
+          ✓ Aktiver nedtælling på Blokkering efter manuel sluk med initial værdi
+          ✓ Aktiver nedtælling på Kvittér med blink efter manuel sluk med initial værdi
+          ✓ Manuelt betjent             = ON
+         ✓✓ Kommandoer ved betingelser falske
+       ✓✓ Kommandoer ved betingelser falske
+     ✓✓ Kommandoer ved betingelser falske
+  ◆ Udgang for puls
+   !! Hændelser
+    ! Puls -> 0
+   ✓✓ Kommandoer
+    ✓ ON puls                           = OFF
+    ✓ OFF puls                          = OFF
+  ◆ Spærring on
+   !! Hændelser
+    ! Spærring -> ON
+   ✓✓ Kommandoer
+    ✓ Stands tælling på Efterløb
+    ✓ Efterløb                          = Initialværdi
+  ◆ Automatisk frakobling af spærring
+   !! Hændelser
+    ! Skumring -> OFF
+   ✓✓ Kommandoer
+    ✓ Spærring                          = OFF
+  ◆ Manuel sluk blinker med diode
+   !! Hændelser
+    ! Kvittér med blink efter manuel sluk -> 0
+   ✓✓ Kommandoer
+    ↳◆ Under program
+     ∧ Betingelser
+      ? Blokkering efter manuel sluk tæller ned
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Aktiver nedtælling på Kvittér med blink efter manuel sluk med initial værdi
+      ↳◆ Under program
+       ∧ Betingelser
+        ? Manuelt betjent               = OFF
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Manuelt betjent               = ON
+       ✓✓ Kommandoer ved betingelser falske
+        ✓ Manuelt betjent               = OFF
+     ✓✓ Kommandoer ved betingelser falske
+  ◆ Afstilling manuel betjening
+   !! Hændelser
+    ! Blokkering efter manuel sluk -> 0
+   ✓✓ Kommandoer
+    ✓ Manuelt betjent                   = OFF
+
+------------------------------------------------------------------------------
+2.1.01.a. 7 dages ur, med 1 tænd tidspunkt
+
+Anvendelse
+7 dages ur, hvor der kun er et tænd- og sluktidspunkt. Dvs. at alle ugens 7 dage har samme tænd- og sluktidspunkt.
+For at se den fulde beskrivelse marker denne linje og tryk "F1".
+Bemærk: Dette virker kun hvis "Blokken" er rød-markeret.
+------------------------------------------------------------------------------
+
+ ⇥  Input
+  → Tryk (manuel overstyring)  Manuelt overstyring af ur - en aktivering vil skifte udgangen. Udgang for ur vil forblive i tilstanden indtil næste urtidspunkt. (Udfyldes af installatøren)
+ ⇤  Output
+  ← Udgang fra ur              Anvendes til urstyring
+  ← ON puls                    Giver kort puls når "Udgang for ur" går on Anvendes til styring af andre blokke.
+  ← OFF puls                   Giver kort puls når "Udgang for ur" går off Anvendes til styring af andre blokke.
+  ⧈ Scenarie Tænd              Fremkalder scenarie når "Udgang for ur" går on Anvendes til styring af andre blokke.
+  ⧈ Scenarie Sluk              Fremkalder scenarie når "Udgang for ur" går off Anvendes til styring af andre blokke.
+ ✎  Indstillinger
+  ◷ Tænd-tidspunkt            = 21:00:00  Tidspunktet, hvor udgangen skal tændes
+  ◷ Sluk-tidspunkt            = 07:00:00  Tidspunktet, hvor udgangen skal slukkes
+ ⚙  Interne variable
+  ⧖ Timer for puls på udgange = 00:00:00,400
+ ↳◆ Programmer
+  ◆ Manuel overstyring
+   !! Hændelser
+    ! Tryk (manuel overstyring) -> ON
+   ✓✓ Kommandoer
+    ✓ Kip Udgang fra ur
+  ◆ Powerup
+   !! Hændelser
+    ! Powerup
+    ! System tid -> Tænd-tidspunkt
+    ! System tid -> Sluk-tidspunkt
+    ! Tænd-tidspunkt bliver ændret
+    ! Sluk-tidspunkt bliver ændret
+   ✓✓ Kommandoer
+    ↳◆ Betinget kommando
+     ∧ Betingelser
+      ? Sluk-tidspunkt < Tænd-tidspunkt
+     ✓✓ Kommandoer ved betingelser sande
+      ↳◆ Under program (Funktions beskrivelse)
+       ∨ Betingelser
+        ? System tid >= Tænd-tidspunkt
+        ? System tid < Sluk-tidspunkt
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Udgang fra ur       = ON
+       ✓✓ Kommandoer ved betingelser falske
+        ✓ Udgang fra ur       = OFF
+     ✓✓ Kommandoer ved betingelser falske
+      ↳◆ Under program (Funktions beskrivelse)
+       ∧ Betingelser
+        ? System tid >= Tænd-tidspunkt
+        ? System tid < Sluk-tidspunkt
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Udgang fra ur       = ON
+       ✓✓ Kommandoer ved betingelser falske
+        ✓ Udgang fra ur       = OFF
+  ◆ Puls udgange
+   !! Hændelser
+    ! Udgang fra ur bliver ændret
+   ✓✓ Kommandoer
+    ↳◆ Under program
+     ∧ Betingelser
+      ? Udgang fra ur         = ON
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ ON puls               = ON
+      ✓ Aktiver nedtælling på Timer for puls på udgange med initial værdi
+      ✓ Fremkald Scenarie Tænd
+     ✓✓ Kommandoer ved betingelser falske
+      ✓ OFF puls              = ON
+      ✓ Aktiver nedtælling på Timer for puls på udgange med initial værdi
+      ✓ Fremkald Scenarie Sluk
+  ◆ Puls slut
+   !! Hændelser
+    ! Timer for puls på udgange -> 0
+   ✓✓ Kommandoer
+    ✓ ON puls                 = OFF
+    ✓ OFF puls                = OFF
+
+------------------------------------------------------------------------------
+1.2.04.e. Trådløs / Bus lysdæmper
+
+Anvendelse
+Til styring af IHC Wireless og IHC Bus lysdæmpere.
+Kan anvendes som 1- og/eller 2-tast betjent regulering samt fremkald og gem høj/lav.
+For at se den fulde beskrivelse; markér overskrift på funktionsblok og tryk F1.
+Bemærk: Dette virker kun hvis blokken er rød-markeret.
+------------------------------------------------------------------------------
+
+ ⇥  Input
+  → Touch                                 Kort tryk tænd/sluk - langt tryk regulerer lys niveau op/ned. (Udfyldes af installatøren)
+  → Tænd/regulér op                       Kort tryk tænd - langt tryk regulerer lysniveau op. (Udfyldes af installatøren)
+  → Sluk/regulér ned                      Kort tryk sluk - langt tryk regulerer lysniveau ned. (Udfyldes af installatøren)
+  → Høj                                   Fremkalder højt lysniveau. Tryk over 3 sek. vil gemme det aktuelle lysniveau som høj. Som kvittering slukker lys og gentænder når tryk slippes. Niveau gemmes kun, hvis lysdæmper er tændt. (Udfyldes af installatøren)
+  → Lav                                   Fremkalder lavt lysniveau. Tryk over 3 sek. vil gemme det aktuelle lysniveau som lav. Som kvittering slukker lys og gentænder når tryk slippes. Niveau gemmes kun, hvis lysdæmper er tændt. (Udfyldes af installatøren)
+  ☼% Lys niveau                           Opret link mellem produktets "Lys niveau" og denne indgang
+  → Natdrift                              Ved aktivitet (betingelse opfyldt) vil et kort regulerings tryk tænde lyset på "Lavt niveau". PIR vil enten være helt eller delvist begrænset. Sammensættes med urfunktion eller dag og nat funktion. (Udfyldes af installatøren)
+ ⇤  Output
+  ⧈ Højt niveau                           Forbindes til lysdæmperen med det ønskede lysniveau og rampetid. Default 100%, rampetid 1 sek. Dette scenarie benyttes til at fremkalde niveauet, regulere samt sluke lysdæmper.
+  ⧈ Lavt niveau                           Forbindes til lysdæmperen med det ønskede lysniveau og rampetid.
+  # Lysdæmper status                      Status indikering til Viewer.
+  ← Lysdæmper tændt                       Status indikering i diode eller Viewer.
+ ✎  Indstillinger
+  # Kort reguleringstryk tænder          = Højt niveau  Her er det muligt, at vælge funktionalitet på reguleringstryk dag/aften. Vælg mellem: Højt niveau Lavt niveau Sidste niveau
+ ⚙  Interne variable
+  ⧖ Gem nyt scenarie efter               = 00:00:03,000
+  ⧖ Kvittér med blink af scenarie        = 00:00:01,000
+  ⧖ Spærring                             = 00:00:00,050
+  ⧖ Spærring %                           = 00:00:01,000
+  ⧖ Status check                         = 00:00:30,000
+  ⧖ Max tryktid                          = 00:00:00,400
+  ⧖ Min. regulering 1                    = 00:00:00,600
+  ⧖ Min. regulering 2                    = 00:00:00,600
+  ⚑ Reg. retning                         = Off
+  ⚑ Oneshot man                          = Off
+ ↳◆ Programmer
+  ◆ Identifikation af tryktid tænd/touch/sluk
+   !! Hændelser
+    ! Tænd/regulér op -> ON
+    ! Touch -> ON
+    ! Sluk/regulér ned -> ON
+   ✓✓ Kommandoer
+    ✓ Spærring                           = 0
+    ✓ Aktiver nedtælling på Max tryktid med initial værdi
+  ◆ Touch slippes
+   !! Hændelser
+    ! Touch -> OFF
+    ! Min. regulering 1 -> 0
+   ✓✓ Kommandoer
+    ✓ Stands tælling på Max tryktid
+    ↳◆ Spærring ved anden betjening
+     ∧ Betingelser
+      ? Touch                            = OFF
+      ? Tænd/regulér op                  = OFF
+      ? Sluk/regulér ned                 = OFF
+      ? Lav                              = OFF
+      ? Høj                              = OFF
+     ✓✓ Kommandoer ved betingelser sande
+      ↳◆ Høj/lav/sidste niveau
+       ∧ Betingelser
+        ? Max tryktid >= 00:00:00,001
+        ? Lysdæmper tændt                = OFF
+       ✓✓ Kommandoer ved betingelser sande
+        ↳◆ Sidste niveau
+         ∧ Betingelser
+          ? Natdrift                     = OFF
+          ? Kort reguleringstryk tænder  = Sidste niveau
+          ? Oneshot man                  = OFF
+         ✓✓ Kommandoer ved betingelser sande
+          ✓ Regulér Højt niveau op
+          ✓ Stop regulering af Højt niveau
+          ✓ Lysdæmper status             = Sidste niveau
+         ✓✓ Kommandoer ved betingelser falske
+        ↳◆ Højt niveau
+         ∧ Betingelser
+          ? Natdrift                     = OFF
+          ∨ Betingelser
+           ? Kort reguleringstryk tænder = Højt niveau
+           ? Oneshot man                 = ON
+         ✓✓ Kommandoer ved betingelser sande
+          ✓ Fremkald Højt niveau
+          ✓ Lysdæmper status             = Høj
+         ✓✓ Kommandoer ved betingelser falske
+        ↳◆ Lavt niveau
+         ∨ Betingelser
+          ? Natdrift                     = ON
+          ? Kort reguleringstryk tænder  = Lavt niveau
+         ✓✓ Kommandoer ved betingelser sande
+          ✓ Fremkald Lavt niveau
+          ✓ Lysdæmper status             = Lav
+         ✓✓ Kommandoer ved betingelser falske
+        ✓ Aktiver nedtælling på Spærring med initial værdi
+       ✓✓ Kommandoer ved betingelser falske
+      ↳◆ Stop reg.
+       ∧ Betingelser
+        ? Max tryktid                    = 0
+       ✓✓ Kommandoer ved betingelser sande
+        ↳◆ Under program
+         ∨ Betingelser
+          ? Reg. retning                 = ON
+          ? Min. regulering 1            = 0
+         ✓✓ Kommandoer ved betingelser sande
+          ✓ Stop regulering af Højt niveau
+          ✓ Lysdæmper status             = Reguléret
+         ✓✓ Kommandoer ved betingelser falske
+       ✓✓ Kommandoer ved betingelser falske
+      ↳◆ Sluk
+       ∧ Betingelser
+        ? Max tryktid >= 00:00:00,001
+        ? Spærring                       = 0
+        ? Lysdæmper tændt                = ON
+        ? Min. regulering 1 stoppet
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Regulér Højt niveau ned
+        ✓ Stop regulering af Højt niveau
+        ✓ Lysdæmper status               = Slukket
+       ✓✓ Kommandoer ved betingelser falske
+     ✓✓ Kommandoer ved betingelser falske
+  ◆ Regulér op slippes
+   !! Hændelser
+    ! Tænd/regulér op -> OFF
+   ✓✓ Kommandoer
+    ✓ Stands tælling på Max tryktid
+    ↳◆ Spærring ved anden betjening
+     ∧ Betingelser
+      ? Touch                            = OFF
+      ? Sluk/regulér ned                 = OFF
+      ? Lav                              = OFF
+      ? Høj                              = OFF
+     ✓✓ Kommandoer ved betingelser sande
+      ↳◆ Stop
+       ∧ Betingelser
+        ? Max tryktid                    = 0
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Stop regulering af Højt niveau
+        ✓ Lysdæmper status               = Reguléret
+       ✓✓ Kommandoer ved betingelser falske
+      ↳◆ Kalder højt niveau (ur inaktiv)
+       ∧ Betingelser
+        ? Max tryktid >= 00:00:00,001
+       ✓✓ Kommandoer ved betingelser sande
+        ↳◆ Sidste niveau
+         ∧ Betingelser
+          ? Natdrift                     = OFF
+          ? Kort reguleringstryk tænder  = Sidste niveau
+          ? Oneshot man                  = OFF
+         ✓✓ Kommandoer ved betingelser sande
+          ✓ Regulér Højt niveau op
+          ✓ Stop regulering af Højt niveau
+          ✓ Lysdæmper status             = Sidste niveau
+         ✓✓ Kommandoer ved betingelser falske
+        ↳◆ Højt niveau
+         ∧ Betingelser
+          ? Natdrift                     = OFF
+          ∨ Betingelser
+           ? Kort reguleringstryk tænder = Højt niveau
+           ? Oneshot man                 = ON
+         ✓✓ Kommandoer ved betingelser sande
+          ✓ Fremkald Højt niveau
+          ✓ Lysdæmper status             = Høj
+         ✓✓ Kommandoer ved betingelser falske
+        ↳◆ Lavt niveau
+         ∨ Betingelser
+          ? Kort reguleringstryk tænder  = Lavt niveau
+          ? Natdrift                     = ON
+         ✓✓ Kommandoer ved betingelser sande
+          ✓ Fremkald Lavt niveau
+          ✓ Lysdæmper status             = Lav
+         ✓✓ Kommandoer ved betingelser falske
+       ✓✓ Kommandoer ved betingelser falske
+     ✓✓ Kommandoer ved betingelser falske
+  ◆ Regulér ned slippes
+   !! Hændelser
+    ! Sluk/regulér ned -> OFF
+    ! Min. regulering 2 -> 0
+   ✓✓ Kommandoer
+    ✓ Stands tælling på Max tryktid
+    ↳◆ Spærring ved anden betjening
+     ∧ Betingelser
+      ? Touch                            = OFF
+      ? Tænd/regulér op                  = OFF
+      ? Sluk/regulér ned                 = OFF
+      ? Lav                              = OFF
+      ? Høj                              = OFF
+     ✓✓ Kommandoer ved betingelser sande
+      ↳◆ Sluk
+       ∧ Betingelser
+        ? Max tryktid >= 00:00:00,001
+        ? Min. regulering 2 stoppet
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Regulér Højt niveau ned
+        ✓ Stop regulering af Højt niveau
+        ✓ Lysdæmper status               = Slukket
+       ✓✓ Kommandoer ved betingelser falske
+        ↳◆ Stop
+         ∧ Betingelser
+          ? Max tryktid                  = 0
+          ? Min. regulering 2            = 0
+          ? Lysdæmper tændt              = ON
+         ✓✓ Kommandoer ved betingelser sande
+          ✓ Stop regulering af Højt niveau
+          ✓ Lysdæmper status             = Reguléret
+         ✓✓ Kommandoer ved betingelser falske
+     ✓✓ Kommandoer ved betingelser falske
+  ◆ Regulering ved langt tryk
+   !! Hændelser
+    ! Max tryktid -> 0
+   ✓✓ Kommandoer
+    ↳◆ Scenarie op
+     ∧ Betingelser
+      ? Tænd/regulér op                  = ON
+      ? Sluk/regulér ned                 = OFF
+      ? Touch                            = OFF
+      ? Lav                              = OFF
+      ? Høj                              = OFF
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Regulér Højt niveau op
+      ✓ Lysdæmper status                 = Regulérer op
+     ✓✓ Kommandoer ved betingelser falske
+    ↳◆ Scenarie ned
+     ∧ Betingelser
+      ? Sluk/regulér ned                 = ON
+      ? Lysdæmper tændt                  = ON
+      ? Touch                            = OFF
+      ? Tænd/regulér op                  = OFF
+      ? Lav                              = OFF
+      ? Høj                              = OFF
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Regulér Højt niveau ned
+      ✓ Aktiver nedtælling på Min. regulering 2 med initial værdi
+      ✓ Lysdæmper status                 = Regulérer ned
+     ✓✓ Kommandoer ved betingelser falske
+    ↳◆ Touch op
+     ∧ Betingelser
+      ? Touch                            = ON
+      ? Tænd/regulér op                  = OFF
+      ? Sluk/regulér ned                 = OFF
+      ? Lav                              = OFF
+      ? Høj                              = OFF
+      ? Reg. retning                     = OFF
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Regulér Højt niveau op
+      ✓ Lysdæmper status                 = Regulérer op
+     ✓✓ Kommandoer ved betingelser falske
+      ↳◆ Touch ned
+       ∧ Betingelser
+        ? Touch                          = ON
+        ? Tænd/regulér op                = OFF
+        ? Sluk/regulér ned               = OFF
+        ? Lav                            = OFF
+        ? Høj                            = OFF
+        ? Reg. retning                   = ON
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Regulér Højt niveau ned
+        ✓ Aktiver nedtælling på Min. regulering 1 med initial værdi
+        ✓ Lysdæmper status               = Regulérer ned
+       ✓✓ Kommandoer ved betingelser falske
+  ◆ Lav
+   !! Hændelser
+    ! Lav -> OFF
+   ✓✓ Kommandoer
+    ↳◆ Under program
+     ∧ Betingelser
+      ? Touch                            = OFF
+      ? Tænd/regulér op                  = OFF
+      ? Sluk/regulér ned                 = OFF
+      ? Høj                              = OFF
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Fremkald Lavt niveau
+      ✓ Lysdæmper status                 = Lav
+     ✓✓ Kommandoer ved betingelser falske
+  ◆ Høj
+   !! Hændelser
+    ! Høj -> OFF
+   ✓✓ Kommandoer
+    ↳◆ Under program
+     ∧ Betingelser
+      ? Touch                            = OFF
+      ? Tænd/regulér op                  = OFF
+      ? Sluk/regulér ned                 = OFF
+      ? Lav                              = OFF
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Fremkald Højt niveau
+      ✓ Lysdæmper status                 = Høj
+     ✓✓ Kommandoer ved betingelser falske
+  ◆ Start timer - gem nyt scenarie
+   !! Hændelser
+    ! Lav bliver ændret
+    ! Høj bliver ændret
+   ✓✓ Kommandoer
+    ↳◆ Under program
+     ∧ Betingelser
+      ? Lysdæmper status <> Slukket
+     ✓✓ Kommandoer ved betingelser sande
+      ↳◆ Under program
+       ∨ Betingelser
+        ? Lav                            = ON
+        ? Høj                            = ON
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Aktiver nedtælling på Gem nyt scenarie efter med initial værdi
+       ✓✓ Kommandoer ved betingelser falske
+        ✓ Stands tælling på Gem nyt scenarie efter
+     ✓✓ Kommandoer ved betingelser falske
+  ◆ Gem nyt scenarie
+   !! Hændelser
+    ! Gem nyt scenarie efter -> 0
+   ✓✓ Kommandoer
+    ↳◆ Gem lav og start timer for kvittéring
+     ∧ Betingelser
+      ? Touch                            = OFF
+      ? Tænd/regulér op                  = OFF
+      ? Sluk/regulér ned                 = OFF
+      ? Lysdæmper tændt                  = ON
+     ✓✓ Kommandoer ved betingelser sande
+      ↳◆ Lav
+       ∧ Betingelser
+        ? Lav                            = ON
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Gem Lavt niveau
+        ✓ Lysdæmper status               = Lav er gemt
+       ✓✓ Kommandoer ved betingelser falske
+        ↳◆ Høj
+         ∧ Betingelser
+          ? Høj                          = ON
+         ✓✓ Kommandoer ved betingelser sande
+          ✓ Gem Højt niveau
+          ✓ Lysdæmper status             = Høj er gemt
+         ✓✓ Kommandoer ved betingelser falske
+      ✓ Aktiver nedtælling på Kvittér med blink af scenarie med initial værdi
+     ✓✓ Kommandoer ved betingelser falske
+  ◆ Kvittér med sluk
+   !! Hændelser
+    ! Kvittér med blink af scenarie -> 0
+   ✓✓ Kommandoer
+    ✓ Regulér Højt niveau ned
+    ✓ Stop regulering af Højt niveau
+    ✓ Lysdæmper status                   = Slukket
+  ◆ Tilstand
+   !! Hændelser
+    ! Lysdæmper status skifter tilstand
+   ✓✓ Kommandoer
+    ↳◆ Slukket
+     ∧ Betingelser
+      ? Lysdæmper status                 = Slukket
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Lysdæmper tændt                  = OFF
+      ✓ Reg. retning                     = OFF
+     ✓✓ Kommandoer ved betingelser falske
+      ✓ Lysdæmper tændt                  = ON
+    ↳◆ Høj/Sidste niveau
+     ∨ Betingelser
+      ? Lysdæmper status                 = Høj
+      ? Lysdæmper status                 = Sidste niveau
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Reg. retning                     = ON
+     ✓✓ Kommandoer ved betingelser falske
+      ↳◆ Under program
+       ∧ Betingelser
+        ? Lysdæmper status               = Regulérer op
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Stands tælling på Status check
+        ✓ Reg. retning                   = ON
+       ✓✓ Kommandoer ved betingelser falske
+    ↳◆ Lav
+     ∧ Betingelser
+      ? Lysdæmper status                 = Lav
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Reg. retning                     = OFF
+     ✓✓ Kommandoer ved betingelser falske
+      ↳◆ Under program
+       ∧ Betingelser
+        ? Lysdæmper status               = Regulérer ned
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Stands tælling på Status check
+        ✓ Reg. retning                   = OFF
+       ✓✓ Kommandoer ved betingelser falske
+    ✓ Aktiver nedtælling på Spærring % med initial værdi
+    ✓ Aktiver nedtælling på Status check med initial værdi
+    ✓ Oneshot man                        = OFF
+  ◆ Status
+   !! Hændelser
+    ! Status check -> 0
+    ! Powerup
+   ✓✓ Kommandoer
+    ↳◆ Under program
+     ∧ Betingelser
+      ? Lysdæmper status                 = Slukket
+     ✓✓ Kommandoer ved betingelser sande
+      ↳◆ Sluk
+       ∧ Betingelser
+        ? Lys niveau > 0%
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Regulér Højt niveau ned
+        ✓ Stop regulering af Højt niveau
+        ✓ Aktiver nedtælling på Status check med initial værdi
+       ✓✓ Kommandoer ved betingelser falske
+     ✓✓ Kommandoer ved betingelser falske
+      ↳◆ Status sluk
+       ∧ Betingelser
+        ? Lys niveau                     = 0%
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Lysdæmper status               = Slukket
+       ✓✓ Kommandoer ved betingelser falske
+  ◆ Oneshot
+   !! Hændelser
+    ! Natdrift -> OFF
+   ✓✓ Kommandoer
+    ↳◆ Man
+     ∧ Betingelser
+      ? Kort reguleringstryk tænder      = Sidste niveau
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Oneshot man                      = ON
+     ✓✓ Kommandoer ved betingelser falske
+  ◆ Påvirkning via app
+   !! Hændelser
+    ! Lys niveau bliver ændret
+   ✓✓ Kommandoer
+    ↳◆ Regulering
+     ∧ Betingelser
+      ? Status check stoppet
+      ? Spærring % stoppet
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Lysdæmper status                 = Reguléret
+     ✓✓ Kommandoer ved betingelser falske
+    ↳◆ Sluk
+     ∧ Betingelser
+      ? Lys niveau                       = 0%
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Lysdæmper status                 = Slukket
+     ✓✓ Kommandoer ved betingelser falske
+    ↳◆ Tvungen retning ned
+     ∧ Betingelser
+      ? Lys niveau < 20%
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Reg. retning                     = OFF
+     ✓✓ Kommandoer ved betingelser falske
+      ↳◆ Tvungen retning op
+       ∧ Betingelser
+        ? Lys niveau > 80%
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Reg. retning                   = ON
+       ✓✓ Kommandoer ved betingelser falske
+    ✓ Stands tælling på Status check
+
+------------------------------------------------------------------------------
+4.1.01. AND ("Og"- blok)
+
+Anvendelse
+Logik funktionsblok - AND ("Og"- blok) med 10 indgange samt puls og scenarie udgange.
+For at se den fulde beskrivelse marker denne linje og tryk "F1".
+Bemærk: Dette virker kun hvis "Blokken" er rød-markeret.
+------------------------------------------------------------------------------
+
+ ⇥  Input
+  → Indgang 1            Kort tryk < 1 sek. Tænd / sluk: Loftlampe i stue
+  → Indgang 2            Langt tryk > 1 sek. Sluk alt lys i stue og køkken
+  → Indgang 3            Kort tryk < 1 sek. Tænd / sluk: Spot over køkkenbord
+  → Indgang 4            (Udfyldes af installatøren)
+  → Indgang 5            (Udfyldes af installatøren)
+  → Indgang 6            (Udfyldes af installatøren)
+  → Indgang 7            (Udfyldes af installatøren)
+  → Indgang 8            (Udfyldes af installatøren)
+  → Indgang 9            (Udfyldes af installatøren)
+  → Indgang 10           (Udfyldes af installatøren)
+ ⇤  Output
+  ← Udgang
+  ← ON Puls
+  ← OFF Puls
+  ⧈ Scenarie Tænd
+  ⧈ Scenarie Sluk
+ ✎  Indstillinger
+ ⚙  Interne variable
+  ⧖ Timer               = 00:00:00,250
+ ↳◆ Programmer
+  ◆ Indgang 1 går ON
+   !! Hændelser
+    ! Indgang 1 bliver ændret
+    ! Indgang 2 bliver ændret
+    ! Indgang 3 bliver ændret
+    ! Indgang 4 bliver ændret
+    ! Indgang 5 bliver ændret
+    ! Indgang 6 bliver ændret
+    ! Indgang 7 bliver ændret
+    ! Indgang 8 bliver ændret
+    ! Indgang 9 bliver ændret
+    ! Indgang 10 bliver ændret
+    ! Powerup
+   ✓✓ Kommandoer
+    ↳◆ Betinget kommando
+     ∧ Betingelser
+      ? Indgang 1       = ON
+      ? Indgang 2       = ON
+      ? Indgang 3       = ON
+      ? Indgang 4       = ON
+      ? Indgang 5       = ON
+      ? Indgang 6       = ON
+      ? Indgang 7       = ON
+      ? Indgang 8       = ON
+      ? Indgang 9       = ON
+      ? Indgang 10      = ON
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Udgang          = ON
+     ✓✓ Kommandoer ved betingelser falske
+      ✓ Udgang          = OFF
+  ◆ Udgang skifter status
+   !! Hændelser
+    ! Udgang bliver ændret
+   ✓✓ Kommandoer
+    ↳◆ Under program
+     ∧ Betingelser
+      ? Udgang          = ON
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ ON Puls         = ON
+      ✓ Fremkald Scenarie Tænd
+      ✓ Aktiver nedtælling på Timer med initial værdi
+     ✓✓ Kommandoer ved betingelser falske
+      ✓ OFF Puls        = ON
+      ✓ Fremkald Scenarie Sluk
+      ✓ Aktiver nedtælling på Timer med initial værdi
+  ◆ Puls timer udløber
+   !! Hændelser
+    ! Timer -> 0
+   ✓✓ Kommandoer
+    ✓ ON Puls           = OFF
+    ✓ OFF Puls          = OFF
+
+------------------------------------------------------------------------------
+Tom blok
+------------------------------------------------------------------------------
+
+ ⇥  Input
+ ⇤  Output
+ ✎  Indstillinger
+ ⚙  Interne variable
+ ↳◆ Programmer
+  ◆ Program
+   !! Hændelser
+   ✓✓ Kommandoer
+
+------------------------------------------------------------------------------
+4.1.04. Driftstimetæller
+
+Anvendelse
+Til at tælle time forbrug på f.eks lysrør, eller steder hvor forebyggende vedligehold ønskes.
+Dette vises i Timer.
+For at se den fulde beskrivelse marker denne linje og tryk "F1".
+Bemærk: Dette virker kun hvis "Blokken" er rød-markeret.
+------------------------------------------------------------------------------
+
+ ⇥  Input
+  → Indgang              Når denne indgang er "ON" tæller tiden op. (Udfyldes af installatøren)
+  → Reset                Aktiveres ved et langt tryk. Skal holdes inde i >1sek før "Reset" udføres. (Udfyldes af installatøren)
+ ⇤  Output
+  ← Indikation           Denne udgang kan bruges til en Diode, der indikerer at "Set-punktet" er opnået. Denne kan ligeledes anvendes til at sende en mail til værkfører eller elektriker om f.eks. "Det er tid til at skifte lysrør"
+  123 Timer              Kan anvendes i Viewer.
+  123 Minut              Kan anvendes i Viewer.
+  123 Sekund             Kan anvendes i Viewer.
+ ✎  Indstillinger
+  123 Set-Punkt         = 10000  Default 10.000 Hvis "Timer" bliver => "Set-punkt" vil "Indikation" blive "ON" Rettes "Set-Punkt" til en højre værdi end "Timer" vil "Indikation" blive "OFF" indtil "Set-punkt" igen bliver nået.
+ ⚙  Interne variable
+  ◷ Systemtid-1         = 00:00:00
+  ◷ Systemtid-2         = 00:00:00
+  ⧖ ½sec                = 00:00:00,500
+  ⧖ Reset               = 00:00:01,000
+ ↳◆ Programmer
+  ◆ Indgang
+   !! Hændelse
+    ! Powerup
+    ! Indgang bliver ændret
+   ✓✓ Kommandoer
+    ↳◆ Under program
+     ∧ Betingelser
+      ? Indgang         = ON
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Aktiver nedtælling på ½sec med initial værdi
+     ✓✓ Kommandoer ved betingelser falske
+      ✓ Stands tælling på ½sec
+  ◆ Sekundt
+   !! Hændelser
+    ! ½sec -> 0
+   ✓✓ Kommandoer
+    ✓ Systemtid-1       = Systemtid
+    ✓ Aktiver nedtælling på ½sec med initial værdi
+    ↳◆ Under program
+     ∧ Betingelser
+      ? Systemtid-1 > Systemtid-2
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Sekund          = %P + 1
+     ✓✓ Kommandoer ved betingelser falske
+    ✓ Systemtid-2       = Systemtid-1
+  ◆ Opdatering
+   !! Hændelser
+    ! Sekund -> 60
+   ✓✓ Kommandoer
+    ✓ Minut             = %P + 1
+    ✓ Sekund            = 0
+    ↳◆ Under program
+     ∧ Betingelser
+      ? Minut           = 60
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Timer           = %P + 1
+      ✓ Minut           = 0
+     ✓✓ Kommandoer ved betingelser falske
+  ◆ Reset
+   !! Hændelser
+    ! Reset bliver ændret
+   ✓✓ Kommandoer
+    ↳◆ Under program
+     ∧ Betingelser
+      ? Reset           = ON
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Aktiver nedtælling på Reset med initial værdi
+     ✓✓ Kommandoer ved betingelser falske
+      ✓ Stands tælling på Reset
+  ◆ Reset >0
+   !! Hændelser
+    ! Reset -> 0
+   ✓✓ Kommandoer
+    ✓ Indikation        = OFF
+    ✓ Timer             = 0
+    ✓ Minut             = 0
+    ✓ Sekund            = 0
+  ◆ Program
+   !! Hændelser
+    ! Timer bliver tilskrevet
+    ! Set-Punkt bliver tilskrevet
+   ✓✓ Kommandoer
+    ↳◆ Under program
+     ∧ Betingelser
+      ? Timer >= Set-Punkt
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Indikation      = ON
+     ✓✓ Kommandoer ved betingelser falske
+      ✓ Indikation      = OFF
+
+------------------------------------------------------------------------------
+Tom blok
+------------------------------------------------------------------------------
+
+ ⇥  Input
+ ⇤  Output
+ ✎  Indstillinger
+ ⚙  Interne variable
+  ≣7 Ugedag             = mandag
+  ℕ Tal                 = 0
+  ⚑ Flag                = Off
+  123 Tæller            = 0
+  ▤ Dato                = 1. januar
+  ⧖ Timer               = 00:00:00,000
+  0.0 Kommatal          = 0.00
+  ℃ Temperatur          = 0.00 C
+ ↳◆ Programmer
+  ◆ Program
+   !! Hændelser
+   ✓✓ Kommandoer
+
+------------------------------------------------------------------------------
+Tom blok
+------------------------------------------------------------------------------
+
+ ⇥  Input
+ ⇤  Output
+ ✎  Indstillinger
+ ⚙  Interne variable
+ ↳◆ Programmer
+  ◆ Program
+   !! Hændelser
+   ✓✓ Kommandoer
+

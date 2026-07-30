@@ -1,0 +1,179 @@
+IHC OpenVisual
+
+Installationsdokumentation
+==========================
+
+Installatør
+  Navn     Morten
+  Adresse  --
+  Telefon  --
+
+Kunde
+  Navn     --
+  Adresse  --
+  Telefon  --
+
+Datalinie inputmoduler
+  Datalinie  Modul type  Lokalitet  Beskrivelse
+  ---------  ----------  ---------  -----------
+
+Datalinie outputmoduler
+  Datalinie  Modul type  Lokalitet  Beskrivelse
+  ---------  ----------  ---------  -----------
+
+------------------------------------------------------------------------------
+Lokaliteter og komponenter
+
+  Lokalitet            Stue & Køkken "åben"
+  Placering            --
+  Komponent            LK FUGA Tryk 2 tast
+  Identifikationskode  --
+  Kabelnummer          --
+  Kabeltype            --
+  Lysgruppe            --
+
+    Terminal        Adresse    Ledning
+    --------------  ---------  -------
+    Tryk (venstre)  Indgang ?  --
+    Tryk (højre)    Indgang ?  --
+
+  Lokalitet            Stue & Køkken "åben"
+  Placering            --
+  Komponent            Lampeudtag
+  Identifikationskode  --
+  Kabelnummer          --
+  Kabeltype            --
+  Lysgruppe            --
+
+    Terminal  Adresse   Ledning
+    --------  --------  -------
+    Udgang    Udgang ?  --
+
+  Lokalitet            Stue & Køkken "åben"
+  Placering            --
+  Komponent            Diode
+  Identifikationskode  --
+  Kabelnummer          --
+  Kabeltype            --
+  Lysgruppe            --
+
+    Terminal  Adresse   Ledning
+    --------  --------  -------
+    Lampe     Udgang ?  --
+
+  Lokalitet            Entré
+  Placering            --
+  Komponent            PIR
+  Identifikationskode  --
+  Kabelnummer          --
+  Kabeltype            --
+  Lysgruppe            --
+
+    Terminal                     Adresse    Ledning
+    ---------------------------  ---------  -------
+    Tilstedeværelses indikering  Indgang ?  --
+
+  Lokalitet            Entré
+  Placering            --
+  Komponent            Stikkontakt
+  Identifikationskode  --
+  Kabelnummer          --
+  Kabeltype            --
+  Lysgruppe            --
+
+    Terminal  Adresse   Ledning
+    --------  --------  -------
+    Udgang    Udgang ?  --
+
+  Lokalitet            Køkken
+  Placering            --
+  Komponent            Temperatur sensor med logning
+  Identifikationskode  --
+  Kabelnummer          --
+  Kabeltype            --
+  Lysgruppe            --
+
+    Terminal                   Adresse    Ledning
+    -------------------------  ---------  -------
+    Temperatur sensor indgang  Indgang ?  --
+
+  Lokalitet            Køkken
+  Placering            --
+  Komponent            Lux / Temperatur sensor med logning
+  Identifikationskode  --
+  Kabelnummer          --
+  Kabeltype            --
+  Lysgruppe            --
+
+    Terminal                 Adresse    Ledning
+    -----------------------  ---------  -------
+    Lux / Temperatur sensor  Indgang ?  --
+
+  Lokalitet            Soveværelse
+  Placering            --
+  Komponent            Dimmer touch
+  Identifikationskode  --
+  Kabelnummer          --
+  Kabeltype            --
+  Lysgruppe            --
+
+    Terminal  Adresse   Ledning
+    --------  --------  -------
+    Touch     Udgang ?  --
+    Sluk      Udgang ?  --
+
+  Lokalitet            Soveværelse
+  Placering            --
+  Komponent            Dimmer Universal
+  Identifikationskode  --
+  Serie nummer         _0x0
+  Lysgruppe            --
+
+  Lokalitet            Værelse
+  Placering            --
+  Komponent            Tryk 2 tast
+  Identifikationskode  --
+  Serie nummer         _0x0
+  Lysgruppe            --
+
+  Lokalitet            Værelse
+  Placering            --
+  Komponent            Lampeudtag
+  Identifikationskode  --
+  Serie nummer         _0x0
+  Lysgruppe            --
+
+  Lokalitet     Kælder
+  Placering     --
+  Komponent     IHC LED Dimmer 2 kanaler
+  Serie nummer  --
+
+------------------------------------------------------------------------------
+Datalinjer
+
+Datalinie indgange
+  Adresse  Produkt                              Indgang                      Note  Lokalitet             Placering  Id-kode  Kabeltype  Kabelnummer  Lysgruppe  Ledningsfarve
+  -------  -----------------------------------  ---------------------------  ----  --------------------  ---------  -------  ---------  -----------  ---------  -------------
+  ?        LK FUGA Tryk 2 tast                  Tryk (venstre)                     Stue & Køkken "åben"
+  ?        LK FUGA Tryk 2 tast                  Tryk (højre)                       Stue & Køkken "åben"
+  ?        PIR                                  Tilstedeværelses indikering        Entré
+  ?        Temperatur sensor med logning        Temperatur sensor indgang          Køkken
+  ?        Lux / Temperatur sensor med logning  Lux / Temperatur sensor            Køkken
+
+Datalinie udgange
+  Adresse  Produkt       Udgang  Note  Lokalitet             Placering  Id-kode  Kabeltype  Kabelnummer  Lysgruppe  Ledningsfarve
+  -------  ------------  ------  ----  --------------------  ---------  -------  ---------  -----------  ---------  -------------
+  ?        Lampeudtag    Udgang        Stue & Køkken "åben"
+  ?        Diode         Lampe         Stue & Køkken "åben"
+  ?        Stikkontakt   Udgang        Entré
+  ?        Dimmer touch  Touch         Soveværelse
+  ?        Dimmer touch  Sluk          Soveværelse
+
+Specielle Produkter
+  Produkt  Indgang  Note  Lokalitet  Placering  Id-kode  Ledningsfarve 0V  Ledningsfarve 24V  Ledningsfarve RS485Minus  Ledningsfarve RS485Plus
+  -------  -------  ----  ---------  ---------  -------  ----------------  -----------------  ------------------------  -----------------------
+
+S0 Device
+  Produkt    Note               Lokalitet  Placering  Id-kode  Cable Colour S0Minus  Cable Colour S0Plus
+  ---------  -----------------  ---------  ---------  -------  --------------------  -------------------
+  S0 Device  PRODUCT_2315_NOTE  Kælder

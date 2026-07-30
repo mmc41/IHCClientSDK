@@ -1,0 +1,261 @@
+IHC OpenVisual
+
+Installationsdokumentation
+==========================
+Fuld rapport — Genereret: 2026-07-30 12:00 — Programmør: Morten Christensen
+
+Projekt
+  Beskrivelse  --
+  Nummer       --
+  Programmør   Morten Christensen
+
+Installatør
+  Navn     Morten
+  Adresse  --
+  Telefon  --
+
+Kunde
+  Navn     --
+  Adresse  --
+  Telefon  --
+
+Datalinie inputmoduler
+  Datalinie  Modul type  Lokalitet  Beskrivelse
+  ---------  ----------  ---------  -----------
+
+Datalinie outputmoduler
+  Datalinie  Modul type  Lokalitet  Beskrivelse
+  ---------  ----------  ---------  -----------
+
+------------------------------------------------------------------------------
+Lokaliteter og komponenter
+
+  Lokalitet            Stue & Køkken "åben" (ID _0x2132)
+  Placering            --
+  Komponent            LK FUGA Tryk 2 tast (ID _0x5153)
+  Identifikationskode  --
+  Kabelnummer          --
+  Kabeltype            --
+  Lysgruppe            --
+
+    Terminal                     Adresse    Ledning
+    ---------------------------  ---------  -------
+    Tryk (venstre) (ID _0x525a)  Indgang ?  --
+    Tryk (højre) (ID _0x535a)    Indgang ?  --
+
+  Lokalitet            Stue & Køkken "åben" (ID _0x2132)
+  Placering            --
+  Komponent            Lampeudtag (ID _0x5453)
+  Identifikationskode  --
+  Kabelnummer          --
+  Kabeltype            --
+  Lysgruppe            --
+
+    Terminal             Adresse   Ledning
+    -------------------  --------  -------
+    Udgang (ID _0x555b)  Udgang ?  --
+
+  Lokalitet            Stue & Køkken "åben" (ID _0x2132)
+  Placering            --
+  Komponent            Diode (ID _0x5753)
+  Identifikationskode  --
+  Kabelnummer          --
+  Kabeltype            --
+  Lysgruppe            --
+
+    Terminal            Adresse   Ledning
+    ------------------  --------  -------
+    Lampe (ID _0x585b)  Udgang ?  --
+
+  Lokalitet            Entré (ID _0x2232)
+  Placering            --
+  Komponent            PIR (ID _0x5953)
+  Identifikationskode  --
+  Kabelnummer          --
+  Kabeltype            --
+  Lysgruppe            --
+
+    Terminal                                  Adresse    Ledning
+    ----------------------------------------  ---------  -------
+    Tilstedeværelses indikering (ID _0x5a5a)  Indgang ?  --
+
+  Lokalitet            Entré (ID _0x2232)
+  Placering            --
+  Komponent            Stikkontakt (ID _0x5b53)
+  Identifikationskode  --
+  Kabelnummer          --
+  Kabeltype            --
+  Lysgruppe            --
+
+    Terminal             Adresse   Ledning
+    -------------------  --------  -------
+    Udgang (ID _0x5c5b)  Udgang ?  --
+
+  Lokalitet            Køkken (ID _0x2332)
+  Placering            --
+  Komponent            Temperatur sensor med logning (ID _0x5e53)
+  Identifikationskode  --
+  Kabelnummer          --
+  Kabeltype            --
+  Lysgruppe            --
+
+    Terminal                                Adresse    Ledning
+    --------------------------------------  ---------  -------
+    Temperatur sensor indgang (ID _0x695a)  Indgang ?  --
+
+  Lokalitet            Køkken (ID _0x2332)
+  Placering            --
+  Komponent            Lux / Temperatur sensor med logning (ID _0x6a53)
+  Identifikationskode  --
+  Kabelnummer          --
+  Kabeltype            --
+  Lysgruppe            --
+
+    Terminal                              Adresse    Ledning
+    ------------------------------------  ---------  -------
+    Lux / Temperatur sensor (ID _0x745a)  Indgang ?  --
+
+  Lokalitet            Soveværelse (ID _0x2432)
+  Placering            --
+  Komponent            Dimmer touch (ID _0x7553)
+  Identifikationskode  --
+  Kabelnummer          --
+  Kabeltype            --
+  Lysgruppe            --
+
+    Terminal            Adresse   Ledning
+    ------------------  --------  -------
+    Touch (ID _0x765b)  Udgang ?  --
+    Sluk (ID _0x775b)   Udgang ?  --
+
+  Lokalitet            Soveværelse (ID _0x2432)
+  Placering            --
+  Komponent            Dimmer Universal (ID _0x7e54)
+  Identifikationskode  --
+  Serie nummer         _0x0
+  Lysgruppe            --
+
+  Lokalitet            Værelse (ID _0x2532)
+  Placering            --
+  Komponent            Tryk 2 tast (ID _0x7854)
+  Identifikationskode  --
+  Serie nummer         _0x0
+  Lysgruppe            --
+
+  Lokalitet            Værelse (ID _0x2532)
+  Placering            --
+  Komponent            Lampeudtag (ID _0x7b54)
+  Identifikationskode  --
+  Serie nummer         _0x0
+  Lysgruppe            --
+
+  Lokalitet     Kælder (ID _0x2932)
+  Placering     --
+  Komponent     IHC LED Dimmer 2 kanaler (ID _0x52758)
+  Serie nummer  --
+
+------------------------------------------------------------------------------
+Datalinjer
+
+Datalinie indgange
+  Adresse  Produkt                              Indgang                      Note  Lokalitet             Placering  Id-kode  Kabeltype  Kabelnummer  Lysgruppe  Ledningsfarve
+  -------  -----------------------------------  ---------------------------  ----  --------------------  ---------  -------  ---------  -----------  ---------  -------------
+  ?        LK FUGA Tryk 2 tast                  Tryk (venstre)                     Stue & Køkken "åben"
+  ?        LK FUGA Tryk 2 tast                  Tryk (højre)                       Stue & Køkken "åben"
+  ?        PIR                                  Tilstedeværelses indikering        Entré
+  ?        Temperatur sensor med logning        Temperatur sensor indgang          Køkken
+  ?        Lux / Temperatur sensor med logning  Lux / Temperatur sensor            Køkken
+
+Datalinie udgange
+  Adresse  Produkt       Udgang  Note  Lokalitet             Placering  Id-kode  Kabeltype  Kabelnummer  Lysgruppe  Ledningsfarve
+  -------  ------------  ------  ----  --------------------  ---------  -------  ---------  -----------  ---------  -------------
+  ?        Lampeudtag    Udgang        Stue & Køkken "åben"
+  ?        Diode         Lampe         Stue & Køkken "åben"
+  ?        Stikkontakt   Udgang        Entré
+  ?        Dimmer touch  Touch         Soveværelse
+  ?        Dimmer touch  Sluk          Soveværelse
+
+Specielle Produkter
+  Produkt  Indgang  Note  Lokalitet  Placering  Id-kode  Ledningsfarve 0V  Ledningsfarve 24V  Ledningsfarve RS485Minus  Ledningsfarve RS485Plus
+  -------  -------  ----  ---------  ---------  -------  ----------------  -----------------  ------------------------  -----------------------
+
+S0 Device
+  Produkt                  Note               Lokalitet  Placering  Id-kode  Cable Colour S0Minus  Cable Colour S0Plus
+  -----------------------  -----------------  ---------  ---------  -------  --------------------  -------------------
+  S0 Device (ID _0x51b57)  PRODUCT_2315_NOTE  Kælder
+
+------------------------------------------------------------------------------
+Terminal-forbindelser
+
+Produkt              Terminal        Forbindelse                                          Funktion
+-------------------  --------------  ---------------------------------------------------  ----------------------------------------------------
+LK FUGA Tryk 2 tast  Tryk (venstre)  -> Indgang 1 -> 4.1.01. AND ("Og"- blok) -> Værelse  Kort tryk < 1 sek. Tænd / sluk: Loftlampe i stue
+LK FUGA Tryk 2 tast  Tryk (højre)    -> Indgang 3 -> 4.1.01. AND ("Og"- blok) -> Værelse  Kort tryk < 1 sek. Tænd / sluk: Spot over køkkenbord
+
+------------------------------------------------------------------------------
+Fejl i dokumentation
+
+Lokalitet             Produkt                              Terminal                     Fejl
+--------------------  -----------------------------------  ---------------------------  ---------------------
+Stue & Køkken "åben"  LK FUGA Tryk 2 tast                                               Mangler Id-kode
+Stue & Køkken "åben"  LK FUGA Tryk 2 tast                                               Mangler Lysgruppe
+Stue & Køkken "åben"  LK FUGA Tryk 2 tast                                               Mangler Kabeltype
+Stue & Køkken "åben"  LK FUGA Tryk 2 tast                                               Mangler Kabelnummer
+Stue & Køkken "åben"  LK FUGA Tryk 2 tast                                               Mangler Placering
+Stue & Køkken "åben"  LK FUGA Tryk 2 tast                  Tryk (venstre)               Mangler Ledningsfarve
+Stue & Køkken "åben"  LK FUGA Tryk 2 tast                  Tryk (venstre)               Mangler Adresse
+Stue & Køkken "åben"  LK FUGA Tryk 2 tast                  Tryk (højre)                 Mangler Ledningsfarve
+Stue & Køkken "åben"  LK FUGA Tryk 2 tast                  Tryk (højre)                 Mangler Adresse
+Stue & Køkken "åben"  Lampeudtag                                                        Mangler Id-kode
+Stue & Køkken "åben"  Lampeudtag                                                        Mangler Lysgruppe
+Stue & Køkken "åben"  Lampeudtag                                                        Mangler Kabeltype
+Stue & Køkken "åben"  Lampeudtag                                                        Mangler Kabelnummer
+Stue & Køkken "åben"  Lampeudtag                                                        Mangler Placering
+Stue & Køkken "åben"  Lampeudtag                           Udgang                       Ikke forbundet
+Stue & Køkken "åben"  Lampeudtag                           Udgang                       Mangler Ledningsfarve
+Stue & Køkken "åben"  Lampeudtag                           Udgang                       Mangler Adresse
+Stue & Køkken "åben"  Diode                                                             Mangler Id-kode
+Stue & Køkken "åben"  Diode                                                             Mangler Lysgruppe
+Stue & Køkken "åben"  Diode                                                             Mangler Kabeltype
+Stue & Køkken "åben"  Diode                                                             Mangler Kabelnummer
+Stue & Køkken "åben"  Diode                                                             Mangler Placering
+Stue & Køkken "åben"  Diode                                Lampe                        Ikke forbundet
+Stue & Køkken "åben"  Diode                                Lampe                        Mangler Ledningsfarve
+Stue & Køkken "åben"  Diode                                Lampe                        Mangler Adresse
+Entré                 PIR                                                               Mangler Id-kode
+Entré                 PIR                                                               Mangler Lysgruppe
+Entré                 PIR                                                               Mangler Kabeltype
+Entré                 PIR                                                               Mangler Kabelnummer
+Entré                 PIR                                                               Mangler Placering
+Entré                 PIR                                  Tilstedeværelses indikering  Ikke forbundet
+Entré                 PIR                                  Tilstedeværelses indikering  Mangler Ledningsfarve
+Entré                 PIR                                  Tilstedeværelses indikering  Mangler Adresse
+Entré                 Stikkontakt                                                       Mangler Id-kode
+Entré                 Stikkontakt                                                       Mangler Lysgruppe
+Entré                 Stikkontakt                                                       Mangler Kabeltype
+Entré                 Stikkontakt                                                       Mangler Kabelnummer
+Entré                 Stikkontakt                                                       Mangler Placering
+Entré                 Stikkontakt                          Udgang                       Ikke forbundet
+Entré                 Stikkontakt                          Udgang                       Mangler Ledningsfarve
+Entré                 Stikkontakt                          Udgang                       Mangler Adresse
+Køkken                Temperatur sensor med logning                                     Mangler Id-kode
+Køkken                Temperatur sensor med logning                                     Mangler Lysgruppe
+Køkken                Temperatur sensor med logning                                     Mangler Kabeltype
+Køkken                Temperatur sensor med logning                                     Mangler Kabelnummer
+Køkken                Temperatur sensor med logning                                     Mangler Placering
+Køkken                Lux / Temperatur sensor med logning                               Mangler Id-kode
+Køkken                Lux / Temperatur sensor med logning                               Mangler Lysgruppe
+Køkken                Lux / Temperatur sensor med logning                               Mangler Kabeltype
+Køkken                Lux / Temperatur sensor med logning                               Mangler Kabelnummer
+Køkken                Lux / Temperatur sensor med logning                               Mangler Placering
+Soveværelse           Dimmer touch                                                      Mangler Id-kode
+Soveværelse           Dimmer touch                                                      Mangler Lysgruppe
+Soveværelse           Dimmer touch                                                      Mangler Kabeltype
+Soveværelse           Dimmer touch                                                      Mangler Kabelnummer
+Soveværelse           Dimmer touch                                                      Mangler Placering
+Soveværelse           Dimmer touch                         Touch                        Ikke forbundet
+Soveværelse           Dimmer touch                         Touch                        Mangler Ledningsfarve
+Soveværelse           Dimmer touch                         Touch                        Mangler Adresse
+Soveværelse           Dimmer touch                         Sluk                         Ikke forbundet
+Soveværelse           Dimmer touch                         Sluk                         Mangler Ledningsfarve
+Soveværelse           Dimmer touch                         Sluk                         Mangler Adresse

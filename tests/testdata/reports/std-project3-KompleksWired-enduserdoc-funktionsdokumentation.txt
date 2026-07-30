@@ -1,0 +1,27 @@
+IHC OpenVisual
+
+Funktionsdokumentation
+======================
+
+Stue & Køkken "åben"
+  LK FUGA Tryk 2 tast
+    Tryk (venstre)
+      Kort tryk < 1 sek. Tænd / sluk: Loftlampe i stue
+      Langt tryk > 1 sek. Sluk alt lys i stue og køkken
+    Tryk (højre)
+      Kort tryk < 1 sek. Tænd / sluk: Spot over køkkenbord
+  Diode
+    Lampe
+Entré
+Køkken
+Soveværelse
+Værelse
+  Tryk 2 tast
+    Tryk (venstre)
+    Tryk (højre)
+Bad
+Bryggers
+Garage
+Kælder
+Udendørs
+Lokalitet
