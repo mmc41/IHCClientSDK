@@ -5,18 +5,17 @@ Functionsblok dokumentation
 Fuld rapport — Genereret: 2026-07-30 12:00 — Programmør: Morten Christensen
 
 Projekt
--------
-Beskrivelse  --
-Nummer       --
-Programmør   Morten Christensen
+  Beskrivelse  --
+  Nummer       --
+  Programmør   Morten Christensen
 
 ------------------------------------------------------------------------------
 1.1.01.e. Kip tænd sluk (ID _0x8b28)
 
-Lokalitet  Stue & Køkken "åben"
-Type       1.1.01
-Version    e
-Låst       Ja
+  Lokalitet  Stue & Køkken "åben"
+  Type       1.1.01
+  Version    e
+  Låst       Ja
 
 Anvendelse
 Kip, tænd og sluk af udgang, eller som trappeautomat
@@ -133,10 +132,10 @@ Bemærk: Dette virker kun hvis "Blokken" er rød-markeret.
 ------------------------------------------------------------------------------
 1.4.02.a. PIR styring (ID _0x2e528)
 
-Lokalitet  Entré
-Type       1.4.02
-Version    a
-Låst       Ja
+  Lokalitet  Entré
+  Type       1.4.02
+  Version    a
+  Låst       Ja
 
 Anvendelse
 Til simpel styring af IHC Wireless produkter og relæer ifm. PIR og manuel betjening.
@@ -450,10 +449,10 @@ Bemærk: Dette virker kun hvis blokken er rød-markeret.
 ------------------------------------------------------------------------------
 2.1.01.a. 7 dages ur, med 1 tænd tidspunkt (ID _0x42a28)
 
-Lokalitet  Køkken
-Type       2.1.01
-Version    a
-Låst       Ja
+  Lokalitet  Køkken
+  Type       2.1.01
+  Version    a
+  Låst       Ja
 
 Anvendelse
 7 dages ur, hvor der kun er et tænd- og sluktidspunkt. Dvs. at alle ugens 7 dage har samme tænd- og sluktidspunkt.
@@ -534,10 +533,10 @@ Bemærk: Dette virker kun hvis "Blokken" er rød-markeret.
 ------------------------------------------------------------------------------
 1.2.04.e. Trådløs / Bus lysdæmper (ID _0xf528)
 
-Lokalitet  Soveværelse
-Type       1.2.04
-Version    e
-Låst       Ja
+  Lokalitet  Soveværelse
+  Type       1.2.04
+  Version    e
+  Låst       Ja
 
 Anvendelse
 Til styring af IHC Wireless og IHC Bus lysdæmpere.
@@ -984,10 +983,10 @@ Bemærk: Dette virker kun hvis blokken er rød-markeret.
 ------------------------------------------------------------------------------
 4.1.01. AND ("Og"- blok) (ID _0x47028)
 
-Lokalitet  Værelse
-Type       4.1.01
-Version    --
-Låst       Ja
+  Lokalitet  Værelse
+  Type       4.1.01
+  Version    --
+  Låst       Ja
 
 Anvendelse
 Logik funktionsblok - AND ("Og"- blok) med 10 indgange samt puls og scenarie udgange.
@@ -1071,10 +1070,10 @@ Bemærk: Dette virker kun hvis "Blokken" er rød-markeret.
 ------------------------------------------------------------------------------
 Tom blok (ID _0x54b28)
 
-Lokalitet  Bad
-Type       --
-Version    --
-Låst       Nej
+  Lokalitet  Bad
+  Type       --
+  Version    --
+  Låst       Nej
 ------------------------------------------------------------------------------
 
  ⇥  Input
@@ -1089,10 +1088,10 @@ Låst       Nej
 ------------------------------------------------------------------------------
 4.1.04. Driftstimetæller (ID _0x4b928)
 
-Lokalitet  Bryggers
-Type       4.1.04
-Version    --
-Låst       Ja
+  Lokalitet  Bryggers
+  Type       4.1.04
+  Version    --
+  Låst       Ja
 
 Anvendelse
 Til at tælle time forbrug på f.eks lysrør, eller steder hvor forebyggende vedligehold ønskes.
@@ -1190,10 +1189,10 @@ Bemærk: Dette virker kun hvis "Blokken" er rød-markeret.
 ------------------------------------------------------------------------------
 Tom blok (ID _0x55a28)
 
-Lokalitet  Bryggers
-Type       --
-Version    --
-Låst       Nej
+  Lokalitet  Bryggers
+  Type       --
+  Version    --
+  Låst       Nej
 ------------------------------------------------------------------------------
 
  ⇥  Input
@@ -1216,10 +1215,10 @@ Låst       Nej
 ------------------------------------------------------------------------------
 Tom blok (ID _0x51228)
 
-Lokalitet  Garage
-Type       --
-Version    --
-Låst       Nej
+  Lokalitet  Garage
+  Type       --
+  Version    --
+  Låst       Nej
 ------------------------------------------------------------------------------
 
  ⇥  Input
@@ -1234,68 +1233,67 @@ Låst       Nej
 ------------------------------------------------------------------------------
 Fejl i dokumentation
 
-Lokalitet             Produkt                              Terminal                     Fejl
---------------------  -----------------------------------  ---------------------------  ---------------------
-Stue & Køkken "åben"  LK FUGA Tryk 2 tast                                               Mangler Id-kode
-Stue & Køkken "åben"  LK FUGA Tryk 2 tast                                               Mangler Lysgruppe
-Stue & Køkken "åben"  LK FUGA Tryk 2 tast                                               Mangler Kabeltype
-Stue & Køkken "åben"  LK FUGA Tryk 2 tast                                               Mangler Kabelnummer
-Stue & Køkken "åben"  LK FUGA Tryk 2 tast                                               Mangler Placering
-Stue & Køkken "åben"  LK FUGA Tryk 2 tast                  Tryk (venstre)               Mangler Ledningsfarve
-Stue & Køkken "åben"  LK FUGA Tryk 2 tast                  Tryk (venstre)               Mangler Adresse
-Stue & Køkken "åben"  LK FUGA Tryk 2 tast                  Tryk (højre)                 Mangler Ledningsfarve
-Stue & Køkken "åben"  LK FUGA Tryk 2 tast                  Tryk (højre)                 Mangler Adresse
-Stue & Køkken "åben"  Lampeudtag                                                        Mangler Id-kode
-Stue & Køkken "åben"  Lampeudtag                                                        Mangler Lysgruppe
-Stue & Køkken "åben"  Lampeudtag                                                        Mangler Kabeltype
-Stue & Køkken "åben"  Lampeudtag                                                        Mangler Kabelnummer
-Stue & Køkken "åben"  Lampeudtag                                                        Mangler Placering
-Stue & Køkken "åben"  Lampeudtag                           Udgang                       Ikke forbundet
-Stue & Køkken "åben"  Lampeudtag                           Udgang                       Mangler Ledningsfarve
-Stue & Køkken "åben"  Lampeudtag                           Udgang                       Mangler Adresse
-Stue & Køkken "åben"  Diode                                                             Mangler Id-kode
-Stue & Køkken "åben"  Diode                                                             Mangler Lysgruppe
-Stue & Køkken "åben"  Diode                                                             Mangler Kabeltype
-Stue & Køkken "åben"  Diode                                                             Mangler Kabelnummer
-Stue & Køkken "åben"  Diode                                                             Mangler Placering
-Stue & Køkken "åben"  Diode                                Lampe                        Ikke forbundet
-Stue & Køkken "åben"  Diode                                Lampe                        Mangler Ledningsfarve
-Stue & Køkken "åben"  Diode                                Lampe                        Mangler Adresse
-Entré                 PIR                                                               Mangler Id-kode
-Entré                 PIR                                                               Mangler Lysgruppe
-Entré                 PIR                                                               Mangler Kabeltype
-Entré                 PIR                                                               Mangler Kabelnummer
-Entré                 PIR                                                               Mangler Placering
-Entré                 PIR                                  Tilstedeværelses indikering  Ikke forbundet
-Entré                 PIR                                  Tilstedeværelses indikering  Mangler Ledningsfarve
-Entré                 PIR                                  Tilstedeværelses indikering  Mangler Adresse
-Entré                 Stikkontakt                                                       Mangler Id-kode
-Entré                 Stikkontakt                                                       Mangler Lysgruppe
-Entré                 Stikkontakt                                                       Mangler Kabeltype
-Entré                 Stikkontakt                                                       Mangler Kabelnummer
-Entré                 Stikkontakt                                                       Mangler Placering
-Entré                 Stikkontakt                          Udgang                       Ikke forbundet
-Entré                 Stikkontakt                          Udgang                       Mangler Ledningsfarve
-Entré                 Stikkontakt                          Udgang                       Mangler Adresse
-Køkken                Temperatur sensor med logning                                     Mangler Id-kode
-Køkken                Temperatur sensor med logning                                     Mangler Lysgruppe
-Køkken                Temperatur sensor med logning                                     Mangler Kabeltype
-Køkken                Temperatur sensor med logning                                     Mangler Kabelnummer
-Køkken                Temperatur sensor med logning                                     Mangler Placering
-Køkken                Lux / Temperatur sensor med logning                               Mangler Id-kode
-Køkken                Lux / Temperatur sensor med logning                               Mangler Lysgruppe
-Køkken                Lux / Temperatur sensor med logning                               Mangler Kabeltype
-Køkken                Lux / Temperatur sensor med logning                               Mangler Kabelnummer
-Køkken                Lux / Temperatur sensor med logning                               Mangler Placering
-Soveværelse           Dimmer touch                                                      Mangler Id-kode
-Soveværelse           Dimmer touch                                                      Mangler Lysgruppe
-Soveværelse           Dimmer touch                                                      Mangler Kabeltype
-Soveværelse           Dimmer touch                                                      Mangler Kabelnummer
-Soveværelse           Dimmer touch                                                      Mangler Placering
-Soveværelse           Dimmer touch                         Touch                        Ikke forbundet
-Soveværelse           Dimmer touch                         Touch                        Mangler Ledningsfarve
-Soveværelse           Dimmer touch                         Touch                        Mangler Adresse
-Soveværelse           Dimmer touch                         Sluk                         Ikke forbundet
-Soveværelse           Dimmer touch                         Sluk                         Mangler Ledningsfarve
-Soveværelse           Dimmer touch                         Sluk                         Mangler Adresse
-
+  Lokalitet             Produkt                              Terminal                     Fejl
+  --------------------  -----------------------------------  ---------------------------  ---------------------
+  Stue & Køkken "åben"  LK FUGA Tryk 2 tast                                               Mangler Id-kode
+  Stue & Køkken "åben"  LK FUGA Tryk 2 tast                                               Mangler Lysgruppe
+  Stue & Køkken "åben"  LK FUGA Tryk 2 tast                                               Mangler Kabeltype
+  Stue & Køkken "åben"  LK FUGA Tryk 2 tast                                               Mangler Kabelnummer
+  Stue & Køkken "åben"  LK FUGA Tryk 2 tast                                               Mangler Placering
+  Stue & Køkken "åben"  LK FUGA Tryk 2 tast                  Tryk (venstre)               Mangler Ledningsfarve
+  Stue & Køkken "åben"  LK FUGA Tryk 2 tast                  Tryk (venstre)               Mangler Adresse
+  Stue & Køkken "åben"  LK FUGA Tryk 2 tast                  Tryk (højre)                 Mangler Ledningsfarve
+  Stue & Køkken "åben"  LK FUGA Tryk 2 tast                  Tryk (højre)                 Mangler Adresse
+  Stue & Køkken "åben"  Lampeudtag                                                        Mangler Id-kode
+  Stue & Køkken "åben"  Lampeudtag                                                        Mangler Lysgruppe
+  Stue & Køkken "åben"  Lampeudtag                                                        Mangler Kabeltype
+  Stue & Køkken "åben"  Lampeudtag                                                        Mangler Kabelnummer
+  Stue & Køkken "åben"  Lampeudtag                                                        Mangler Placering
+  Stue & Køkken "åben"  Lampeudtag                           Udgang                       Ikke forbundet
+  Stue & Køkken "åben"  Lampeudtag                           Udgang                       Mangler Ledningsfarve
+  Stue & Køkken "åben"  Lampeudtag                           Udgang                       Mangler Adresse
+  Stue & Køkken "åben"  Diode                                                             Mangler Id-kode
+  Stue & Køkken "åben"  Diode                                                             Mangler Lysgruppe
+  Stue & Køkken "åben"  Diode                                                             Mangler Kabeltype
+  Stue & Køkken "åben"  Diode                                                             Mangler Kabelnummer
+  Stue & Køkken "åben"  Diode                                                             Mangler Placering
+  Stue & Køkken "åben"  Diode                                Lampe                        Ikke forbundet
+  Stue & Køkken "åben"  Diode                                Lampe                        Mangler Ledningsfarve
+  Stue & Køkken "åben"  Diode                                Lampe                        Mangler Adresse
+  Entré                 PIR                                                               Mangler Id-kode
+  Entré                 PIR                                                               Mangler Lysgruppe
+  Entré                 PIR                                                               Mangler Kabeltype
+  Entré                 PIR                                                               Mangler Kabelnummer
+  Entré                 PIR                                                               Mangler Placering
+  Entré                 PIR                                  Tilstedeværelses indikering  Ikke forbundet
+  Entré                 PIR                                  Tilstedeværelses indikering  Mangler Ledningsfarve
+  Entré                 PIR                                  Tilstedeværelses indikering  Mangler Adresse
+  Entré                 Stikkontakt                                                       Mangler Id-kode
+  Entré                 Stikkontakt                                                       Mangler Lysgruppe
+  Entré                 Stikkontakt                                                       Mangler Kabeltype
+  Entré                 Stikkontakt                                                       Mangler Kabelnummer
+  Entré                 Stikkontakt                                                       Mangler Placering
+  Entré                 Stikkontakt                          Udgang                       Ikke forbundet
+  Entré                 Stikkontakt                          Udgang                       Mangler Ledningsfarve
+  Entré                 Stikkontakt                          Udgang                       Mangler Adresse
+  Køkken                Temperatur sensor med logning                                     Mangler Id-kode
+  Køkken                Temperatur sensor med logning                                     Mangler Lysgruppe
+  Køkken                Temperatur sensor med logning                                     Mangler Kabeltype
+  Køkken                Temperatur sensor med logning                                     Mangler Kabelnummer
+  Køkken                Temperatur sensor med logning                                     Mangler Placering
+  Køkken                Lux / Temperatur sensor med logning                               Mangler Id-kode
+  Køkken                Lux / Temperatur sensor med logning                               Mangler Lysgruppe
+  Køkken                Lux / Temperatur sensor med logning                               Mangler Kabeltype
+  Køkken                Lux / Temperatur sensor med logning                               Mangler Kabelnummer
+  Køkken                Lux / Temperatur sensor med logning                               Mangler Placering
+  Soveværelse           Dimmer touch                                                      Mangler Id-kode
+  Soveværelse           Dimmer touch                                                      Mangler Lysgruppe
+  Soveværelse           Dimmer touch                                                      Mangler Kabeltype
+  Soveværelse           Dimmer touch                                                      Mangler Kabelnummer
+  Soveværelse           Dimmer touch                                                      Mangler Placering
+  Soveværelse           Dimmer touch                         Touch                        Ikke forbundet
+  Soveværelse           Dimmer touch                         Touch                        Mangler Ledningsfarve
+  Soveværelse           Dimmer touch                         Touch                        Mangler Adresse
+  Soveværelse           Dimmer touch                         Sluk                         Ikke forbundet
+  Soveværelse           Dimmer touch                         Sluk                         Mangler Ledningsfarve
+  Soveværelse           Dimmer touch                         Sluk                         Mangler Adresse

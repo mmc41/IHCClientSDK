@@ -1,6 +1,6 @@
 ---
-version: 0.3.0
-last-updated: 2026-07-21
+version: 0.3.1
+last-updated: 2026-07-30
 status: draft
 ---
 
@@ -506,6 +506,66 @@ data-line addressing, **so that** I can trace every wire and every occupied modu
 **Readiness:** Ready.
 
 **Implementation status:** 🔴 Planned.
+
+---
+
+## US-074 — Printer-friendly report layout and pagination
+
+**Scope:** In scope — the print/paper rendering quality of the reports specified in US-040 (project
+documentation report), US-041 (function-block logic), US-072 (documentation-completeness) and US-073
+(cabling/addressing cross-references); this story is the print CSS/layout contract those reports' printer
+variants must satisfy.
+
+**As an** IHC installer, **I want** every report to print cleanly across page boundaries, **so that** the
+paper hand-over documentation stays complete and legible regardless of the reader's printer or browser
+print settings.
+
+**Scope excludes:** the reports' field content and section/detail switches (US-040/041/071/072/073); any
+app-supplied page header/footer/page-number (explicitly excluded by the US-040 appendix).
+
+### Acceptance criteria (Checklist)
+
+- MUST: Heading and banner text remains legible in **black-and-white** when printed, even when the
+  browser's "print background graphics" setting is off — no heading or label is white-on-white or otherwise
+  illegible without a coloured background.
+- MUST: A table row is never split across a page break; a product's label rows and its terminal sub-table
+  stay together on one page wherever they fit within a single page.
+- MUST: A heading is never printed as the last line on a page with all of its content pushed to the
+  following page.
+- MUST: A wide table (e.g. the *Kabler* / *Datalinie indgange* / *Datalinie udgange* cross-reference
+  tables) reflows to the printed page width; any horizontal-scroll affordance used on screen has no effect
+  in print and never clips a column.
+- MUST: A table that spans more than one printed page repeats its column-header row at the top of each
+  subsequent page.
+- SHOULD: Page margins are set explicitly (not left to the browser default), so the layout is consistent
+  across browsers and printers.
+
+### AC illustrations
+
+- The report's "IHC OpenVisual" banner uses white text on a coloured background on screen; printed with
+  "print background graphics" off, the heading still prints — in black text with a border — instead of
+  disappearing.
+- The *Datalinie indgange* cross-reference table, which scrolls horizontally on screen inside a wide
+  container, prints at the page's own width with its columns fitted to it, instead of being cut off past
+  the right margin.
+- The *Fejl i dokumentation* issues table repeats its `Lokalitet / Produkt / Terminal / Fejl` header row at
+  the top of each page it spans, instead of showing it only once at the very top of the whole table.
+
+### Constraints
+
+- Verification method — **Demonstration**: print-preview (or print-to-PDF) each report purpose and each of
+  US-040/041/072/073's sections and tables, and confirm no clipped column, no split row, no orphaned
+  heading, and a legible heading with default browser print settings (background graphics off).
+- This story specifies the print CSS/layout contract only; report field content and the section/detail
+  switches are specified in US-040/041/071/072/073.
+
+**Readiness:** Ready.
+
+**Implementation status:** 🟡 Partially implemented — `ReportHtmlRenderer`'s print variant already applies a
+compact black-on-white stylesheet with `page-break-inside:avoid` on tables; banner-contrast fallback,
+heading break-after avoidance, wide-table print reflow and repeating table headers are not yet ported into
+the renderer. The full print-safety CSS contract is captured in the
+`tests/testdata/reports/std-*/full-*.html` report-format oracles (2026-07-30).
 
 ---
 
