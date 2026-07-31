@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Funktionsdokumentation &mdash; IHC OpenVisual</title>
+<style>
+
+body { font-family: sans-serif; font-size: 14px; line-height: 1.5; margin: 24px; }
+.banner { display: flex; align-items: center; gap: 10px; background: #2455a4; color: #fff; padding: 10px 16px; }
+.banner-logo { width: 28px; height: 28px; color: #fff; }
+hr.divider { border: none; border-top: 4px solid #ccc; margin: 6px 0; }
+h2 { font-size: 16px; }
+.kicker, .report-meta { color: #666; font-size: 12px; }
+.kicker { margin: 0; }
+.report-meta { margin: 4px 0 16px; }
+.note { color: #666; }
+ul.tree { list-style: none; padding-left: 20px; }
+ul.tree.root { padding-left: 0; }
+.row { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 6px; }
+.icon { width: 14px; height: 14px; flex: none; align-self: flex-start; margin-top: 2px; }
+.name, .eq, .value { white-space: nowrap; }
+.name { font-weight: bold; }
+.value, .id { font-family: monospace; }
+.note { flex: 1 1 260px; }
+
+table { border-collapse: collapse; width: 100%; margin-bottom: 16px; }
+table.people, table.locality, table.datalines, table.meta { table-layout: fixed; }
+th, td { border: 1px solid #333; padding: 6px 10px; text-align: left; }
+tr.title-row th, .party-heading { text-align: center; }
+.table-scroll { overflow-x: auto; }
+.table-scroll table { min-width: 800px; }
+.id { font-size: 12px; font-weight: normal; color: #666; }
+
+@page { margin: 15mm 12mm; }
+h1, h2, h3, caption { break-after: avoid; page-break-after: avoid; }
+table.people, table.locality, table.meta { break-inside: avoid; page-break-inside: avoid; }
+tr, .row { break-inside: avoid; page-break-inside: avoid; }
+thead { display: table-header-group; }
+@media print {
+  body { margin: 0; }
+  .banner { background: none; color: #000; border-bottom: 2px solid #000; }
+  .banner-logo { color: #000; }
+  .table-scroll { overflow-x: visible; }
+  .table-scroll table { min-width: 0; }
+}
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none"><symbol id="icon-logo" viewBox="0 0 120 140" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><title id="ov-title">IHC OpenVisual</title>
+  <path id="house" d="M16 128 L16 56 L60 16 L104 56 L104 128 Z"/>
+  <text id="wordmark-ihc" x="60" y="84" text-anchor="middle"
+        font-family="'Segoe UI','Arial',sans-serif" font-size="32" font-weight="700"
+        fill="currentColor" stroke="none">IHC</text>
+  <line id="rule" x1="34" y1="95" x2="86" y2="95" stroke-width="3"/>
+  <text id="wordmark-ov" x="60" y="115" text-anchor="middle"
+        font-family="'Segoe UI','Arial',sans-serif" font-size="14" font-weight="600"
+        fill="currentColor" stroke="none">OpenVisual</text></symbol></svg>
+<header class="banner">
+  <svg class="banner-logo" aria-hidden="true"><use href="#icon-logo"/></svg>
+  <strong>IHC OpenVisual</strong>
+</header>
+<h1>Funktionsdokumentation</h1>
+
+<p class="report-meta">Fuld rapport &mdash; Genereret: 2026-07-30 12:00 &mdash; Programmør: Morten Christensen</p>
+
+<table class="meta">
+  <colgroup><col style="width:25%"><col></colgroup>
+  <tr class="title-row"><th colspan="2">Projekt</th></tr>
+  <tr><th>Beskrivelse</th><td>Dokumentations-oracle "alle felter" &amp; &lt;test&gt; af LED'er</td></tr>
+  <tr><th>Nummer</th><td>DOK-001</td></tr>
+  <tr><th>Programmør</th><td>Morten Christensen</td></tr>
+</table>
+
+<ul class="tree root">
+  <li><span class="name">Stue</span> <span class="id">(ID _0x2132)</span>
+    <ul class="tree">
+      <li><span class="name">LK FUGA Tryk 4 tast 2 dioder</span> <span class="id">(ID _0x5a53)</span> Ved dør
+        <ul class="tree">
+          <li>Tryk (øverst venstre) <span class="id">(ID _0x5b5a)</span>
+            <ul class="tree">
+              <li class="note">Tænd/sluk af stuelys (Etage 1)</li>
+              <li class="note">Overfald: tryk begge taster &amp; hold &gt;2 sek. (Teknik)</li>
+            </ul>
+          </li>
+          <li>Tryk (øverst højre) <span class="id">(ID _0x5c5a)</span>
+            <ul class="tree">
+              <li class="note">Tryk Venstre og Højre aktiverer overfaldsalarm (Udfyldes af installatøren) (Teknik)</li>
+            </ul>
+          </li>
+          <li>Tryk (nederst venstre) <span class="id">(ID _0x5d5a)</span>
+            <ul class="tree">
+              <li class="note">Blokerer tænd (Etage 1)</li>
+            </ul>
+          </li>
+          <li>Tryk (nederst højre) <span class="id">(ID _0x5e5a)</span></li>
+          <li>LED (øverst) <span class="id">(ID _0x5f5b)</span>
+            <ul class="tree">
+              <li class="note">Til lampe og LED (Etage 1)</li>
+            </ul>
+          </li>
+          <li>LED (nederst) <span class="id">(ID _0x605b)</span>
+            <ul class="tree">
+              <li class="note">Forbindes til alarmblok, Indgang for overfald (Teknik)</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li><span class="name">Egen kontakt &amp; "test"</span> <span class="id">(ID _0x6453)</span> Ved hoveddør
+        <ul class="tree">
+          <li>Indgang <span class="id">(ID _0x655a)</span>
+            <ul class="tree">
+              <li class="note">Tænd/sluk af stuelys (Etage 1)</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li><span class="name">Jalousi 2 tast (lokal lås)</span> <span class="id">(ID _0x7154)</span> I vindue, syd
+        <ul class="tree">
+          <li>Tryk (venstre) <span class="id">(ID _0x745c)</span></li>
+          <li>Tryk (højre) <span class="id">(ID _0x755c)</span></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li><span class="name">Entré</span> <span class="id">(ID _0x2232)</span></li>
+  <li><span class="name">Køkken</span> <span class="id">(ID _0x2332)</span></li>
+  <li><span class="name">Soveværelse</span> <span class="id">(ID _0x2432)</span></li>
+  <li><span class="name">Værelse</span> <span class="id">(ID _0x2532)</span></li>
+  <li><span class="name">Bad</span> <span class="id">(ID _0x2632)</span></li>
+  <li><span class="name">Bryggers</span> <span class="id">(ID _0x2732)</span></li>
+  <li><span class="name">Garage</span> <span class="id">(ID _0x2832)</span></li>
+  <li><span class="name">Kælder</span> <span class="id">(ID _0x2932)</span></li>
+  <li><span class="name">Udendørs</span> <span class="id">(ID _0x2a32)</span></li>
+  <li><span class="name">Etage 1</span> <span class="id">(ID _0x5132)</span></li>
+  <li><span class="name">Teknik</span> <span class="id">(ID _0x5232)</span></li>
+  <li><span class="name">Tom lokalitet</span> <span class="id">(ID _0x5332)</span></li>
+</ul>
+
+<hr class="divider">
+<h2>Fejl i dokumentation</h2>
+
+<table>
+  <tr><th>Lokalitet</th><th>Produkt</th><th>Terminal</th><th>Fejl</th></tr>
+  <tr><td>Stue</td><td>LK FUGA Tryk 4 tast 2 dioder</td><td></td><td>Mangler Id-kode</td></tr>
+  <tr><td>Stue</td><td>LK FUGA Tryk 4 tast 2 dioder</td><td>Tryk (nederst venstre)</td><td>Mangler Ledningsfarve</td></tr>
+  <tr><td>Stue</td><td>LK FUGA Tryk 4 tast 2 dioder</td><td>Tryk (nederst højre)</td><td>Ikke forbundet</td></tr>
+  <tr><td>Stue</td><td>LK FUGA Tryk 4 tast 2 dioder</td><td>Tryk (nederst højre)</td><td>Mangler Ledningsfarve</td></tr>
+  <tr><td>Stue</td><td>LK FUGA Tryk 4 tast 2 dioder</td><td>Tryk (nederst højre)</td><td>Mangler Adresse</td></tr>
+  <tr><td>Stue</td><td>Egen kontakt &amp; "test"</td><td></td><td>Mangler Kabeltype</td></tr>
+  <tr><td>Stue</td><td>Egen kontakt &amp; "test"</td><td></td><td>Mangler Kabelnummer</td></tr>
+  <tr><td>Stue</td><td>Lux / Temperatur sensor med logning</td><td></td><td>Mangler Lysgruppe</td></tr>
+  <tr><td>Stue</td><td>Lux / Temperatur sensor med logning</td><td></td><td>Mangler Placering</td></tr>
+</table>
+
+</body>
+</html>

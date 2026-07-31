@@ -1,0 +1,187 @@
+IHC OpenVisual
+
+Functionsblok dokumentation
+===========================
+Fuld rapport — Genereret: 2026-07-30 12:00 — Programmør: Morten Christensen
+
+Projekt
+  Beskrivelse  Dokumentations-oracle "alle felter" & <test> af LED'er
+  Nummer       DOK-001
+  Programmør   Morten Christensen
+
+------------------------------------------------------------------------------
+Doku zoo (ID _0x10328)
+
+  Lokalitet  Etage 1
+  Type       --
+  Version    --
+  Låst       Nej
+
+Anvendelse
+Doku zoo: én af hver variabeltype og alle programformer.
+Dækker æøåÆØÅ i en funktionsbloknote.
+------------------------------------------------------------------------------
+
+ ⇥  Input
+  → Kip                  Tænd/sluk af stuelys
+  → Spærre               Blokerer tænd
+ ⇤  Output
+  ← Udgang               Til lampe og LED
+  ⧈ Scenarie             Aften
+ ✎  Indstillinger
+  ⧖ Timer               = 00:03:00,000
+  ◷ Tidspunkt           = 07:30:00
+  ⏱ Timertid            = 00:00:01,500
+  123 Tæller            = 5
+  ℕ Tal                 = 42
+  # Tilstand            = Tilstand B
+  ▤ Dato                = 30. januar
+  ≣7 Ugedag             = fredag
+ ⚙  Interne variable
+  ⚑ Flag                = On
+  ℃ Temperatur          = 21.50 C
+  ☼% Lysniveau          = 75%
+  0.0 Kommatal          = 3.14
+ ↳◆ Programmer
+  ◆ Program
+   !! Hændelser
+   ✓✓ Kommandoer
+  ◆ Hændelser
+   !! Hændelser
+    ! Kip -> ON
+    ! Powerup
+   ✓✓ Kommandoer
+    ✓ Udgang            = ON
+    ✓ Tal               = 7
+    ✓ Timer             = Timertid
+    ✓ Tilstand          = Tilstand C
+    ✓ Fremkald Scenarie
+    ✓ Aktiver nedtælling på Timer med initial værdi
+    ✓ Tidspunkt         = 22:15:00
+    ✓ Dato              = 24. januar
+    ✓ Temperatur        = 18.50 C
+    ✓ Kommatal          = 2.72
+  ◆ Betingelser
+   !! Hændelser
+    ! Flag -> ON
+   ✓✓ Kommandoer
+    ↳◆ Under program
+     ∧ Betingelser
+      ? Udgang          = OFF
+      ? Tal             = 3
+      ∨ Betingelser
+       ? Tilstand       = Tilstand A
+       ? Tilstand       = Tilstand B
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Udgang          = ON
+      ↳◆ Under program
+       ∧ Betingelser
+       ✓✓ Kommandoer ved betingelser sande
+       ✓✓ Kommandoer ved betingelser falske
+     ✓✓ Kommandoer ved betingelser falske
+      ✓ Udgang          = OFF
+    ↳◆ Betinget kommando
+     ∧ Betingelser
+      ? Flag            = ON
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Kip Udgang
+     ✓✓ Kommandoer ved betingelser falske
+  ◆ Case
+   !! Hændelser
+    ! Kip -> ON
+   ✓✓ Kommandoer
+    ↳◆ Case (Tilstand)
+     ✓✓ Case Tilstand   = Tilstand A
+      ✓ Udgang          = ON
+     ✓✓ Case Tilstand   = Tilstand B
+      ✓ Udgang          = OFF
+     ✓✓ Udføres når ingen case er lig case værdien
+      ✓ Kip Udgang
+    ↳◆ Case (Tal)
+     ✓✓ Case Tal        = 1
+      ✓ Flag            = ON
+     ✓✓ Case Tal        = 2
+      ✓ Flag            = OFF
+     ✓✓ Udføres når ingen case er lig case værdien
+      ✓ Tal             = 0
+
+------------------------------------------------------------------------------
+6.3.03.a. Overfaldstryk (ID _0xd828)
+
+  Lokalitet  Teknik
+  Type       6.3.03
+  Version    a
+  Låst       Ja
+
+Anvendelse
+Anvendes til to tast kombinationstryk ifb. med aktivering af overfaldsalarm
+For at se den fulde beskrivelse marker denne linje og tryk "F1".
+Bemærk: Dette virker kun hvis "Blokken" er rød-markeret.
+------------------------------------------------------------------------------
+
+ ⇥  Input
+  → Tryk ØV                   Overfald: tryk begge taster & hold >2 sek.
+  → Tryk ØH                   Tryk Venstre og Højre aktiverer overfaldsalarm (Udfyldes af installatøren)
+ ⇤  Output
+  ← Udgang til alarmblok      Forbindes til alarmblok, Indgang for overfald
+ ✎  Indstillinger
+ ⚙  Interne variable
+  ⧖ ØV/ØH Timer              = 00:00:02,000
+  ⧖ PulsTimer                = 00:00:00,250
+ ↳◆ Programmer
+  ◆ Tryk ØH eller ØV Går on
+   !! Hændelser
+    ! Tryk ØH -> ON
+    ! Tryk ØV -> ON
+   ✓✓ Kommandoer
+    ✓ Aktiver nedtælling på ØV/ØH Timer med initial værdi
+  ◆ ØV/ØH Timer
+   !! Hændelser
+    ! ØV/ØH Timer -> 0
+   ✓✓ Kommandoer
+    ↳◆ ØV skal være on
+     ∧ Betingelser
+      ? Tryk ØV              = ON
+      ? Tryk ØH              = ON
+     ✓✓ Kommandoer ved betingelser sande
+      ✓ Udgang til alarmblok = ON
+      ✓ Aktiver nedtælling på PulsTimer med initial værdi
+     ✓✓ Kommandoer ved betingelser falske
+  ◆ Program
+   !! Hændelser
+    ! PulsTimer -> 0
+   ✓✓ Kommandoer
+    ✓ Udgang til alarmblok   = OFF
+
+------------------------------------------------------------------------------
+Tom blok (ID _0xfa28)
+
+  Lokalitet  Teknik
+  Type       --
+  Version    --
+  Låst       Nej
+------------------------------------------------------------------------------
+
+ ⇥  Input
+ ⇤  Output
+ ✎  Indstillinger
+ ⚙  Interne variable
+ ↳◆ Programmer
+  ◆ Program
+   !! Hændelser
+   ✓✓ Kommandoer
+
+------------------------------------------------------------------------------
+Fejl i dokumentation
+
+  Lokalitet  Produkt                              Terminal                Fejl
+  ---------  -----------------------------------  ----------------------  ---------------------
+  Stue       LK FUGA Tryk 4 tast 2 dioder                                 Mangler Id-kode
+  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst venstre)  Mangler Ledningsfarve
+  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst højre)    Ikke forbundet
+  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst højre)    Mangler Ledningsfarve
+  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst højre)    Mangler Adresse
+  Stue       Egen kontakt & "test"                                        Mangler Kabeltype
+  Stue       Egen kontakt & "test"                                        Mangler Kabelnummer
+  Stue       Lux / Temperatur sensor med logning                          Mangler Lysgruppe
+  Stue       Lux / Temperatur sensor med logning                          Mangler Placering

@@ -1,0 +1,141 @@
+IHC OpenVisual
+
+Installationsdokumentation
+==========================
+
+Installatør
+  Navn     Inst. Åge Ø. Ærø
+  Adresse  Industriparken 32
+  Telefon  23 44 52 16
+
+Kunde
+  Navn     Kunde Bo Bæk
+  Adresse  Virum gyde 2
+  Telefon  26 77 83 12
+
+Datalinie inputmoduler
+  Datalinie  Modul type  Lokalitet     Beskrivelse
+  ---------  ----------  ------------  ----------------------
+  1          Input 24/3  I sidetavle   Sensorer, lavt forbrug
+  2          Input 24    I hovedtavle  Tryk og kontakter
+  8          Input 230   I hovedtavle  Grænseflade 230 V
+
+Datalinie outputmoduler
+  Datalinie  Modul type     Lokalitet     Beskrivelse
+  ---------  -------------  ------------  --------------------
+  1          Output 230/10  I hovedtavle  Grp. C/2: Lys i stue
+  15         Output 24      I hovedtavle  Tryk-LED'er
+
+------------------------------------------------------------------------------
+Lokaliteter og komponenter
+
+  Lokalitet            Stue
+  Placering            Ved dør
+  Komponent            LK FUGA Tryk 4 tast 2 dioder
+  Identifikationskode  --
+  Kabelnummer          12
+  Kabeltype            IHC LINK-10
+  Lysgruppe            C/2
+
+    Terminal                Adresse         Ledning
+    ----------------------  --------------  --------------
+    Tryk (øverst venstre)   Indgang 1 . 01  Hvid
+    Tryk (øverst højre)     Indgang 2 . 18  1-Hvid. 3-Sort
+    Tryk (nederst venstre)  Indgang 1 . 11  --
+    Tryk (nederst højre)    Indgang ?       --
+    LED (øverst)            Udgang 15 . 01  Gul
+    LED (nederst)           Udgang 15 . 02  Grå
+
+  Lokalitet            Stue
+  Placering            I loft, midt
+  Komponent            Lampeudtag
+  Identifikationskode  S1-08
+  Kabelnummer          07 + 08
+  Kabeltype            3G1,5mm2 PVIKJ
+  Lysgruppe            C/2
+
+    Terminal  Adresse        Ledning
+    --------  -------------  -------
+    Udgang    Udgang 1 . 03  Brun
+
+  Lokalitet            Stue
+  Placering            Ved hoveddør
+  Komponent            Egen kontakt & "test"
+  Identifikationskode  S1-09
+  Kabelnummer          --
+  Kabeltype            --
+  Lysgruppe            F/5
+
+    Terminal  Adresse         Ledning
+    --------  --------------  -------
+    Indgang   Indgang 8 . 18  Rød
+
+  Lokalitet            Stue
+  Placering            --
+  Komponent            Lux / Temperatur sensor med logning
+  Identifikationskode  S1-10
+  Kabelnummer          21
+  Kabeltype            IHC LINK-10
+  Lysgruppe            --
+
+    Terminal                 Adresse         Ledning
+    -----------------------  --------------  -------
+    Lux / Temperatur sensor  Indgang 2 . 01  Hvid
+
+  Lokalitet            Stue
+  Placering            I vindue, syd
+  Komponent            Jalousi 2 tast (lokal lås)
+  Identifikationskode  S2-01
+  Serie nummer         _0x0
+  Lysgruppe            B/1
+
+  Lokalitet            Stue
+  Placering            Bag lampe
+  Komponent            Modtager relæ
+  Identifikationskode  --
+  Serie nummer         _0x0
+  Lysgruppe            B/1
+
+  Lokalitet     Teknik
+  Placering     --
+  Komponent     IHC LED Dimmer 2 kanaler
+  Serie nummer  --
+
+  Lokalitet                 Teknik
+  Placering                 I tavle, nederst
+  Komponent                 SMS Modem
+  Identifikationskode       S3-02
+  Ledningsfarve 0V          Sort
+  Ledningsfarve 24V         Rød
+  Ledningsfarve RS485Minus  Grøn
+  Ledningsfarve RS485Plus   Gul
+
+------------------------------------------------------------------------------
+Datalinjer
+
+Datalinie indgange
+  Adresse  Produkt                              Indgang                  Note                 Lokalitet  Placering     Id-kode  Kabeltype    Kabelnummer  Lysgruppe  Ledningsfarve
+  -------  -----------------------------------  -----------------------  -------------------  ---------  ------------  -------  -----------  -----------  ---------  --------------
+  ?        LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst højre)                          Stue       Ved dør                IHC LINK-10  12           C/2
+  1 . 01   LK FUGA Tryk 4 tast 2 dioder         Tryk (øverst venstre)    Kort tryk = stuelys  Stue       Ved dør                IHC LINK-10  12           C/2        Hvid
+  1 . 11   LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst venstre)                        Stue       Ved dør                IHC LINK-10  12           C/2
+  2 . 01   Lux / Temperatur sensor med logning  Lux / Temperatur sensor                       Stue                     S1-10    IHC LINK-10  21                      Hvid
+  2 . 18   LK FUGA Tryk 4 tast 2 dioder         Tryk (øverst højre)                           Stue       Ved dør                IHC LINK-10  12           C/2        1-Hvid. 3-Sort
+  8 . 18   Egen kontakt & "test"                Indgang                                       Stue       Ved hoveddør  S1-09                              F/5        Rød
+
+Datalinie udgange
+  Adresse  Produkt                       Udgang         Note  Lokalitet  Placering     Id-kode  Kabeltype       Kabelnummer  Lysgruppe  Ledningsfarve
+  -------  ----------------------------  -------------  ----  ---------  ------------  -------  --------------  -----------  ---------  -------------
+  1 . 03   Lampeudtag                    Udgang               Stue       I loft, midt  S1-08    3G1,5mm2 PVIKJ  07 + 08      C/2        Brun
+  15 . 01  LK FUGA Tryk 4 tast 2 dioder  LED (øverst)         Stue       Ved dør                IHC LINK-10     12           C/2        Gul
+  15 . 02  LK FUGA Tryk 4 tast 2 dioder  LED (nederst)        Stue       Ved dør                IHC LINK-10     12           C/2        Grå
+
+Specielle Produkter
+  Produkt    Indgang    Note             Lokalitet  Placering         Id-kode  Ledningsfarve 0V  Ledningsfarve 24V  Ledningsfarve RS485Minus  Ledningsfarve RS485Plus
+  ---------  ---------  ---------------  ---------  ----------------  -------  ----------------  -----------------  ------------------------  -----------------------
+  SMS Modem  SMS Modem  RS485 SMS modem  Teknik     I tavle, nederst  S3-02    Sort              Rød                Grøn                      Gul
+
+S0 Device
+  Produkt    Note               Lokalitet  Placering    Id-kode  Cable Colour S0Minus  Cable Colour S0Plus
+  ---------  -----------------  ---------  -----------  -------  --------------------  -------------------
+  S0 Device  PRODUCT_2315_NOTE  Teknik     Ved bimåler  S3-03    1-Orange, 3-Brun      Blå

@@ -1,0 +1,58 @@
+IHC OpenVisual
+
+Funktionsdokumentation
+======================
+Fuld rapport — Genereret: 2026-07-30 12:00 — Programmør: Morten Christensen
+
+Projekt
+  Beskrivelse  Dokumentations-oracle "alle felter" & <test> af LED'er
+  Nummer       DOK-001
+  Programmør   Morten Christensen
+
+Stue (ID _0x2132)
+  LK FUGA Tryk 4 tast 2 dioder (ID _0x5a53) Ved dør
+    Tryk (øverst venstre) (ID _0x5b5a)
+      Tænd/sluk af stuelys (Etage 1)
+      Overfald: tryk begge taster & hold >2 sek. (Teknik)
+    Tryk (øverst højre) (ID _0x5c5a)
+      Tryk Venstre og Højre aktiverer overfaldsalarm (Udfyldes af installatøren) (Teknik)
+    Tryk (nederst venstre) (ID _0x5d5a)
+      Blokerer tænd (Etage 1)
+    Tryk (nederst højre) (ID _0x5e5a)
+    LED (øverst) (ID _0x5f5b)
+      Til lampe og LED (Etage 1)
+    LED (nederst) (ID _0x605b)
+      Forbindes til alarmblok, Indgang for overfald (Teknik)
+  Egen kontakt & "test" (ID _0x6453) Ved hoveddør
+    Indgang (ID _0x655a)
+      Tænd/sluk af stuelys (Etage 1)
+  Jalousi 2 tast (lokal lås) (ID _0x7154) I vindue, syd
+    Tryk (venstre) (ID _0x745c)
+    Tryk (højre) (ID _0x755c)
+Entré (ID _0x2232)
+Køkken (ID _0x2332)
+Soveværelse (ID _0x2432)
+Værelse (ID _0x2532)
+Bad (ID _0x2632)
+Bryggers (ID _0x2732)
+Garage (ID _0x2832)
+Kælder (ID _0x2932)
+Udendørs (ID _0x2a32)
+Etage 1 (ID _0x5132)
+Teknik (ID _0x5232)
+Tom lokalitet (ID _0x5332)
+
+------------------------------------------------------------------------------
+Fejl i dokumentation
+
+  Lokalitet  Produkt                              Terminal                Fejl
+  ---------  -----------------------------------  ----------------------  ---------------------
+  Stue       LK FUGA Tryk 4 tast 2 dioder                                 Mangler Id-kode
+  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst venstre)  Mangler Ledningsfarve
+  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst højre)    Ikke forbundet
+  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst højre)    Mangler Ledningsfarve
+  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst højre)    Mangler Adresse
+  Stue       Egen kontakt & "test"                                        Mangler Kabeltype
+  Stue       Egen kontakt & "test"                                        Mangler Kabelnummer
+  Stue       Lux / Temperatur sensor med logning                          Mangler Lysgruppe
+  Stue       Lux / Temperatur sensor med logning                          Mangler Placering

@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Installationsdokumentation &mdash; IHC OpenVisual</title>
+<style>
+
+body { font-family: sans-serif; font-size: 14px; line-height: 1.5; margin: 24px; }
+.banner { display: flex; align-items: center; gap: 10px; background: #2455a4; color: #fff; padding: 10px 16px; }
+.banner-logo { width: 28px; height: 28px; color: #fff; }
+hr.divider { border: none; border-top: 4px solid #ccc; margin: 6px 0; }
+h2 { font-size: 16px; }
+.kicker, .report-meta { color: #666; font-size: 12px; }
+.kicker { margin: 0; }
+.report-meta { margin: 4px 0 16px; }
+.note { color: #666; }
+ul.tree { list-style: none; padding-left: 20px; }
+ul.tree.root { padding-left: 0; }
+.row { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 6px; }
+.icon { width: 14px; height: 14px; flex: none; align-self: flex-start; margin-top: 2px; }
+.name, .eq, .value { white-space: nowrap; }
+.name { font-weight: bold; }
+.value, .id { font-family: monospace; }
+.note { flex: 1 1 260px; }
+
+table { border-collapse: collapse; width: 100%; margin-bottom: 16px; }
+table.people, table.locality, table.datalines, table.meta { table-layout: fixed; }
+th, td { border: 1px solid #333; padding: 6px 10px; text-align: left; }
+tr.title-row th, .party-heading { text-align: center; }
+.table-scroll { overflow-x: auto; }
+.table-scroll table { min-width: 800px; }
+.id { font-size: 12px; font-weight: normal; color: #666; }
+
+@page { margin: 15mm 12mm; }
+h1, h2, h3, caption { break-after: avoid; page-break-after: avoid; }
+table.people, table.locality, table.meta { break-inside: avoid; page-break-inside: avoid; }
+tr, .row { break-inside: avoid; page-break-inside: avoid; }
+thead { display: table-header-group; }
+@media print {
+  body { margin: 0; }
+  .banner { background: none; color: #000; border-bottom: 2px solid #000; }
+  .banner-logo { color: #000; }
+  .table-scroll { overflow-x: visible; }
+  .table-scroll table { min-width: 0; }
+}
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none"><symbol id="icon-logo" viewBox="0 0 120 140" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><title id="ov-title">IHC OpenVisual</title>
+  <path id="house" d="M16 128 L16 56 L60 16 L104 56 L104 128 Z"/>
+  <text id="wordmark-ihc" x="60" y="84" text-anchor="middle"
+        font-family="'Segoe UI','Arial',sans-serif" font-size="32" font-weight="700"
+        fill="currentColor" stroke="none">IHC</text>
+  <line id="rule" x1="34" y1="95" x2="86" y2="95" stroke-width="3"/>
+  <text id="wordmark-ov" x="60" y="115" text-anchor="middle"
+        font-family="'Segoe UI','Arial',sans-serif" font-size="14" font-weight="600"
+        fill="currentColor" stroke="none">OpenVisual</text></symbol></svg>
+<header class="banner">
+  <svg class="banner-logo" aria-hidden="true"><use href="#icon-logo"/></svg>
+  <strong>IHC OpenVisual</strong>
+</header>
+<h1>Installationsdokumentation</h1>
+
+  <table class="people">
+    <colgroup><col style="width:25%"><col></colgroup>
+    <tr><td></td><th class="party-heading">Installatør</th></tr>
+    <tr><th>Navn</th><td>Inst. Åge Ø. Ærø</td></tr>
+    <tr><th>Adresse</th><td>Industriparken 32</td></tr>
+    <tr><th>Telefon</th><td>23 44 52 16</td></tr>
+  </table>
+
+  <table class="people">
+    <colgroup><col style="width:25%"><col></colgroup>
+    <tr><td></td><th class="party-heading">Kunde</th></tr>
+    <tr><th>Navn</th><td>Kunde Bo Bæk</td></tr>
+    <tr><th>Adresse</th><td>Virum gyde 2</td></tr>
+    <tr><th>Telefon</th><td>26 77 83 12</td></tr>
+  </table>
+
+  <table>
+    <thead>
+    <tr class="title-row"><th colspan="4">Datalinie inputmoduler</th></tr>
+    <tr><th>Datalinie</th><th>Modul type</th><th>Lokalitet</th><th>Beskrivelse</th></tr>
+    </thead>
+    <tbody>
+    <tr><td>1</td><td>Input 24/3</td><td>I sidetavle</td><td>Sensorer, lavt forbrug</td></tr>
+    <tr><td>2</td><td>Input 24</td><td>I hovedtavle</td><td>Tryk og kontakter</td></tr>
+    <tr><td>8</td><td>Input 230</td><td>I hovedtavle</td><td>Grænseflade 230 V</td></tr>
+    </tbody>
+  </table>
+
+  <table>
+    <thead>
+    <tr class="title-row"><th colspan="4">Datalinie outputmoduler</th></tr>
+    <tr><th>Datalinie</th><th>Modul type</th><th>Lokalitet</th><th>Beskrivelse</th></tr>
+    </thead>
+    <tbody>
+    <tr><td>1</td><td>Output 230/10</td><td>I hovedtavle</td><td>Grp. C/2: Lys i stue</td></tr>
+    <tr><td>15</td><td>Output 24</td><td>I hovedtavle</td><td>Tryk-LED'er</td></tr>
+    </tbody>
+  </table>
+
+  <hr class="divider">
+  <h2>Lokaliteter og komponenter</h2>
+
+  <table class="locality">
+    <colgroup><col style="width:25%"><col><col></colgroup>
+    <tr><th>Lokalitet</th><td colspan="2">Stue</td></tr>
+    <tr><th>Placering</th><td colspan="2">Ved dør</td></tr>
+    <tr><th>Komponent</th><td colspan="2">LK FUGA Tryk 4 tast 2 dioder</td></tr>
+    <tr><th>Identifikationskode</th><td colspan="2">--</td></tr>
+    <tr><th>Kabelnummer</th><td colspan="2">12</td></tr>
+    <tr><th>Kabeltype</th><td colspan="2">IHC LINK-10</td></tr>
+    <tr><th>Lysgruppe</th><td colspan="2">C/2</td></tr>
+    <tr><th>Terminal</th><th>Adresse</th><th>Ledning</th></tr>
+    <tr><td>Tryk (øverst venstre)</td><td>Indgang 1 . 01</td><td>Hvid</td></tr>
+    <tr><td>Tryk (øverst højre)</td><td>Indgang 2 . 18</td><td>1-Hvid. 3-Sort</td></tr>
+    <tr><td>Tryk (nederst venstre)</td><td>Indgang 1 . 11</td><td>--</td></tr>
+    <tr><td>Tryk (nederst højre)</td><td>Indgang ?</td><td>--</td></tr>
+    <tr><td>LED (øverst)</td><td>Udgang 15 . 01</td><td>Gul</td></tr>
+    <tr><td>LED (nederst)</td><td>Udgang 15 . 02</td><td>Grå</td></tr>
+  </table>
+
+  <table class="locality">
+    <colgroup><col style="width:25%"><col><col></colgroup>
+    <tr><th>Lokalitet</th><td colspan="2">Stue</td></tr>
+    <tr><th>Placering</th><td colspan="2">I loft, midt</td></tr>
+    <tr><th>Komponent</th><td colspan="2">Lampeudtag</td></tr>
+    <tr><th>Identifikationskode</th><td colspan="2">S1-08</td></tr>
+    <tr><th>Kabelnummer</th><td colspan="2">07 + 08</td></tr>
+    <tr><th>Kabeltype</th><td colspan="2">3G1,5mm2 PVIKJ</td></tr>
+    <tr><th>Lysgruppe</th><td colspan="2">C/2</td></tr>
+    <tr><th>Terminal</th><th>Adresse</th><th>Ledning</th></tr>
+    <tr><td>Udgang</td><td>Udgang 1 . 03</td><td>Brun</td></tr>
+  </table>
+
+  <table class="locality">
+    <colgroup><col style="width:25%"><col><col></colgroup>
+    <tr><th>Lokalitet</th><td colspan="2">Stue</td></tr>
+    <tr><th>Placering</th><td colspan="2">Ved hoveddør</td></tr>
+    <tr><th>Komponent</th><td colspan="2">Egen kontakt &amp; "test"</td></tr>
+    <tr><th>Identifikationskode</th><td colspan="2">S1-09</td></tr>
+    <tr><th>Kabelnummer</th><td colspan="2">--</td></tr>
+    <tr><th>Kabeltype</th><td colspan="2">--</td></tr>
+    <tr><th>Lysgruppe</th><td colspan="2">F/5</td></tr>
+    <tr><th>Terminal</th><th>Adresse</th><th>Ledning</th></tr>
+    <tr><td>Indgang</td><td>Indgang 8 . 18</td><td>Rød</td></tr>
+  </table>
+
+  <table class="locality">
+    <colgroup><col style="width:25%"><col><col></colgroup>
+    <tr><th>Lokalitet</th><td colspan="2">Stue</td></tr>
+    <tr><th>Placering</th><td colspan="2">--</td></tr>
+    <tr><th>Komponent</th><td colspan="2">Lux / Temperatur sensor med logning</td></tr>
+    <tr><th>Identifikationskode</th><td colspan="2">S1-10</td></tr>
+    <tr><th>Kabelnummer</th><td colspan="2">21</td></tr>
+    <tr><th>Kabeltype</th><td colspan="2">IHC LINK-10</td></tr>
+    <tr><th>Lysgruppe</th><td colspan="2">--</td></tr>
+    <tr><th>Terminal</th><th>Adresse</th><th>Ledning</th></tr>
+    <tr><td>Lux / Temperatur sensor</td><td>Indgang 2 . 01</td><td>Hvid</td></tr>
+  </table>
+
+  <table class="locality">
+    <colgroup><col style="width:25%"><col><col></colgroup>
+    <tr><th>Lokalitet</th><td colspan="2">Stue</td></tr>
+    <tr><th>Placering</th><td colspan="2">I vindue, syd</td></tr>
+    <tr><th>Komponent</th><td colspan="2">Jalousi 2 tast (lokal lås)</td></tr>
+    <tr><th>Identifikationskode</th><td colspan="2">S2-01</td></tr>
+    <tr><th>Serie nummer</th><td colspan="2">_0x0</td></tr>
+    <tr><th>Lysgruppe</th><td colspan="2">B/1</td></tr>
+  </table>
+
+  <table class="locality">
+    <colgroup><col style="width:25%"><col><col></colgroup>
+    <tr><th>Lokalitet</th><td colspan="2">Stue</td></tr>
+    <tr><th>Placering</th><td colspan="2">Bag lampe</td></tr>
+    <tr><th>Komponent</th><td colspan="2">Modtager relæ</td></tr>
+    <tr><th>Identifikationskode</th><td colspan="2">--</td></tr>
+    <tr><th>Serie nummer</th><td colspan="2">_0x0</td></tr>
+    <tr><th>Lysgruppe</th><td colspan="2">B/1</td></tr>
+  </table>
+
+  <table class="locality">
+    <colgroup><col style="width:25%"><col><col></colgroup>
+    <tr><th>Lokalitet</th><td colspan="2">Teknik</td></tr>
+    <tr><th>Placering</th><td colspan="2">--</td></tr>
+    <tr><th>Komponent</th><td colspan="2">IHC LED Dimmer 2 kanaler</td></tr>
+    <tr><th>Serie nummer</th><td colspan="2">--</td></tr>
+  </table>
+
+  <table class="locality">
+    <colgroup><col style="width:25%"><col><col></colgroup>
+    <tr><th>Lokalitet</th><td colspan="2">Teknik</td></tr>
+    <tr><th>Placering</th><td colspan="2">I tavle, nederst</td></tr>
+    <tr><th>Komponent</th><td colspan="2">SMS Modem</td></tr>
+    <tr><th>Identifikationskode</th><td colspan="2">S3-02</td></tr>
+    <tr><th>Ledningsfarve 0V</th><td colspan="2">Sort</td></tr>
+    <tr><th>Ledningsfarve 24V</th><td colspan="2">Rød</td></tr>
+    <tr><th>Ledningsfarve RS485Minus</th><td colspan="2">Grøn</td></tr>
+    <tr><th>Ledningsfarve RS485Plus</th><td colspan="2">Gul</td></tr>
+  </table>
+
+  <hr class="divider">
+  <h2>Datalinjer</h2>
+
+  <div class="table-scroll">
+    <table class="datalines">
+      <colgroup>
+        <col style="width:5%"><col style="width:18%"><col style="width:16%"><col style="width:6%"><col style="width:12%">
+        <col style="width:6%"><col style="width:6%"><col style="width:7%"><col style="width:8%"><col style="width:7%"><col style="width:9%">
+      </colgroup>
+      <thead>
+      <tr class="title-row"><th colspan="11">Datalinie indgange</th></tr>
+      <tr>
+        <th>Adresse</th><th>Produkt</th><th>Indgang</th><th>Note</th><th>Lokalitet</th>
+        <th>Placering</th><th>Id-kode</th><th>Kabeltype</th><th>Kabelnummer</th><th>Lysgruppe</th><th>Ledningsfarve</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>?</td><td>LK FUGA Tryk 4 tast 2 dioder</td><td>Tryk (nederst højre)</td><td></td><td>Stue</td>
+        <td>Ved dør</td><td></td><td>IHC LINK-10</td><td>12</td><td>C/2</td><td></td>
+      </tr>
+      <tr>
+        <td>1 . 01</td><td>LK FUGA Tryk 4 tast 2 dioder</td><td>Tryk (øverst venstre)</td><td>Kort tryk = stuelys</td><td>Stue</td>
+        <td>Ved dør</td><td></td><td>IHC LINK-10</td><td>12</td><td>C/2</td><td>Hvid</td>
+      </tr>
+      <tr>
+        <td>1 . 11</td><td>LK FUGA Tryk 4 tast 2 dioder</td><td>Tryk (nederst venstre)</td><td></td><td>Stue</td>
+        <td>Ved dør</td><td></td><td>IHC LINK-10</td><td>12</td><td>C/2</td><td></td>
+      </tr>
+      <tr>
+        <td>2 . 01</td><td>Lux / Temperatur sensor med logning</td><td>Lux / Temperatur sensor</td><td></td><td>Stue</td>
+        <td></td><td>S1-10</td><td>IHC LINK-10</td><td>21</td><td></td><td>Hvid</td>
+      </tr>
+      <tr>
+        <td>2 . 18</td><td>LK FUGA Tryk 4 tast 2 dioder</td><td>Tryk (øverst højre)</td><td></td><td>Stue</td>
+        <td>Ved dør</td><td></td><td>IHC LINK-10</td><td>12</td><td>C/2</td><td>1-Hvid. 3-Sort</td>
+      </tr>
+      <tr>
+        <td>8 . 18</td><td>Egen kontakt &amp; "test"</td><td>Indgang</td><td></td><td>Stue</td>
+        <td>Ved hoveddør</td><td>S1-09</td><td></td><td></td><td>F/5</td><td>Rød</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-scroll">
+    <table class="datalines">
+      <colgroup>
+        <col style="width:5%"><col style="width:18%"><col style="width:16%"><col style="width:6%"><col style="width:12%">
+        <col style="width:6%"><col style="width:6%"><col style="width:7%"><col style="width:8%"><col style="width:7%"><col style="width:9%">
+      </colgroup>
+      <thead>
+      <tr class="title-row"><th colspan="11">Datalinie udgange</th></tr>
+      <tr>
+        <th>Adresse</th><th>Produkt</th><th>Udgang</th><th>Note</th><th>Lokalitet</th>
+        <th>Placering</th><th>Id-kode</th><th>Kabeltype</th><th>Kabelnummer</th><th>Lysgruppe</th><th>Ledningsfarve</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>1 . 03</td><td>Lampeudtag</td><td>Udgang</td><td></td><td>Stue</td>
+        <td>I loft, midt</td><td>S1-08</td><td>3G1,5mm2 PVIKJ</td><td>07 + 08</td><td>C/2</td><td>Brun</td>
+      </tr>
+      <tr>
+        <td>15 . 01</td><td>LK FUGA Tryk 4 tast 2 dioder</td><td>LED (øverst)</td><td></td><td>Stue</td>
+        <td>Ved dør</td><td></td><td>IHC LINK-10</td><td>12</td><td>C/2</td><td>Gul</td>
+      </tr>
+      <tr>
+        <td>15 . 02</td><td>LK FUGA Tryk 4 tast 2 dioder</td><td>LED (nederst)</td><td></td><td>Stue</td>
+        <td>Ved dør</td><td></td><td>IHC LINK-10</td><td>12</td><td>C/2</td><td>Grå</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+      <tr class="title-row"><th colspan="10">Specielle Produkter</th></tr>
+      <tr>
+        <th>Produkt</th><th>Indgang</th><th>Note</th><th>Lokalitet</th><th>Placering</th><th>Id-kode</th>
+        <th>Ledningsfarve 0V</th><th>Ledningsfarve 24V</th><th>Ledningsfarve RS485Minus</th><th>Ledningsfarve RS485Plus</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>SMS Modem</td><td>SMS Modem</td><td>RS485 SMS modem</td><td>Teknik</td><td>I tavle, nederst</td><td>S3-02</td>
+        <td>Sort</td><td>Rød</td><td>Grøn</td><td>Gul</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+      <tr class="title-row"><th colspan="7">S0 Device</th></tr>
+      <tr>
+        <th>Produkt</th><th>Note</th><th>Lokalitet</th><th>Placering</th><th>Id-kode</th>
+        <th>Cable Colour S0Minus</th><th>Cable Colour S0Plus</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>S0 Device</td><td>PRODUCT_2315_NOTE</td><td>Teknik</td><td>Ved bimåler</td><td>S3-03</td>
+        <td>1-Orange, 3-Brun</td><td>Blå</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>

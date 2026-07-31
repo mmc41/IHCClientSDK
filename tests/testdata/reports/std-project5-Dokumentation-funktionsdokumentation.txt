@@ -1,0 +1,37 @@
+IHC OpenVisual
+
+Funktionsdokumentation
+======================
+
+Stue
+  LK FUGA Tryk 4 tast 2 dioder Ved dør
+    Tryk (øverst venstre)
+      Tænd/sluk af stuelys
+      Overfald: tryk begge taster & hold >2 sek.
+    Tryk (øverst højre)
+      Tryk Venstre og Højre aktiverer overfaldsalarm (Udfyldes af installatøren)
+    Tryk (nederst venstre)
+      Blokerer tænd
+    Tryk (nederst højre)
+    LED (øverst)
+      Til lampe og LED
+    LED (nederst)
+      Forbindes til alarmblok, Indgang for overfald
+  Egen kontakt & "test" Ved hoveddør
+    Indgang
+      Tænd/sluk af stuelys
+  Jalousi 2 tast (lokal lås) I vindue, syd
+    Tryk (venstre)
+    Tryk (højre)
+Entré
+Køkken
+Soveværelse
+Værelse
+Bad
+Bryggers
+Garage
+Kælder
+Udendørs
+Etage 1
+Teknik
+Tom lokalitet
