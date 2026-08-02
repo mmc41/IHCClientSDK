@@ -1,6 +1,6 @@
 ---
-version: 0.3.1
-last-updated: 2026-07-30
+version: 0.4.0
+last-updated: 2026-08-02
 status: draft
 ---
 
@@ -79,16 +79,30 @@ Scenario: Project info feeds the reports
 
 ### Business rules (the dialog's field set)
 
-- MUST: The dialog carries a **Project** group — *Description*, *Number* and *Programmer* — and a
-  **Customer** group — *Name*, *Address*, *City*, *Zip code* and *Country* — with OK/Cancel.
+- MUST: The dialog carries a **Project** group of **five** fields, in this reading order — *Number*,
+  *Project type*, *Programmer*, *Drawing* and *Description* — with OK/Cancel. All five are
+  project-level attributes the file format declares; *Project type* and *Drawing* are fields like the
+  others, not extras.
+- MUST: The dialog carries two **contact** groups — **Installer** and **Customer** — each with the
+  same eight fields: *Name*, *Street*, *Phone*, *Postal code*, *Mobile*, *City*, *Email* and
+  *Country*.
+- MUST: **Editing project info never erases stored project-information values.** Every
+  project-information attribute the file carries survives an edit round-trip — including any the
+  dialog does not show. (A field that is shown must be written back as edited; a value the file
+  carries but the dialog does not surface must be carried through unchanged, not dropped when the
+  dialog is committed.)
 - MUST: It is reachable from the *Documentation* menu.
 
 ### AC illustrations
 
 - The installation report's header lists installer and customer information (name, address, telephone)
   drawn from *Project info*.
-- *Documentation ▸ Project info…* opens a dialog whose **Project** group holds `Description`, `Number` and
-  `Programmer`, and whose **Customer** group holds `Name`, `Address`, `City`, `Zip code` and `Country`.
+- *Documentation ▸ Project info…* opens a dialog whose **Project** group holds `Number`,
+  `Project type`, `Programmer`, `Drawing` and `Description` in that order, and whose **Installer** and
+  **Customer** groups each hold the eight contact fields.
+- Opening a project whose file records a project type of `Villa` and a drawing of `Tegning 4b`,
+  editing only the project number, and committing the dialog leaves `Villa` and `Tegning 4b` in the
+  saved file — committing the dialog rewrites nothing it did not change.
 
 ### Constraints
 

@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -42,6 +43,10 @@ namespace Ihc.Vis
 
         /// <summary>Whether the pin's power-up initial value is on (US-012).</summary>
         public bool InitialValueOn => View.InitialValue == "on";
+
+        /// <summary>Whether the output resumes its last value after a power failure rather than its initial value
+        /// (the vendor's <i>Ved strømsvigt ▸ Gem aktuel værdi</i>). Meaningless for an input.</summary>
+        public bool Backup => View.Backup;
 
         /// <summary>The raw stored data-line address token, for vendor-label formatting.</summary>
         public string? AddressToken => Element.GetAttribute("address_dataline");
@@ -93,6 +98,62 @@ namespace Ihc.Vis
                     .Select(e => new PinView(project, e));
             }
         }
+    }
+
+    /// <summary>
+    /// Typed read view of a function block for its properties dialog. Beyond the editable Name/Note every block has,
+    /// a block that came from the LIBRARY also carries the read-only provenance of the master it was stamped from —
+    /// which library block, its number and version, when it was made and by whom (the <c>master_*</c> attributes).
+    /// A block authored from scratch has none of that, and <see cref="IsLibraryBlock"/> is how the dialog tells the
+    /// two apart (uxparity S-19).
+    /// </summary>
+    public readonly record struct FunctionBlockView(Project Project, ProjectElement Element)
+    {
+        private ElementView View => Project.View(Element);
+
+        public string? Name => View.Name;
+        public string? Note => Element.GetAttribute("note");
+        public bool Locked => View.Locked;
+
+        /// <summary>The library block this one was stamped from, blank for a block authored from scratch.</summary>
+        public string? MasterName => Element.GetAttribute("master_name");
+
+        /// <summary>The library number, e.g. <c>1.1.01</c>.</summary>
+        public string? MasterType => Element.GetAttribute("master_type");
+
+        /// <summary>The library version letter, e.g. <c>e</c>.</summary>
+        public string? MasterVersion => Element.GetAttribute("master_version");
+
+        /// <summary>Who developed the library block (may be multi-line, e.g. a copyright line).</summary>
+        public string? MasterProgrammer => Element.GetAttribute("master_programmer");
+
+        /// <summary>The date the library block was made, or null when it carries no usable date.</summary>
+        public DateOnly? MasterDate
+        {
+            get
+            {
+                DateOnly? date = null;
+                if (Part("master_date_year") is { } year && Part("master_date_month") is { } month
+                    && Part("master_date_day") is { } day
+                    && month is >= 1 and <= 12 && day >= 1 && day <= DateTime.DaysInMonth(year, month))
+                    date = new DateOnly(year, month, day);
+                return date;
+            }
+        }
+
+        /// <summary>
+        /// Whether this block is still a LIBRARY block — i.e. whether it has provenance to show at all. Keyed on
+        /// <see cref="MasterType"/>, the library identity, and deliberately not on <see cref="MasterName"/>: an
+        /// UNLOCKED block keeps the name it came from as its own authorship stamp while ceasing to be a library
+        /// block, and the vendor stops reporting its origin at exactly that point (uxparity S-20).
+        /// </summary>
+        public bool IsLibraryBlock => !string.IsNullOrEmpty(MasterType);
+
+        private int? Part(string attribute) =>
+            int.TryParse(Element.GetAttribute(attribute), NumberStyles.Integer, CultureInfo.InvariantCulture,
+                out int value) && value > 0
+                ? value
+                : null;
     }
 
     /// <summary>Typed read view of an SMS modem for its properties dialog.</summary>

@@ -21,15 +21,33 @@ public partial class ProjectInfoWindow : ResultDialog<ProjectInfoData>
     public static Task<ProjectInfoData?> ShowAsync(Window owner, ProjectInfoData current)
     {
         var window = new ProjectInfoWindow();
-        window.ProjDescriptionBox.Text = current.Description;
-        window.ProjNumberBox.Text = current.Number;
-        window.ProjProgrammerBox.Text = current.Programmer;
-        Fill(current.Customer, window.CustNameBox, window.CustAddressBox, window.CustCityBox, window.CustZipBox,
-            window.CustCountryBox, window.CustPhoneBox, window.CustMobileBox, window.CustEmailBox);
-        Fill(current.Installer, window.InstNameBox, window.InstAddressBox, window.InstCityBox, window.InstZipBox,
-            window.InstCountryBox, window.InstPhoneBox, window.InstMobileBox, window.InstEmailBox);
+        window.Populate(current);
         return window.ShowDialogForResult(owner);
     }
+
+    /// <summary>Shows <paramref name="current"/> in the fields. Paired with <see cref="Collect"/>: the two are the
+    /// dialog's whole read/write surface, so a field that is displayed but not returned is a test-visible bug.</summary>
+    internal void Populate(ProjectInfoData current)
+    {
+        ProjNumberBox.Text = current.Number;
+        ProjTypeBox.Text = current.Type;
+        ProjProgrammerBox.Text = current.Programmer;
+        ProjDrawingBox.Text = current.Drawing;
+        ProjDescriptionBox.Text = current.Description;
+        Fill(current.Customer, CustNameBox, CustAddressBox, CustCityBox, CustZipBox,
+            CustCountryBox, CustPhoneBox, CustMobileBox, CustEmailBox);
+        Fill(current.Installer, InstNameBox, InstAddressBox, InstCityBox, InstZipBox,
+            InstCountryBox, InstPhoneBox, InstMobileBox, InstEmailBox);
+    }
+
+    /// <summary>Reads the fields back — what OK returns.</summary>
+    internal ProjectInfoData Collect() => new(
+        Val(ProjDescriptionBox), Val(ProjNumberBox), Val(ProjProgrammerBox),
+        Val(ProjTypeBox), Val(ProjDrawingBox),
+        Read(CustNameBox, CustAddressBox, CustCityBox, CustZipBox,
+            CustCountryBox, CustPhoneBox, CustMobileBox, CustEmailBox),
+        Read(InstNameBox, InstAddressBox, InstCityBox, InstZipBox,
+            InstCountryBox, InstPhoneBox, InstMobileBox, InstEmailBox));
 
     // The contact grids share a fixed 8-field layout; the generated x:Name fields are passed in positionally so the
     // Cust*/Inst* boxes are addressed directly (no runtime string FindControl, so a renamed control is a compile error).
@@ -52,11 +70,5 @@ public partial class ProjectInfoWindow : ResultDialog<ProjectInfoData>
 
     private static string Val(TextBox box) => box.Text ?? string.Empty;
 
-    private void OnOk(object? sender, RoutedEventArgs e) =>
-        Accept(new ProjectInfoData(
-            Val(ProjDescriptionBox), Val(ProjNumberBox), Val(ProjProgrammerBox),
-            Read(CustNameBox, CustAddressBox, CustCityBox, CustZipBox,
-                CustCountryBox, CustPhoneBox, CustMobileBox, CustEmailBox),
-            Read(InstNameBox, InstAddressBox, InstCityBox, InstZipBox,
-                InstCountryBox, InstPhoneBox, InstMobileBox, InstEmailBox)));
+    private void OnOk(object? sender, RoutedEventArgs e) => Accept(Collect());
 }

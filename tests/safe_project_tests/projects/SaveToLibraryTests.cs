@@ -50,6 +50,36 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        /// <summary>
+        /// Saving to the library makes the in-project block YOUR library instance, so it stops claiming to be the
+        /// Schneider block it came from: the three library-identity keys go, exactly as they do on unlock (S-20) and
+        /// exactly as the exported <c>.ifb</c> already dropped them. Measured against IHC Visual's own save
+        /// (uxparity S-22) — without this the saved project still advertises `master_type="1.1.01"` for a block whose
+        /// name, author, date and contents are now the installer's.
+        /// </summary>
+        [Test]
+        public async Task SaveToLibrary_DropsTheSourceLibraryIdentity()
+        {
+            // A different fixture: project2's blocks are hand-authored, so none of them carries a library identity to
+            // drop. Project1's Kip block is a stock Schneider block, which is the case this is about.
+            Project project = await new ProjectAppService(Settings).Load("testdata/projects/Project1-SimpelWired.vis");
+            ProjectElement library = project.Root.Descendants()
+                .First(e => e.Tag == "functionblock" && e.GetAttribute("master_type") == "1.1.01");
+            ElementId id = library.Id!.Value;
+            ProjectDocumentSession session = Session(project);
+
+            session.Apply(new SaveFunctionBlockToLibrary(id, "MyLib", "Author", new DateOnly(2026, 7, 11), null));
+
+            ProjectElement after = session.Current!.FindById(id)!;
+            Assert.Multiple(() =>
+            {
+                Assert.That(after.GetAttribute("master_type"), Is.Null.Or.Empty);
+                Assert.That(after.GetAttribute("master_version"), Is.Null.Or.Empty);
+                Assert.That(after.GetAttribute("master_schneider_electric"), Is.Not.EqualTo("yes"));
+                Assert.That(after.GetAttribute("master_name"), Is.EqualTo("MyLib"), "it is the new library block now");
+            });
+        }
+
         [Test]
         public async Task SaveToLibrary_OneUndo_RestoresThePriorUnlockedBlock()
         {

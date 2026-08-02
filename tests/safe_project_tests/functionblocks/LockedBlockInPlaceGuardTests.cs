@@ -1,3 +1,4 @@
+using System;
 using Ihc.Vis.Session;
 
 namespace Ihc.Vis.Tests
@@ -123,7 +124,7 @@ namespace Ihc.Vis.Tests
             ProjectElement block = RichLockedBlock(loaded);
             ElementId conditions = block.Descendants().First(e => e.Tag == "conditions").Id!.Value;
             ProjectEditor editor = loaded.Edit();
-            editor.FunctionBlock(block.Id!.Value).Unlock();
+            editor.FunctionBlock(block.Id!.Value).Unlock("Test Installer", new DateOnly(2026, 1, 1));
             Project unlocked = editor.ToProject();
 
             EditOutcome outcome = Session(unlocked).Apply(new SetConditionsLogic(conditions, Or: true));

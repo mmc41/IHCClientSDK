@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Ihc.Vis.Editing;
@@ -170,7 +171,9 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(app.Commands.UpdatePin(project, anyId, pin), Is.EqualTo(new UpdatePin(anyId, pin)));
-                Assert.That(app.Commands.UnlockFunctionBlock(project, anyId), Is.EqualTo(new UnlockFunctionBlock(anyId)));
+                Assert.That(app.Commands.UnlockFunctionBlock(project, anyId, "Bob"),
+                    Is.EqualTo(new UnlockFunctionBlock(anyId, "Bob", DateOnly.FromDateTime(DateTime.Now))),
+                    "the factory stamps the owner and the service clock's date");
             });
         }
 

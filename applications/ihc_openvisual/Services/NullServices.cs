@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Ihc.Vis;
 using Ihc.Vis.Session;
@@ -17,11 +18,11 @@ public sealed class NullDialogService : IDialogService
     public Task ShowAboutAsync() => Task.CompletedTask;
     public Task ShowSettingsAsync(string settingsText) => Task.CompletedTask;
     public Task OpenExternalUrlAsync(string url) => Task.CompletedTask;
-    public Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note) => Task.FromResult<PropertiesResult?>(null);
+    public Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note, LibraryOrigin? origin = null, string affirmative = "OK") => Task.FromResult<PropertiesResult?>(null);
     public Task<VariablePropertiesResult?> EditVariablePropertiesAsync(VariablePropertiesInput input) => Task.FromResult<VariablePropertiesResult?>(null);
     public Task<ProductPropertiesResult?> EditProductPropertiesAsync(ProductPropertiesInput input) => Task.FromResult<ProductPropertiesResult?>(null);
     public Task<SceneContainerResult?> EditSceneContainerAsync(SceneContainerInput input) => Task.FromResult<SceneContainerResult?>(null);
-    public Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input) => Task.FromResult<PinPropertiesResult?>(null);
+    public Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input, Func<PinPropertiesResult, Task>? onApply = null) => Task.FromResult<PinPropertiesResult?>(null);
     public Task<ModemPropertiesResult?> EditModemPropertiesAsync(ModemPropertiesInput input) => Task.FromResult<ModemPropertiesResult?>(null);
     public Task<AdvancedDimmerResult?> EditAdvancedDimmerAsync(AdvancedDimmerInput input) => Task.FromResult<AdvancedDimmerResult?>(null);
     public Task<SceneValueResult?> EditSceneValueAsync(SceneValueInput input) => Task.FromResult<SceneValueResult?>(null);

@@ -960,7 +960,15 @@ namespace Ihc.Vis.Editing
             // Drop external reciprocal halves BEFORE the clone allocates ids: the vendor's paste consumes no id for
             // a dropped half, so removing them afterwards (copy-then-prune) would leave a phantom id burn. Internal
             // pairs (both ends inside the copy) stay and are remapped by InsertTransform.
-            ProjectElement body = policy == LinkCopyPolicy.DropExternal ? DropExternalReciprocalHalves(source) : source;
+            ProjectElement body = policy switch
+            {
+                LinkCopyPolicy.DropExternal => DropExternalReciprocalHalves(source),
+                // Clipboard paste: unwired AND unaddressed. A data-line terminal is exclusive, so the duplicate
+                // cannot inherit the original's (uxparity S-10); the wireless channel address is kept, which the
+                // same measurement showed.
+                LinkCopyPolicy.DropAll => ClearDatalineAddresses(DropAllReciprocalHalves(source)),
+                _ => source,
+            };
             // A catalog product's .def body carries its enum as its first child, so a vendor paste allocates (and
             // discards) that enum's def+value ids between the product id and its first serialized child — the
             // "enum-footprint" id burn. The in-project instance dropped that stub on its original insert;

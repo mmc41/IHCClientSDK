@@ -33,17 +33,16 @@ public class MainWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(vm.InstallationNodes, Has.Count.EqualTo(1));
-            Assert.That(vm.InstallationNodes[0].DisplayName, Is.EqualTo("Localities"));
+            Assert.That(vm.InstallationNodes[0].DisplayName, Is.EqualTo("Lokaliteter"));
             Assert.That(vm.InstallationNodes[0].Children, Has.Count.EqualTo(10));
             Assert.That(vm.FunctionNodes[0].Children, Has.Count.EqualTo(10));
         });
     }
 
-    // US-006: a new project OpenVisual authors starts from English default localities (English is the product
-    // language), shown identically in both panes, in the fixed vendor order, with the root expanded and the
-    // room labels bold.
+    // US-006: a new project starts from the file format's own default localities — room names are project data, not
+    // UI text — shown identically in both panes, in the fixed order, with the root expanded and the labels bold.
     [Test]
-    public async Task Initialize_DefaultLocalities_AreEnglishNamesInOrder_AndBold()
+    public async Task Initialize_DefaultLocalities_AreTemplateNamesInOrder_AndBold()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
@@ -51,15 +50,15 @@ public class MainWindowViewModelTests
 
         string[] expected =
         {
-            "Living room", "Hall", "Kitchen", "Bedroom", "Room",
-            "Bathroom", "Utility room", "Garage", "Basement", "Outdoors",
+            "Stue", "Entré", "Køkken", "Soveværelse", "Værelse",
+            "Bad", "Bryggers", "Garage", "Kælder", "Udendørs",
         };
         var install = vm.InstallationNodes[0];
         var functions = vm.FunctionNodes[0];
 
         Assert.Multiple(() =>
         {
-            Assert.That(install.DisplayName, Is.EqualTo("Localities"));
+            Assert.That(install.DisplayName, Is.EqualTo("Lokaliteter"));
             Assert.That(install.IsExpanded, Is.True, "the Localities root is expanded by default");
             Assert.That(install.Children.Select(c => c.DisplayName), Is.EqualTo(expected));
             Assert.That(functions.Children.Select(c => c.DisplayName), Is.EqualTo(expected),
@@ -80,13 +79,13 @@ public class MainWindowViewModelTests
         string newName = "Living room & Kitchen \"open\"";
         harness.Dialogs.PropertiesResult = new PropertiesResult(newName, "a note");
 
-        var node = vm.InstallationNodes[0].Children[0];   // "Living room"
+        var node = vm.InstallationNodes[0].Children[0];   // "Stue"
         await vm.PropertiesCommand.ExecuteAsync(node);
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Edit Living room properties"));
-            Assert.That(harness.Dialogs.LastPropertiesName, Is.EqualTo("Living room"));
+            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Edit Stue properties"));
+            Assert.That(harness.Dialogs.LastPropertiesName, Is.EqualTo("Stue"));
             Assert.That(vm.InstallationNodes[0].Children[0].DisplayName, Is.EqualTo(newName));
             Assert.That(vm.FunctionNodes[0].Children[0].DisplayName, Is.EqualTo(newName),
                 "the rename shows in the Functions pane too");
@@ -108,7 +107,7 @@ public class MainWindowViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(vm.InstallationNodes[0].Children[0].DisplayName, Is.EqualTo("Living room"));
+            Assert.That(vm.InstallationNodes[0].Children[0].DisplayName, Is.EqualTo("Stue"));
             Assert.That(harness.Session.IsDirty, Is.False);
         });
     }
@@ -134,7 +133,8 @@ public class MainWindowViewModelTests
         });
     }
 
-    // US-008: insert a new locality under Localities — appended last, named "Locality", selected, shown in both
+    // US-008: insert a new locality under the locality root — appended last, carrying the template placeholder
+    // name "Lokalitet" (project data, not UI text), selected, shown in both
     // panes, with the exact status-bar confirmation.
     [Test]
     public async Task InsertLocality_AppendsNamedLocality_InBothPanes_SelectedAndConfirmed()
@@ -151,13 +151,14 @@ public class MainWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(install, Has.Count.EqualTo(before + 1));
-            Assert.That(install[^1].DisplayName, Is.EqualTo("Locality"), "the new locality is appended at the bottom");
+            Assert.That(install[^1].DisplayName, Is.EqualTo("Lokalitet"), "the new locality is appended at the bottom");
             Assert.That(install[^1].ElementId, Is.Not.Null, "the new node is a real, addressable locality");
             Assert.That(install[^1].IsBold, Is.True);
-            Assert.That(functions[^1].DisplayName, Is.EqualTo("Locality"), "it appears in the Functions pane too");
-            Assert.That(vm.StatusText, Is.EqualTo("Locality was inserted under Localities"));
+            Assert.That(functions[^1].DisplayName, Is.EqualTo("Lokalitet"), "it appears in the Functions pane too");
+            Assert.That(vm.StatusText, Is.EqualTo("Lokalitet was inserted under Lokaliteter"),
+                "the message names the container the tree shows, not a hard-coded caption");
             Assert.That(harness.Session.IsDirty, Is.True);
-            Assert.That(vm.SelectedNode?.DisplayName, Is.EqualTo("Locality"), "the new locality is selected");
+            Assert.That(vm.SelectedNode?.DisplayName, Is.EqualTo("Lokalitet"), "the new locality is selected");
         });
     }
 
@@ -282,14 +283,14 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        vm.SelectNode(vm.InstallationNodes[0].Children[2]);   // select "Kitchen"
+        vm.SelectNode(vm.InstallationNodes[0].Children[2]);   // select "Køkken"
 
         var leaf = FirstLeaf(Category(vm, "Wired products"));
         await ((IAsyncRelayCommand)leaf.Command!).ExecuteAsync(null);
 
         Assert.Multiple(() =>
         {
-            Assert.That(vm.StatusText, Is.EqualTo($"Product '{leaf.Header}' inserted under Kitchen"));
+            Assert.That(vm.StatusText, Is.EqualTo($"Product '{leaf.Header}' inserted under Køkken"));
             Assert.That(vm.InstallationNodes[0].Children[2].Children, Has.Count.EqualTo(1));
         });
     }
@@ -492,10 +493,12 @@ public class MainWindowViewModelTests
             "the Log row's rendered state follows the toggle");
     }
 
-    // A-6 (F-012): F4 on a link row jumps the OTHER pane's caret to the reciprocal pin, expanding its ancestor
-    // chain, and the status names that pin — not the link row (a no-op that falsely reports success is the defect).
+    // A-6 (F-012): F4 on a link row jumps the OTHER pane's caret to the reciprocal ROW, expanding its ancestor
+    // chain, and the status names where it landed (a no-op that falsely reports success is the defect).
+    // Re-sourced for uxparity S-25: measured live, the vendor lands on the other HALF of the wire, not on the pin
+    // that owns it — so the ancestor-expansion assertions now cover one level deeper.
     [Test]
-    public async Task F4_JumpsToOppositePin()
+    public async Task F4_JumpsToOppositeLinkRow()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
@@ -515,18 +518,20 @@ public class MainWindowViewModelTests
         vm.SelectNode(linkRow);   // F4 acts on the selected link row
         vm.NavigateLinkOppositeCommand.Execute(linkRow);
 
-        var fbNode = vm.FunctionNodes[0].Children[0].Children[0];   // the opposite pin's function-block ancestor
+        var fbNode = vm.FunctionNodes[0].Children[0].Children[0];   // the opposite row's function-block ancestor
         var inputSection = fbNode.Children.First(s => s.NodeKind == "section:inputs");
         var fbInputAfter = inputSection.Children.First(p => p.IsPin);
+        var reciprocalRow = fbInputAfter.Children.First(c => c.IsLinkRow);
 
         Assert.Multiple(() =>
         {
-            Assert.That(vm.SelectedFunctionsNode, Is.SameAs(fbInputAfter), "the Functions pane selects the opposite pin");
-            Assert.That(vm.SelectedNode, Is.SameAs(fbInputAfter), "the opposite pin is the active node");
-            Assert.That(vm.StatusText, Is.EqualTo($"Jumped to {fbInputAfter.DisplayName}."),
-                "the status names the opposite pin");
-            Assert.That(fbNode.IsExpanded, Is.True, "the function-block ancestor is expanded so the pin is visible");
+            Assert.That(vm.SelectedFunctionsNode, Is.SameAs(reciprocalRow), "the Functions pane selects the reciprocal link row");
+            Assert.That(vm.SelectedNode, Is.SameAs(reciprocalRow), "the reciprocal row is the active node");
+            Assert.That(vm.StatusText, Is.EqualTo($"Jumped to {reciprocalRow.DisplayName}."),
+                "the status names where the jump landed");
+            Assert.That(fbNode.IsExpanded, Is.True, "the function-block ancestor is expanded so the row is visible");
             Assert.That(inputSection.IsExpanded, Is.True, "and its section too");
+            Assert.That(fbInputAfter.IsExpanded, Is.True, "and the pin that owns the row");
         });
     }
 
@@ -583,10 +588,11 @@ public class MainWindowViewModelTests
         });
     }
 
-    // A-14/US-011 (F-027): inserting a product lands it under the caret and opens NO dialog (the vendor does not
-    // auto-open; the installer opens Properties on demand via F2 / double-click).
+    // US-011 (uxparity S-12): placing a product ASKS for its documentation as part of placing it — the dialog
+    // opens on insert, exactly as IHC Visual's Insert menu does. (This test previously asserted the opposite,
+    // from F-027/A-14; that reading came from a driver verb that posts the catalog command and skips the dialog.)
     [Test]
-    public async Task InsertProduct_OpensNoDialog()
+    public async Task InsertProduct_OpensItsPropertiesDialog()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
@@ -599,7 +605,7 @@ public class MainWindowViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(0), "no properties dialog auto-opens on insert");
+            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(1), "the properties dialog opens on insert");
             Assert.That(vm.InstallationNodes[0].Children[0].Children, Has.Count.EqualTo(1),
                 "the product is inserted under the selected locality");
         });
@@ -909,7 +915,7 @@ public class MainWindowViewModelTests
     // A-14/US-013 (F-027): inserting a modem lands it under the caret and opens NO dialog (the vendor does not
     // auto-open; neither the modem dialog nor the generic product dialog appears).
     [Test]
-    public async Task InsertModem_OpensNoDialog()
+    public async Task InsertModem_OpensTheModemDialog()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
@@ -921,8 +927,9 @@ public class MainWindowViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.EditModemPropertiesCalls, Is.EqualTo(0), "no modem dialog auto-opens on insert");
-            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(0), "nor the generic product dialog");
+            Assert.That(harness.Dialogs.EditModemPropertiesCalls, Is.EqualTo(1),
+                "a modem opens the MODEM dialog on insert (IHC Visual raises 'SMS Modem Egenskaber')");
+            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(0), "not the generic product dialog");
             Assert.That(vm.InstallationNodes[0].Children[0].Children, Has.Count.EqualTo(1),
                 "the modem is inserted under the selected locality");
         });
@@ -1001,15 +1008,17 @@ public class MainWindowViewModelTests
 
         var leaf = FirstLeaf(Category(vm, "IHC Wireless products"));
         await ((IAsyncRelayCommand)leaf.Command!).ExecuteAsync(null);
-        Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(0), "no dialog auto-opens on insert (A-14)");
+        Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(1), "the dialog opens on insert (uxparity S-12)");
 
+        // Re-open it to inspect the input the dialog was handed; cancel so nothing is applied.
         var productNode = vm.InstallationNodes[0].Children[0].Children[0];
-        harness.Dialogs.ProductPropertiesResult = null;
+        harness.Dialogs.CancelProductProperties = true;
         await vm.PropertiesCommand.ExecuteAsync(productNode);
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(1), "opened on demand via Properties");
+            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(2),
+                "once on insert, once more on demand via Properties");
             Assert.That(harness.Dialogs.LastProductPropertiesInput!.IsWireless, Is.True, "the dialog is flagged wireless");
         });
     }
@@ -1118,7 +1127,7 @@ public class MainWindowViewModelTests
         {
             Assert.That(fbId, Is.Not.Null);
             Assert.That(fbNode.DisplayName, Is.EqualTo(block.DisplayName));
-            Assert.That(sectionLabels, Is.EqualTo(new[] { "Input", "Output", "Settings" }));
+            Assert.That(sectionLabels, Is.EqualTo(new[] { "Input", "Output", "Indstillinger" }));
             Assert.That(fbNode.Children[0].Children, Is.Not.Empty, "the Input section shows the block's pins");
             Assert.That(vm.InstallationNodes[0].Children[0].Children, Is.Empty, "a function block is not shown in the Installation pane");
             Assert.That(harness.Session.IsDirty, Is.True);
@@ -1147,9 +1156,9 @@ public class MainWindowViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(configSections, Is.EqualTo(new[] { "Input", "Output", "Settings" }),
+            Assert.That(configSections, Is.EqualTo(new[] { "Input", "Output", "Indstillinger" }),
                 "configuration mode omits Internal variables");
-            Assert.That(programmingSections, Is.EqualTo(new[] { "Input", "Output", "Settings", "Internal variables" }),
+            Assert.That(programmingSections, Is.EqualTo(new[] { "Input", "Output", "Indstillinger", "Interne variable" }),
                 "programming mode adds Internal variables");
         });
     }
@@ -1161,14 +1170,14 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        vm.SelectNode(vm.InstallationNodes[0].Children[2]);   // Kitchen
+        vm.SelectNode(vm.InstallationNodes[0].Children[2]);   // Køkken
 
         var leaf = FirstLeaf(vm.FunctionBlocksMenu);
         await ((IAsyncRelayCommand)leaf.Command!).ExecuteAsync(null);
 
         Assert.Multiple(() =>
         {
-            Assert.That(vm.StatusText, Is.EqualTo($"Function block '{leaf.Header}' has been inserted under Kitchen"));
+            Assert.That(vm.StatusText, Is.EqualTo($"Function block '{leaf.Header}' has been inserted under Køkken"));
             Assert.That(vm.FunctionNodes[0].Children[2].Children, Has.Count.EqualTo(1));
         });
     }
@@ -1200,7 +1209,7 @@ public class MainWindowViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(timeRow, Is.EqualTo("Indstilling af variabel tryktid = 00:00:02"),
+            Assert.That(timeRow, Is.EqualTo("Indstilling af variabel tryktid = 00:00:02,000"),
                 "a time-carrying settings row renders its literal HH:MM:SS value");
             Assert.That(enumRow, Does.StartWith("Kort reguleringstryk tænder = "),
                 "a resource_enum settings row still renders its enum state (A-3 not regressed)");
@@ -1239,14 +1248,17 @@ public class MainWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(fbId, Is.Not.Null);
-            Assert.That(fbNode.DisplayName, Is.EqualTo("Empty block"));
+            Assert.That(fbNode.DisplayName, Is.EqualTo("Tom blok"));
             Assert.That(fbNode.Children, Is.Empty,
                 "every variable container is empty, so configuration mode renders no section node");
             Assert.That(harness.Session.IsDirty, Is.True);
         });
     }
 
-    // US-019: the command inserts under the selected locality with the exact status string.
+    // US-019: the command inserts under the selected locality. The confirmation string it sets on the way is no
+    // longer observable — uxparity S-18 made the insert open the new block for authoring, and mode entry replaces
+    // the status with its own hint (the same one F3 shows). Placement is what this test guards; the name and the
+    // mode entry are covered by InsertEmptyFunctionBlockParityTests.
     [Test]
     public async Task InsertEmptyFunctionBlockCommand_TargetsSelection_AndConfirms()
     {
@@ -1256,11 +1268,14 @@ public class MainWindowViewModelTests
         vm.SelectNode(vm.InstallationNodes[0].Children[7]);   // Garage
 
         await vm.InsertEmptyFunctionBlockCommand.ExecuteAsync(null);
+        vm.LeaveProgrammingModeCommand.Execute(null);
 
         Assert.Multiple(() =>
         {
-            Assert.That(vm.StatusText, Is.EqualTo("Empty block was inserted under Garage"));
-            Assert.That(vm.FunctionNodes[0].Children[7].Children[0].DisplayName, Is.EqualTo("Empty block"));
+            Assert.That(vm.StatusText, Is.EqualTo("Configuration mode."));
+            Assert.That(vm.FunctionNodes[0].Children[7].Children[0].DisplayName, Is.EqualTo("Tom blok"),
+                "the block lands under the SELECTED locality");
+            Assert.That(vm.FunctionNodes[0].Children[0].Children, Is.Empty, "and nowhere else");
         });
     }
 
@@ -1279,7 +1294,7 @@ public class MainWindowViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Edit Empty block properties"));
+            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Edit Tom blok properties"));
             Assert.That(vm.FunctionNodes[0].Children[0].Children[0].DisplayName, Is.EqualTo("Stair light logic"));
         });
     }
@@ -1766,7 +1781,8 @@ public class MainWindowViewModelTests
         });
     }
 
-    // US-025: F4 on a link row jumps to the pin at the other end (in the other pane), both directions.
+    // US-025: F4 on a link row jumps to the reciprocal link row (in the other pane), both directions.
+    // Re-sourced for uxparity S-25 — see F4_JumpsToOppositeLinkRow.
     [Test]
     public async Task NavigateLinkOpposite_JumpsToTheOtherEnd()
     {
@@ -1782,20 +1798,22 @@ public class MainWindowViewModelTests
         var blockInputId = vm.FunctionNodes[0].Children[0].Children[0].Children[0].Children[0].ElementId!.Value;
         await harness.Session.LinkPinsAsync(productInputId, blockInputId);
 
-        // From the block input's link row → the product input.
+        // From the block input's link row → the product input's link row.
         var blockInputLinkRow = vm.FunctionNodes[0].Children[0].Children[0].Children[0].Children[0].Children[0];
+        var productInputLinkRow = vm.InstallationNodes[0].Children[0].Children[0].Children[0].Children[0];
         vm.NavigateLinkOppositeCommand.Execute(blockInputLinkRow);
         var jumpedToProduct = vm.SelectedNode;
 
-        // From the product input's link row → the block input.
-        var productInputLinkRow = vm.InstallationNodes[0].Children[0].Children[0].Children[0].Children[0];
+        // And back from the product end.
         vm.NavigateLinkOppositeCommand.Execute(productInputLinkRow);
         var jumpedToBlock = vm.SelectedNode;
 
         Assert.Multiple(() =>
         {
-            Assert.That(jumpedToProduct?.ElementId, Is.EqualTo(productInputId), "F4 from the block end selects the product input");
-            Assert.That(jumpedToBlock?.ElementId, Is.EqualTo(blockInputId), "F4 from the product end selects the block input");
+            Assert.That(jumpedToProduct?.ElementId, Is.EqualTo(productInputLinkRow.ElementId),
+                "F4 from the block end selects the product end's link row");
+            Assert.That(jumpedToBlock?.ElementId, Is.EqualTo(blockInputLinkRow.ElementId),
+                "F4 from the product end selects the block end's link row");
             Assert.That(vm.StatusText, Does.Contain("Jumped"));
         });
     }
@@ -1928,15 +1946,17 @@ public class MainWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(vm.IsProgrammingMode, Is.True);
-            Assert.That(vm.InstallationPaneHeader, Is.EqualTo("Empty block"));
-            Assert.That(vm.FunctionsPaneHeader, Is.EqualTo("Empty block"));
-            Assert.That(leftBlock.DisplayName, Is.EqualTo("Empty block"));
+            Assert.That(vm.InstallationPaneHeader, Is.EqualTo("Tom blok"));
+            Assert.That(vm.FunctionsPaneHeader, Is.EqualTo("Tom blok"));
+            Assert.That(leftBlock.DisplayName, Is.EqualTo("Tom blok"));
             Assert.That(leftBlock.Children.Select(c => c.DisplayName),
-                Is.EqualTo(new[] { "Input", "Output", "Settings", "Internal variables" }));
-            Assert.That(programs.DisplayName, Is.EqualTo("Programs"));
+                Is.EqualTo(new[] { "Input", "Output", "Indstillinger", "Interne variable" }));
+            // Container captions are the containers' stored names (S-33), so they read as the file writes them —
+            // the same reason Indstillinger/Interne variable above are not English.
+            Assert.That(programs.DisplayName, Is.EqualTo("Programmer"));
             Assert.That(programs.Children, Has.Count.EqualTo(1), "the empty block has one program");
             Assert.That(programs.Children[0].Children.Select(c => c.DisplayName),
-                Is.EqualTo(new[] { "Events", "Commands" }));
+                Is.EqualTo(new[] { "Hændelser", "Kommandoer" }));
         });
     }
 
@@ -2078,7 +2098,7 @@ public class MainWindowViewModelTests
             Assert.That(vm.IsProgrammingMode, Is.False);
             Assert.That(vm.InstallationPaneHeader, Is.EqualTo("Installation"));
             Assert.That(vm.FunctionsPaneHeader, Is.EqualTo("Functions"));
-            Assert.That(vm.InstallationNodes[0].DisplayName, Is.EqualTo("Localities"));
+            Assert.That(vm.InstallationNodes[0].DisplayName, Is.EqualTo("Lokaliteter"));
             Assert.That(vm.InstallationNodes[0].Children, Has.Count.EqualTo(10));
         });
     }
@@ -2146,7 +2166,7 @@ public class MainWindowViewModelTests
         {
             Assert.That(inputPalette, Is.EqualTo(new[] { "Input" }), "the Input section offers only Input");
             Assert.That(internalPalette, Does.Contain("Flag").And.Not.Contain("Input"), "a value section offers value types, not pins");
-            Assert.That(vm.StatusText, Is.EqualTo("Flag was inserted under Internal variables"));
+            Assert.That(vm.StatusText, Is.EqualTo("Flag was inserted under Interne variable"));
             Assert.That(vm.InstallationNodes[0].Children[3].Children.Any(c => c.DisplayName.Contains("Flag")), Is.True);
         });
     }
@@ -3249,8 +3269,8 @@ public class MainWindowViewModelTests
         {
             Assert.That(outgoing.DisplayName, Does.Not.StartWith("→"), "direction is the icon's job, not the label's");
             Assert.That(incoming.DisplayName, Does.Not.StartWith("←"));
-            Assert.That(outgoing.DisplayName, Is.EqualTo("Living room / Empty block / InB"));
-            Assert.That(incoming.DisplayName, Is.EqualTo("Living room / Empty block / OutA"));
+            Assert.That(outgoing.DisplayName, Is.EqualTo("Stue / Tom blok / InB"));
+            Assert.That(incoming.DisplayName, Is.EqualTo("Stue / Tom blok / OutA"));
             // OutA drives InB, so OutA's row is the from-half and InB's the to-half (F-066).
             Assert.That(outgoing.IconAsset, Is.EqualTo("/Assets/link-from.svg"), "the icon still distinguishes direction");
             Assert.That(incoming.IconAsset, Is.EqualTo("/Assets/link-to.svg"));
@@ -3306,7 +3326,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var data = new ProjectInfoData("My install", "42", "Alice",
+        var data = new ProjectInfoData("My install", "42", "Alice", "Villa", "Tegning 7",
             new ContactInfo("Bob Customer", "1 Main St", "Town", "1234", "DK", "111", "222", "bob@x"),
             new ContactInfo("Eve Installer", "2 High St", "City", "5678", "DK", "333", "444", "eve@y"));
 
@@ -3632,7 +3652,7 @@ public class MainWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(harness.Dialogs.EditPropertiesCalls, Is.EqualTo(1));
-            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Edit Living room properties"));
+            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Edit Stue properties"));
         });
     }
 

@@ -79,11 +79,13 @@ internal sealed class LinkingCoordinator(
         if (node is not { IsLinkRow: true } || node.ElementId is not { } linkId || session.Current is not { } project
             || project.FindById(linkId) is not { } linkRow
             || !ElementId.TryParse(project.View(linkRow).Effective("link"), out ElementId partnerId)
-            || project.FindParent(partnerId) is not { Id: { } oppositeId })
+            || project.FindById(partnerId) is null)
         {
             return;
         }
-        revealOpposite(oppositeId);
+        // The other HALF of the wire, not the pin that owns it (uxparity S-25): the vendor leaves the caret on a
+        // link row, which is itself F4-able and Delete-able, so the wire stays the thing being worked with.
+        revealOpposite(partnerId);
     }
 
     private async Task CompleteSceneLinkAsync(ElementId sceneOutputId, ElementId scenesId)

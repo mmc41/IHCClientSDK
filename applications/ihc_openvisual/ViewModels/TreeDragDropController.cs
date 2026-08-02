@@ -102,7 +102,22 @@ public sealed class TreeDragDropController(
                 await applyAndReport(session.Commands.MoveNode(session.Current!, dragged, target), "Moved.");
                 break;
         }
+        // The row that was dropped ONTO opens, with everything under it, and stays open — measured against IHC
+        // Visual (uxparity S-11): after a drag, the target row's whole subtree is expanded, and a second drag onto
+        // a different row leaves the first one open too. It shows what the drop landed next to. Only the drag does
+        // this; the keyboard supplements (edit.moveUp/moveDown) reorder without touching expansion, there as here.
+        if (findNode(target) is { } dropped)
+            ExpandSubtree(dropped);
     });
+
+    private static void ExpandSubtree(TreeNodeViewModel node)
+    {
+        if (node.Children.Count == 0)
+            return;
+        node.IsExpanded = true;
+        foreach (TreeNodeViewModel child in node.Children)
+            ExpandSubtree(child);
+    }
 
     /// <summary>Highlights (or clears) the current legal drop target so the tree shows where a drop will land (A-30):
     /// sets <see cref="TreeNodeViewModel.IsDropTarget"/> on the addressed node and clears any previous one; pass

@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Ihc.Vis.Editing;
@@ -68,7 +69,7 @@ namespace Ihc.Vis.Tests
             foreach (ElementId fbId in loaded.Root.Descendants()
                          .Where(e => e.Tag == "functionblock").Select(e => e.Id!.Value).ToList())
             {
-                prep.FunctionBlock(fbId).Unlock();
+                prep.FunctionBlock(fbId).Unlock("Test Installer", new DateOnly(2026, 1, 1));
             }
             Project project = prep.ToProject();
             ProjectElement actions = project.Root.Descendants().First(e => e.Tag == "actions" && e.Id is not null);

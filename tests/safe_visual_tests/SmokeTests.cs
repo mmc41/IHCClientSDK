@@ -68,9 +68,9 @@ public class SmokeTests : AvaloniaTestBase
 
         Assert.Multiple(() =>
         {
-            Assert.That(labels, Does.Contain("Localities"), "the localities root renders");
-            Assert.That(labels, Does.Contain("Living room"), "the first default locality renders");
-            Assert.That(labels, Does.Contain("Outdoors"), "the last default locality renders");
+            Assert.That(labels, Does.Contain("Lokaliteter"), "the localities root renders");
+            Assert.That(labels, Does.Contain("Stue"), "the first default locality renders");
+            Assert.That(labels, Does.Contain("Udendørs"), "the last default locality renders");
         });
     }
 
@@ -91,7 +91,7 @@ public class SmokeTests : AvaloniaTestBase
         window.CaptureRenderedFrame();
 
         var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
-        Assert.That(labels, Does.Contain("Locality"), "the newly inserted locality renders in the tree");
+        Assert.That(labels, Does.Contain("Lokalitet"), "the newly inserted locality renders in the tree");
     }
 
     // US-010: an inserted wired product renders (nested under its auto-expanded locality) in the Installation tree.
@@ -177,7 +177,7 @@ public class SmokeTests : AvaloniaTestBase
         window.CaptureRenderedFrame();
 
         var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
-        Assert.That(labels, Does.Contain("Empty block"), "the empty function block renders in the Functions pane");
+        Assert.That(labels, Does.Contain("Tom blok"), "the empty function block renders in the Functions pane");
     }
 
     // Selection: a Functions-pane function block, when selected, becomes the active node so its context-menu
@@ -231,7 +231,9 @@ public class SmokeTests : AvaloniaTestBase
         CurrentTestWindow = window;
         window.Show();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-        for (int i = 0; i < 3; i++)
+        // One pass per tree level: each pass can only reach rows the previous pass materialised, and localities
+        // now start closed, so the deepest rows (locality > block > section > pin > link) need six.
+        for (int i = 0; i < 6; i++)
         {
             foreach (var item in window.GetVisualDescendants().OfType<TreeViewItem>())
                 item.IsExpanded = true;
@@ -240,7 +242,7 @@ public class SmokeTests : AvaloniaTestBase
 
         var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
         // A link row is the only row labelled with a locality-rooted path, so the prefix identifies them.
-        var linkRows = labels.Where(t => t?.StartsWith("Living room / ") == true).ToList();
+        var linkRows = labels.Where(t => t?.StartsWith("Stue / ") == true).ToList();
         Assert.Multiple(() =>
         {
             Assert.That(linkRows, Has.Count.EqualTo(2), "both panes render a reciprocal link row");
@@ -273,7 +275,9 @@ public class SmokeTests : AvaloniaTestBase
         CurrentTestWindow = window;
         window.Show();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-        for (int i = 0; i < 3; i++)
+        // One pass per tree level: each pass can only reach rows the previous pass materialised, and localities
+        // now start closed, so the deepest rows (locality > block > section > pin > link) need six.
+        for (int i = 0; i < 6; i++)
         {
             foreach (var item in window.GetVisualDescendants().OfType<TreeViewItem>())
                 item.IsExpanded = true;
@@ -306,7 +310,9 @@ public class SmokeTests : AvaloniaTestBase
         CurrentTestWindow = window;
         window.Show();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-        for (int i = 0; i < 3; i++)
+        // One pass per tree level: each pass can only reach rows the previous pass materialised, and localities
+        // now start closed, so the deepest rows (locality > block > section > pin > link) need six.
+        for (int i = 0; i < 6; i++)
         {
             foreach (var item in window.GetVisualDescendants().OfType<TreeViewItem>())
                 item.IsExpanded = true;
@@ -342,7 +348,9 @@ public class SmokeTests : AvaloniaTestBase
         CurrentTestWindow = window;
         window.Show();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-        for (int i = 0; i < 3; i++)
+        // One pass per tree level: each pass can only reach rows the previous pass materialised, and localities
+        // now start closed, so the deepest rows (locality > block > section > pin > link) need six.
+        for (int i = 0; i < 6; i++)
         {
             foreach (var item in window.GetVisualDescendants().OfType<TreeViewItem>())
                 item.IsExpanded = true;
@@ -377,7 +385,9 @@ public class SmokeTests : AvaloniaTestBase
         CurrentTestWindow = window;
         window.Show();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-        for (int i = 0; i < 3; i++)
+        // One pass per tree level: each pass can only reach rows the previous pass materialised, and localities
+        // now start closed, so the deepest rows (locality > block > section > pin > link) need six.
+        for (int i = 0; i < 6; i++)
         {
             foreach (var item in window.GetVisualDescendants().OfType<TreeViewItem>())
                 item.IsExpanded = true;
@@ -416,7 +426,9 @@ public class SmokeTests : AvaloniaTestBase
         CurrentTestWindow = window;
         window.Show();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-        for (int i = 0; i < 3; i++)
+        // One pass per tree level: each pass can only reach rows the previous pass materialised, and localities
+        // now start closed, so the deepest rows (locality > block > section > pin > link) need six.
+        for (int i = 0; i < 6; i++)
         {
             foreach (var item in window.GetVisualDescendants().OfType<TreeViewItem>())
                 item.IsExpanded = true;
@@ -447,7 +459,9 @@ public class SmokeTests : AvaloniaTestBase
         CurrentTestWindow = window;
         window.Show();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-        for (int i = 0; i < 3; i++)
+        // One pass per tree level: each pass can only reach rows the previous pass materialised, and localities
+        // now start closed, so the deepest rows (locality > block > section > pin > link) need six.
+        for (int i = 0; i < 6; i++)
         {
             foreach (var item in window.GetVisualDescendants().OfType<TreeViewItem>())
                 item.IsExpanded = true;
@@ -487,7 +501,9 @@ public class SmokeTests : AvaloniaTestBase
         CurrentTestWindow = window;
         window.Show();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-        for (int i = 0; i < 3; i++)
+        // One pass per tree level: each pass can only reach rows the previous pass materialised, and localities
+        // now start closed, so the deepest rows (locality > block > section > pin > link) need six.
+        for (int i = 0; i < 6; i++)
         {
             foreach (var item in window.GetVisualDescendants().OfType<TreeViewItem>())
                 item.IsExpanded = true;
@@ -497,7 +513,7 @@ public class SmokeTests : AvaloniaTestBase
 
         var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
         // A link row is the only row labelled with a locality-rooted path, so the prefix identifies them.
-        var linkRows = labels.Where(t => t?.StartsWith("Living room / ") == true).ToList();
+        var linkRows = labels.Where(t => t?.StartsWith("Stue / ") == true).ToList();
         Assert.Multiple(() =>
         {
             Assert.That(linkRows, Has.Count.EqualTo(2), "both linked pins render a reciprocal link row");
@@ -657,7 +673,7 @@ public class SmokeTests : AvaloniaTestBase
         using var harness = ShellHarness.Create();
         var viewModel = harness.CreateViewModel();
         await viewModel.InitializeAsync();
-        var node = viewModel.InstallationNodes[0].Children[0];   // "Living room"
+        var node = viewModel.InstallationNodes[0].Children[0];   // "Stue"
         await viewModel.DeleteCommand.ExecuteAsync(node);
 
         var window = new MainWindow { DataContext = viewModel };
@@ -666,7 +682,7 @@ public class SmokeTests : AvaloniaTestBase
         window.CaptureRenderedFrame();
 
         var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
-        Assert.That(labels, Does.Not.Contain("Living room"), "the deleted locality no longer renders");
+        Assert.That(labels, Does.Not.Contain("Stue"), "the deleted locality no longer renders");
     }
 
     [AvaloniaTest]

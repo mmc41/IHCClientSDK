@@ -1,6 +1,6 @@
 ---
-version: 0.3.0
-last-updated: 2026-07-17
+version: 0.4.0
+last-updated: 2026-08-02
 status: draft
 ---
 
@@ -26,17 +26,18 @@ is the general E14 guarantee (US-052); and the placement-legality rules that gra
 targets.
 
 **Acceptance criteria (epic level):**
-- MUST: Any **deletable** node can be deleted; deleting a node that other logic references is confirmed first
-  and cascades the dependent link halves and program rows as **one** undoable step, generalising US-009.
-  **Not every node is deletable** — a product's pins come from its catalog type and are not the installer's
-  to remove (US-053).
-- MUST: A delete confirmation is triggered by **contents**, not by node type: an empty container deletes
-  silently, a container with contents is guarded, and declining aborts the whole delete.
+- MUST: Any **deletable** node can be deleted; deleting a node that other logic references cascades the
+  dependent link halves and program rows as **one** undoable step — silently, since the confirmation
+  rule is containment-based, not reference-based (US-053). **Not every node is deletable** — a
+  product's pins come from its catalog type and are not the installer's to remove (US-053).
+- MUST: A delete confirmation is triggered by **contents**, not by node type and not by references: an
+  empty container deletes silently, a container with contents is guarded, a referenced-but-empty node
+  deletes silently, and declining aborts the whole delete.
 - MUST: Any node can be moved to another legal container, and siblings can be reordered within a
   container; a move/reorder preserves the node's identity (its IHC resource ids do not change).
 - SHOULD: Any node subtree can be copied and pasted elsewhere in the project as an independent duplicate
-  with fresh resource ids, appended last; links whose other end lies outside the copy are not carried into
-  the paste, and the copy keeps its scenes.
+  with fresh resource ids, appended last; **no link is carried into the paste** (the duplicate arrives
+  fully unwired), and the copy keeps its scenes.
 - MUST: Every operation here confirms in the status bar and is reversible via *Undo* (`Ctrl+Z`,
   US-052).
 
@@ -67,14 +68,19 @@ Scenario: Delete a leaf node with no references
   Then the node and its subtree are removed from both panes
   And the status bar confirms the deletion by node name
 
-Scenario: Delete a node that other logic references (confirm + cascade)
+Scenario: Delete a node that other logic references (silent cascade)
   Given a node that is referenced elsewhere is selected
     (e.g. a product output linked to a function block, or a variable used in a command/condition)
   When I choose "Delete"
-  Then a confirmation dialog appears naming what will also be removed, and I must accept it to proceed
-  And on acceptance the node, the reciprocal "link to"/"link from" halves that pointed into it, and the
-    command/condition/event rows that referenced it are all removed together
-  And the removal is a single step on the undo history (US-052)
+  Then the node is removed WITHOUT a confirmation — being referenced never triggers a prompt
+  And the reciprocal "link to"/"link from" halves that pointed into it, and the
+    command/condition/event rows that referenced it, are removed together with it
+  And the removal is a single step on the undo history (US-052) — undo is the protection
+
+Scenario: Delete a container with contents (confirm)
+  Given a container node holding contents is selected (the locality case is US-009's worked example)
+  When I choose "Delete"
+  Then a confirmation appears naming what the container holds, and I must accept it to proceed
 
 Scenario: Decline the confirmation
   Given the delete confirmation is shown
@@ -98,6 +104,7 @@ Scenario: Delete is equivalent across all three activation routes
 - MUST: An **engine guard** refuses to remove a catalog-declared pin even when asked directly, so a project
   written by any route stays conformant with its own catalog. The menu gate protects one GUI; the engine
   guard protects the file.
+- MUST: The **locality root** is not deletable by any route (US-009).
 
 ### Business rules (reference policy)
 
@@ -114,25 +121,23 @@ Scenario: Delete is equivalent across all three activation routes
 
 ### Business rules (when the confirmation appears)
 
-- MUST: The confirmation is **triggered by contents, not by node type**. A container with **no** contents
-  deletes **silently** — no dialog. A container **with** contents raises the confirmation.
+- MUST: The confirmation asks about what a node **contains**, never about what **points at** it. A
+  container with **no** contents deletes **silently** — no dialog. A container **with** contents (a
+  locality holding products, US-009) raises the confirmation. A node that is merely **referenced** by
+  other logic — a linked product, or a function block containing its own program tree and wired to
+  several product terminals, locked or not — deletes **silently**, with the full reference cascade;
+  the single-step undo is the protection, not a prompt. (A block's programs and pins are its own
+  definition, not "contents" in this rule's sense — containment means elements the user placed inside,
+  as in a locality.)
 - MUST: Declining the confirmation **aborts the whole delete** — nothing is removed, including the
   container itself. Declining is not a "delete the container but keep its contents" choice.
 - MUST: Dismissing the confirmation with `Esc` has the same effect as declining it (US-069).
-
-### Business rules (deliberate design decisions — IHC OpenVisual keeps its guards)
-
-Two rules here are deliberate design decisions that add a safety guard on top of the raw `.vis` format — **do not remove them**:
-
-- MUST: Deleting a product that other logic references **raises a confirmation naming the cascade** —
-  which links and commands will also go — and proceeds only on acceptance. The guard changes nothing about
-  what a confirmed delete does, it only warns first, and
-  the cascade it names is exactly the surprising part. (Only the confirm's *ergonomics* are in scope for
-  improvement — US-069: it must accept `Esc` and focus the safe button. Never remove the confirm.)
 - SHOULD: The confirmation's wording states the cascade as a **consequence** of the delete ("*deleting it
   also removes …*"), matching what declining actually does. Because declining (*No*) aborts the **entire**
   delete rather than making a cascade *choice* ("should the function blocks be deleted?"), the wording is
   phrased as a consequence and must not be phrased as a choice the behaviour does not offer.
+- The reference-cascade silence is a deliberate ruling: when the outcome is identical either way and
+  the operation is a single undoable step, an extra question guards nothing — the app must not ask it.
 
 ### AC illustrations
 
@@ -144,16 +149,16 @@ Two rules here are deliberate design decisions that add a safety guard on top of
 
 ### Constraints
 
-- Verification method — **Demonstration**: delete a referenced product and an unused variable, and
-  confirm the confirm-gate, the cascade of link halves + program rows, the single-step undo, and the
-  three-route equivalence.
+- Verification method — **Demonstration**: delete a referenced product (silent, full cascade), a
+  contents-holding locality (confirm-gated), and an unused variable (silent), and confirm the cascade
+  of link halves + program rows, the single-step undo, and the three-route equivalence.
 - The `Delete` confirm's keyboard behaviour (accepting `Esc`, focusing the safe button) is US-069's, fixed
   **without** weakening the guard.
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Partly implemented — the guard's trigger and cascade work for containers, and
-the linked-product confirm is the deliberate design decision above. ⚠ **Except the deletability rule**: a product **pin**
+**Implementation status:** 🟡 Partly implemented — the containment-triggered confirm, the silent
+reference cascade and the single-step undo work. ⚠ **Except the deletability rule**: a product **pin**
 can still be deleted (silently when unlinked), producing a product that contradicts its own catalog type —
 the menu gate and the engine guard are both unbuilt.
 
@@ -319,12 +324,19 @@ Scenario: Paste target must be legal
   When I paste onto a container that may not hold that node type
   Then nothing is pasted, and the app says so rather than failing silently
 
-Scenario: Links to nodes outside the copy are not carried over
-  Given the copied node had a link whose other end lies outside the copied subtree
+Scenario: No link survives a paste
+  Given the copied subtree took part in links — some with their other end outside the subtree,
+    some wholly inside it
   When I paste the copy
-  Then the paste does not include that external link half (the duplicate starts unlinked on that pin);
-    links wholly inside the copied subtree are duplicated and remain connected within the copy
+  Then the duplicate carries NO link halves at all: every link is dropped, including link pairs that
+    lay wholly inside the copied subtree — the duplicate arrives completely unwired
   And the copy keeps its scene container
+
+Scenario: A copied locality pastes onto the locality root
+  Given a locality subtree is on the clipboard
+  When I paste it onto the locality root
+  Then the copy is appended as the last locality; pasting a locality onto another locality is refused
+    (localities do not nest, US-008)
 
 Scenario: Paste is available three ways
   Given a node is on the clipboard and a legal target is selected
@@ -335,10 +347,22 @@ Scenario: Paste is available three ways
 
 - MUST: The pasted copy is **appended last** among the target's children — not inserted at the caret or
   sorted into position.
-- MUST: A link whose other end lies **outside** the copied subtree is **dropped** — the duplicate starts
-  unlinked on that pin. Links wholly **inside** the subtree are duplicated and stay connected within the
-  copy.
+- MUST: **Every link is dropped on paste** — both halves of every link the copied subtree took part
+  in, **including link pairs wholly inside the subtree**. The duplicate arrives completely unwired,
+  ready to be wired into its own context. (Ruled explicitly; a keep-internal-links behaviour was
+  considered and rejected.)
+- MUST: The duplicate's **wired data-line terminal addresses are cleared** — a wired terminal is
+  exclusive and cannot be double-booked — but a **wireless channel binding is kept** (it belongs to
+  the physical device the product models, not to the wiring). These are two deliberate rules, not one;
+  do not "simplify" them into each other. Postal `address` attributes on contact-info elements are
+  untouched.
 - MUST: The copy keeps its **scene container**.
+- MUST: Paste legality follows the format's **placement rules** — a paste is accepted exactly into a
+  parent the placement model says may contain the pasted kind (the locality root accepts a locality;
+  unknown parents refuse).
+- MUST: The pasted subtree is **revealed fully expanded** (US-070) — an arrival the installer caused is
+  visible, not one collapsed row.
+- MUST: A paste does not consume the clipboard — the same copy can be pasted repeatedly.
 - MUST: An illegal-target paste **changes nothing** and **tells the user why**. IHC OpenVisual's explicit
   *Cannot paste — "That container cannot hold this node."* is a deliberate design decision (the app gives
   feedback rather than failing silently) and **stays**. (The *Paste* command may instead be absent for that
@@ -348,8 +372,11 @@ Scenario: Paste is available three ways
 
 - Copying a `<product>` configured under `Living room` and pasting it under `Room` yields a
   second, independent button with its own resource ids, **appended after `Room`'s existing children**;
-  editing the copy does not affect the original, and the copy shows no `link from`/`link to` rows for links
-  the original had to blocks outside the copy — but it does keep its scene container.
+  editing the copy does not affect the original, and the copy shows **no** `link from`/`link to` rows
+  at all — its wired terminal address cell is empty — but it does keep its scene container.
+- Copying a whole locality with wired products and pasting it onto the locality root yields a
+  duplicate room whose products are all unwired and unaddressed — the room's *shape* is reused, its
+  wiring is authored fresh.
 - Pasting that product onto **another product** pastes nothing and raises *Cannot paste*; the tree is
   unchanged.
 
@@ -365,9 +392,11 @@ Scenario: Paste is available three ways
 
 **Readiness:** Ready (product/subtree paste); block/program paste carries the open item above.
 
-**Implementation status:** 🟡 Partly implemented — paste placement, link-dropping and scene handling work,
-and the *Cannot paste* refusal is a deliberate design decision. ⚠ *Paste* is not yet reachable from any context
-menu (US-068), which fails this story's own "Paste is available three ways" AC.
+**Implementation status:** ✅ Implemented (product/subtree paste) — paste placement by the placement
+rules (including a locality onto the root), the drop-all-links rule, the wired-cleared /
+wireless-kept address rule, scene handling, the expanded reveal, and the *Cannot paste* refusal are in
+place, and *Paste* is reachable from the context menu (US-044). Block/program paste remains the open
+item noted above.
 
 ---
 

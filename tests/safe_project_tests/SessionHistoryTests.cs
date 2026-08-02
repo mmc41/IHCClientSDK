@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Ihc.Vis.Session;
@@ -99,7 +100,7 @@ namespace Ihc.Vis.Tests
             Project project = await Load("project3-KompleksWired.vis");
             ElementId fbId = project.Root.Descendants().First(e => e.Tag == "functionblock" && e.Id is not null).Id!.Value;
             ProjectDocumentSession session = Session(project);
-            session.Apply(new UnlockFunctionBlock(fbId));   // setup: project3's blocks are locked; unlock to author
+            session.Apply(new UnlockFunctionBlock(fbId, "Test Installer", new DateOnly(2026, 1, 1)));   // setup: project3's blocks are locked; unlock to author
 
             session.Apply(new AddVariable(fbId, "settings", "resource_flag", "Away"));
             int afterAdd = CountFlags(session, fbId);
@@ -126,7 +127,7 @@ namespace Ihc.Vis.Tests
             ProjectDocumentSession session = Session(project);
             Assert.That(IsLocked(session, fbId), Is.True, "precondition: a library function block starts locked");
 
-            session.Apply(new UnlockFunctionBlock(fbId));
+            session.Apply(new UnlockFunctionBlock(fbId, "Test Installer", new DateOnly(2026, 1, 1)));
             Assert.That(IsLocked(session, fbId), Is.False, "precondition: unlock cleared the lock");
 
             EditOutcome undone = session.Undo();

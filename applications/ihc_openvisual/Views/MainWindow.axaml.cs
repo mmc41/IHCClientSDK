@@ -44,6 +44,11 @@ public partial class MainWindow : Window
         // (CanDropOn / PerformDropAsync / HighlightDropTarget).
         WireTreeDragDrop(InstallationTree);
         WireTreeDragDrop(FunctionsTree);
+
+        // Home/End are handled at the WINDOW with handledEventsToo, scoped to whichever tree holds focus. A
+        // handler on the TreeView never fired for them (uxparity S-29) — the keys are consumed below it —
+        // while Delete/F2/F4, which the item ignores, reach the XAML KeyDown= handler normally.
+        AddHandler(KeyDownEvent, OnTreeNavigationKeyDown, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
     }
 
     // Attaches the drag SOURCE and drop TARGET handlers to a tree (A-30 — both panes share this wiring).
@@ -180,7 +185,11 @@ public partial class MainWindow : Window
             _viewModel.CloseRequested -= OnCloseRequested;
         _viewModel = DataContext as MainWindowViewModel;
         if (_viewModel is not null)
+        {
             _viewModel.CloseRequested += OnCloseRequested;
+            // An F4 jump moves the caret into the other pane, so keyboard focus goes with it (uxparity S-25).
+            _viewModel.JumpedToPane += (_, toFunctions) => FocusPane(toFunctions ? FunctionsTree : InstallationTree);
+        }
     }
 
     private void OnCloseRequested(object? sender, EventArgs e) => Close();
@@ -198,6 +207,34 @@ public partial class MainWindow : Window
     // Tree keyboard shortcuts (US-044/US-045): F6 switches panes; Shift+F10 opens the context menu; F2 Properties;
     // F4 jumps to a link's opposite end; Delete removes a selected link row. (Arrow keys use the TreeView's native
     // expand/collapse — Right=expand, Left=collapse, per the platform convention the R-note asks us to follow.)
+    // Home/End move the caret to the first / last VISIBLE row of the pane (uxparity S-29). Kept out of the
+    // window's KeyBindings so they only apply inside a tree, never while typing in a dialog field.
+    private void OnTreeNavigationKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_viewModel is not { } vm)
+            return;
+        if (e.Key != Key.Home && e.Key != Key.End)
+            return;
+        // Only inside a tree: Home/End must keep their normal meaning in a text field.
+        TreeView? tree = (FocusManager?.GetFocusedElement() as Control)?.FindAncestorOfType<TreeView>(includeSelf: true);
+        if (tree is null || (!ReferenceEquals(tree, InstallationTree) && !ReferenceEquals(tree, FunctionsTree)))
+            return;
+        bool functions = ReferenceEquals(tree, FunctionsTree);
+        bool home = e.Key == Key.Home;
+        e.Handled = true;
+        // POSTED, not called inline: the TreeView acts on Home/End itself after this handler and would
+        // otherwise re-assert its own selection over ours (uxparity S-29 — the caret provably did not move
+        // even though the handler ran and resolved the right pane). Explicit UIThread dispatcher, never the
+        // ambient one.
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (home)
+                vm.SelectFirstRowCommand.Execute(functions);
+            else
+                vm.SelectLastVisibleRowCommand.Execute(functions);
+        });
+    }
+
     private void OnTreeKeyDown(object? sender, KeyEventArgs e)
     {
         TreeView? tree = sender as TreeView;

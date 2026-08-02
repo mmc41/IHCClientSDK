@@ -243,12 +243,14 @@ public sealed class ProjectTreeReconciler
         }
         // oldByKey now holds the vanished children; they simply drop out of the ordered list.
         ApplyChildOrder(oldParent.Children, ordered);
-        // US-006: a node revealing its FIRST child opens to show it — adopt the projector's reveal default (true for
-        // a locality gaining contents, false for a product gaining a pin) rather than inheriting the stale collapsed
-        // state. A node that already had children keeps the installer's expansion by identity (US-070).
-        if (wasEmpty && oldParent.Children.Count > 0)
+        // US-006: a node revealing its FIRST child opens to show it — take the projector's reveal flag (set on a
+        // locality gaining contents, not on a product gaining a pin) rather than inheriting the stale collapsed
+        // state. Reading the flag rather than the fresh row's IsExpanded matters because a locality's resting state
+        // is closed: the two would otherwise have to be the same value and only one of them can be right.
+        // A node that already had children keeps the installer's expansion by identity (US-070).
+        if (wasEmpty && oldParent.Children.Count > 0 && freshParent.RevealsOnFirstChild)
         {
-            oldParent.IsExpanded = freshParent.IsExpanded;
+            oldParent.IsExpanded = true;
         }
         return true;
     }

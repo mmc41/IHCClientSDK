@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Ihc.Vis.Products;
@@ -146,7 +147,7 @@ namespace Ihc.Vis.Tests
             ElementId id = fb.Id!.Value;
             ProjectDocumentSession session = Session(project);
 
-            session.Apply(new UnlockFunctionBlock(id));
+            session.Apply(new UnlockFunctionBlock(id, "Test Installer", new DateOnly(2026, 1, 1)));
             Assert.That(session.Current!.FindById(id)!.GetAttribute("locked"), Is.Not.EqualTo("yes"), "unlocked");
 
             session.Undo();

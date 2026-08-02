@@ -22,10 +22,12 @@ namespace Ihc.Vis
     /// <summary>The project-information read model (US-039): project metadata plus the customer and installer
     /// contacts. Used both to prefill the dialog and as its edit result.</summary>
     public sealed record ProjectInfoData(
-        string Description, string Number, string Programmer, ContactInfo Customer, ContactInfo Installer)
+        string Description, string Number, string Programmer, string Type, string Drawing,
+        ContactInfo Customer, ContactInfo Installer)
     {
         /// <summary>The all-blank project information (returned when no project is open).</summary>
-        public static readonly ProjectInfoData Empty = new("", "", "", ContactInfo.Empty, ContactInfo.Empty);
+        public static readonly ProjectInfoData Empty =
+            new("", "", "", "", "", ContactInfo.Empty, ContactInfo.Empty);
     }
 
     /// <summary>A read-only system data table (US-049): its name and its reference rows. These are the built-in
@@ -81,6 +83,8 @@ namespace Ihc.Vis
                 return new(Attr(project, info, "description"),
                     Attr(project, info, "number"),
                     Attr(project, info, "programmer"),
+                    Attr(project, info, "type"),
+                    Attr(project, info, "drawing"),
                     ReadContact(project, project.Child("customer_info")),
                     ReadContact(project, project.Child("installer_info")));
             }

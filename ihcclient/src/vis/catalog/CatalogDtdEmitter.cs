@@ -31,11 +31,14 @@ namespace Ihc.Vis.Catalog
         /// <c>&lt;!DOCTYPE root[</c> (root from <see cref="CatalogGrammar.DoctypeRoot"/>, defaulted from
         /// <paramref name="bodyRootTag"/>), the declarations in list order (catalog-faithful rendering), and
         /// <c>]&gt;</c> — ending with the CRLF that separates it from the body root element.</summary>
-        public static string RenderHead(CatalogGrammar grammar, string bodyRootTag)
+        public static string RenderHead(CatalogGrammar grammar, string bodyRootTag,
+            CatalogLayout layout = CatalogLayout.Catalog)
         {
             var sb = new StringBuilder(1024);
             sb.Append("<?xml version=\"1.0\" encoding=\"").Append(grammar.DeclaredEncoding).Append("\"?>").Append(Crlf);
-            sb.Append("<!DOCTYPE ").Append(grammar.DoctypeRoot ?? bodyRootTag).Append('[').Append(Crlf);
+            // The export writer puts a space before the bracket, the catalog writer does not (S-22).
+            sb.Append("<!DOCTYPE ").Append(grammar.DoctypeRoot ?? bodyRootTag)
+                .Append(layout == CatalogLayout.Export ? " [" : "[").Append(Crlf);
             foreach (GrammarDeclaration declaration in grammar.Declarations)
             {
                 AppendDeclaration(sb, declaration, forceElementLine: false);

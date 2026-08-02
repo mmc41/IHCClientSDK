@@ -65,14 +65,6 @@
             <MenuItem Header="_Empty function block" Command="{Binding InsertEmptyFunctionBlockCommand}"
                       InputGesture="Ctrl+Shift+B"
                       IsVisible="{Binding CanInsertFunctionBlock, FallbackValue=False}"/>
-            <MenuItem Header="_Unlock" Command="{Binding UnlockCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding SelectedNode.IsLockedFunctionBlock, FallbackValue=False}"/>
-            <MenuItem Header="_Save block…" Command="{Binding SaveFunctionBlockCommand}" CommandParameter="{Binding SelectedNode}"
-                      InputGesture="Ctrl+G"
-                      IsVisible="{Binding SelectedNode.IsFunctionBlock, FallbackValue=False}"/>
-            <MenuItem Header="Show _program" Command="{Binding EnterProgrammingModeCommand}" CommandParameter="{Binding SelectedNode}"
-                      InputGesture="F3"
-                      IsVisible="{Binding SelectedNode.IsFunctionBlock, FallbackValue=False}"/>
             <MenuItem Header="Insert _variable" ItemsSource="{Binding VariablePaletteMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanInsertVariable, FallbackValue=False}"/>
@@ -115,12 +107,17 @@
                 <MenuItem Header="AND (_&amp;)" Command="{Binding SetConditionsAndCommand}" CommandParameter="{Binding SelectedNode}"/>
                 <MenuItem Header="OR (_&gt;=1)" Command="{Binding SetConditionsOrCommand}" CommandParameter="{Binding SelectedNode}"/>
             </MenuItem>
+            <MenuItem Header="_Save block…" Command="{Binding SaveFunctionBlockCommand}" CommandParameter="{Binding SelectedNode}"
+                      InputGesture="Ctrl+G"
+                      IsVisible="{Binding SelectedNode.IsFunctionBlock, FallbackValue=False}"/>
             <MenuItem Header="Cu_t" Command="{Binding CutCommand}" CommandParameter="{Binding SelectedNode}"
                       InputGesture="Ctrl+X"
                       IsVisible="{Binding SelectedNode.CanCut, FallbackValue=False}"/>
             <MenuItem Header="_Copy" Command="{Binding CopyCommand}" CommandParameter="{Binding SelectedNode}"
                       InputGesture="Ctrl+C"
-                      IsVisible="{Binding SelectedNode.CanCopy, FallbackValue=False}"/>
+                      IsVisible="{Binding CanCopyFromContextMenu, FallbackValue=False}"/>
+            <MenuItem Header="_Unlock" Command="{Binding UnlockCommand}" CommandParameter="{Binding SelectedNode}"
+                      IsVisible="{Binding SelectedNode.IsLockedFunctionBlock, FallbackValue=False}"/>
             <MenuItem Header="_Paste" Command="{Binding PasteCommand}" CommandParameter="{Binding SelectedNode}"
                       InputGesture="Ctrl+V"
                       IsVisible="{Binding CanPaste, FallbackValue=False}"/>
@@ -133,6 +130,11 @@
                       IsVisible="{Binding CanMoveSelected, FallbackValue=False}"/>
             <MenuItem Header="_Delete" Command="{Binding DeleteCommand}" CommandParameter="{Binding SelectedNode}"
                       IsVisible="{Binding CanDeleteSelected, FallbackValue=False}"/>
+            <!-- Offered on a block AND on its pins: the vendor lets you jump from a pin to the program that uses
+                 it (uxparity S-28). CanShowProgram resolves the owning block for either. -->
+            <MenuItem Header="Show _program" Command="{Binding EnterProgrammingModeCommand}" CommandParameter="{Binding SelectedNode}"
+                      InputGesture="F3"
+                      IsVisible="{Binding CanShowProgram, FallbackValue=False}"/>
             <MenuItem Header="P_roperties" Command="{Binding PropertiesCommand}" CommandParameter="{Binding SelectedNode}"
                       IsVisible="{Binding SelectedNode.CanEditNonLink, FallbackValue=False}"/>
         </MenuFlyout>
@@ -208,26 +210,42 @@
                     </MenuItem.Styles>
                 </MenuItem>
                 <Separator/>
-                <MenuItem Header="E_xit" Command="{Binding ExitCommand}" InputGesture="Alt+F4"/>
+                <!-- No InputGesture: the vendor's Luk advertises none, and Alt+F4 is the window manager's gesture
+                     rather than the command's (uxparity S-27). It still closes the window. -->
+                <MenuItem Header="E_xit" Command="{Binding ExitCommand}"/>
             </MenuItem>
 
             <!-- Edit is owned by later epics (E14–E15); present as a stable host. -->
             <MenuItem Header="_Edit" a:AutomationProperties.AutomationId="MenuEdit">
                 <MenuItem Header="{Binding UndoMenuHeader}" Command="{Binding UndoCommand}" InputGesture="Ctrl+Z"/>
                 <MenuItem Header="{Binding RedoMenuHeader}" Command="{Binding RedoCommand}" InputGesture="Ctrl+Y"/>
-                <Separator/>
-                <MenuItem Header="Cu_t" Command="{Binding CutCommand}" CommandParameter="{Binding SelectedNode}" InputGesture="Ctrl+X"/>
+                <!-- No separator here: the vendor's Rediger runs Fortryd…Egenskaber ungrouped (uxparity S-27). -->
+                <MenuItem Header="Cu_t" Command="{Binding CutCommand}" CommandParameter="{Binding SelectedNode}"
+                          InputGesture="Ctrl+X" IsEnabled="{Binding CanCutFromMenuBar}"/>
                 <MenuItem Header="_Copy" Command="{Binding CopyCommand}" CommandParameter="{Binding SelectedNode}" InputGesture="Ctrl+C"/>
                 <MenuItem Header="_Paste" Command="{Binding PasteCommand}" CommandParameter="{Binding SelectedNode}" InputGesture="Ctrl+V"/>
-                <MenuItem Header="_Delete" Command="{Binding DeleteCommand}" CommandParameter="{Binding SelectedNode}" InputGesture="Delete"/>
+                <MenuItem Header="_Delete" Command="{Binding DeleteCommand}" CommandParameter="{Binding SelectedNode}"
+                          InputGesture="Delete" IsEnabled="{Binding CanDeleteFromMenuBar}"/>
+                <!-- The vendor's Rediger ends with Egenskaber… F2 (uxparity S-27); OpenVisual bound F2 but only
+                     surfaced Properties on the context menu. -->
+                <MenuItem Header="P_roperties" Command="{Binding PropertiesCommand}" CommandParameter="{Binding SelectedNode}"
+                          InputGesture="F2"/>
             </MenuItem>
 
             <MenuItem Header="_View" a:AutomationProperties.AutomationId="MenuView">
+                <!-- The vendor's Vis leads with the three view/navigation commands (uxparity S-27):
+                     Konfigurationsvisning (ESC), Vis program (F3), Hop til modsat link (F4). OpenVisual bound all
+                     three as keys but surfaced none of them in the menu. -->
+                <MenuItem Header="_Configuration view" Command="{Binding LeaveProgrammingModeCommand}" InputGesture="Escape"/>
                 <MenuItem Header="_Toolbar" ToggleType="CheckBox"
                           IsChecked="{Binding IsToolbarVisible}" Command="{Binding ToggleToolbarCommand}"/>
                 <MenuItem Header="_Status bar" ToggleType="CheckBox"
                           IsChecked="{Binding IsStatusBarVisible}" Command="{Binding ToggleStatusBarCommand}"/>
-                <Separator/>
+                <MenuItem Header="Show _program" Command="{Binding EnterProgrammingModeCommand}"
+                          CommandParameter="{Binding SelectedNode}" InputGesture="F3"
+                          IsEnabled="{Binding CanShowProgramFromMenuBar}"/>
+                <MenuItem Header="_Jump to opposite link" Command="{Binding NavigateLinkOppositeCommand}"
+                          CommandParameter="{Binding SelectedNode}" InputGesture="F4"/>
                 <MenuItem Header="Theme">
                     <MenuItem Header="System" ToggleType="Radio"
                               Command="{Binding SetThemeCommand}" CommandParameter="{x:Static svc:AppTheme.System}"
@@ -241,11 +259,28 @@
                 </MenuItem>
             </MenuItem>
 
-            <!-- Insert: Products submenu is E3; the rest are owned by later epics. -->
+            <!-- Insert mirrors IHC Visual's Indsæt inventory AND order (uxparity S-27). These commands are also on
+                 the node context menu, which is correct — the vendor offers them in both places, and only having
+                 them on the context menu left the bar's Insert with a single item. -->
             <MenuItem Header="_Insert" a:AutomationProperties.AutomationId="MenuInsert">
+                <MenuItem Header="Pro_gram elements">
+                    <MenuItem Header="New case _value…" Command="{Binding NewCaseValueCommand}" CommandParameter="{Binding SelectedNode}"/>
+                    <MenuItem Header="_Sub-program" Command="{Binding AddSubProgramCommand}" CommandParameter="{Binding SelectedNode}"/>
+                    <MenuItem Header="Logic _group" Command="{Binding AddLogicGroupCommand}" CommandParameter="{Binding SelectedNode}"/>
+                </MenuItem>
+                <MenuItem Header="_Function blocks" ItemsSource="{Binding FunctionBlocksMenu}"
+                          ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
+                <MenuItem Header="_Empty function block" Command="{Binding InsertEmptyFunctionBlockCommand}"
+                          InputGesture="Ctrl+Shift+B"/>
+                <MenuItem Header="_Locality" Command="{Binding InsertLocalityCommand}"/>
+                <MenuItem Header="S_pecial">
+                    <MenuItem Header="Add _Powerup event" Command="{Binding AddPowerEventCommand}" CommandParameter="{Binding SelectedNode}"/>
+                </MenuItem>
                 <!-- The product category folders are data-driven (H2/D08): Wired / IHC Wireless / Bus / Special plus an
                      Imported/Uncategorized bucket, derived from the catalog's CategoryPath by CatalogMenu. -->
                 <MenuItem Header="_Products" ItemsSource="{Binding ProductsMenu}"
+                          ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
+                <MenuItem Header="_Variable" ItemsSource="{Binding VariablePaletteMenu}"
                           ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
             </MenuItem>
             <MenuItem Header="_Library" a:AutomationProperties.AutomationId="MenuLibrary">

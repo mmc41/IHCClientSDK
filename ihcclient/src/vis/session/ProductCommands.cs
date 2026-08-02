@@ -22,7 +22,8 @@ namespace Ihc.Vis.Session
     /// <summary>The edited pin addressing (US-012): the terminal address, cable colour, note, and (outputs) the
     /// initial on/off value.</summary>
     public sealed record PinPropertiesResult(
-        int DataLine, int Terminal, string CableColour, string Note, bool InitialValueOn);
+        int DataLine, int Terminal, string CableColour, string Note, bool InitialValueOn,
+        bool SaveOnPowerFailure = false);
 
     // ---- Commands ----
 
@@ -58,12 +59,12 @@ namespace Ihc.Vis.Session
     }
 
     /// <summary>Unlocks a library function block for editing (US-020): clears its <c>locked</c> flag.</summary>
-    public sealed record UnlockFunctionBlock(ElementId Id) : ProjectCommand
+    public sealed record UnlockFunctionBlock(ElementId Id, string Programmer, DateOnly Unlocked) : ProjectCommand
     {
         internal override string Describe(Project project) => "Unlock function block";
         internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(Id, "function block");
         internal override void Execute(ProjectEditor editor) =>
-            editor.Resolve(Id, "function block").SetAttribute("locked", "no");
+            editor.FunctionBlock(Id).Unlock(Programmer, Unlocked);
     }
 
     /// <summary>Transforms an in-project function block into a locked library instance (US-021 Save-to-library, PG-3a):
@@ -108,6 +109,10 @@ namespace Ihc.Vis.Session
             if (isOutput)
             {
                 handle.SetAttribute("inivalue", Result.InitialValueOn ? "on" : "off");
+                // "Save the current value" (the vendor's Ved strømsvigt ▸ Gem aktuel værdi): the output resumes
+                // its last state after a power failure instead of its initial value. Outputs only — an input has
+                // no state to restore.
+                handle.SetAttribute("backup", Result.SaveOnPowerFailure ? "yes" : "no");
             }
         }
     }

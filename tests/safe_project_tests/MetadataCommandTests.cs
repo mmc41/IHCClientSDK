@@ -38,7 +38,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project3-KompleksWired.vis");
             ProjectDocumentSession session = Session(project);
-            var data = new ProjectInfoData("desc-A1", "num-A1", "prog-A1",
+            var data = new ProjectInfoData("desc-A1", "num-A1", "prog-A1", "type-A1", "draw-A1",
                 new ContactInfo("kName", "kAddr", "kCity", "kZip", "kCountry", "kPhone", "kMob", "kEmail"),
                 new ContactInfo("iName", "iAddr", "iCity", "iZip", "iCountry", "iPhone", "iMob", "iEmail"));
 
@@ -50,6 +50,54 @@ namespace Ihc.Vis.Tests
                 Assert.That(session.Current!.GetProjectInfo(), Is.EqualTo(data), "project info reads back as written");
                 Assert.That(session.Current!.LastUniqueId, Is.EqualTo(project.LastUniqueId),
                     "metadata edits are id-less (ENG-A1: last_unique_id unchanged)");
+            });
+        }
+
+        /// <summary>
+        /// uxparity S-32: the project-information dialog must reach ALL the project-level fields the format
+        /// declares. <c>project_info</c>'s DTD attribute list is
+        /// <c>programmer / number / drawing / type / description / udf</c>, and the vendor's
+        /// <c>Rediger projekt oplysninger</c> edits five of those six (everything but the internal <c>udf</c>).
+        /// The projection modelled only three, so a project's <c>type</c> and <c>drawing</c> were unreachable —
+        /// and, being unmodelled, were silently dropped from the round-trip rather than merely hidden.
+        /// </summary>
+        [Test]
+        public async Task UpdateProjectInfo_WritesTypeAndDrawing_ToTheirDeclaredAttributes()
+        {
+            Project project = await Load("project3-KompleksWired.vis");
+            ProjectDocumentSession session = Session(project);
+            var data = new ProjectInfoData("d", "n", "p", "Villa", "Tegning 4b", ContactInfo.Empty, ContactInfo.Empty);
+
+            session.Apply(new UpdateProjectInfo(data));
+
+            ProjectElement info = session.Current!.Child("project_info")!;
+            Assert.Multiple(() =>
+            {
+                Assert.That(info.GetAttribute("type"), Is.EqualTo("Villa"), "the vendor's 'Projekt type'");
+                Assert.That(info.GetAttribute("drawing"), Is.EqualTo("Tegning 4b"), "the vendor's 'Tegning'");
+                Assert.That(session.Current!.GetProjectInfo(), Is.EqualTo(data), "and both read back");
+            });
+        }
+
+        /// <summary>
+        /// The other half of S-32: a project that already carries <c>type</c>/<c>drawing</c> must SHOW them. Before
+        /// the fix an unmodelled attribute survived a plain load (the engine round-trips unknown attributes
+        /// verbatim) but was invisible to the dialog and erased by the first edit that rewrote the element.
+        /// </summary>
+        [Test]
+        public async Task GetProjectInfo_ReadsTypeAndDrawing_FromAnExistingProject()
+        {
+            Project project = await Load("project3-KompleksWired.vis");
+            ProjectDocumentSession session = Session(project);
+            session.Apply(new UpdateProjectInfo(
+                new ProjectInfoData("d", "n", "p", "Rækkehus", "T-99", ContactInfo.Empty, ContactInfo.Empty)));
+
+            ProjectInfoData reread = session.Current!.GetProjectInfo();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(reread.Type, Is.EqualTo("Rækkehus"));
+                Assert.That(reread.Drawing, Is.EqualTo("T-99"));
             });
         }
 

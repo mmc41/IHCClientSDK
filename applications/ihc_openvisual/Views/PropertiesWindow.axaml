@@ -19,6 +19,42 @@
                  Height="110" VerticalContentAlignment="Top"
                  a:AutomationProperties.LabeledBy="{Binding #NoteLabel}"/>
 
+        <!-- A LIBRARY function block also shows where it came from, read-only (uxparity S-19: the vendor's
+             "Oprindelige egenskaber"). Hidden for everything else, which has no master to report. -->
+        <StackPanel Name="OriginPanel" IsVisible="False" Spacing="8" Margin="0,10,0,0">
+            <TextBlock Text="Original properties" FontWeight="SemiBold"/>
+
+            <TextBlock Name="OriginNameLabel" Text="Name"/>
+            <TextBox Name="OriginNameBox" IsEnabled="False"
+                     a:AutomationProperties.LabeledBy="{Binding #OriginNameLabel}"/>
+
+            <Grid ColumnDefinitions="*,8,*,8,*">
+                <StackPanel Grid.Column="0" Spacing="8">
+                    <TextBlock Name="OriginNumberLabel" Text="Number"/>
+                    <TextBox Name="OriginNumberBox" IsEnabled="False"
+                             a:AutomationProperties.LabeledBy="{Binding #OriginNumberLabel}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="8">
+                    <TextBlock Name="OriginVersionLabel" Text="Version"/>
+                    <TextBox Name="OriginVersionBox" IsEnabled="False"
+                             a:AutomationProperties.LabeledBy="{Binding #OriginVersionLabel}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="4" Spacing="8">
+                    <TextBlock Name="OriginCreatedLabel" Text="Created"/>
+                    <TextBox Name="OriginCreatedBox" IsEnabled="False"
+                             a:AutomationProperties.LabeledBy="{Binding #OriginCreatedLabel}"/>
+                </StackPanel>
+            </Grid>
+
+            <TextBlock Name="OriginDeveloperLabel" Text="Developed by"/>
+            <TextBox Name="OriginDeveloperBox" IsEnabled="False" AcceptsReturn="True" TextWrapping="Wrap"
+                     Height="56" VerticalContentAlignment="Top"
+                     a:AutomationProperties.LabeledBy="{Binding #OriginDeveloperLabel}"/>
+
+            <TextBlock Text="Contact the above in case of problems"
+                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+        </StackPanel>
+
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,10,0,0">
             <Button Name="OkButton" Content="OK" MinWidth="84" IsDefault="True" Click="OnOk"/>
             <Button Name="CancelButton" Content="Cancel" MinWidth="84" IsCancel="True" Click="OnCancel"/>

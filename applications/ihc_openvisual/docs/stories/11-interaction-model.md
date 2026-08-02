@@ -1,6 +1,6 @@
 ---
-version: 0.3.0
-last-updated: 2026-07-18
+version: 0.4.0
+last-updated: 2026-08-02
 status: draft
 ---
 
@@ -55,11 +55,13 @@ bar, and shortcut — **so that** I can work whichever way suits the moment.
 - MUST: The **menu bar** offers the same actions (e.g. *Insert > Products > …* mirrors the
   right-click insertion); `F10` activates the menu bar at *File*, after which the arrow keys navigate
   it.
-- SHOULD: The **menu bar is not filtered by which pane has focus**, and not by what is selected. It
-  offers the whole vocabulary at all times — unlike a context menu, which is tailored to the node clicked
-  (US-068). The two are deliberately different surfaces: the context menu answers *"what can I do to
-  this?"*, the menu bar answers *"what can this app do?"*. The pane split is a **context-menu rule only**;
-  it is not carried into the menu bar.
+- MUST: The **menu bar is not filtered by which pane has focus**, and not by what is selected — every
+  command stays **present** at all times. But a command that **cannot apply to the current selection is
+  disabled (greyed)**, never enabled-and-refusing: the menu must not promise more than it delivers, and
+  enablement updates as the selection changes. The two surfaces stay deliberately different: the
+  context menu answers *"what can I do to this?"* by **omitting** the irrelevant (US-068); the menu bar
+  answers *"what can this app do?"* by showing everything and **greying** the inapplicable. The pane
+  split is a **context-menu rule only**; it is not carried into the menu bar.
 - MUST: **Keyboard shortcuts** trigger functions directly (e.g. `Ctrl+S` to save); the app's
   guidance presents the "most obvious" method first and the alternative(s) in brackets.
 - MUST: `F1` shows help text for the selected element; `F2` shows the properties of the selected
@@ -70,6 +72,25 @@ bar, and shortcut — **so that** I can work whichever way suits the moment.
   MUST be reachable from a node's **context menu**, not only from the toolbar and `Ctrl+X`/`Ctrl+C`/`Ctrl+V`
   (US-068 fixes the inventory).
 
+### Business rules (menu-bar enablement — what greys, and when)
+
+- MUST: With the **localities root** selected, the bar greys everything that cannot apply to it:
+  *Cut*, *Copy*, *Paste*, *Properties*, *Configuration view*, *Show program*, *Jump to opposite link*
+  and *Empty function block* are all disabled.
+- MUST: *Insert > Locality* is disabled whenever the selection is a locality's content (a product, a
+  function block or a pin) — a locality can only be inserted at the root level (US-008).
+- MUST: For a **locked** function block, *Cut*, *Delete* and *Show program* are disabled in the bar.
+  The **locked state is the discriminator, not the pane** — an unlocked block in the same pane
+  re-enables all three.
+- MUST: In the bar, *Copy* is enabled on **any pin** even where *Cut* is not — Copy reaches strictly
+  further than Cut (a pin can be duplicated with its product, never cut out of it).
+- MUST: The menu bar and the context menu apply **different, independently specified enablement
+  rules** where the surfaces genuinely differ (US-068 lists the context side): for a locked block the
+  bar greys *Cut*/*Delete* while the block's flyout still offers them (and they really run); *Show
+  program* is bar-enabled on an unlocked block only, but context-offered on a block **or a pin**; and
+  *Copy* is bar-enabled on any pin but context-offered on product terminals only. Each surface
+  reproduces its own rule — they are not to be "reconciled" into one.
+
 ### AC illustrations
 
 - Saving a document is offered as *File > Save* first, with `[Ctrl+S]` shown as the alternative.
@@ -77,12 +98,14 @@ bar, and shortcut — **so that** I can work whichever way suits the moment.
   *Insert > Products > Wired products > … > <product>*.
 - Copying a product is reachable by right-click > *Copy*, by the toolbar *Copy* button, and by `Ctrl+C` —
   all three name the copied product in the status bar.
+- Selecting the localities root and opening *Edit* shows *Undo*/*Redo* enabled (history permitting)
+  and *Cut*, *Copy*, *Paste* and *Properties* greyed; selecting a product re-enables them.
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Partly implemented — the double-click route exists and *Cut*/*Copy*/*Paste* are
-now reachable from the node context menu, satisfying the route-parity MUST. ⚠ Some context-menu items are still
-offered on the wrong node type — the per-type inventory (US-068) is not yet exact.
+**Implementation status:** ✅ Implemented — the double-click route exists, *Cut*/*Copy*/*Paste* are
+reachable from the node context menu, and the menu bar greys selection-dependent commands per the
+enablement rules above (including the deliberate bar-vs-context differences).
 
 ---
 
@@ -116,6 +139,10 @@ conditions):
   the caret in place; `Right` on an **expanded** node moves the caret to its first child; `Left` on an
   **expanded** node collapses it and leaves the caret in place; `Left` on a **collapsed** node moves the
   caret to its parent.
+- MUST — **Home/End:** `Home` moves the selection to the focused tree's first row (its root); `End` to
+  its last **visible** row — `End` walks the last-child chain only through **expanded** nodes, so a
+  collapsed node's children are unreachable by it. Both keys act only on the focused tree and keep
+  their normal text-editing meaning inside a text field.
 - MAY: IHC OpenVisual adds `Ctrl+Shift+Up` / `Ctrl+Shift+Down` (*Move up* / *Move down*) — a deliberate
   addition, consistent with the non-drag reorder supplement (US-055/US-068).
 
@@ -126,6 +153,8 @@ conditions):
 - `Right` on the collapsed locality `Living room` expands it with `Living room` still selected; pressing
   `Right` again moves the selection to its first product. `Left` then collapses it again, and a further
   `Left` selects the `Localities` root.
+- With every locality collapsed, `End` selects the last locality (e.g. `Udendørs`), not a product
+  hidden inside it; `Home` returns to the root row.
 - During simulation, `Ctrl+Space` on a selected input toggles it and `Space` holds it ON only while
   pressed.
 
@@ -247,6 +276,15 @@ toolbar for a command the menu omits.
 - MUST: A **product pin**'s menu offers a **log mark** toggle — the command behind the `Log …` state rows
   US-010 renders. (This is a missing feature, not just a missing menu entry; IHC OpenVisual offers no
   equivalent anywhere today.)
+- MUST: A **product terminal**'s menu offers *Copy* (while *Cut* is never offered on a pin); a
+  **function-block pin**'s menu offers **no** *Copy*. The context menu's Copy scope (product terminals
+  only) is deliberately **narrower than the menu bar's** (any pin, US-044) — each surface keeps its own
+  rule.
+- MUST: A **locked** function block's flyout still offers *Cut* and *Delete* — and they really run —
+  even though the menu bar greys both for a locked block (US-044). *Show program* is likewise offered
+  from a block **or a pin** in the flyout (opening the owning block's program, US-026), while the bar
+  enables it on an unlocked block only. These bar-vs-context differences are specified behaviour, not
+  inconsistencies to fix.
 - MUST: A **scene container**'s menu offers *Copy*.
 - SHOULD: *Move up* / *Move down* remain on the node types that can be reordered (locality, product,
   function block) and are **absent** from a link row **and from a pin**. They are IHC OpenVisual's non-drag
@@ -263,7 +301,7 @@ English — the *language* of a label is an allowed difference, the *inventory* 
 | Locality | *Installation* | **insert product** (submenu), Cut, Copy, Delete, separator, Properties — **6 items**; **+ Paste** when the clipboard is full |
 | Locality | *Functions* | **insert function block** (submenu), Cut, Copy, Delete, **empty function block**, separator, Properties — **7 items** |
 | Product | *Installation* | Cut, Copy, Delete, separator, Properties — **5 items** |
-| Product pin (input or output) | *Installation* | **log mark**, separator, Properties — **exactly 3 items** |
+| Product pin (input or output) | *Installation* | **log mark**, **Copy**, separator, Properties — **4 items** |
 | Scene container (*Scenarier*) | *Installation* | Copy, separator, Properties — **exactly 3 items** |
 | Link row | either | jump to opposite end, Delete — **exactly 2 items** |
 | Function block (unlocked) | *Functions* | Save block…, Cut, Copy, Delete, **show program**, separator, Properties — **7 items** |
@@ -291,15 +329,13 @@ English — the *language* of a label is an allowed difference, the *inventory* 
 
 **Readiness:** Ready.
 
-**Implementation status:** ⛔ Blocked — the three confirmed divergences are now fixed: *Insert product* / *Insert
-function block* are gated to a **locality** (by pane, no longer any addressable node), *Move up*/*Move down* to the
-reorderable structural nodes (locality / product / function block — **absent** from pins, sections and scene
-containers), and a **scene container**'s menu now offers *Copy* (never *Cut*). What remains needs **owner
-confirmation** before US-068 can close: the exact **log-mark scope** (which pins/rows carry the *Log mark* toggle —
-today it is offered wherever a `Logning` log row is projected, `IsLogRow`) and the precise **leaf routes** (the pin
-/ log-row / link-row inventories). Verified residual behaviour: *jump to the opposite end* is on **link rows only**
-(F4, US-025); the *log mark* toggle is on **projected log rows** (US-010); and there is **no** stop-point /
-breakpoint command anywhere in the app.
+**Implementation status:** 🟡 Largely implemented — the per-node-kind inventories (room, product, product
+pin, function block, function-block pin), the flyout ordering, *Copy* on product terminals, the
+locked-block flyout offering *Cut*/*Delete*/*Show program*, and *Show program* from a pin (resolving the
+owning block) are all in place, including the deliberate bar-vs-context enablement differences (US-044).
+One item still needs **owner confirmation**: the exact **log-mark scope** — whether a per-pin log-mark
+command must exist for loggable **value** resources (e.g. a temperature sensor), where a boolean pin's
+equivalent is inert; today the toggle is offered wherever a `Logning` log row is projected.
 
 ---
 
@@ -400,6 +436,12 @@ Scenario: A mode switch opens fresh
   Preservation applies to the nodes that persist across the edit.
 - MUST: The **reveal-on-first-child** default (US-006 — a locality with contents opens) is kept: a node that
   gains its *first* child opens by default rather than inheriting a stale collapsed state.
+- MUST: After a successful **drag-drop**, the **drop-target row is left expanded together with its
+  entire subtree**, and that expansion **persists** — it is a drop rule making the landing place
+  visible, not a hover artifact. The keyboard reorder supplement (*Move up*/*Move down*, US-055) does
+  **not** touch expansion state.
+- MUST: A **pasted** subtree (US-056) and a **freshly placed product** (US-010) are revealed fully
+  expanded — an arrival the installer caused is made visible rather than landing as one collapsed row.
 - MUST: A deliberate **mode switch** (configuration ⇄ a block's programming view) is **not** an in-place edit
   — it opens the target view at its defaults, not carried over from the other mode.
 - SHOULD: The state survives across the **binding**, so a node the installer expanded *in the UI* (not only

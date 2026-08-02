@@ -215,24 +215,29 @@ namespace Ihc.Vis.Tests
             TestData.AssertBytesIdentical(original, actual, "T7 reorder there-and-back");
         }
 
-        // ---- T8: unlock then re-lock a loaded locked function block ----
+        // ---- T8: unlock a loaded locked function block, then undo ----
+        //
+        // Re-sourced for uxparity S-20: unlocking is no longer a flag toggle with a flag-toggle inverse — it also
+        // discards the library identity and re-stamps ownership (FunctionBlockRef.Unlock), so `Unlock().Locked()`
+        // cannot return the file to its original bytes and asserting that it does would only be pinning a bug.
+        // The operation that IS invertible is the session command, so the invariance is stated over that.
 
         [Test]
-        public async Task T8_FunctionBlockUnlockRelockCycle_IsByteIdentical()
+        public async Task T8_FunctionBlockUnlockThenUndo_IsByteIdentical()
         {
             byte[] original = TestData.ReadBytes("projects/" + Oracle);
             Project project = await LoadOracle();
             ProjectElement locked = project.Root.Descendants()
                 .First(e => e.Tag == "functionblock" && e.GetAttribute("locked") == "yes");
-            string room = project.FindParent(locked.Id!.Value)!.GetAttribute("name")!;
-            string name = locked.GetAttribute("name")!;
 
-            ProjectEditor editor = project.Edit();
-            editor.Group(room).FunctionBlock(name).Unlock().Locked();          // clear the flag, then re-set it
+            var session = new Session.ProjectDocumentSession();
+            session.Open(project);
+            session.Apply(new Session.UnlockFunctionBlock(locked.Id!.Value, "Test Installer", new DateOnly(2026, 1, 1)));
+            session.Undo();
 
-            byte[] actual = await Save(editor.ToProject());
+            byte[] actual = await Save(session.Current!);
 
-            TestData.AssertBytesIdentical(original, actual, "T8 FB unlock/relock cycle");
+            TestData.AssertBytesIdentical(original, actual, "T8 FB unlock/undo cycle");
         }
 
         // ---- T9: add an internal variable to a Tom blok, then delete it ----

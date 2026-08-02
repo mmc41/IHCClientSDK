@@ -1,6 +1,6 @@
 ---
-version: 0.3.0
-last-updated: 2026-07-17
+version: 0.3.1
+last-updated: 2026-08-02
 status: draft
 ---
 
@@ -78,6 +78,11 @@ switches, toolbar/status-bar toggles, simulation) which do not enter the edit hi
   (unlocking a library block, once thought irreversible, is an ordinary undoable edit — US-020).
 - SHOULD: Non-mutating actions (entering/leaving programming mode, US-026; toolbar/status-bar
   toggles, US-051) do **not** appear on the undo history.
+- MUST: **Id allocation is stable across the history.** Undo restores the id counter along with the
+  content (a cancelled or undone insert burns no ids), redo re-creates an element under the **same**
+  id it first had, and an element restored by a later undo keeps that id — an insert → undo → redo →
+  delete → undo cycle leaves both the surviving element's id and the project's next-id counter exactly
+  where a single plain insert would have left them.
 
 ### AC illustrations
 

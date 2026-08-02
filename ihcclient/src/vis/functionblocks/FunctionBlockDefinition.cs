@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 
 using Ihc.Vis.Catalog;
@@ -52,6 +53,15 @@ namespace Ihc.Vis.FunctionBlocks
 
         /// <summary>The source file's on-disk text encoding, reproduced verbatim on write (see <see cref="CatalogTextEncoding"/>).</summary>
         public CatalogTextEncoding SourceEncoding { get; init; } = CatalogTextEncoding.Latin1;
+
+        /// <summary>
+        /// Ids of elements the writer must close with an explicit end tag even though they now have no children
+        /// (<c>&lt;x …&gt;&lt;/x&gt;</c> rather than <c>&lt;x …/&gt;</c>). Set by the save-to-library export, whose
+        /// wiring-row strip empties some pins: the vendor keeps the two-tag form for exactly those, so an element
+        /// that never had children stays self-closing and one that was emptied does not (uxparity S-22). Empty for a
+        /// definition read from a catalog file, where what is on disk is already the truth.
+        /// </summary>
+        public ImmutableHashSet<ElementId> ExplicitCloseIds { get; init; } = ImmutableHashSet<ElementId>.Empty;
 
         /// <summary>
         /// True only for the catalog's empty "Tom blok" scaffold (<c>Data\fb.def</c>).

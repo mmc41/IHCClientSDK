@@ -37,6 +37,34 @@ public class DragMoveTests : AvaloniaTestBase
         return (harness, vm, productId, locA, locB);
     }
 
+    // uxparity S-11: after a DROP the target row opens with everything under it, and stays open — measured
+    // against IHC Visual, where a second drag onto another row leaves the first one open too. It shows what the
+    // drop landed next to. The keyboard supplements deliberately do not do this (see the move-up test below).
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task Drop_ExpandsTheTargetRowAndItsSubtree()
+    {
+        var (harness, vm, productId, locA, locB) = await BuildAsync();
+        using var _ = harness;
+        // Give locality B a product of its own, so the drop target has a subtree that can be revealed.
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.Resources.Any(r => r.Tag == "dataline_input"));
+        await harness.Session.AddProductAsync(locB, product.ProductIdentifier);
+        TreeNodeViewModel targetNode = TreeNodes.FindById(vm.InstallationNodes, locB)!;
+        targetNode.IsExpanded = false;
+        foreach (TreeNodeViewModel c in targetNode.Children)
+            c.IsExpanded = false;
+
+        await vm.DragDrop.PerformDropAsync(productId, locB);
+
+        TreeNodeViewModel after = TreeNodes.FindById(vm.InstallationNodes, locB)!;
+        Assert.Multiple(() =>
+        {
+            Assert.That(after.IsExpanded, Is.True, "the drop target opens");
+            Assert.That(after.Children.All(c => c.Children.Count == 0 || c.IsExpanded), Is.True,
+                "and so does everything under it");
+        });
+    }
+
     private static async Task<(ShellHarness harness, MainWindowViewModel vm, MainWindow window, ElementId productId, ElementId locA, ElementId locB)>
         ShowAsync()
     {

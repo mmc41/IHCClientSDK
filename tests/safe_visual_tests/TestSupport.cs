@@ -86,12 +86,18 @@ public sealed class FakeDialogService : IDialogService
     public string? LastOpenedUrl { get; private set; }
     public Task OpenExternalUrlAsync(string url) { LastOpenedUrl = url; return Task.CompletedTask; }
 
-    public Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note)
+    public LibraryOrigin? LastPropertiesOrigin { get; private set; }
+    public string? LastPropertiesAffirmative { get; private set; }
+
+    public Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note, LibraryOrigin? origin = null,
+        string affirmative = "OK")
     {
         EditPropertiesCalls++;
         LastPropertiesTitle = title;
         LastPropertiesName = name;
         LastPropertiesNote = note;
+        LastPropertiesOrigin = origin;
+        LastPropertiesAffirmative = affirmative;
         return Task.FromResult(PropertiesResult);
     }
 
@@ -102,12 +108,26 @@ public sealed class FakeDialogService : IDialogService
         return Task.FromResult(VariablePropertiesResult);
     }
 
+    /// <summary>Makes the product dialog answer Cancel. Needed explicitly because the DEFAULT is now OK-without-edits:
+    /// the dialog opens as part of placing a product (uxparity S-12), so "no result configured" has to mean the
+    /// ordinary path — a test that wanted a product would otherwise silently get none.</summary>
+    public bool CancelProductProperties { get; set; }
+
     public Task<ProductPropertiesResult?> EditProductPropertiesAsync(ProductPropertiesInput input)
     {
         EditProductPropertiesCalls++;
         LastProductPropertiesInput = input;
-        return Task.FromResult(ProductPropertiesResponder is not null ? ProductPropertiesResponder(input) : ProductPropertiesResult);
+        if (CancelProductProperties)
+            return Task.FromResult<ProductPropertiesResult?>(null);
+        if (ProductPropertiesResponder is not null)
+            return Task.FromResult(ProductPropertiesResponder(input));
+        return Task.FromResult(ProductPropertiesResult ?? EchoUnchanged(input));
     }
+
+    // "OK without editing anything": every field handed straight back, so an insert keeps the catalog defaults.
+    private static ProductPropertiesResult? EchoUnchanged(ProductPropertiesInput i) =>
+        new(i.Name, i.CurrentLocalityId, i.Note, i.CableType, i.CableNumber, i.IdentificationCode, i.LightGroup,
+            OpenAdvanced: false, ConfigureTerminalPinId: null, Position: i.Position, EndUserReport: i.EndUserReport);
 
     public Task<SceneContainerResult?> EditSceneContainerAsync(SceneContainerInput input)
     {
@@ -116,18 +136,29 @@ public sealed class FakeDialogService : IDialogService
         return Task.FromResult(SceneContainerResult);
     }
 
-    public Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input)
+    public Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input, System.Func<PinPropertiesResult, Task>? onApply = null)
     {
         EditPinPropertiesCalls++;
         LastPinPropertiesInput = input;
         return Task.FromResult(PinPropertiesResult);
     }
 
+    /// <summary>Makes the modem dialog answer Cancel — same reason as <see cref="CancelProductProperties"/>: the
+    /// dialog now opens as part of placing a modem, so the default has to be the ordinary OK path.</summary>
+    public bool CancelModemProperties { get; set; }
+
     public Task<ModemPropertiesResult?> EditModemPropertiesAsync(ModemPropertiesInput input)
     {
         EditModemPropertiesCalls++;
         LastModemPropertiesInput = input;
-        return Task.FromResult(ModemPropertiesResponder is not null ? ModemPropertiesResponder(input) : ModemPropertiesResult);
+        if (CancelModemProperties)
+            return Task.FromResult<ModemPropertiesResult?>(null);
+        if (ModemPropertiesResponder is not null)
+            return Task.FromResult(ModemPropertiesResponder(input));
+        return Task.FromResult<ModemPropertiesResult?>(ModemPropertiesResult ?? new ModemPropertiesResult(
+            input.Name, input.CurrentLocalityId, input.Note, input.IdentificationCode,
+            input.Cable0V, input.Cable24V, input.CableRS485Minus, input.CableRS485Plus,
+            input.PinCode, input.PhoneNumbers));
     }
 
     public Task<AdvancedDimmerResult?> EditAdvancedDimmerAsync(AdvancedDimmerInput input)

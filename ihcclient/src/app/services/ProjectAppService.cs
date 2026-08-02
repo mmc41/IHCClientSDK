@@ -343,6 +343,30 @@ namespace Ihc.Vis
             });
         }
 
+        /// <summary>
+        /// Applies the normalization IHC Visual performs when it OPENS a project: the built-in catalog enum
+        /// definitions are re-hoisted to the bottom of <c>enum_definitions</c> with freshly allocated ids, and every
+        /// reference to them is repointed. The vendor does this on every open, so a file opened and saved back
+        /// unchanged legitimately differs from the file that was opened — an editor that wants to write the same
+        /// bytes must do the same thing.
+        /// <para>
+        /// Deliberately NOT part of <see cref="Load(string)"/>: a passive load is byte-faithful, which is what a tool that
+        /// reads a project without rewriting it needs. This is the editor's opt-in, and it is the door a GUI uses —
+        /// the underlying <c>ProjectEditor.NormalizeCatalogEnums</c> is engine surface the GUI must not reach.
+        /// Call it ONCE per load, before any edit: each call mints a fresh block of ids.
+        /// </para>
+        /// </summary>
+        public Project NormalizeOnOpen(Project project)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            return RunTraced(nameof(NormalizeOnOpen), activity =>
+            {
+                Project normalized = project.Edit().NormalizeCatalogEnums().ToProject();
+                activity?.SetReturnValue(normalized);
+                return normalized;
+            });
+        }
+
         /// <summary>Loads a project from a stream.</summary>
         public Task<Project> Load(Stream stream)
         {
@@ -376,6 +400,20 @@ namespace Ihc.Vis
                 activity?.SetReturnValue(bytes.Length);
             });
         }
+
+        /// <summary>
+        /// Saves the way an authoring application saves a document: vendor-like re-stamping, and the file being
+        /// replaced is kept as a <c>.BAK</c> side-file so a regretted save can be undone from disk. Saving to a name
+        /// that does not exist yet backs up nothing.
+        /// <para>
+        /// This is the save a GUI calls. <see cref="Save(Project, string, ProjectSaveOptions?)"/> stays the general form for callers that choose their own
+        /// options (byte-exact round-trips, exports, controller uploads) and does not write side-files unless asked —
+        /// a library that silently produced extra files would be the wrong default. The policy lives here rather than
+        /// in the GUI so atomic writes, backups and the byte-fidelity save mode stay in one place.
+        /// </para>
+        /// </summary>
+        public Task SaveDocument(Project project, string path) =>
+            Save(project, path, ProjectSaveOptions.Default with { CreateBackup = true });
 
         private async Task WriteAtomically(string path, byte[] bytes, bool createBackup)
         {
@@ -654,7 +692,7 @@ namespace Ihc.Vis
             {
                 FunctionBlockDefinition definition = BuildExportDefinition(project, functionBlockId, name, author, created, note);
                 using var buffer = new MemoryStream();
-                CatalogFileWriter.Write(definition, buffer);
+                CatalogFileWriter.Write(definition, buffer, CatalogLayout.Export);
                 await WriteAtomically(path, buffer.ToArray(), createBackup: false)
                     .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 activity?.SetReturnValue(path);
@@ -674,7 +712,8 @@ namespace Ihc.Vis
             RunTraced(nameof(ExportFunctionBlock), activity =>
             {
                 FunctionBlockDefinition definition = BuildExportDefinition(project, functionBlockId, name, author, created, note);
-                CatalogFileWriter.Write(definition, stream);
+                // Save-to-library writes the vendor's EXPORT shape, not the shipped-catalog one (S-22).
+                CatalogFileWriter.Write(definition, stream, CatalogLayout.Export);
                 activity?.SetReturnValue(name);
             });
         }

@@ -130,9 +130,12 @@ namespace Ihc.Vis
         public Session.UpdatePin UpdatePin(Project project, ElementId pinId, Session.PinPropertiesResult result) =>
             new Session.UpdatePin(pinId, result);
 
-        /// <summary>Command to unlock a locked library function block for editing (US-020).</summary>
-        public Session.UnlockFunctionBlock UnlockFunctionBlock(Project project, ElementId id) =>
-            new Session.UnlockFunctionBlock(id);
+        /// <summary>Command to unlock a locked library function block for editing (US-020). Unlocking takes ownership,
+        /// so it stamps <paramref name="programmer"/> and the date from the service clock (never
+        /// <c>DateTime.Now</c>) — see <see cref="Editing.FunctionBlockRef.Unlock"/>.</summary>
+        public Session.UnlockFunctionBlock UnlockFunctionBlock(Project project, ElementId id, string programmer) =>
+            new Session.UnlockFunctionBlock(id, programmer,
+                DateOnly.FromDateTime(_timeProvider.GetLocalNow().DateTime));
 
         /// <summary>Command to transform an in-project function block into a locked library instance (US-021), stamping
         /// the export date from the service clock (never <c>DateTime.Now</c>).</summary>

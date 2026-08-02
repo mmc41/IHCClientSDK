@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Ihc.Vis;
@@ -26,6 +27,13 @@ public enum SaveChangesResult
 
 /// <summary>The edited values returned from the element Properties dialog (US-007): the new name and note.</summary>
 public sealed record PropertiesResult(string Name, string Note);
+
+/// <summary>
+/// The read-only provenance of a function block that came from the LIBRARY (uxparity S-19): which library block it
+/// was stamped from, its number and version, when it was made and by whom. Shown as a second, non-editable group
+/// under the editable Name/Note — a block authored from scratch has none of this and the group is absent.
+/// </summary>
+public sealed record LibraryOrigin(string Name, string Number, string Version, string Created, string Developer);
 
 /// <summary>The current values shown by the ordinary-variable Properties dialog (US-027, T016): name, note, and the
 /// typed initial value whose <see cref="ResourceInitialValue.Kind"/> selects the value control (a Bool checkbox, a
@@ -101,7 +109,8 @@ public sealed record SceneValueInput(
 /// already-used <c>line.terminal</c> addresses in the same direction.</summary>
 public sealed record PinPropertiesInput(
     string Title, bool IsOutput, int DataLine, int Terminal, string CableColour, string Note,
-    bool InitialValueOn, IReadOnlyList<string> InUseTerminals);
+    bool InitialValueOn, IReadOnlyList<string> InUseTerminals, string Name = "",
+    bool SaveOnPowerFailure = false);
 
 
 /// <summary>The current values shown by the modem properties dialog (US-013). <c>PhoneNumbers</c> holds telephone
@@ -151,8 +160,12 @@ public interface IDialogService
     Task OpenExternalUrlAsync(string url);
 
     /// <summary>Opens the modal element Properties dialog (title, pre-filled name + note); returns the edited
-    /// values, or null when the installer cancels.</summary>
-    Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note);
+    /// values, or null when the installer cancels. <paramref name="origin"/> adds the read-only library-provenance
+    /// group a library function block shows below its editable fields (S-19); null for everything else.</summary>
+    /// <paramref name="affirmative"/> labels the commit button: a dialog that goes on to WRITE A FILE names the
+    /// verb (<c>Save</c>) rather than saying OK (S-22).
+    Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note, LibraryOrigin? origin = null,
+        string affirmative = "OK");
 
     /// <summary>Shows the ordinary-variable Properties dialog (US-027, T016): edits Name, Note, and the typed initial
     /// value (the control shown depends on the value's <see cref="ResourceValueKind"/>). Returns null on Cancel.</summary>
@@ -168,7 +181,10 @@ public interface IDialogService
 
     /// <summary>Opens the modal terminal-addressing dialog for a product input/output pin (US-012); returns the
     /// edited addressing, or null when the installer cancels.</summary>
-    Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input);
+    /// <summary>Opens the terminal-addressing dialog. <paramref name="onApply"/> is invoked by the dialog's
+    /// <i>Apply</i> button, which commits the current values and leaves the dialog open (the vendor's <i>Anvend</i>);
+    /// the returned result is the OK commit, or null when cancelled.</summary>
+    Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input, Func<PinPropertiesResult, Task>? onApply = null);
 
     /// <summary>Opens the modal modem properties dialog (US-013); returns the edited documentation, or null when the
     /// installer cancels.</summary>

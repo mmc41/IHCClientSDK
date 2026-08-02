@@ -1,6 +1,6 @@
 ---
-version: 0.2.0
-last-updated: 2026-07-16
+version: 0.3.0
+last-updated: 2026-08-02
 status: draft
 ---
 
@@ -33,21 +33,33 @@ both panes, **so that** I have realistic starting rooms to adapt to my installat
 
 ### Acceptance criteria (Checklist)
 
-- MUST: Both panes show a root node **Localities** with an expand/collapse control, expanded by
-  default.
-- MUST: Under *Localities* are exactly these ten localities, in this order: **Living room, Hall, Kitchen,
-  Bedroom, Room, Bathroom, Utility room, Garage, Basement, Outdoors**.
+- MUST: Both panes show a root node with an expand/collapse control, expanded by default, labelled
+  with the **name the project file itself gives its locality container** (the standard template names it
+  *Lokaliteter*); *Localities* stands in only when a file leaves that container unnamed.
+- MUST: Under the root are exactly the ten localities of the standard template, in its order:
+  **Stue, Entré, Køkken, Soveværelse, Værelse, Bad, Bryggers, Garage, Kælder, Udendørs**. Locality
+  names are project *data*, not UI text, so a new project starts from the file format's own default
+  names and a project authored here is interchangeable with one authored in any other IHC editor.
+  Renaming them to suit the installation is the user's first edit, not the app's.
 - MUST: Each locality renders as a node with a small square (checkbox-style) icon followed by its
   bold name; the same ten localities appear in the *Functions* pane as in the *Installation* pane.
 - SHOULD: A locality is a container: expanding it reveals the products (Installation pane) or
   function blocks (Functions pane) placed in it; when empty it has no expand control.
+- MUST: When a project is opened, every locality starts **collapsed** — only the root is expanded.
+  A populated locality is never auto-expanded by the act of opening: the whole-installation overview
+  is the initial state, and drilling in is the installer's move.
+- SHOULD: A collapsed locality opens automatically around its **first** inserted child, so the
+  arrival of content is visible; gaining further children does not re-open a locality the installer
+  has closed (expansion-state rules: US-070).
 - MAY: The *Functions* pane groups a locality's function blocks under the same locality node used
   in the *Installation* pane, keeping one shared locality structure across the two views.
 
 ### AC illustrations
 
-- A freshly created project shows `Localities > {Living room, Hall, Kitchen, Bedroom, Room, Bathroom,
-  Utility room, Garage, Basement, Outdoors}` identically in both panes.
+- A freshly created project shows `Lokaliteter > {Stue, Entré, Køkken, Soveværelse, Værelse, Bad,
+  Bryggers, Garage, Kælder, Udendørs}` identically in both panes.
+- Reopening a saved project in which `Stue` holds products shows `Stue` closed like every other
+  locality; expanding it is a click, not something the open did.
 
 **Readiness:** Ready.
 
@@ -118,8 +130,10 @@ a room the defaults do not cover.
 Scenario: Insert a new locality under the root
   Given the "Localities" root is selected in the "Installation" pane
   When I right-click "Localities" and choose to insert a locality
-  Then a new locality node is appended under "Localities" at the bottom of the list
-  And the status bar reads "Locality was inserted under Localities"
+  Then a new locality node is appended under the locality root at the bottom of the list
+  And it carries the template's placeholder name "Lokalitet" — a name is project data, so the
+    placeholder is the file format's own and the installer renames it next
+  And the status bar names the container the tree shows, e.g. "Lokalitet was inserted under Lokaliteter"
   And the new node appears in both panes
 
 Scenario: Name the new locality
@@ -143,9 +157,11 @@ Scenario: Insertion targets the current selection
 
 ### AC illustrations
 
-- With `Localities` selected, inserting a locality yields a new node named `Locality` at the bottom
-  of the tree (below `Outdoors`), selected, with **no dialog opening**, and the status bar showing
-  `Locality was inserted under Localities`.
+- With the locality root selected, inserting a locality yields a new node named `Lokalitet` at the
+  bottom of the tree (below `Udendørs`), selected, with **no dialog opening**, and the status bar
+  showing `Lokalitet was inserted under Lokaliteter`.
+- *Insert locality* is offered only where a locality can go: a locality's own context menu does not
+  carry it, because a locality is not a container for other localities.
 
 **Readiness:** Ready.
 
@@ -179,7 +195,15 @@ Scenario: Decline the confirmation
   Then nothing is deleted
 ```
 
-### AC illustrations
+### Business rules (when and how the confirmation is asked)
+
+- MUST: Deleting an **empty** locality proceeds silently — no confirmation is shown.
+- MUST: The confirmation for a non-empty locality offers exactly **two** answers — proceed or
+  decline — and its message names the locality and states what deleting it also removes.
+- MUST: The confirmation is about what the locality **contains**; it is the containment that
+  triggers it, not the locality's type (the general rule is US-053's).
+- MUST: The locality **root** itself is not deletable — no route (menu, context menu or Delete key)
+  offers or performs it.
 
 - Deleting a locality that holds a lamp output which a function block switched removes the locality, the
   product, and the function-block command/condition that referenced that output — the installer is

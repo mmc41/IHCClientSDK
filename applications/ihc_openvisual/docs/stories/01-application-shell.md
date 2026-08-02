@@ -1,6 +1,6 @@
 ---
-version: 0.4.1
-last-updated: 2026-07-21
+version: 0.5.0
+last-updated: 2026-08-02
 status: draft
 ---
 
@@ -79,9 +79,9 @@ per-menu command inventory beyond the top-level menu titles.
   is out of scope (E8) and omitted.)
 - MUST: The client area is split into two vertical panes of equal prominence; the left pane has a
   blue header reading **Installation** and the right a blue header reading **Functions**.
-- MUST: In configuration mode both panes show a tree rooted at a **Localities** node (see US-006);
-  the left tree is the installation view and the right tree is the functions view of the same
-  localities.
+- MUST: In configuration mode both panes show a tree rooted at the project's locality-container node
+  (see US-006); the left tree is the installation view and the right tree is the functions view of the
+  same localities.
 - MUST: A status bar spans the bottom; its left region shows the result/hint of the last action as
   a short sentence, and a locale indicator (Danish flag) sits at the far right.
 - SHOULD: The vertical boundary between the two panes is a splitter the installer can drag to
@@ -125,8 +125,10 @@ installation from the standard starting point.
 Scenario: Start a new project from the menu
   Given IHC OpenVisual is running
   When I choose "File" > "New project" (or press Ctrl+N)
-  Then the workspace shows the standard empty project: both panes rooted at "Localities"
+  Then the workspace shows the standard empty project: both panes rooted at "Lokaliteter"
     with the ten default rooms, and the title bar shows "Untitled - IHC OpenVisual"
+  And the project records the installer contact details held in application settings,
+    and the signed-in user as its programmer
 
 Scenario: New project prompts to save the currently open one
   Given a project is already open with unsaved changes
@@ -156,8 +158,8 @@ This guard is raised wherever the open project would be discarded — *New*, *Op
 
 ### AC illustrations
 
-- The standard empty project contains ten localities — Living room, Hall, Kitchen, Bedroom, Room,
-  Bathroom, Utility room, Garage, Basement, Outdoors — in both panes, plus the two built-in enumerator
+- The standard empty project contains ten localities — Stue, Entré, Køkken, Soveværelse, Værelse,
+  Bad, Bryggers, Garage, Kælder, Udendørs — in both panes, plus the two built-in enumerator
   types available to programming — `Persienne tilstand` (blind state) and `Logning` (logging), always
   present and read-only; see US-030.
 - Choosing *File > New project* with unsaved edits to `StandardHouse_1.vis` raises a prompt naming
@@ -203,12 +205,30 @@ Scenario: Recommended first step
   untouched, and no data is rewritten. (A no-op save therefore differs from the original only in those two
   stamps — the save is deliberately non-idempotent.)
 
+### Business rules (what a save preserves on disk)
+
+- MUST: Any save that overwrites an existing project file — plain *Save* and *Save as* alike — first
+  preserves the file's previous version next to it, under the same name with the extension replaced by
+  `.BAK`. A later overwrite replaces the `.BAK` with the newly displaced version.
+- MUST: Saving to a file name that does not yet exist creates no `.BAK` file.
+- MUST: This overwrite backup is distinct from the automatic crash backup (US-005) and is **not**
+  deleted on a clean close — it stays on disk as the previous version of the file.
+- MUST: A save is refused when the project contains text that cannot be stored in the project file's
+  character repertoire (ISO-8859-1): the refusal message names the offending element, attribute and
+  character, nothing is written to disk (the existing file and its `.BAK` are untouched), and the edit
+  stays in the open document so the installer can correct it.
+
 ### AC illustrations
 
 - Saving an untitled project as `project3.vis` changes the title bar from `Untitled - IHC OpenVisual`
   to `project3.vis - IHC OpenVisual`; the two panes and their content are unchanged.
 - Opening a project and immediately saving it without editing produces a file that differs from the
   original in exactly two places — the modified timestamp and the save id.
+- Saving `renamed.vis` where a `renamed.vis` already exists leaves the displaced bytes in
+  `renamed.BAK`; the first save of a brand-new name produces no `.BAK`.
+- Attempting to save a project whose note contains an em dash (not representable in ISO-8859-1) shows
+  a message naming the element, the attribute and the character; the file on disk is unchanged and the
+  note keeps its em dash in the editor.
 
 ### Constraints
 
@@ -245,6 +265,21 @@ Scenario: Opening replaces the current project
   When I open another project
   Then the application first prompts to save the open project (single-project constraint, US-002)
 ```
+
+### Business rules (what opening does to the document)
+
+- MUST: Opening a project refreshes the built-in enumerator definitions the file carries: each is
+  re-registered at the end of the project's enumerator-definition list under a fresh id, with every
+  reference updated to the fresh id. The project's content is otherwise untouched.
+- MUST: The just-opened document shows **no** unsaved-changes state, and the refresh is not an
+  undoable edit; the next save persists the refreshed definitions.
+
+### AC illustrations
+
+- Opening a saved project and saving it again immediately produces a file whose built-in enumerator
+  definitions sit at the end of the definition list under new ids (plus the two save stamps, US-003);
+  opening and saving that file again repeats the refresh with the next ids — the ids advance on every
+  open, they are not stable.
 
 ### Constraints
 
@@ -431,6 +466,12 @@ Scenario: Cancel the quit
 
 - Pressing `Alt+F4` on a freshly opened, unmodified project closes the app immediately and removes the
   backup file; pressing it after an edit first raises the save prompt.
+
+### Constraints
+
+- The *File > Exit* menu item advertises **no** keyboard accelerator — `Alt+F4` and the window close
+  button are the window manager's gestures, not the command's, and both still quit through the same
+  guarded path.
 
 **Readiness:** Ready.
 

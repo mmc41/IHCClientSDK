@@ -27,13 +27,19 @@
                     </Style>
                 </StackPanel.Styles>
 
+                <!-- Field order follows the vendor's reading order (Number, Type, Programmer, Drawing,
+                     Description) so the two dialogs present the same sequence — uxparity S-32. -->
                 <TextBlock Classes="section" Text="Project"/>
-                <TextBlock Name="ProjDescriptionLabel" Classes="label" Text="Description"/>
-                <TextBox Name="ProjDescriptionBox" a:AutomationProperties.LabeledBy="{Binding #ProjDescriptionLabel}"/>
                 <TextBlock Name="ProjNumberLabel" Classes="label" Text="Number"/>
                 <TextBox Name="ProjNumberBox" a:AutomationProperties.LabeledBy="{Binding #ProjNumberLabel}"/>
+                <TextBlock Name="ProjTypeLabel" Classes="label" Text="Type"/>
+                <TextBox Name="ProjTypeBox" a:AutomationProperties.LabeledBy="{Binding #ProjTypeLabel}"/>
                 <TextBlock Name="ProjProgrammerLabel" Classes="label" Text="Programmer"/>
                 <TextBox Name="ProjProgrammerBox" a:AutomationProperties.LabeledBy="{Binding #ProjProgrammerLabel}"/>
+                <TextBlock Name="ProjDrawingLabel" Classes="label" Text="Drawing"/>
+                <TextBox Name="ProjDrawingBox" a:AutomationProperties.LabeledBy="{Binding #ProjDrawingLabel}"/>
+                <TextBlock Name="ProjDescriptionLabel" Classes="label" Text="Description"/>
+                <TextBox Name="ProjDescriptionBox" a:AutomationProperties.LabeledBy="{Binding #ProjDescriptionLabel}"/>
 
                 <TextBlock Classes="section" Text="Customer"/>
                 <TextBlock Name="CustNameLabel" Classes="label" Text="Name"/>

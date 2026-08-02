@@ -26,7 +26,8 @@ namespace Ihc.Vis.Session
         internal override void Execute(ProjectEditor editor)
         {
             editor.SetMetadata("project_info",
-                ("description", Data.Description), ("number", Data.Number), ("programmer", Data.Programmer));
+                ("description", Data.Description), ("number", Data.Number), ("programmer", Data.Programmer),
+                ("type", Data.Type), ("drawing", Data.Drawing));
             WriteContact(editor, "customer_info", Data.Customer);
             WriteContact(editor, "installer_info", Data.Installer);
         }

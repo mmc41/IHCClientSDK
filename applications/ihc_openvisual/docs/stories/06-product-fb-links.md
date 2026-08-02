@@ -1,6 +1,6 @@
 ---
-version: 0.3.0
-last-updated: 2026-07-17
+version: 0.4.0
+last-updated: 2026-08-02
 status: draft
 ---
 
@@ -279,12 +279,20 @@ follow a signal path across the two panes without hunting for the matching pin.
 Scenario: Jump to the opposite end of a link
   Given a "link to" or "link from" row is selected (e.g. under a block input or a product output)
   When I press F4
-  Then the caret in the OTHER pane lands on the pin at the other end of the link
-  And that pin's collapsed ancestors are expanded and it is scrolled into view, so the caret is visible
-  And the status bar names the pin it jumped to
+  Then the caret in the OTHER pane lands on the RECIPROCAL LINK ROW — the other half of the same
+    wire — not on the pin that owns that row
+  And that row's collapsed ancestors are expanded and it is scrolled into view, so the caret is visible
+  And keyboard focus follows into the destination pane, so arrow keys and a second F4 act there
+  And the status bar names where it jumped to
+
+Scenario: A jump is itself jumpable
+  Given F4 just landed on the reciprocal link row
+  When I press F4 again
+  Then the caret jumps back onto the link row I started from — the landing row is a link row like
+    any other, and it can also be deleted directly (US-057)
 
 Scenario: Jump to a target that is not yet realised
-  Given the opposite pin lies under collapsed ancestors that have never been expanded
+  Given the opposite link row lies under collapsed ancestors that have never been expanded
   When I press F4 on the link row
   Then the jump still lands on it — the ancestor chain is expanded first
 
@@ -300,28 +308,32 @@ Scenario: The jump is reachable from the link row's context menu
 
 ### Business rules (what a jump must actually do)
 
+- MUST: The jump lands on the **reciprocal link row** — the other half of the same wire — which is
+  itself F4-able and deletable; it does not land on the pin that owns the row.
 - MUST: The jump **expands the target's ancestor chain, scrolls the target into view, moves the caret onto
-  it, and focuses that pane**. Setting a selection alone is not sufficient — a target that cannot be
-  realised leaves the caret where it was.
-- MUST: The status bar names **the pin jumped to**. It never reports a successful jump that did not happen.
+  it, and focuses that pane** — both halves matter: a selection that moves while keyboard focus stays
+  in the pane the user left is nearly right and still wrong (a second `F4` or an arrow key would act
+  on the wrong pane). A target that cannot be realised leaves the caret where it was.
+- MUST: The status bar names **where it jumped to**. It never reports a successful jump that did not happen.
 
 ### AC illustrations
 
 - Selecting the `… / <product> / <pin>` row under a block input and pressing `F4`
-  selects the `<pin>` pin of that push-button in the *Installation* pane, expanding and scrolling to it if
-  needed; the status bar reads the **pin's** name, not the link row's.
+  selects that pin's reciprocal link row in the *Installation* pane, expanding and scrolling to it if
+  needed; keyboard focus is now in the *Installation* pane, and pressing `F4` again returns to the
+  original link row.
 
 ### Constraints
 
-- Verification method — **Test**: assert the **other pane's** selection lands on the opposite pin, **and**
-  that the status text names *that pin*. A single-pane assertion cannot see this defect. Reproduce the
-  **false success message** first: it is the tell, and the cheapest regression guard.
+- Verification method — **Test**: assert the **other pane's** selection lands on the reciprocal link
+  row, **and** that keyboard focus moved to that pane, **and** that the status text matches. A
+  single-pane assertion cannot see this defect. The **false success message** is the tell, and the
+  cheapest regression guard.
 
 **Readiness:** Ready.
 
-**Implementation status:** ⛔ Not implemented — `F4` sets the selection properties but never expands the
-ancestor chain or scrolls the target into view, so the jump silently does nothing while the status bar
-reports success.
+**Implementation status:** ✅ Implemented — the jump lands on the reciprocal link row, expands and
+scrolls to it, and moves keyboard focus into the destination pane.
 
 ---
 

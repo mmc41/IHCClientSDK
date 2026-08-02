@@ -1,3 +1,4 @@
+using System;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
@@ -39,7 +40,7 @@ namespace Ihc.Vis.Tests
             (string room, string block) = FirstBlock(project);
             ProjectEditor editor = project.Edit();
             FunctionBlockRef fb = editor.Group(room).FunctionBlock(block);
-            fb.Unlock();   // Project1's block ships library-locked; unlock before authoring (T003) — id-neutral
+            fb.Unlock("Test Installer", new DateOnly(2026, 1, 1));   // Project1's block ships library-locked; unlock before authoring (T003) — id-neutral
             ResourceRef p = fb.AddInput("__pgm_p");
 
             // Author three conditions in creation order (as the user clicks) — mirrors project2's 239/240/241.

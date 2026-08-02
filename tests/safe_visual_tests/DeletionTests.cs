@@ -43,10 +43,12 @@ public class DeletionTests
         });
     }
 
-    // W2-13: the confirm now lives in the GUI (Preview→confirm→Apply), so this drives the real Delete command —
-    // the confirmation is raised, names the cascade, declining keeps everything, accepting cascades, one undo reverses.
+    // W2-13: the confirm lives in the GUI (Preview→confirm→Apply), so this drives the real Delete command.
+    // Deleting a REFERENCED product does not ask — measured against IHC Visual (uxparity S-15), which deletes it
+    // silently and produces a byte-identical file; the prompt is reserved for what a node CONTAINS (a locality with
+    // products still asks, see Delete_LocalityWithProducts_*). The cascade still happens and one undo reverses it.
     [Test]
-    public async Task Delete_LinkedProduct_ConfirmsCascadesAndIsUndoableAsOneStep()
+    public async Task Delete_LinkedProduct_CascadesWithoutPromptAndIsUndoableAsOneStep()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
@@ -61,21 +63,11 @@ public class DeletionTests
         await harness.Session.LinkPinsAsync(productPin.ElementId!.Value, blockPin.ElementId!.Value);
         var productId = harness.Session.Current!.FindById(loc)!.ChildrenOrEmpty().First(c => c.Tag.StartsWith("product_")).Id!.Value;
 
-        // Decline first: the confirmation is raised and names the cascade; nothing is deleted.
-        harness.Dialogs.ConfirmResult = false;
+        // No prompt: the product and the reciprocal link half on the block pin go together straight away.
         await vm.DeleteCommand.ExecuteAsync(FindNode(vm.InstallationNodes, productId));
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Session.Current!.FindById(productId), Is.Not.Null, "declining keeps the product");
-            Assert.That(harness.Dialogs.ConfirmCalls, Is.EqualTo(1), "a referenced delete asks first");
-            Assert.That(harness.Dialogs.LastConfirmMessage, Does.Contain("referenced"), "the confirm names the cascade");
-        });
-
-        // Accept: the product and the reciprocal link half on the block pin go together.
-        harness.Dialogs.ConfirmResult = true;
-        await vm.DeleteCommand.ExecuteAsync(FindNode(vm.InstallationNodes, productId));
-        Assert.Multiple(() =>
-        {
+            Assert.That(harness.Dialogs.ConfirmCalls, Is.Zero, "a referenced product deletes without asking");
             Assert.That(harness.Session.Current!.FindById(productId), Is.Null, "the product is removed");
             Assert.That(harness.Session.Current!.FindById(blockPin.ElementId!.Value)!.ChildrenOrEmpty()
                 .Any(c => c.Tag is "link_from_resource" or "link_to_resource"), Is.False, "the block's link half cascades away");

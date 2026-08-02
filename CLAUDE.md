@@ -69,12 +69,21 @@ dotnet run --project utilities/ihc_lab/ihc_lab.csproj
 dotnet run --project applications/ihc_openvisual/ihc_openvisual.csproj
 ```
 
-## Checking for Runtime Errors (OpenObserve)
+## Development Skills
 
-Use the **`openobserve` skill** to check for and diagnose runtime errors in exported logs
-and traces (after running an app/utility, or on any reported bug/exception/slowness).
-Requires OpenObserve up and `ihcsettings.json` telemetry configured; if the skill reports
-it can't connect, that means "unknown", not "no errors".
+Two Claude Code skills are set up for working in this repo:
+
+- **`openobserve` skill** — check for and diagnose runtime errors and other issues in exported
+  logs and traces. The SDK and the apps/utilities emit OpenTelemetry telemetry, so after running
+  an app/utility — or on any reported bug, exception, silent failure, or slowness — use this skill
+  instead of guessing from source code alone. Requires OpenObserve up and `ihcsettings.json`
+  telemetry configured; if the skill reports it can't connect, that means "unknown", not "no errors".
+- **`aui-openvisual` skill** — remote-control the running IHC OpenVisual desktop app through
+  Windows UI Automation: launching it, navigating the trees, invoking menu/toolbar/context
+  commands, clicking nodes, reading tooltips, capturing screenshots, and running repeatable
+  command sequences with JSON results. Use it whenever you need to drive, functionally test,
+  or visually inspect the live OpenVisual GUI (Windows only) — prefer it over ad-hoc
+  PowerShell/pywinauto automation.
 
 ## Project Architecture
 
@@ -89,8 +98,9 @@ This is a .NET 10 mono-repository containing an unofficial SDK for IHC (Intellig
 - `tests/safe_lab_tests/` - NUnit test suite for IHC Lab GUI tests (headless Avalonia UI tests with diagnostic features)
 - `tests/safe_unit_tests/` - NUnit test suite for controller-free unit tests (no Avalonia headless app; mocks IHC services with FakeItEasy)
 - `tests/safe_architecture_tests/` - NUnit test suite enforcing the SDK's directional layering rules and the OpenVisual GUI's thin-shell boundary via ArchUnitNET (controller-free)
-- `tests/safe_project_tests/` - NUnit test suite for the `.vis` project engine and `ProjectAppService` (controller-free; byte-fidelity round-trips against the shared `tests/testdata/` oracles, editing, catalog, validation)
+- `tests/safe_project_tests/` - NUnit test suite for the `.vis` project engine and `ProjectAppService` (controller-free; byte-fidelity round-trips against the shared `tests/testdata/` oracles, editing, catalog, validation, reporting)
 - `tests/safe_visual_tests/` - NUnit test suite for the IHC OpenVisual desktop app (headless Avalonia UI tests against the real `ihc_openvisual.App`; no controller)
+- `tests/testdata/` - Shared oracle fixtures (not a test project): vendor-authored and synthetic `.vis` projects (`projects/`), product `.def` files (`products/`), function-block `.ifb` files (`functionblocks/`), and report-format oracles (`reports/`) — see Test Infrastructure below for how suites consume them
 - `applications/ihc_openvisual/` - Avalonia desktop application recreating IHC Visual project editing; pure GUI over `ProjectAppService` (all business logic stays in the SDK)
 - `examples/ihcclient_example1/` & `examples/ihcclient_example2/` - Console application examples
 - `utilities/ihc_lab/` - Avalonia-based GUI desktop application for IHC controller interaction and testing
@@ -124,7 +134,7 @@ The `ihcclient` project follows a layered architecture:
   - `AdminAppService` - Manages administrator-related data (users, email, SMTP, DNS, network, web access, WLAN settings). Features change tracking that detects and applies only modified settings to minimize API calls. Supports JSON serialization with optional encryption of sensitive data (marked with `[SensitiveData]` attribute). Provides `GetModel()` to retrieve settings, `Store()` to apply changes, and `SaveAsJson()`/`LoadFromJson()` for file operations.
   - `InformationAppService` - Retrieves read-only controller information (system status, versions, uptime, time settings, SD card info, SMS modem info). Provides `GetInformationModel()` for comprehensive system information retrieval.
   - `LabAppService` - Laboratory/testing backend where users can dynamically select and execute individual IHC service operations. Supports runtime service and operation selection for experimentation and testing scenarios.
-  - `ProjectAppService` (namespace `Ihc.Vis`) - The single door for IHC project (`.vis`) IO and the backend for the `ihc_openvisual` app: `CreateNew` (File→New template), `Load`/`Save` (byte-fidelity round-trip, atomic writes, optional `.BAK`), `Validate`, catalog discovery (`GetAvailableProducts`/`GetAvailableFunctionBlocks` from the SDK-embedded `BuiltInCatalog` — no IHC Visual install required), runtime single-file catalog import (`ImportCatalogFile` — one `.def`/`.ifb` per call; import a folder by enumerating it caller-side and calling this per file), and the controller bridge (`DownloadFrom`/`UploadTo`). Editing a loaded/created project goes through the `project.Edit()` extension (`Ihc.Vis.Editing.ProjectEditor`) — the single mutation entry point (localities, products, function blocks, links, programs, copy/move/delete). For GUI use, these editor operations are wrapped as undoable **command objects** in the `Ihc.Vis.Session` layer (see the OpenVisual Desktop Application section).
+  - `ProjectAppService` (namespace `Ihc.Vis`) - The single door for IHC project (`.vis`) IO and editing, and the backend for the `ihc_openvisual` app: `CreateNew` (File→New template), `Load`/`Save` (byte-fidelity round-trip, atomic writes, optional `.BAK`), `Validate`, catalog discovery (`GetAvailableProducts`/`GetAvailableFunctionBlocks` plus the `GetProductCatalogItems`/`GetFunctionBlockCatalogItems` tree views, all from the SDK-embedded `BuiltInCatalog` — no IHC Visual install required), runtime single-file catalog import (`ImportCatalogFile` — one `.def`/`.ifb` per call; import a folder by enumerating it caller-side and calling this per file), function-block export and library save (`ExportFunctionBlock`/`SaveFunctionBlockToLibrary`), documentation reporting (`GenerateProjectDocumentationReport` — returns the combined `Ihc.Vis.Reporting.ProjectDocumentationReport` model built by `ReportBuilder` in `ihcclient/src/vis/reporting/`; rendering it is the GUI's job), and the controller bridge (`DownloadFrom`/`UploadTo`; construct via `CreateWithControllerBridge` to enable it). **Editing** a loaded/created project goes through the `Commands` gateway — a stateless `ProjectCommands` planner that mints undoable **command objects** from the `Ihc.Vis.Session` layer, executed via `Apply`/`CanApply`/`Preview` (see the OpenVisual Desktop Application section). The `project.Edit()` extension (`Ihc.Vis.Editing.ProjectEditor`) remains the low-level mutation entry point inside the SDK; GUIs never call it directly.
 - Application services can create their own SDK service instances or accept existing instances via constructor injection
 - Designed to be framework-agnostic, suitable for WPF, Avalonia, console apps, or web backends
 
@@ -154,13 +164,15 @@ The `ihcclient` project follows a layered architecture:
 
 ### OpenVisual Desktop Application (`applications/ihc_openvisual/`)
 
-`ihc_openvisual` (product name **IHC OpenVisual**) is a cross-platform Avalonia desktop app that recreates the vendor's Windows-only IHC Visual authoring tool for `.vis` project files. It is a **thin MVVM GUI over `ProjectAppService`**: all `.vis` parsing, editing, validation, catalog, and controller logic stays in the SDK (`Ihc.Vis`). The UI never hand-rolls XML, routes every mutation through `project.Edit()` / `ProjectEditor`, and holds element ids (not object references). Mutations are issued as **command objects** from the `Ihc.Vis.Session` layer (`ProjectDocumentSession`, `ProjectCommand`, `ProjectChangeSet`, `ProjectIndex`, and the per-family command records under `ihcclient/src/vis/session/`): `project.Edit()` / `ProjectEditor` stays the **low-level entry point**, but **GUIs use commands** — they carry the undo/redo history (`HistoryPolicy.Unlimited` by default) and the change set that drives keyed tree reconciliation. The app-side session façade is **`ProjectWorkflow`** (`applications/ihc_openvisual/Services/`), owning lifecycle/backup/catalog/reports; the former name `ProjectSession` is retired.
+`ihc_openvisual` (product name **IHC OpenVisual**) is a cross-platform Avalonia desktop app that recreates the vendor's Windows-only IHC Visual authoring tool for `.vis` project files. It is a **thin MVVM GUI over `ProjectAppService`**: all `.vis` parsing, editing, validation, catalog, reporting, and controller logic stays in the SDK (`Ihc.Vis`). The UI never hand-rolls XML and holds element ids (not object references). Every mutation is a **command object** from the `Ihc.Vis.Session` layer (`ProjectCommand`, `ProjectChangeSet`, `ProjectIndex`, and the per-family command records under `ihcclient/src/vis/session/`), minted by the **`ProjectAppService.Commands` gateway** and executed via `ProjectAppService.Apply`/`CanApply`/`Preview` — the GUI never constructs a command or reaches `project.Edit()` / `ProjectEditor` directly (arch-enforced). Commands carry the undo/redo history (`HistoryPolicy.Unlimited` by default) and the change set that drives keyed tree reconciliation. The app-side session façade is **`ProjectWorkflow`** (`applications/ihc_openvisual/Services/`), owning the open document's lifecycle/backup and delegating to extracted collaborators (`ProjectReportWorkflow` for reports, `CatalogImportWorkflow` for catalog import); the former name `ProjectSession` is retired.
 
 - **Stack**: .NET 10, Avalonia 12 (Fluent theme, Inter fonts, compiled bindings), CommunityToolkit.Mvvm; in-process `ihcclient` project reference (no version skew).
 - **Status**: incubating — app shell, MVVM scaffolding, the 44-glyph SVG icon set, and a headless smoke suite exist; the authoring UI is being built out against the epics/stories in `docs/`. Now in `IHCClientSDK.sln`, and `safe_visual_tests` runs in CI (Windows).
 - **Layering/test rule**: view-models avoid Avalonia types so logic is testable headlessly — view-model/logic tests go in `safe_unit_tests`, headless-UI tests in `safe_visual_tests`, engine byte-fidelity **and the `Ihc.Vis.Session` command/changeset/index/session tests** in `safe_project_tests`. Shares the `ihc_lab` headless-test and telemetry-bootstrap conventions (the bootstrap is currently duplicated rather than shared).
 - **Language/BCL baseline (fablerefac §3.0)**: new and moved code targets C# 14 / .NET 10 idioms — the extension-member read surface (`element.Kind`, fine `Is…` predicates, `project.View(element)`), `Frozen*` collections for immutable indexes/change-sets, `readonly record struct` for keys/verdicts/policies, and partial-property (`[ObservableProperty] partial`) MVVM. Apply to **new/moved code only** — never churn existing syntax for its own sake.
 - **MVVM differs from `ihc_lab` — follow OpenVisual's, not the Lab's**: OpenVisual uses CommunityToolkit.Mvvm (`ObservableObject`/`[ObservableProperty]`/`[RelayCommand]`), thin code-behind, and an `IDialogService` abstraction so dialogs are fakeable in headless tests. `ihc_lab` predates this: hand-rolled `INotifyPropertyChanged`, an 833-line `MainWindow.axaml.cs`, and dialogs constructed inline. Do not copy Lab's MVVM into OpenVisual.
+- **Reporting**: the report *model* comes from the SDK (`ProjectAppService.GenerateProjectDocumentationReport`); the GUI only renders it — `ReportHtmlRenderer` produces a self-contained static HTML page (screen and print variants), and `ProjectReportWorkflow` writes it to a temp file for the browser. The expected output format is pinned by the `tests/testdata/reports/` oracles.
+- **Manual/functional GUI testing**: use the `aui-openvisual` skill (Windows UI Automation) to launch and drive the real running app — see Development Skills above. Headless automated tests stay in `safe_visual_tests`.
 
 **Documentation** lives in `applications/ihc_openvisual/docs/` — read the relevant doc before implementing an app feature.
 
@@ -227,10 +239,18 @@ Before running any code that connects to an IHC controller:
 - **safe_lab_tests** - Headless Avalonia UI tests for IHC Lab application with advanced diagnostic capabilities (using fake sevices instead of active controller)
 - **safe_unit_tests** - Controller-free unit tests for SDK and Lab business logic (no Avalonia headless app; mocks IHC services with FakeItEasy). UI control-construction tests belong in safe_lab_tests instead.
 - **safe_architecture_tests** - Controller-free architecture tests (ArchUnitNET) enforcing directional layering at IL level. For the SDK (`IhcClientArchitectureTests`): `Ihc.Vis` must not depend on `Ihc.Soap`, the catalog definition layer must not depend on the editing layer, and the SDK must not depend on Avalonia. For the `ihc_openvisual` GUI (`OpenVisualArchitectureTests`): the thin-shell boundary — the GUI must not depend on `Ihc.Soap`, hand-roll `System.Xml`, reach the `Ihc.Vis.Io`/`Ihc.Vis.Editing` engine layers or the `ProjectDocumentSession` command-runner **type** directly (IO goes through `ProjectAppService`; commands are minted by the `ProjectAppService.Commands` gateway and executed through `ProjectAppService.Apply`/`CanApply`/`Preview`, which run them on a throwaway session — the `Ihc.Vis.Session` command/outcome/change-set contract types stay allowed, so this is a single-TYPE ban, not a namespace ban), or touch a controller `IIHCApiService` (the file-only GUI reaches the controller only through `ProjectAppService`'s bridge); it must never `new` a `ProjectCommand` (commands come from the `ProjectAppService.Commands` factories — a constructor-call scan, since the GUI legitimately *depends* on the concrete command types the factories return). It also enforces the MVVM/Humble-Object direction — view-models must not depend on Avalonia, on the view layer (`Views`/`Controls`/`Converters`), or on the concrete `IDialogService`/`IThemeService` adapters (only their ports); the view layer must not drive `ProjectWorkflow`/`ProjectAppService`/`ProjectCommands` directly — and the identity rule: bound view-models hold `ElementId`, never a stale `Project`/`ProjectElement`/editing handle. The fixture is self-checked (typeof-anchored namespaces, a known-violation backstop, and armed-detector checks for the custom scans, so no rule can pass vacuously). Runs on all OSes in CI.
-- **safe_project_tests** - Controller-free tests for the `.vis` project engine and `ProjectAppService` (byte-fidelity round-trips against the shared `tests/testdata/` oracles, editing, catalog, validation). The regression gate for any change under `ihcclient/src/vis/`.
-
-Oracle fixtures live in `tests/testdata/` and are shared by `safe_project_tests`, `safe_unit_tests` and `safe_visual_tests`. Each imports `tests/TestData.props`, which copies them to `$(OutDir)/testdata/...`; reach them via `TestContext.CurrentContext.TestDirectory` (the `TestData` helper), never by walking up into the source checkout. A suite that needs oracles adds that one `<Import>` line — do not add per-file `<None Link=...>` copies or new path-discovery helpers.
+- **safe_project_tests** - Controller-free tests for the `.vis` project engine and `ProjectAppService` (byte-fidelity round-trips against the shared `tests/testdata/` oracles, editing, catalog, validation, reporting). The regression gate for any change under `ihcclient/src/vis/`.
 - **safe_visual_tests** - Headless Avalonia UI tests for the `ihc_openvisual` desktop application (runs the real `ihc_openvisual.App`; no controller, no IHC API services needed for file-only flows).
+
+### Test Data (Oracle Fixtures)
+
+Oracle fixtures live in `tests/testdata/` and are shared by `safe_project_tests`, `safe_unit_tests` and `safe_visual_tests`:
+- `projects/` — `.vis` project oracles (byte-fidelity round-trip targets, editing/mutation replay baselines)
+- `products/` — product catalog `.def` oracles
+- `functionblocks/` — function-block `.ifb` oracles
+- `reports/` — report-format oracles for the documentation reports (`std-*`/`full-*` HTML pages per report purpose, each with a plain-`.txt` companion derived from the HTML)
+
+Each consuming suite imports `tests/TestData.props`, which copies them to `$(OutDir)/testdata/...`; reach them via `TestContext.CurrentContext.TestDirectory` (the `TestData` helper), never by walking up into the source checkout. A suite that needs oracles adds that one `<Import>` line — do not add per-file `<None Link=...>` copies or new path-discovery helpers. The report fixtures are LF+UTF-8; treat all oracles as byte-exact references — regenerate by script, never retype.
 
 ### safe_lab_tests Diagnostic Features
 

@@ -27,7 +27,11 @@ public sealed class ProjectTreeProjector(Project project)
         var blockNode = new TreeNodeViewModel(name, NodeIcons.FunctionBlock(locked),
             isExpanded: true, elementId: block.Id) { Kind = TreeNodeKind.ProgramBlockRoot };
         ProjectElement? programs = block.FindChild("programs");
-        var programsNode = new TreeNodeViewModel("Programs", NodeIcons.For("programs", null),
+        // Container captions are the containers' STORED names (S-33): `programs`, `events` and `actions` all carry
+        // one in the file, so an invented English word would drift from what the project actually says.
+        var programsNode = new TreeNodeViewModel(
+            programs is null ? "Programs" : project.NameOr(programs, "Programs"),
+            NodeIcons.For("programs", null),
             isExpanded: true, elementId: programs?.Id) { Kind = TreeNodeKind.Programs };
         if (programs is not null)
         {
@@ -38,7 +42,8 @@ public sealed class ProjectTreeProjector(Project project)
                     { Kind = TreeNodeKind.Program };
                 if (program.FindChild("events") is { } events)
                 {
-                    var eventsNode = new TreeNodeViewModel("Events", NodeIcons.For("events", null),
+                    var eventsNode = new TreeNodeViewModel(project.NameOr(events, "Events"),
+                        NodeIcons.For("events", null),
                         isExpanded: true, elementId: events.Id) { Kind = TreeNodeKind.Events };
                     foreach (ProjectElement ev in events.ChildrenOrEmpty().Where(e => e.IsProgramEvent))
                         eventsNode.Children.Add(new TreeNodeViewModel(EventCommandLabel(ev),
@@ -48,7 +53,8 @@ public sealed class ProjectTreeProjector(Project project)
                 }
                 if (program.FindChild("actions") is { } actions)
                 {
-                    var commandsNode = new TreeNodeViewModel("Commands", NodeIcons.For("actions", null),
+                    var commandsNode = new TreeNodeViewModel(project.NameOr(actions, "Commands"),
+                        NodeIcons.For("actions", null),
                         isExpanded: true, elementId: actions.Id) { Kind = TreeNodeKind.Commands };
                     RenderActionsInto(commandsNode, actions);
                     programNode.Children.Add(commandsNode);
@@ -206,7 +212,16 @@ public sealed class ProjectTreeProjector(Project project)
     // pins), the Functions pane its function blocks (US-006/US-010).
     public TreeNodeViewModel BuildLocalitiesRoot(bool functions)
     {
-        var root = new TreeNodeViewModel("Localities", NodeIcons.Locality, isExpanded: true)
+        // The root row shows the container's own stored name — it is project data (the vendor's "Lokaliteter"),
+        // not a caption the app owns; "Localities" only stands in when a file leaves it unnamed.
+        // The root row deliberately carries NO element id, even though the <groups> container is a real element:
+        // an id would make it a target for every id-addressed command (delete, properties, help), and what the
+        // root should answer to is a separate question per command. Kind is what identifies it; the one command
+        // that needs the container — paste, whose target parent this is — resolves it from the project by kind.
+        string rootName = project.Child("groups") is { } container
+            ? project.NameOr(container, "Localities")
+            : "Localities";
+        var root = new TreeNodeViewModel(rootName, NodeIcons.Locality, isExpanded: true)
             { Kind = TreeNodeKind.LocalitiesRoot };
         foreach (ProjectElement group in project.Groups)
         {
@@ -217,9 +232,13 @@ public sealed class ProjectTreeProjector(Project project)
                 if ((child.Kind == ElementKind.FunctionBlock) == functions)
                     components.Add(child);
             }
-            // A locality that holds components opens by default so they are visible (US-006 container reveal).
-            var locality = new TreeNodeViewModel(name, NodeIcons.Locality, isExpanded: components.Count > 0,
-                isBold: true, elementId: group.Id) { Tooltip = BuildTooltip(group), Kind = TreeNodeKind.Locality };
+            // A locality starts closed however much it holds (US-006: expanding is the user's move). Opening the
+            // populated ones by default would bury the overview of the installation the root is there to give.
+            // It does open when it gains its FIRST child, so a just-inserted product is visible - that is a
+            // transition, not an initial state, hence the separate flag.
+            var locality = new TreeNodeViewModel(name, NodeIcons.Locality, isExpanded: false,
+                isBold: true, elementId: group.Id)
+                { Tooltip = BuildTooltip(group), Kind = TreeNodeKind.Locality, RevealsOnFirstChild = true };
             foreach (ProjectElement child in components)
                 locality.Children.Add(BuildComponentNode(child));
             root.Children.Add(locality);
@@ -315,7 +334,11 @@ public sealed class ProjectTreeProjector(Project project)
             ProjectElement? holder = fb.FindChild(container);
             if (!programmingMode && (holder is null || !holder.ChildrenOrEmpty().Any()))
                 continue;   // configuration mode hides an empty/childless container (A-18)
-            var section = new TreeNodeViewModel(label, NodeIcons.For(container, null), elementId: holder?.Id)
+            // The caption is the container's own stored name when it has one (the standard blocks name their
+            // settings section "Indstillinger"); the table's label is the fallback for a container that leaves it
+            // unset. Same rule as the locality root: a name in the file is data, not a caption the app owns.
+            string sectionLabel = holder is not null ? project.NameOr(holder, label) : label;
+            var section = new TreeNodeViewModel(sectionLabel, NodeIcons.For(container, null), elementId: holder?.Id)
             {
                 KindDetail = container,
                 Kind = TreeNodeKind.Section,
@@ -357,7 +380,23 @@ public sealed class ProjectTreeProjector(Project project)
         if (!resource.IsTimeSetting)
             return null;
         int Part(string attr) => int.TryParse(project.View(resource).Effective(attr), out int v) ? v : 0;
-        return $"{Part("hour"):00}:{Part("minute"):00}:{Part("second"):00}";
+        // Milliseconds are part of the value and are shown: the element stores them, and a timer set to 1,5 s
+        // would otherwise read the same as one set to 1 s. The separator is a literal comma — it is the format
+        // this label is written in, not a culture-dependent decimal point.
+        return $"{Part("hour"):00}:{Part("minute"):00}:{Part("second"):00},{Part("millisecond"):000}";
+    }
+
+    // A scene row shows its note after the name — "Scenarie Tænd (Fremkalder scen...)" — because a scene's note is
+    // what says which fixtures it drives, and the row is otherwise indistinguishable from its siblings. A note
+    // longer than the budget is cut and elided. Scoped to scenes: input/output pins carry notes too (they hold the
+    // catalog's installer guidance) and render bare.
+    private const int SceneNoteBudget = 15;
+
+    private string? SceneNoteSuffix(ProjectElement resource)
+    {
+        if (resource.Tag != "resource_scene" || project.View(resource).Note is not { Length: > 0 } note)
+            return null;
+        return note.Length > SceneNoteBudget ? note[..SceneNoteBudget] + "..." : note;
     }
 
     private TreeNodeViewModel BuildPinNode(ProjectElement resource, bool inFunctionBlockSettings = false,
@@ -371,6 +410,8 @@ public sealed class ProjectTreeProjector(Project project)
         bool saved = isOutput && project.View(resource).Backup;
         // The label carries the pin's name and, for a state row, its value; the save flag surfaces via IsValueSaved (F-019).
         string label = string.IsNullOrEmpty(value) ? name : $"{name} = {value}";
+        if (SceneNoteSuffix(resource) is { } sceneNote)
+            label += $" ({sceneNote})";
         var node = new TreeNodeViewModel(label, NodeIcons.For(resource.Tag, project.View(resource).Icon),
             elementId: resource.Id)
             {

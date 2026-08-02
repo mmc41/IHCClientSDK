@@ -1,6 +1,6 @@
 ---
-version: 0.3.1
-last-updated: 2026-07-18
+version: 0.4.0
+last-updated: 2026-08-02
 status: draft
 ---
 
@@ -42,9 +42,16 @@ menu, **so that** the product appears in the installation tree ready to document
 Scenario: Insert a product via the locality context menu
   Given the "Installation" pane shows the locality "Living room"
   When I right-click "Living room" and follow "Products" > "Wired products" > <group> > <group-detail> > <product>
-  Then the product is inserted as a child of "Living room"
+  Then the product's properties dialog opens (US-011) — documenting the product is part of placing it
+  And committing the dialog inserts the product as a child of "Living room"
   And the status bar reads: Product '<product>' inserted under Living room
-  And the product node can be expanded to reveal its input, output and scenario pins
+  And the placed product node is expanded, revealing its input, output and scenario pins
+
+Scenario: Cancelling the insert-time dialog inserts nothing
+  Given the properties dialog opened by an insert is shown
+  When I cancel it
+  Then no product is added and the project is unchanged in every respect — including its
+    id allocation, so a cancelled insert leaves no trace in the saved file
 
 Scenario: Insert the same product via the menu bar
   Given the locality "Living room" is selected (highlighted)
@@ -85,6 +92,10 @@ The insert menu's categories come from the catalog; that catalog structure is th
   OpenVisual never puts in the label — it surfaces as the hover tooltip instead (US-047). `position` is often
   the only thing distinguishing a project's many same-type siblings (*Lampeudtag* ×10+), so omitting it
   would show repeated identical rows; the trailing space is part of the format's label convention and is reproduced deliberately.
+- MUST: **Scene rows are the one exception** to the note-stays-out-of-the-label rule: a scene row
+  that carries a note renders `name (note)`, with the note **truncated at 15 characters followed by
+  `...`**; a note of 15 characters or fewer shows in full, with no ellipsis. No other row kind takes
+  this suffix — any other pin carrying a note still renders its name bare.
 
 **Which of a product's child rows the tree shows.** A product's `.vis` body may hold resources that IHC
 OpenVisual deliberately does **not** draw. The tree shows only some of them, by two disjoint criteria
@@ -110,8 +121,12 @@ OpenVisual deliberately does **not** draw. The tree shows only some of them, by 
 - MUST: This is the **initial** value (the enum's index-0 member), read through the project's enum
   definitions — **not** live controller state.
 - MUST: `resource_enum` is **not the only** row kind that does this. IHC OpenVisual renders the literal on a
-  function block's **`Indstillinger`** (settings) rows too — `Timertid = 00:10:00`,
-  `Sluk Tidspunkt = 00:00:00` — and neither of those is an enum.
+  function block's **`Indstillinger`** (settings) rows too — `Timertid = 00:10:00,000`,
+  `Sluk Tidspunkt = 00:00:00,000` — and neither of those is an enum.
+- MUST: A **time-valued** setting renders with **millisecond precision** and a **literal comma** as
+  the fractional separator (`hh:mm:ss,mmm`, e.g. `Timer = 00:03:00,000`). The comma is part of the
+  stored value format, not the current culture's decimal separator, and the milliseconds are never
+  truncated away (a 1.5 s and a 1 s timer must be distinguishable in the tree).
 
 ### AC illustrations
 
@@ -147,10 +162,12 @@ later via properties), **so that** the generated reports (E9) describe the insta
 ### Acceptance criteria (Business Rules)
 
 **Presentation rules:**
-- MUST: When a product is inserted, it is added under the selected locality and **no dialog opens
-  automatically**. The installer opens the *Product properties* dialog on demand by selecting the
-  product and pressing `F2` (or right-click > *Properties*). (IHC OpenVisual's silent insert is an
-  intentional design choice — insertion never interrupts the installer with a dialog.)
+- MUST: The *Product properties* dialog opens **automatically as part of inserting the product**
+  (US-010) — nothing is added until the dialog is committed, and cancelling it inserts nothing.
+  The **type-appropriate** dialog opens: a data-line product gets this dialog, a modem its own
+  (US-013).
+- MUST: After insertion, the installer reopens the same dialog on demand by selecting the product and
+  pressing `F2` (or right-click > *Properties*, or double-click, US-067).
 - MUST: The dialog is **titled with the product type** — e.g. `Lampeudtag` — not a generic *Product
   properties*. This is how two open product dialogs are told apart.
 
@@ -263,8 +280,14 @@ product's shape. US-014 owns the wireless side; the grid and address spec below 
   same save-current-value flag US-033 backs up.
 - MUST: The terminal list marks which ports of the chosen module are **already in use** (IHC OpenVisual renders
   them `1 (i brug)` … `8 (i brug)`), so a port is not double-booked.
-- SHOULD: The editor offers **Apply** alongside OK/Cancel, and OK stays **disabled until something changes**
-  — so an editor opened to read an address cannot accidentally rewrite it.
+- MUST: The editor presents the terminal's **properties group** (read-only name, note, wire colour,
+  initial value, power-fail behaviour) **above** its **address group** (data line / terminal), and its
+  buttons run **OK, Cancel, Apply** in that order.
+- MUST: **Apply** commits the current values and leaves the editor open — so several changes can be
+  made and checked in one visit — and Apply and OK commit identically (a value Apply accepts, OK
+  accepts, and vice versa).
+- SHOULD: OK and Apply stay **disabled until something changes** — so an editor opened to read an
+  address cannot accidentally rewrite it.
 - MAY: The same editor is reachable from the tree by selecting the pin and opening its properties.
 
 **Output:**
@@ -290,9 +313,11 @@ product's shape. US-014 owns the wireless side; the grid and address spec below 
 
 **Readiness:** Ready.
 
-**Implementation status:** ⛔ Not implemented — the *Product properties* dialog carries no terminal grid,
-per-terminal address, wire colour, initial value, power-fail option or configure affordance, so a product's
-terminals cannot be addressed yet.
+**Implementation status:** 🟡 Largely implemented — the terminal grids and the address editor are in
+place, including the read-only name row, note, wire colour, initial value, the power-fail
+save-current-value option, the in-use port markers, the Properties-above-Address layout and the
+OK/Cancel/Apply row with Apply's commit-and-stay-open behaviour. The OK/Apply
+disabled-until-something-changes SHOULD is not yet implemented.
 
 ---
 
@@ -309,7 +334,8 @@ rule.
 **Insertion & constraint rules:**
 - MUST: A modem is inserted via right-click a locality > *Products* > *Bus Produkter* > `<product>`
   (US-010's category structure; the category label renders in English — *Bus Products* — per the
-  Full-English rule). **No properties dialog opens on insert** (US-011).
+  Full-English rule). Per US-010's dialog-gated insert, the modem's **own** properties dialog opens as
+  part of the insert — not the generic product dialog — and cancelling it inserts nothing.
 - MUST: A project may contain **at most one** modem, regardless of `<product>`.
 - SHOULD: A refused second-modem insertion **tells the installer why** rather than appearing to do nothing.
   (The explanatory feedback is a deliberate design decision, per the ruling in the product

@@ -46,12 +46,28 @@ namespace Ihc.Vis.Editing
         }
 
         /// <summary>
-        /// Unlocks the function block (US-020 "Oplås") — the inverse of <see cref="Locked"/>: clears <c>locked</c> to
-        /// its default <c>no</c>, so the canonicalizer omits it and a block loaded with <c>locked="yes"</c> becomes
-        /// an editable custom block. Returns this.
+        /// Unlocks the function block (US-020 "Oplås") and takes ownership of it. Clearing <c>locked</c> is only half
+        /// of it: the block stops being a LIBRARY block, so the three library-identity keys
+        /// (<c>master_schneider_electric</c>/<c>master_type</c>/<c>master_version</c>) are dropped to their defaults —
+        /// the same keys <see cref="ExportDefinition"/> strips — while <c>master_name</c> is kept as the name it came
+        /// from, and <c>master_programmer</c>/<c>master_date_*</c> are re-stamped to whoever unlocked it and when.
+        /// The icon becomes the unlocked-block glyph <c>_0xf</c>; <c>name</c> and <c>note</c> are left alone (this is
+        /// not a rename). Returns this.
         /// </summary>
-        public FunctionBlockRef Unlock()
+        /// <param name="programmer">The user taking ownership (the vendor stamps the current Windows user; explicit
+        /// here so the result is deterministic).</param>
+        /// <param name="unlocked">The date to stamp (the vendor stamps "today"; explicit for the same reason).</param>
+        public FunctionBlockRef Unlock(string programmer, DateOnly unlocked)
         {
+            ArgumentNullException.ThrowIfNull(programmer);
+            editor.SetAttributeById(Id, "master_schneider_electric", "no");
+            editor.SetAttributeById(Id, "master_type", string.Empty);
+            editor.SetAttributeById(Id, "master_version", string.Empty);
+            editor.SetAttributeById(Id, "master_programmer", programmer);
+            editor.SetAttributeById(Id, "master_date_year", DecToken.Format(unlocked.Year));
+            editor.SetAttributeById(Id, "master_date_month", DecToken.Format(unlocked.Month));
+            editor.SetAttributeById(Id, "master_date_day", DecToken.Format(unlocked.Day));
+            editor.SetAttributeById(Id, "icon", "_0xf");
             editor.SetAttributeById(Id, "locked", "no");
             return this;
         }
@@ -66,6 +82,11 @@ namespace Ihc.Vis.Editing
         public FunctionBlockRef SaveAsLibraryInstance(string name, string programmer, DateOnly date, string? note)
         {
             editor.SetAttributeById(Id, "name", name);
+            // It is the installer's library block now, not the one it came from, so the source's library identity goes
+            // — the same three keys the exported .ifb drops and Unlock clears (S-22/S-20).
+            editor.SetAttributeById(Id, "master_schneider_electric", "no");
+            editor.SetAttributeById(Id, "master_type", string.Empty);
+            editor.SetAttributeById(Id, "master_version", string.Empty);
             editor.SetAttributeById(Id, "master_name", name);
             editor.SetAttributeById(Id, "master_programmer", programmer);
             editor.SetAttributeById(Id, "master_date_year", DecToken.Format(date.Year));
@@ -244,8 +265,8 @@ namespace Ihc.Vis.Editing
         {
             ArgumentNullException.ThrowIfNull(name);
             ArgumentNullException.ThrowIfNull(programmer);
-            ProjectElement body = RestampExportIdentity(WithoutWiringRows(editor.Require(Id)),
-                name, programmer, exported, note);
+            ProjectElement source = editor.Require(Id);
+            ProjectElement body = RestampExportIdentity(WithoutWiringRows(source), name, programmer, exported, note);
             return new FunctionBlockDefinition(
                 MasterType: string.Empty,
                 MasterVersion: string.Empty,
@@ -254,8 +275,27 @@ namespace Ihc.Vis.Editing
                 CategoryPath: string.Empty,
                 body)
             {
-                Grammar = AssembleExportGrammar(body, editor.SchemaView),
+                // Head and element shape both come from the SOURCE, not the stripped body: the vendor's export keeps
+                // declaring the wiring types it removed, and keeps the two-tag form of every pin it emptied (S-22).
+                Grammar = AssembleExportGrammar(source, editor.SchemaView),
+                ExplicitCloseIds = EmptiedByStrip(source),
             };
+        }
+
+        // The ids of elements that HAD children but have none once the wiring rows are stripped — the writer closes
+        // those with an explicit end tag, as the vendor does (S-22).
+        private static ImmutableHashSet<ElementId> EmptiedByStrip(ProjectElement source)
+        {
+            var emptied = ImmutableHashSet.CreateBuilder<ElementId>();
+            foreach (ProjectElement element in source.DescendantsAndSelf())
+            {
+                if (element.Id is { } id && !element.Children.IsDefaultOrEmpty
+                    && element.ChildrenOrEmpty().All(c => ReciprocalTags.All.Contains(c.Tag)))
+                {
+                    emptied.Add(id);
+                }
+            }
+            return emptied.ToImmutable();
         }
 
         // Drops every reciprocal wiring row (follow-link half or scene link) from the copy — unconditionally, not

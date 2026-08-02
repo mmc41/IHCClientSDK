@@ -1,6 +1,6 @@
 ---
-version: 0.3.0
-last-updated: 2026-07-18
+version: 0.4.0
+last-updated: 2026-08-02
 status: draft
 ---
 
@@ -48,13 +48,13 @@ it appears in the tree, flagged as not-yet-linked until I commission it.
 Scenario: Insert a wireless product via the context menu
   Given the "Installation" pane shows a locality (e.g. "Kitchen")
   When I right-click the locality and follow "Products" > "IHC Wireless products" > <group> > <product>
-  Then the product is inserted under the locality with its input/output pins
+  Then the product's properties dialog opens, and committing it inserts the product under the
+    locality with its input/output pins (US-010's dialog-gated insert; cancelling inserts nothing)
   And the status bar reads: Product '<product>' inserted under <locality>
 
 Scenario: A newly inserted wireless product shows an unlinked marker
   Given I have just inserted a wireless product
   Then the product is marked with a yellow "!" indicating it is not yet linked to the controller
-  And no properties dialog has opened
 
 Scenario: Wireless categories come from the catalog
   Given the "IHC Wireless products" submenu is open
@@ -73,9 +73,10 @@ Scenario: Wireless categories come from the catalog
 
 ### AC illustrations
 
-- Inserting a wireless product (`<product>`) under `Bedroom` yields a product node named by the catalog
-  and exposing the pins the catalog defines for it (`<pin>`, per US-010's row rules); the status bar reads
-  `Product '<product>' inserted under Bedroom`, and **no dialog opens**.
+- Inserting a wireless product (`<product>`) under `Bedroom` opens its properties dialog first;
+  committing it yields a product node named by the catalog and exposing the pins the catalog defines
+  for it (`<pin>`, per US-010's row rules), and the status bar reads
+  `Product '<product>' inserted under Bedroom`.
 - Opening a `Bevægelsessensor 1873 Bobby-AM`'s properties shows the **same dialog a wired product opens**,
   with its `Indgange` grid and *Configure input* button **enabled** (the sensor has an input) and its
   `Udgange` grid and *Configure output* button **disabled** (it has no output) — the exact mirror of

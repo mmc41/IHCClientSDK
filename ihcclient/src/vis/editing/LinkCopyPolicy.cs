@@ -23,5 +23,13 @@ namespace Ihc.Vis.Editing
         /// raw and fix links up themselves.
         /// </summary>
         KeepExternal,
+
+        /// <summary>
+        /// Drop <b>every</b> copied half, internal pairs included, so the duplicate arrives completely unwired.
+        /// This is what IHC Visual's clipboard paste does — measured on a whole-locality copy, where the source
+        /// room carried six link halves and the pasted duplicate carried none (uxparity S-10). Distinct from
+        /// <see cref="DropExternal"/>, which keeps and remaps a pair whose two ends are both inside the copy.
+        /// </summary>
+        DropAll,
     }
 }

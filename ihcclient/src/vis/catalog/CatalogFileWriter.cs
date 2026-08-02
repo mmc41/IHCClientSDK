@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Immutable;
 using System.IO;
 using System.Text;
 
@@ -26,11 +27,14 @@ namespace Ihc.Vis.Catalog
     /// being silently compensated.
     /// </para>
     /// <para>
-    /// <b>Whitespace is not significant to fidelity.</b> Vendor catalog files are hand-formatted irregularly (mixed
-    /// indent, blank lines, trailing spaces — see <c>tmp/catalogfile-anatomy.md</c>), which no reconstructor can
-    /// derive. So header and body are emitted in one fixed canonical layout and fidelity is asserted <em>after
-    /// normalizing whitespace</em>. Everything that is significant — element/attribute structure, attribute values
-    /// and their escaping, ids, and the header's declared content — is reproduced exactly.
+    /// <b>Two layouts, two fidelity relations</b> (see <see cref="CatalogLayout"/>). For the SHIPPED corpus, whitespace
+    /// is not significant: those files are hand-formatted irregularly (mixed indent, blank lines, trailing spaces —
+    /// see <c>tmp/catalogfile-anatomy.md</c>), no reconstructor can derive that, so they are emitted in one fixed
+    /// canonical layout and compared <em>after normalizing whitespace</em>. For an EXPORT
+    /// (<see cref="CatalogLayout.Export"/>, save-to-library) the opposite holds: it is compared against a file the
+    /// vendor's own writer produced, whose layout is perfectly regular and therefore reproduced <em>to the byte</em>
+    /// (uxparity S-22). Either way everything semantic — element/attribute structure, attribute values and their
+    /// escaping, ids, and the header's declared content — is reproduced exactly.
     /// </para>
     /// <para>
     /// <b>Deliberately separate from <see cref="Ihc.Vis.Io.ProjectSerializer"/>.</b> The catalog contract —
@@ -51,6 +55,7 @@ namespace Ihc.Vis.Catalog
     {
         private const string Crlf = "\r\n";
         private const string IndentUnit = "  ";
+        private const string ExportIndentUnit = "   ";
 
         /// <summary>Serializes a product definition to its <c>.def</c> bytes.</summary>
         public static void Write(ProductDefinition definition, Stream output)
@@ -60,16 +65,21 @@ namespace Ihc.Vis.Catalog
             WriteDefinition(definition.Grammar, definition.Body, definition.SourceEncoding, output);
         }
 
-        /// <summary>Serializes a function-block definition to its <c>.ifb</c> bytes.</summary>
-        public static void Write(FunctionBlockDefinition definition, Stream output)
+        /// <summary>Serializes a function-block definition to its <c>.ifb</c> bytes in the given
+        /// <paramref name="layout"/> — <see cref="CatalogLayout.Export"/> for a save-to-library master, which the
+        /// vendor writes in a different shape from the shipped corpus (S-22).</summary>
+        public static void Write(FunctionBlockDefinition definition, Stream output,
+            CatalogLayout layout = CatalogLayout.Catalog)
         {
             ArgumentNullException.ThrowIfNull(definition);
             ArgumentNullException.ThrowIfNull(output);
-            WriteDefinition(definition.Grammar, definition.Body, definition.SourceEncoding, output);
+            WriteDefinition(definition.Grammar, definition.Body, definition.SourceEncoding, output, layout,
+                definition.ExplicitCloseIds);
         }
 
         private static void WriteDefinition(CatalogGrammar grammar, ProjectElement body, CatalogTextEncoding encoding,
-            Stream output)
+            Stream output, CatalogLayout layout = CatalogLayout.Catalog,
+            ImmutableHashSet<ElementId>? explicitCloseIds = null)
         {
             if (grammar is null || grammar.IsEmpty)
             {
@@ -83,10 +93,10 @@ namespace Ihc.Vis.Catalog
                     $"The grammar declares DOCTYPE root '{declaredRoot}' but the body root element is " +
                     $"'{body.Tag}' — the document would be inconsistent (corpus: the two are always equal).");
             }
-            string head = grammar.VerbatimHead ?? CatalogDtdEmitter.RenderHead(grammar, body.Tag);
+            string head = grammar.VerbatimHead ?? CatalogDtdEmitter.RenderHead(grammar, body.Tag, layout);
             var sb = new StringBuilder(head.Length + 512);
             sb.Append(head);
-            AppendElement(sb, body, depth: 0);
+            AppendElement(sb, body, depth: 0, layout, explicitCloseIds ?? ImmutableHashSet<ElementId>.Empty);
 
             byte[] preamble = encoding.Preamble();
             byte[] text;
@@ -118,9 +128,10 @@ namespace Ihc.Vis.Catalog
             output.Write(document, 0, document.Length);
         }
 
-        private static void AppendElement(StringBuilder sb, ProjectElement element, int depth)
+        private static void AppendElement(StringBuilder sb, ProjectElement element, int depth, CatalogLayout layout,
+            ImmutableHashSet<ElementId> explicitCloseIds)
         {
-            AppendIndent(sb, depth);
+            AppendIndent(sb, depth, layout);
             sb.Append('<').Append(element.Tag);
             foreach ((string name, string value) in element.AttrsOrEmpty())
             {
@@ -129,22 +140,35 @@ namespace Ihc.Vis.Catalog
                 sb.Append('"');
             }
 
-            if (element.Children.IsDefaultOrEmpty)
+            // An element the export EMPTIED keeps its two-tag form; one that never had children self-closes (S-22).
+            bool explicitClose = element.Id is { } id && explicitCloseIds.Contains(id);
+            if (element.Children.IsDefaultOrEmpty && !explicitClose)
             {
-                sb.Append(" />").Append(Crlf);
+                // The export writer closes tight; the catalog writer leaves a space (S-22).
+                sb.Append(layout == CatalogLayout.Export ? "/>" : " />").Append(Crlf);
                 return;
             }
             sb.Append('>').Append(Crlf);
-            foreach (ProjectElement child in element.Children)
+            foreach (ProjectElement child in element.ChildrenOrEmpty())
             {
-                AppendElement(sb, child, depth + 1);
+                AppendElement(sb, child, depth + 1, layout, explicitCloseIds);
             }
-            AppendIndent(sb, depth);
+            AppendIndent(sb, depth, layout);
             sb.Append("</").Append(element.Tag).Append('>').Append(Crlf);
         }
 
-        private static void AppendIndent(StringBuilder sb, int depth)
+        // Catalog layout: one two-space unit per level from column 0. Export layout: three-space units, with the
+        // root's children starting at column 6 rather than 3 — the ladder the vendor writes is 0, 6, 9, 12, … (S-22).
+        private static void AppendIndent(StringBuilder sb, int depth, CatalogLayout layout)
         {
+            if (layout == CatalogLayout.Export)
+            {
+                for (int i = 0; depth > 0 && i <= depth; i++)
+                {
+                    sb.Append(ExportIndentUnit);
+                }
+                return;
+            }
             for (int i = 0; i < depth; i++)
             {
                 sb.Append(IndentUnit);

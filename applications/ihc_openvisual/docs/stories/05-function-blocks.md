@@ -1,6 +1,6 @@
 ---
-version: 0.3.1
-last-updated: 2026-07-21
+version: 0.4.0
+last-updated: 2026-08-02
 status: draft
 ---
 
@@ -68,6 +68,18 @@ Scenario: A block bundles its variables and program
   categories are treated as catalog data.
 - MAY: IHC OpenVisual's own catalog-import entries (US-059/US-060) sit alongside the stock catalog categories.
 
+### Business rules (the function-block properties dialog)
+
+- MUST: A function block's properties dialog (F2 / right-click > *Properties* / double-click) carries
+  **Name** and **Note** plus OK/Cancel — the same two-field pattern as a locality (US-007).
+- MUST: For a block that is a **library instance** (it carries a library-identity key, see US-020),
+  the dialog additionally shows a read-only **original properties** group — the origin's name, number,
+  version, created date (rendered `dd/MM/yyyy`) and developer — so the installer can see **which**
+  library block, at **which** version, they have. The fields are genuinely disabled, not merely
+  read-only, and the data comes from the block's stored master metadata.
+- MUST: A block authored from scratch (or unlocked, US-020) shows **no** origin group — Name + Note
+  only.
+
 ### Business rules — which of a block's sections the tree draws
 
 In **configuration mode** (the *Functions* pane's normal view), IHC OpenVisual does not draw every section a
@@ -80,6 +92,11 @@ block owns. Two rules decide it:
   installer's.
 - MUST: Suppression is **display-only** — every hidden section stays in the `.vis` and is written back
   verbatim on save. This is the same discipline US-010's hidden product rows follow.
+- MUST: A drawn section renders **the caption stored in the project file on the container itself**
+  (e.g. `Indstillinger`, `Interne variable`, and in programming mode `Programmer` / `Hændelser` /
+  `Kommandoer`); a fixed default caption stands in only when the file leaves the container unnamed.
+  This is the same rule as the locality-root caption (US-006) — a section caption is the container
+  element's stored name, never a hard-coded UI string.
 
 ### AC illustrations
 
@@ -111,43 +128,47 @@ custom function from scratch.
 Scenario: Insert an empty block into a locality
   Given a locality is selected in the "Functions" pane, in configuration mode
   When I right-click it and choose "Empty function block", or press Ctrl+Shift+B
-  Then an empty block named "Empty block" is inserted under the locality
-  And the view stays in configuration mode: the block is inserted but not opened (press F3 to open it for programming, US-026)
-  And the status bar reads: Empty block was inserted under <locality>
+  Then an empty block named "Tom blok" is inserted under the locality — the placeholder name is
+    the file format's own, written into the project as data (the same rule as "Lokalitet", US-008)
+  And the view switches straight into programming mode for the new block (US-026):
+    both panes re-root at it, and the status bar shows the programming-mode hint
 
 Scenario: An empty block exposes the four variable sections
   Given an empty block is open in programming mode
   When I expand it
-  Then it shows exactly: "Input", "Output", "Settings" and "Internal variables",
+  Then it shows exactly its four section containers, labelled by their stored names —
+    the seed writes "Input", "Output", "Indstillinger" and "Interne variable" —
     each with its own icon
 
-Scenario: Editing the block enters programming mode
-  Given an empty block is selected
-  When I press F3 (or otherwise open it)
-  Then the view switches to programming mode (US-026), where the right pane shows
-    "Programs" > "Program" > { "Events", "Commands" }
+Scenario: Returning to configuration mode
+  Given the just-inserted empty block is open in programming mode
+  When I press Esc
+  Then the view returns to configuration mode with the tree intact (US-026)
   And I can name the block by selecting it and pressing F2
 ```
 
 ### Business rules (the empty-block seed)
 
 - MUST: A freshly inserted empty block ships with the **four section containers all empty — zero pins**
-  (Input / Output / Settings / Internal variables). The Input/Output pins are **user-added, not seeded**:
+  (inputs / outputs / settings / internal variables). The Input/Output pins are **user-added, not seeded**:
   an empty block has none until the author inserts them (US-027, US-026).
-- MUST: The right pane auto-creates **one** program named *Program* holding empty *Events* and *Commands*
-  groups — no more, no less.
+- MUST: The right pane auto-creates **one** program (stored name `Program`) holding empty events and
+  commands groups (stored names `Hændelser` / `Kommandoer`) — no more, no less.
+- MUST: The seed's container names are **project data written into the file** (`Input`, `Output`,
+  `Indstillinger`, `Interne variable`, `Programmer`, `Hændelser`, `Kommandoer`), and the tree renders
+  whatever names the file stores (US-018's stored-caption rule) — not fixed UI captions.
 - MUST: In configuration mode a brand-new empty block shows **zero** sections (the empty-section rule of
   US-018 applies to every container).
-- MUST: Inserting an empty block leaves the app in **configuration mode** — it does not auto-enter
-  programming mode; `F3` opens it on demand (US-026).
+- MUST: Inserting an empty block **enters programming mode for it immediately** — a blank block exists
+  only to be authored, so creating one opens it; `Esc` returns to configuration mode (US-026).
 
 ### AC illustrations
 
-- After inserting an empty block under `Garage`, it appears under the locality in configuration mode with no
-  sections shown and the plain editable function-block icon — **no library badge** (contrast US-020's locked
-  templates). Pressing `F3` then enters programming mode: both pane headers read `Empty block`; the left pane
-  shows `Empty block > {Input, Output, Settings, Internal variables}` and the right shows `Empty block >
-  Programs > Program > {Events, Commands}`.
+- After inserting an empty block under `Garage`, both pane headers read `Tom blok`; the left pane
+  shows `Tom blok > {Input, Output, Indstillinger, Interne variable}` and the right shows `Tom blok >
+  Programmer > Program > {Hændelser, Kommandoer}`. Pressing `Esc` returns to configuration mode, where
+  the block sits under `Garage` with no sections shown and the plain editable function-block icon —
+  **no library badge** (contrast US-020's locked templates).
 
 **Readiness:** Ready.
 
@@ -183,10 +204,27 @@ Scenario: Locked blocks resist internal edits
   Then its internals are treated as read-only until "Unlock" is applied
 ```
 
+### Business rules (unlocking transfers ownership)
+
+- MUST: Unlocking rewrites the block's **identity**, not just its lock flag: the three library-identity
+  attributes — `master_schneider_electric`, `master_type` and `master_version` — are **removed**;
+  `master_name` is **kept** (it records which library block this came from); `master_programmer` is
+  re-stamped to the current user and the `master_date_*` stamps to today; and the icon switches from
+  the library glyph to the editable-block glyph. The block's own **name and note are untouched** —
+  unlocking is not a rename.
+- MUST: The rationale is provenance: once unlocked the logic may be edited, so the block is no longer
+  that library block at that version — keeping the identity would misattribute the installer's edits.
+  (Consequence: unlock deliberately discards information — re-locking later does not reproduce the
+  original library instance; only undo does.)
+- MUST: Whether a block presents as a library instance (e.g. the origin group in its properties
+  dialog, US-018) is decided by the **library-identity key (`master_type`)**, not by
+  `master_name` — an unlocked block still carries `master_name`, and must present as the installer's
+  own block: after an unlock its properties dialog drops back to Name + Note only.
+
 ### Business rules (reversibility and the view-only gate)
 
-- MUST: Unlocking is an **ordinary undoable edit** — one *Undo* restores the lock completely (US-052). It is
-  not a one-way door.
+- MUST: Unlocking is an **ordinary undoable edit** — one *Undo* restores the lock **and the entire
+  library identity** (US-052). It is not a one-way door.
 - MUST: Unlocking raises **no warning**. It needs none: undo is the protection, and it also covers the
   installer who meant to unlock and changed their mind afterwards. **Do not add a confirmation to "protect"
   this action** — a confirmation would guard nothing.
@@ -263,9 +301,21 @@ Scenario: Add and use a favourite
   writes `master_name` / `master_programmer` / `master_date_*`, sets `locked="yes"`, applies the library
   badge and the note — **in place, with no re-insertion**. The saved block is thereafter **view-only until
   unlocked** (US-020, US-026), the same as a catalog block.
+- MUST: The save also **drops the block's previous library identity** — `master_schneider_electric`,
+  `master_type` and `master_version` are removed, the same ownership-transfer rule as US-020's unlock:
+  the block is the installer's own library instance now and stops advertising the catalog identity it
+  may have come from.
 - MUST: This is the **same locked shape** a catalog block carries, so the view-only guard, and the
   byte-fidelity of the `master_*` / `locked` attributes, apply identically whether the block came from the
   catalog or from a user *Save…*.
+
+### Business rules (the save dialog and the saved file)
+
+- MUST: The *Save…* dialog's affirmative button is labelled **Save** — it goes on to write a file —
+  unlike ordinary properties dialogs, which keep **OK**.
+- MUST: The saved library file contains the block's **definition without any project wiring** — links
+  are project data, not part of the block type — and remains a complete, valid library file that can
+  be inserted into any project.
 
 ### AC illustrations
 

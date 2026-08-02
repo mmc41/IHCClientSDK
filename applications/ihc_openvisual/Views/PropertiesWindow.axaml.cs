@@ -18,12 +18,24 @@ public partial class PropertiesWindow : ResultDialog<PropertiesResult>
     }
 
     /// <summary>Shows the dialog modally over <paramref name="owner"/>, pre-filling the name (selected) and note;
-    /// resolves to the edited values or null when cancelled.</summary>
-    public static Task<PropertiesResult?> ShowAsync(Window owner, string title, string name, string note)
+    /// resolves to the edited values or null when cancelled. A non-null <paramref name="origin"/> adds the
+    /// read-only library-provenance group a library function block shows (US-019, uxparity S-19).</summary>
+    public static Task<PropertiesResult?> ShowAsync(Window owner, string title, string name, string note,
+        LibraryOrigin? origin = null, string affirmative = "OK")
     {
         var window = new PropertiesWindow { Title = title };
+        window.OkButton.Content = affirmative;
         window.NameBox.Text = name;
         window.NoteBox.Text = note;
+        if (origin is not null)
+        {
+            window.OriginNameBox.Text = origin.Name;
+            window.OriginNumberBox.Text = origin.Number;
+            window.OriginVersionBox.Text = origin.Version;
+            window.OriginCreatedBox.Text = origin.Created;
+            window.OriginDeveloperBox.Text = origin.Developer;
+            window.OriginPanel.IsVisible = true;
+        }
         window.FocusOnOpen(window.NameBox);
         return window.ShowDialogForResult(owner);
     }

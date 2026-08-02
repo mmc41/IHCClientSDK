@@ -127,11 +127,12 @@ public sealed class AvaloniaDialogService : IDialogService
     public Task ShowSettingsAsync(string settingsText) =>
         ShowButtonsAsync("Effective settings", settingsText, selectable: true, ("Close", true));
 
-    public async Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note)
+    public async Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note, LibraryOrigin? origin = null,
+        string affirmative = "OK")
     {
         if (Owner is null)
             return null;
-        return await PropertiesWindow.ShowAsync(Owner, title, name, note);
+        return await PropertiesWindow.ShowAsync(Owner, title, name, note, origin, affirmative);
     }
 
     public async Task<VariablePropertiesResult?> EditVariablePropertiesAsync(VariablePropertiesInput input)
@@ -155,11 +156,11 @@ public sealed class AvaloniaDialogService : IDialogService
         return await SceneContainerWindow.ShowAsync(Owner, input);
     }
 
-    public async Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input)
+    public async Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input, Func<PinPropertiesResult, Task>? onApply = null)
     {
         if (Owner is null)
             return null;
-        return await PinPropertiesWindow.ShowAsync(Owner, input);
+        return await PinPropertiesWindow.ShowAsync(Owner, input, onApply);
     }
 
     public async Task<ModemPropertiesResult?> EditModemPropertiesAsync(ModemPropertiesInput input)

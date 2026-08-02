@@ -86,6 +86,9 @@ namespace Ihc.Vis.Tests
             List<string> usedTags = FirstOccurrenceTags(exported.Body);
             Assert.Multiple(() =>
             {
+                // One declaration per element type the SOURCE uses, in first-occurrence order. Source and body agree
+                // here because this block has no wiring rows to strip; where they differ the head follows the source
+                // (S-22), which is what ExportDefinition_StripsSceneWiring_ButKeepsItsTraces pins.
                 Assert.That(exported.Grammar.Declarations.Select(d => d.Tag), Is.EqualTo(usedTags),
                     "one declaration per used element type, in first-occurrence order");
                 Assert.That(usedTags, Has.Count.EqualTo(18), "the Kip census: 18 element types");
@@ -96,8 +99,12 @@ namespace Ihc.Vis.Tests
 
         // ---- Wiring strip: authored scene wiring never reaches the export ----
 
+        // Re-sourced for uxparity S-22. The wiring ROWS never reaching the export is the property that matters and it
+        // still holds. What does NOT hold — and was asserted here — is that a wired block therefore exports byte-for-
+        // byte like a never-wired one. Measured against IHC Visual's own save-to-library: it keeps two traces of the
+        // wiring it removed, so the two exports legitimately differ.
         [Test]
-        public async Task ExportDefinition_StripsSceneWiring_EqualsUnwiredExport()
+        public async Task ExportDefinition_StripsSceneWiring_ButKeepsItsTraces()
         {
             ProjectEditor editor = (await LoadOriginal()).Edit();
             byte[] unwired = Write(ExportGemOracle(editor));
@@ -105,13 +112,18 @@ namespace Ihc.Vis.Tests
             editor.LinkScene(pin, editor.Group(Room).Product("Lampeudtag").Scenes(), SceneValue.Relay(on: true));
 
             FunctionBlockDefinition exported = ExportGemOracle(editor);
+            string text = System.Text.Encoding.Latin1.GetString(Write(exported));
 
             Assert.Multiple(() =>
             {
                 Assert.That(exported.Body.Descendants().Any(e => e.Tag == "scene_link"), Is.False,
                     "the scene_link row inside the pin is stripped — no catalog file carries instance wiring");
-                Assert.That(Write(exported), Is.EqualTo(unwired),
-                    "exporting a wired block writes the same bytes as exporting the unwired block");
+                Assert.That(exported.Grammar.Declarations.Select(d => d.Tag), Does.Contain("scene_link"),
+                    "but the head still DECLARES the stripped type, as the vendor's export does");
+                Assert.That(text, Does.Contain("</resource_scene>"),
+                    "and the pin it emptied keeps its two-tag form instead of collapsing to '/>'");
+                Assert.That(Write(exported), Is.Not.EqualTo(unwired),
+                    "so a wired block does not export byte-for-byte like a never-wired one");
             });
         }
 

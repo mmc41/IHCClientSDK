@@ -55,17 +55,52 @@ internal sealed class PropertiesDialogCoordinator(
             await OpenNameNoteAsync(id, session.Current!.View(element).Name ?? string.Empty);
     }
 
+    /// <summary>
+    /// Opens the dialog a JUST-PLACED product raises, and reports whether the installer committed it. Placing a
+    /// product asks for its documentation as part of placing it and cancelling places nothing (US-011, uxparity
+    /// S-12) — so the insert path needs both the right dialog for the type (a modem raises the modem dialog, not
+    /// the generic product one — measured: IHC Visual opens "SMS Modem Egenskaber") and the yes/no answer.
+    /// </summary>
+    public async Task<bool> OpenForInsertAsync(ElementId id)
+    {
+        if (session.Current is not { } project || project.FindById(id) is not { } element)
+            return false;
+        return ProductClassifier.IsModem(element.Tag)
+            ? await OpenModemAsync(id)
+            : await OpenProductAsync(id);
+    }
+
     /// <summary>Edits a locality's or function block's Name and Note through the shared dialog and generic rename
     /// command (US-007/US-019) — refused inside a locked block by T003.</summary>
     public async Task OpenNameNoteAsync(ElementId id, string currentName)
     {
         if (session.Current is not { } project)
             return;
-        string currentNote = project.FindById(id) is { } locality ? project.View(locality).Note ?? string.Empty : string.Empty;
-        PropertiesResult? result = await dialogs.EditPropertiesAsync($"Edit {currentName} properties", currentName, currentNote);
+        ProjectElement? element = project.FindById(id);
+        string currentNote = element is not null ? project.View(element).Note ?? string.Empty : string.Empty;
+        PropertiesResult? result = await dialogs.EditPropertiesAsync(
+            $"Edit {currentName} properties", currentName, currentNote, OriginOf(project, element));
         if (result is null)
             return;   // cancelled — the locality keeps its original name and note
         await applyAndReport(session.Commands.RenameLocality(project, id, result.Name, result.Note), $"Renamed to {result.Name}.");
+    }
+
+    /// <summary>
+    /// The read-only provenance to show under the editable fields: where a LIBRARY function block came from
+    /// (uxparity S-19). Null for a locality and for a block authored from scratch — neither has a master.
+    /// </summary>
+    private static LibraryOrigin? OriginOf(Project project, ProjectElement? element)
+    {
+        LibraryOrigin? origin = null;
+        if (element is { Kind: ElementKind.FunctionBlock } block
+            && new FunctionBlockView(project, block) is { IsLibraryBlock: true } view)
+            origin = new LibraryOrigin(
+                view.MasterName ?? string.Empty,
+                view.MasterType ?? string.Empty,
+                view.MasterVersion ?? string.Empty,
+                view.MasterDate?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? string.Empty,
+                view.MasterProgrammer ?? string.Empty);
+        return origin;
     }
 
     /// <summary>Edits an ordinary FB resource variable's Name, Note, and typed initial value (US-026/US-027, T015/T016)
@@ -178,10 +213,10 @@ internal sealed class PropertiesDialogCoordinator(
         return (project.View(def).Name ?? string.Empty, states);
     }
 
-    private async Task OpenModemAsync(ElementId modemId)
+    private async Task<bool> OpenModemAsync(ElementId modemId)
     {
         if (session.Current is not { } project || project.FindById(modemId) is not { } modem)
-            return;
+            return false;
         var view = new ModemView(project, modem);
         List<LocalityChoice> localities = BuildLocalityChoices(project);
         string currentLocalityId = project.FindParent(modemId)?.Id?.ToToken() ?? string.Empty;
@@ -202,8 +237,9 @@ internal sealed class PropertiesDialogCoordinator(
 
         ModemPropertiesResult? result = await dialogs.EditModemPropertiesAsync(input);
         if (result is null)
-            return;
+            return false;
         await applyAndReport(session.Commands.UpdateModem(project, modemId, result), $"Updated {result.Name}.");
+        return true;
     }
 
     private async Task OpenPinAsync(ElementId pinId, ProjectElement pin)
@@ -217,16 +253,26 @@ internal sealed class PropertiesDialogCoordinator(
             view.CableColour ?? string.Empty,
             view.Note ?? string.Empty,
             view.InitialValueOn,
-            InUseTerminals(isOutput, pinId));
+            InUseTerminals(isOutput, pinId),
+            view.Name ?? string.Empty,
+            view.Backup);
 
-        PinPropertiesResult? result = await dialogs.EditPinPropertiesAsync(input);
+        // Apply commits and leaves the dialog open, so several terminals can be addressed in one visit
+        // (the vendor's Anvend); OK commits the same way and closes.
+        async Task Commit(PinPropertiesResult r)
+        {
+            // A bespoke failure message (invalid address) rather than the generic mapping, so read the outcome
+            // directly.
+            EditOutcome outcome = await session.ApplyAsync(session.Commands.UpdatePin(session.Current!, pinId, r));
+            setStatus(outcome.Status == EditStatus.Committed
+                ? $"Addressed {view.Name} to data line {r.DataLine}, terminal {r.Terminal}."
+                : $"Data line {r.DataLine}, terminal {r.Terminal} is not a valid address.");
+        }
+
+        PinPropertiesResult? result = await dialogs.EditPinPropertiesAsync(input, Commit);
         if (result is null)
             return;   // cancelled — the pin keeps its addressing
-        // A bespoke failure message (invalid address) rather than the generic mapping, so read the outcome directly.
-        EditOutcome outcome = await session.ApplyAsync(session.Commands.UpdatePin(session.Current!, pinId, result));
-        setStatus(outcome.Status == EditStatus.Committed
-            ? $"Addressed {view.Name} to data line {result.DataLine}, terminal {result.Terminal}."
-            : $"Data line {result.DataLine}, terminal {result.Terminal} is not a valid address.");
+        await Commit(result);
     }
 
     // The localities offered as re-parent choices in the product/modem dialogs.
@@ -262,12 +308,16 @@ internal sealed class PropertiesDialogCoordinator(
     // The product documentation dialog (US-011) plus its terminal-addressing grids (US-012). Re-entrant: choosing to
     // configure a terminal applies the documentation, opens the addressing sub-dialog for that terminal, then re-opens
     // this dialog — the vendor's in-place "Konfigurer indgang/udgang" flow.
-    private async Task OpenProductAsync(ElementId productId)
+    /// <summary>Opens a placed product's documentation dialog. Returns <c>false</c> when the installer cancelled
+    /// without committing anything — the insert path needs that answer, because cancelling the dialog that opens
+    /// as part of placing a product means the product is not placed at all (US-011).</summary>
+    public async Task<bool> OpenProductAsync(ElementId productId)
     {
+        bool committed = false;
         while (true)
         {
             if (session.Current is not { } project || project.FindById(productId) is not { } product)
-                return;
+                return committed;
             var view = new ProductView(project, product);
             List<LocalityChoice> localities = BuildLocalityChoices(project);
             string currentLocalityId = project.FindParent(productId)?.Id?.ToToken() ?? string.Empty;
@@ -294,8 +344,9 @@ internal sealed class PropertiesDialogCoordinator(
 
             ProductPropertiesResult? result = await dialogs.EditProductPropertiesAsync(input);
             if (result is null)
-                return;   // cancelled — the product keeps its documentation
+                return committed;   // cancelled — the product keeps its documentation
             await applyAndReport(session.Commands.UpdateProduct(project, productId, result), $"Updated {result.Name}.");
+            committed = true;
             if (result.ConfigureTerminalPinId is { } pinToken && ElementId.TryParse(pinToken, out ElementId pinId)
                 && session.Current?.FindById(pinId) is { } pinEl && pinEl.Kind == ElementKind.DatalinePin)
             {
@@ -304,7 +355,7 @@ internal sealed class PropertiesDialogCoordinator(
             }
             if (result.OpenAdvanced)
                 await OpenAdvancedDimmerAsync(productId);   // Properties ▸ Advanced (US-015)
-            return;
+            return committed;
         }
     }
 

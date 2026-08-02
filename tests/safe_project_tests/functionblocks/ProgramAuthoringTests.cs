@@ -30,7 +30,7 @@ namespace Ihc.Vis.Tests
             foreach (ElementId fbId in loaded.Root.Descendants()
                          .Where(e => e.Tag == "functionblock").Select(e => e.Id!.Value).ToList())
             {
-                editor.FunctionBlock(fbId).Unlock();
+                editor.FunctionBlock(fbId).Unlock("Test Installer", new DateOnly(2026, 1, 1));
             }
             return editor.ToProject();
         }

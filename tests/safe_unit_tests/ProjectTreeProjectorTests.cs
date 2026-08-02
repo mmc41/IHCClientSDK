@@ -30,8 +30,10 @@ namespace safe_unit_tests;
 /// </summary>
 public class ProjectTreeProjectorTests
 {
-    private static readonly string[] AllFourSections = ["Input", "Output", "Settings", "Internal variables"];
-    private static readonly string[] NonInternalSections = ["Input", "Output", "Settings"];
+    // Section captions come from the containers' own stored names, so these are the standard blocks' captions
+    // as the .vis holds them — not the app's wording.
+    private static readonly string[] AllFourSections = ["Input", "Output", "Indstillinger", "Interne variable"];
+    private static readonly string[] NonInternalSections = ["Input", "Output", "Indstillinger"];
 
     private static ProjectAppService Service() => new(new IhcSettings());
 

@@ -1,6 +1,6 @@
 ---
-version: 0.3.1
-last-updated: 2026-07-21
+version: 0.4.0
+last-updated: 2026-08-02
 status: draft
 ---
 
@@ -43,8 +43,15 @@ Scenario: Enter programming mode for a block
   When I press F3
   Then the view switches to programming mode showing one block at a time
   And both pane headers change to the block's name
-  And the left pane shows the block's variable sections including "Internal variables" (visible only in
-    programming mode), while the right pane shows "Programs" > "Program" > { "Events", "Commands" }
+  And the left pane shows the block's variable sections including its internal-variables section
+    (visible only in programming mode), while the right pane shows the block's program subtree —
+    every container labelled by its stored name (US-018's stored-caption rule)
+
+Scenario: Enter programming mode from a pin or section
+  Given a pin or section INSIDE a function block is selected (not the block node itself)
+  When I press F3 (or choose "Show program")
+  Then programming mode opens for the block that OWNS the selected node
+  And a node outside any function block leaves the view unchanged
 
 Scenario: Return to configuration mode
   Given I am in programming mode
@@ -60,8 +67,14 @@ Scenario: Switch focus between the two panes
 ### Business rules (what a mode transition changes)
 
 - MUST: Entering programming mode **re-roots both panes to the function block's own name** — the left pane
-  to its variable sections (*Input* / *Output* / *Settings* / *Internal variables*), the right pane to
-  *Programs*.
+  to its variable sections, the right pane to its program container. Every container caption renders
+  its **stored name** from the project file (US-018's stored-caption rule) — e.g. `Programmer`,
+  `Hændelser`, `Kommandoer` in the standard seed — never a hard-coded UI string.
+- MUST: `F3` / *Show program* works from **any node inside a block** — the block itself, or a pin or
+  section under it — and opens the **owning** block's program; on a node outside any block it does
+  nothing.
+- MUST: Inserting an **empty** function block enters programming mode for the new block automatically
+  (US-019) — creation is the one entry route that needs no `F3`.
 - MUST: Leaving programming mode re-roots **both** panes back to *Localities*.
 - MUST: The pane roots are what tell the two modes apart — configuration mode roots at *Localities*,
   programming mode roots at the block's name. (This is the only reliable signal of which mode the view is
@@ -79,9 +92,12 @@ Scenario: Switch focus between the two panes
 
 ### AC illustrations
 
-- Pressing `F3` on an empty block named `Empty block` shows both headers as `Empty block`, left pane
-  `Empty block > {Input, Output, Settings, Internal variables}`, right pane
-  `Empty block > Programs > Program > {Events, Commands}`.
+- Pressing `F3` on an empty block named `Tom blok` shows both headers as `Tom blok`, left pane
+  `Tom blok > {Input, Output, Indstillinger, Interne variable}`, right pane
+  `Tom blok > Programmer > Program > {Hændelser, Kommandoer}` — the captions are the seed's stored
+  names (US-019).
+- Pressing `F3` on the `Indgang` pin of a block named `Trappe-automatik` opens programming mode for
+  `Trappe-automatik` — the pin's owner — exactly as if the block itself had been selected.
 
 ### Constraints
 
@@ -91,10 +107,10 @@ Scenario: Switch focus between the two panes
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Partly implemented — the mode transition works, `Internal variables` is correctly
-hidden in configuration mode, and the locked-block view-only **UI** gate withdraws the insert/delete/move
-commands. ⚠ The **engine-level** view-only guard is incomplete — a non-UI edit (or the still-ungated AND/OR
-toggle, save-current-value, log-mark, or *Properties*-driven rename/enum-edit) can still mutate a `locked` block.
+**Implementation status:** ✅ Implemented — the mode transition works (including entry from a pin/section
+onto the owning block, and automatic entry on empty-block insert), `Internal variables` is correctly
+hidden in configuration mode, and the locked-block view-only gate is enforced both in the UI and by the
+central engine guard (see US-020's status for the guard's coverage).
 
 ---
 

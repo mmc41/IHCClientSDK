@@ -74,7 +74,7 @@ internal static class SessionEditingTestExtensions
         s.ProducedId(s.Commands.AddEmptyFunctionBlock(s.Current!, localityId, ProjectWorkflow.EmptyBlockName));
 
     public static Task<bool> UnlockFunctionBlockAsync(this ProjectWorkflow s, ElementId functionBlockId) =>
-        s.Committed(s.Commands.UnlockFunctionBlock(s.Current!, functionBlockId));
+        s.Committed(s.Commands.UnlockFunctionBlock(s.Current!, functionBlockId, "Test Installer"));
 
     public static Task<ElementId?> AddVariableAsync(this ProjectWorkflow s, ElementId sectionId, string resourceTag, string name) =>
         s.ProducedId(s.Commands.AddVariable(s.Current!, sectionId, resourceTag, name));

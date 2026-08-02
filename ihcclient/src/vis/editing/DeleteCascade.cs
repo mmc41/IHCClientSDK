@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 
 using Ihc.Vis.Model;
@@ -61,6 +62,49 @@ namespace Ihc.Vis.Editing
             CollectExternalReciprocalHalves(source, insideIds, external);
             ProjectElement pruned = source;
             foreach (ElementId halfId in external)
+            {
+                pruned = RemoveById(pruned, halfId);
+            }
+            return pruned;
+        }
+
+        /// <summary>
+        /// Clears the wired terminal assignment (<c>address_dataline</c>) from every pin in the subtree, so a
+        /// pasted duplicate arrives unaddressed. A data-line terminal is EXCLUSIVE — two products cannot occupy
+        /// the same one — so a copy that kept the address would silently create a conflict.
+        /// <para>
+        /// Deliberately only <c>address_dataline</c>. The wireless <c>address_channel</c> is NOT cleared: measured
+        /// against IHC Visual (uxparity S-10), a copied airlink product keeps all three of its channel addresses,
+        /// where a copied data-line product loses its terminal. The analogy between the two would have been wrong.
+        /// </para>
+        /// </summary>
+        internal static ProjectElement ClearDatalineAddresses(ProjectElement source)
+        {
+            ProjectElement Strip(ProjectElement e)
+            {
+                ProjectElement mapped = e.GetAttribute("address_dataline") is null
+                    ? e
+                    : e with { Attrs = e.AttrsOrEmpty().Where(a => a.Name != "address_dataline").ToImmutableArray() };
+                return mapped.ChildrenOrEmpty().Any()
+                    ? mapped with { Children = mapped.ChildrenOrEmpty().Select(Strip).ToImmutableArray() }
+                    : mapped;
+            }
+            return Strip(source);
+        }
+
+        /// <summary>
+        /// Removes EVERY reciprocal half in the subtree, including pairs whose two ends are both inside it —
+        /// IHC Visual's clipboard-paste behaviour, measured on a whole-locality copy: the source room carried six
+        /// link halves and the pasted duplicate carried none (uxparity S-10). A duplicate therefore arrives
+        /// unwired, whatever it contained.
+        /// </summary>
+        internal static ProjectElement DropAllReciprocalHalves(ProjectElement source)
+        {
+            ProjectElement pruned = source;
+            foreach (ElementId halfId in source.DescendantsAndSelf()
+                         .Where(e => ReciprocalTags.All.Contains(e.Tag) && e.Id is not null)
+                         .Select(e => e.Id!.Value)
+                         .ToList())
             {
                 pruned = RemoveById(pruned, halfId);
             }

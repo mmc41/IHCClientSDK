@@ -1,5 +1,6 @@
 #nullable enable
 using Ihc.Vis.Editing;
+using Ihc.Vis.Schema;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
@@ -15,7 +16,7 @@ namespace Ihc.Vis.Session
         internal override EditVerdict Evaluate(EditContext context) =>
             (context.Index.FindById(SourceId) is { } source
             && context.Index.FindById(TargetParentId) is { } target
-            && StructurePlacement.CanContain(source.Tag, target.Tag)
+            && StructurePlacement.CanContain(source.Tag, target.Tag, context.Project.FindParent(TargetParentId)?.Tag)
             && context.Index.FindParent(SourceId)?.Id != TargetParentId
             && context.Project.Edit().CanMoveSubtree(SourceId, TargetParentId)
                 ? EditVerdict.Allow
@@ -43,11 +44,15 @@ namespace Ihc.Vis.Session
         internal override EditVerdict Evaluate(EditContext context) =>
             (context.Index.FindById(SourceId) is { } source
             && context.Index.FindById(TargetParentId) is { } target
-            && StructurePlacement.CanContain(source.Tag, target.Tag)
+            && StructurePlacement.CanContain(source.Tag, target.Tag, context.Project.FindParent(TargetParentId)?.Tag)
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse("That container cannot hold this node."))
             .And(context.RequireUnlockedTarget(TargetParentId, inclusive: true));   // T003: no copy INTO a locked block
-        internal override ElementId ExecuteCore(ProjectEditor editor) => editor.CopySubtree(SourceId, TargetParentId);
+        // DropAll, not the DropExternal default: a clipboard paste produces an UNWIRED duplicate, links and all
+        // (uxparity S-10, measured against IHC Visual on a whole-locality copy). A product copy is unaffected —
+        // its halves are all external either way — so the copy/paste byte oracle is untouched.
+        internal override ElementId ExecuteCore(ProjectEditor editor) =>
+            editor.CopySubtree(SourceId, TargetParentId, LinkCopyPolicy.DropAll);
     }
 
     /// <summary>Deletes a node by id (US-009/US-057). <paramref name="Cascade"/> (decided by the GUI after its
@@ -67,8 +72,25 @@ namespace Ihc.Vis.Session
 
     internal static class StructurePlacement
     {
-        // A product or function block belongs under a locality (group) — US-054/US-056.
-        public static bool CanContain(string sourceTag, string targetTag) =>
-            (ProductClassifier.IsProduct(sourceTag) || sourceTag == "functionblock") && targetTag == "group";
+        /// <summary>
+        /// Whether a move/paste of <paramref name="sourceTag"/> into <paramref name="targetTag"/> is legal
+        /// (US-054/US-056), answered by the schema layer's containment model rather than restated here.
+        /// <para>
+        /// This used to hard-code one case — product-or-function-block into a locality — which silently
+        /// contradicted <see cref="PlacementRules"/>: a locality pasted into the locality CONTAINER is legal
+        /// there and refused here, so a copied locality could be pasted nowhere at all (uxparity S-10, where the
+        /// app's own status hint said "paste onto a locality to duplicate it" and every such paste was rejected).
+        /// </para>
+        /// <para>
+        /// The extra <see cref="PlacementRules.OptionsFor"/> test keeps the widening safe. The model is
+        /// deliberately PERMISSIVE for a parent it does not describe, so that an insert it has not been taught
+        /// is never blocked — but "unknown, so allow" is the wrong default for a paste, which would then accept
+        /// a product dropped onto a pin. Requiring the target to be a container the model actually describes
+        /// keeps that default out of this path.
+        /// </para>
+        /// </summary>
+        public static bool CanContain(string sourceTag, string targetTag, string? targetParentTag) =>
+            PlacementRules.OptionsFor(targetTag, targetParentTag).Count > 0
+            && PlacementRules.CanInsert(targetTag, sourceTag, targetParentTag);
     }
 }

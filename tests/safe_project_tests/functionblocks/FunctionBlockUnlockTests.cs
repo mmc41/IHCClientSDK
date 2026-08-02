@@ -1,13 +1,17 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// BL-8 — <see cref="FunctionBlockRef.Unlock"/>, the inverse of <see cref="FunctionBlockRef.Locked"/> (US-020
-    /// "Oplås"): demote a block loaded with <c>locked="yes"</c> to an editable custom block by clearing the flag to
-    /// its default, so the canonicalizer omits it on save. Oracle: the locked <c>AutoProof</c> block in
-    /// <c>project2-CustomBlock.vis:451</c>. (The GUI icon swap on unlock is out of scope per §2.3.)
+    /// BL-8 — <see cref="FunctionBlockRef.Unlock"/> (US-020 "Oplås"): demote a block loaded with
+    /// <c>locked="yes"</c> to an editable custom block by clearing the flag to its default, so the canonicalizer
+    /// omits it on save. Oracle: the locked <c>AutoProof</c> block in <c>project2-CustomBlock.vis:451</c>.
+    /// <para>These cases cover the <c>locked</c> flag only. Unlock is NOT the inverse of
+    /// <see cref="FunctionBlockRef.Locked"/> — it also discards the library identity and re-stamps ownership
+    /// (including the icon, which uxparity S-20 measured as part of the FILE transform, not a GUI concern).
+    /// That half is covered by <c>UnlockFunctionBlockParityTests</c>.</para>
     /// </summary>
     public class FunctionBlockUnlockTests
     {
@@ -33,7 +37,7 @@ namespace Ihc.Vis.Tests
             Assert.That(locked.GetAttribute("locked"), Is.EqualTo("yes"), "precondition: the block is loaded locked");
 
             ProjectEditor editor = project.Edit();
-            Block(editor, project, "AutoProof").Unlock();
+            Block(editor, project, "AutoProof").Unlock("Test Installer", new DateOnly(2026, 1, 1));
             Project built = editor.ToProject();
 
             Assert.Multiple(() =>
@@ -51,17 +55,19 @@ namespace Ihc.Vis.Tests
             ProjectEditor editor = project.Edit();
             FunctionBlockRef block = Block(editor, project, "AutoProof");
 
-            Assert.That(block.Unlock(), Is.SameAs(block));
+            Assert.That(block.Unlock("Test Installer", new DateOnly(2026, 1, 1)), Is.SameAs(block));
         }
 
         [Test]
-        public async Task Locked_ThenUnlock_IsANoOpOnAnAlreadyEditableBlock()
+        // Renamed for uxparity S-20: unlocking an already-editable block is NOT a no-op any more (it re-stamps
+        // ownership), so only the claim that still holds is asserted — the lock flag itself round-trips.
+        public async Task Locked_ThenUnlock_LeavesNoLockedAttribute()
         {
             Project project = await LoadOracle();
             ProjectEditor editor = project.Edit();
             FunctionBlockRef custom = Block(editor, project, "Custom blok");   // not locked
 
-            custom.Locked().Unlock();
+            custom.Locked().Unlock("Test Installer", new DateOnly(2026, 1, 1));
             Project built = editor.ToProject();
 
             ProjectElement fb = built.Root.Descendants().First(e => e.GetAttribute("name") == "Custom blok");

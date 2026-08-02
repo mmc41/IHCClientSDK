@@ -30,6 +30,11 @@ public sealed partial class TreeNodeViewModel : ObservableObject
     /// <see cref="NodeKind"/> automation string derive from it (W3-7).</summary>
     public TreeNodeKind Kind { get; init; } = TreeNodeKind.Unknown;
 
+    /// <summary>Whether this row should OPEN when it gains its first child, so the new node is visible (US-006).
+    /// Distinct from <see cref="IsExpanded"/>, which is the row's state right now: a locality opens on its first
+    /// product but still starts closed when a project is opened, and a product does not open on its first pin.</summary>
+    public bool RevealsOnFirstChild { get; init; }
+
     /// <summary>The parameterised suffix of a <see cref="TreeNodeKind.Pin"/> (its resource tag) or
     /// <see cref="TreeNodeKind.Section"/> (its container tag), so the <see cref="NodeKind"/> string can reproduce the
     /// vendor-parameterised forms <c>pin:&lt;tag&gt;</c> / <c>section:&lt;container&gt;</c>; null for fixed kinds.</summary>

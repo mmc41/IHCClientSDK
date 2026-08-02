@@ -52,12 +52,17 @@ public sealed class ProjectWorkflow : IDisposable
         TimeSpan? autoBackupInterval = null,
         int changeBackupThreshold = 10,
         string? catalogDir = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        InstallerIdentityStore? installerIdentity = null)
     {
         _service = service;
         _backup = backup;
         _recent = recent;
         _dialogs = dialogs;
+        // Not defaulted to CreateDefault(): an unconfigured session must not read (or write) the real user's
+        // settings file, so tests and design-time instances start from an empty in-memory identity.
+        InstallerIdentity = installerIdentity ?? new InstallerIdentityStore(
+            Path.Combine(catalogDir ?? DefaultCatalogDir(), "installer.json"));
         _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<ProjectWorkflow>();
         _timeProvider = timeProvider ?? TimeProvider.System;   // D8: the auto-backup clock/timer, fakeable in tests
         _changeBackupThreshold = changeBackupThreshold < 1 ? 10 : changeBackupThreshold;
@@ -85,6 +90,9 @@ public sealed class ProjectWorkflow : IDisposable
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "IHC OpenVisual", "catalog");
 
     public Project? Current { get; private set; }
+
+    /// <summary>The installer contact details stamped into every new project (US-002).</summary>
+    public InstallerIdentityStore InstallerIdentity { get; }
 
     /// <summary>The SDK command-factory gateway (the single authoring door, D01): builds ready-to-apply
     /// <see cref="ProjectCommand"/>s the VM hands to <see cref="ApplyAsync(ProjectCommand,int?)"/>. Exposes the
@@ -225,7 +233,10 @@ public sealed class ProjectWorkflow : IDisposable
             return false;
         try
         {
-            Project loaded = await _service.Load(path);
+            // Opening is not a passive read: the catalog enums are re-hoisted with fresh ids, so a file opened and
+            // saved back unchanged legitimately differs from the file that was opened. Done before SetProject so it
+            // lands outside the undo history and leaves the document clean — it is part of opening, not an edit.
+            Project loaded = _service.NormalizeOnOpen(await _service.Load(path));
             SetProject(loaded, path, dirty: false);
             _recent.Add(path);
             _backup.Delete();
@@ -285,8 +296,10 @@ public sealed class ProjectWorkflow : IDisposable
         return true;
     }
 
-    /// <summary>The default name a freshly inserted locality carries until the installer renames it (US-008).</summary>
-    public const string NewLocalityName = "Locality";
+    /// <summary>The placeholder name a freshly inserted locality carries until the installer renames it (US-008).
+    /// It is written into the file as <c>&lt;group name="…"&gt;</c> — project data, not UI text — so it is the
+    /// format's own placeholder rather than an English one.</summary>
+    public const string NewLocalityName = "Lokalitet";
 
     // Reports (US-040/041) delegate to the ProjectReportWorkflow collaborator (T019). The app renders ONE combined
     // model (D14); the former per-section report entry points were retired in T032.
@@ -332,8 +345,10 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>The catalog function blocks as slim insert-menu items (<see cref="CatalogItem"/>).</summary>
     public IReadOnlyList<CatalogItem> GetFunctionBlockCatalogItems() => _service.GetFunctionBlockCatalogItems();
 
-    /// <summary>The default name a freshly inserted empty function block carries until renamed (US-019).</summary>
-    public const string EmptyBlockName = "Empty block";
+    /// <summary>The default name a freshly inserted empty function block carries until renamed (US-019). Written into
+    /// the file as the block's <c>name</c> — project data like <see cref="NewLocalityName"/>, so it is the format's own
+    /// placeholder rather than an English one.</summary>
+    public const string EmptyBlockName = "Tom blok";
 
 
     /// <summary>
@@ -556,7 +571,8 @@ public sealed class ProjectWorkflow : IDisposable
             // Capture the snapshot that is being written BEFORE the await (the race fix): an edit landing during
             // the file I/O must not be marked clean — the save point is exactly the snapshot the file holds.
             Project snapshot = Current!;
-            await _service.Save(snapshot, path);
+            // SaveDocument, not Save: the editor's save keeps the file it replaces as a .BAK side-file.
+            await _service.SaveDocument(snapshot, path);
             lock (_gate)
             {
                 FilePath = path;
@@ -594,10 +610,10 @@ public sealed class ProjectWorkflow : IDisposable
 
     private void NewInternal()
     {
-        // English is OpenVisual's product language, so authored projects start from English room names (US-002).
-        // The seeding lives in the SDK now (CreateNew's LocalityLanguage option), not an app-side project.Edit().
-        Project project = _service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty),
-            language: LocalityLanguage.English);
+        // English is the product language for UI text only: the default room names land in the .vis as data, so a
+        // new project carries the file format's own locality names (US-002) and is interchangeable with the vendor's.
+        // The installer identity comes from application settings, the programmer from the signed-in user.
+        Project project = _service.CreateNew(InstallerIdentity.NewProjectDetails(), language: LocalityLanguage.Vendor);
         SetProject(project, null, dirty: false);
     }
 

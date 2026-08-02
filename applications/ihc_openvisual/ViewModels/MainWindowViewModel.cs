@@ -87,6 +87,24 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [NotifyPropertyChangedFor(nameof(CanDeleteSelected))]
     [NotifyPropertyChangedFor(nameof(CanMoveSelected))]
     [NotifyCanExecuteChangedFor(nameof(DeleteCommand))]   // the Delete-key route gates on DeleteCommand.CanExecute (T003)
+    [NotifyPropertyChangedFor(nameof(CanCutSelected))]
+    [NotifyPropertyChangedFor(nameof(CanCutFromMenuBar))]
+    [NotifyPropertyChangedFor(nameof(CanCopySelected))]
+    [NotifyPropertyChangedFor(nameof(CanCopyFromContextMenu))]
+    [NotifyPropertyChangedFor(nameof(CanDeleteFromMenuBar))]
+    [NotifyPropertyChangedFor(nameof(CanInsertLocalityHere))]
+    [NotifyPropertyChangedFor(nameof(CanShowProperties))]
+    [NotifyPropertyChangedFor(nameof(CanShowProgram))]
+    [NotifyPropertyChangedFor(nameof(CanShowProgramFromMenuBar))]
+    [NotifyPropertyChangedFor(nameof(CanNavigateLinkOpposite))]
+    [NotifyCanExecuteChangedFor(nameof(CutCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CopyCommand))]
+    [NotifyCanExecuteChangedFor(nameof(PasteCommand))]
+    [NotifyCanExecuteChangedFor(nameof(PropertiesCommand))]
+    [NotifyCanExecuteChangedFor(nameof(EnterProgrammingModeCommand))]
+    [NotifyCanExecuteChangedFor(nameof(NavigateLinkOppositeCommand))]
+    [NotifyCanExecuteChangedFor(nameof(InsertEmptyFunctionBlockCommand))]
+    [NotifyCanExecuteChangedFor(nameof(InsertLocalityCommand))]
     private TreeNodeViewModel? _selectedNode;
 
     /// <summary>Whether the block currently being programmed is a locked (library) block. A locked block is
@@ -120,6 +138,57 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Context-menu gate: <i>Paste</i> is offered on a locality only when the clipboard holds a cut/copied
     /// node (A-5b/F-010) — the vendor shows it conditionally (6 items empty, 7 full).</summary>
     public bool CanPaste => _clipboardId is not null && SelectedNode?.NodeKind == "locality";
+
+    // Menu-enablement gates measured against IHC Visual (uxparity S-27): the vendor GREYS a command that cannot
+    // apply to the current selection, which is how the installer sees what is possible. OpenVisual enforced the
+    // same rules when a command ran, but left every menu item enabled, so the menu promised more than it did.
+    /// <summary>Cut needs a structural node that may be MOVED — and the vendor greys it on a locked (library)
+    /// block, whose contents are not the installer's to take (uxparity S-28).</summary>
+    public bool CanCutSelected =>
+        SelectedNode?.ElementId is not null && SelectedNode?.CanCut == true;
+
+    /// <summary>Copy reaches further than Cut: the vendor offers it on a product terminal, which cannot be cut
+    /// (measured on `Tryk (venstre)`: Kopier enabled, Klip greyed). Only a PRODUCT terminal — an FB pin's
+    /// context menu has no Kopier — so the discriminator is the pin's own resource tag.</summary>
+    public bool CanCopySelected =>
+        SelectedNode?.ElementId is not null && (SelectedNode?.CanCopy == true || SelectedNode?.IsPin == true);
+
+    /// <summary>The CONTEXT menu is narrower than the bar here: the vendor offers Kopier on a product terminal's
+    /// flyout but NOT on a function-block pin's, while Rediger ▸ Kopier is enabled for both (uxparity S-28).</summary>
+    public bool CanCopyFromContextMenu =>
+        SelectedNode?.ElementId is not null
+        && (SelectedNode?.CanCopy == true || SelectedNode?.NodeKind?.StartsWith("pin:dataline") == true);
+
+    /// <summary>Cut in the MENU BAR is stricter than on the context menu, like Delete and Show program: the
+    /// vendor greys Klip in Rediger for a locked block while its context menu still offers it (S-28).</summary>
+    public bool CanCutFromMenuBar => CanCutSelected && SelectedNode?.IsLockedFunctionBlock != true;
+
+    /// <summary>Delete in the MENU BAR is stricter than on the context menu: the vendor greys it for a locked
+    /// (library) block in Rediger while its own context menu still offers Slet there (uxparity S-28, verified by
+    /// screenshot). Both surfaces are reproduced as measured rather than reconciled.</summary>
+    public bool CanDeleteFromMenuBar => CanDeleteSelected && SelectedNode?.IsLockedFunctionBlock != true;
+
+    /// <summary>Show program in the MENU BAR is stricter for the same reason as Delete: the vendor greys Vis
+    /// program in Vis for a locked (library) block while offering it on the block's own context menu
+    /// (uxparity S-28). A locked block's program is view-only, not unreachable.</summary>
+    public bool CanShowProgramFromMenuBar =>
+        SelectedNode?.IsFunctionBlock == true && SelectedNode?.IsLockedFunctionBlock != true;
+
+    /// <summary>Insert ▸ Locality is offered only on the localities root — a locality cannot hold a locality
+    /// (S-07), and the vendor greys the item everywhere else.</summary>
+    public bool CanInsertLocalityHere => SelectedNode?.CanInsertLocality == true;
+
+    /// <summary>Properties needs a node that HAS properties: the localities root does not.</summary>
+    public bool CanShowProperties => SelectedNode?.ElementId is not null && SelectedNode?.IsLocalitiesRoot != true;
+
+    /// <summary>Leaving programming mode is only possible while in it.</summary>
+    public bool CanLeaveProgrammingMode => IsProgrammingMode;
+
+    /// <summary>Show program needs a function block.</summary>
+    public bool CanShowProgram => OwningFunctionBlockOf(SelectedNode) is not null;
+
+    /// <summary>Jump-to-opposite needs a link row.</summary>
+    public bool CanNavigateLinkOpposite => SelectedNode?.IsLinkRow == true;
 
     /// <summary>Whether the active selection lives in the <i>Installation</i> pane (vs the <i>Functions</i> pane). The
     /// shared node context menu uses this to offer product insertion only where products belong.</summary>
@@ -567,7 +636,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Inserts an empty function block under the selected locality (US-019). Invoked from the right-click
     /// <i>Empty function block</i> item and Ctrl+Shift+B.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanInsertFunctionBlock))]
     private Task InsertEmptyFunctionBlock() => RunAsync(nameof(InsertEmptyFunctionBlock), async () =>
     {
         if (SelectedNode?.ElementId is not { } localityId || _session.Current is not { } project)
@@ -576,8 +645,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             return;
         }
         string localityName = SelectedNode.DisplayName;
-        await ApplyAsync(_session.Commands.AddEmptyFunctionBlock(project, localityId, ProjectWorkflow.EmptyBlockName),
-            $"{ProjectWorkflow.EmptyBlockName} was inserted under {localityName}");
+        if (await ApplyAsync(_session.Commands.AddEmptyFunctionBlock(project, localityId, ProjectWorkflow.EmptyBlockName),
+                $"{ProjectWorkflow.EmptyBlockName} was inserted under {localityName}") is not { } blockId)
+            return;
+        // A blank block exists only to be authored, so creating one opens it: both panes re-root at the new block
+        // exactly as F3 would (uxparity S-18 — the vendor does this too).
+        EnterProgrammingMode(FindNode(FunctionNodes, blockId));
     });
 
     /// <summary>Inserts a preprogrammed library function block (US-018) under the selected locality — shown in the
@@ -675,13 +748,17 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Inserts a new locality under <i>Localities</i> (US-008), then selects it in the Installation pane.
     /// Invoked from the right-click <i>Insert locality</i> item on the Localities root.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanInsertLocalityHere))]
     private Task InsertLocality() => RunAsync(nameof(InsertLocality), async () =>
     {
         if (_session.Current is not { } project)
             return;
+        // Name the container the way the tree does — from the project, not a hard-coded caption. The two must
+        // agree: a message reading "under Localities" beside a root row reading "Lokaliteter" names nothing the
+        // installer can see.
+        string container = project.Child("groups") is { } groups ? project.NameOr(groups, "Localities") : "Localities";
         if (await ApplyAsync(_session.Commands.AddLocality(project, ProjectWorkflow.NewLocalityName),
-                $"{ProjectWorkflow.NewLocalityName} was inserted under Localities") is not { } id)
+                $"{ProjectWorkflow.NewLocalityName} was inserted under {container}") is not { } id)
             return;
         // Refresh already rebuilt the trees (StateChanged); highlight the new locality in the Installation pane
         // (which sets it as the active node).
@@ -697,7 +774,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             return;
         string currentName = _session.Current!.View(fb).Name ?? "block";
         string currentNote = _session.Current!.View(fb).Note ?? string.Empty;
-        PropertiesResult? meta = await _dialogs.EditPropertiesAsync("Save function block", currentName, currentNote);
+        PropertiesResult? meta = await _dialogs.EditPropertiesAsync("Save function block", currentName, currentNote,
+            affirmative: "Save");   // this dialog goes on to write a file (S-22)
         if (meta is null)
             return;   // cancelled the name/note step
         string? path = await _dialogs.PickSaveFunctionBlockAsync($"{meta.Name}.ifb");
@@ -715,7 +793,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         if (node?.ElementId is not { } id || _session.Current is not { } project)
             return;
         string name = node.DisplayName;
-        await ApplyAsync(_session.Commands.UnlockFunctionBlock(project, id), $"Unlocked {name}.");
+        // Unlocking takes ownership of the block (uxparity S-20), so it is stamped with whoever did it.
+        await ApplyAsync(_session.Commands.UnlockFunctionBlock(project, id, Environment.UserName), $"Unlocked {name}.");
     });
 
     /// <summary>The single SDK-backed delete gate (review3 H1 / T003, D09): a node is deletable exactly when the
@@ -734,7 +813,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand(CanExecute = nameof(CanDeleteNode))]
     private Task Delete(TreeNodeViewModel? node) => RunAsync(nameof(Delete), async () =>
     {
-        if (node?.ElementId is not { } id || _session.Current is not { } project)
+        // The locality root is structure, not content: it holds the localities but is not itself a node the
+        // installer can remove. It used to be protected only by having no element id at all — now that it
+        // carries one (so a locality can be pasted onto it), the rule has to be stated.
+        if (node is null || node.IsLocalitiesRoot || node.ElementId is not { } id || _session.Current is not { } project)
             return;
         // Preview → dispatch → confirm → apply (W2-13): the SDK decides the delete KIND (sliver #9); the
         // confirmation lives here in the GUI, never below the session.
@@ -751,15 +833,18 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             return;
         }
         string name = node.DisplayName;
-        if (impact.NeedsConfirm)
+        // Prompt for what a node CONTAINS, never for what merely points at it — the vendor's rule, measured:
+        // deleting a locality holding function blocks asks (S-09), while deleting a product that other logic links
+        // to just goes (S-15), and the resulting file is byte-identical either way. Note NeedsConfirm is still the
+        // reference-CASCADE flag below; only the question is dropped.
+        if (impact.NeedsConfirm && impact.Kind == DeleteKind.Locality)
         {
-            (string title, string message) = impact.Kind == DeleteKind.Locality
-                ? ("Delete locality", $"'{name}' contains products. Deleting it also removes those products and the "
-                    + "commands and conditions that use them. Delete anyway?")
-                : ("Delete", $"'{name}' is referenced by other logic (links and/or commands). Delete it together "
-                    + "with those references?");
-            if (!await _dialogs.ConfirmAsync(title, message))
+            if (!await _dialogs.ConfirmAsync("Delete locality",
+                    $"'{name}' contains products. Deleting it also removes those products and the "
+                    + "commands and conditions that use them. Delete anyway?"))
+            {
                 return;   // declined — nothing is deleted
+            }
         }
         if (impact.Kind == DeleteKind.Locality)
             await ApplyAsync(_session.Commands.DeleteLocality(project, id), $"Deleted {name}.");   // the US-009 locality worked example
@@ -774,7 +859,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private bool _clipboardIsCut;
 
     /// <summary>Cut the selected node (US-054, Ctrl+X): stashes it so a Paste onto a locality moves it there.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanCutSelected))]
     private void Cut(TreeNodeViewModel? node)
     {
         if (node?.ElementId is not { } id)
@@ -786,7 +871,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>Copy the selected node (US-056, Ctrl+C): stashes it so a Paste onto a locality duplicates it.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanCopySelected))]
     private void Copy(TreeNodeViewModel? node)
     {
         if (node?.ElementId is not { } id)
@@ -798,10 +883,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>Paste the clipboard node onto the selected target (US-054 move / US-056 duplicate, Ctrl+V).</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanPaste))]
     private Task Paste(TreeNodeViewModel? node) => RunAsync(nameof(Paste), async () =>
     {
-        if (_clipboardId is not { } sourceId || node?.ElementId is not { } targetId || _session.Current is not { } project)
+        if (_clipboardId is not { } sourceId || node is null || _session.Current is not { } project)
+            return;
+        // A copied locality pastes onto the locality ROOT — the container localities live in — because a locality
+        // does not nest inside another locality. The root row holds no element id of its own (see the projector),
+        // so the target is resolved from the project; without this the paste returned silently and a copied
+        // locality could be pasted nowhere at all.
+        if ((node.IsLocalitiesRoot ? project.Child("groups")?.Id : node.ElementId) is not { } targetId)
             return;
         if (_clipboardIsCut)
         {
@@ -811,11 +902,29 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 OnPropertyChanged(nameof(CanPaste));
             }
         }
-        else
+        else if (await ApplyAsync(_session.Commands.CopyNode(project, sourceId, targetId), "Pasted a copy.") is { } pastedId)
         {
-            await ApplyAsync(_session.Commands.CopyNode(project, sourceId, targetId), "Pasted a copy.");   // a copy is not consumed
+            // A copy is not consumed by its paste, so the clipboard stays. Open the arrival all the way down:
+            // a pasted subtree lands already populated, so the "reveal on first child" rule never fires for it,
+            // and it would otherwise appear as a single closed row giving no sign of what was actually pasted.
+            foreach (var pane in new[] { InstallationNodes, FunctionNodes })
+            {
+                if (FindNode(pane, pastedId) is { } node)
+                    ExpandSubtree(node);
+            }
         }
     });
+
+    // Opens a node and everything beneath it. Rows with no children are left alone: IsExpanded on a leaf would
+    // render an open twisty over nothing.
+    private static void ExpandSubtree(TreeNodeViewModel node)
+    {
+        if (node.Children.Count == 0)
+            return;
+        node.IsExpanded = true;
+        foreach (TreeNodeViewModel child in node.Children)
+            ExpandSubtree(child);
+    }
 
     /// <summary>Moves the selected node one position up among its siblings (US-055) — the non-drag reorder route.</summary>
     [RelayCommand]
@@ -834,7 +943,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Opens the Properties dialog for a tree node to rename a locality (US-007). Invoked from the
     /// right-click <i>Properties</i> item (node passed in) and from F2 (the selected node passed in).</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanShowProperties))]
     private Task Properties(TreeNodeViewModel? node) => RunAsync(nameof(Properties), () => OpenPropertiesAsync(node));
 
     /// <summary>
@@ -909,9 +1018,28 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                     "A project may contain at most one modem. Remove the existing modem before adding another.");
                 return;
             }
-            // The product lands under the caret and NO dialog opens — the vendor does not auto-open on insert
-            // (A-14/F-027, US-011/US-013). The installer opens Properties (F2 / double-click) on demand.
-            await ApplyAsync(command, $"Product '{productName}' inserted under {localityName}");
+            // Placing a product ASKS for its documentation as part of placing it, and cancelling places nothing —
+            // measured against IHC Visual (uxparity S-12), where the Insert menu raises the product dialog and
+            // Annuller leaves both the tree and the id counter untouched. (An earlier note here claimed the vendor
+            // does not auto-open on insert; that came from a driver verb which posts the catalog command directly
+            // and skips the dialog — see tmp/uxparity/MCPFIXES.md.)
+            if (await ApplyAsync(command, $"Product '{productName}' inserted under {localityName}") is not { } newId)
+                return;
+            if (!await _properties.OpenForInsertAsync(newId))
+            {
+                // Cancelled: undo the insert. Undo restores the whole project snapshot, so the id counter goes back
+                // too — the vendor burns no ids on a cancelled insert either.
+                await _session.UndoAsync();
+                StatusText = $"Insert of '{productName}' cancelled.";
+                return;
+            }
+            // The placed product opens, showing the terminals it brought — the same reveal a drop does (S-11), and
+            // what IHC Visual shows after an insert.
+            foreach (var pane in new[] { InstallationNodes, FunctionNodes })
+            {
+                if (FindNode(pane, newId) is { } placed)
+                    ExpandSubtree(placed);
+            }
         });
 
     /// <summary>Makes <paramref name="node"/> the active node — the insert/command target. Used by tests and by
@@ -929,19 +1057,44 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Enters programming mode for the selected function block (US-026, F3): the panes switch to the block's
     /// variable sections (left) and its program subtree (right), both headed with the block's name.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanShowProgram))]
     private void EnterProgrammingMode(TreeNodeViewModel? node)
     {
-        if (node is { IsFunctionBlock: true, ElementId: { } id })
+        // A PIN opens the program of the block that owns it (uxparity S-28): the vendor offers Vis program on a
+        // pin as well as on the block, so you can go straight to the logic that uses the pin.
+        if (OwningFunctionBlockOf(node) is { } id)
         {
             _programmingBlockId = id;
             IsProgrammingMode = true;
             Refresh();
             NotifyProgrammingAuthoringGates();
-            StatusText = node.IsLockedFunctionBlock
+            StatusText = FindNode(FunctionNodes, id)?.IsLockedFunctionBlock == true
                 ? "Programming mode (read-only — the block is locked). Press Esc to return."
                 : "Programming mode — press Esc to return to configuration.";
         }
+    }
+
+    // The function block a node belongs to: the block itself, or the block owning the pin/section (S-28). Null
+    // when the node is outside any block, which is what makes Show program a no-op on a locality.
+    private ElementId? OwningFunctionBlockOf(TreeNodeViewModel? node)
+    {
+        ElementId? owner = null;
+        if (node is { IsFunctionBlock: true, ElementId: { } blockId })
+        {
+            owner = blockId;
+        }
+        else if (node?.ElementId is { } nodeId && _session.Current is { } project)
+        {
+            for (ProjectElement? e = project.FindParent(nodeId); e is not null; e = e.Id is { } id ? project.FindParent(id) : null)
+            {
+                if (e.Kind == ElementKind.FunctionBlock)
+                {
+                    owner = e.Id;
+                    break;
+                }
+            }
+        }
+        return owner;
     }
 
     // The locked-block authoring gates depend on which block is being programmed; re-evaluate them when that changes.
@@ -958,7 +1111,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>Leaves programming mode (US-026, Esc), restoring the two locality trees of configuration mode.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanLeaveProgrammingMode))]
     private void LeaveProgrammingMode()
     {
         if (!IsProgrammingMode)
@@ -987,15 +1140,51 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private Task LinkToHere(TreeNodeViewModel? node) => _linking.LinkToHereAsync(node);
 
+    /// <summary>Home: selects the FIRST row of the pane (uxparity S-29 — the vendor lands on the tree root).</summary>
+    [RelayCommand]
+    private void SelectFirstRow(bool functionsPane)
+    {
+        IReadOnlyList<TreeNodeViewModel> pane = functionsPane ? FunctionNodes : InstallationNodes;
+        if (pane.Count > 0)
+            SelectRowInPane(pane[0], functionsPane);
+    }
+
+    /// <summary>End: selects the LAST row currently VISIBLE in the pane — the deepest last descendant reachable
+    /// through expanded nodes only, which is what a tree walk with the caret would reach (uxparity S-29).</summary>
+    [RelayCommand]
+    private void SelectLastVisibleRow(bool functionsPane)
+    {
+        IReadOnlyList<TreeNodeViewModel> pane = functionsPane ? FunctionNodes : InstallationNodes;
+        if (pane.Count == 0)
+            return;
+        TreeNodeViewModel last = pane[^1];
+        while (last.IsExpanded && last.Children.Count > 0)
+            last = last.Children[^1];
+        SelectRowInPane(last, functionsPane);
+    }
+
+    // Selects a row THE WAY THE CONTROL SEES IT. SelectNode only sets the SelectedNode aggregate, which the
+    // trees do NOT bind to — their SelectedItem binds to SelectedInstallationNode/SelectedFunctionsNode, and
+    // the flow between them is one-way (pane property → aggregate). Setting the aggregate alone therefore
+    // moves nothing on screen while looking correct to a view-model test (uxparity S-29).
+    private void SelectRowInPane(TreeNodeViewModel node, bool functionsPane)
+    {
+        if (functionsPane)
+            SelectedFunctionsNode = node;
+        else
+            SelectedInstallationNode = node;
+    }
+
     /// <summary>Jumps from a link row to the opposite end (US-025, F4) — delegates the link logic to
     /// <see cref="LinkingCoordinator"/>, which calls back <see cref="RevealAndSelectOpposite"/> for the tree reveal.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanNavigateLinkOpposite))]
     private void NavigateLinkOpposite(TreeNodeViewModel? node) => _linking.NavigateLinkOpposite(node);
 
     // Reveals + selects the opposite pin in whichever pane holds it — the tree-navigation view-state the linking
     // coordinator calls back into after computing the opposite end (A-6/F-012).
     private void RevealAndSelectOpposite(ElementId oppositeId)
     {
+        bool inFunctionsPane = false;
         if (FindNode(InstallationNodes, oppositeId) is { } installationNode)
         {
             ExpandAncestors(InstallationNodes, oppositeId);   // realize the target so the selection sticks (A-6)
@@ -1005,13 +1194,21 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         {
             ExpandAncestors(FunctionNodes, oppositeId);
             SelectedFunctionsNode = functionsNode;
+            inFunctionsPane = true;
         }
         else
         {
             return;
         }
         StatusText = $"Jumped to {SelectedNode?.DisplayName}.";
+        // Keyboard focus follows the caret across the panes (uxparity S-25) — otherwise the jump moves the selection
+        // somewhere the arrow keys and F4 cannot reach without first pressing F6.
+        JumpedToPane?.Invoke(this, inFunctionsPane);
     }
+
+    /// <summary>Raised after an F4 jump so the view can move keyboard focus into the pane that now holds the caret
+    /// (uxparity S-25). The argument is true when that is the Functions pane.</summary>
+    public event EventHandler<bool>? JumpedToPane;
 
     // Expands every ancestor on the path to the node with the given id (not the node itself), so the target is
     // realized and scrolled into view when it is selected — the F4 jump's missing half (A-6/F-012).

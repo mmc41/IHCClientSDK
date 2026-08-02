@@ -33,7 +33,8 @@ public partial class App : Application
             var backup = BackupService.CreateDefault();
             var recent = RecentProjectsStore.CreateDefault();
             var dialogs = new AvaloniaDialogService(loggerFactory);
-            var session = new ProjectWorkflow(projectService, backup, recent, dialogs, loggerFactory);
+            var session = new ProjectWorkflow(projectService, backup, recent, dialogs, loggerFactory,
+                installerIdentity: InstallerIdentityStore.CreateDefault());
             var themeService = new ThemeService();
             var viewModel = new MainWindowViewModel(session, dialogs, recent, themeService, config, loggerFactory);
 
