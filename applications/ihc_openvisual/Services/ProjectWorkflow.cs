@@ -18,11 +18,12 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace ihc_openvisual.Services;
 
 /// <summary>
-/// The single open-document session for the window: owns the one <see cref="Project"/>, its file path, the
-/// dirty flag and the change counter, and orchestrates the whole project lifecycle (new/open/save/save-as/
-/// close/quit) on top of the stateless SDK <see cref="ProjectAppService"/>. Enforces the single-project
-/// constraint, drives the save-prompt through <see cref="IDialogService"/>, and runs the crash-recovery
-/// auto-backup (10-minute timer + every 10th change). Deliberately Avalonia-free so it is testable headlessly.
+/// The single open-document workflow for the window: holds the one <see cref="IProjectDocument"/> (obtained
+/// from <see cref="ProjectAppService.OpenDocument"/>, crudarch D01 — the document owns the snapshot, undo/redo
+/// history, dirty flag and version), plus the file path and change counter, and orchestrates the whole project
+/// lifecycle (new/open/save/save-as/close/quit). Enforces the single-project constraint, drives the save-prompt
+/// through <see cref="IDialogService"/>, and runs the crash-recovery auto-backup (10-minute timer + every 10th
+/// change). Deliberately Avalonia-free so it is testable headlessly.
 /// </summary>
 public sealed class ProjectWorkflow : IDisposable
 {
@@ -33,7 +34,11 @@ public sealed class ProjectWorkflow : IDisposable
     private readonly ILogger<ProjectWorkflow> _logger;
     private readonly int _changeBackupThreshold;
     private readonly TimeProvider _timeProvider;
-    private readonly object _gate = new();
+
+    // The persistent document (crudarch D01): created via the service door on the first load and re-opened per
+    // load/create/recover after. Null only before StartAsync. All mutations happen on the UI thread (D04 contract);
+    // the backup worker only READS document.Current, which the lock-serialized session makes legal.
+    private IProjectDocument? _document;
 
     // T019: the non-lifecycle concerns split into their own collaborators — reporting, catalog imports/persist, and
     // the auto-backup writer (timer + write lock). ProjectWorkflow retains the document lifecycle + editing/history.
@@ -69,27 +74,23 @@ public sealed class ProjectWorkflow : IDisposable
         _catalogDir = catalogDir ?? DefaultCatalogDir();
         _reports = new ProjectReportWorkflow(_service, _dialogs, _logger, () => Current);
         _catalog = new CatalogImportWorkflow(_service, _dialogs, _logger, _catalogDir);
-        // The auto-backup writer captures the snapshot + origin under THIS workflow's gate (document state stays here);
-        // the change-threshold trigger stays in ApplyAsync (it owns the change counter).
+        // The auto-backup writer captures the snapshot + origin through the delegate; the change-threshold trigger
+        // stays in ApplyAsync's tail (it owns the change counter).
         _autoBackup = new AutoBackupScheduler(_backup, _service, _timeProvider, _logger,
             autoBackupInterval ?? TimeSpan.FromMinutes(10), CaptureBackupSnapshot);
         _catalog.LoadPersisted();   // persisted imports load on startup (US-061)
     }
 
-    // Captures the current project snapshot + its origin path under the workflow gate, for the auto-backup writer.
-    private (Project? Snapshot, string? Origin) CaptureBackupSnapshot()
-    {
-        lock (_gate)
-        {
-            return (Current, FilePath);
-        }
-    }
+    // Captures the current project snapshot + origin path for the auto-backup writer. Runs on the backup worker
+    // thread: document.Current is a legal off-thread READ (the session is lock-serialized, crudarch D04), and
+    // FilePath is only written on the UI thread.
+    private (Project? Snapshot, string? Origin) CaptureBackupSnapshot() => (Current, FilePath);
 
     /// <summary>The app-data folder persisted catalog imports are copied into and loaded from on startup (US-061).</summary>
     private static string DefaultCatalogDir() => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "IHC OpenVisual", "catalog");
 
-    public Project? Current { get; private set; }
+    public Project? Current => _document?.Current;
 
     /// <summary>The installer contact details stamped into every new project (US-002).</summary>
     public InstallerIdentityStore InstallerIdentity { get; }
@@ -102,60 +103,34 @@ public sealed class ProjectWorkflow : IDisposable
 
     public string? FilePath { get; private set; }
 
-    public bool IsDirty { get; private set; }
+    /// <summary>Whether the document differs from its last written save point — owned by the document (computed
+    /// by reference against the saved snapshot, so undoing back to the saved state reads clean).</summary>
+    public bool IsDirty => _document?.IsDirty ?? false;
 
     public int ChangeCount { get; private set; }
 
-    private int _version;
+    /// <summary>A monotone counter bumped on every state transition (commit / undo / redo / load) — the document's
+    /// version. A caller that prepares an edit against a dialog can capture it and pass it back to
+    /// <see cref="ApplyAsync(ProjectCommand,int?)"/> as the base version; a mismatch means the project moved on and
+    /// the stale edit is refused (W2-14).</summary>
+    public int Version => _document?.Version ?? 0;
 
-    /// <summary>A monotone counter bumped on every state transition (commit / undo / redo / load). A caller that
-    /// prepares an edit against a dialog can capture it and pass it back to <see cref="ApplyAsync(ProjectCommand,int?)"/>
-    /// as the base version; a mismatch means the project moved on and the stale edit is refused (W2-14).</summary>
-    public int Version
-    {
-        get { lock (_gate) { return _version; } }
-    }
-
-    // The multi-level undo/redo history (US-052): immutable project snapshots. Every project-mutating commit goes
-    // through CommitAsync, which pushes the pre-edit snapshot here and clears the redo list; loads (New/Open/Close)
-    // reset the history. Unlimited (W4-4): a committed snapshot path-copies only the subtrees it changed (W4-3), so a
-    // deep history costs its changed paths, not a full tree per entry — bounded only by process memory.
-    // Each entry pairs the pre-edit snapshot to restore with the label of the edit that produced the newer state
-    // (the command's Describe, surfaced as EditOutcome.Label — W2-14/E14), so Undo/Redo can name their action.
-    private readonly List<(Project Snapshot, string Label)> _undo = new();
-    private readonly List<(Project Snapshot, string Label)> _redo = new();
-
-    // The snapshot the document was last known to match: what a Save wrote, or the state a New/Open started from.
-    // Dirtiness is "Current is not this snapshot", so undoing back to a saved state clears the flag rather than
-    // latching it and prompting to save a project identical to its file. Null when no clean state exists (a
-    // recovered project). Projects are immutable and the history stores the very same instances, so reference
-    // identity is the comparison — a value comparison would walk the whole tree on every edit.
-    private Project? _savePoint;
+    // The multi-level undo/redo history (US-052) lives on the document (crudarch D01): labelled snapshot entries,
+    // unlimited by default (W4-4 — a committed snapshot path-copies only the subtrees it changed, W4-3). These
+    // members surface the document's history state for the Edit menu / status bar (E14).
 
     /// <summary>Whether there is an edit to undo (US-052).</summary>
-    public bool CanUndo
-    {
-        get { lock (_gate) { return _undo.Count > 0; } }
-    }
+    public bool CanUndo => _document?.CanUndo ?? false;
 
     /// <summary>Whether there is an undone edit to redo (US-052).</summary>
-    public bool CanRedo
-    {
-        get { lock (_gate) { return _redo.Count > 0; } }
-    }
+    public bool CanRedo => _document?.CanRedo ?? false;
 
     /// <summary>The label of the edit <see cref="UndoAsync"/> would reverse (e.g. "Insert locality"), or null when
     /// there is nothing to undo — so the status bar and Edit ▸ Undo can name the action (US-052/E14).</summary>
-    public string? UndoLabel
-    {
-        get { lock (_gate) { return _undo.Count > 0 ? _undo[^1].Label : null; } }
-    }
+    public string? UndoLabel => _document?.UndoLabel;
 
     /// <summary>The label of the edit <see cref="RedoAsync"/> would re-apply, or null when nothing to redo (E14).</summary>
-    public string? RedoLabel
-    {
-        get { lock (_gate) { return _redo.Count > 0 ? _redo[^1].Label : null; } }
-    }
+    public string? RedoLabel => _document?.RedoLabel;
 
     /// <summary>The document name shown in the title bar: <c>Untitled</c> before the first save, else the file name.</summary>
     public string DocumentName => FilePath is null ? Constants.UntitledDocument : Path.GetFileName(FilePath);
@@ -163,10 +138,11 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>Raised whenever the current project, file path or dirty flag changes.</summary>
     public event EventHandler? StateChanged;
 
-    /// <summary>The structural change set of the most recent committed edit — the delta the GUI reconciler (W3-4)
-    /// applies to the tree in place — or null when the last transition was NOT a single incremental edit (a load,
-    /// undo, redo, save or close), which the GUI handles with a full rebuild. Set immediately before
-    /// <see cref="StateChanged"/> fires, so the refresh that event triggers reads the change that caused it.</summary>
+    /// <summary>The structural change set of the most recent committed transition — the delta the GUI reconciler
+    /// (W3-4) applies to the tree in place — INCLUDING undo/redo (crudarch G3: their outcomes carry the exact
+    /// delta with Origin "undo"/"redo"); null when the last transition was a load, save or close, which the GUI
+    /// handles with a full rebuild. Set immediately before <see cref="StateChanged"/> fires, so the refresh that
+    /// event triggers reads the change that caused it.</summary>
     public ProjectChangeSet? LastChange { get; private set; }
 
     /// <summary>Start-up entry point: offer to recover a crash backup if one exists (US-005), otherwise open a
@@ -311,15 +287,13 @@ public sealed class ProjectWorkflow : IDisposable
     public Task<string?> WriteReportHtmlAsync(string fileStem, string html) => _reports.WriteHtmlAsync(fileStem, html);
 
     /// <summary>Reads the current project/customer/installer information (US-039) to prefill the dialog. Delegates
-    /// to the SDK projection (<c>Ihc.Vis.ProjectProjections</c>). Permanent: there is no long-lived session to query —
-    /// command execution runs on a per-call scratch session inside <c>ProjectAppService</c> (D12 thread-affinity
-    /// superseded W2's persistent-session goal), and reads go straight to that SDK projection.</summary>
+    /// to the SDK projection (<c>Ihc.Vis.ProjectProjections</c>) over <see cref="Current"/>.</summary>
     public ProjectInfoData GetProjectInfo() => Current?.GetProjectInfo() ?? ProjectInfoData.Empty;
 
     /// <summary>
     /// Reads the project's data tables (US-049): the read-only system tables (the built-in <c>typeid</c>-bearing enum
     /// definitions) and the editable user-defined texts (the values of the <see cref="ProjectProjections.UserTextsTableName"/> enum).
-    /// Delegates to the SDK projection. Permanent (see <see cref="GetProjectInfo"/>): no persistent session to query.
+    /// Delegates to the SDK projection over <see cref="Current"/>.
     /// </summary>
     public DataTablesModel GetDataTables() => Current?.GetDataTables() ?? DataTablesModel.Empty;
 
@@ -333,8 +307,7 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>
     /// Builds the read-only Wired module address map (US-050): every addressed <c>dataline_input</c>/<c>dataline_output</c>
     /// terminal across all products, decoded to its <c>line.terminal</c> address and split into input/output modules,
-    /// sorted by address. Delegates to the SDK projection. Permanent (see <see cref="GetProjectInfo"/>): no
-    /// persistent session to query.
+    /// sorted by address. Delegates to the SDK projection over <see cref="Current"/>.
     /// </summary>
     public ModuleAddressMap GetModuleAddressMap() =>
         Current?.GetModuleAddressMap() ?? ModuleAddressMap.Empty;
@@ -352,23 +325,36 @@ public sealed class ProjectWorkflow : IDisposable
 
 
     /// <summary>
-    /// Saves a placed function block to the library (US-021, PG-3a): exports it to a keyless <c>.ifb</c> file
-    /// (<see cref="ProjectAppService.SaveFunctionBlockToLibrary(Project, ElementId, string, string, string, string)"/>,
-    /// atomic write, clock-defaulted date, app-supplied author) and THEN transforms the in-project block into a locked
-    /// library instance (rename + <c>master_*</c> + badge + <c>locked="yes"</c>). The export runs first, so a failed
-    /// export leaves the project unmutated; the in-place transform is committed (undoable — one undo restores the prior
-    /// unlocked block). Returns false (with a diagnostic) when the id is not a function block or the write fails.
+    /// Saves a placed function block to the library (US-021, PG-3a) in the D05 two-step order: exports it to a
+    /// keyless <c>.ifb</c> file FIRST (<see cref="ProjectAppService.ExportFunctionBlock(Project, ElementId, string, string, string, DateOnly?, string?)"/>,
+    /// atomic write, clock-defaulted date, app-supplied author — a failed export returns false with a diagnostic
+    /// and the document is untouched), THEN commits the in-project transform through the document
+    /// (<see cref="ProjectCommands.SaveFunctionBlockToLibrary"/> via <see cref="ApplyAsync(ProjectCommand,int?)"/>):
+    /// rename + <c>master_*</c> + badge + <c>locked="yes"</c>, one undoable step — one undo restores the prior
+    /// unlocked block. The facade's combined helper remains for non-interactive callers; the workflow no longer
+    /// adopts externally mutated snapshots (the port has no such API by design).
+    /// <para>
+    /// <b>Why the D05 order lives here as well as in the facade's combined overloads</b> (review F18 — considered
+    /// and declined): a document-aware facade overload could only commit via <c>document.Apply</c>, while the
+    /// interactive door must go through <see cref="ApplyAsync(ProjectCommand,int?)"/>, which also runs
+    /// <c>NotifyChangedAsync</c> — the change set that drives the tree reconcile plus the dirty/backup
+    /// bookkeeping. Moving the two statements into the SDK would therefore force this method to hand-roll the
+    /// notify half instead, trading two shared statements for more coupling. What is duplicated is the ORDER,
+    /// and each door pins it with its own armed regression test: <c>SaveToLibraryTests</c> (a failing .ifb sink
+    /// leaves the project unlocked) for the stateless door, and <c>ProjectWorkflowTests</c> (a bad path leaves
+    /// the snapshot, dirty flag, version and history untouched) for this one — so the two cannot drift silently.
+    /// </para>
     /// </summary>
     public async Task<bool> SaveFunctionBlockAsync(ElementId functionBlockId, string filePath, string name, string note)
     {
         if (Current is not { } project)
             return false;
         using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(SaveFunctionBlockAsync)}");
-        ProjectApplyResult result;
+        string? normalizedNote = string.IsNullOrEmpty(note) ? null : note;
         try
         {
-            result = await _service.SaveFunctionBlockToLibrary(project, functionBlockId, filePath, Environment.UserName,
-                name, string.IsNullOrEmpty(note) ? null : note);
+            await _service.ExportFunctionBlock(project, functionBlockId, filePath, name, Environment.UserName,
+                note: normalizedNote);
         }
         catch (Exception ex)
         {
@@ -377,11 +363,9 @@ public sealed class ProjectWorkflow : IDisposable
             await _dialogs.ShowMessageAsync("Save failed", ex.Message);
             return false;
         }
-        if (result.Outcome.Status == EditStatus.Committed)
-        {
-            await CommitAsync(result.Project, result.Outcome.Label, result.Outcome.Changes);   // undoable in-project transform
-        }
-        return result.Outcome.Status == EditStatus.Committed;
+        EditOutcome outcome = await ApplyAsync(
+            Commands.SaveFunctionBlockToLibrary(project, functionBlockId, name, Environment.UserName, normalizedNote));
+        return outcome.Status == EditStatus.Committed;
     }
 
     // ---- Command factories (W2-14): resolve parent context into a ready-to-apply command (a query, no mutation).
@@ -406,117 +390,99 @@ public sealed class ProjectWorkflow : IDisposable
     public Task<int> ImportCatalogFolderAsync(string dir, bool persist) => _catalog.ImportFolderAsync(dir, persist);
 
 
-    // The single commit path for every project-mutating operation (US-052): snapshots the pre-edit project for undo,
-    // invalidates the redo history, swaps in the new project, then marks changed (dirty + backup + StateChanged).
-    // ApplyAsync routes a command through ProjectAppService.Apply — the SDK's stateless command runner, which opens a
-    // throwaway ProjectDocumentSession per call on the calling thread (refac3 T003/T004) — then persists the result
-    // via this commit path so ProjectWorkflow's Current/undo/dirty stay the source of truth.
+    // The single edit path (US-052): every project-mutating operation routes through the persistent
+    // IProjectDocument (ProjectAppService.OpenDocument, crudarch D01) — the document owns snapshots, undo/redo,
+    // labels, dirty-by-reference and the version guard; this workflow adds file lifecycle (path, prompts, recent
+    // list), the change counter and the crash backup.
     //
-    // DESIGN NOTE (do not "finish W2" by hoisting a single persistent ProjectDocumentSession into the GUI): W2-14
-    // originally envisioned a persistent session the VM drives directly. That was SUPERSEDED by the later D12 decision
-    // to make ProjectDocumentSession thread-affine (owner thread captured at construction). A persistent session would
-    // be constructible only on the exact thread it is later operated from, forcing every session-touching test onto
-    // [AvaloniaTest] and coupling core correctness to Avalonia's async-continuation marshalling (under-documented and
-    // evolving across major versions). Deep research (2026-07-20) confirmed that approach is *feasible* in Avalonia 12
-    // but strictly worse on simplicity/testability/stability/portability than the per-call scratch runner, which
-    // depends on nothing Avalonia-specific and now lives behind the facade (ProjectAppService.Apply). Keep command
-    // execution in the facade; keep undo/redo/version here.
+    // DESIGN NOTE (supersedes the 2026-07-20 rejection of a persistent GUI session): that rejection was taken
+    // under the old D12 thread-affinity contract, where a persistent session would have forced every
+    // session-touching test onto [AvaloniaTest] and the backup timer's worker-thread snapshot read would throw.
+    // crudarch D04 switched ProjectDocumentSession to LOCK-SERIALIZATION (a private monitor; Changed/StateChanged
+    // raised outside the lock on the mutating thread), which dissolves both objections: headless tests drive the
+    // document from any thread, and AutoBackupScheduler legally reads document.Current off-thread. The contract
+    // this GUI upholds in exchange (D04 a–c): ALL document mutations happen on the UI thread (workers only read),
+    // and ConfigureAwait(false) stays confined to paths that never mutate the document or handle its events
+    // (today only the backup writer's read-only path).
     /// <summary>
-    /// Applies a command to the open project and commits it on success (W2-14): the single edit entry the VM drives.
-    /// Runs the command through the SDK facade (<c>ProjectAppService.Apply</c>) over <see cref="Current"/>, then — only on
-    /// <see cref="EditStatus.Committed"/> — swaps in the result, snapshots for undo (labelled by the command) and
-    /// marks changed. Returns the raw <see cref="EditOutcome"/>; the caller maps it to status text / dialogs (the
-    /// single outcome→status/dialog rule). When <paramref name="baseVersion"/> is supplied and no longer matches
-    /// <see cref="Version"/>, the edit is refused as stale (a dialog prepared against an older project).
+    /// Applies a command to the open document and commits it on success (W2-14): the single edit entry the VM
+    /// drives. Runs the command through the persistent <see cref="IProjectDocument"/> (evaluate → execute →
+    /// commit + undo history, labelled by the command), then publishes the change (LastChange + StateChanged +
+    /// backup counter). Returns the raw <see cref="EditOutcome"/>; the caller maps it to status text / dialogs
+    /// (the single outcome→status/dialog rule). When <paramref name="baseVersion"/> is supplied and no longer
+    /// matches <see cref="Version"/>, the document refuses the edit as stale (a dialog prepared against an older
+    /// project).
     /// </summary>
     public async Task<EditOutcome> ApplyAsync(ProjectCommand command, int? baseVersion = null)
     {
-        if (StaleOrClosed(command, baseVersion) is { } refusal)
-            return refusal;
-        ProjectApplyResult result = _service.Apply(Current!, command);
-        if (result.Outcome.Status == EditStatus.Committed)
-            await CommitAsync(result.Project, result.Outcome.Label, result.Outcome.Changes);
-        return result.Outcome;
+        EditOutcome outcome = _document is { } document
+            ? document.Apply(command, baseVersion)
+            : NoDocument(command);
+        if (outcome.Status == EditStatus.Committed)
+            await NotifyChangedAsync(outcome.Changes);
+        return outcome;
     }
 
     /// <summary>The value-producing overload of <see cref="ApplyAsync(ProjectCommand,int?)"/> (e.g. a new element's id).</summary>
     public async Task<EditOutcome<T>> ApplyAsync<T>(ProjectCommand<T> command, int? baseVersion = null)
     {
-        if (StaleOrClosed(command, baseVersion) is { } refusal)
-            return new EditOutcome<T>(refusal.Status, refusal.Label, refusal.Reason, null, default);
-        ProjectApplyResult<T> result = _service.Apply(Current!, command);
-        if (result.Outcome.Status == EditStatus.Committed)
-            await CommitAsync(result.Project, result.Outcome.Label, result.Outcome.Changes);
-        return result.Outcome;
+        EditOutcome<T> outcome = _document is { } document
+            ? document.Apply(command, baseVersion)
+            : NoDocument(command);
+        if (outcome.Status == EditStatus.Committed)
+            await NotifyChangedAsync(outcome.Changes);
+        return outcome;
     }
 
-    // The shared no-project / stale-base-version guard: returns a Refused outcome to short-circuit, or null to proceed.
-    private EditOutcome? StaleOrClosed(ProjectCommand command, int? baseVersion)
-    {
-        if (Current is null)
-            return new EditOutcome(EditStatus.Refused, command.GetType().Name, "No project is open.", null);
-        if (baseVersion is { } expected && expected != Version)
-            return new EditOutcome(EditStatus.Refused, command.GetType().Name,
-                "The project changed since this edit was prepared.", null);
-        return null;
-    }
+    /// <summary>The command's legality verdict against the open document (cheap — reuses the per-commit index, no
+    /// edit), for drag-over probes and menu gates. Refused when no project is open.</summary>
+    public EditVerdict CanApply(ProjectCommand command) =>
+        _document?.CanApply(command) ?? EditVerdict.Refuse(NoDocumentReason);
 
-    /// <summary>The command's legality verdict against the open project (cheap — no edit), for drag-over probes and
-    /// menu gates. Refused when no project is open.</summary>
-    public EditVerdict CanApply(ProjectCommand command)
-    {
-        if (Current is not { } current)
-            return EditVerdict.Refuse("No project is open.");
-        return _service.CanApply(current, command);
-    }
+    /// <summary>Whether the pair is a reorderable same-tag sibling pair (US-055) — the drag-over reorder probe,
+    /// answered by the document against its per-commit index so the pointer path pays no full-tree walk
+    /// (crudarch T008, review F5; one rule shared with the gateway's <c>Commands.CanReorderNode</c>). False when
+    /// no project is open.</summary>
+    public bool CanReorderNode(ElementId dragged, ElementId target) =>
+        _document?.CanReorderNode(dragged, target) ?? false;
+
+    /// <summary>Whether the node can move <paramref name="delta"/> positions among its same-tag siblings (US-055) —
+    /// the index-backed MENU-gate peer of <see cref="CanReorderNode"/> that the Move up/down gates use, so a
+    /// selection change costs dictionary lookups instead of two full-tree walks per direction and no command is
+    /// minted until Execute (review F02). False when no project is open.</summary>
+    public bool CanReorder(ElementId id, int delta) => _document?.CanReorder(id, delta) ?? false;
 
     /// <summary>The typed preview of a command applied now, without committing (M8/D05): the delta it would commit
     /// when it <see cref="PreviewStatus.WouldChange"/>, else a refuse / no-change / engine-fault status. Drives the
     /// Preview→confirm→Apply flow (W2-13). Currently exercised only by tests — the GUI's delete-confirm flow reads
     /// <see cref="ProjectCommands.PreviewDelete"/> instead.</summary>
     public PreviewOutcome Preview(ProjectCommand command) =>
-        Current is { } current
-            ? _service.Preview(current, command)
-            : PreviewOutcome.Refused("No project is open.");
+        _document?.Preview(command) ?? PreviewOutcome.Refused(NoDocumentReason);
 
-    private async Task CommitAsync(Project updated, string label = "Edit", ProjectChangeSet? changes = null)
-    {
-        lock (_gate)
-        {
-            if (Current is not null)
-            {
-                _undo.Add((Current, label));   // unlimited (W4-4): no trim — entries are cheap path-copies (W4-3)
-            }
-            _redo.Clear();
-            Current = updated;
-            _version++;
-        }
-        // Carry the edit's change set to the GUI so it reconciles the tree in place (W3-6); a null change set (undo/
-        // redo/load/save) drives the full-rebuild fallback instead.
-        await NotifyChangedAsync(dirty: true, changes);
-    }
+    // The ONE "no document is open" refusal for every route through this workflow (review F14): both Apply
+    // overloads and both probes answer with the same wording, built the same way, so re-wording it is one edit
+    // rather than a hunt across the file. The stale-version guard that used to sit alongside it now lives in the
+    // document, where the version does.
+    private const string NoDocumentReason = "No project is open.";
+
+    private static EditOutcome NoDocument(ProjectCommand command) =>
+        new(EditStatus.Refused, command.GetType().Name, NoDocumentReason, null);
+
+    private static EditOutcome<T> NoDocument<T>(ProjectCommand<T> command) =>
+        new(EditStatus.Refused, command.GetType().Name, NoDocumentReason, null, default);
 
     /// <summary>
-    /// Undoes the last project-mutating edit (US-052): restores the previous snapshot, pushes the current one onto the
-    /// redo history, and refreshes both panes. A cascading edit (e.g. a non-empty locality delete) reverses as one step
-    /// because it was committed as a single snapshot. A no-op (returns false) when there is nothing to undo.
+    /// Undoes the last project-mutating edit (US-052): the document restores the previous snapshot and reports the
+    /// exact delta, which flows to the reconciler via <see cref="LastChange"/> (crudarch G3). A cascading edit
+    /// (e.g. a non-empty locality delete) reverses as one step because it was committed as a single snapshot.
+    /// A no-op (returns false) when there is nothing to undo.
     /// </summary>
     public async Task<bool> UndoAsync()
     {
         using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(UndoAsync)}");
-        bool dirty;
-        lock (_gate)
-        {
-            if (_undo.Count == 0 || Current is null)
-                return false;
-            (Project snapshot, string label) = _undo[^1];
-            _undo.RemoveAt(_undo.Count - 1);
-            _redo.Add((Current, label));   // redo re-applies the same edit, so it carries the same label
-            Current = snapshot;
-            _version++;
-            dirty = !ReferenceEquals(Current, _savePoint);
-        }
-        await NotifyChangedAsync(dirty);
+        if (_document?.Undo() is not { Status: EditStatus.Committed } outcome)
+            return false;
+        await NotifyChangedAsync(outcome.Changes);
         return true;
     }
 
@@ -525,38 +491,22 @@ public sealed class ProjectWorkflow : IDisposable
     public async Task<bool> RedoAsync()
     {
         using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(RedoAsync)}");
-        bool dirty;
-        lock (_gate)
-        {
-            if (_redo.Count == 0 || Current is null)
-                return false;
-            (Project snapshot, string label) = _redo[^1];
-            _redo.RemoveAt(_redo.Count - 1);
-            _undo.Add((Current, label));
-            Current = snapshot;
-            _version++;
-            dirty = !ReferenceEquals(Current, _savePoint);
-        }
-        await NotifyChangedAsync(dirty);
+        if (_document?.Redo() is not { Status: EditStatus.Committed } outcome)
+            return false;
+        await NotifyChangedAsync(outcome.Changes);
         return true;
     }
 
     /// <summary>
-    /// The shared tail of every change: set the flag, advance the change counter, notify, and take a crash backup
-    /// every Nth change. Undo/redo pass a <paramref name="dirty"/> derived from the save point rather than a
-    /// constant, because navigating the history can land back on the saved snapshot.
+    /// The shared tail of every committed document mutation: publish the change set (LastChange + StateChanged —
+    /// undo/redo included, so the reconciler works in place, crudarch G3), advance the change counter, and take a
+    /// crash backup every Nth change. Dirty and version live on the document.
     /// </summary>
-    private async Task NotifyChangedAsync(bool dirty, ProjectChangeSet? change = null)
+    private async Task NotifyChangedAsync(ProjectChangeSet? change)
     {
-        bool backup;
-        lock (_gate)
-        {
-            IsDirty = dirty;
-            ChangeCount++;
-            backup = ChangeCount % _changeBackupThreshold == 0;
-        }
+        ChangeCount++;
         RaiseChanged(change);
-        if (backup)
+        if (ChangeCount % _changeBackupThreshold == 0)
             await _autoBackup.WriteAsync();
     }
 
@@ -573,12 +523,10 @@ public sealed class ProjectWorkflow : IDisposable
             Project snapshot = Current!;
             // SaveDocument, not Save: the editor's save keeps the file it replaces as a .BAK side-file.
             await _service.SaveDocument(snapshot, path);
-            lock (_gate)
-            {
-                FilePath = path;
-                IsDirty = !ReferenceEquals(Current, snapshot);   // still dirty if an edit slipped in during the write
-                _savePoint = snapshot;
-            }
+            // The exact written snapshot becomes the save point — the document computes dirty by reference, so an
+            // edit that slipped in during the write stays dirty (the race fix).
+            _document!.MarkSaved(snapshot);
+            FilePath = path;
             _recent.Add(path);
             // The work is now safely persisted, so the crash backup is stale and the change counter starts
             // over — matching the New/Open/Close transitions.
@@ -619,27 +567,20 @@ public sealed class ProjectWorkflow : IDisposable
 
     private void SetProject(Project project, string? path, bool dirty)
     {
-        lock (_gate)
-        {
-            Current = project;
-            FilePath = path;
-            IsDirty = dirty;
-            // A project loaded clean can be returned to; a recovered one (dirty) has no clean state to return to.
-            _savePoint = dirty ? null : project;
-            _undo.Clear();   // a load starts a fresh, empty edit history (US-052)
-            _redo.Clear();
-            _version++;
-        }
+        // One persistent document for the workflow's lifetime (crudarch D01): created via the service door on the
+        // first load, re-opened per load/create/recover after. Each Open resets history and version (US-052). A
+        // project loaded clean can be returned to (save point = the opened snapshot); a recovered one (dirty) has
+        // no clean state to return to (startClean: false) — which the FACTORY carries too, so the first load opens
+        // once instead of building the index twice and briefly reporting a recovered project clean (review F04).
+        if (_document is { } document)
+            document.Open(project, startClean: !dirty);
+        else
+            _document = _service.OpenDocument(project, startClean: !dirty);
+        FilePath = path;
         RaiseChanged();
     }
 
-    private void ResetChangeCount()
-    {
-        lock (_gate)
-        {
-            ChangeCount = 0;
-        }
-    }
+    private void ResetChangeCount() => ChangeCount = 0;
 
     // StartTimer / the auto-backup timer + write lock moved to the AutoBackupScheduler collaborator (T019).
 

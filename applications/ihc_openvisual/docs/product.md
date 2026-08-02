@@ -43,6 +43,34 @@ desktop OS.
 | Open source (Apache-2.0) | The full source is open for inspection, extension, and long-term maintenance. |
 | Modern, accessible UX | An English UI and help with themeable flat-line SVG icons designed for legibility, using non-color-alone state cues. |
 
+## Differences from the Original IHC Visual
+
+IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, except for the following:
+
+**Enhancements**
+
+- Runs on Windows, macOS, and Linux; the original is Windows-only.
+- Refuses to save text the `.vis` character repertoire cannot store — naming the offending element and
+  character — where the original writes an unparsable file.
+- Every drag-and-drop operation is also reachable from the menus and the keyboard, so linking, moving, and reordering never require a mouse.
+- Unavailable commands explain themselves: pressing the keyboard shortcut of a greyed menu command shows the reason in the status bar.
+- Enhanced support for assistive technology and automation.
+- Embedded stock catalog.
+- Documentation reports render as self-contained static HTML that works in any modern browser, with optional enhanced variants and no dependency on a legacy browser component.
+- Menu commands that do nothing in the original are omitted rather than reproduced.
+
+**Presentation**
+
+- The user interface is in English; the original is in Danish.
+- A title-bar dirty marker (`•`) shows at a glance that the project has unsaved changes.
+- Tree-node tooltips always include the node's IHC resource ID, without holding a modifier key.
+- Modern flat-line SVG icon set, themeable, and never signalling state by colour alone.
+- A light/dark theme switcher.
+
+**Exclusions**
+
+- No simulation mode.
+
 ## What This Product Is Not
 
 - **Unofficial project.** Not affiliated with or endorsed by LK/Schneider Electric.

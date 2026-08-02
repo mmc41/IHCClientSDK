@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
@@ -32,6 +33,12 @@ public partial class MainWindow : Window
         InitializeComponent();
         Closing += OnClosing;
         DataContextChanged += (_, _) => HookViewModel();
+        // D06 (owner-flipped 2026-08-02) + T021 branch B (T016 verdict: disabled controls show no tooltip):
+        // registry gestures follow the MENU BAR's availability. The REFUSAL is enforced by what the KeyBindings
+        // bind to (Registry.GestureCommands — a KeyBinding never invokes a disabled command), NOT here: Avalonia
+        // services a TopLevel's KeyBindings before any instance KeyDown handler, tunnel included, so e.Handled
+        // cannot stop one. This handler only explains, in the status bar, a gesture that did not fire.
+        AddHandler(KeyDownEvent, OnWindowKeyDownGateGestures, RoutingStrategies.Tunnel);
         // Right-click selects the node under the pointer before its context menu opens, so the menu's
         // commands (Delete/Properties/Insert product) act on the right-clicked locality (US-008/009/010).
         InstallationTree.AddHandler(PointerPressedEvent, OnTreePointerPressed, RoutingStrategies.Tunnel);
@@ -182,17 +189,23 @@ public partial class MainWindow : Window
     private void HookViewModel()
     {
         if (_viewModel is not null)
+        {
             _viewModel.CloseRequested -= OnCloseRequested;
+            _viewModel.JumpedToPane -= OnJumpedToPane;
+        }
         _viewModel = DataContext as MainWindowViewModel;
         if (_viewModel is not null)
         {
             _viewModel.CloseRequested += OnCloseRequested;
-            // An F4 jump moves the caret into the other pane, so keyboard focus goes with it (uxparity S-25).
-            _viewModel.JumpedToPane += (_, toFunctions) => FocusPane(toFunctions ? FunctionsTree : InstallationTree);
+            _viewModel.JumpedToPane += OnJumpedToPane;
         }
     }
 
     private void OnCloseRequested(object? sender, EventArgs e) => Close();
+
+    // An F4 jump moves the caret into the other pane, so keyboard focus goes with it (uxparity S-25). A named
+    // handler (not a lambda) so it unsubscribes alongside CloseRequested — matching, never accumulating.
+    private void OnJumpedToPane(object? sender, bool toFunctions) => FocusPane(toFunctions ? FunctionsTree : InstallationTree);
 
     // Moves keyboard focus into a tree pane by focusing a real row — the selected row's container when realized,
     // otherwise the first row. Focusing the bare TreeView does not move the caret (A-28).
@@ -255,26 +268,71 @@ public partial class MainWindow : Window
         }
         else if (e.Key == Key.F2)
         {
-            _viewModel?.PropertiesCommand.Execute(node);
+            TryInvokeGesture("node.properties", node);
             e.Handled = true;
         }
         else if (e.Key == Key.F4 && node.IsLinkRow)
         {
-            _viewModel?.NavigateLinkOppositeCommand.Execute(node);
-            // Reveal the target in the opposite pane (A-6): the command expanded its ancestor chain and selected it;
-            // now scroll it into view and move keyboard focus to that pane.
-            TreeView target = _viewModel?.IsInstallationPaneActive == true ? InstallationTree : FunctionsTree;
-            if (target.SelectedItem is { } selected)
+            if (TryInvokeGesture("link.jumpOpposite", node))
             {
-                target.ScrollIntoView(selected);
-                target.Focus();
+                // Reveal the target in the opposite pane (A-6): the command expanded its ancestor chain and selected it;
+                // now scroll it into view and move keyboard focus to that pane.
+                TreeView target = _viewModel?.IsInstallationPaneActive == true ? InstallationTree : FunctionsTree;
+                if (target.SelectedItem is { } selected)
+                {
+                    target.ScrollIntoView(selected);
+                    target.Focus();
+                }
             }
             e.Handled = true;
         }
-        else if (e.Key == Key.Delete && _viewModel?.DeleteCommand.CanExecute(node) == true)
+        else if (e.Key == Key.Delete && TryInvokeGesture("edit.delete", node))
         {
-            _viewModel.DeleteCommand.Execute(node);   // one SDK-backed gate for every delete route — no locked-block bypass (T003/H1)
             e.Handled = true;
+        }
+    }
+
+    // Runs a registry row through its BAR-gated keyboard command (D06) — the SAME availability the
+    // KeyBinding-routed gestures obey, so Delete/F2/F4, which the trees service themselves rather than through
+    // <Window.KeyBindings>, cannot become a back door around it: Delete on a locked block is refused here exactly
+    // as Ctrl+X is, even though the row's own gate (and so its context-menu item) still allows it (D13).
+    // Returns whether it ran — a refused one needs no message from here, because the window's gesture handler
+    // has already written the registry's reason to the status bar (T021 branch B).
+    private bool TryInvokeGesture(string rowId, TreeNodeViewModel node)
+    {
+        var command = _viewModel?.Registry.GestureCommands[rowId];
+        bool run = command?.CanExecute(node) == true;
+        if (run)
+        {
+            command!.Execute(node);
+        }
+        return run;
+    }
+
+    // Parsed once from the registry rows' D08 gesture STRINGS — parsing to Avalonia KeyGesture is view-side
+    // by design, keeping the rows headless-testable.
+    private List<(KeyGesture Gesture, CommandSpec Row)>? _gestureRows;
+
+    // D06 + T021 branch B: match the pressed gesture against the registry and, when its surface availability
+    // refuses it, say WHY in the status bar (QC-06) — the refusal itself already happened, because the KeyBinding
+    // is bound to the bar-gated Registry.GestureCommands entry and a disabled command is never invoked.
+    // Only the KeyGesture parsing/matching is view-side (D08); WHICH refusals apply and WHY is the registry's one
+    // answer (Explain), so this route can never drift from the menus.
+    private void OnWindowKeyDownGateGestures(object? sender, KeyEventArgs e)
+    {
+        if (e.Handled || _viewModel is not { } vm)
+            return;
+        _gestureRows ??= vm.Registry.Rows
+            .Where(r => r.Gesture is not null)
+            .Select(r => (KeyGesture.Parse(r.Gesture!), Row: r))
+            .ToList();
+        foreach ((KeyGesture gesture, CommandSpec row) in _gestureRows)
+        {
+            if (!gesture.Matches(e))
+                continue;
+            if (vm.Registry.Explain(row.Id) is { } reason)   // null → available: the KeyBinding route ran it
+                vm.StatusText = reason;
+            return;
         }
     }
 

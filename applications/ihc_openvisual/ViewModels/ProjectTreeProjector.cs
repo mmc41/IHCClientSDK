@@ -417,6 +417,7 @@ public sealed class ProjectTreeProjector(Project project)
             {
                 IsOutputPin = isOutput, IsValueSaved = saved, Tooltip = BuildTooltip(resource),
                 IsCatalogPin = catalogDeclared,
+                IsProductTerminal = resource.Kind == Ihc.Vis.ElementKind.DatalinePin,
                 IsLogMarkPin = resource.IsLogRow(project),
                 KindDetail = resource.Tag, Kind = TreeNodeKind.Pin,
             };

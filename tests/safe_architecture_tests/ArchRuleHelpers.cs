@@ -94,9 +94,11 @@ namespace Ihc.Tests
 
         /// <summary>Asserts a <b>known-true</b> type→namespace dependency is reported as a violation, proving the
         /// fitness function can actually fail (guards against a suite that is green because the mechanism is broken).</summary>
-        public static void AssertDependencyIsDetected(Architecture arch, System.Type from, string onNamespace, string message) =>
-            Assert.That(() => Types().That().Are(from).Should().NotDependOnAny(InNamespaceSubtree(onNamespace)).Check(arch),
-                Throws.Exception, message);
+        public static void AssertDependencyIsDetected(Architecture arch, System.Type from, string onNamespace, string message)
+        {
+            var rule = Types().That().Are(from).Should().NotDependOnAny(InNamespaceSubtree(onNamespace));
+            Assert.That(rule.HasNoViolations(arch), Is.False, message);
+        }
 
         /// <summary>Forbidden dependency from a whole loaded assembly onto an external namespace subtree.</summary>
         public static void AssertAssemblyHasNoDependency(Architecture arch, string onNamespace, string because)
@@ -122,13 +124,13 @@ namespace Ihc.Tests
         public static void AssertNoDependencyOnTypeNames(Architecture arch, string fromNamespaceRoot,
             IReadOnlyCollection<string> forbiddenFullNames, string forbiddenLabel, string because)
         {
+            Assert.That(OwnTypes(arch, fromNamespaceRoot), Is.Not.Empty,
+                $"'{fromNamespaceRoot}' matched no owned source types; the rule would pass vacuously");
             Assert.That(forbiddenFullNames, Is.Not.Empty,
                 $"{forbiddenLabel}: the forbidden name set is empty — this rule would pass vacuously; fix how the set is computed, not the assert");
 
-            var offending = OwnTypes(arch, fromNamespaceRoot)
-                .SelectMany(t => t.Dependencies, (t, d) => (Origin: t.FullName, Target: d.Target.FullName))
+            var offending = DependencyEdges(arch, fromNamespaceRoot)
                 .Where(e => forbiddenFullNames.Contains(e.Target))
-                .Distinct()
                 .ToList();
 
             Assert.That(offending, Is.Empty,
@@ -147,12 +149,7 @@ namespace Ihc.Tests
             Assert.That(forbiddenCtorFullNames, Is.Not.Empty,
                 $"{forbiddenLabel}: the forbidden name set is empty — this rule would pass vacuously; fix how the set is computed, not the assert");
 
-            var constructed = OwnTypes(arch, fromNamespaceRoot)
-                .SelectMany(t => t.Dependencies.OfType<MethodCallDependency>())
-                .Select(c => c.TargetMember)
-                .OfType<MethodMember>()
-                .Where(m => m.MethodForm == MethodForm.Constructor)
-                .Select(m => m.DeclaringType.FullName)
+            var constructed = ConstructorCallEdges(arch, fromNamespaceRoot)
                 .ToList();
 
             // Self-check: the subtree assuredly constructs SOMETHING, so the newobj detection must observe
@@ -161,8 +158,73 @@ namespace Ihc.Tests
             Assert.That(constructed, Is.Not.Empty,
                 $"{forbiddenLabel}: no constructor-call edges were seen at all — the newobj detection is not working, so this rule cannot be trusted");
 
-            var offending = constructed.Where(forbiddenCtorFullNames.Contains).Distinct().ToList();
-            Assert.That(offending, Is.Empty, because + " — constructed directly: " + string.Join(", ", offending));
+            var offending = constructed.Where(e => forbiddenCtorFullNames.Contains(e.Target)).ToList();
+            Assert.That(offending, Is.Empty, because + " — constructed directly: "
+                + string.Join("; ", offending.Select(e => $"{e.Origin} -> {e.Target}")));
+        }
+
+        /// <summary>Asserts no type in the <paramref name="fromNamespaceRoot"/> subtree CALLS one of the named
+        /// members of <paramref name="targetTypeFullName"/> (crudarch T022). Distinct from the two scans above:
+        /// the subtree may legitimately depend on the target type every other way — hold it, call its OTHER
+        /// members — and only the named member calls are forbidden (the stateless one-shot facade methods, once
+        /// interactive edits must go through the document port).</summary>
+        public static void AssertDoesNotCallMembers(Architecture arch, string fromNamespaceRoot,
+            string targetTypeFullName, IReadOnlyCollection<string> forbiddenMemberNames, string forbiddenLabel, string because)
+        {
+            Assert.That(forbiddenMemberNames, Is.Not.Empty,
+                $"{forbiddenLabel}: the forbidden member-name set is empty — this rule would pass vacuously; fix how the set is computed, not the assert");
+
+            var calls = MethodCallEdges(arch, fromNamespaceRoot)
+                .ToList();
+
+            // Self-check mirror of the ctor scan: the subtree assuredly calls SOMETHING, so method-call edges must
+            // be observed at all — otherwise the modelling changed and a green result would mean "saw nothing".
+            Assert.That(calls, Is.Not.Empty,
+                $"{forbiddenLabel}: no method-call edges were seen at all — the call detection is not working, so this rule cannot be trusted");
+
+            var offending = calls
+                .Where(e => e.TargetType == targetTypeFullName
+                            && forbiddenMemberNames.Contains(e.Member))
+                .ToList();
+
+            Assert.That(offending, Is.Empty,
+                because + " — offending calls: " + string.Join("; ", offending.Select(e => $"{e.Origin} -> {e.Member}")));
+        }
+
+        // ArchUnitNET member names carry the signature ("Apply(Ihc.Vis.Projects.Project, ...)") and generic arity
+        // ("Apply`1(...)"); reduce to the bare method name so callers forbid by the name a reader knows.
+        public static IReadOnlyList<(string Origin, string Target)> DependencyEdges(
+            Architecture arch, string fromNamespaceRoot) =>
+            OwnTypes(arch, fromNamespaceRoot)
+                .SelectMany(t => t.Dependencies,
+                    (t, dependency) => (Origin: t.FullName, Target: dependency.Target.FullName))
+                .Distinct()
+                .ToList();
+
+        public static IReadOnlyList<(string Origin, string Target)> ConstructorCallEdges(
+            Architecture arch, string fromNamespaceRoot) =>
+            OwnTypes(arch, fromNamespaceRoot)
+                .SelectMany(t => t.Dependencies.OfType<MethodCallDependency>(),
+                    (t, call) => (Origin: t.FullName, Member: call.TargetMember))
+                .Where(edge => edge.Member is MethodMember { MethodForm: MethodForm.Constructor })
+                .Select(edge => (edge.Origin, Target: edge.Member.DeclaringType.FullName))
+                .Distinct()
+                .ToList();
+
+        public static IReadOnlyList<(string Origin, string TargetType, string Member)> MethodCallEdges(
+            Architecture arch, string fromNamespaceRoot) =>
+            OwnTypes(arch, fromNamespaceRoot)
+                .SelectMany(t => t.Dependencies.OfType<MethodCallDependency>(),
+                    (t, call) => (Origin: t.FullName, Member: call.TargetMember))
+                .Select(edge => (edge.Origin, TargetType: edge.Member.DeclaringType.FullName,
+                    Member: BareMemberName(edge.Member.Name)))
+                .Distinct()
+                .ToList();
+
+        private static string BareMemberName(string memberName)
+        {
+            int cut = memberName.IndexOfAny(new[] { '(', '`' });
+            return cut < 0 ? memberName : memberName.Substring(0, cut);
         }
 
         // The loaded types the assembly OWNS — those in the given namespace root's subtree — as opposed to the

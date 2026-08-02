@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Session;
@@ -284,27 +283,8 @@ namespace Ihc.Vis.Tests
             Assert.That(session.IsDirty, Is.False, "undoing back to the opened snapshot is clean again");
         }
 
-        [Test]
-        public async Task ThreadAffinity_ApplyAndMarkSavedFromANonOwnerThread_Throw()
-        {
-            (ProjectDocumentSession session, ElementId loc, _) = await OpenWithLocality();
-            Project snapshot = session.Current!;
-            Exception? applyError = null;
-            Exception? markSavedError = null;
-
-            var worker = new Thread(() =>
-            {
-                try { session.Apply(new RenameLocality(loc, "X")); } catch (Exception ex) { applyError = ex; }
-                try { session.MarkSaved(snapshot); } catch (Exception ex) { markSavedError = ex; }
-            });
-            worker.Start();
-            worker.Join();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(applyError, Is.InstanceOf<InvalidOperationException>());
-                Assert.That(markSavedError, Is.InstanceOf<InvalidOperationException>());
-            });
-        }
+        // The former ThreadAffinity_ApplyAndMarkSavedFromANonOwnerThread_Throw test is deliberately GONE: the
+        // session is lock-serialized now (crudarch D04), so off-thread calls succeed instead of throwing —
+        // SessionThreadingContractTests holds the replacement contract (no-throw reads + events on the mutating thread).
     }
 }

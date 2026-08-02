@@ -160,6 +160,36 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
+        public async Task DeleteNode_Evaluate_RefusesExactlyWhatCanDeleteForbids()
+        {
+            ProjectAppService app = App;
+            Project project = await Load("project3-KompleksWired.vis");
+
+            // One representative per element tag sweeps deletable nodes AND the structural containers
+            // (events/commands/conditions/sections/programs/...) the CanDelete gate forbids (G7).
+            var representatives = project.Root.DescendantsAndSelf()
+                .Where(e => e.Id is not null)
+                .GroupBy(e => e.Tag)
+                .Select(g => g.First())
+                .ToList();
+            bool[] gate = representatives.Select(e => app.Commands.CanDelete(project, e.Id!.Value)).ToArray();
+            Assert.That(gate, Does.Contain(true).And.Contain(false),
+                "the sweep must include both deletable and not-deletable representatives");
+
+            Assert.Multiple(() =>
+            {
+                for (int i = 0; i < representatives.Count; i++)
+                {
+                    var element = representatives[i];
+                    EditVerdict evaluated = app.CanApply(project,
+                        app.Commands.DeleteNode(project, element.Id!.Value, cascade: false));
+                    Assert.That(evaluated.Ok, Is.EqualTo(gate[i]),
+                        $"G7 parity: DeleteNode.Evaluate vs Commands.CanDelete diverge on <{element.Tag}> (id {element.Id})");
+                }
+            });
+        }
+
+        [Test]
         public async Task DeleteNode_CascadeDelete_ReversesAsOneUndoStep()
         {
             Project project = await Load("project3-KompleksWired.vis");

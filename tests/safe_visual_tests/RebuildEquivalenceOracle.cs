@@ -108,8 +108,8 @@ internal static class RebuildEquivalenceOracle
     /// rebuild. Returns the first divergence, or null when the reconcile stayed rebuild-equivalent throughout.</summary>
     internal static string? FirstDivergence(Project baseProject, Op[] ops, ReconcileStep reconcile)
     {
-        // The session is thread-affine; created and driven synchronously within this one call (no awaits), so every
-        // access stays on the calling thread. CsCheck sampling runs single-threaded (see Check).
+        // The session is lock-serialized (D04) but driven synchronously within this one call (no awaits), so the
+        // whole sequence is a single-mutator run on the calling thread. CsCheck sampling runs single-threaded (see Check).
         var session = new ProjectDocumentSession();
         session.Open(baseProject);
         TreeNodeViewModel forest = BuildInstallationForest(session.Current!);

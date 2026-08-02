@@ -31,4 +31,12 @@
        $(OutDir)\testdata\... so they are reached the same way as in the other suites. -->
   <Import Project="..\TestData.props" />
 
+  <!-- crudarch T023: the registry<->XAML consistency test parses the window's own markup — the SUBJECT under
+       test, not an oracle (so it is a direct link, not a TestData.props fixture) — copied to $(OutDir)\appxaml
+       and read via TestContext.TestDirectory, never by walking into the source checkout at test time. -->
+  <ItemGroup>
+    <None Include="..\..\applications\ihc_openvisual\Views\MainWindow.axaml"
+          Link="appxaml\MainWindow.axaml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

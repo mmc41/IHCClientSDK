@@ -15,25 +15,32 @@
         Width="1000" Height="680"
         Title="{Binding Title}">
 
+    <!-- D06 (owner ruling 2026-08-02): a shortcut follows the MENU BAR's availability, not the row's bare gate —
+         so Ctrl+X refuses on a locked block, whose Cut the bar greys while the context flyout still offers it
+         (D13). That is why these bind Registry.GestureCommands[<row id>] and not the CutCommand-style bridges:
+         a KeyBinding never invokes a DISABLED command, and Avalonia services a TopLevel's KeyBindings before any
+         instance KeyDown handler (tunnel included), so no handler could veto one after the fact. A row the bar
+         never shows (Ctrl+I/Ctrl+U, and the context-menu-only rows) is judged by its own gate. The window's
+         OnWindowKeyDownGateGestures then explains whatever did not fire. -->
     <Window.KeyBindings>
-        <KeyBinding Gesture="Ctrl+N" Command="{Binding NewCommand}"/>
-        <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenCommand}"/>
-        <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCommand}"/>
-        <KeyBinding Gesture="Ctrl+Shift+B" Command="{Binding InsertEmptyFunctionBlockCommand}"/>
-        <KeyBinding Gesture="Ctrl+G" Command="{Binding SaveFunctionBlockCommand}" CommandParameter="{Binding SelectedNode}"/>
-        <KeyBinding Gesture="F3" Command="{Binding EnterProgrammingModeCommand}" CommandParameter="{Binding SelectedNode}"/>
-        <KeyBinding Gesture="Escape" Command="{Binding LeaveProgrammingModeCommand}"/>
-        <KeyBinding Gesture="F5" Command="{Binding SendProjectCommand}"/>
-        <KeyBinding Gesture="F1" Command="{Binding HelpCommand}" CommandParameter="{Binding SelectedNode}"/>
-        <KeyBinding Gesture="Ctrl+I" Command="{Binding InsertInputCommand}"/>
-        <KeyBinding Gesture="Ctrl+U" Command="{Binding InsertOutputCommand}"/>
-        <KeyBinding Gesture="Ctrl+Z" Command="{Binding UndoCommand}"/>
-        <KeyBinding Gesture="Ctrl+Y" Command="{Binding RedoCommand}"/>
-        <KeyBinding Gesture="Ctrl+X" Command="{Binding CutCommand}" CommandParameter="{Binding SelectedNode}"/>
-        <KeyBinding Gesture="Ctrl+C" Command="{Binding CopyCommand}" CommandParameter="{Binding SelectedNode}"/>
-        <KeyBinding Gesture="Ctrl+V" Command="{Binding PasteCommand}" CommandParameter="{Binding SelectedNode}"/>
-        <KeyBinding Gesture="Ctrl+Shift+Up" Command="{Binding MoveUpCommand}" CommandParameter="{Binding SelectedNode}"/>
-        <KeyBinding Gesture="Ctrl+Shift+Down" Command="{Binding MoveDownCommand}" CommandParameter="{Binding SelectedNode}"/>
+        <KeyBinding Gesture="Ctrl+N" Command="{Binding Registry.GestureCommands[file.new]}"/>
+        <KeyBinding Gesture="Ctrl+O" Command="{Binding Registry.GestureCommands[file.open]}"/>
+        <KeyBinding Gesture="Ctrl+S" Command="{Binding Registry.GestureCommands[file.save]}"/>
+        <KeyBinding Gesture="Ctrl+Shift+B" Command="{Binding Registry.GestureCommands[insert.emptyFunctionBlock]}"/>
+        <KeyBinding Gesture="Ctrl+G" Command="{Binding Registry.GestureCommands[node.saveBlock]}"/>
+        <KeyBinding Gesture="F3" Command="{Binding Registry.GestureCommands[view.showProgram]}"/>
+        <KeyBinding Gesture="Escape" Command="{Binding Registry.GestureCommands[program.leaveMode]}"/>
+        <KeyBinding Gesture="F5" Command="{Binding Registry.GestureCommands[controller.send]}"/>
+        <KeyBinding Gesture="F1" Command="{Binding Registry.GestureCommands[help.onNode]}"/>
+        <KeyBinding Gesture="Ctrl+I" Command="{Binding Registry.GestureCommands[program.insertInput]}"/>
+        <KeyBinding Gesture="Ctrl+U" Command="{Binding Registry.GestureCommands[program.insertOutput]}"/>
+        <KeyBinding Gesture="Ctrl+Z" Command="{Binding Registry.GestureCommands[edit.undo]}"/>
+        <KeyBinding Gesture="Ctrl+Y" Command="{Binding Registry.GestureCommands[edit.redo]}"/>
+        <KeyBinding Gesture="Ctrl+X" Command="{Binding Registry.GestureCommands[edit.cut]}"/>
+        <KeyBinding Gesture="Ctrl+C" Command="{Binding Registry.GestureCommands[edit.copy]}"/>
+        <KeyBinding Gesture="Ctrl+V" Command="{Binding Registry.GestureCommands[edit.paste]}"/>
+        <KeyBinding Gesture="Ctrl+Shift+Up" Command="{Binding Registry.GestureCommands[edit.moveUp]}"/>
+        <KeyBinding Gesture="Ctrl+Shift+Down" Command="{Binding Registry.GestureCommands[edit.moveDown]}"/>
     </Window.KeyBindings>
 
     <Window.Resources>
@@ -54,7 +61,7 @@
              CanInsertProduct). -->
         <MenuFlyout x:Key="NodeContextMenu" x:DataType="vm:MainWindowViewModel">
             <MenuItem Header="Insert _locality" Command="{Binding InsertLocalityCommand}"
-                      IsVisible="{Binding SelectedNode.CanInsertLocality, FallbackValue=False}"/>
+                      IsVisible="{Binding Registry.ContextMenu[insert.locality].Visible, FallbackValue=False}"/>
             <!-- Product category folders are data-driven (H2/D08) — see CatalogMenu.BuildProductForest. -->
             <MenuItem Header="Insert _product" ItemsSource="{Binding ProductsMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
@@ -64,79 +71,79 @@
                       IsVisible="{Binding CanInsertFunctionBlock, FallbackValue=False}"/>
             <MenuItem Header="_Empty function block" Command="{Binding InsertEmptyFunctionBlockCommand}"
                       InputGesture="Ctrl+Shift+B"
-                      IsVisible="{Binding CanInsertFunctionBlock, FallbackValue=False}"/>
+                      IsVisible="{Binding Registry.ContextMenu[insert.emptyFunctionBlock].Visible, FallbackValue=False}"/>
             <MenuItem Header="Insert _variable" ItemsSource="{Binding VariablePaletteMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanInsertVariable, FallbackValue=False}"/>
-            <MenuItem Header="Link _from here" Command="{Binding StartLinkCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding SelectedNode.IsPin, FallbackValue=False}"/>
-            <MenuItem Header="Link _to here" Command="{Binding LinkToHereCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding SelectedNode.IsLinkTarget, FallbackValue=False}"/>
-            <MenuItem Header="_Use in program" Command="{Binding UseInProgramCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding SelectedNode.IsPin, FallbackValue=False}"/>
-            <MenuItem Header="_Log mark" Command="{Binding ToggleLogMarkCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding SelectedNode.IsLogMarkPin, FallbackValue=False}"/>
-            <MenuItem Header="Save current _value" Command="{Binding ToggleSaveValueCommand}" CommandParameter="{Binding SelectedNode}"
+            <MenuItem Header="Link _from here" Command="{Binding StartLinkCommand}"
+                      IsVisible="{Binding Registry.ContextMenu[link.startFromHere].Visible, FallbackValue=False}"/>
+            <MenuItem Header="Link _to here" Command="{Binding LinkToHereCommand}"
+                      IsVisible="{Binding Registry.ContextMenu[link.toHere].Visible, FallbackValue=False}"/>
+            <MenuItem Header="_Use in program" Command="{Binding UseInProgramCommand}"
+                      IsVisible="{Binding Registry.ContextMenu[node.useInProgram].Visible, FallbackValue=False}"/>
+            <MenuItem Header="_Log mark" Command="{Binding ToggleLogMarkCommand}"
+                      IsVisible="{Binding Registry.ContextMenu[node.toggleLogMark].Visible, FallbackValue=False}"/>
+            <MenuItem Header="Save current _value" Command="{Binding ToggleSaveValueCommand}"
                       ToggleType="CheckBox" IsChecked="{Binding SelectedNode.IsValueSaved, Mode=OneWay, FallbackValue=False}"
-                      IsVisible="{Binding SelectedNode.IsOutputPin, FallbackValue=False}"/>
+                      IsVisible="{Binding Registry.ContextMenu[program.toggleSaveValue].Visible, FallbackValue=False}"/>
             <MenuItem Header="Add _event" ItemsSource="{Binding ProgramEventMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanAddEvent, FallbackValue=False}"/>
-            <MenuItem Header="Add _Powerup event" Command="{Binding AddPowerEventCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding CanAddEvent, FallbackValue=False}"/>
+            <MenuItem Header="Add _Powerup event" Command="{Binding AddPowerEventCommand}"
+                      IsVisible="{Binding Registry.ContextMenu[program.addPowerEvent].Visible, FallbackValue=False}"/>
             <MenuItem Header="Add _command" ItemsSource="{Binding ProgramCommandMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanAddCommand, FallbackValue=False}"/>
-            <MenuItem Header="_Sub-program" Command="{Binding AddSubProgramCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding CanAddCommand, FallbackValue=False}"/>
+            <MenuItem Header="_Sub-program" Command="{Binding AddSubProgramCommand}"
+                      IsVisible="{Binding Registry.ContextMenu[program.addSubProgram].Visible, FallbackValue=False}"/>
             <MenuItem Header="C_ase" ItemsSource="{Binding ProgramCaseMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanAddCommand, FallbackValue=False}"/>
             <MenuItem Header="Arith_metic" ItemsSource="{Binding ProgramArithmeticMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanAddCommand, FallbackValue=False}"/>
-            <MenuItem Header="New case _value…" Command="{Binding NewCaseValueCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding CanAddCaseValue, FallbackValue=False}"/>
+            <MenuItem Header="New case _value…" Command="{Binding NewCaseValueCommand}"
+                      IsVisible="{Binding Registry.ContextMenu[program.newCaseValue].Visible, FallbackValue=False}"/>
             <MenuItem Header="Add co_ndition" ItemsSource="{Binding ProgramConditionMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanAddCondition, FallbackValue=False}"/>
-            <MenuItem Header="Logic _group" Command="{Binding AddLogicGroupCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding CanAddCondition, FallbackValue=False}"/>
+            <MenuItem Header="Logic _group" Command="{Binding AddLogicGroupCommand}"
+                      IsVisible="{Binding Registry.ContextMenu[program.addLogicGroup].Visible, FallbackValue=False}"/>
             <MenuItem Header="Logical condition"
                       IsVisible="{Binding CanAddCondition, FallbackValue=False}">
-                <MenuItem Header="AND (_&amp;)" Command="{Binding SetConditionsAndCommand}" CommandParameter="{Binding SelectedNode}"/>
-                <MenuItem Header="OR (_&gt;=1)" Command="{Binding SetConditionsOrCommand}" CommandParameter="{Binding SelectedNode}"/>
+                <MenuItem Header="AND (_&amp;)" Command="{Binding SetConditionsAndCommand}"/>
+                <MenuItem Header="OR (_&gt;=1)" Command="{Binding SetConditionsOrCommand}"/>
             </MenuItem>
-            <MenuItem Header="_Save block…" Command="{Binding SaveFunctionBlockCommand}" CommandParameter="{Binding SelectedNode}"
+            <MenuItem Header="_Save block…" Command="{Binding SaveFunctionBlockCommand}"
                       InputGesture="Ctrl+G"
-                      IsVisible="{Binding SelectedNode.IsFunctionBlock, FallbackValue=False}"/>
-            <MenuItem Header="Cu_t" Command="{Binding CutCommand}" CommandParameter="{Binding SelectedNode}"
+                      IsVisible="{Binding Registry.ContextMenu[node.saveBlock].Visible, FallbackValue=False}"/>
+            <MenuItem Header="Cu_t" Command="{Binding CutCommand}"
                       InputGesture="Ctrl+X"
-                      IsVisible="{Binding SelectedNode.CanCut, FallbackValue=False}"/>
-            <MenuItem Header="_Copy" Command="{Binding CopyCommand}" CommandParameter="{Binding SelectedNode}"
+                      IsVisible="{Binding Registry.ContextMenu[edit.cut].Visible, FallbackValue=False}"/>
+            <MenuItem Header="_Copy" Command="{Binding CopyCommand}"
                       InputGesture="Ctrl+C"
-                      IsVisible="{Binding CanCopyFromContextMenu, FallbackValue=False}"/>
-            <MenuItem Header="_Unlock" Command="{Binding UnlockCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding SelectedNode.IsLockedFunctionBlock, FallbackValue=False}"/>
-            <MenuItem Header="_Paste" Command="{Binding PasteCommand}" CommandParameter="{Binding SelectedNode}"
+                      IsVisible="{Binding Registry.ContextMenu[edit.copy].Visible, FallbackValue=False}"/>
+            <MenuItem Header="_Unlock" Command="{Binding UnlockCommand}"
+                      IsVisible="{Binding Registry.ContextMenu[node.unlock].Visible, FallbackValue=False}"/>
+            <MenuItem Header="_Paste" Command="{Binding PasteCommand}"
                       InputGesture="Ctrl+V"
-                      IsVisible="{Binding CanPaste, FallbackValue=False}"/>
-            <MenuItem Header="_Jump to opposite link" Command="{Binding NavigateLinkOppositeCommand}" CommandParameter="{Binding SelectedNode}"
+                      IsVisible="{Binding Registry.ContextMenu[edit.paste].Visible, FallbackValue=False}"/>
+            <MenuItem Header="_Jump to opposite link" Command="{Binding NavigateLinkOppositeCommand}"
                       InputGesture="F4"
-                      IsVisible="{Binding SelectedNode.IsLinkRow, FallbackValue=False}"/>
-            <MenuItem Header="Move _up" Command="{Binding MoveUpCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding CanMoveSelected, FallbackValue=False}"/>
-            <MenuItem Header="Move dow_n" Command="{Binding MoveDownCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding CanMoveSelected, FallbackValue=False}"/>
-            <MenuItem Header="_Delete" Command="{Binding DeleteCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding CanDeleteSelected, FallbackValue=False}"/>
+                      IsVisible="{Binding Registry.ContextMenu[link.jumpOpposite].Visible, FallbackValue=False}"/>
+            <MenuItem Header="Move _up" Command="{Binding MoveUpCommand}"
+                      IsVisible="{Binding Registry.ContextMenu[edit.moveUp].Visible, FallbackValue=False}"/>
+            <MenuItem Header="Move dow_n" Command="{Binding MoveDownCommand}"
+                      IsVisible="{Binding Registry.ContextMenu[edit.moveDown].Visible, FallbackValue=False}"/>
+            <MenuItem Header="_Delete" Command="{Binding DeleteCommand}"
+                      IsVisible="{Binding Registry.ContextMenu[edit.delete].Visible, FallbackValue=False}"/>
             <!-- Offered on a block AND on its pins: the vendor lets you jump from a pin to the program that uses
-                 it (uxparity S-28). CanShowProgram resolves the owning block for either. -->
-            <MenuItem Header="Show _program" Command="{Binding EnterProgrammingModeCommand}" CommandParameter="{Binding SelectedNode}"
+                 it (uxparity S-28). The registry row's gate resolves the owning block for either. -->
+            <MenuItem Header="Show _program" Command="{Binding EnterProgrammingModeCommand}"
                       InputGesture="F3"
-                      IsVisible="{Binding CanShowProgram, FallbackValue=False}"/>
-            <MenuItem Header="P_roperties" Command="{Binding PropertiesCommand}" CommandParameter="{Binding SelectedNode}"
-                      IsVisible="{Binding SelectedNode.CanEditNonLink, FallbackValue=False}"/>
+                      IsVisible="{Binding Registry.ContextMenu[view.showProgram].Visible, FallbackValue=False}"/>
+            <MenuItem Header="P_roperties" Command="{Binding PropertiesCommand}"
+                      IsVisible="{Binding Registry.ContextMenu[node.properties].Visible, FallbackValue=False}"/>
         </MenuFlyout>
 
         <!-- The tree-row container theme + row template, shared by both panes (they were byte-identical). The
@@ -188,9 +195,13 @@
                 <MenuItem Header="_Open project…" Command="{Binding OpenCommand}" InputGesture="Ctrl+O"/>
                 <Separator/>
                 <MenuItem Header="_Save project" Command="{Binding SaveCommand}" InputGesture="Ctrl+S"/>
-                <MenuItem Header="Save project _as…" Command="{Binding SaveAsCommand}"/>
+                <MenuItem Header="Save project _as…" Command="{Binding SaveAsCommand}"
+                          IsEnabled="{Binding Registry.Bar[file.saveAs].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[file.saveAs].Reason}"/>
                 <Separator/>
-                <MenuItem Header="_Close project" Command="{Binding CloseCommand}"/>
+                <MenuItem Header="_Close project" Command="{Binding CloseCommand}"
+                          IsEnabled="{Binding Registry.Bar[file.close].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[file.close].Reason}"/>
                 <Separator/>
                 <MenuItem Name="RecentProjectsMenu" Header="Recent projects" ItemsSource="{Binding RecentProjects}">
                     <MenuItem.ItemTemplate>
@@ -217,35 +228,49 @@
 
             <!-- Edit is owned by later epics (E14–E15); present as a stable host. -->
             <MenuItem Header="_Edit" a:AutomationProperties.AutomationId="MenuEdit">
-                <MenuItem Header="{Binding UndoMenuHeader}" Command="{Binding UndoCommand}" InputGesture="Ctrl+Z"/>
-                <MenuItem Header="{Binding RedoMenuHeader}" Command="{Binding RedoCommand}" InputGesture="Ctrl+Y"/>
+                <MenuItem Header="{Binding UndoMenuHeader}" Command="{Binding UndoCommand}" InputGesture="Ctrl+Z"
+                          IsEnabled="{Binding Registry.Bar[edit.undo].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[edit.undo].Reason}"/>
+                <MenuItem Header="{Binding RedoMenuHeader}" Command="{Binding RedoCommand}" InputGesture="Ctrl+Y"
+                          IsEnabled="{Binding Registry.Bar[edit.redo].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[edit.redo].Reason}"/>
                 <!-- No separator here: the vendor's Rediger runs Fortryd…Egenskaber ungrouped (uxparity S-27). -->
-                <MenuItem Header="Cu_t" Command="{Binding CutCommand}" CommandParameter="{Binding SelectedNode}"
-                          InputGesture="Ctrl+X" IsEnabled="{Binding CanCutFromMenuBar}"/>
-                <MenuItem Header="_Copy" Command="{Binding CopyCommand}" CommandParameter="{Binding SelectedNode}" InputGesture="Ctrl+C"/>
-                <MenuItem Header="_Paste" Command="{Binding PasteCommand}" CommandParameter="{Binding SelectedNode}" InputGesture="Ctrl+V"/>
-                <MenuItem Header="_Delete" Command="{Binding DeleteCommand}" CommandParameter="{Binding SelectedNode}"
-                          InputGesture="Delete" IsEnabled="{Binding CanDeleteFromMenuBar}"/>
+                <MenuItem Header="Cu_t" Command="{Binding CutCommand}" InputGesture="Ctrl+X"
+                          IsEnabled="{Binding Registry.Bar[edit.cut].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[edit.cut].Reason}"/>
+                <MenuItem Header="_Copy" Command="{Binding CopyCommand}" InputGesture="Ctrl+C"
+                          IsEnabled="{Binding Registry.Bar[edit.copy].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[edit.copy].Reason}"/>
+                <MenuItem Header="_Paste" Command="{Binding PasteCommand}" InputGesture="Ctrl+V"
+                          IsEnabled="{Binding Registry.Bar[edit.paste].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[edit.paste].Reason}"/>
+                <MenuItem Header="_Delete" Command="{Binding DeleteCommand}" InputGesture="Delete"
+                          IsEnabled="{Binding Registry.Bar[edit.delete].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[edit.delete].Reason}"/>
                 <!-- The vendor's Rediger ends with Egenskaber… F2 (uxparity S-27); OpenVisual bound F2 but only
                      surfaced Properties on the context menu. -->
-                <MenuItem Header="P_roperties" Command="{Binding PropertiesCommand}" CommandParameter="{Binding SelectedNode}"
-                          InputGesture="F2"/>
+                <MenuItem Header="P_roperties" Command="{Binding PropertiesCommand}" InputGesture="F2"
+                          IsEnabled="{Binding Registry.Bar[node.properties].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[node.properties].Reason}"/>
             </MenuItem>
 
             <MenuItem Header="_View" a:AutomationProperties.AutomationId="MenuView">
                 <!-- The vendor's Vis leads with the three view/navigation commands (uxparity S-27):
                      Konfigurationsvisning (ESC), Vis program (F3), Hop til modsat link (F4). OpenVisual bound all
                      three as keys but surfaced none of them in the menu. -->
-                <MenuItem Header="_Configuration view" Command="{Binding LeaveProgrammingModeCommand}" InputGesture="Escape"/>
+                <MenuItem Header="_Configuration view" Command="{Binding LeaveProgrammingModeCommand}" InputGesture="Escape"
+                          IsEnabled="{Binding Registry.Bar[program.leaveMode].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[program.leaveMode].Reason}"/>
                 <MenuItem Header="_Toolbar" ToggleType="CheckBox"
                           IsChecked="{Binding IsToolbarVisible}" Command="{Binding ToggleToolbarCommand}"/>
                 <MenuItem Header="_Status bar" ToggleType="CheckBox"
                           IsChecked="{Binding IsStatusBarVisible}" Command="{Binding ToggleStatusBarCommand}"/>
-                <MenuItem Header="Show _program" Command="{Binding EnterProgrammingModeCommand}"
-                          CommandParameter="{Binding SelectedNode}" InputGesture="F3"
-                          IsEnabled="{Binding CanShowProgramFromMenuBar}"/>
-                <MenuItem Header="_Jump to opposite link" Command="{Binding NavigateLinkOppositeCommand}"
-                          CommandParameter="{Binding SelectedNode}" InputGesture="F4"/>
+                <MenuItem Header="Show _program" Command="{Binding EnterProgrammingModeCommand}" InputGesture="F3"
+                          IsEnabled="{Binding Registry.Bar[view.showProgram].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[view.showProgram].Reason}"/>
+                <MenuItem Header="_Jump to opposite link" Command="{Binding NavigateLinkOppositeCommand}" InputGesture="F4"
+                          IsEnabled="{Binding Registry.Bar[link.jumpOpposite].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[link.jumpOpposite].Reason}"/>
                 <MenuItem Header="Theme">
                     <MenuItem Header="System" ToggleType="Radio"
                               Command="{Binding SetThemeCommand}" CommandParameter="{x:Static svc:AppTheme.System}"
@@ -264,17 +289,29 @@
                  them on the context menu left the bar's Insert with a single item. -->
             <MenuItem Header="_Insert" a:AutomationProperties.AutomationId="MenuInsert">
                 <MenuItem Header="Pro_gram elements">
-                    <MenuItem Header="New case _value…" Command="{Binding NewCaseValueCommand}" CommandParameter="{Binding SelectedNode}"/>
-                    <MenuItem Header="_Sub-program" Command="{Binding AddSubProgramCommand}" CommandParameter="{Binding SelectedNode}"/>
-                    <MenuItem Header="Logic _group" Command="{Binding AddLogicGroupCommand}" CommandParameter="{Binding SelectedNode}"/>
+                    <MenuItem Header="New case _value…" Command="{Binding NewCaseValueCommand}"
+                              IsEnabled="{Binding Registry.Bar[program.newCaseValue].Enabled}"
+                              ToolTip.Tip="{Binding Registry.Bar[program.newCaseValue].Reason}"/>
+                    <MenuItem Header="_Sub-program" Command="{Binding AddSubProgramCommand}"
+                              IsEnabled="{Binding Registry.Bar[program.addSubProgram].Enabled}"
+                              ToolTip.Tip="{Binding Registry.Bar[program.addSubProgram].Reason}"/>
+                    <MenuItem Header="Logic _group" Command="{Binding AddLogicGroupCommand}"
+                              IsEnabled="{Binding Registry.Bar[program.addLogicGroup].Enabled}"
+                              ToolTip.Tip="{Binding Registry.Bar[program.addLogicGroup].Reason}"/>
                 </MenuItem>
                 <MenuItem Header="_Function blocks" ItemsSource="{Binding FunctionBlocksMenu}"
                           ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
                 <MenuItem Header="_Empty function block" Command="{Binding InsertEmptyFunctionBlockCommand}"
+                          IsEnabled="{Binding Registry.Bar[insert.emptyFunctionBlock].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[insert.emptyFunctionBlock].Reason}"
                           InputGesture="Ctrl+Shift+B"/>
-                <MenuItem Header="_Locality" Command="{Binding InsertLocalityCommand}"/>
+                <MenuItem Header="_Locality" Command="{Binding InsertLocalityCommand}"
+                          IsEnabled="{Binding Registry.Bar[insert.locality].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[insert.locality].Reason}"/>
                 <MenuItem Header="S_pecial">
-                    <MenuItem Header="Add _Powerup event" Command="{Binding AddPowerEventCommand}" CommandParameter="{Binding SelectedNode}"/>
+                    <MenuItem Header="Add _Powerup event" Command="{Binding AddPowerEventCommand}"
+                              IsEnabled="{Binding Registry.Bar[program.addPowerEvent].Enabled}"
+                              ToolTip.Tip="{Binding Registry.Bar[program.addPowerEvent].Reason}"/>
                 </MenuItem>
                 <!-- The product category folders are data-driven (H2/D08): Wired / IHC Wireless / Bus / Special plus an
                      Imported/Uncategorized bucket, derived from the catalog's CategoryPath by CatalogMenu. -->
@@ -291,19 +328,29 @@
                 <MenuItem Header="Import catalog f_older…" Command="{Binding ImportCatalogFolderCommand}"/>
             </MenuItem>
             <MenuItem Header="_Controller" a:AutomationProperties.AutomationId="MenuController">
-                <MenuItem Header="_Send project" Command="{Binding SendProjectCommand}" InputGesture="F5"/>
+                <MenuItem Header="_Send project" Command="{Binding SendProjectCommand}" InputGesture="F5"
+                          IsEnabled="{Binding Registry.Bar[controller.send].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[controller.send].Reason}"/>
                 <MenuItem Header="_Retrieve project" Command="{Binding RetrieveProjectCommand}"/>
             </MenuItem>
             <MenuItem Header="Doc_umentation" a:AutomationProperties.AutomationId="MenuDocumentation">
-                <MenuItem Header="_Project info…" Command="{Binding ProjectInfoCommand}"/>
-                <MenuItem Header="_Data tables…" Command="{Binding DataTablesCommand}"/>
-                <MenuItem Header="_Wired module map…" Command="{Binding ModuleMapCommand}"/>
+                <MenuItem Header="_Project info…" Command="{Binding ProjectInfoCommand}"
+                          IsEnabled="{Binding Registry.Bar[project.info].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[project.info].Reason}"/>
+                <MenuItem Header="_Data tables…" Command="{Binding DataTablesCommand}"
+                          IsEnabled="{Binding Registry.Bar[project.dataTables].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[project.dataTables].Reason}"/>
+                <MenuItem Header="_Wired module map…" Command="{Binding ModuleMapCommand}"
+                          IsEnabled="{Binding Registry.Bar[project.moduleMap].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[project.moduleMap].Reason}"/>
                 <Separator/>
-                <MenuItem Header="_Reports…" Command="{Binding OpenReportsCommand}"/>
+                <MenuItem Header="_Reports…" Command="{Binding OpenReportsCommand}"
+                          IsEnabled="{Binding Registry.Bar[reports.open].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[reports.open].Reason}"/>
             </MenuItem>
 
             <MenuItem Header="_Help" a:AutomationProperties.AutomationId="MenuHelp">
-                <MenuItem Header="Help for _selection" Command="{Binding HelpCommand}" CommandParameter="{Binding SelectedNode}" InputGesture="F1"/>
+                <MenuItem Header="Help for _selection" Command="{Binding HelpCommand}" InputGesture="F1"/>
                 <Separator/>
                 <MenuItem Header="Show settings" Command="{Binding ShowSettingsCommand}"/>
                 <MenuItem Header="Telemetry diagnostics" Command="{Binding TelemetryDiagnosticsCommand}"/>
@@ -361,25 +408,38 @@
                 </Button>
 
                 <Rectangle Classes="toolsep"/>
-                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Retrieve from controller (E10)"
+                <!-- T020: real registry-bound buttons (the toolbar is a persistent surface — it greys, never
+                     hides). Tooltips stay the static captions: the T016 spike proved a DISABLED control shows
+                     no tooltip, so disabled reasons surface via the T021 status-bar handler instead. -->
+                <Button Classes="tool" Command="{Binding RetrieveProjectCommand}"
+                        IsEnabled="{Binding Registry.Toolbar[controller.retrieve].Enabled}"
+                        ToolTip.Tip="Retrieve from controller"
                         a:AutomationProperties.Name="Retrieve from controller" a:AutomationProperties.AutomationId="ToolbarRetrieve">
                     <svg:Svg Classes="toolicon" Path="/Assets/toolbar_retrieve.svg" CurrentColor="{DynamicResource IconColor}"/>
                 </Button>
-                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Send to controller (E10)"
+                <Button Classes="tool" Command="{Binding SendProjectCommand}"
+                        IsEnabled="{Binding Registry.Toolbar[controller.send].Enabled}"
+                        ToolTip.Tip="Send to controller (F5)"
                         a:AutomationProperties.Name="Send to controller" a:AutomationProperties.AutomationId="ToolbarSend">
                     <svg:Svg Classes="toolicon" Path="/Assets/toolbar_send.svg" CurrentColor="{DynamicResource IconColor}"/>
                 </Button>
 
                 <Rectangle Classes="toolsep"/>
-                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Cut (E14)"
+                <Button Classes="tool" Command="{Binding CutCommand}"
+                        IsEnabled="{Binding Registry.Toolbar[edit.cut].Enabled}"
+                        ToolTip.Tip="Cut (Ctrl+X)"
                         a:AutomationProperties.Name="Cut" a:AutomationProperties.AutomationId="ToolbarCut">
                     <svg:Svg Classes="toolicon" Path="/Assets/toolbar_cut.svg" CurrentColor="{DynamicResource IconColor}"/>
                 </Button>
-                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Copy (E14)"
+                <Button Classes="tool" Command="{Binding CopyCommand}"
+                        IsEnabled="{Binding Registry.Toolbar[edit.copy].Enabled}"
+                        ToolTip.Tip="Copy (Ctrl+C)"
                         a:AutomationProperties.Name="Copy" a:AutomationProperties.AutomationId="ToolbarCopy">
                     <svg:Svg Classes="toolicon" Path="/Assets/toolbar_copy.svg" CurrentColor="{DynamicResource IconColor}"/>
                 </Button>
-                <Button Classes="tool" IsEnabled="False" ToolTip.Tip="Paste (E14)"
+                <Button Classes="tool" Command="{Binding PasteCommand}"
+                        IsEnabled="{Binding Registry.Toolbar[edit.paste].Enabled}"
+                        ToolTip.Tip="Paste (Ctrl+V)"
                         a:AutomationProperties.Name="Paste" a:AutomationProperties.AutomationId="ToolbarPaste">
                     <svg:Svg Classes="toolicon" Path="/Assets/toolbar_paste.svg" CurrentColor="{DynamicResource IconColor}"/>
                 </Button>

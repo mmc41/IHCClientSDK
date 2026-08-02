@@ -219,7 +219,9 @@ public class ReportRenderingTests
     }
 
     // Not part of the suite (Explicit) — writes representative report HTML to a path for visual inspection.
-    [Test, Explicit]
+    [Test]
+    [Explicit("Developer tool: writes sample HTML for manual visual inspection; not CI regression coverage.")]
+    [Category("Tool")]
     public void DumpSampleReports()
     {
         var dir = Environment.GetEnvironmentVariable("REPORT_DUMP_DIR") ?? Path.GetTempPath();

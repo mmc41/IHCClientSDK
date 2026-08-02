@@ -172,7 +172,8 @@ public class ProjectTreeReconcilerReconcileTests
         var session = new ProjectDocumentSession();
         session.Open(linked);
         EditOutcome outcome = session.Apply(new RenameLocality(livingRoomId, "Salon", string.Empty));
-        Assume.That(outcome.Status, Is.EqualTo(EditStatus.Committed));
+        Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed),
+            "RenameLocality is the behavior under test and must commit for this scenario");
         reconciler.Reconcile(session.Current!, outcome.Changes!);
 
         Assert.Multiple(() =>

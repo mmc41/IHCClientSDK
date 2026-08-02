@@ -408,10 +408,10 @@ public class MainWindowViewModelTests
 
         // Paste is clipboard-state-dependent (F-010): absent when empty, present on a locality once populated.
         vm.SelectedInstallationNode = locality;
-        Assert.That(vm.CanPaste, Is.False, "no Paste with an empty clipboard");
-        vm.CopyCommand.Execute(productNode);
-        vm.SelectedInstallationNode = locality;
-        Assert.That(vm.CanPaste, Is.True, "Paste appears once the clipboard is non-empty");
+        Assert.That(vm.Registry.ContextMenu["edit.paste"].Visible, Is.False, "no Paste with an empty clipboard");
+        vm.CopyCommand.Execute(productNode);   // T012: the parameter bridge selects the product while copying
+        vm.SelectNode(locality);               // back to the locality — the aggregate selection drives the gates
+        Assert.That(vm.Registry.ContextMenu["edit.paste"].Visible, Is.True, "Paste appears once the clipboard is non-empty");
     }
 
     // T018 / US-068 / D07: Insert product is offered on a LOCALITY only (not a product), and Move up/down only on the
@@ -432,14 +432,16 @@ public class MainWindowViewModelTests
 
         vm.SelectedInstallationNode = locality;
         Assert.That(vm.CanInsertProduct, Is.True, "Insert product is offered on a locality");
-        Assert.That(vm.CanMoveSelected, Is.True, "a locality is movable");
+        Assert.That(vm.Registry.ContextMenu["edit.moveDown"].Visible, Is.True,
+            "a locality is movable (down — it is the first of ten, so up is a T018 boundary refusal)");
 
         vm.SelectedInstallationNode = productNode;
         Assert.That(vm.CanInsertProduct, Is.False, "Insert product is NOT offered on a product (locality-only, US-068)");
-        Assert.That(vm.CanMoveSelected, Is.True, "a product is movable");
+        Assert.That(vm.Registry.ContextMenu["edit.moveUp"].Visible, Is.False,
+            "the ONLY product in its locality has nowhere to move — both directions refuse (T018/G6)");
 
         vm.SelectedInstallationNode = productPin;
-        Assert.That(vm.CanMoveSelected, Is.False, "a pin has no Move up/down (D07)");
+        Assert.That(vm.Registry.ContextMenu["edit.moveUp"].Visible, Is.False, "a pin has no Move up/down (D07)");
     }
 
     // A-24 (F-067, US-068): Delete is absent from a catalog-declared product pin's context menu — a product's pins
@@ -2008,8 +2010,9 @@ public class MainWindowViewModelTests
         vm.SelectNode(vm.InstallationNodes[0].Children[0]);
         Assert.Multiple(() =>
         {
-            Assert.That(vm.CanDeleteSelected, Is.True, "a config-mode locality stays deletable");
-            Assert.That(vm.CanMoveSelected, Is.True, "a config-mode locality stays movable");
+            Assert.That(vm.Registry.ContextMenu["edit.delete"].Visible, Is.True, "a config-mode locality stays deletable");
+            Assert.That(vm.Registry.ContextMenu["edit.moveDown"].Visible, Is.True,
+                "a config-mode locality stays movable (down — it is the first sibling, T018)");
         });
 
         var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
@@ -2032,14 +2035,14 @@ public class MainWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(vm.IsProgrammingBlockLocked, Is.True);
-            Assert.That(vm.CanDeleteSelected, Is.False, "Delete is withdrawn on a locked block's program node (F-087)");
-            Assert.That(vm.CanMoveSelected, Is.False, "Move up/down is withdrawn on a locked block (F-087)");
+            Assert.That(vm.Registry.ContextMenu["edit.delete"].Visible, Is.False, "Delete is withdrawn on a locked block's program node (F-087)");
+            Assert.That(vm.Registry.ContextMenu["edit.moveUp"].Visible, Is.False, "Move up/down is withdrawn on a locked block (F-087)");
             Assert.That(progNode!.CanEditNonLink, Is.True, "Properties stays available — the vendor shows Egenskaber on every locked node");
         });
     }
 
     // review3 H1 / T003: the Delete KEY (MainWindow.OnKeyDown) used to gate on a raw per-node deletable flag, which
-    // ignores the locked-block state that the context/Edit-menu gate (CanDeleteSelected) applies — so a user could
+    // ignores the locked-block state the "edit.delete" registry row's gate applies — so a user could
     // press Delete on a node inside a locked library block and bypass the guard. All three routes must now project
     // ONE SDK-backed verdict (the engine's CanDelete): the DeleteCommand's CanExecute. Pressing Delete on a
     // locked-block program node is then a silent no-op — no mutation, and no "Cannot delete" refusal dialog.

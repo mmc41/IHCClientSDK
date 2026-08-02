@@ -47,10 +47,11 @@ Assert.That(vm.SelectedInstallationNode, Is.SameAs(vm.InstallationNodes[0]), "Ho
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
+        var lastLocalityId = vm.InstallationNodes[0].Children[^1].ElementId!.Value;
+        await harness.Session.AddEmptyFunctionBlockAsync(lastLocalityId);
         var root = vm.InstallationNodes[0];
         var last = root.Children[^1];
-        if (last.Children.Count == 0)
-            Assert.Ignore("the fixture's last locality has no children");
+        Assert.That(last.Children, Is.Not.Empty, "arrangement: the last locality has an expanded descendant");
         last.IsExpanded = true;
 
         vm.SelectLastVisibleRowCommand.Execute(false);

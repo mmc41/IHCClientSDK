@@ -1,5 +1,5 @@
 ---
-version: 0.4.0
+version: 0.5.0
 last-updated: 2026-08-02
 status: draft
 ---
@@ -288,11 +288,15 @@ Scenario: Reorder preserves identity and links
   route-parity. A drag reorder is the same id-preserving move as US-054 with an in-container target index;
   while dragging, the legal insertion position is indicated and a drop outside the container's own sibling
   list is refused. *Move up*/*Move down* stay **off the link row** and **off a pin** (US-068).
+- MUST: At the container's ends the move command is **unavailable rather than a silent no-op**: *Move up*
+  on the first sibling and *Move down* on the last (both, for an only child) are omitted from the context
+  menu and greyed in the menu bar (US-044/US-068); a middle sibling offers both.
 
 **Readiness:** Ready.
 
 **Implementation status:** ✅ Implemented — the primary drag-to-reorder gesture moves a sibling to a new
-position (reflected in both panes and in report order); *Move up* / *Move down* and cut/paste stay as
+position (reflected in both panes and in report order), the move commands gate on reorderability at the
+container's ends; *Move up* / *Move down* and cut/paste stay as
 supplements.
 
 ---

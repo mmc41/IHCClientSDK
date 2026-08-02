@@ -13,7 +13,10 @@ namespace Ihc.Vis.Tests
     /// surface. Both tests are <c>[Explicit]</c>: the solution builds and they are present but never run (they
     /// exercise stub handles/services); their only purpose is to let the user approve the authoring surface.
     /// </summary>
-    public class AuthoringApiTests
+    [TestFixture]
+    [Explicit("Executable authoring example; not a regression assertion or CI coverage.")]
+    [Category("Example")]
+    public class AuthoringApiExamples
     {
         private IhcSettings settings => TestSetup.Settings;
 

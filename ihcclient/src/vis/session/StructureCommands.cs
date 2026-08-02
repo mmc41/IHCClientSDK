@@ -56,16 +56,23 @@ namespace Ihc.Vis.Session
     }
 
     /// <summary>Deletes a node by id (US-009/US-057). <paramref name="Cascade"/> (decided by the GUI after its
-    /// reference-check + confirm) chooses cascade-references over strict.</summary>
+    /// reference-check + confirm) chooses cascade-references over strict. Refuses exactly what
+    /// <see cref="ProjectCommands.CanDelete"/> forbids — both read the shared classifier, so a structural
+    /// container the gate hides (events/sections/enum definitions/...) can never be committed by Apply (G7).</summary>
     public sealed record DeleteNode(ElementId Id, bool Cascade) : ProjectCommand
     {
         internal override string Describe(Project project) => "Delete";
+        // The classifier resolves the element as well as the kind precisely so a caller needs no second lookup —
+        // so read BOTH halves: deletable → allow; not deletable because it is gone → the shared "no longer exists"
+        // guard; otherwise the engine's precise reason (review F06).
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireExists(Id, "node") is { Ok: false } missing
-                ? missing
-                : ProjectEditor.DeletionRefusalReason(context.Project.Root, Id) is { } reason
-                    ? EditVerdict.Refuse(reason)                    // catalog pin / locked-block node (review3 H1)
-                    : EditVerdict.Allow;
+            ProjectCommands.ClassifyDelete(context.Project, Id) switch
+            {
+                (not DeleteKind.NotDeletable, _) => EditVerdict.Allow,
+                (_, null) => context.RequireExists(Id, "node"),
+                _ => EditVerdict.Refuse(ProjectEditor.DeletionRefusalReason(context.Project.Root, Id)
+                    ?? "This element cannot be deleted."),   // catalog pin / locked block, else a structural container
+            };
         internal override void Execute(ProjectEditor editor) =>
             editor.DeleteById(Id, Cascade ? DeleteReferencePolicy.CascadeReferences : DeleteReferencePolicy.Strict);
     }

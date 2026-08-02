@@ -24,12 +24,13 @@ public class SelectionClearTests
         vm.CopyCommand.Execute(locality);          // arm the clipboard so Paste is offered on a locality
         vm.SelectedInstallationNode = locality;    // select in the Installation pane — the active pane
 
-        // Preconditions: the active-pane selection drives SelectedNode and the mutation gates are enabled.
+        // Preconditions: the active-pane selection drives SelectedNode and the mutation gates are enabled
+        // (T012: the gates are the registry rows' context-menu availability now).
         Assert.Multiple(() =>
         {
             Assert.That(vm.SelectedNode, Is.SameAs(locality));
-            Assert.That(vm.CanDeleteSelected, Is.True, "a locality is deletable");
-            Assert.That(vm.CanPaste, Is.True, "clipboard armed + locality selected");
+            Assert.That(vm.Registry.ContextMenu["edit.delete"].Visible, Is.True, "a locality is deletable");
+            Assert.That(vm.Registry.ContextMenu["edit.paste"].Visible, Is.True, "clipboard armed + locality selected");
         });
 
         vm.SelectedInstallationNode = null;        // the pane's selection is cleared (delete / undo / project-switch)
@@ -37,8 +38,8 @@ public class SelectionClearTests
         Assert.Multiple(() =>
         {
             Assert.That(vm.SelectedNode, Is.Null, "clearing the active pane's selection nulls SelectedNode");
-            Assert.That(vm.CanDeleteSelected, Is.False, "a null selection cannot be deleted");
-            Assert.That(vm.CanPaste, Is.False, "a null selection cannot be a paste target");
+            Assert.That(vm.Registry.ContextMenu["edit.delete"].Visible, Is.False, "a null selection cannot be deleted");
+            Assert.That(vm.Registry.ContextMenu["edit.paste"].Visible, Is.False, "a null selection cannot be a paste target");
         });
     }
 

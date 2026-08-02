@@ -11,9 +11,11 @@ namespace ihc_openvisual.Services;
 /// T019 (M6): the auto-backup WRITER extracted from <see cref="ProjectWorkflow"/> — the crash-recovery timer
 /// (10-minute default) plus the write itself: serialize the current project snapshot to the recovery location and
 /// stamp its marker. Owns the timer and the write lock (so the timer path and the change-counter path never write
-/// concurrently) and their disposal. Document state stays in <see cref="ProjectWorkflow"/>: it captures the
-/// snapshot + origin through the passed delegate (under the workflow's own gate), and the change-threshold trigger
-/// stays in the workflow (it owns the change counter) — this collaborator only writes and schedules.
+/// concurrently) and their disposal. Document state stays in <see cref="ProjectWorkflow"/>: the passed delegate
+/// captures the snapshot + origin on THIS writer's worker thread — a legal off-thread READ of the lock-serialized
+/// document (crudarch D04; this read-only path is also the one sanctioned ConfigureAwait(false) site) — and the
+/// change-threshold trigger stays in the workflow (it owns the change counter); this collaborator only writes and
+/// schedules.
 /// </summary>
 internal sealed class AutoBackupScheduler(
     BackupService backup, ProjectAppService service, TimeProvider timeProvider, ILogger logger,

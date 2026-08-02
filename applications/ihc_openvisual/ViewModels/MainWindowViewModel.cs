@@ -53,6 +53,75 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// highlight. The code-behind's DragOver/Drop handlers and the headless drag tests drive this.</summary>
     public TreeDragDropController DragDrop { get; }
 
+    /// <summary>The declarative command registry (crudarch T012, proposal §3.3): one row per migrated user-facing
+    /// command; materializes the commands from each row's gate and computes the per-surface availability
+    /// snapshots the XAML binds to (<c>Registry.Bar[id]</c>/<c>Registry.ContextMenu[id]</c>).</summary>
+    public CommandRegistry Registry { get; }
+
+    // crudarch T012: the divergent family's commands are MATERIALIZED by the registry from each row's single
+    // gate (D02). The properties below are a NAMING SHIM, nothing more: they exist only so XAML bindings and
+    // existing call sites can keep saying CutCommand instead of Registry.Commands["edit.cut"] — the row id is
+    // the real name. Adding one is never required by a new row; add it only to keep an existing call site
+    // compiling, and delete it when that call site goes (review F08).
+    public IAsyncRelayCommand CutCommand => Registry.Commands["edit.cut"];
+    public IAsyncRelayCommand CopyCommand => Registry.Commands["edit.copy"];
+    public IAsyncRelayCommand PasteCommand => Registry.Commands["edit.paste"];
+    public IAsyncRelayCommand DeleteCommand => Registry.Commands["edit.delete"];
+    public IAsyncRelayCommand EnterProgrammingModeCommand => Registry.Commands["view.showProgram"];
+
+    // crudarch T013: the remaining node-scoped tree commands as registry rows.
+    public IAsyncRelayCommand InsertLocalityCommand => Registry.Commands["insert.locality"];
+    public IAsyncRelayCommand InsertEmptyFunctionBlockCommand => Registry.Commands["insert.emptyFunctionBlock"];
+    public IAsyncRelayCommand SaveFunctionBlockCommand => Registry.Commands["node.saveBlock"];
+    public IAsyncRelayCommand UnlockCommand => Registry.Commands["node.unlock"];
+    public IAsyncRelayCommand ToggleLogMarkCommand => Registry.Commands["node.toggleLogMark"];
+    public IAsyncRelayCommand HelpCommand => Registry.Commands["help.onNode"];
+    public IAsyncRelayCommand UseInProgramCommand => Registry.Commands["node.useInProgram"];
+    public IAsyncRelayCommand StartLinkCommand => Registry.Commands["link.startFromHere"];
+    public IAsyncRelayCommand LinkToHereCommand => Registry.Commands["link.toHere"];
+    public IAsyncRelayCommand NavigateLinkOppositeCommand => Registry.Commands["link.jumpOpposite"];
+    public IAsyncRelayCommand MoveUpCommand => Registry.Commands["edit.moveUp"];
+    public IAsyncRelayCommand MoveDownCommand => Registry.Commands["edit.moveDown"];
+    public IAsyncRelayCommand PropertiesCommand => Registry.Commands["node.properties"];
+
+    // crudarch T017: Undo/Redo materialized from their history-gated rows (US-052).
+    public IAsyncRelayCommand UndoCommand => Registry.Commands["edit.undo"];
+    public IAsyncRelayCommand RedoCommand => Registry.Commands["edit.redo"];
+
+    // crudarch T015: the app-level commands as registry rows (Save stays always-enabled, D07). OpenRecent and
+    // SetTheme remain parameterized ITEM commands (data-driven lists — the established non-row ruling).
+    public IAsyncRelayCommand NewCommand => Registry.Commands["file.new"];
+    public IAsyncRelayCommand OpenCommand => Registry.Commands["file.open"];
+    public IAsyncRelayCommand SaveCommand => Registry.Commands["file.save"];
+    public IAsyncRelayCommand SaveAsCommand => Registry.Commands["file.saveAs"];
+    public IAsyncRelayCommand CloseCommand => Registry.Commands["file.close"];
+    public IAsyncRelayCommand ExitCommand => Registry.Commands["app.exit"];
+    public IAsyncRelayCommand ToggleToolbarCommand => Registry.Commands["view.toggleToolbar"];
+    public IAsyncRelayCommand ToggleStatusBarCommand => Registry.Commands["view.toggleStatusBar"];
+    public IAsyncRelayCommand ProjectInfoCommand => Registry.Commands["project.info"];
+    public IAsyncRelayCommand DataTablesCommand => Registry.Commands["project.dataTables"];
+    public IAsyncRelayCommand ModuleMapCommand => Registry.Commands["project.moduleMap"];
+    public IAsyncRelayCommand SendProjectCommand => Registry.Commands["controller.send"];
+    public IAsyncRelayCommand RetrieveProjectCommand => Registry.Commands["controller.retrieve"];
+    public IAsyncRelayCommand OpenReportsCommand => Registry.Commands["reports.open"];
+    public IAsyncRelayCommand ImportCatalogFileCommand => Registry.Commands["catalog.importFile"];
+    public IAsyncRelayCommand ImportCatalogFolderCommand => Registry.Commands["catalog.importFolder"];
+    public IAsyncRelayCommand AboutCommand => Registry.Commands["help.about"];
+    public IAsyncRelayCommand ShowSettingsCommand => Registry.Commands["app.settings"];
+    public IAsyncRelayCommand TelemetryDiagnosticsCommand => Registry.Commands["app.telemetryDiagnostics"];
+
+    // crudarch T014: the programming-mode set as registry rows.
+    public IAsyncRelayCommand LeaveProgrammingModeCommand => Registry.Commands["program.leaveMode"];
+    public IAsyncRelayCommand InsertInputCommand => Registry.Commands["program.insertInput"];
+    public IAsyncRelayCommand InsertOutputCommand => Registry.Commands["program.insertOutput"];
+    public IAsyncRelayCommand AddPowerEventCommand => Registry.Commands["program.addPowerEvent"];
+    public IAsyncRelayCommand ToggleSaveValueCommand => Registry.Commands["program.toggleSaveValue"];
+    public IAsyncRelayCommand AddSubProgramCommand => Registry.Commands["program.addSubProgram"];
+    public IAsyncRelayCommand AddLogicGroupCommand => Registry.Commands["program.addLogicGroup"];
+    public IAsyncRelayCommand SetConditionsOrCommand => Registry.Commands["program.setConditionsOr"];
+    public IAsyncRelayCommand SetConditionsAndCommand => Registry.Commands["program.setConditionsAnd"];
+    public IAsyncRelayCommand NewCaseValueCommand => Registry.Commands["program.newCaseValue"];
+
     private readonly IDialogService _dialogs;
     private readonly RecentProjectsStore _recent;
     private readonly IThemeService _themeService;
@@ -75,36 +144,15 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>The active tree node — whichever pane the installer last selected in. Context-menu commands, F2 and
     /// the insert target all read this. Not bound directly to a tree (each pane binds its own selection below), so a
     /// Functions-pane node (a function block) can be the active node without fighting the Installation tree.</summary>
+    // crudarch T012: the divergent family (Cut/Copy/Paste/Delete/Show program) lost its Notify* entries here —
+    // their enablement flows through the registry, invalidated by the ONE ContextChanged signal (C-BP-06).
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanInsertProduct))]
     [NotifyPropertyChangedFor(nameof(CanInsertFunctionBlock))]
-    [NotifyPropertyChangedFor(nameof(CanPaste))]
     [NotifyPropertyChangedFor(nameof(CanInsertVariable))]
     [NotifyPropertyChangedFor(nameof(CanAddEvent))]
     [NotifyPropertyChangedFor(nameof(CanAddCommand))]
-    [NotifyPropertyChangedFor(nameof(CanAddCaseValue))]
     [NotifyPropertyChangedFor(nameof(CanAddCondition))]
-    [NotifyPropertyChangedFor(nameof(CanDeleteSelected))]
-    [NotifyPropertyChangedFor(nameof(CanMoveSelected))]
-    [NotifyCanExecuteChangedFor(nameof(DeleteCommand))]   // the Delete-key route gates on DeleteCommand.CanExecute (T003)
-    [NotifyPropertyChangedFor(nameof(CanCutSelected))]
-    [NotifyPropertyChangedFor(nameof(CanCutFromMenuBar))]
-    [NotifyPropertyChangedFor(nameof(CanCopySelected))]
-    [NotifyPropertyChangedFor(nameof(CanCopyFromContextMenu))]
-    [NotifyPropertyChangedFor(nameof(CanDeleteFromMenuBar))]
-    [NotifyPropertyChangedFor(nameof(CanInsertLocalityHere))]
-    [NotifyPropertyChangedFor(nameof(CanShowProperties))]
-    [NotifyPropertyChangedFor(nameof(CanShowProgram))]
-    [NotifyPropertyChangedFor(nameof(CanShowProgramFromMenuBar))]
-    [NotifyPropertyChangedFor(nameof(CanNavigateLinkOpposite))]
-    [NotifyCanExecuteChangedFor(nameof(CutCommand))]
-    [NotifyCanExecuteChangedFor(nameof(CopyCommand))]
-    [NotifyCanExecuteChangedFor(nameof(PasteCommand))]
-    [NotifyCanExecuteChangedFor(nameof(PropertiesCommand))]
-    [NotifyCanExecuteChangedFor(nameof(EnterProgrammingModeCommand))]
-    [NotifyCanExecuteChangedFor(nameof(NavigateLinkOppositeCommand))]
-    [NotifyCanExecuteChangedFor(nameof(InsertEmptyFunctionBlockCommand))]
-    [NotifyCanExecuteChangedFor(nameof(InsertLocalityCommand))]
     private TreeNodeViewModel? _selectedNode;
 
     /// <summary>Whether the block currently being programmed is a locked (library) block. A locked block is
@@ -116,79 +164,22 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         && project.View(block).Locked;
 
     // The programming-mode authoring context-menu gates: a container node's own kind AND an editable (unlocked)
-    // programming block. On a locked block every one is false, so the vendor's "missing, not greyed" affordance holds.
+    // programming block. On a locked block every one is false, so the vendor's "missing, not greyed" affordance
+    // holds. These four remain because they gate the DATA-DRIVEN ItemsSource submenus, which are non-rows by the
+    // documented ruling — every gate with a registry row (New case value…, among others) is the row's, and only
+    // the row's, so a rule edit cannot land in a second dead home (review F09).
     public bool CanInsertVariable => SelectedNode?.IsBlockSection == true && !IsProgrammingBlockLocked;
     public bool CanAddEvent => SelectedNode?.IsEventsContainer == true && !IsProgrammingBlockLocked;
     public bool CanAddCommand => SelectedNode?.IsCommandsContainer == true && !IsProgrammingBlockLocked;
-    public bool CanAddCaseValue => SelectedNode?.IsCaseNode == true && !IsProgrammingBlockLocked;
     public bool CanAddCondition => SelectedNode?.IsConditionsContainer == true && !IsProgrammingBlockLocked;
 
-    /// <summary>Context-menu gate for <i>Delete</i>: a thin projection of the SDK deletion verdict
-    /// (<see cref="CanDeleteNode"/> → the engine's <c>CanDelete</c>, D09/T003), so the same rule that refuses a
-    /// catalog pin or a node inside a locked (library) block drives the context menu, Edit ▸ Delete AND the Delete
-    /// key — no route can bypass the guard. This subsumes the former locked-block special-case: a node inside a
-    /// locked block is not deletable per the SDK, so the vendor's view-only affordance (F-087) still holds.</summary>
-    public bool CanDeleteSelected => CanDeleteNode(SelectedNode);
+    // crudarch T012: the Cut/Copy/Paste/Delete/Show-program gates (context AND the stricter bar variants,
+    // uxparity S-27/S-28) moved into the registry rows — see RegisterCoreEditRows. Their per-surface
+    // divergences are SurfacePolicy data (D13), evaluated by the ONE CommandRegistry.For evaluator.
 
-    /// <summary>Context-menu gate for <i>Move up/down</i>: a reorderable structural node (locality/product/function
-    /// block, US-068/D07) AND an unlocked programming block — Move has no SDK verdict of its own, so it keeps the
-    /// measured locked-block rule (F-087).</summary>
-    public bool CanMoveSelected => SelectedNode?.CanReorder == true && !IsProgrammingBlockLocked;
-
-    /// <summary>Context-menu gate: <i>Paste</i> is offered on a locality only when the clipboard holds a cut/copied
-    /// node (A-5b/F-010) — the vendor shows it conditionally (6 items empty, 7 full).</summary>
-    public bool CanPaste => _clipboardId is not null && SelectedNode?.NodeKind == "locality";
-
-    // Menu-enablement gates measured against IHC Visual (uxparity S-27): the vendor GREYS a command that cannot
-    // apply to the current selection, which is how the installer sees what is possible. OpenVisual enforced the
-    // same rules when a command ran, but left every menu item enabled, so the menu promised more than it did.
-    /// <summary>Cut needs a structural node that may be MOVED — and the vendor greys it on a locked (library)
-    /// block, whose contents are not the installer's to take (uxparity S-28).</summary>
-    public bool CanCutSelected =>
-        SelectedNode?.ElementId is not null && SelectedNode?.CanCut == true;
-
-    /// <summary>Copy reaches further than Cut: the vendor offers it on a product terminal, which cannot be cut
-    /// (measured on `Tryk (venstre)`: Kopier enabled, Klip greyed). Only a PRODUCT terminal — an FB pin's
-    /// context menu has no Kopier — so the discriminator is the pin's own resource tag.</summary>
-    public bool CanCopySelected =>
-        SelectedNode?.ElementId is not null && (SelectedNode?.CanCopy == true || SelectedNode?.IsPin == true);
-
-    /// <summary>The CONTEXT menu is narrower than the bar here: the vendor offers Kopier on a product terminal's
-    /// flyout but NOT on a function-block pin's, while Rediger ▸ Kopier is enabled for both (uxparity S-28).</summary>
-    public bool CanCopyFromContextMenu =>
-        SelectedNode?.ElementId is not null
-        && (SelectedNode?.CanCopy == true || SelectedNode?.NodeKind?.StartsWith("pin:dataline") == true);
-
-    /// <summary>Cut in the MENU BAR is stricter than on the context menu, like Delete and Show program: the
-    /// vendor greys Klip in Rediger for a locked block while its context menu still offers it (S-28).</summary>
-    public bool CanCutFromMenuBar => CanCutSelected && SelectedNode?.IsLockedFunctionBlock != true;
-
-    /// <summary>Delete in the MENU BAR is stricter than on the context menu: the vendor greys it for a locked
-    /// (library) block in Rediger while its own context menu still offers Slet there (uxparity S-28, verified by
-    /// screenshot). Both surfaces are reproduced as measured rather than reconciled.</summary>
-    public bool CanDeleteFromMenuBar => CanDeleteSelected && SelectedNode?.IsLockedFunctionBlock != true;
-
-    /// <summary>Show program in the MENU BAR is stricter for the same reason as Delete: the vendor greys Vis
-    /// program in Vis for a locked (library) block while offering it on the block's own context menu
-    /// (uxparity S-28). A locked block's program is view-only, not unreachable.</summary>
-    public bool CanShowProgramFromMenuBar =>
-        SelectedNode?.IsFunctionBlock == true && SelectedNode?.IsLockedFunctionBlock != true;
-
-    /// <summary>Insert ▸ Locality is offered only on the localities root — a locality cannot hold a locality
-    /// (S-07), and the vendor greys the item everywhere else.</summary>
-    public bool CanInsertLocalityHere => SelectedNode?.CanInsertLocality == true;
-
-    /// <summary>Properties needs a node that HAS properties: the localities root does not.</summary>
-    public bool CanShowProperties => SelectedNode?.ElementId is not null && SelectedNode?.IsLocalitiesRoot != true;
-
-    /// <summary>Leaving programming mode is only possible while in it.</summary>
-    public bool CanLeaveProgrammingMode => IsProgrammingMode;
-
-    /// <summary>Show program needs a function block.</summary>
-    public bool CanShowProgram => OwningFunctionBlockOf(SelectedNode) is not null;
-
-    /// <summary>Jump-to-opposite needs a link row.</summary>
-    public bool CanNavigateLinkOpposite => SelectedNode?.IsLinkRow == true;
+    // crudarch T013/T014: CanMoveSelected/CanInsertLocalityHere/CanShowProperties/CanNavigateLinkOpposite/
+    // CanLeaveProgrammingMode moved into the registry rows (edit.moveUp/Down, insert.locality, node.properties,
+    // link.jumpOpposite, program.leaveMode).
 
     /// <summary>Whether the active selection lives in the <i>Installation</i> pane (vs the <i>Functions</i> pane). The
     /// shared node context menu uses this to offer product insertion only where products belong.</summary>
@@ -266,6 +257,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     partial void OnSelectedNodeChanged(TreeNodeViewModel? value)
     {
+        RebuildContext();   // T010: selection is a context trigger (first, so the early return below cannot skip it)
         _programAuthoring.Rebuild(value);
         VariablePaletteMenu.Clear();
         if (value is not { IsBlockSection: true, ElementId: { } sectionId, SectionTag: { } sectionTag })
@@ -331,7 +323,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Arms a variable (a block input/output/setting/internal, US-028) as the operand for the next event or
     /// command; the Events/Commands node then offers that variable's triggers and commands.</summary>
-    [RelayCommand]
     private void UseInProgram(TreeNodeViewModel? node) => _programAuthoring.Arm(node);
 
     /// <summary>The Edit ▸ Undo menu header, naming the action it would reverse (E14): e.g. "Undo Insert locality",
@@ -343,7 +334,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Edit ▸ Undo (US-052, Ctrl+Z): reverses the last project-mutating edit; a no-op when there is nothing
     /// to undo. Refreshes both panes via the session's StateChanged.</summary>
-    [RelayCommand]
     private Task Undo() => RunAsync(nameof(Undo), async () =>
     {
         string? label = _session.UndoLabel;   // capture before the stack pops — names the action (E14)
@@ -353,7 +343,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     });
 
     /// <summary>Edit ▸ Redo (US-052, Ctrl+Y): re-applies the last undone edit; a no-op when the redo history is empty.</summary>
-    [RelayCommand]
     private Task Redo() => RunAsync(nameof(Redo), async () =>
     {
         string? label = _session.RedoLabel;
@@ -391,7 +380,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Shows help text for the selected element (US-044/US-045, F1) — the element's note, or a generic
     /// message when it has none.</summary>
-    [RelayCommand]
     private Task Help(TreeNodeViewModel? node) => RunAsync(nameof(Help), async () =>
     {
         string name = node?.DisplayName ?? Constants.AppName;
@@ -403,11 +391,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     });
 
     /// <summary>Inserts an input variable into the programming block's Input section (US-045, Ctrl+I).</summary>
-    [RelayCommand]
     private Task InsertInput() => InsertBlockPinAsync("inputs", "resource_input", "Input");
 
     /// <summary>Inserts an output variable into the programming block's Output section (US-045, Ctrl+U).</summary>
-    [RelayCommand]
     private Task InsertOutput() => InsertBlockPinAsync("outputs", "resource_output", "Output");
 
     private Task InsertBlockPinAsync(string container, string tag, string label) => RunAsync(nameof(InsertBlockPinAsync), async () =>
@@ -425,7 +411,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     });
 
     /// <summary>Opens the Project information dialog (US-039) prefilled from the project, and applies edits.</summary>
-    [RelayCommand]
     private Task ProjectInfo() => RunAsync(nameof(ProjectInfo), async () =>
     {
         ProjectInfoData? result = await _dialogs.EditProjectInfoAsync(_session.GetProjectInfo());
@@ -436,14 +421,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Documentation ▸ Data tables (US-049): opens the data-tables dialog (read-only system tables +
     /// editable user-defined texts).</summary>
-    [RelayCommand]
     private Task DataTables() => RunAsync(nameof(DataTables), async () =>
     {
         await _dialogs.ShowDataTablesAsync(new DataTablesViewModel(_session, _dialogs));
     });
 
     /// <summary>Documentation ▸ Wired module map (US-050): opens the read-only wired input/output module address map.</summary>
-    [RelayCommand]
     private Task ModuleMap() => RunAsync(nameof(ModuleMap), async () =>
     {
         await _dialogs.ShowModuleMapAsync(_session.GetModuleAddressMap());
@@ -456,7 +439,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Controller ▸ Send project (US-042, F5): runs the offline pre-flight — warns about unlinked wireless
     /// products (they can be linked later) — then reports that the actual transfer needs a connected controller (the
     /// controller send/retrieve itself is deferred per E10; this build never contacts a controller).</summary>
-    [RelayCommand]
     private Task SendProject() => RunAsync(nameof(SendProject), async () =>
     {
         IReadOnlyList<string> unlinked = _session.GetUnlinkedWirelessProducts();
@@ -474,7 +456,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Controller ▸ Retrieve project (US-043): reports that retrieving needs a connected controller — the
     /// transfer is deferred per E10 and this build never contacts a controller.</summary>
-    [RelayCommand]
     private Task RetrieveProject() => RunAsync(nameof(RetrieveProject), async () =>
     {
         await _dialogs.ShowMessageAsync("Controller required", "Retrieving a project " + ControllerRequiredMessage);
@@ -484,7 +465,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Documentation ▸ Reports… (US-040 / D14 / T021): open the single Reports view rendering the combined
     /// project-documentation model as ONE navigable HTML document (on-screen or printer variant) — the one command
     /// that replaces the former six direct installation/end-user/function-block screen/print commands.</summary>
-    [RelayCommand]
     private Task OpenReports() => RunAsync(nameof(OpenReports), async () =>
     {
         if (_session.GenerateProjectDocumentationReport() is not { } report)
@@ -499,31 +479,24 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     // points delegating their bodies there (the XAML bindings and the *Command tests are unchanged).
 
     /// <summary>Adds a Powerup system event to the selected Events group (US-033).</summary>
-    [RelayCommand]
     private Task AddPowerEvent(TreeNodeViewModel? node) => _programAuthoring.AddPowerEventAsync(node);
 
     /// <summary>Toggles an output's <i>Save current value</i> power-loss persistence (US-033).</summary>
-    [RelayCommand]
     private Task ToggleSaveValue(TreeNodeViewModel? node) => _programAuthoring.ToggleSaveValueAsync(node);
 
     /// <summary>Inserts a conditional sub-program into a Commands group (US-029).</summary>
-    [RelayCommand]
     private Task AddSubProgram(TreeNodeViewModel? node) => _programAuthoring.AddSubProgramAsync(node);
 
     /// <summary>Inserts a nested logic group inside a Conditions group (US-029).</summary>
-    [RelayCommand]
     private Task AddLogicGroup(TreeNodeViewModel? node) => _programAuthoring.AddLogicGroupAsync(node);
 
     /// <summary>Combines a Conditions group with OR (<c>&gt;=1</c>) (US-029).</summary>
-    [RelayCommand]
     private Task SetConditionsOr(TreeNodeViewModel? node) => _programAuthoring.SetConditionsOrAsync(node);
 
     /// <summary>Combines a Conditions group with AND (<c>&amp;</c>, the default) (US-029).</summary>
-    [RelayCommand]
     private Task SetConditionsAnd(TreeNodeViewModel? node) => _programAuthoring.SetConditionsAndAsync(node);
 
     /// <summary>Adds a case value branch to the selected Case node (US-031).</summary>
-    [RelayCommand]
     private Task NewCaseValue(TreeNodeViewModel? node) => _programAuthoring.NewCaseValueAsync(node);
 
     /// <summary>Raised by the <i>Exit</i> command to ask the window to close (the close then runs the save prompt).</summary>
@@ -554,7 +527,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             (installHeader, functionsHeader) => { InstallationPaneHeader = installHeader; FunctionsPaneHeader = functionsHeader; });
         DragDrop = new TreeDragDropController(
             _session,
-            id => FindNode(InstallationNodes, id) ?? FindNode(FunctionNodes, id),
+            FindInEitherPane,
             () => IsProgrammingBlockLocked,
             (command, status) => ApplyAsync(command, status),
             _programAuthoring.ArmAndSelect,
@@ -563,6 +536,21 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _linking = new LinkingCoordinator(
             _session, _dialogs, RunAsync, (command, status) => ApplyAsync(command, status), status => StatusText = status,
             () => PendingLinkSource, node => PendingLinkSource = node, RevealAndSelectOpposite);
+
+        Registry = new CommandRegistry(() => Context,
+            // The command-parameter bridge: a surface or caller that addresses a specific row (context-menu
+            // click, the Delete-key route, existing call sites) passes it as the ICommand parameter; selecting
+            // it FIRST makes the context the row's Execute reads BE that node. Null/redundant parameters no-op.
+            parameter =>
+            {
+                if (parameter is TreeNodeViewModel node && !ReferenceEquals(node, SelectedNode))
+                    SelectNode(node);
+            });
+        RegisterCoreEditRows();
+        RegisterNodeRows();
+        RegisterProgrammingRows();
+        RegisterAppRows();
+        ContextChanged += (_, _) => Registry.OnContextChanged();
 
         _onSessionStateChanged = (_, _) => Refresh();
         _onSessionCatalogChanged = (_, _) => RebuildCatalogMenus();
@@ -613,7 +601,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Library ▸ Import catalog file (US-059): imports a single <c>.def</c>/<c>.ifb</c> so its component
     /// becomes insertable; persisted by default (US-061) so it survives a restart.</summary>
-    [RelayCommand]
     private Task ImportCatalogFile() => RunAsync(nameof(ImportCatalogFile), async () =>
     {
         if (await _dialogs.PickCatalogFileAsync() is not { } path)
@@ -624,7 +611,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Library ▸ Import catalog folder (US-060): imports every <c>.def</c>/<c>.ifb</c> in a folder and its
     /// subfolders, reporting how many components were imported; persisted by default (US-061).</summary>
-    [RelayCommand]
     private Task ImportCatalogFolder() => RunAsync(nameof(ImportCatalogFolder), async () =>
     {
         if (await _dialogs.PickCatalogFolderAsync() is not { } dir)
@@ -636,7 +622,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Inserts an empty function block under the selected locality (US-019). Invoked from the right-click
     /// <i>Empty function block</i> item and Ctrl+Shift+B.</summary>
-    [RelayCommand(CanExecute = nameof(CanInsertFunctionBlock))]
     private Task InsertEmptyFunctionBlock() => RunAsync(nameof(InsertEmptyFunctionBlock), async () =>
     {
         if (SelectedNode?.ElementId is not { } localityId || _session.Current is not { } project)
@@ -683,14 +668,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Runs the window-close save prompt (US-064); returns false to cancel the quit.</summary>
     public Task<bool> CanCloseAsync() => _session.CanQuitAsync();
 
-    [RelayCommand]
     private Task NewAsync() => RunAsync(nameof(NewAsync), async () =>
     {
         if (await _session.NewAsync())
             StatusText = "Started a new project.";
     });
 
-    [RelayCommand]
     private Task OpenAsync() => RunAsync(nameof(OpenAsync), async () =>
     {
         if (await _session.OpenWithPickerAsync())
@@ -704,38 +687,32 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             StatusText = $"Opened {_session.DocumentName}.";
     });
 
-    [RelayCommand]
     private Task SaveAsync() => RunAsync(nameof(SaveAsync), async () =>
     {
         if (await _session.SaveAsync())
             StatusText = $"Saved {_session.DocumentName}.";
     });
 
-    [RelayCommand]
     private Task SaveAsAsync() => RunAsync(nameof(SaveAsAsync), async () =>
     {
         if (await _session.SaveAsAsync())
             StatusText = $"Saved {_session.DocumentName}.";
     });
 
-    [RelayCommand]
     private Task CloseAsync() => RunAsync(nameof(CloseAsync), async () =>
     {
         if (await _session.CloseAsync())
             StatusText = "Closed the project.";
     });
 
-    [RelayCommand]
     private void Exit() => CloseRequested?.Invoke(this, EventArgs.Empty);
 
-    [RelayCommand]
     private void ToggleToolbar()
     {
         IsToolbarVisible = !IsToolbarVisible;
         StatusText = IsToolbarVisible ? "Toolbar shown." : "Toolbar hidden.";
     }
 
-    [RelayCommand]
     private void ToggleStatusBar() => IsStatusBarVisible = !IsStatusBarVisible;
 
     [RelayCommand]
@@ -748,7 +725,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Inserts a new locality under <i>Localities</i> (US-008), then selects it in the Installation pane.
     /// Invoked from the right-click <i>Insert locality</i> item on the Localities root.</summary>
-    [RelayCommand(CanExecute = nameof(CanInsertLocalityHere))]
     private Task InsertLocality() => RunAsync(nameof(InsertLocality), async () =>
     {
         if (_session.Current is not { } project)
@@ -767,7 +743,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Saves a placed function block to a reusable <c>.ifb</c> file (US-021). Invoked from the right-click
     /// <i>Save block…</i> item and Ctrl+G.</summary>
-    [RelayCommand]
     private Task SaveFunctionBlock(TreeNodeViewModel? node) => RunAsync(nameof(SaveFunctionBlock), async () =>
     {
         if (node?.ElementId is not { } id || _session.Current?.FindById(id) is not { } fb || fb.Kind != ElementKind.FunctionBlock)
@@ -787,7 +762,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Unlocks a locked library function block (US-020) so its internals become editable; the tree rebuild
     /// then shows the editable icon. Invoked from the right-click <i>Unlock</i> item.</summary>
-    [RelayCommand]
     private Task Unlock(TreeNodeViewModel? node) => RunAsync(nameof(Unlock), async () =>
     {
         if (node?.ElementId is not { } id || _session.Current is not { } project)
@@ -797,25 +771,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         await ApplyAsync(_session.Commands.UnlockFunctionBlock(project, id, Environment.UserName), $"Unlocked {name}.");
     });
 
-    /// <summary>The single SDK-backed delete gate (review3 H1 / T003, D09): a node is deletable exactly when the
-    /// engine's <see cref="DeleteImpact.Deletable"/> verdict allows it — a catalog pin or a node inside a locked
-    /// function block is refused. All three delete routes project THIS decision: the context menu / Edit ▸ Delete via
-    /// <see cref="CanDeleteSelected"/>, and the Delete key via this command's <c>CanExecute</c> — so none can bypass
-    /// the guard (the former Delete-key path gated on a raw per-node deletable flag, which ignored the lock).</summary>
-    private bool CanDeleteNode(TreeNodeViewModel? node) =>
-        node?.ElementId is { } id && _session.Current is { } project
-        && _session.Commands.CanDelete(project, id);
-
     /// <summary>Deletes the selected node (US-053), dispatching by type: a link row removes its reciprocal pair
     /// (US-057), a locality uses the US-009 cascade, and any other node (product, block, variable, program element)
     /// uses the general confirm-and-cascade delete. Reachable from the right-click item, Edit ▸ Delete, and the
-    /// Delete key (US-044) — all three routes call this command, gated by <see cref="CanDeleteNode"/>.</summary>
-    [RelayCommand(CanExecute = nameof(CanDeleteNode))]
+    /// Delete key (US-044) — all three routes run the registry's "edit.delete" command, gated by the row's ONE
+    /// SDK-backed gate (the engine's <c>CanDelete</c>), so none can bypass the guard.</summary>
     private Task Delete(TreeNodeViewModel? node) => RunAsync(nameof(Delete), async () =>
     {
-        // The locality root is structure, not content: it holds the localities but is not itself a node the
-        // installer can remove. It used to be protected only by having no element id at all — now that it
-        // carries one (so a locality can be pasted onto it), the rule has to be stated.
+        // The localities root is structure, not content: it holds the localities but is not itself a node the
+        // installer can remove. It carries no element id (see the projector), so the ElementId guard below already
+        // stops it — IsLocalitiesRoot is stated too, to keep that intent explicit on a destructive path.
         if (node is null || node.IsLocalitiesRoot || node.ElementId is not { } id || _session.Current is not { } project)
             return;
         // Preview → dispatch → confirm → apply (W2-13): the SDK decides the delete KIND (sliver #9); the
@@ -858,32 +823,33 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private ElementId? _clipboardId;
     private bool _clipboardIsCut;
 
+    // The ONE clipboard mutation funnel (T010): assigns the value pair and rebuilds the availability context.
+    private void SetClipboard(ElementId? id, bool isCut)
+    {
+        _clipboardId = id;
+        _clipboardIsCut = isCut;
+        RebuildContext();
+    }
+
     /// <summary>Cut the selected node (US-054, Ctrl+X): stashes it so a Paste onto a locality moves it there.</summary>
-    [RelayCommand(CanExecute = nameof(CanCutSelected))]
     private void Cut(TreeNodeViewModel? node)
     {
         if (node?.ElementId is not { } id)
             return;
-        _clipboardId = id;
-        _clipboardIsCut = true;
-        OnPropertyChanged(nameof(CanPaste));
+        SetClipboard(id, isCut: true);
         StatusText = $"Cut {node.DisplayName} — paste onto a locality to move it.";
     }
 
     /// <summary>Copy the selected node (US-056, Ctrl+C): stashes it so a Paste onto a locality duplicates it.</summary>
-    [RelayCommand(CanExecute = nameof(CanCopySelected))]
     private void Copy(TreeNodeViewModel? node)
     {
         if (node?.ElementId is not { } id)
             return;
-        _clipboardId = id;
-        _clipboardIsCut = false;
-        OnPropertyChanged(nameof(CanPaste));
+        SetClipboard(id, isCut: false);
         StatusText = $"Copied {node.DisplayName} — paste onto a locality to duplicate it.";
     }
 
     /// <summary>Paste the clipboard node onto the selected target (US-054 move / US-056 duplicate, Ctrl+V).</summary>
-    [RelayCommand(CanExecute = nameof(CanPaste))]
     private Task Paste(TreeNodeViewModel? node) => RunAsync(nameof(Paste), async () =>
     {
         if (_clipboardId is not { } sourceId || node is null || _session.Current is not { } project)
@@ -898,8 +864,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         {
             if (await ApplyAsync(_session.Commands.MoveNode(project, sourceId, targetId), "Moved."))
             {
-                _clipboardId = null;   // a cut is consumed by its paste
-                OnPropertyChanged(nameof(CanPaste));
+                SetClipboard(null, isCut: false);   // a cut is consumed by its paste
             }
         }
         else if (await ApplyAsync(_session.Commands.CopyNode(project, sourceId, targetId), "Pasted a copy.") is { } pastedId)
@@ -907,31 +872,24 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // A copy is not consumed by its paste, so the clipboard stays. Open the arrival all the way down:
             // a pasted subtree lands already populated, so the "reveal on first child" rule never fires for it,
             // and it would otherwise appear as a single closed row giving no sign of what was actually pasted.
-            foreach (var pane in new[] { InstallationNodes, FunctionNodes })
-            {
-                if (FindNode(pane, pastedId) is { } node)
-                    ExpandSubtree(node);
-            }
+            RevealSubtree(pastedId);
         }
     });
 
-    // Opens a node and everything beneath it. Rows with no children are left alone: IsExpanded on a leaf would
-    // render an open twisty over nothing.
-    private static void ExpandSubtree(TreeNodeViewModel node)
+    // Opens a just-produced subtree (a paste or insert arrival) all the way down in whichever pane holds it, so the
+    // installer sees what landed. A pasted locality appears in both panes, a product/block in one — the pane it is
+    // absent from simply finds nothing.
+    private void RevealSubtree(ElementId id)
     {
-        if (node.Children.Count == 0)
-            return;
-        node.IsExpanded = true;
-        foreach (TreeNodeViewModel child in node.Children)
-            ExpandSubtree(child);
+        foreach (var pane in new[] { InstallationNodes, FunctionNodes })
+            if (FindNode(pane, id) is { } node)
+                node.ExpandSubtree();
     }
 
     /// <summary>Moves the selected node one position up among its siblings (US-055) — the non-drag reorder route.</summary>
-    [RelayCommand]
     private Task MoveUp(TreeNodeViewModel? node) => ReorderAsync(node, -1);
 
     /// <summary>Moves the selected node one position down among its siblings (US-055).</summary>
-    [RelayCommand]
     private Task MoveDown(TreeNodeViewModel? node) => ReorderAsync(node, +1);
 
     private Task ReorderAsync(TreeNodeViewModel? node, int delta) => RunAsync(nameof(ReorderAsync), async () =>
@@ -943,7 +901,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Opens the Properties dialog for a tree node to rename a locality (US-007). Invoked from the
     /// right-click <i>Properties</i> item (node passed in) and from F2 (the selected node passed in).</summary>
-    [RelayCommand(CanExecute = nameof(CanShowProperties))]
     private Task Properties(TreeNodeViewModel? node) => RunAsync(nameof(Properties), () => OpenPropertiesAsync(node));
 
     /// <summary>
@@ -996,6 +953,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         return null;
     }
 
+    // The live tree row for an id, from whichever pane holds it — Installation first (review F16). Most ids live in
+    // exactly one pane; a locality appears in both, and for these callers (resolving a command's target, answering
+    // the drag controller) either row addresses the same element, so first-match is the answer. NOT for callers that
+    // must touch EVERY pane holding the id — see RevealSubtree, which expands both.
+    private TreeNodeViewModel? FindInEitherPane(ElementId id) =>
+        FindNode(InstallationNodes, id) ?? FindNode(FunctionNodes, id);
+
     /// <summary>Inserts a catalog product (US-010) under the currently selected locality; the leaf menu commands in
     /// <see cref="WiredProductsMenu"/> call this. Routed through <see cref="RunAsync"/> for tracing and error surfacing.</summary>
     private Task InsertProductAsync(string productIdentifier, string productName) =>
@@ -1035,11 +999,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             }
             // The placed product opens, showing the terminals it brought — the same reveal a drop does (S-11), and
             // what IHC Visual shows after an insert.
-            foreach (var pane in new[] { InstallationNodes, FunctionNodes })
-            {
-                if (FindNode(pane, newId) is { } placed)
-                    ExpandSubtree(placed);
-            }
+            RevealSubtree(newId);
         });
 
     /// <summary>Makes <paramref name="node"/> the active node — the insert/command target. Used by tests and by
@@ -1048,7 +1008,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Toggles a "Log …" row's log mark (US-068, the vendor's &amp;Logmærke): the SDK flips its Logning state
     /// between Off and the first logging mode, and the tree re-renders the row's new state.</summary>
-    [RelayCommand]
     private Task ToggleLogMark(TreeNodeViewModel? node) => RunAsync(nameof(ToggleLogMark), async () =>
     {
         if (node is { IsLogMarkPin: true, ElementId: { } id } && _session.Current is { } project)
@@ -1057,35 +1016,38 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Enters programming mode for the selected function block (US-026, F3): the panes switch to the block's
     /// variable sections (left) and its program subtree (right), both headed with the block's name.</summary>
-    [RelayCommand(CanExecute = nameof(CanShowProgram))]
     private void EnterProgrammingMode(TreeNodeViewModel? node)
     {
         // A PIN opens the program of the block that owns it (uxparity S-28): the vendor offers Vis program on a
         // pin as well as on the block, so you can go straight to the logic that uses the pin.
         if (OwningFunctionBlockOf(node) is { } id)
         {
-            _programmingBlockId = id;
-            IsProgrammingMode = true;
-            Refresh();
-            NotifyProgrammingAuthoringGates();
-            StatusText = FindNode(FunctionNodes, id)?.IsLockedFunctionBlock == true
-                ? "Programming mode (read-only — the block is locked). Press Esc to return."
-                : "Programming mode — press Esc to return to configuration.";
+            AsOneContextRebuild(() =>   // review F03: mode + refresh + authoring gates = ONE transition, one sweep
+            {
+                _programmingBlockId = id;
+                IsProgrammingMode = true;
+                Refresh();
+                NotifyProgrammingAuthoringGates();
+                StatusText = FindNode(FunctionNodes, id)?.IsLockedFunctionBlock == true
+                    ? "Programming mode (read-only — the block is locked). Press Esc to return."
+                    : "Programming mode — press Esc to return to configuration.";
+            });
         }
     }
 
     // The function block a node belongs to: the block itself, or the block owning the pin/section (S-28). Null
     // when the node is outside any block, which is what makes Show program a no-op on a locality.
-    private ElementId? OwningFunctionBlockOf(TreeNodeViewModel? node)
+    private ElementId? OwningFunctionBlockOf(TreeNodeViewModel? node) =>
+        node is { IsFunctionBlock: true, ElementId: { } blockId } ? blockId : OwningFunctionBlockByAncestry(node?.ElementId);
+
+    // The id-based half of the rule, shared with the "view.showProgram" registry gate (which reads the context's
+    // node id, not the live node): walks the ancestry for the enclosing function block.
+    private ElementId? OwningFunctionBlockByAncestry(ElementId? nodeId)
     {
         ElementId? owner = null;
-        if (node is { IsFunctionBlock: true, ElementId: { } blockId })
+        if (nodeId is { } start && _session.Current is { } project)
         {
-            owner = blockId;
-        }
-        else if (node?.ElementId is { } nodeId && _session.Current is { } project)
-        {
-            for (ProjectElement? e = project.FindParent(nodeId); e is not null; e = e.Id is { } id ? project.FindParent(id) : null)
+            for (ProjectElement? e = project.FindParent(start); e is not null; e = e.Id is { } id ? project.FindParent(id) : null)
             {
                 if (e.Kind == ElementKind.FunctionBlock)
                 {
@@ -1097,6 +1059,322 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         return owner;
     }
 
+    // ---- crudarch T012 (proposal §3.3): the divergent family as registry rows. Gates normalise the SDK idioms
+    // (gateway queries → verdicts with reasons); the measured US-044/US-068 per-surface divergences (D13,
+    // uxparity S-28) are SurfacePolicy DATA — reproduced, never reconciled. ----
+
+    private void RegisterCoreEditRows()
+    {
+        Registry.Register(new CommandSpec("edit.cut", "Ctrl+X",
+            Surfaces.MenuBar | Surfaces.ContextMenu | Surfaces.Toolbar,
+            Execute: Sync(ctx => Cut(ResolveNode(ctx))),
+            Gate: ctx => ctx.Node is { CanCut: true, Id: not null }
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Select a locality, product or function block to cut."),
+            SurfacePolicy: LockedBlockGreysOutsideContextMenu("A locked block cannot be cut from the menu bar.")));
+
+        Registry.Register(new CommandSpec("edit.copy", "Ctrl+C",
+            Surfaces.MenuBar | Surfaces.ContextMenu | Surfaces.Toolbar,
+            Execute: Sync(ctx => Copy(ResolveNode(ctx))),
+            // Bar semantics (D13): ANY pin copies from Rediger — measured on `Tryk (venstre)`.
+            Gate: ctx => ctx.Node is { Id: not null } node && (node.CanCopy || node.IsPin)
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Select a node to copy."),
+            // The flyout is NARROWER: Kopier on a product terminal, none on an FB pin (uxparity S-28).
+            SurfacePolicy: (ctx, surface) =>
+                surface == Surface.ContextMenu && ctx.Node is { } node && !(node.CanCopy || node.IsProductTerminal)
+                    ? Availability.Hidden
+                    : null));
+
+        Registry.Register(new CommandSpec("edit.paste", "Ctrl+V",
+            Surfaces.MenuBar | Surfaces.ContextMenu | Surfaces.Toolbar,
+            Execute: ctx => Paste(ResolveNode(ctx)),
+            Gate: ctx => ctx.Clipboard is null
+                ? EditVerdict.Refuse("Cut or copy a node first.")
+                : ctx.Node is { Kind: TreeNodeKind.Locality }
+                    ? EditVerdict.Allow
+                    : EditVerdict.Refuse("Paste onto a locality.")));
+
+        Registry.Register(new CommandSpec("edit.delete", "Delete",
+            Surfaces.MenuBar | Surfaces.ContextMenu,
+            Execute: ctx => Delete(ResolveNode(ctx)),
+            // The SDK deletion verdict drives every route — context menu, Edit ▸ Delete AND the Delete key — so a
+            // catalog pin or a locked block's interior can never slip through. Asking the COMMAND (the shape MoveGate
+            // uses) rather than the boolean CanDelete keeps the reason the engine already computed — "…is a
+            // catalog-declared pin of its product", "…inside a locked function block" — so US-044's grey explains
+            // itself precisely instead of restating a generic literal the SDK also owns (review F05).
+            Gate: ctx => ctx.Node?.Id is { } id && _session.Current is { } project
+                ? _session.CanApply(_session.Commands.DeleteNode(project, id, cascade: false))
+                : EditVerdict.Refuse("Select an element to delete."),
+            SurfacePolicy: LockedBlockGreysOutsideContextMenu("A locked block cannot be deleted from the menu bar.")));
+
+        Registry.Register(new CommandSpec("view.showProgram", "F3",
+            Surfaces.MenuBar | Surfaces.ContextMenu,
+            Execute: Sync(ctx => EnterProgrammingMode(ResolveNode(ctx))),
+            // Offered on a block AND on its pins — the vendor jumps from a pin to the program using it (S-28).
+            Gate: ctx => ctx.Node is { } node
+                && (node.Kind == TreeNodeKind.FunctionBlock ? node.Id : OwningFunctionBlockByAncestry(node.Id)) is not null
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Select a function block to show its program."),
+            // The BAR is stricter than the flyout twice over (S-28): only a direct, UNLOCKED block enables it.
+            SurfacePolicy: (ctx, surface) =>
+                surface == Surface.ContextMenu || ctx.Node is { Kind: TreeNodeKind.FunctionBlock, IsLockedBlock: false }
+                    ? null
+                    : ctx.Node is { IsLockedBlock: true }
+                        ? Availability.Disabled("A locked block's program is opened from the block's own menu.")
+                        : Availability.Disabled("Select a function block in the tree.")));
+    }
+
+    // crudarch T013: the remaining node-scoped tree commands as rows — gates are the former IsVisible/CanExecute
+    // conditions verbatim; the one divergence (Properties: Edit-menu enabled on a link row the flyout omits) is
+    // SurfacePolicy data. Bodies stay the existing private methods, resolved via ResolveNode.
+    private void RegisterNodeRows()
+    {
+        Registry.Register(new CommandSpec("insert.locality", null,
+            Surfaces.MenuBar | Surfaces.ContextMenu,
+            Execute: _ => InsertLocality(),
+            Gate: ctx => ctx.Node is { Kind: TreeNodeKind.LocalitiesRoot }
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Select the Localities root to insert a locality.")));
+
+        Registry.Register(new CommandSpec("insert.emptyFunctionBlock", "Ctrl+Shift+B",
+            Surfaces.MenuBar | Surfaces.ContextMenu,
+            Execute: _ => InsertEmptyFunctionBlock(),
+            Gate: ctx => !ctx.InstallationPaneActive && ctx.Node is { Kind: TreeNodeKind.Locality }
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Select a locality in the Functions pane.")));
+
+        Registry.Register(new CommandSpec("node.saveBlock", "Ctrl+G",
+            Surfaces.ContextMenu,
+            Execute: ctx => SaveFunctionBlock(ResolveNode(ctx)),
+            Gate: ctx => ctx.Node is { Kind: TreeNodeKind.FunctionBlock }
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Select a function block to save.")));
+
+        Registry.Register(new CommandSpec("node.unlock", null,
+            Surfaces.ContextMenu,
+            Execute: ctx => Unlock(ResolveNode(ctx)),
+            Gate: ctx => ctx.Node is { IsLockedBlock: true }
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Only a locked library block can be unlocked.")));
+
+        Registry.Register(new CommandSpec("node.toggleLogMark", null,
+            Surfaces.ContextMenu,
+            Execute: ctx => ToggleLogMark(ResolveNode(ctx)),
+            Gate: ctx => ctx.Node is { IsLogMarkPin: true }
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Select a log-markable pin.")));
+
+        Registry.Register(new CommandSpec("help.onNode", "F1",
+            Surfaces.MenuBar,
+            Execute: ctx => Help(ResolveNode(ctx)),
+            Gate: _ => EditVerdict.Allow));   // F1 always answers — with or without a selection
+
+        Registry.Register(new CommandSpec("node.useInProgram", null,
+            Surfaces.ContextMenu,
+            Execute: Sync(ctx => UseInProgram(ResolveNode(ctx))),
+            Gate: ctx => ctx.Node is { IsPin: true }
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Select a variable or pin.")));
+
+        Registry.Register(new CommandSpec("link.startFromHere", null,
+            Surfaces.ContextMenu,
+            Execute: Sync(ctx => StartLink(ResolveNode(ctx))),
+            Gate: ctx => ctx.Node is { IsPin: true }
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Select a pin to link from.")));
+
+        Registry.Register(new CommandSpec("link.toHere", null,
+            Surfaces.ContextMenu,
+            Execute: ctx => LinkToHere(ResolveNode(ctx)),
+            Gate: ctx => ctx.Node is { IsLinkTarget: true }
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Select a pin or scenes container to link to.")));
+
+        Registry.Register(new CommandSpec("link.jumpOpposite", "F4",
+            Surfaces.MenuBar | Surfaces.ContextMenu,
+            Execute: Sync(ctx => NavigateLinkOpposite(ResolveNode(ctx))),
+            Gate: ctx => ctx.Node is { IsLinkRow: true }
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Select a link row to jump to its opposite half.")));
+
+        Registry.Register(new CommandSpec("edit.moveUp", "Ctrl+Shift+Up",
+            Surfaces.ContextMenu,
+            Execute: ctx => MoveUp(ResolveNode(ctx)),
+            Gate: ctx => MoveGate(ctx, -1)));
+
+        Registry.Register(new CommandSpec("edit.moveDown", "Ctrl+Shift+Down",
+            Surfaces.ContextMenu,
+            Execute: ctx => MoveDown(ResolveNode(ctx)),
+            Gate: ctx => MoveGate(ctx, +1)));
+
+        Registry.Register(new CommandSpec("node.properties", "F2",
+            Surfaces.MenuBar | Surfaces.ContextMenu,
+            Execute: ctx => Properties(ResolveNode(ctx)),
+            Gate: ctx => ctx.Node is { Id: not null, Kind: not TreeNodeKind.LocalitiesRoot }
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Select a node with properties."),
+            // The flyout is narrower than Rediger: no Egenskaber on a link row (measured) — the bar keeps it.
+            SurfacePolicy: (ctx, surface) => surface == Surface.ContextMenu && ctx.Node is { IsLinkRow: true }
+                ? Availability.Hidden
+                : null));
+    }
+
+    // crudarch T014: the programming-mode set as rows. Authoring gates = container kind + the A-27 locked-block
+    // withdrawal (flyout omits via the evaluator's transient-surface default; bar greys with the reason); the
+    // mode commands gate on ShellContext.IsProgrammingMode.
+    private void RegisterProgrammingRows()
+    {
+        Registry.Register(new CommandSpec("program.leaveMode", "Escape",
+            Surfaces.MenuBar,
+            Execute: Sync(_ => LeaveProgrammingMode()),
+            Gate: ctx => ctx.IsProgrammingMode
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Already in configuration view.")));
+
+        Registry.Register(new CommandSpec("program.insertInput", "Ctrl+I",
+            Surfaces.None,   // keybinding-only (Ctrl+I) — no menu surface
+            Execute: _ => InsertInput(),
+            Gate: ProgrammingAuthoringGate));
+
+        Registry.Register(new CommandSpec("program.insertOutput", "Ctrl+U",
+            Surfaces.None,   // keybinding-only (Ctrl+U)
+            Execute: _ => InsertOutput(),
+            Gate: ProgrammingAuthoringGate));
+
+        Registry.Register(new CommandSpec("program.addPowerEvent", null,
+            Surfaces.MenuBar | Surfaces.ContextMenu,
+            Execute: ctx => AddPowerEvent(ResolveNode(ctx)),
+            Gate: ctx => ctx.Node is { IsEventsContainer: true } && !ctx.ProgrammingBlockLocked
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Select an events group in an unlocked block.")));
+
+        Registry.Register(new CommandSpec("program.toggleSaveValue", null,
+            Surfaces.ContextMenu,
+            Execute: ctx => ToggleSaveValue(ResolveNode(ctx)),
+            Gate: ctx => ctx.Node is { IsOutputPin: true }
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Select an output.")));
+
+        Registry.Register(new CommandSpec("program.addSubProgram", null,
+            Surfaces.MenuBar | Surfaces.ContextMenu,
+            Execute: ctx => AddSubProgram(ResolveNode(ctx)),
+            Gate: ctx => ctx.Node is { IsCommandsContainer: true } && !ctx.ProgrammingBlockLocked
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Select a command group in an unlocked block.")));
+
+        Registry.Register(new CommandSpec("program.addLogicGroup", null,
+            Surfaces.MenuBar | Surfaces.ContextMenu,
+            Execute: ctx => AddLogicGroup(ResolveNode(ctx)),
+            Gate: ConditionsGate));
+
+        Registry.Register(new CommandSpec("program.setConditionsOr", null,
+            Surfaces.ContextMenu,
+            Execute: ctx => SetConditionsOr(ResolveNode(ctx)),
+            Gate: ConditionsGate));
+
+        Registry.Register(new CommandSpec("program.setConditionsAnd", null,
+            Surfaces.ContextMenu,
+            Execute: ctx => SetConditionsAnd(ResolveNode(ctx)),
+            Gate: ConditionsGate));
+
+        Registry.Register(new CommandSpec("program.newCaseValue", null,
+            Surfaces.MenuBar | Surfaces.ContextMenu,
+            Execute: ctx => NewCaseValue(ResolveNode(ctx)),
+            Gate: ctx => ctx.Node is { IsCaseNode: true } && !ctx.ProgrammingBlockLocked
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Select a case in an unlocked block.")));
+    }
+
+    // crudarch T015: the app-level rows. Most gate on ProjectOpen or Allow; Save is ALWAYS enabled (D07 —
+    // vendor parity); OpenRecent/SetTheme stay parameterized item commands (non-rows).
+    private void RegisterAppRows()
+    {
+        // T017 (US-052/U-BP-07): Undo/Redo gate on the document's history — greyed when empty. The XAML owns the
+        // captions, which here are DYNAMIC and action-named (UndoMenuHeader/RedoMenuHeader).
+        RegisterAppRow("edit.undo", "Ctrl+Z", _ => Undo(),
+            ctx => ctx.CanUndo ? EditVerdict.Allow : EditVerdict.Refuse("Nothing to undo."));
+        RegisterAppRow("edit.redo", "Ctrl+Y", _ => Redo(),
+            ctx => ctx.CanRedo ? EditVerdict.Allow : EditVerdict.Refuse("Nothing to redo."));
+        RegisterAppRow("file.new", "Ctrl+N", _ => NewAsync(), AllowGate,
+            Surfaces.MenuBar | Surfaces.Toolbar);
+        RegisterAppRow("file.open", "Ctrl+O", _ => OpenAsync(), AllowGate,
+            Surfaces.MenuBar | Surfaces.Toolbar);
+        RegisterAppRow("file.save", "Ctrl+S", _ => SaveAsync(), AllowGate,   // D07: always enabled
+            Surfaces.MenuBar | Surfaces.Toolbar);
+        RegisterAppRow("file.saveAs", null, _ => SaveAsAsync(), ProjectOpenGate);
+        RegisterAppRow("file.close", null, _ => CloseAsync(), ProjectOpenGate);
+        RegisterAppRow("app.exit", null, Sync(_ => Exit()), AllowGate);
+        RegisterAppRow("view.toggleToolbar", null, Sync(_ => ToggleToolbar()), AllowGate);
+        RegisterAppRow("view.toggleStatusBar", null, Sync(_ => ToggleStatusBar()), AllowGate);
+        RegisterAppRow("project.info", null, _ => ProjectInfo(), ProjectOpenGate);
+        RegisterAppRow("project.dataTables", null, _ => DataTables(), ProjectOpenGate);
+        RegisterAppRow("project.moduleMap", null, _ => ModuleMap(), ProjectOpenGate);
+        RegisterAppRow("controller.send", "F5", _ => SendProject(), ProjectOpenGate,
+            Surfaces.MenuBar | Surfaces.Toolbar);   // T020: a real toolbar button (persistent surface)
+        RegisterAppRow("controller.retrieve", null, _ => RetrieveProject(), AllowGate,
+            Surfaces.MenuBar | Surfaces.Toolbar);
+        RegisterAppRow("reports.open", null, _ => OpenReports(), ProjectOpenGate);
+        RegisterAppRow("catalog.importFile", null, _ => ImportCatalogFile(), AllowGate);
+        RegisterAppRow("catalog.importFolder", null, _ => ImportCatalogFolder(), AllowGate);
+        RegisterAppRow("help.about", null, _ => AboutAsync(), AllowGate,
+            Surfaces.MenuBar | Surfaces.Toolbar);
+        RegisterAppRow("app.settings", null, _ => ShowSettingsAsync(), AllowGate);
+        RegisterAppRow("app.telemetryDiagnostics", null, _ => TelemetryDiagnosticsAsync(), AllowGate);
+    }
+
+    // App-level rows default to bar-only placement; the two controller commands also ride the toolbar (T020).
+    private void RegisterAppRow(string id, string? gesture, Func<ShellContext, Task> execute,
+        Func<ShellContext, EditVerdict> gate, Surfaces placement = Surfaces.MenuBar) =>
+        Registry.Register(new CommandSpec(id, gesture, placement, execute, gate));
+
+    // A row's Execute is Func<ShellContext, Task>, but many command bodies are plain void — this is the ONE home
+    // for the sync→async ceremony they need, instead of a `{ …; return Task.CompletedTask; }` block per row
+    // (review F13). What each row then shows is its actual body, not the adapter around it.
+    private static Func<ShellContext, Task> Sync(Action<ShellContext> body) =>
+        ctx => { body(ctx); return Task.CompletedTask; };
+
+    private static EditVerdict AllowGate(ShellContext ctx) => EditVerdict.Allow;
+
+    private static EditVerdict ProjectOpenGate(ShellContext ctx) =>
+        ctx.ProjectOpen ? EditVerdict.Allow : EditVerdict.Refuse("No project is open.");
+
+    // Ctrl+I/Ctrl+U pin authoring: only inside an UNLOCKED block's programming view (A-27).
+    private EditVerdict ProgrammingAuthoringGate(ShellContext ctx) =>
+        ctx.IsProgrammingMode && !ctx.ProgrammingBlockLocked
+            ? EditVerdict.Allow
+            : EditVerdict.Refuse("Open an unlocked block's program first.");
+
+    // Conditions-group authoring (US-029): a conditions/logic group in an unlocked block.
+    private EditVerdict ConditionsGate(ShellContext ctx) =>
+        ctx.Node is { IsConditionsContainer: true } && !ctx.ProgrammingBlockLocked
+            ? EditVerdict.Allow
+            : EditVerdict.Refuse("Select a conditions group in an unlocked block.");
+
+    // Move up/down (US-055/US-068 D07, crudarch T018/G6): a reorderable structural node, an unlocked
+    // programming block (F-087), AND actual reorderability in the asked direction — the document's index-backed
+    // CanReorder probe applies the same boundary rule the ReorderNode factory does plus the command's own verdict,
+    // so the keybindings stop firing no-ops, the flyout omits an impossible move, and this gate (re-run on every
+    // selection change, twice) costs dictionary lookups instead of tree walks and mints nothing (review F02).
+    private EditVerdict MoveGate(ShellContext ctx, int delta) =>
+        ctx.Node is { CanReorder: true, Id: { } id } && !ctx.ProgrammingBlockLocked
+            ? _session.CanReorder(id, delta)
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse(delta < 0 ? "Already first among its siblings." : "Already last among its siblings.")
+            : EditVerdict.Refuse("Select a locality, product or function block to move.");
+
+    // The shared S-28 bar rule for Cut/Delete: the menu bar greys a locked (library) block's structural
+    // commands while its own context menu still offers them — and they really run there (D13).
+    private static Func<ShellContext, Surface, Availability?> LockedBlockGreysOutsideContextMenu(string reason) =>
+        (ctx, surface) => surface != Surface.ContextMenu && ctx.Node is { IsLockedBlock: true }
+            ? Availability.Disabled(reason)
+            : null;
+
+    // Resolves the context row back to its live tree node for the command bodies; the id-less Localities root
+    // falls back to the selection (it IS the selected row whenever its context is active).
+    private TreeNodeViewModel? ResolveNode(ShellContext ctx) =>
+        ctx.Node?.Id is { } id ? FindInEitherPane(id) : SelectedNode;
+
     // The locked-block authoring gates depend on which block is being programmed; re-evaluate them when that changes.
     private void NotifyProgrammingAuthoringGates()
     {
@@ -1104,23 +1382,23 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(CanInsertVariable));
         OnPropertyChanged(nameof(CanAddEvent));
         OnPropertyChanged(nameof(CanAddCommand));
-        OnPropertyChanged(nameof(CanAddCaseValue));
         OnPropertyChanged(nameof(CanAddCondition));
-        OnPropertyChanged(nameof(CanDeleteSelected));
-        OnPropertyChanged(nameof(CanMoveSelected));
+        RebuildContext();   // T012/T013: every registry row re-evaluates off the lock/mode state
     }
 
     /// <summary>Leaves programming mode (US-026, Esc), restoring the two locality trees of configuration mode.</summary>
-    [RelayCommand(CanExecute = nameof(CanLeaveProgrammingMode))]
     private void LeaveProgrammingMode()
     {
         if (!IsProgrammingMode)
             return;
-        IsProgrammingMode = false;
-        _programmingBlockId = null;
-        Refresh();
-        NotifyProgrammingAuthoringGates();
-        StatusText = "Configuration mode.";
+        AsOneContextRebuild(() =>   // review F03: mode + refresh + authoring gates = ONE transition, one sweep
+        {
+            IsProgrammingMode = false;
+            _programmingBlockId = null;
+            Refresh();
+            NotifyProgrammingAuthoringGates();
+            StatusText = "Configuration mode.";
+        });
     }
 
     /// <summary>Links two pins (US-022/US-023) — a thin entry point delegating to <see cref="LinkingCoordinator"/>
@@ -1132,12 +1410,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private TreeNodeViewModel? _pendingLinkSource;
 
     /// <summary>Arms a link from the given pin (US-022) — delegates to <see cref="LinkingCoordinator"/>.</summary>
-    [RelayCommand]
     private void StartLink(TreeNodeViewModel? node) => _linking.StartLink(node);
 
     /// <summary>Completes a link onto the given pin or scenes container (US-022/US-024) — delegates to
     /// <see cref="LinkingCoordinator"/>.</summary>
-    [RelayCommand]
     private Task LinkToHere(TreeNodeViewModel? node) => _linking.LinkToHereAsync(node);
 
     /// <summary>Home: selects the FIRST row of the pane (uxparity S-29 — the vendor lands on the tree root).</summary>
@@ -1177,7 +1453,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Jumps from a link row to the opposite end (US-025, F4) — delegates the link logic to
     /// <see cref="LinkingCoordinator"/>, which calls back <see cref="RevealAndSelectOpposite"/> for the tree reveal.</summary>
-    [RelayCommand(CanExecute = nameof(CanNavigateLinkOpposite))]
     private void NavigateLinkOpposite(TreeNodeViewModel? node) => _linking.NavigateLinkOpposite(node);
 
     // Reveals + selects the opposite pin in whichever pane holds it — the tree-navigation view-state the linking
@@ -1270,13 +1545,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         });
 
 
-    [RelayCommand]
     private Task AboutAsync() => RunAsync(nameof(AboutAsync), () => _dialogs.ShowAboutAsync());
 
-    [RelayCommand]
     private Task ShowSettingsAsync() => RunAsync(nameof(ShowSettingsAsync), () => _dialogs.ShowSettingsAsync(BuildSettingsText()));
 
-    [RelayCommand]
     private Task TelemetryDiagnosticsAsync() => RunAsync(nameof(TelemetryDiagnosticsAsync), async () =>
     {
         string? host = _config?.TelemetryConfig.Host;
@@ -1302,43 +1574,111 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>The current availability context (crudarch T010, §3.2) — ONE immutable snapshot every surface
+    /// gate reads (ids and value flags only; see <see cref="ShellContext"/>). Rebuilt only by
+    /// <see cref="RebuildContext"/>; consumers react to <see cref="ContextChanged"/>.</summary>
+    public ShellContext Context { get; private set; } = ShellContext.Empty;
+
+    /// <summary>Raised after every <see cref="Context"/> rebuild — the ONE announcement the command registry
+    /// (T011) subscribes to.</summary>
+    public event EventHandler? ContextChanged;
+
+    // crudarch T010 (§3.2): the ONE context rebuild — every trigger funnels here: selection
+    // (OnSelectedNodeChanged), pane (OnIsInstallationPaneActiveChanged), mode (OnIsProgrammingModeChanged),
+    // clipboard (SetClipboard), and every document transition (Refresh, driven by the session's StateChanged).
+    // Projects VALUES only — ids and flags copied at rebuild time, never the live node or a Project reference.
+    // Set while a composite transition runs, so the triggers it re-enters mark nothing (review F03).
+    private bool _contextRebuildSuspended;
+
+    // Runs a transition that fires several context triggers from the inside — the mode assignment, the selection
+    // restore, the authoring-gate notify — as ONE rebuild: the inner triggers are suspended and the single sweep
+    // runs at the end. Nested scopes fold into the outermost one, so Refresh composes inside a mode switch.
+    private void AsOneContextRebuild(Action transition)
+    {
+        bool outer = _contextRebuildSuspended;
+        _contextRebuildSuspended = true;
+        try
+        {
+            transition();
+        }
+        finally
+        {
+            _contextRebuildSuspended = outer;
+            RebuildContext();   // T010: every transition rebuilds the context (selection/mode/dirty/undo/lock state)
+        }
+    }
+
+    private void RebuildContext()
+    {
+        if (_contextRebuildSuspended)
+        {
+            return;
+        }
+        TreeNodeViewModel? node = SelectedNode;
+        Context = new ShellContext(
+            ProjectOpen: _session.Current is not null,
+            IsProgrammingMode: IsProgrammingMode,
+            ProgrammingBlockLocked: IsProgrammingBlockLocked,
+            InstallationPaneActive: IsInstallationPaneActive,
+            Node: node is null
+                ? null
+                : new NodeContext(
+                    node.ElementId, node.Kind,
+                    node.IsPin, node.IsProductTerminal, node.IsLinkRow, node.IsLinkTarget, node.IsLogMarkPin,
+                    node.IsOutputPin, node.IsEventsContainer, node.IsCommandsContainer, node.IsConditionsContainer, node.IsCaseNode,
+                    node.IsLockedFunctionBlock,
+                    node.CanCut, node.CanCopy, node.CanReorder),
+            Clipboard: _clipboardId is { } clipboardSource ? new ClipboardContext(clipboardSource, _clipboardIsCut) : null,
+            CanUndo: _session.CanUndo, CanRedo: _session.CanRedo);
+        ContextChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    partial void OnIsInstallationPaneActiveChanged(bool value) => RebuildContext();   // T010: pane trigger
+
+    partial void OnIsProgrammingModeChanged(bool value) => RebuildContext();   // T010: mode trigger
+
     // The identity of the view last built into the panes. An in-place rebuild (every edit fires StateChanged →
     // Refresh) keeps the same key, so the panes' expand/collapse state is carried across (US-070); a deliberate
     // MODE switch (config ⇄ a block's programming view) changes the key, so that view opens fresh at its defaults.
-    private void Refresh()
-    {
-        Title = $"{_session.DocumentName} - {Constants.AppName}";
-        OnPropertyChanged(nameof(UndoMenuHeader));   // the history may have grown/shrunk — refresh the Edit-menu labels (E14)
-        OnPropertyChanged(nameof(RedoMenuHeader));
-        DeleteCommand.NotifyCanExecuteChanged();   // an edit (e.g. Unlock) can flip the selected node's delete verdict (T003)
-        OnPropertyChanged(nameof(CanDeleteSelected));
-        if (IsProgrammingMode && _programmingBlockId is { } blockId
-            && _session.Current?.FindById(blockId) is { } block && block.Kind == ElementKind.FunctionBlock)
+    // review F03: a refresh re-enters the context triggers from inside — RestoreSelection fires the selection
+    // trigger and the config path assigns IsProgrammingMode — so it used to sweep the whole registry 2–3 times
+    // back to back per edit/undo/load. It is one document transition, so it is ONE rebuild.
+    private void Refresh() => AsOneContextRebuild(() =>
         {
-            // BuildProgrammingTrees clears and rebuilds both panes (fresh node instances), so — exactly like the
-            // config-mode fallback below — capture the selection by id and restore it after, else a program edit
-            // (every edit fires StateChanged → Refresh) drops the selected container to an orphan (review C5).
-            RebuildPreservingSelection(() =>
-                _treePanes.BuildProgrammingTrees(block, preserveExpansion: _treePanes.SameViewAsLastBuild("prog:" + blockId.ToToken())));
-            return;
-        }
-        IsProgrammingMode = false;   // the block is gone (or never set) → configuration mode
-        _programmingBlockId = null;
-        InstallationPaneHeader = "Installation";
-        FunctionsPaneHeader = "Functions";
-        bool sameView = _treePanes.SameViewAsLastBuild("config");
-        // Reconcile in place when this is an incremental edit on the SAME view whose panes still hold the
-        // reconcilers' roots; otherwise (load/undo/redo/mode switch/first build) rebuild through the reconciler,
-        // which re-seeds it — with expansion carried across as before (W3-6 keeps the fallback permanent).
-        if (!(sameView && _treePanes.TryReconcileConfig()))
-        {
-            // The full-rebuild fallback tears down the node instances, so the reconcile path's by-identity survival
-            // of the installer's place is lost here — capture selection (which Avalonia's focus + scroll-into-view
-            // follow) by id before the rebuild and restore it after, so undo/redo/load land the user back where they
-            // were (E14 place restore). Expansion is carried inside the coordinator's fallback.
-            RebuildPreservingSelection(() => _treePanes.RebuildConfig(preserve: sameView));
-        }
-    }
+            // D07 (U-BP-06): the dirty bullet marks unsaved changes in the title; Save itself stays always-enabled.
+            Title = $"{_session.DocumentName}{(_session.IsDirty ? "•" : string.Empty)} - {Constants.AppName}";
+            OnPropertyChanged(nameof(UndoMenuHeader));   // the history may have grown/shrunk — refresh the Edit-menu labels (E14)
+            OnPropertyChanged(nameof(RedoMenuHeader));
+            if (IsProgrammingMode && _programmingBlockId is { } blockId
+                && _session.Current?.FindById(blockId) is { } block && block.Kind == ElementKind.FunctionBlock)
+            {
+                // BuildProgrammingTrees clears and rebuilds both panes (fresh node instances), so — exactly like the
+                // config-mode fallback below — capture the selection by id and restore it after, else a program edit
+                // (every edit fires StateChanged → Refresh) drops the selected container to an orphan (review C5).
+                RebuildPreservingSelection(() =>
+                    _treePanes.BuildProgrammingTrees(block, preserveExpansion: _treePanes.SameViewAsLastBuild("prog:" + blockId.ToToken())));
+            }
+            else
+            {
+                IsProgrammingMode = false;   // the block is gone (or never set) → configuration mode
+                _programmingBlockId = null;
+                InstallationPaneHeader = "Installation";
+                FunctionsPaneHeader = "Functions";
+                bool sameView = _treePanes.SameViewAsLastBuild("config");
+                // Reconcile in place when this is an incremental transition on the SAME view whose panes still hold the
+                // reconcilers' roots — edits AND undo/redo, whose outcomes carry their exact delta (crudarch G3/T007);
+                // otherwise (load/save/close/mode switch/first build — LastChange null — or panes out of sync) rebuild
+                // through the reconciler, which re-seeds it (W3-6 keeps the fallback permanent, US-070).
+                if (!(sameView && _treePanes.TryReconcileConfig()))
+                {
+                    // The full-rebuild fallback tears down the node instances, so the reconcile path's by-identity survival
+                    // of the installer's place is lost here — capture selection (which Avalonia's focus + scroll-into-view
+                    // follow) by id before the rebuild and restore it after, so a load (or any reconcile fallback) lands
+                    // the user back where they were (E14 place restore). Expansion is carried inside the coordinator's fallback.
+                    RebuildPreservingSelection(() => _treePanes.RebuildConfig(preserve: sameView));
+                }
+            }
+        });
 
     // Captures the per-pane selection by id, runs a full <paramref name="rebuild"/> that replaces the pane nodes with
     // fresh instances, then re-selects those ids — the shared guard both Refresh rebuild branches use so a rebuild

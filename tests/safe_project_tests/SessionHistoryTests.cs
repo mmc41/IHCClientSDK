@@ -58,8 +58,9 @@ namespace Ihc.Vis.Tests
         [Test]   // from EditHistoryTests.NewProject_ResetsHistory
         public async Task Open_ResetsHistory()
         {
-            // Both projects are loaded up front: the session is thread-affine, so no await may sit between session
-            // calls (a resumed continuation on another threadpool thread would trip VerifyAccess).
+            // Both projects are loaded up front: the lock-serialized session (D04) accepts any caller thread, but
+            // the mutation contract keeps a mutating caller single-threaded — loading first keeps every session
+            // call in this one synchronous run rather than hopping threads via resumed await continuations.
             Project first = await Load("project3-KompleksWired.vis");
             Project second = await Load("project3-KompleksWired.vis");
             ProjectDocumentSession session = Session(first);

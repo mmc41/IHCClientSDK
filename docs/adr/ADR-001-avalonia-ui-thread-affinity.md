@@ -4,6 +4,20 @@
 
 Decided — 2026-07-19.
 
+Amended — 2026-08-02. The document-session bullet of the Decision is superseded: `ProjectDocumentSession` — now the
+`IProjectDocument` port behind `ProjectAppService.OpenDocument` (crudarch redesign, decision D04) — is
+**lock-serialized instead of thread-affine**. A private monitor serializes its member bodies (any thread may read
+while one mutates) and `Changed`/`StateChanged` are raised outside the lock, synchronously on the thread that
+performed the state change. The affinity guard blocked the port's sanctioned uses (headless test drivers and the
+auto-backup timer's worker-thread snapshot read), so the safety condition became an explicit contract instead of a
+fail-fast check: a GUI issues **all document mutations from the UI thread** (worker threads only read), and
+`ConfigureAwait(false)` stays confined to paths that never mutate the document or handle its events. Accepted
+trade-off: the fail-fast guard against off-UI-thread mutations is gone and Avalonia's downstream failure there is
+partly silent, so the contract is pinned by dedicated cross-thread tests (`SessionThreadingContractTests`) — a
+sanctioned exception to the no-multithreaded-tests policy. Everything else in this ADR — single-UI-thread ownership
+of UI-bound state, explicit `Dispatcher.UIThread` marshalling, no ambient-context reliance, no locks in GUI code —
+stands.
+
 Revisit triggers: (a) upgrade to a new Avalonia major version — re-verify dispatcher and ambient-context defaults;
 (b) any feature requiring concurrent mutation of document or UI-bound state (multi-document, collaborative editing,
 background recomputation); (c) responsiveness budgets missed because of CPU-bound work on the UI thread.
@@ -130,7 +144,9 @@ Adopt option 1 for every Avalonia GUI application in this repository (`ihc_openv
   never touches UI-bound state afterwards (SDK internals; isolated pipelines such as the backup writer).
 - State-owning non-UI components (document sessions and peers) are thread-affine with fail-fast wrong-thread
   guards, implemented framework-free so the SDK remains Avalonia-independent; their change events fire
-  synchronously on the owning thread, so UI subscribers never marshal.
+  synchronously on the owning thread, so UI subscribers never marshal. *(Superseded 2026-08-02 — see the
+  amendment in Status: document sessions are lock-serialized; events still fire synchronously on the mutating
+  thread, and the GUI still mutates only from the UI thread, so UI subscribers still never marshal.)*
 - Recurring background triggers use an injected `TimeProvider`; the callback's only act on arrival is the UI-thread
   post.
 - Fire-and-forget is limited to self-contained background tasks with internal fault handling (startup telemetry

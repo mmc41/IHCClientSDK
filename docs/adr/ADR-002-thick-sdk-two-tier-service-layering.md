@@ -10,6 +10,17 @@ Amended — 2026-07-20. Owner rulings on how the project-authoring facade realiz
 the Decision section; the verbatim question/answer record lives in the facade-gap analysis of that date
 (`tmp/refac2ana.md`, untracked).
 
+Amended — 2026-08-02. Command execution through the authoring facade now has **two doors** (crudarch redesign): an
+interactive frontend calls `ProjectAppService.OpenDocument(Project, HistoryPolicy?)` and drives every edit through
+the returned `IProjectDocument` port — one lock-serialized session per open file owning labelled undo/redo,
+dirty/version and change events (ADR-001's amendment records the threading contract) — while one-shot callers
+(console tools, tests) keep the stateless `Apply`/`CanApply`/`Preview`, which run one command on a throwaway
+session. `ProjectAppService` remains the single discoverable door and commands are still minted only by the
+`Commands` factories; architecture tests ban the GUI assembly from calling the stateless members, so interactive edits
+cannot bypass the document. In the GUI, command *availability* is single-sourced in a declarative registry
+(`CommandRegistry`) — presentation policy over SDK legality, consistent with the display-interpretation boundary
+in the Decision.
+
 Revisit triggers: (a) a vendor firmware/WSDL revision changing the controller's service surface — re-price the 1-1
 mirror; (b) a frontend that cannot reference the SDK in-process (non-.NET or remote) — that calls for a hosted
 service boundary, not more tiers; (c) a second frontend re-implementing read-side model interpretation — the
@@ -40,15 +51,18 @@ SDK is then a thin GUI or command-line shell that only wires presentation to a f
 - Frontends are measurably thin: `ihc_admin` is argument parsing plus `AdminAppService` calls; `ihc_lab`'s
   view-model synchronizes GUI state with `LabAppService`; `ihc_openvisual` routes every mutation through the
   `Ihc.Vis.Session` command layer (each command executing via `project.Edit()`) driven from an Avalonia-free
-  session wrapper — obtaining each command from the `ProjectAppService.Commands` gateway and executing it through `ProjectAppService.Apply` (see
-  Decision).
+  session wrapper — obtaining each command from the `ProjectAppService.Commands` gateway and executing it through
+  the `IProjectDocument` port from `ProjectAppService.OpenDocument`, with the stateless `Apply` serving one-shot
+  callers (see Decision and the 2026-08-02 amendment).
 - Enforcement is partial: ArchUnitNET (`tests/safe_architecture_tests/`) pins `Ihc.Vis` ↛ `Ihc.Soap`,
   SDK ↛ Avalonia, and the OpenVisual GUI's thin-shell *dependency* boundary (GUI ↛ `Ihc.Soap`, GUI ↛ `System.Xml`,
-  GUI ↛ `Ihc.Vis.Io`, GUI ↛ `Ihc.Vis.Editing`, GUI ↛ `ProjectDocumentSession` (command execution goes through `ProjectAppService.Apply`), view-models ↛ Avalonia). The downward service-tier direction and the *absence of complex logic* in the frontend
+  GUI ↛ `Ihc.Vis.Io`, GUI ↛ `Ihc.Vis.Editing`, GUI ↛ `ProjectDocumentSession` (the concrete session type — command
+  execution goes through the `IProjectDocument` port; the stateless facade is reserved for non-GUI one-shot callers),
+  view-models ↛ Avalonia). The downward service-tier direction and the *absence of complex logic* in the frontend
   (a complexity property ArchUnitNET cannot judge) remain review conventions (`ARCHITECTURE.md` invariants 4 and 9). Two deviations were documented and are now resolved or retiring: command-selection
   and legality logic that had accumulated in OpenVisual's `ProjectWorkflow` and view-models (`ARCHITECTURE.md`,
   design challenge 7) has since moved into the SDK (the `ProjectAppService.Commands` gateway mints the commands and
-  `ProjectAppService.Apply`/`CanApply`/`Preview` run them, leaving `ProjectWorkflow` with document lifecycle only) — *display* interpretation of
+  the `IProjectDocument` port runs them for the GUI while `Apply`/`CanApply`/`Preview` serve one-shot callers, leaving `ProjectWorkflow` with document lifecycle only) — *display* interpretation of
   model values, by contrast, stays frontend-owned by design (see Decision) — and `ihc_project_io_extractor`'s
   standalone `.vis` parser is deprecated; the standalone `ihc_httpproxyrecorder` operates below the SDK by
   design.

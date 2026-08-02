@@ -1,5 +1,5 @@
 ---
-version: 0.3.1
+version: 0.4.0
 last-updated: 2026-08-02
 status: draft
 ---
@@ -17,7 +17,7 @@ project metadata) can be recovered without rebuilding the work by hand.
 **Scope:** the *Edit* menu's *Undo* and *Redo* actions and their `Ctrl+Z` /
 `Ctrl+Y` shortcuts; the requirement that every mutating operation across E2–E9 enters the history; the
 status-bar confirmation of what was undone/redone; redo invalidation on a new edit; and the
-empty-history no-op. **Scope excludes:** the automatic crash/power-loss backup (E1, US-005); the
+empty-history behaviour (greyed menu items, inert shortcuts). **Scope excludes:** the automatic crash/power-loss backup (E1, US-005); the
 per-command semantics of the edits themselves (their own epics); and non-mutating actions (view/mode
 switches, chrome toggles, simulation) which do not enter the history.
 
@@ -61,8 +61,9 @@ switches, toolbar/status-bar toggles, simulation) which do not enter the edit hi
   <product>`).
 - MUST: Making a **new** edit after an undo clears the redo history — the undone change can no
   longer be redone.
-- MUST: Invoking *Undo* with nothing to undo (a freshly opened/saved project with no edits
-  since) is a no-op that changes nothing.
+- MUST: With nothing to undo (a freshly opened/saved project with no edits since), *Edit > Undo* is
+  **greyed**, and `Ctrl+Z` changes nothing — the status bar explains why (`Nothing to undo.`, per
+  US-044). *Redo* behaves the same when there is nothing to redo.
 - MUST: **One user action is one undo step.** A single action taken in the UI is reversed by a single
   *Undo* and re-applied by a single *Redo* — the history's granularity is the user's action, not the
   internal edits it performs.
@@ -107,8 +108,9 @@ switches, toolbar/status-bar toggles, simulation) which do not enter the edit hi
 **Readiness:** Ready.
 
 **Implementation status:** ✅ Implemented (multi-level, unlimited depth) — granularity is one-action-one-step,
-and the graceful-degradation rule holds: unlocking a library block and then pressing `Ctrl+Z` runs cleanly,
-re-locking the block with the app still running.
+the graceful-degradation rule holds (unlocking a library block and then pressing `Ctrl+Z` runs cleanly,
+re-locking the block with the app still running), and *Undo*/*Redo* grey on an empty history with the
+status-bar explanation on their shortcuts.
 
 ---
 

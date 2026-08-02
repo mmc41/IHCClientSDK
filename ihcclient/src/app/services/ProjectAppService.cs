@@ -38,11 +38,12 @@ namespace Ihc.Vis
     /// overloads). Editing a loaded/created project goes through the <see cref="Commands"/> gateway — the single
     /// discoverable authoring door (a stateless <see cref="ProjectCommands"/> planner that mints the undoable
     /// command vocabulary a frontend applies through its session); its <c>project.Edit()</c> extension is the
-    /// low-level mutation entry the gateway is built on. A frontend can also <b>execute</b> those commands here —
-    /// <see cref="Apply(Project, ProjectCommand)"/> / <see cref="Apply{T}(Project, ProjectCommand{T})"/> /
-    /// <see cref="CanApply"/> / <see cref="Preview"/> run one command against a project on a throwaway single-use
-    /// session and return the resulting <see cref="ProjectApplyResult"/> — so the same door both mints and runs the
-    /// vocabulary; a GUI layers only its document lifecycle (undo/redo, dirty/version, backup) on top. The catalog is the
+    /// low-level mutation entry the gateway is built on. <b>Executing</b> those commands has two doors (crudarch
+    /// D01): an INTERACTIVE frontend calls <see cref="OpenDocument"/> and drives every edit through the returned
+    /// <see cref="IProjectDocument"/> (labelled undo/redo, dirty/version, change events); ONE-SHOT callers use the
+    /// stateless <see cref="Apply(Project, ProjectCommand)"/> / <see cref="Apply{T}(Project, ProjectCommand{T})"/> /
+    /// <see cref="CanApply"/> / <see cref="Preview"/>, which run one command against a project on a throwaway
+    /// single-use session and return the resulting <see cref="ProjectApplyResult"/>. The catalog is the
     /// SDK-embedded <see cref="BuiltInCatalog"/>, materialized lazily on first catalog use, so no operation —
     /// file/controller IO, <see cref="CreateNew"/>, or the <c>GetAvailable*</c> methods — requires an IHC Visual
     /// install at runtime.
@@ -186,11 +187,36 @@ namespace Ihc.Vis
         /// </summary>
         public ProjectCommands Commands => commandsGateway ??= new ProjectCommands(catalog, timeProvider);
 
-        // ---- Stateless command execution (D02): run a command minted by Commands against a project on a throwaway,
-        // single-use ProjectDocumentSession created on the CALLING thread. The session is thread-affine (it captures
-        // its owner thread at construction), so there is deliberately NO persistent session — each call opens one, uses
-        // it once as a stateless runner, and discards it. A frontend that owns document lifecycle (Current/undo/dirty)
-        // layers those on top; this door owns only the one-shot apply/probe. ----
+        // ---- Command execution: TWO doors (crudarch D01). INTERACTIVE frontends call OpenDocument and drive
+        // every edit through the returned IProjectDocument — one persistent, lock-serialized session per open
+        // file owning history/dirty/version/events and the per-commit index. The stateless Apply/CanApply/Preview
+        // below stay the ONE-SHOT door (D02): each call runs the command on a throwaway single-use session over
+        // the given project — no lifecycle, for console tools, tests and non-interactive automation. ----
+
+        /// <summary>
+        /// Opens <paramref name="project"/> as an interactive document (crudarch D01, proposal §3.1): the returned
+        /// <see cref="IProjectDocument"/> owns command execution with labelled undo/redo, dirty/version tracking
+        /// and <c>Changed</c>/<c>StateChanged</c> events over a per-commit index — the door for a GUI, which holds
+        /// one document per open file and drives every edit through it. One-shot callers keep using the stateless
+        /// <see cref="Apply(Project, ProjectCommand)"/>/<see cref="CanApply"/>/<see cref="Preview"/> door instead.
+        /// <paramref name="history"/> sets the undo retention (default <see cref="HistoryPolicy.Unlimited"/>).
+        /// <paramref name="startClean"/> is <see cref="IProjectDocument.Open"/>'s save-point flag: pass false for a
+        /// project that has no clean state to return to (a recovered auto-backup), so the factory expresses the WHOLE
+        /// open and the caller never re-opens after the fact — a second index build the load path would pay, and a
+        /// window in which a recovered project reports itself clean (review F04).
+        /// See <see cref="IProjectDocument"/> for the D04 threading contract (lock-serialized; events raised
+        /// synchronously on the mutating thread; mutate from one thread, read from any).
+        /// </summary>
+        public IProjectDocument OpenDocument(Project project, HistoryPolicy? history = null, bool startClean = true)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            return RunTraced(nameof(OpenDocument), activity =>
+            {
+                var document = new ProjectDocumentSession(history);
+                document.Open(project, startClean);
+                return (IProjectDocument)document;
+            });
+        }
 
         /// <summary>
         /// Applies <paramref name="command"/> to <paramref name="project"/> and returns the resulting snapshot paired
@@ -263,9 +289,9 @@ namespace Ihc.Vis
             });
         }
 
-        // Opens a throwaway, single-use document session over the project on the CALLING thread (D02): the stateless
-        // runner behind every facade Apply/CanApply/Preview. ProjectDocumentSession is thread-affine, so this must
-        // never be hoisted into a persistent field — a fresh one is created, used once, and discarded per call.
+        // Opens a throwaway, single-use document session over the project (D02): the stateless runner behind every
+        // facade Apply/CanApply/Preview. Deliberately never hoisted into a persistent field — this door is the
+        // one-shot runner; the persistent document an interactive frontend holds is what OpenDocument returns (D01).
         private static ProjectDocumentSession OpenScratch(Project project)
         {
             var document = new ProjectDocumentSession();

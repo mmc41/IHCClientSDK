@@ -31,6 +31,7 @@ namespace Ihc.Vis.Tests
     /// <c>tmp/refac-perf-baseline.md</c>). Numbers are machine-specific; the header records the machine.</para>
     /// </summary>
     [Explicit("Perf benchmark: run manually in Release; not part of the gate.")]
+    [Category("Benchmark")]
     public class PerfBaselineBenchmark
     {
         private const int Warmup = 5;

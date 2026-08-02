@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using Ihc.Vis.Editing;
+using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
 
 namespace Ihc.Vis.Session
@@ -11,16 +12,22 @@ namespace Ihc.Vis.Session
     /// The GUI-free document session (proposal §3.3): holds the current <see cref="Project"/>, applies
     /// <see cref="ProjectCommand"/>s through one <see cref="Apply(ProjectCommand, int?)"/> pipeline with labelled
     /// undo/redo, and tracks dirty state against the written save point. No Avalonia, no dialogs — it emits OTel
-    /// spans and raises <see cref="Changed"/>/<see cref="StateChanged"/> for the UI to project.
+    /// spans and raises <see cref="Changed"/>/<see cref="StateChanged"/> for the UI to project. Implements
+    /// <see cref="IProjectDocument"/> DIRECTLY (crudarch D01 — no wrapper): frontends obtain it as the port from
+    /// <see cref="ProjectAppService.OpenDocument"/>; the concrete type stays out of GUI reach (arch-enforced).
     /// </summary>
     /// <remarks>
-    /// <b>Thread-affine (D12):</b> the session captures its owning thread at construction and every member fails
-    /// fast on a wrong-thread access; there is no lock. Snapshots are immutable <see cref="Project"/> instances, so
-    /// a background save/backup reads a captured snapshot off-thread while the session stays single-threaded.
+    /// <b>Lock-serialized (crudarch D04, supersedes the D12 thread-affinity):</b> a private monitor serializes
+    /// every member body, so any thread may READ while another edits — the backup-timer shape: a worker sampling
+    /// <see cref="Current"/> mid-edit observes the pre- or post-edit snapshot (immutable <see cref="Project"/>
+    /// instances), never a torn state. <see cref="Changed"/>/<see cref="StateChanged"/> are raised OUTSIDE the
+    /// lock, synchronously on the thread that performed the state change — never marshalled or deferred — so
+    /// interactive callers must issue all MUTATIONS from one thread (the UI thread in a GUI) for handler
+    /// ordering to stay meaningful; any thread may read.
     /// </remarks>
-    public sealed class ProjectDocumentSession
+    public sealed class ProjectDocumentSession : IProjectDocument
     {
-        private readonly int _ownerThreadId = Environment.CurrentManagedThreadId;
+        private readonly object _sync = new();
         private readonly HistoryPolicy _history;
         private readonly LinkedList<HistoryEntry> _undo = new();   // Last = top of the undo stack
         private readonly Stack<HistoryEntry> _redo = new();
@@ -54,42 +61,44 @@ namespace Ihc.Vis.Session
         public event EventHandler? StateChanged;
 
         /// <summary>The current project snapshot, or null when none is open.</summary>
-        public Project? Current { get { VerifyAccess(); return _current; } }
+        public Project? Current { get { lock (_sync) { return _current; } } }
 
         /// <summary>Bumps on apply/undo/redo/open/close (never on <see cref="MarkSaved"/>); the base-version guard
         /// compares against it to refuse a stale dialog commit.</summary>
-        public int Version { get { VerifyAccess(); return _version; } }
+        public int Version { get { lock (_sync) { return _version; } } }
 
         /// <summary>Whether the current snapshot differs from the last written save point — computed by reference,
         /// never stored, so undoing back to the saved snapshot reads clean.</summary>
-        public bool IsDirty { get { VerifyAccess(); return !ReferenceEquals(_current, _savePoint); } }
+        public bool IsDirty { get { lock (_sync) { return !ReferenceEquals(_current, _savePoint); } } }
 
         /// <summary>Whether there is an edit to undo.</summary>
-        public bool CanUndo { get { VerifyAccess(); return _undo.Count > 0; } }
+        public bool CanUndo { get { lock (_sync) { return _undo.Count > 0; } } }
 
         /// <summary>Whether there is an undone edit to redo.</summary>
-        public bool CanRedo { get { VerifyAccess(); return _redo.Count > 0; } }
+        public bool CanRedo { get { lock (_sync) { return _redo.Count > 0; } } }
 
         /// <summary>The label of the edit that <see cref="Undo"/> would reverse, or null.</summary>
-        public string? UndoLabel { get { VerifyAccess(); return _undo.Count > 0 ? _undo.Last!.Value.Label : null; } }
+        public string? UndoLabel { get { lock (_sync) { return _undo.Count > 0 ? _undo.Last!.Value.Label : null; } } }
 
         /// <summary>The label of the edit that <see cref="Redo"/> would re-apply, or null.</summary>
-        public string? RedoLabel { get { VerifyAccess(); return _redo.Count > 0 ? _redo.Peek().Label : null; } }
+        public string? RedoLabel { get { lock (_sync) { return _redo.Count > 0 ? _redo.Peek().Label : null; } } }
 
-        /// <summary>The undo-history retention policy in effect.</summary>
-        public HistoryPolicy History { get { VerifyAccess(); return _history; } }
+        /// <summary>The undo-history retention policy in effect (immutable — set at construction).</summary>
+        public HistoryPolicy History => _history;
 
         /// <summary>Opens a project as the current snapshot, resetting history and version. When
         /// <paramref name="startClean"/> the opened snapshot is also the save point (dirty = false).</summary>
         public void Open(Project project, bool startClean = true)
         {
-            VerifyAccess();
-            _current = project;
-            _savePoint = startClean ? project : null;
-            _index = ProjectIndex.Build(project);
-            _undo.Clear();
-            _redo.Clear();
-            _version++;
+            lock (_sync)
+            {
+                _current = project;
+                _savePoint = startClean ? project : null;
+                _index = ProjectIndex.Build(project);
+                _undo.Clear();
+                _redo.Clear();
+                _version++;
+            }
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
 
@@ -98,37 +107,50 @@ namespace Ihc.Vis.Session
         /// Flips dirty without bumping <see cref="Version"/>.</summary>
         public void MarkSaved(Project savedSnapshot)
         {
-            VerifyAccess();
-            _savePoint = savedSnapshot;
+            lock (_sync)
+            {
+                _savePoint = savedSnapshot;
+            }
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>Closes the current project, clearing all session state.</summary>
         public void Close()
         {
-            VerifyAccess();
-            _current = null;
-            _savePoint = null;
-            _index = null;
-            _undo.Clear();
-            _redo.Clear();
-            _version++;
+            lock (_sync)
+            {
+                _current = null;
+                _savePoint = null;
+                _index = null;
+                _undo.Clear();
+                _redo.Clear();
+                _version++;
+            }
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>Applies a command through the full pipeline. See the class remarks for the outcome typing.</summary>
         public EditOutcome Apply(ProjectCommand command, int? baseVersion = null)
         {
-            VerifyAccess();
-            return ApplyInternal(command, baseVersion, command.Execute);
+            EditOutcome outcome;
+            lock (_sync)
+            {
+                outcome = ApplyInternal(command, baseVersion, command.Execute);
+            }
+            NotifyChanged(outcome.Changes);
+            return outcome;
         }
 
         /// <summary>Applies a value-producing command, surfacing the produced value on a committed outcome.</summary>
         public EditOutcome<T> Apply<T>(ProjectCommand<T> command, int? baseVersion = null)
         {
-            VerifyAccess();
             T? produced = default;
-            EditOutcome outcome = ApplyInternal(command, baseVersion, editor => produced = command.ExecuteCore(editor));
+            EditOutcome outcome;
+            lock (_sync)
+            {
+                outcome = ApplyInternal(command, baseVersion, editor => produced = command.ExecuteCore(editor));
+            }
+            NotifyChanged(outcome.Changes);
             return new EditOutcome<T>(outcome.Status, outcome.Label, outcome.Reason, outcome.Changes,
                 outcome.Status == EditStatus.Committed ? produced : default);
         }
@@ -198,31 +220,47 @@ namespace Ihc.Vis.Session
         /// <summary>Reverses the most recent edit, or a no-op outcome when the history is empty.</summary>
         public EditOutcome Undo()
         {
-            VerifyAccess();
-            if (_undo.Count == 0 || _current is not { } current)
+            EditOutcome outcome;
+            lock (_sync)
             {
-                return new EditOutcome(EditStatus.NoChange, "Undo", null, null);
+                if (_undo.Count == 0 || _current is not { } current)
+                {
+                    outcome = new EditOutcome(EditStatus.NoChange, "Undo", null, null);
+                }
+                else
+                {
+                    HistoryEntry entry = _undo.Last!.Value;
+                    _undo.RemoveLast();
+                    _redo.Push(new HistoryEntry(current, entry.Label));
+                    outcome = new EditOutcome(EditStatus.Committed, entry.Label, null,
+                        Transition(current, entry.Snapshot, entry.Label, OriginUndo));
+                }
             }
-            HistoryEntry entry = _undo.Last!.Value;
-            _undo.RemoveLast();
-            _redo.Push(new HistoryEntry(current, entry.Label));
-            ProjectChangeSet changes = Transition(current, entry.Snapshot, entry.Label, OriginUndo);
-            return new EditOutcome(EditStatus.Committed, entry.Label, null, changes);
+            NotifyChanged(outcome.Changes);
+            return outcome;
         }
 
         /// <summary>Re-applies the most recently undone edit, or a no-op outcome when nothing is redoable.</summary>
         public EditOutcome Redo()
         {
-            VerifyAccess();
-            if (_redo.Count == 0 || _current is not { } current)
+            EditOutcome outcome;
+            lock (_sync)
             {
-                return new EditOutcome(EditStatus.NoChange, "Redo", null, null);
+                if (_redo.Count == 0 || _current is not { } current)
+                {
+                    outcome = new EditOutcome(EditStatus.NoChange, "Redo", null, null);
+                }
+                else
+                {
+                    HistoryEntry entry = _redo.Pop();
+                    _undo.AddLast(new HistoryEntry(current, entry.Label));
+                    TrimUndo();
+                    outcome = new EditOutcome(EditStatus.Committed, entry.Label, null,
+                        Transition(current, entry.Snapshot, entry.Label, OriginRedo));
+                }
             }
-            HistoryEntry entry = _redo.Pop();
-            _undo.AddLast(new HistoryEntry(current, entry.Label));
-            TrimUndo();
-            ProjectChangeSet changes = Transition(current, entry.Snapshot, entry.Label, OriginRedo);
-            return new EditOutcome(EditStatus.Committed, entry.Label, null, changes);
+            NotifyChanged(outcome.Changes);
+            return outcome;
         }
 
         /// <summary>The typed preview of a command applied now — without committing — mirroring <see cref="Apply"/>
@@ -232,43 +270,73 @@ namespace Ihc.Vis.Session
         /// "nothing to preview". Drives the Preview→confirm→Apply flow (W2-13).</summary>
         public PreviewOutcome Preview(ProjectCommand command)
         {
-            VerifyAccess();
-            if (_current is not { } current)
+            lock (_sync)
             {
-                return PreviewOutcome.Refused("No project is open.");
+                if (_current is not { } current)
+                {
+                    return PreviewOutcome.Refused("No project is open.");
+                }
+                EditVerdict verdict = command.Evaluate(new EditContext(current, _index!));
+                if (!verdict.Ok)
+                {
+                    return PreviewOutcome.Refused(verdict.Reason);
+                }
+                Project? updated;
+                try
+                {
+                    updated = TryProduceUpdated(current, command.Execute);
+                }
+                catch (EditRefusedException ex)   // a deep guard refuses only inside Execute — a refusal, not a fault
+                {
+                    return PreviewOutcome.Refused(ex.Message);
+                }
+                catch (Exception ex)   // an unexpected engine fault — surfaced, not swallowed as "nothing to preview" (D05)
+                {
+                    return PreviewOutcome.Faulted(ex.Message);
+                }
+                return updated is null
+                    ? PreviewOutcome.NoChange
+                    : PreviewOutcome.WouldChange(
+                        ProjectChangeSet.Diff(current, updated, _version, _version, OriginPreview, command.Describe(current)));
             }
-            EditVerdict verdict = command.Evaluate(new EditContext(current, _index!));
-            if (!verdict.Ok)
-            {
-                return PreviewOutcome.Refused(verdict.Reason);
-            }
-            Project? updated;
-            try
-            {
-                updated = TryProduceUpdated(current, command.Execute);
-            }
-            catch (EditRefusedException ex)   // a deep guard refuses only inside Execute — a refusal, not a fault
-            {
-                return PreviewOutcome.Refused(ex.Message);
-            }
-            catch (Exception ex)   // an unexpected engine fault — surfaced, not swallowed as "nothing to preview" (D05)
-            {
-                return PreviewOutcome.Faulted(ex.Message);
-            }
-            return updated is null
-                ? PreviewOutcome.NoChange
-                : PreviewOutcome.WouldChange(
-                    ProjectChangeSet.Diff(current, updated, _version, _version, OriginPreview, command.Describe(current)));
         }
 
         /// <summary>The command's legality verdict against the current project (cheap — no edit), for drag-over
         /// probes and menu gates.</summary>
         public EditVerdict CanApply(ProjectCommand command)
         {
-            VerifyAccess();
-            return _current is { } current
-                ? command.Evaluate(new EditContext(current, _index!))
-                : EditVerdict.Refuse("No project is open.");
+            lock (_sync)
+            {
+                return _current is { } current
+                    ? command.Evaluate(new EditContext(current, _index!))
+                    : EditVerdict.Refuse("No project is open.");
+            }
+        }
+
+        /// <summary>Whether the pair is a reorderable same-tag sibling pair (US-055) — the index-backed drag-over
+        /// probe (review F5): forwards to the gateway's shared rule against the per-commit index, so the pointer
+        /// path pays dictionary lookups instead of full-tree walks. False when no project is open.</summary>
+        public bool CanReorderNode(ElementId dragged, ElementId target)
+        {
+            lock (_sync)
+            {
+                return _index is { } index && ProjectCommands.CanReorderNode(index, dragged, target);
+            }
+        }
+
+        /// <summary>Whether <paramref name="id"/> can move <paramref name="delta"/> positions among its same-tag
+        /// siblings (US-055) — the index-backed MENU-gate peer of <see cref="CanReorderNode"/> (review F02): the
+        /// gateway's own boundary rule resolved from the per-commit index, then the reorder command's own verdict,
+        /// so the gate can never disagree with the Apply it guards and the caller mints nothing until Execute.
+        /// False when no project is open.</summary>
+        public bool CanReorder(ElementId id, int delta)
+        {
+            lock (_sync)
+            {
+                return _current is { } current && _index is { } index
+                    && ProjectCommands.ReorderNode(index, id, delta) is { } command
+                    && command.Evaluate(new EditContext(current, index)).Ok;
+            }
         }
 
         // ---- API-D queries (W2-12): read projections over Current. Questions are calls, not command objects
@@ -277,42 +345,62 @@ namespace Ihc.Vis.Session
         /// <summary>Reads the project/customer/installer information (US-039), or the blank model when none is open.</summary>
         public ProjectInfoData GetProjectInfo()
         {
-            VerifyAccess();
-            return _current?.GetProjectInfo() ?? ProjectInfoData.Empty;
+            lock (_sync)
+            {
+                return _current?.GetProjectInfo() ?? ProjectInfoData.Empty;
+            }
         }
 
         /// <summary>Reads the data tables (US-049) — the read-only system tables and the editable user-defined
         /// texts — or an empty model when none is open.</summary>
         public DataTablesModel GetDataTables()
         {
-            VerifyAccess();
-            return _current?.GetDataTables() ?? DataTablesModel.Empty;
+            lock (_sync)
+            {
+                return _current?.GetDataTables() ?? DataTablesModel.Empty;
+            }
         }
 
         /// <summary>Names the wireless products not yet linked to the controller (US-042 pre-flight), or empty
         /// when none is open.</summary>
         public IReadOnlyList<string> GetUnlinkedWirelessProducts()
         {
-            VerifyAccess();
-            return _current?.GetUnlinkedWirelessProducts() ?? [];
+            lock (_sync)
+            {
+                return _current?.GetUnlinkedWirelessProducts() ?? [];
+            }
         }
 
         /// <summary>Builds the read-only Wired module address map (US-050), or an empty map when none is open.</summary>
         public ModuleAddressMap GetModuleAddressMap()
         {
-            VerifyAccess();
-            return _current?.GetModuleAddressMap() ?? ModuleAddressMap.Empty;
+            lock (_sync)
+            {
+                return _current?.GetModuleAddressMap() ?? ModuleAddressMap.Empty;
+            }
         }
 
+        // Commits a state transition under the caller-held lock and returns its change set. The Changed raise is
+        // deliberately NOT here: the public member that committed raises it via NotifyChanged AFTER releasing the
+        // lock (D04 — outside the lock, on the mutating thread), so a handler re-entering the session never runs
+        // inside the monitor.
         private ProjectChangeSet Transition(Project from, Project to, string label, string origin)
         {
             int baseVersion = _version;
             _current = to;
             _index = ProjectIndex.Build(to);
             _version++;
-            var changes = ProjectChangeSet.Diff(from, to, baseVersion, _version, origin, label);
-            Changed?.Invoke(this, new ProjectChangedEventArgs(changes));
-            return changes;
+            return ProjectChangeSet.Diff(from, to, baseVersion, _version, origin, label);
+        }
+
+        // D04: raises Changed for a committed transition — outside the lock, synchronously on the thread that
+        // performed the state change, never marshalled or deferred. Null changes (refused/no-op paths) raise nothing.
+        private void NotifyChanged(ProjectChangeSet? changes)
+        {
+            if (changes is not null)
+            {
+                Changed?.Invoke(this, new ProjectChangedEventArgs(changes));
+            }
         }
 
         private void TrimUndo()
@@ -320,15 +408,6 @@ namespace Ihc.Vis.Session
             while (_history.Cap is { } cap && _undo.Count > cap)
             {
                 _undo.RemoveFirst();
-            }
-        }
-
-        private void VerifyAccess()
-        {
-            if (Environment.CurrentManagedThreadId != _ownerThreadId)
-            {
-                throw new InvalidOperationException(
-                    "ProjectDocumentSession is thread-affine and was accessed from a non-owner thread.");
             }
         }
     }

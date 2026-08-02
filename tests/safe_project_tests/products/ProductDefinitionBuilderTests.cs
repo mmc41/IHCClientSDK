@@ -8,7 +8,7 @@ namespace Ihc.Vis.Tests
     /// <see cref="ProductDefinition"/> a <c>Products\*.def</c> discovery yields, and how that built definition drops
     /// into the <b>existing</b> project builder (<c>GroupRef.AddProduct</c> → insert transform) unchanged. The
     /// per-oracle canonical-fidelity gate lives in <see cref="ProductBuilderOracleTests"/>; these assert the readable
-    /// scalar surface (identity, documentation) and the end-to-end insert. (Mirrors <see cref="AuthoringApiTests"/>.)
+    /// scalar surface (identity, documentation) and the end-to-end insert. (Mirrors <see cref="AuthoringApiExamples"/>.)
     /// </summary>
     public class ProductDefinitionBuilderTests
     {

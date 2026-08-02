@@ -1,5 +1,5 @@
 ---
-version: 0.4.0
+version: 0.5.0
 last-updated: 2026-08-02
 status: draft
 ---
@@ -308,6 +308,10 @@ Scenario: Add and use a favourite
 - MUST: This is the **same locked shape** a catalog block carries, so the view-only guard, and the
   byte-fidelity of the `master_*` / `locked` attributes, apply identically whether the block came from the
   catalog or from a user *Save…*.
+- MUST: A save whose **library-file write fails** leaves the project **untouched**: the in-project block
+  keeps its name and its unlocked state, and nothing enters the undo history. A successful save is
+  **one undoable step** — a single *Undo* restores the unlocked, unrenamed block (the written library
+  file stays on disk).
 
 ### Business rules (the save dialog and the saved file)
 

@@ -55,23 +55,35 @@ public class ReconcileRefreshTests : AvaloniaTestBase
     }
 
     [Test]
-    public async Task Undo_RestoresSelection_OnTheFallbackPath()
+    public async Task Undo_ReconcilesInPlace_SelectionAndExpansionSurviveByIdentity()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         ElementId loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        vm.SelectedInstallationNode = TreeNodes.FindById(vm.InstallationNodes, loc);
+        TreeNodeViewModel rootBefore = vm.InstallationNodes[0];
+        TreeNodeViewModel selected = TreeNodes.FindById(vm.InstallationNodes, loc)!;
+        vm.SelectedInstallationNode = selected;
+        bool flippedExpansion = !selected.IsExpanded;   // a deliberate non-default view state the undo must not disturb
+        selected.IsExpanded = flippedExpansion;
 
-        await harness.Session.AddLocalityAsync();   // edit (reconcile — selection survives by identity)
-        await harness.Session.UndoAsync();          // undo (full-rebuild fallback — selection restored by id)
+        await harness.Session.AddLocalityAsync();   // the edit to reverse
+        await harness.Session.UndoAsync();          // crudarch G3/T007: the undo delta reconciles in place
 
-        Assert.That(vm.SelectedInstallationNode, Is.SameAs(TreeNodes.FindById(vm.InstallationNodes, loc)),
-            "the installer's selection survives an undo — restored to the current node on the fallback path (E14)");
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.InstallationNodes[0], Is.SameAs(rootBefore),
+                "the Localities root keeps its instance across the undo — the reconciler path ran, not a rebuild");
+            Assert.That(TreeNodes.FindById(vm.InstallationNodes, loc), Is.SameAs(selected),
+                "an untouched node keeps its instance across the undo");
+            Assert.That(vm.SelectedInstallationNode, Is.SameAs(selected), "selection survives the undo by identity");
+            Assert.That(selected.IsExpanded, Is.EqualTo(flippedExpansion),
+                "expansion state survives the undo untouched on the same instance");
+        });
     }
 
     [Test]
-    public async Task Redo_RestoresSelection_OnTheFallbackPath()
+    public async Task Redo_KeepsSelectionOnTheCurrentTreeNode()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
@@ -81,7 +93,7 @@ public class ReconcileRefreshTests : AvaloniaTestBase
         await harness.Session.UndoAsync();
         vm.SelectedInstallationNode = TreeNodes.FindById(vm.InstallationNodes, loc);
 
-        await harness.Session.RedoAsync();          // redo (full-rebuild fallback)
+        await harness.Session.RedoAsync();          // redo reconciles in place too (T007); the assert also holds on the rebuild fallback
 
         Assert.That(vm.SelectedInstallationNode, Is.SameAs(TreeNodes.FindById(vm.InstallationNodes, loc)),
             "the installer's selection survives a redo (E14)");

@@ -11,7 +11,7 @@ namespace Ihc.Vis.Tests
     /// a <c>FunctionBlocks\*.ifb</c> discovery yields, and how it drops into the <b>existing</b> project builder
     /// (<c>GroupRef.AddFunctionBlock</c> → insert transform) unchanged. The per-oracle canonical-fidelity gate lives in
     /// <see cref="FunctionBlockBuilderOracleTests"/>; these assert the readable scalar surface (identity, documentation)
-    /// and the end-to-end insert. (Mirrors <see cref="AuthoringApiTests"/>.)
+    /// and the end-to-end insert. (Mirrors <see cref="AuthoringApiExamples"/>.)
     /// </summary>
     public class FunctionBlockDefinitionBuilderTests
     {

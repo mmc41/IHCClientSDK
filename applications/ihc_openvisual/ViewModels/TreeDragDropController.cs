@@ -15,7 +15,9 @@ namespace ihc_openvisual.ViewModels;
 /// <para><b>Single verdict per drop (W3-9):</b> <see cref="CanDropOn"/> resolves the legality ONCE and records the
 /// concrete <see cref="DropRoute"/> in the verdict, so <see cref="PerformDropAsync"/> performs it by route without
 /// re-asking the SDK (the old dispatcher re-evaluated up to 3×). Legality is asked through
-/// <see cref="ProjectWorkflow.CanApply"/> (the command's own Evaluate) — do NOT re-encode vendor grammar here; the
+/// <see cref="ProjectWorkflow.CanApply"/> (the command's own Evaluate) and
+/// <see cref="ProjectWorkflow.CanReorderNode"/> — both document-backed probes against the per-commit index
+/// (crudarch T008: no per-pointer-event session or index rebuild) — do NOT re-encode vendor grammar here; the
 /// per-route grammar (container-admissibility, link legality) belongs to the SDK op the drop calls.</para>
 /// </summary>
 public sealed class TreeDragDropController(
@@ -58,8 +60,9 @@ public sealed class TreeDragDropController(
                 : DropVerdict.ProgramBuild();
         }
         // Reorder: dropping onto a same-parent, same-tag sibling moves the node to that position (US-055). The SDK owns
-        // the "same-tag sibling" rule; ask it.
-        if (session.Commands.CanReorderNode(session.Current!, dragged, target))
+        // the "same-tag sibling" rule; ask the document's index-backed probe (crudarch T008 — no full-tree walk per
+        // drag-over pointer event).
+        if (session.CanReorderNode(dragged, target))
             return DropVerdict.Reorder();
         // A product can be dragged to re-parent it into another locality (US-054). Ask the MoveNode command's Evaluate
         // whether this exact target is a legal destination (the same legality Cut/Paste uses).
@@ -107,17 +110,8 @@ public sealed class TreeDragDropController(
         // a different row leaves the first one open too. It shows what the drop landed next to. Only the drag does
         // this; the keyboard supplements (edit.moveUp/moveDown) reorder without touching expansion, there as here.
         if (findNode(target) is { } dropped)
-            ExpandSubtree(dropped);
+            dropped.ExpandSubtree();
     });
-
-    private static void ExpandSubtree(TreeNodeViewModel node)
-    {
-        if (node.Children.Count == 0)
-            return;
-        node.IsExpanded = true;
-        foreach (TreeNodeViewModel child in node.Children)
-            ExpandSubtree(child);
-    }
 
     /// <summary>Highlights (or clears) the current legal drop target so the tree shows where a drop will land (A-30):
     /// sets <see cref="TreeNodeViewModel.IsDropTarget"/> on the addressed node and clears any previous one; pass

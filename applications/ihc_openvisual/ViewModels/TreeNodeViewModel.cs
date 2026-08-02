@@ -61,6 +61,12 @@ public sealed partial class TreeNodeViewModel : ObservableObject
     /// <summary>Whether this node is a resource pin — a drag source/target for linking (US-022).</summary>
     public bool IsPin => Kind is TreeNodeKind.Pin;
 
+    /// <summary>Whether this pin is a product's data-line TERMINAL: the vendor offers <i>Copy</i> on it, unlike a
+    /// function-block pin (uxparity S-28). Set at projection time from the SDK's own classification
+    /// (<c>ElementKind.DatalinePin</c>) rather than re-derived here from the tag spelling — which family a tag
+    /// belongs to is the engine's answer, not the shell's (ARCHITECTURE invariant 7, review F15).</summary>
+    public bool IsProductTerminal { get; init; }
+
     /// <summary>Whether this node is a product's <c>scenes</c> container — the target of a scenario link (US-024).</summary>
     public bool IsSceneTarget => Kind is TreeNodeKind.Scenes;
 
@@ -239,4 +245,15 @@ public sealed partial class TreeNodeViewModel : ObservableObject
     public partial bool IsDropTarget { get; set; }
 
     public ObservableCollection<TreeNodeViewModel> Children { get; } = new();
+
+    /// <summary>Opens this row and every descendant, so a just-arrived subtree (a paste, an insert or a drop) is
+    /// shown in full (uxparity S-11). A childless row is left collapsed — an open twisty over nothing looks wrong.</summary>
+    public void ExpandSubtree()
+    {
+        if (Children.Count == 0)
+            return;
+        IsExpanded = true;
+        foreach (TreeNodeViewModel child in Children)
+            child.ExpandSubtree();
+    }
 }

@@ -6,8 +6,8 @@ using Ihc.Vis.Session;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// R1 acceptance (T009): the <see cref="ProjectCommands"/> gateway is the <b>complete and exclusive</b>
-    /// authoring vocabulary. Every concrete <see cref="ProjectCommand"/> in the SDK is reachable through exactly one
+    /// R1 acceptance (T009): the <see cref="ProjectCommands"/> gateway exposes the <b>complete published</b>
+    /// authoring vocabulary. Every concrete <see cref="ProjectCommand"/> in the SDK is reachable through at least one
     /// published factory (D03), and <see cref="CompositeCommand"/> — composition infrastructure — is deliberately
     /// NOT (D04). A new command that ships without a factory, or a stray <c>CompositeCommand</c> factory, fails here.
     /// </summary>
@@ -21,8 +21,9 @@ namespace Ihc.Vis.Tests
                 .Where(t => commandBase.IsAssignableFrom(t) && !t.IsAbstract && t != typeof(CompositeCommand))
                 .ToList();
 
-            // A factory is a public instance method on ProjectCommands that returns a command type (nullable
-            // reference annotations vanish at runtime, so `AddProduct?` and `AddProduct` share one System.Type).
+            // A factory is a public instance method on ProjectCommands that returns a command type. The set is
+            // intentional: semantic aliases such as ReorderNode and ReorderNodeToSibling may return the same command;
+            // this fitness function requires reachability, not a misleading one-factory-per-return-type invariant.
             var factoryReturns = typeof(ProjectCommands)
                 .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                 .Select(m => m.ReturnType)

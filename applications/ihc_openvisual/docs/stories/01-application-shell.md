@@ -1,5 +1,5 @@
 ---
-version: 0.5.0
+version: 0.6.0
 last-updated: 2026-08-02
 status: draft
 ---
@@ -64,9 +64,12 @@ per-menu command inventory beyond the top-level menu titles.
 - MUST: The window title bar shows `<document> - IHC OpenVisual`, where `<document>` is
   `Untitled` before the first save and the file name (e.g. `project3.vis`) afterwards; the
   IHC OpenVisual application icon appears as the window icon, with standard Minimize/Maximize/Close buttons at top-right.
-- MUST: The title bar shows **no dirty marker** — no `*` or equivalent — even when the open project has
-  unsaved changes. Dirty state is tracked internally and surfaced by the unsaved-changes guard (US-002),
-  not by the title.
+- MUST: The title bar carries a **dirty marker** while the open project has unsaved changes: a bullet (`•`)
+  appended directly to the document name — `project3.vis• - IHC OpenVisual` — and nothing else in the title.
+  The marker appears on the first unsaved change, disappears on save, and also disappears when undo returns
+  the project to its last saved state. A clean project (just created, opened, or saved) shows the plain
+  title. The unsaved-changes guard (US-002) remains the authoritative protection; the marker is the
+  at-a-glance cue.
 - MUST: A single menu bar shows exactly these **eight** titles, left to right: **File, Edit, View,
   Insert, Library, Controller, Documentation, Help** — *Simulation* is out of scope (E8) and is
   omitted.
@@ -96,6 +99,8 @@ per-menu command inventory beyond the top-level menu titles.
   `Undoing insertion of <product>`.
 - After saving as `project3.vis`: the title bar reads `project3.vis - IHC OpenVisual`; nothing else in
   the chrome changes.
+- Editing the saved project (e.g. inserting a locality) changes the title to `project3.vis• - IHC OpenVisual`;
+  `Ctrl+Z` back to the saved state clears the bullet without saving; a new edit brings it back.
 - Layout reference: the target arrangement is a title bar ending in the application name, the
   eight-title menu bar (**File, Edit, View, Insert, Library, Controller, Documentation, Help** — no
   *Simulation*), a toolbar of New / Open / Save · Help · controller send/retrieve · Cut / Copy / Paste,

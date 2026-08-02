@@ -1,5 +1,5 @@
 ---
-version: 0.4.0
+version: 0.5.0
 last-updated: 2026-08-02
 status: draft
 ---
@@ -90,6 +90,15 @@ bar, and shortcut — **so that** I can work whichever way suits the moment.
   program* is bar-enabled on an unlocked block only, but context-offered on a block **or a pin**; and
   *Copy* is bar-enabled on any pin but context-offered on product terminals only. Each surface
   reproduces its own rule — they are not to be "reconciled" into one.
+- MUST: **Keyboard shortcuts follow the menu bar's enablement.** Where the two surfaces deliberately
+  diverge (previous rule), the shortcut refuses exactly when the bar item is greyed — `Ctrl+X` on a
+  locked block changes nothing, even though the block's flyout still offers *Cut* and runs it; `F3`
+  opens a program only where the bar enables *Show program* (a direct, unlocked block), while the
+  flyout keeps the pin and locked-block routes. A command whose shortcut has no menu-bar item
+  (`Ctrl+I` / `Ctrl+U`, US-045) is governed by its own availability rule.
+- MUST: **A refused shortcut explains itself in the status bar.** Pressing the shortcut of a command
+  that is currently unavailable leaves the project unchanged and shows the reason as the status-bar
+  hint (e.g. `Nothing to undo.`, `A locked block cannot be cut from the menu bar.`).
 
 ### AC illustrations
 
@@ -105,7 +114,10 @@ bar, and shortcut — **so that** I can work whichever way suits the moment.
 
 **Implementation status:** ✅ Implemented — the double-click route exists, *Cut*/*Copy*/*Paste* are
 reachable from the node context menu, and the menu bar greys selection-dependent commands per the
-enablement rules above (including the deliberate bar-vs-context differences).
+enablement rules above (including the deliberate bar-vs-context differences). The status-bar explanation
+for refused shortcuts is in place; 🟡 the shortcuts-follow-the-bar rule is in progress — shortcut
+*execution* still follows the flyout's wider rule where the surfaces diverge (a failing test pins the
+target behaviour).
 
 ---
 

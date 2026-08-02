@@ -33,7 +33,10 @@ public class OpenLoadNormalizationParityTests
         Project asStored = await harness.ProjectService.Load(SampleProject());
         Assert.That(ElementId.TryParse(asStored.LastUniqueId, out ElementId storedLast), Is.True);
         int storedCounter = storedLast.Counter;
-        Assert.That(EnumDefinitions(asStored).Take(2).All(IsCatalogEnum), Is.True,
+        ProjectElement[] storedDefinitions = EnumDefinitions(asStored);
+        Assert.That(storedDefinitions.Count(IsCatalogEnum), Is.EqualTo(2),
+            "the sample project contains exactly the two built-in catalog enum definitions");
+        Assert.That(storedDefinitions.Take(2).All(IsCatalogEnum), Is.True,
             "precondition: on disk the two catalog enums come FIRST");
 
         await harness.Session.OpenAsync(SampleProject());
@@ -41,6 +44,8 @@ public class OpenLoadNormalizationParityTests
 
         Assert.Multiple(() =>
         {
+            Assert.That(opened.Count(IsCatalogEnum), Is.EqualTo(2),
+                "normalization must preserve both catalog enum definitions");
             Assert.That(opened.TakeLast(2).All(IsCatalogEnum), Is.True,
                 "after opening they are the LAST two definitions");
             Assert.That(opened.Take(opened.Length - 2).Any(IsCatalogEnum), Is.False,
@@ -64,7 +69,10 @@ public class OpenLoadNormalizationParityTests
         await harness.Session.SaveAsync();
 
         Project reloaded = await harness.ProjectService.Load(copy);
-        Assert.That(EnumDefinitions(reloaded).TakeLast(2).All(IsCatalogEnum), Is.True,
+        ProjectElement[] reloadedDefinitions = EnumDefinitions(reloaded);
+        Assert.That(reloadedDefinitions.Count(IsCatalogEnum), Is.EqualTo(2),
+            "save must persist both catalog enum definitions");
+        Assert.That(reloadedDefinitions.TakeLast(2).All(IsCatalogEnum), Is.True,
             "the re-hoisted layout is what reaches the file");
     }
 }

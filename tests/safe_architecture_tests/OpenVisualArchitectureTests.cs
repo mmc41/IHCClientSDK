@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using ArchUnitNET.Domain;
 using ArchUnitNET.Loader;
 using static Ihc.Tests.ArchRuleHelpers;
@@ -127,24 +128,23 @@ namespace Ihc.Tests
         /// <summary>
         /// The GUI's report RENDERER (<c>ReportHtmlRenderer</c>) is a pure 1-to-1 transform of the render-ready
         /// combined model into HTML (D14: "the app renders and applies switches, it computes nothing"). It must see
-        /// ONLY the render-ready DTOs — never the mutable project tree (<c>Project</c>/<c>ProjectElement</c>), the
-        /// report generator's tree indexer (<c>TreeIndex</c>) or any live-session <c>Ihc.Vis.Editing</c> type — so it
-        /// cannot re-derive report content the SDK owns. <c>ElementId</c> stays sanctioned: the switch data on the
-        /// combined model legitimately carries per-element ids. Scoped to the isolated renderer namespace (the other
-        /// Services legitimately hold a <c>Project</c>). Armed by the shared <c>AssertNoDependencyOnTypeNames</c> scan
+        /// ONLY the public type graph reachable from <c>ProjectDocumentationReport</c>, including its legacy report
+        /// DTOs and module-map data. Every other SDK type is forbidden, so the renderer cannot reach mutable project,
+        /// generation, IO, or editing APIs and re-derive content the SDK owns. Scoped to the isolated renderer
+        /// namespace (the other Services legitimately hold a <c>Project</c>). Armed by the shared name-based scan
         /// whose positive control is <see cref="CustomScans_DetectKnownFacadeEdges"/>.
         /// </summary>
         [Test]
         public void Renderer_SeesOnlyRenderReadyDtos() =>
-            AssertNoDependencyOnTypeNames(Gui, Renderer, RenderReadyPurityForbiddenTypeNames(),
-                "the mutable project tree / tree indexer / editing layer",
-                "the report renderer must transform the render-ready combined model 1-to-1 and never touch Project/ProjectElement/TreeIndex or a live-session editing type (ElementId stays sanctioned)");
+            AssertNoDependencyOnTypeNames(Gui, Renderer, NonRenderReadySdkTypeNames(),
+                "SDK types outside the public report DTO graph",
+                "the report renderer must transform only the render-ready report DTO graph and never reach other SDK model, generation, IO, or editing types");
 
         /// <summary>
-        /// Applying a command belongs to the SDK: <c>ProjectAppService.Apply</c>/<c>CanApply</c>/<c>Preview</c> open a
-        /// throwaway <c>ProjectDocumentSession</c> internally and run the command once. The GUI must not open that
-        /// engine runner itself — <c>ProjectWorkflow</c> delegates to the facade and layers only its document
-        /// lifecycle (Current, undo/redo, dirty/version, auto-backup) on top. This bans the one engine TYPE by name,
+        /// Command execution belongs to the SDK: interactive code holds the <c>IProjectDocument</c> PORT from
+        /// <c>ProjectAppService.OpenDocument</c> (crudarch D01), and the stateless <c>Apply/CanApply/Preview</c>
+        /// facade serves one-shot callers — either way the GUI must never open the concrete
+        /// <c>ProjectDocumentSession</c> engine runner itself. This bans the one engine TYPE by name,
         /// NEVER the <c>Ihc.Vis.Session</c> namespace: the command / outcome / change-set contract types live there
         /// and the GUI legitimately consumes them. (Armed by <see cref="CustomScans_DetectKnownFacadeEdges"/>, the
         /// positive control over the same <c>AssertNoDependencyOnTypeNames</c> scan.)
@@ -152,7 +152,7 @@ namespace Ihc.Tests
         [Test]
         public void Gui_DoesNotDependOn_ProjectDocumentSession() =>
             AssertNoDependencyOnTypeNames(Gui, GuiRoot, ProjectDocumentSessionTypeName(), "the ProjectDocumentSession engine runner",
-                "the GUI must apply commands through ProjectAppService.Apply/CanApply/Preview, not open a ProjectDocumentSession itself");
+                "the interactive GUI must execute commands through IProjectDocument from ProjectAppService.OpenDocument, not open ProjectDocumentSession itself");
 
         /// <summary>
         /// View-models carry the app's presentation logic and must stay free of Avalonia types so that logic is
@@ -194,6 +194,64 @@ namespace Ihc.Tests
         public void Gui_DoesNotConstruct_ProjectCommands() =>
             AssertDoesNotConstructTypeNames(Gui, GuiRoot, CommandTypeNames(), "the ProjectCommand vocabulary",
                 "authoring commands must be obtained from a ProjectCommands factory, never constructed directly, so the gateway's context resolution and legality checks cannot be bypassed");
+
+        // The stateless one-shot facade members interactive code must not call (crudarch T022) — the document
+        // port (ProjectAppService.OpenDocument → IProjectDocument) is the interactive door.
+        private static readonly IReadOnlyCollection<string> StatelessFacadeMemberNames =
+            new[]
+            {
+                nameof(global::Ihc.Vis.ProjectAppService.Apply),
+                nameof(global::Ihc.Vis.ProjectAppService.CanApply),
+                nameof(global::Ihc.Vis.ProjectAppService.Preview),
+            };
+
+        /// <summary>
+        /// crudarch T022 (port era): interactive edits go through the <c>IProjectDocument</c> port — a view-model
+        /// must not call the STATELESS one-shot facade (<c>ProjectAppService.Apply/CanApply/Preview</c>), which
+        /// would silently reinstate the per-call scratch-session cost the port removed (proposal G2) and bypass
+        /// the document's undo history (G1). Only the named members are banned — the layer may hold the service
+        /// and call its other members (Load/Save/OpenDocument/Commands/…). Armed by
+        /// <see cref="StatelessFacadeCallScan_IsArmed"/> over a seeded caller in this test assembly.
+        /// </summary>
+        [Test]
+        public void Gui_DoesNotCallTheStatelessFacade() =>
+            AssertDoesNotCallMembers(Gui, GuiRoot, typeof(global::Ihc.Vis.ProjectAppService).FullName!,
+                StatelessFacadeMemberNames, "the stateless Apply/CanApply/Preview facade",
+                "the interactive GUI runs edits through the IProjectDocument port, never the stateless one-shot facade");
+
+        // Seeded violator for the member-call scan's positive control: genuinely CALLS all three facade members.
+        private static class SeededStatelessFacadeCaller
+        {
+            public static void Call(global::Ihc.Vis.ProjectAppService service,
+                global::Ihc.Vis.Projects.Project project, global::Ihc.Vis.Session.ProjectCommand command)
+            {
+                service.CanApply(project, command);
+                service.Preview(project, command);
+                service.Apply(project, command);
+            }
+        }
+
+        // This test assembly read into a second small model so the seeded violator above is scannable.
+        private static readonly System.Lazy<Architecture> OwnTestAssembly = new(() =>
+            new ArchLoader().LoadAssemblies(typeof(OpenVisualArchitectureTests).Assembly).Build());
+
+        /// <summary>The positive control for <see cref="Gui_DoesNotCallTheStatelessFacade"/>: pointed at the
+        /// seeded caller, the member-call scan MUST report — proving it detects real Apply/CanApply/Preview call
+        /// edges rather than passing because it sees nothing.</summary>
+        [Test]
+        public void StatelessFacadeCallScan_IsArmed()
+        {
+            var detectedMembers = MethodCallEdges(OwnTestAssembly.Value,
+                    typeof(OpenVisualArchitectureTests).Namespace!)
+                .Where(edge => edge.TargetType == typeof(global::Ihc.Vis.ProjectAppService).FullName
+                               && StatelessFacadeMemberNames.Contains(edge.Member))
+                .Select(edge => edge.Member)
+                .Distinct()
+                .ToList();
+
+            Assert.That(detectedMembers, Is.EquivalentTo(StatelessFacadeMemberNames),
+                "the member-call scan must detect every seeded Apply/CanApply/Preview call");
+        }
 
         /// <summary>
         /// The MVVM dependency direction: the view layer binds to view-models, never the reverse. View-models must
@@ -237,35 +295,34 @@ namespace Ihc.Tests
         [Test]
         public void ViewLayer_DoesNotDriveTheSessionDirectly() =>
             AssertNoDependencyOnTypeNames(Gui, Views, SessionDriverTypeNames(), "the session/facade/command drivers",
-                "the view layer must drive the model through its view-model, not ProjectWorkflow, ProjectAppService or the ProjectCommands gateway directly");
+                "the view layer must drive the model through its view-model, not IProjectDocument, ProjectWorkflow, ProjectAppService, or the ProjectCommands gateway directly");
 
         /// <summary>
         /// Identity that survives tree rebuilds (ARCHITECTURE.md Design Challenge 4): every edit rebuilds the
         /// immutable project tree, so any <see cref="Ihc.Vis.Projects.Project"/> / <see cref="Ihc.Vis.Model.ProjectElement"/>
         /// reference retained in bound UI state goes stale at once — the GUI therefore points at elements by
         /// <see cref="Ihc.Vis.Model.ElementId"/>, never by object reference. This checks the retained state directly:
-        /// no field of any bound view-model type (an <c>ObservableObject</c>) may be a <c>Project</c>, a
-        /// <c>ProjectElement</c>, or a live-editing handle (an <c>Ihc.Vis.Editing</c> type). Transient per-render
-        /// helpers (the projector, the coordinators) are not <c>ObservableObject</c>s and legitimately hold a
-        /// <c>Project</c> for the span of one projection, so they are out of scope by construction — the invariant is
-        /// about long-lived bound state, not a method's working set.
+        /// no field of a view-model state owner may retain <c>Project</c>, <c>ProjectElement</c>, or a live-editing
+        /// handle (an <c>Ihc.Vis.Editing</c> type). This includes long-lived coordinators/controllers owned by the
+        /// bound view-model. <c>ProjectTreeProjector</c> is the narrow exemption: it retains one snapshot only for
+        /// the duration of a projection and is never bound or stored as UI state.
         /// </summary>
         [Test]
         public void ViewModels_PointAtElementsByIdNotObjectReference()
         {
-            var boundViewModels = typeof(global::ihc_openvisual.App).Assembly.GetTypes()
-                .Where(IsObservableObject)
+            var stateOwners = typeof(global::ihc_openvisual.App).Assembly.GetTypes()
+                .Where(IsViewModelStateOwner)
                 .ToList();
-            Assert.That(boundViewModels, Is.Not.Empty, "sanity: the GUI exposes bound (ObservableObject) view-model types");
+            Assert.That(stateOwners, Is.Not.Empty, "sanity: the GUI exposes view-model state-owner types");
 
             var offences = new List<string>();
-            foreach (Type viewModel in boundViewModels)
-                foreach (FieldInfo field in RetainedFields(viewModel))
+            foreach (Type stateOwner in stateOwners)
+                foreach (FieldInfo field in RetainedFields(stateOwner))
                     if (RetainedModelType(field.FieldType) is { } stale)
-                        offences.Add($"{viewModel.Name}.{field.Name} : {stale.Name}");
+                        offences.Add($"{stateOwner.Name}.{field.Name} : {stale.Name}");
 
             Assert.That(offences, Is.Empty,
-                "bound view-models must reference project elements by ElementId, not retain Project/ProjectElement/editing handles that go stale on the next edit: "
+                "view-model state owners must reference project elements by ElementId, not retain Project/ProjectElement/editing handles that go stale on the next edit: "
                 + string.Join(", ", offences));
         }
 
@@ -316,20 +373,21 @@ namespace Ihc.Tests
         [Test]
         public void CustomScans_DetectKnownFacadeEdges()
         {
-            var facade = new HashSet<string> { typeof(global::Ihc.Vis.ProjectAppService).FullName! };
-            Assert.That(() => AssertNoDependencyOnTypeNames(Gui, GuiRoot, facade, "known facade dependency", "positive control"),
-                Throws.Exception,
-                "the name-based dependency scan did not detect the GUI's real dependency on ProjectAppService — the scan is not working");
-            Assert.That(() => AssertDoesNotConstructTypeNames(Gui, GuiRoot, facade, "known facade construction", "positive control"),
-                Throws.Exception,
-                "the constructor scan did not detect the GUI's real construction of ProjectAppService — the newobj detection is not working");
+            string facade = typeof(global::Ihc.Vis.ProjectAppService).FullName!;
+            Assert.Multiple(() =>
+            {
+                Assert.That(DependencyEdges(Gui, GuiRoot).Select(edge => edge.Target), Does.Contain(facade),
+                    "the dependency scan must expose the GUI's real ProjectAppService dependency");
+                Assert.That(ConstructorCallEdges(Gui, GuiRoot).Select(edge => edge.Target), Does.Contain(facade),
+                    "the constructor scan must expose the GUI's real ProjectAppService construction");
+            });
         }
 
         /// <summary>
         /// Backstop proving the reflection detector behind <see cref="ViewModels_PointAtElementsByIdNotObjectReference"/>
         /// is armed: it must flag a retained <c>ProjectElement</c> (directly and through a collection) and must NOT
-        /// flag an <c>ElementId</c>; and it must scope to bound <c>ObservableObject</c> types, excluding the transient
-        /// projector. Without this, that rule could pass because the detector matches nothing, not because the state
+        /// flag an <c>ElementId</c>; and it must include long-lived helpers while excluding the transient projector.
+        /// Without this, that rule could pass because the detector matches nothing, not because the state
         /// is clean.
         /// </summary>
         [Test]
@@ -346,10 +404,14 @@ namespace Ihc.Tests
                     "the detector must not flag ElementId — the sanctioned reference");
                 Assert.That(RetainedModelType(typeof(global::Ihc.Vis.Model.ElementId?)), Is.Null,
                     "the detector must not flag ElementId?");
-                Assert.That(IsObservableObject(typeof(global::ihc_openvisual.ViewModels.TreeNodeViewModel)), Is.True,
+                Assert.That(RetainedModelType(typeof(Func<global::Ihc.Vis.Projects.Project?>)), Is.Null,
+                    "a callback that obtains the current immutable snapshot does not retain that snapshot");
+                Assert.That(IsViewModelStateOwner(typeof(global::ihc_openvisual.ViewModels.TreeNodeViewModel)), Is.True,
                     "TreeNodeViewModel is a bound view-model and in scope");
-                Assert.That(IsObservableObject(typeof(global::ihc_openvisual.ViewModels.ProjectTreeProjector)), Is.False,
-                    "the per-render projector is not an ObservableObject and is out of scope by construction");
+                Assert.That(IsViewModelStateOwner(typeof(global::ihc_openvisual.ViewModels.TreeDragDropController)), Is.True,
+                    "long-lived controllers owned by a view-model are in scope");
+                Assert.That(IsViewModelStateOwner(typeof(global::ihc_openvisual.ViewModels.ProjectTreeProjector)), Is.False,
+                    "the per-projection helper is the explicit transient exemption");
             });
 
         // ---- Forbidden-type name sets (reflected from the loaded assemblies) --------------------------------------
@@ -384,25 +446,36 @@ namespace Ihc.Tests
             typeof(global::ihc_openvisual.Services.ProjectWorkflow).FullName!,
             typeof(global::Ihc.Vis.ProjectAppService).FullName!,
             typeof(global::Ihc.Vis.ProjectCommands).FullName!,
+            typeof(global::Ihc.Vis.IProjectDocument).FullName!,
         };
 
         /// <summary>The types the DTO-only report renderer must not depend on (T035): the mutable project tree
         /// (<c>Project</c>/<c>ProjectElement</c>), the report generator's private tree indexer (<c>TreeIndex</c>,
         /// reflected by name), and every live-session <c>Ihc.Vis.Editing</c> type (reflected from the SDK assembly).
         /// <c>ElementId</c> is deliberately NOT here — it is sanctioned switch data on the combined model.</summary>
-        private static IReadOnlyCollection<string> RenderReadyPurityForbiddenTypeNames()
+        private static IReadOnlyCollection<string> NonRenderReadySdkTypeNames()
         {
-            var names = new HashSet<string>
+            Assembly sdk = typeof(global::Ihc.Vis.ProjectDocumentationReport).Assembly;
+            var allowed = new HashSet<Type>();
+            var pending = new Queue<Type>();
+            pending.Enqueue(typeof(global::Ihc.Vis.ProjectDocumentationReport));
+
+            while (pending.TryDequeue(out Type? candidate))
             {
-                typeof(global::Ihc.Vis.Projects.Project).FullName!,
-                typeof(global::Ihc.Vis.Model.ProjectElement).FullName!,
-            };
-            if (typeof(global::Ihc.Vis.Reporting.ReportBuilder).GetNestedType("TreeIndex", BindingFlags.NonPublic)?.FullName is { } treeIndex)
-                names.Add(treeIndex);
-            foreach (Type t in typeof(global::Ihc.Vis.Editing.ProjectEditor).Assembly.GetTypes())
-                if (t.Namespace == "Ihc.Vis.Editing")
-                    names.Add(t.FullName!);
-            return names;
+                foreach (Type type in TypeAndArguments(candidate))
+                {
+                    if (type.Assembly != sdk || !allowed.Add(type))
+                        continue;
+
+                    foreach (PropertyInfo property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+                        pending.Enqueue(property.PropertyType);
+                }
+            }
+
+            return sdk.GetTypes()
+                .Where(type => !allowed.Contains(type))
+                .Select(type => type.FullName!)
+                .ToHashSet();
         }
 
         /// <summary>The engine's <see cref="Ihc.Vis.Session.ProjectDocumentSession"/> command-runner, by full name —
@@ -416,21 +489,18 @@ namespace Ihc.Tests
 
         // ---- Reflection helpers for the identity (ElementId-not-reference) rule ------------------------------------
 
-        private const string ObservableObjectFullName = "CommunityToolkit.Mvvm.ComponentModel.ObservableObject";
-
-        private static bool IsObservableObject(Type type)
-        {
-            for (Type? b = type.BaseType; b is not null; b = b.BaseType)
-                if (b.FullName == ObservableObjectFullName)
-                    return true;
-            return false;
-        }
+        private static bool IsViewModelStateOwner(Type type) =>
+            type.Namespace is { } ns
+            && (ns == ViewModels || ns.StartsWith(ViewModels + ".", StringComparison.Ordinal))
+            && !type.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false)
+            && type != typeof(global::ihc_openvisual.ViewModels.ProjectTreeProjector);
 
         // Instance fields declared by the view-model hierarchy up to (not including) ObservableObject — this covers
         // explicit fields and the compiler-generated backing fields of auto-properties and [ObservableProperty]s.
         private static IEnumerable<FieldInfo> RetainedFields(Type viewModel)
         {
-            for (Type? t = viewModel; t is not null && t.FullName != ObservableObjectFullName; t = t.BaseType)
+            for (Type? t = viewModel; t is not null && t.Namespace is { } ns
+                 && (ns == ViewModels || ns.StartsWith(ViewModels + ".", StringComparison.Ordinal)); t = t.BaseType)
                 foreach (FieldInfo f in t.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
                     yield return f;
         }
@@ -439,7 +509,9 @@ namespace Ihc.Tests
         // (any Ihc.Vis.Editing type) — reached through Nullable<T>, arrays and generic arguments; null if the field
         // holds nothing stale. ElementId (and collections of it) is the sanctioned reference and is never flagged.
         private static Type? RetainedModelType(Type fieldType) =>
-            TypeAndArguments(fieldType).FirstOrDefault(candidate =>
+            typeof(Delegate).IsAssignableFrom(fieldType)
+                ? null
+                : TypeAndArguments(fieldType).FirstOrDefault(candidate =>
                 candidate == typeof(global::Ihc.Vis.Projects.Project)
                 || candidate == typeof(global::Ihc.Vis.Model.ProjectElement)
                 || candidate.Namespace == "Ihc.Vis.Editing");

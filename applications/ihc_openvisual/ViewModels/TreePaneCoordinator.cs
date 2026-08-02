@@ -58,9 +58,10 @@ internal sealed class TreePaneCoordinator(
         return false;
     }
 
-    /// <summary>Config mode full-rebuild fallback (load/undo/redo/mode switch/first build): rebuild BOTH panes through
-    /// the reconciler, carrying expansion across unless <paramref name="preserve"/> is false (a mode switch, whose
-    /// fresh defaults ARE the wanted state).</summary>
+    /// <summary>Config mode full-rebuild fallback (load/save/close/mode switch/first build, or panes out of sync —
+    /// undo/redo reconcile in place since crudarch T007): rebuild BOTH panes through the reconciler, carrying
+    /// expansion across unless <paramref name="preserve"/> is false (a mode switch, whose fresh defaults ARE the
+    /// wanted state).</summary>
     public void RebuildConfig(bool preserve)
     {
         RebuildPaneFallback(installationNodes, _installationReconciler, preserve);

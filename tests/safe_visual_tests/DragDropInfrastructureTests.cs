@@ -20,8 +20,8 @@ namespace safe_visual_tests;
 /// route) returned by the <see cref="TreeDragDropController.CanDropOn"/> dispatcher, drop-target highlighting as
 /// controller state, the drop side keyed off the <c>DataTransfer</c> (never a captured source field, so an external
 /// drop works too — §0.3), and the drag source wired on <b>both</b> trees for any addressable node. The concrete
-/// routes (move/reorder/link/program-build) are A-31…A-34; these tests pin the plumbing. A-P0's
-/// <see cref="DragDropPocTests"/> remain the drop-target mechanism tests this builds on.
+/// routes (move/reorder/link/program-build) are A-31…A-34; these tests pin the behavioral plumbing. The retained
+/// <see cref="DragDropPocTests"/> characterization covers only the headless DataTransfer payload boundary.
 /// </summary>
 public class DragDropInfrastructureTests : AvaloniaTestBase
 {

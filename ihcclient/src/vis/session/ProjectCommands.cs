@@ -171,17 +171,47 @@ namespace Ihc.Vis
             new Session.DeleteNode(id, cascade);
 
         /// <summary>Command to reorder a node <paramref name="delta"/> positions among its same-tag siblings (US-055),
-        /// or null at the list ends / for a rootless node.</summary>
-        public Session.ReorderNode? ReorderNode(Project project, ElementId id, int delta)
+        /// or null at the list ends / for a rootless node. One rule, two entry points (review F02): this
+        /// Project-walking factory and the index-backed overload below share <see cref="ResolveReorderTarget"/>.</summary>
+        public Session.ReorderNode? ReorderNode(Project project, ElementId id, int delta) =>
+            ResolveReorderTarget(project.FindById(id), project.FindParent(id), id, delta) is { } there
+                ? new Session.ReorderNode(id, there)
+                : null;
+
+        // The index-backed entry point of the delta move (review F02): the same US-055 boundary rule answered from a
+        // per-commit ProjectIndex, for the per-selection MENU gate — IProjectDocument.CanReorder forwards here, so
+        // Move up/down stops paying two full-tree walks and a sibling-list allocation per arrow-key press.
+        internal static Session.ReorderNode? ReorderNode(Session.ProjectIndex index, ElementId id, int delta) =>
+            ResolveReorderTarget(index.FindById(id), index.FindParent(id), id, delta) is { } there
+                ? new Session.ReorderNode(id, there)
+                : null;
+
+        // The one delta-move rule (US-055) both entry points share: the same-tag sibling position `delta` steps from
+        // the node's own, or null for a no-op delta, a rootless/absent node, or a step off either end. Counts in one
+        // pass rather than materializing the sibling list — this runs per pointer event and per selection change.
+        private static int? ResolveReorderTarget(
+            ProjectElement? node, ProjectElement? parent, ElementId id, int delta)
         {
-            if (delta == 0 || project.FindParent(id) is not { Id: { } } parent || project.FindById(id) is not { } node)
+            int? target = null;
+            if (delta != 0 && node is not null && parent is { Id: { } })
             {
-                return null;
+                int here = -1;
+                int count = 0;
+                foreach (ProjectElement sibling in parent.ChildrenOrEmpty())
+                {
+                    if (sibling.Tag == node.Tag)
+                    {
+                        if (sibling.Id == id)
+                        {
+                            here = count;
+                        }
+                        count++;
+                    }
+                }
+                int there = here + delta;
+                target = here < 0 || there < 0 || there >= count ? null : there;
             }
-            var siblings = parent.ChildrenOrEmpty().Where(c => c.Tag == node.Tag).ToList();
-            int here = siblings.FindIndex(c => c.Id == id);
-            int there = here + delta;
-            return here < 0 || there < 0 || there >= siblings.Count ? null : new Session.ReorderNode(id, there);
+            return target;
         }
 
         /// <summary>Command to reorder <paramref name="dragged"/> to <paramref name="targetSibling"/>'s position among
@@ -200,24 +230,35 @@ namespace Ihc.Vis
 
         /// <summary>Whether <paramref name="dragged"/> and <paramref name="target"/> are distinct <b>same-parent,
         /// same-tag siblings</b> — a reorder drop (US-055), the drag-over hint peer of
-        /// <see cref="ReorderNodeToSibling"/>.</summary>
-        public bool CanReorderNode(Project project, ElementId dragged, ElementId target)
-        {
-            if (dragged == target
-                || project.FindById(dragged) is not { } a
-                || project.FindById(target) is not { } b)
-            {
-                return false;
-            }
-            return a.Tag == b.Tag
-                && project.FindParent(dragged) is { Id: { } parentId }
-                && project.FindParent(target)?.Id == parentId;
-        }
+        /// <see cref="ReorderNodeToSibling"/>. One rule, two entry points (review F5): this Project-walking query
+        /// and the index-backed overload below share <see cref="IsReorderablePair"/>.</summary>
+        public bool CanReorderNode(Project project, ElementId dragged, ElementId target) =>
+            dragged != target && IsReorderablePair(
+                project.FindById(dragged), project.FindById(target),
+                project.FindParent(dragged), project.FindParent(target));
 
-        // The cheap delete classification shared by CanDelete and PreviewDelete: which DeleteKind a node needs, WITHOUT
-        // the (potentially expensive) strict-cascade simulation the confirm flag needs. Resolves the element once and
-        // hands it back so PreviewDelete can compute the confirm without a second lookup.
-        private static (DeleteKind Kind, ProjectElement? Element) ClassifyDelete(Project project, ElementId id)
+        // The index-backed entry point (review F5): the same US-055 rule answered from a per-commit ProjectIndex,
+        // for the drag-over pointer path — IProjectDocument.CanReorderNode forwards here, so the probe stops
+        // paying full-tree FindById/FindParent walks per pointer event.
+        internal static bool CanReorderNode(Session.ProjectIndex index, ElementId dragged, ElementId target) =>
+            dragged != target && IsReorderablePair(
+                index.FindById(dragged), index.FindById(target),
+                index.FindParent(dragged), index.FindParent(target));
+
+        // The one reorder-drop rule (US-055) both entry points share: resolved, same-tag elements under the same
+        // id-bearing parent.
+        private static bool IsReorderablePair(
+            ProjectElement? dragged, ProjectElement? target,
+            ProjectElement? draggedParent, ProjectElement? targetParent) =>
+            dragged is not null && target is not null && dragged.Tag == target.Tag
+            && draggedParent is { Id: { } parentId }
+            && targetParent?.Id == parentId;
+
+        // The cheap delete classification shared by CanDelete, PreviewDelete AND Session.DeleteNode.Evaluate (G7: the
+        // command must refuse exactly what the gate forbids, so both read this one chokepoint): which DeleteKind a node
+        // needs, WITHOUT the (potentially expensive) strict-cascade simulation the confirm flag needs. Resolves the
+        // element once and hands it back so PreviewDelete can compute the confirm without a second lookup.
+        internal static (DeleteKind Kind, ProjectElement? Element) ClassifyDelete(Project project, ElementId id)
         {
             ProjectElement? element = project.FindById(id);
             DeleteKind kind;
