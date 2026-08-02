@@ -96,12 +96,15 @@
                       IsVisible="{Binding CanAddCommand, FallbackValue=False}"/>
             <MenuItem Header="_Sub-program" Command="{Binding AddSubProgramCommand}"
                       IsVisible="{Binding Registry.ContextMenu[program.addSubProgram].Visible, FallbackValue=False}"/>
+            <!-- Case and Arithmetic bind their OWN gates: all three of these submenus hang off a Commands node, but
+                 each fills under different conditions (an eligible switch type / a numeric target register), so a
+                 shared CanAddCommand offered two of them empty. -->
             <MenuItem Header="C_ase" ItemsSource="{Binding ProgramCaseMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
-                      IsVisible="{Binding CanAddCommand, FallbackValue=False}"/>
+                      IsVisible="{Binding CanAddCase, FallbackValue=False}"/>
             <MenuItem Header="Arith_metic" ItemsSource="{Binding ProgramArithmeticMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
-                      IsVisible="{Binding CanAddCommand, FallbackValue=False}"/>
+                      IsVisible="{Binding CanAddArithmetic, FallbackValue=False}"/>
             <MenuItem Header="New case _value…" Command="{Binding NewCaseValueCommand}"
                       IsVisible="{Binding Registry.ContextMenu[program.newCaseValue].Visible, FallbackValue=False}"/>
             <MenuItem Header="Add co_ndition" ItemsSource="{Binding ProgramConditionMenu}"
@@ -109,10 +112,16 @@
                       IsVisible="{Binding CanAddCondition, FallbackValue=False}"/>
             <MenuItem Header="Logic _group" Command="{Binding AddLogicGroupCommand}"
                       IsVisible="{Binding Registry.ContextMenu[program.addLogicGroup].Visible, FallbackValue=False}"/>
+            <!-- The AND/OR pair is a fixed two-item menu, so each item is a registry ROW and takes its visibility
+                 from that row — not from CanAddCondition, which speaks for the data-driven "Add condition" submenu
+                 and is now empty until an operand is armed. The parent follows the same rows (they share one gate),
+                 so the group never appears with nothing under it. -->
             <MenuItem Header="Logical condition"
-                      IsVisible="{Binding CanAddCondition, FallbackValue=False}">
-                <MenuItem Header="AND (_&amp;)" Command="{Binding SetConditionsAndCommand}"/>
-                <MenuItem Header="OR (_&gt;=1)" Command="{Binding SetConditionsOrCommand}"/>
+                      IsVisible="{Binding Registry.ContextMenu[program.setConditionsAnd].Visible, FallbackValue=False}">
+                <MenuItem Header="AND (_&amp;)" Command="{Binding SetConditionsAndCommand}"
+                          IsVisible="{Binding Registry.ContextMenu[program.setConditionsAnd].Visible, FallbackValue=False}"/>
+                <MenuItem Header="OR (_&gt;=1)" Command="{Binding SetConditionsOrCommand}"
+                          IsVisible="{Binding Registry.ContextMenu[program.setConditionsOr].Visible, FallbackValue=False}"/>
             </MenuItem>
             <MenuItem Header="_Save block…" Command="{Binding SaveFunctionBlockCommand}"
                       InputGesture="Ctrl+G"
@@ -394,21 +403,28 @@
                     </Style>
                 </StackPanel.Styles>
 
+                <!-- Every toolbar button takes its enabled state from its row's Toolbar availability, including the
+                     four that are always allowed today: leaving them unbound would put part of the toolbar's rule in
+                     the markup by omission, so a row that later gains a gate would silently keep its button live. -->
                 <Button Classes="tool" Command="{Binding NewCommand}" ToolTip.Tip="New project (Ctrl+N)"
+                        IsEnabled="{Binding Registry.Toolbar[file.new].Enabled}"
                         a:AutomationProperties.Name="New project" a:AutomationProperties.AutomationId="ToolbarNew">
                     <svg:Svg Classes="toolicon" Path="/Assets/toolbar_new.svg" CurrentColor="{DynamicResource IconColor}"/>
                 </Button>
                 <Button Classes="tool" Command="{Binding OpenCommand}" ToolTip.Tip="Open project (Ctrl+O)"
+                        IsEnabled="{Binding Registry.Toolbar[file.open].Enabled}"
                         a:AutomationProperties.Name="Open project" a:AutomationProperties.AutomationId="ToolbarOpen">
                     <svg:Svg Classes="toolicon" Path="/Assets/toolbar_open.svg" CurrentColor="{DynamicResource IconColor}"/>
                 </Button>
                 <Button Classes="tool" Command="{Binding SaveCommand}" ToolTip.Tip="Save project (Ctrl+S)"
+                        IsEnabled="{Binding Registry.Toolbar[file.save].Enabled}"
                         a:AutomationProperties.Name="Save project" a:AutomationProperties.AutomationId="ToolbarSave">
                     <svg:Svg Classes="toolicon" Path="/Assets/toolbar_save.svg" CurrentColor="{DynamicResource IconColor}"/>
                 </Button>
 
                 <Rectangle Classes="toolsep"/>
                 <Button Classes="tool" Command="{Binding AboutCommand}" ToolTip.Tip="Help / About"
+                        IsEnabled="{Binding Registry.Toolbar[help.about].Enabled}"
                         a:AutomationProperties.Name="Help and About" a:AutomationProperties.AutomationId="ToolbarHelp">
                     <svg:Svg Classes="toolicon" Path="/Assets/toolbar_help.svg" CurrentColor="{DynamicResource IconColor}"/>
                 </Button>

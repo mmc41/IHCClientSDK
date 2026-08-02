@@ -12,6 +12,14 @@ namespace Ihc.Vis.Schema
     internal static class SceneRules
     {
         /// <summary>The member tag the bound output family pins, or <c>null</c> for unknown (permissive) families.</summary>
+        /// <remarks>
+        /// <see cref="ReciprocalTags.SceneMemberTags"/> lists <c>scene_shutter</c> as a possible member tag, but NO
+        /// output family maps to it here (review E4): the peer tables are intentionally out of step. No committed vendor
+        /// <c>.vis</c> instances a shutter scene member, so mapping some output family to <c>scene_shutter</c> would be a
+        /// guess — and this table encodes only MEASURED facts, answering <c>null</c> (permissive) for the unmeasured,
+        /// exactly like the <see cref="LinkRoles"/> convention. A shutter-bound container therefore gets no kind
+        /// validation until a real output→<c>scene_shutter</c> binding is observed and added here.
+        /// </remarks>
         public static string? PinnedMemberTagFor(string boundOutputTag) => boundOutputTag switch
         {
             "dataline_output" or "airlink_relay" => "scene_relay",

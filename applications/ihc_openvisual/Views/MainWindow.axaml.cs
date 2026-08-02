@@ -52,10 +52,13 @@ public partial class MainWindow : Window
         WireTreeDragDrop(InstallationTree);
         WireTreeDragDrop(FunctionsTree);
 
-        // Home/End are handled at the WINDOW with handledEventsToo, scoped to whichever tree holds focus. A
-        // handler on the TreeView never fired for them (uxparity S-29) — the keys are consumed below it —
-        // while Delete/F2/F4, which the item ignores, reach the XAML KeyDown= handler normally.
-        AddHandler(KeyDownEvent, OnTreeNavigationKeyDown, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
+        // Home/End are handled at the WINDOW on the TUNNEL, scoped to whichever tree holds focus. A handler on the
+        // TreeView never fired for them (uxparity S-29) — the keys are consumed below it — while Delete/F2/F4,
+        // which the item ignores, reach the XAML KeyDown= handler normally. Tunnel ALONE: the window sits on both
+        // the tunnel and the bubble route, so registering for both ran this handler (and posted the selection)
+        // twice per keypress. handledEventsToo stays, because the tunnel reaches the window before anything below
+        // it can mark the key handled.
+        AddHandler(KeyDownEvent, OnTreeNavigationKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
     }
 
     // Attaches the drag SOURCE and drop TARGET handlers to a tree (A-30 — both panes share this wiring).
@@ -263,7 +266,13 @@ public partial class MainWindow : Window
             return;
         if (e.Key == Key.F10 && e.KeyModifiers.HasFlag(KeyModifiers.Shift))
         {
-            tree.ContextMenu?.Open(tree);
+            // ContextFlyout, not ContextMenu: the panes SHARE one MenuFlyout resource (a ContextMenu control
+            // cannot be shared between two trees), so tree.ContextMenu is always null and this route silently did
+            // nothing while still swallowing the key. Anchor it on the selected row's container when that row is
+            // realized, so the menu opens next to the caret exactly as a right-click would.
+            Control anchor = tree.GetVisualDescendants().OfType<TreeViewItem>()
+                .FirstOrDefault(i => ReferenceEquals(i.DataContext, node)) ?? (Control)tree;
+            tree.ContextFlyout?.ShowAt(anchor);
             e.Handled = true;
         }
         else if (e.Key == Key.F2)

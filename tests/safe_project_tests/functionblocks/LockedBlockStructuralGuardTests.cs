@@ -1,4 +1,7 @@
+using System.Linq;
 using Ihc.Vis.Session;
+
+using static Ihc.Vis.Tests.Tree;
 
 namespace Ihc.Vis.Tests
 {
@@ -138,6 +141,48 @@ namespace Ihc.Vis.Tests
             ElementId emptyLocality = project.Groups.Last().Id!.Value;   // an empty room, not locked
 
             Assert.DoesNotThrow(() => editor.MoveSubtree(autoProof, emptyLocality));
+        }
+
+        // review B1: the guard is target-only for INSERT/copy/move-INTO, but a node strictly INSIDE a locked block
+        // must not be torn OUT of it either — that mutates the locked subtree, exactly as reorder/delete refuse. The
+        // whole-block relocation above still works (the block has no locked ancestor), so this is not over-reach.
+        [Test]
+        public async Task Engine_MoveNode_OutOfLockedBlock_IsRefused()
+        {
+            Project project = await LoadOracle();
+            ProjectEditor editor = project.Edit();
+            ElementId lockedPin = Fb(project, "AutoProof").FindChild("outputs")!.ChildrenOrEmpty()
+                .First(c => c.Id is not null).Id!.Value;
+            ElementId emptyLocality = project.Groups.Last().Id!.Value;
+
+            var ex = Assert.Throws<InvalidOperationException>(() => editor.MoveSubtree(lockedPin, emptyLocality));
+            Assert.That(ex!.Message, Does.Contain("locked function block"));
+        }
+
+        // review A1: the drag-over probe must not offer a reorder the command would refuse. Two same-tag siblings
+        // inside a locked block are a reorderable PAIR by parent/tag, yet the locked-block gate forbids reordering
+        // them — so CanReorderNode must agree with CanReorder (the menu gate) and the ReorderNode Apply: all false.
+        [Test]
+        public void Session_CanReorderNode_NodeInsideLockedBlock_AgreesWithMenuGate_BothFalse()
+        {
+            ProjectElement locked = Node("functionblock", "_0x5228", new[] { ("name", "Locked"), ("locked", "yes") },
+                Node("outputs", "_0x5424", new[] { ("name", "Output") },
+                    Node("resource_output", "_0x6312", new[] { ("name", "A") }),
+                    Node("resource_output", "_0x6412", new[] { ("name", "B") })));
+            ProjectElement root = Node("utcs_project", null,
+                new[] { ("version_major", "4"), ("version_minor", "0"), ("last_unique_id", "_0x7000") },
+                Node("groups", "_0x2031", new[] { ("name", "L") },
+                    Node("group", "_0x2132", new[] { ("name", "Stue") }, locked)));
+            var session = new ProjectDocumentSession();
+            session.Open(new Project(root));
+            ElementId.TryParse("_0x6312", out ElementId a);
+            ElementId.TryParse("_0x6412", out ElementId b);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(session.CanReorderNode(a, b), Is.False, "the drag-over hint must not offer a locked-block reorder");
+                Assert.That(session.CanReorder(a, 1), Is.False, "and it agrees with the menu gate");
+            });
         }
     }
 }

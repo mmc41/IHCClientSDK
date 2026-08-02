@@ -53,6 +53,9 @@ namespace Ihc.Vis.FunctionBlocks
         // rootAttrs (the ordered root-attribute list) + SetRoot/Attribute live on DefinitionBuilderBase (M7).
         private bool stampResourceDefaults = true;
         private bool isEmptyTemplate;
+        // review F1: carried from From(existing) and stamped in Build(), so a rebuilt library-export block keeps its
+        // explicit two-tag close set instead of silently defaulting to Empty (which would re-emit self-closing pins).
+        private ImmutableHashSet<ElementId> explicitCloseIds = ImmutableHashSet<ElementId>.Empty;
         private string emptyIcon = "_0xf";
         private readonly Dictionary<string, string> containerNameOverrides = new(StringComparer.Ordinal);
         private readonly Dictionary<string, string> containerNoteOverrides = new(StringComparer.Ordinal);
@@ -111,6 +114,7 @@ namespace Ihc.Vis.FunctionBlocks
             // an explicit .Grammar(...) replaces the carried grammar; .ExtendGrammar(...) starts from it.
             builder.grammar = existing.Grammar;
             builder.sourceEncoding = existing.SourceEncoding;
+            builder.explicitCloseIds = existing.ExplicitCloseIds;   // review F1: else From(x).Build() drops the two-tag close set
             builder.SeedDocumentation(existing.Documentation);
             return builder;
         }
@@ -423,6 +427,7 @@ namespace Ihc.Vis.FunctionBlocks
                 Grammar = grammar,
                 IsEmptyTemplate = isEmptyTemplate,
                 Documentation = BuildDocumentation(),
+                ExplicitCloseIds = explicitCloseIds,   // review F1: carry the From-seeded close set through the rebuild
             };
             // Stamp the From-carried physical SourceEncoding when one was carried, else keep the definition's default.
             return sourceEncoding is { } encoding ? definition with { SourceEncoding = encoding } : definition;

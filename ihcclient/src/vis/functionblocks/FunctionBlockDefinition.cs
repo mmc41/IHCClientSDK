@@ -100,6 +100,41 @@ namespace Ihc.Vis.FunctionBlocks
                         .ToArray()
                 : Array.Empty<ResourceSummary>();
 
+        // review F2: the synthesized record equality compares ExplicitCloseIds (an ImmutableHashSet, no value Equals)
+        // BY REFERENCE, so two content-equal definitions with independently-built close-id sets compare unequal —
+        // unlike Body/Grammar/Documentation, which carry value equality by design. Compare it by SET content. Every
+        // OTHER member is already value-equal; KEEP THIS LIST IN SYNC with the record's members if one is added.
+        public bool Equals(FunctionBlockDefinition? other) =>
+            other is not null
+            && string.Equals(MasterType, other.MasterType, StringComparison.Ordinal)
+            && string.Equals(MasterVersion, other.MasterVersion, StringComparison.Ordinal)
+            && string.Equals(MasterName, other.MasterName, StringComparison.Ordinal)
+            && string.Equals(DisplayName, other.DisplayName, StringComparison.Ordinal)
+            && string.Equals(CategoryPath, other.CategoryPath, StringComparison.Ordinal)
+            && Body.Equals(other.Body)
+            && Grammar.Equals(other.Grammar)
+            && SourceEncoding == other.SourceEncoding
+            && IsEmptyTemplate == other.IsEmptyTemplate
+            && Documentation.Equals(other.Documentation)
+            && ExplicitCloseIds.SetEquals(other.ExplicitCloseIds);
+
+        public override int GetHashCode()
+        {
+            var hash = new HashCode();
+            hash.Add(MasterType, StringComparer.Ordinal);
+            hash.Add(MasterVersion, StringComparer.Ordinal);
+            hash.Add(MasterName, StringComparer.Ordinal);
+            hash.Add(DisplayName, StringComparer.Ordinal);
+            hash.Add(CategoryPath, StringComparer.Ordinal);
+            hash.Add(Body);
+            hash.Add(Grammar);
+            hash.Add(SourceEncoding);
+            hash.Add(IsEmptyTemplate);
+            hash.Add(Documentation);
+            hash.Add(ExplicitCloseIds.Count);   // order-independent, cheap, stable across equal sets
+            return hash.ToHashCode();
+        }
+
         public override string ToString() =>
             $"FunctionBlockDefinition(MasterType={MasterType}, MasterVersion={MasterVersion}, MasterName={MasterName}, DisplayName={DisplayName}, CategoryPath={CategoryPath}, Body={Body})";
     }

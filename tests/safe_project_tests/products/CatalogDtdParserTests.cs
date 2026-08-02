@@ -31,6 +31,20 @@ namespace Ihc.Vis.Tests
                 .Concat(Directory.EnumerateFiles(VendorFunctionBlockDir, "*.ifb"))
                 .OrderBy(p => p, System.StringComparer.Ordinal);
 
+        // review D1: a DOCTYPE with NO internal subset ("<!DOCTYPE functionblock>", or an external-id one) must stay
+        // in the captured head so a lenient-fallback read→write reproduces it. The old scan took the first '<' after
+        // the prolog — which is '<!DOCTYPE' itself — capturing only the prolog and silently dropping the DOCTYPE line.
+        [Test]
+        public void CaptureHeadText_SubsetlessDoctype_KeepsTheDoctypeLine()
+        {
+            byte[] bytes = Encoding.Latin1.GetBytes(
+                "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n<!DOCTYPE functionblock>\n<functionblock name=\"x\"/>");
+
+            string head = CatalogDtdParser.CaptureHeadText(bytes);
+
+            Assert.That(head, Does.Contain("<!DOCTYPE functionblock>"));
+        }
+
         // ----- oracle round trip: strict parse → re-emit → splice → reparse + equivalence -----
 
         [TestCaseSource(nameof(AllOracles))]

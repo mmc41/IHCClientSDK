@@ -44,16 +44,19 @@ public sealed record VariablePropertiesInput(string Title, string Name, string N
 /// note, and typed initial value.</summary>
 public sealed record VariablePropertiesResult(string Name, string Note, ResourceInitialValue Value);
 
-/// <summary>A locality option for the product-properties <i>Location</i> drop-down (US-011).</summary>
+/// <summary>A locality option for the modem dialog's <i>Location</i> drop-down (US-013). The product dialog has no
+/// such field: re-parenting a PRODUCT is a tree operation, not a dialog field (A-13).</summary>
 public sealed record LocalityChoice(string Id, string Name);
 
-/// <summary>The current values + locality choices shown by the product-properties dialog (US-011). When
-/// <c>IsWireless</c> is true the dialog omits the cable type/numbering fields (wireless products have no cabling,
-/// US-014).</summary>
+/// <summary>The current values shown by the product-properties dialog (US-011). When <c>IsWireless</c> is true the
+/// dialog omits the cable type/numbering fields (wireless products have no cabling, US-014).
+/// <para>There is no locality CHOICE list here, only <see cref="CurrentLocalityId"/>, which the dialog carries
+/// through untouched into its result: moving a product between localities is a tree operation (A-13). The modem
+/// dialog, which does offer the drop-down, takes its own <see cref="ModemPropertiesInput.Localities"/>.</para></summary>
 public sealed record ProductPropertiesInput(
     string Title, string Name, string Note, string CableType, string CableNumber,
     string IdentificationCode, string LightGroup,
-    IReadOnlyList<LocalityChoice> Localities, string CurrentLocalityId,
+    string CurrentLocalityId,
     bool IsWireless = false, bool IsWirelessDimmer = false,
     IReadOnlyList<ProductTerminal>? Terminals = null, string Position = "", bool NameLocked = false,
     bool EndUserReport = false);

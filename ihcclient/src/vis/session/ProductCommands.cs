@@ -62,7 +62,9 @@ namespace Ihc.Vis.Session
     public sealed record UnlockFunctionBlock(ElementId Id, string Programmer, DateOnly Unlocked) : ProjectCommand
     {
         internal override string Describe(Project project) => "Unlock function block";
-        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(Id, "function block");
+        // A5: RequireTag (not the weaker RequireExists) so a wrong-tag id is a clean Refuse, not the engine throw
+        // Execute would raise — matching the sibling SaveFunctionBlockToLibrary, whose Execute is the same FunctionBlock(Id).
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(Id, "a function block", "functionblock");
         internal override void Execute(ProjectEditor editor) =>
             editor.FunctionBlock(Id).Unlock(Programmer, Unlocked);
     }

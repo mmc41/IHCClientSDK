@@ -166,23 +166,14 @@ namespace Ihc.Vis.Catalog
             {
                 return Encoding.UTF8;   // redundant with the StreamReader's own BOM detection, but explicit
             }
-            if (XmlProlog.TryGetDeclaredEncoding(XmlProlog.Head(bytes)) is { } declared
-                && !declared.Equals("ISO-8859-1", StringComparison.OrdinalIgnoreCase))
-            {
-                try
-                {
-                    return Encoding.GetEncoding(declared);
-                }
-                catch (ArgumentException)
-                {
-                    // unknown name → fall through to the content classification (total: every byte decodes)
-                }
-            }
-            // No BOM and either no declaration or a declared ISO-8859-1: trust the CONTENT, not the declaration.
-            // Classify inspects the actual bytes (valid non-ASCII UTF-8 → Utf8, else Latin1), so a BOM-less UTF-8
-            // file that mis-declares ISO-8859-1 still decodes as UTF-8 — matching the SourceEncoding it is recorded
-            // with. TextEncoding() decodes tolerantly (replacement fallback), and Latin-1 is total, so this never
-            // throws for the real corpus (.ifb lone-high-byte files classify Latin1 and decode unchanged).
+            // Trust the CONTENT, not the declaration. Classify records SourceEncoding, and the writer re-encodes with
+            // exactly that, so the byte the reader decodes with MUST be the one Classify picks — otherwise import→re-save
+            // is not byte-faithful. Classify inspects the actual bytes (valid non-ASCII UTF-8 → Utf8, else Latin1), so a
+            // BOM-less UTF-8 file that mis-declares ISO-8859-1 still decodes as UTF-8. Honoring a declared EXOTIC
+            // encoding here (one CatalogTextEncoding cannot represent, e.g. windows-1252) BROKE that lock-step — the
+            // decode used the declared codepage while SourceEncoding stayed Latin1, so a re-save threw in strict Latin-1
+            // (review D2). A declared UTF-8/ISO-8859-1 is already covered by the content classification, so nothing real
+            // is lost. TextEncoding() decodes tolerantly, and Latin-1 is total, so this never throws for the real corpus.
             return CatalogTextEncodingExtensions.Classify(bytes).TextEncoding();
         }
 

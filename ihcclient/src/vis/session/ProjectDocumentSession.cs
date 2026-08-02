@@ -320,7 +320,12 @@ namespace Ihc.Vis.Session
         {
             lock (_sync)
             {
-                return _index is { } index && ProjectCommands.CanReorderNode(index, dragged, target);
+                // The reorderable-pair rule PLUS the locked-block gate the ReorderNode command enforces (review F02/A1):
+                // a node strictly inside a locked block cannot be reordered, so the drag-over hint must agree with the
+                // Apply it previews — the same IsWithinLockedBlock the command's Evaluate reads, so the two never diverge.
+                return _index is { } index && _current is { } current
+                    && ProjectCommands.CanReorderNode(index, dragged, target)
+                    && !ProjectEditor.IsWithinLockedBlock(current.Root, dragged, inclusive: false);
             }
         }
 

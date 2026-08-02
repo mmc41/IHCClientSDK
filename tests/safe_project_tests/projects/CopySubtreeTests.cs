@@ -20,6 +20,22 @@ namespace Ihc.Vis.Tests
         private static Task<Project> LoadOracle() =>
             new ProjectAppService(Settings).Load("testdata/projects/" + Oracle);
 
+        // review B2: copying a BARE external reciprocal half (its partner outside the copy) must report "nothing to
+        // paste" via PasteInto's guard — not silently paste a one-way link. DropExternal now drops the copy root
+        // itself, so CopySubtree yields an unresolvable id and PasteInto raises the (previously dead) guard.
+        [Test]
+        public async Task PasteInto_BareExternalReciprocalHalf_IsRejected_NotPastedOneWay()
+        {
+            Project project = await LoadOracle();
+            ProjectElement half = project.Root.Descendants()
+                .First(e => e.Tag is "link_from_resource" or "link_to_resource" && e.Id is not null);
+            ElementId loc = project.Groups.First().Id!.Value;
+            ProjectEditor editor = project.Edit();
+
+            Assert.That(() => editor.Group(loc).PasteInto(half.Id!.Value),
+                Throws.InvalidOperationException.With.Message.Contains("bare reciprocal half"));
+        }
+
         private static HashSet<ElementId> Ids(ProjectElement subtree)
         {
             var ids = new HashSet<ElementId>();

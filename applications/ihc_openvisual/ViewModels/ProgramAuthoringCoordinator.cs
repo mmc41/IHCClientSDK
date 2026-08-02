@@ -30,7 +30,8 @@ internal sealed class ProgramAuthoringCoordinator(
     Action<TreeNodeViewModel> selectNode,
     Action<string> setStatus,
     Func<TreeNodeViewModel?> getSelectedNode,
-    Func<ElementId?> getProgrammingBlockId)
+    Func<ElementId?> getProgrammingBlockId,
+    Action menusChanged)
 {
     /// <summary>The events a selected variable can raise, offered on a program's Events node (US-028).</summary>
     public ObservableCollection<ProductMenuItemViewModel> ProgramEventMenu { get; } = new();
@@ -64,10 +65,12 @@ internal sealed class ProgramAuthoringCoordinator(
     }
 
     // The GUI-side presentation verb for each program method (US-028/029), keyed by the SDK method's
-    // (Category, Token) — NOT by a positional index parallel to the ProgramMethodCatalog lists, so a catalog reorder
-    // or resize can never mis-label a menu item or throw IndexOutOfRange. A method absent from this map is simply not
-    // surfaced (the app owns which methods it presents and how it phrases them; the SDK owns the tokens/names/notes/
-    // semantics). The (Category, Token) pair is the method's identity — the token alone is reused across categories.
+    // (PinType, Category, Token) — NOT by a positional index parallel to the ProgramMethodCatalog lists, so a catalog
+    // reorder or resize can never mis-label a menu item or throw IndexOutOfRange. A method absent from this map is
+    // simply not surfaced (the app owns which methods it presents and how it phrases them; the SDK owns the tokens/
+    // names/notes/semantics). The full (PinType, Category, Token) triple is the method's identity — the token alone is
+    // reused across categories, AND the same (Category, Token) means different things across pin-type families (e.g.
+    // (Command,_0xa) is "set to ON" for a Bool pin but "= 0" for a Timer pin), which is why PinType is part of the key.
     private static readonly FrozenDictionary<(ProgramPinType PinType, ProgramMethodCategory Category, string Token), string> MethodVerbs =
         new Dictionary<(ProgramPinType, ProgramMethodCategory, string), string>
         {
@@ -150,8 +153,16 @@ internal sealed class ProgramAuthoringCoordinator(
     }
 
     /// <summary>Rebuilds the five program menus for the armed variable against <paramref name="value"/> (the selected
-    /// program node). Called on selection change and when a variable is armed.</summary>
+    /// program node). Called on selection change and when a variable is armed. Announces the rebuild afterwards: the
+    /// view-model's submenu gates read these collections' CONTENTS (an empty submenu is not offered), and arming an
+    /// operand refills them without touching the selection, so nothing else would raise them.</summary>
     public void Rebuild(TreeNodeViewModel? value)
+    {
+        RebuildMenus(value);
+        menusChanged();
+    }
+
+    private void RebuildMenus(TreeNodeViewModel? value)
     {
         ProgramEventMenu.Clear();
         ProgramCommandMenu.Clear();

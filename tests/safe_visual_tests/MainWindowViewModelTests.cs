@@ -2497,6 +2497,39 @@ public class MainWindowViewModelTests
         Assert.That(vm.ProgramEventMenu, Is.Empty, "no operand armed → no offered events");
     }
 
+    // US-028/US-068: a submenu whose ItemsSource is empty must not be offered at all. The gate used to test only the
+    // container kind, so right-clicking an Events/Commands/Conditions node with nothing armed showed "Add event",
+    // "Add command", "Case", "Arithmetic" and "Add condition" as headers that opened onto NOTHING. Arming the
+    // operand — which is what fills those menus — must also be what makes them appear.
+    [Test]
+    public async Task ProgramSubmenuGates_FollowTheirMenus_NotJustTheContainerKind()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        await harness.Session.AddEmptyFunctionBlockAsync(loc);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        var inputSectionId = vm.InstallationNodes[0].Children[0].ElementId!.Value;   // "Input"
+        await harness.Session.AddVariableAsync(inputSectionId, "resource_input", "Doorbell");
+        var eventsNode = FindByFlag(vm.FunctionNodes, n => n.IsEventsContainer)!;
+
+        vm.SelectNode(eventsNode);
+        bool offeredWithNothingArmed = vm.CanAddEvent;
+
+        // The real gesture order (as US-028's authoring test uses): arm the variable — which moves the selection to
+        // that pin, via the command-parameter bridge — then go back to the Events node, whose menu is now filled.
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[0].Children[0]);   // arm the Input pin
+        vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsEventsContainer)!);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(offeredWithNothingArmed, Is.False, "an empty Add-event submenu is not offered");
+            Assert.That(vm.ProgramEventMenu, Is.Not.Empty, "arrangement: arming the pin fills the event menu");
+            Assert.That(vm.CanAddEvent, Is.True, "with an operand armed the populated submenu is offered");
+        });
+    }
+
     // US-029: inserting a sub-program on the Commands group builds the Conditions + true/false command structure.
     [Test]
     public async Task AddSubProgram_OnCommands_InsertsConditionalStructure()

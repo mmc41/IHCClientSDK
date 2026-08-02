@@ -54,12 +54,20 @@ namespace Ihc.Vis.Editing
             }
         }
 
-        internal static ProjectElement DropExternalReciprocalHalves(ProjectElement source)
+        // Returns the subtree with every EXTERNAL reciprocal half (partner outside the copy) removed, or <c>null</c>
+        // when the copy's own ROOT is such a half — RemoveById can only drop a matched CHILD, never the root, so a
+        // bare external half copied on its own would otherwise survive and paste as a one-way link (review B2). Null
+        // signals "the whole copy dropped" so the caller reports "nothing to paste" instead.
+        internal static ProjectElement? DropExternalReciprocalHalves(ProjectElement source)
         {
             var insideIds = new HashSet<ElementId>();
             CollectIds(source, insideIds);
             var external = new List<ElementId>();
             CollectExternalReciprocalHalves(source, insideIds, external);
+            if (source.Id is { } rootId && external.Contains(rootId))
+            {
+                return null;   // the copy root itself is the external half — the entire copy drops
+            }
             ProjectElement pruned = source;
             foreach (ElementId halfId in external)
             {

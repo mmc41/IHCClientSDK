@@ -32,6 +32,35 @@ public class NodeIconsTests
         });
     }
 
+    /// <summary>
+    /// The same rule, sourced from the SDK registry instead of a hand-kept list — the list above was the reason the
+    /// four unit-named power/energy tags (<c>kW</c>/<c>kWh</c>/<c>W</c>/<c>Wh</c>, added to the registry and to the
+    /// insert palette by T017) went unnoticed: they carry no <c>icon</c> code, so they fell through to
+    /// <see cref="NodeIcons.Locality"/> and every meter variable rendered as a ROOM. Driving the assertion off
+    /// <c>VariableTypeRegistry.All</c> means a type the engine gains cannot silently lose its glyph again.
+    /// (Distinctness is asserted on the curated list above: the four energy tags deliberately SHARE
+    /// <c>var-energy</c>, per icon_codes.md §3b.)
+    /// </summary>
+    [Test]
+    public void EveryRegistryVariableType_HasANonFallbackIcon()
+    {
+        string[] registryTags = Ihc.Vis.Schema.VariableTypeRegistry.All.Select(t => t.Tag).ToArray();
+
+        Assert.Multiple(() =>
+        {
+            foreach (string tag in registryTags)
+            {
+                Assert.That(NodeIcons.For(tag, null), Is.Not.EqualTo(NodeIcons.Locality),
+                    $"the '{tag}' variable type falls back to the neutral (locality) glyph");
+            }
+            foreach (string energyTag in new[] { "kW", "kWh", "W", "Wh" })
+            {
+                Assert.That(NodeIcons.For(energyTag, null), Is.EqualTo("/Assets/var-energy.svg"),
+                    $"'{energyTag}' renders the energy glyph icon_codes.md §3b and the report mapping both specify");
+            }
+        });
+    }
+
     [Test]
     public void ProgramElements_PinsAndLogicOperators_AreDistinct()
     {

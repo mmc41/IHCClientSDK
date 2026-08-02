@@ -533,9 +533,20 @@ namespace Ihc.Vis.Validation
                     $"version_major='{major}': IHC Visual silently rejects project versions above 4 (spec ch. 10 §10.5)");
             }
 
+            // last_unique_id must be a well-formed _0x token that is at least the highest counter present (the
+            // high-water mark). The three malformed/ceiling/low faults are MUTUALLY EXCLUSIVE (else-if): a malformed
+            // or absent token must not ALSO report the misleading "0x0 is below the highest counter" (review H3) —
+            // its value never parsed, so a second finding derived from a phantom 0 is noise, not a distinct fault.
             string? luidToken = project.LastUniqueId;
-            long lastUniqueId = 0;
-            if (luidToken is not null && !HexToken.TryParseValue(luidToken, out lastUniqueId))
+            if (luidToken is null)
+            {
+                if (maxCounter > 0)
+                {
+                    findings.Error("luid-low", root,
+                        $"last_unique_id is absent; the highest counter present is 0x{maxCounter:x}");
+                }
+            }
+            else if (!HexToken.TryParseValue(luidToken, out long lastUniqueId))
             {
                 findings.Error("luid-malformed", root,
                     $"last_unique_id '{luidToken}' is not a _0x hex token");
@@ -545,7 +556,7 @@ namespace Ihc.Vis.Validation
                 findings.Error("luid-ceiling", root,
                     $"last_unique_id '{luidToken}' exceeds the 24-bit id counter ceiling (0xffffff)");
             }
-            if (lastUniqueId < maxCounter)
+            else if (lastUniqueId < maxCounter)
             {
                 findings.Error("luid-low", root,
                     $"last_unique_id (0x{lastUniqueId:x}) is below the highest counter present (0x{maxCounter:x})");

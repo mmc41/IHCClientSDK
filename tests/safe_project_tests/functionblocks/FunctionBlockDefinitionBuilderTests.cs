@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -16,6 +17,21 @@ namespace Ihc.Vis.Tests
     public class FunctionBlockDefinitionBuilderTests
     {
         private IhcSettings settings => TestSetup.Settings;
+
+        // review F1: From(existing).Build() must CARRY ExplicitCloseIds (the save-to-library two-tag close set),
+        // not silently reset it to Empty — which would re-emit self-closing pins where the vendor keeps the two-tag
+        // form. Seed a real catalog block's copy with a close set and confirm the round-trip preserves it.
+        [Test]
+        public void From_Build_PreservesExplicitCloseIds()
+        {
+            FunctionBlockDefinition original = new BuiltInCatalog().FunctionBlocks.First();
+            ImmutableHashSet<ElementId> closeIds = ImmutableHashSet.Create(new ElementId(0x60, 0x12), new ElementId(0x61, 0x12));
+            FunctionBlockDefinition withCloseIds = original with { ExplicitCloseIds = closeIds };
+
+            FunctionBlockDefinition rebuilt = FunctionBlockDefinitionBuilder.From(withCloseIds).Build();
+
+            Assert.That(rebuilt.ExplicitCloseIds, Is.EqualTo(closeIds));
+        }
 
         [Test]
         public void AuthorToggleBlock_FromCode_ShowsFunctionBlockBuilder()

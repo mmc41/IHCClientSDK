@@ -21,7 +21,8 @@ namespace Ihc.Vis.Session
             && context.Project.Edit().CanMoveSubtree(SourceId, TargetParentId)
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse("That move is not allowed."))
-            .And(context.RequireUnlockedTarget(TargetParentId, inclusive: true));   // T003: no move INTO a locked block
+            .And(context.RequireUnlockedTarget(TargetParentId, inclusive: true))    // T003: no move INTO a locked block
+            .And(context.RequireUnlockedTarget(SourceId, inclusive: false));        // T003: no move of a node OUT of a locked block (review B1)
         internal override void Execute(ProjectEditor editor) => editor.MoveSubtree(SourceId, TargetParentId);
     }
 
@@ -45,6 +46,7 @@ namespace Ihc.Vis.Session
             (context.Index.FindById(SourceId) is { } source
             && context.Index.FindById(TargetParentId) is { } target
             && StructurePlacement.CanContain(source.Tag, target.Tag, context.Project.FindParent(TargetParentId)?.Tag)
+            && context.Project.Edit().CanMoveSubtree(SourceId, TargetParentId)   // A2: no copy INTO the source or its own descendant (CopySubtree throws) — clean Refuse, mirroring MoveNode
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse("That container cannot hold this node."))
             .And(context.RequireUnlockedTarget(TargetParentId, inclusive: true));   // T003: no copy INTO a locked block

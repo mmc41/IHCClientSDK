@@ -38,12 +38,17 @@ namespace Ihc.Vis.Programs
     /// arithmetic's <c>%P … %S</c>) and <see cref="OperatorSymbol"/> (<c>+</c>/<c>-</c> for arithmetic, else null;
     /// ASCII hyphen-minus, not U+2212 — the .vis format is ISO-8859-1 and cannot encode a MINUS SIGN).
     /// The same token can appear under more than one category (e.g. <c>_0xa</c> is Event, Command and Condition), so
-    /// a method is identified by the <c>(Category, Token)</c> pair, never the token alone.
+    /// within one pin-type family a method is identified by the <c>(Category, Token)</c> pair, never the token alone.
+    /// <b>Across pin-type families the same <c>(Category, Token)</c> also differs</b> (e.g. <c>(Command,_0xa)</c> is
+    /// <c>%P = ON</c> for a Bool pin but <c>%P = 0</c> for a Timer pin — review E2), so the identity over the COMBINED
+    /// catalog is <c>(PinType, Category, Token)</c>; a consumer keys on <c>(Category, Token)</c> only after it has
+    /// picked one pin-type family via <see cref="ProgramMethodCatalog.EventsFor"/>/<c>CommandsFor</c>/<c>ConditionsFor</c>.
     /// </summary>
     /// <remarks>Intentional test-only seam (D02): <see cref="OperandCount"/> is currently asserted only by the
     /// ProgramMethodCatalog tests (1 for event/command/condition, 2 for arithmetic); it is kept as the method-arity
     /// fact a future GUI operand picker would consult. (<see cref="Category"/> is NOT a test-only member — the
-    /// OpenVisual program menu keys its verbs by the <c>(Category, Token)</c> pair, so it is production-used.)</remarks>
+    /// OpenVisual program menu keys its verbs by the full <c>(PinType, Category, Token)</c> triple, so it is
+    /// production-used.)</remarks>
     public sealed record ProgramMethod(
         ProgramMethodCategory Category,
         string Token,

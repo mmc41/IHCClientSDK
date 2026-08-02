@@ -21,7 +21,9 @@ internal sealed class LinkingCoordinator(
     ProjectWorkflow session,
     IDialogService dialogs,
     Func<string, Func<Task>, Task> runAsync,
-    Func<ProjectCommand, string, Task> applyAndReport,
+    // Reports whether the command COMMITTED — the two-step gesture needs the answer: a source pin that was armed
+    // and then refused must stay armed, or the installer has to re-run "Link from here" before every retry.
+    Func<ProjectCommand, string, Task<bool>> applyAndReport,
     Action<string> setStatus,
     Func<TreeNodeViewModel?> getPendingSource,
     Action<TreeNodeViewModel?> setPendingSource,
@@ -30,13 +32,21 @@ internal sealed class LinkingCoordinator(
     /// <summary>Links two pins (US-022/US-023): the <paramref name="source"/> pin is linked onto the
     /// <paramref name="target"/> pin (the target gets the "link from" half). Both must be pins.</summary>
     public Task LinkPinsAsync(TreeNodeViewModel? source, TreeNodeViewModel? target) =>
-        runAsync("LinkPins", async () =>
+        runAsync("LinkPins", () => TryLinkPinsAsync(source, target));
+
+    // The same link, reporting whether it was actually created. Not wrapped in runAsync: LinkToHereAsync already
+    // runs inside one, and the two-step gesture needs this answer to decide whether the armed source is consumed.
+    private async Task<bool> TryLinkPinsAsync(TreeNodeViewModel? source, TreeNodeViewModel? target)
+    {
+        bool linked = false;
+        if (source?.ElementId is { } fromId && target?.ElementId is { } toId
+            && source.IsPin && target.IsPin && session.Current is { } project)
         {
-            if (source?.ElementId is not { } fromId || target?.ElementId is not { } toId
-                || !source.IsPin || !target.IsPin || session.Current is not { } project)
-                return;
-            await applyAndReport(session.Commands.LinkPins(project, fromId, toId), $"Linked {source.DisplayName} to {target.DisplayName}.");
-        });
+            linked = await applyAndReport(session.Commands.LinkPins(project, fromId, toId),
+                $"Linked {source.DisplayName} to {target.DisplayName}.");
+        }
+        return linked;
+    }
 
     /// <summary>Arms a link from the given pin (US-022) — the next <i>Link to here</i> completes it.</summary>
     public void StartLink(TreeNodeViewModel? node)
@@ -61,15 +71,17 @@ internal sealed class LinkingCoordinator(
                 setStatus("Choose 'Link from here' on the source pin first.");
                 return;
             }
-            setPendingSource(null);
-
-            if (node.IsSceneTarget && source.ElementId is { } srcId && node.ElementId is { } scenesId
-                && session.Current?.FindById(srcId)?.IsSceneResource == true)
+            // The armed source is consumed by a link that was actually CREATED, never merely attempted: clearing it
+            // up front meant a refused pairing (or a cancelled scene-value dialog) silently disarmed the gesture, so
+            // the installer had to walk back to the source pin and re-arm before every retry.
+            bool linked = node.IsSceneTarget && source.ElementId is { } srcId && node.ElementId is { } scenesId
+                          && session.Current?.FindById(srcId)?.IsSceneResource == true
+                ? await CompleteSceneLinkAsync(srcId, scenesId)
+                : await TryLinkPinsAsync(source, node);
+            if (linked)
             {
-                await CompleteSceneLinkAsync(srcId, scenesId);
-                return;
+                setPendingSource(null);
             }
-            await LinkPinsAsync(source, node);
         });
 
     /// <summary>Navigates from a link row to the pin at the opposite end of the link (US-025, F4) — the reveal
@@ -88,17 +100,17 @@ internal sealed class LinkingCoordinator(
         revealOpposite(partnerId);
     }
 
-    private async Task CompleteSceneLinkAsync(ElementId sceneOutputId, ElementId scenesId)
+    // Returns whether the scenario link was created (a cancelled value dialog leaves the source armed to retry).
+    private async Task<bool> CompleteSceneLinkAsync(ElementId sceneOutputId, ElementId scenesId)
     {
         if (session.Current is not { } project || project.FindById(scenesId) is null)
-            return;
+            return false;
         // The scene value variant (sliver #11) is the SDK's decision — used to shape the dialog and stamp the command.
         bool isDimmer = session.Commands.IsSceneWirelessDimming(project, scenesId);
         var input = new SceneValueInput("Scene value", isDimmer, On: true, LevelPercent: isDimmer ? 100 : 0, RampMinutes: 0, RampSeconds: 0);
 
         SceneValueResult? result = await dialogs.EditSceneValueAsync(input);
-        if (result is null)
-            return;
-        await applyAndReport(session.Commands.LinkScene(project, sceneOutputId, scenesId, result), "Scene link created.");
+        return result is not null
+            && await applyAndReport(session.Commands.LinkScene(project, sceneOutputId, scenesId, result), "Scene link created.");
     }
 }

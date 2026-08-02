@@ -599,5 +599,8 @@ public sealed class ProjectWorkflow : IDisposable
             return;   // idempotent
         _disposed = true;
         _autoBackup.Dispose();   // stops the timer and waits for any in-flight backup (T019)
+        // Close the document too — this workflow is the only type permitted to (arch-enforced), so nobody else can,
+        // and a disposed workflow holding an open document's snapshot + full undo history is state nothing can reach.
+        _document?.Close();
     }
 }

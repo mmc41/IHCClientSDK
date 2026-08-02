@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 using Ihc.Vis.Catalog;
 
@@ -60,6 +61,26 @@ namespace Ihc.Vis.Tests
             byte[] written = Write(definition);
 
             AssertEquivalent(file, written, path);
+        }
+
+        // review D2: the reader must DECODE with the same encoding it RECORDS as SourceEncoding (which the writer
+        // re-encodes with), or import→re-save is not byte-faithful. A BOM-less file with lone-high-byte content that
+        // mis-declares an exotic 8-bit codepage must decode as Latin-1 (what Classify records) — NOT honor the
+        // declaration (decoding 0x93→U+201C while SourceEncoding stayed Latin-1, so a re-save threw in strict Latin-1).
+        [Test]
+        public void SniffEncoding_MatchesRecordedSourceEncoding_ForMisdeclaredContent()
+        {
+            byte[] bytes = Encoding.Latin1.GetBytes("<?xml version=\"1.0\" encoding=\"windows-1252\"?>\n<x a=\"N\x93\"/>");
+
+            Encoding decode = CatalogReader.SniffEncoding(bytes);
+            CatalogTextEncoding recorded = CatalogTextEncodingExtensions.Classify(bytes);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(recorded, Is.EqualTo(CatalogTextEncoding.Latin1), "lone high byte → content classifies Latin-1");
+                Assert.That(decode.GetString(bytes), Is.EqualTo(recorded.TextEncoding().GetString(bytes)),
+                    "the decode encoding equals the recorded SourceEncoding's encoding (lock-step)");
+            });
         }
 
         [TestCaseSource(nameof(ProductOracles))]

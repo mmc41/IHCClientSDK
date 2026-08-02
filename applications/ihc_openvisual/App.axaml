@@ -1,13 +1,12 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="ihc_openvisual.App"
-             xmlns:local="using:ihc_openvisual"
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
-    <Application.DataTemplates>
-        <local:ViewLocator/>
-    </Application.DataTemplates>
+    <!-- No ViewLocator: nothing in this app is rendered by matching a view-model to a *View type. The shell is one
+         window with its own markup, and every dialog sets its DataContext explicitly and binds with x:DataType. The
+         template-generated locator only ever stood to render "Not Found: …ViewModels.MainWindowView". -->
 
     <Application.Styles>
         <FluentTheme />

@@ -319,7 +319,9 @@ internal sealed class PropertiesDialogCoordinator(
             if (session.Current is not { } project || project.FindById(productId) is not { } product)
                 return committed;
             var view = new ProductView(project, product);
-            List<LocalityChoice> localities = BuildLocalityChoices(project);
+            // No locality CHOICES are built here: the product dialog has no Location drop-down (A-13 — re-parenting a
+            // product is a tree operation), so the list was computed on every open and discarded. Only the current
+            // locality is needed, and only to be carried through into the result.
             string currentLocalityId = project.FindParent(productId)?.Id?.ToToken() ?? string.Empty;
             // The dialog is titled with the product TYPE (the catalog name), not the generic "Product properties" —
             // it is how the vendor tells two open product dialogs apart (A-8/F-015).
@@ -334,7 +336,7 @@ internal sealed class PropertiesDialogCoordinator(
                 view.CableNumber ?? string.Empty,
                 view.DocumentationTag ?? string.Empty,
                 view.PowerGroup ?? string.Empty,
-                localities, currentLocalityId, view.IsWireless, view.IsWirelessDimmer,
+                currentLocalityId, view.IsWireless, view.IsWirelessDimmer,
                 BuildTerminals(view), view.Position ?? string.Empty,
                 // A locked (library) product's name is fixed to the catalog type name — greyed out (A-15/F-032).
                 // Read locked off the ELEMENT, resolved via the project's inline DTD (default "no"); never a catalog

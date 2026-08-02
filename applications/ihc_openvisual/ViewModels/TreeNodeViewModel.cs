@@ -119,14 +119,15 @@ public sealed partial class TreeNodeViewModel : ObservableObject
     /// <summary>Whether this is the synthetic <c>Localities</c> root — the target of <i>Insert locality</i> (US-008).</summary>
     public bool IsLocalitiesRoot => Kind is TreeNodeKind.LocalitiesRoot;
 
-    /// <summary>Context-menu gate: <i>Insert locality</i> is offered on the Localities root.</summary>
+    /// <summary>Whether this row is where <i>Insert locality</i> belongs — the Localities root. Intentional
+    /// test-only seam (D02): the live gate is the "insert.locality" registry row, which reads the node CONTEXT, not
+    /// this node; the US-068 per-node-type menu tests assert the classification through it.</summary>
     public bool CanInsertLocality => IsLocalitiesRoot;
 
-    /// <summary>Context-menu gate: <i>Properties</i> is offered on nodes that address a real element (a locality).</summary>
-    public bool CanEditProperties => ElementId is not null;
-
     /// <summary>Whether this pin is declared by the product's catalog type — a product's pins exist because the
-    /// catalog type declares them, so they are not the installer's to remove (A-24/F-067, US-068).</summary>
+    /// catalog type declares them, so they are not the installer's to remove (A-24/F-067, US-068). Intentional
+    /// test-only seam (D02): the live delete guard is the SDK's own deletion verdict, which the "edit.delete" row
+    /// asks; this flag records the classification the projector applied, so the tests can assert it directly.</summary>
     public bool IsCatalogPin { get; init; }
 
     /// <summary>Whether this is a "Log …" row (a Logning <c>resource_enum</c>) that offers the vendor's log-mark
@@ -147,8 +148,10 @@ public sealed partial class TreeNodeViewModel : ObservableObject
     /// sections, scene containers and program-tree nodes.</summary>
     public bool CanReorder => CanCut;
 
-    /// <summary>Context-menu gate: <i>Move up</i>/<i>Move down</i> and <i>Properties</i> are offered on any addressable
-    /// node EXCEPT a link row — the link row's only items are <i>Jump to opposite</i> and <i>Delete</i> (A-5b).</summary>
+    /// <summary>Whether this row is an addressable node that is not a link row — a link row's only items are
+    /// <i>Jump to opposite</i> and <i>Delete</i> (A-5b). Intentional test-only seam (D02): the live gates are the
+    /// "edit.moveUp"/"edit.moveDown"/"node.properties" registry rows; this states the same classification about ONE
+    /// node, which is what the US-068 per-node-type menu tests assert against.</summary>
     public bool CanEditNonLink => ElementId is not null && !IsLinkRow;
 
     /// <summary>Hover tooltip (US-047/US-048): the node's documentation note and, for a resource-mapped node (input,

@@ -138,6 +138,27 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
+        public void Validate_MalformedLastUniqueId_ReportsMalformedOnly_NotAlsoBelowCounter()
+        {
+            // review H3: a malformed last_unique_id reports luid-malformed ONCE. It must NOT also emit the misleading
+            // "0x0 is below the highest counter" — that second finding is derived from the unparsed value (a phantom 0),
+            // not a distinct fault. maxCounter here is 0x21 (> 0), so the old unconditional luid-low would have fired.
+            ProjectElement root = Node("utcs_project", null,
+                new[] { ("version_major", "4"), ("version_minor", "0"), ("id1", "_0x1"), ("id2", "_0x2"), ("last_unique_id", "garbage") },
+                Node("groups", "_0x2031", new[] { ("name", "L") },
+                    Node("group", "_0x2132", new[] { ("name", "Stue") })));
+
+            ProjectValidationResult result = ProjectValidator.Validate(new Project(root));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Errors.Any(e => e.Contains("not a _0x hex token")), Is.True, "the malformed value is reported");
+                Assert.That(result.Errors.Any(e => e.Contains("below the highest counter")), Is.False,
+                    "no spurious second luid-low derived from the unparsed 0");
+            });
+        }
+
+        [Test]
         public void Validate_OutOfRangeEnumValue_IsReported()
         {
             // product_dataline@locked is the enumeration (yes | no); any other value must be flagged.

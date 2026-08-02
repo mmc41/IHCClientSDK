@@ -154,6 +154,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [NotifyPropertyChangedFor(nameof(CanInsertVariable))]
     [NotifyPropertyChangedFor(nameof(CanAddEvent))]
     [NotifyPropertyChangedFor(nameof(CanAddCommand))]
+    [NotifyPropertyChangedFor(nameof(CanAddCase))]
+    [NotifyPropertyChangedFor(nameof(CanAddArithmetic))]
     [NotifyPropertyChangedFor(nameof(CanAddCondition))]
     private TreeNodeViewModel? _selectedNode;
 
@@ -165,15 +167,28 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         && _session.Current is { } project && project.FindById(id) is { } block
         && project.View(block).Locked;
 
-    // The programming-mode authoring context-menu gates: a container node's own kind AND an editable (unlocked)
-    // programming block. On a locked block every one is false, so the vendor's "missing, not greyed" affordance
-    // holds. These four remain because they gate the DATA-DRIVEN ItemsSource submenus, which are non-rows by the
-    // documented ruling — every gate with a registry row (New case value…, among others) is the row's, and only
-    // the row's, so a rule edit cannot land in a second dead home (review F09).
-    public bool CanInsertVariable => SelectedNode?.IsBlockSection == true && !IsProgrammingBlockLocked;
-    public bool CanAddEvent => SelectedNode?.IsEventsContainer == true && !IsProgrammingBlockLocked;
-    public bool CanAddCommand => SelectedNode?.IsCommandsContainer == true && !IsProgrammingBlockLocked;
-    public bool CanAddCondition => SelectedNode?.IsConditionsContainer == true && !IsProgrammingBlockLocked;
+    // The programming-mode authoring context-menu gates: a container node's own kind, an editable (unlocked)
+    // programming block, AND a non-empty menu. On a locked block every one is false, so the vendor's "missing, not
+    // greyed" affordance holds. These remain because they gate the DATA-DRIVEN ItemsSource submenus, which are
+    // non-rows by the documented ruling — every gate with a registry row (New case value…, among others) is the
+    // row's, and only the row's, so a rule edit cannot land in a second dead home (review F09).
+    //
+    // Each gate names the ONE collection its submenu binds. Gating on the container kind alone offered headers that
+    // opened onto nothing: the program menus are populated by the ARMED operand, so before a variable is armed all
+    // five are empty. And Commands feeds three different submenus (Add command / Case / Arithmetic) whose menus fill
+    // under different conditions, so one shared flag could not have spoken for all three.
+    public bool CanInsertVariable =>
+        SelectedNode?.IsBlockSection == true && !IsProgrammingBlockLocked && VariablePaletteMenu.Count > 0;
+    public bool CanAddEvent =>
+        SelectedNode?.IsEventsContainer == true && !IsProgrammingBlockLocked && ProgramEventMenu.Count > 0;
+    public bool CanAddCommand =>
+        SelectedNode?.IsCommandsContainer == true && !IsProgrammingBlockLocked && ProgramCommandMenu.Count > 0;
+    public bool CanAddCase =>
+        SelectedNode?.IsCommandsContainer == true && !IsProgrammingBlockLocked && ProgramCaseMenu.Count > 0;
+    public bool CanAddArithmetic =>
+        SelectedNode?.IsCommandsContainer == true && !IsProgrammingBlockLocked && ProgramArithmeticMenu.Count > 0;
+    public bool CanAddCondition =>
+        SelectedNode?.IsConditionsContainer == true && !IsProgrammingBlockLocked && ProgramConditionMenu.Count > 0;
 
     // crudarch T012: the Cut/Copy/Paste/Delete/Show-program gates (context AND the stricter bar variants,
     // uxparity S-27/S-28) moved into the registry rows — see RegisterCoreEditRows. Their per-surface
@@ -418,8 +433,29 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         ProjectInfoData? result = await _dialogs.EditProjectInfoAsync(_session.GetProjectInfo());
         if (result is null || _session.Current is not { } project)
             return;
-        await ApplyAsync(_session.Commands.UpdateProjectInfo(project, result), "Project information updated.");
+        if (await ApplyAsync(_session.Commands.UpdateProjectInfo(project, result), "Project information updated."))
+        {
+            // The installer's OWN contact details are an application setting, not per-project data (US-002) — this
+            // dialog is where they are entered, so this is where they are remembered, and every later File → New
+            // stamps them into the new project. Until now the store had no writer anywhere in the app, so a new
+            // project always carried a blank installer_info unless the JSON was hand-edited.
+            _session.InstallerIdentity.Update(ToInstallerIdentity(result.Installer));
+        }
     });
+
+    // The project's installer contact → the persisted application setting. Blank fields stay blank here;
+    // InstallerIdentityStore collapses them back to "not written" when it builds a new project's details.
+    private static InstallerIdentity ToInstallerIdentity(ContactInfo contact) => new()
+    {
+        Name = contact.Name,
+        Address = contact.Address,
+        City = contact.City,
+        ZipCode = contact.Zip,
+        Country = contact.Country,
+        Phone = contact.Phone,
+        MobilePhone = contact.Mobile,
+        Email = contact.Email,
+    };
 
     /// <summary>Documentation ▸ Data tables (US-049): opens the data-tables dialog (read-only system tables +
     /// editable user-defined texts).</summary>
@@ -521,7 +557,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             _session, _dialogs, (command, status) => ApplyAsync(command, status), status => StatusText = status);
         _programAuthoring = new ProgramAuthoringCoordinator(
             _session, _dialogs, RunAsync, (command, status) => ApplyAsync(command, status), SelectNode,
-            status => StatusText = status, () => SelectedNode, () => _programmingBlockId);
+            status => StatusText = status, () => SelectedNode, () => _programmingBlockId, NotifyProgramMenuGates);
         _treePanes = new TreePaneCoordinator(
             InstallationNodes, FunctionNodes, () => _session.Current, () => _session.LastChange,
             (installHeader, functionsHeader) => { InstallationPaneHeader = installHeader; FunctionsPaneHeader = functionsHeader; });
@@ -961,7 +997,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         FindNode(InstallationNodes, id) ?? FindNode(FunctionNodes, id);
 
     /// <summary>Inserts a catalog product (US-010) under the currently selected locality; the leaf menu commands in
-    /// <see cref="WiredProductsMenu"/> call this. Routed through <see cref="RunAsync"/> for tracing and error surfacing.</summary>
+    /// <see cref="ProductsMenu"/> call this. Routed through <see cref="RunAsync"/> for tracing and error surfacing.</summary>
     private Task InsertProductAsync(string productIdentifier, string productName) =>
         RunAsync(nameof(InsertProductAsync), async () =>
         {
@@ -1382,11 +1418,23 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private void NotifyProgrammingAuthoringGates()
     {
         OnPropertyChanged(nameof(IsProgrammingBlockLocked));
+        NotifyProgramMenuGates();
+        RebuildContext();   // T012/T013: every registry row re-evaluates off the lock/mode state
+    }
+
+    // The submenu gates read their menus' CONTENTS, so they must be re-raised whenever those menus are rebuilt.
+    // A selection change is covered by the [NotifyPropertyChangedFor] entries on SelectedNode (which fire last,
+    // after the variable palette is rebuilt); this is the other trigger — arming an operand refills the five
+    // program menus without touching the selection at all. Deliberately does NOT rebuild the availability context:
+    // these six are plain XAML IsVisible gates, not registry rows, so no row's verdict depends on them.
+    private void NotifyProgramMenuGates()
+    {
         OnPropertyChanged(nameof(CanInsertVariable));
         OnPropertyChanged(nameof(CanAddEvent));
         OnPropertyChanged(nameof(CanAddCommand));
+        OnPropertyChanged(nameof(CanAddCase));
+        OnPropertyChanged(nameof(CanAddArithmetic));
         OnPropertyChanged(nameof(CanAddCondition));
-        RebuildContext();   // T012/T013: every registry row re-evaluates off the lock/mode state
     }
 
     /// <summary>Leaves programming mode (US-026, Esc), restoring the two locality trees of configuration mode.</summary>

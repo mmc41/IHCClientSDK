@@ -22,6 +22,7 @@ public partial class ProjectInfoWindow : ResultDialog<ProjectInfoData>
     {
         var window = new ProjectInfoWindow();
         window.Populate(current);
+        window.FocusOnOpen(window.ProjNumberBox);   // the first field, selected and ready to overtype, as in every other editor dialog
         return window.ShowDialogForResult(owner);
     }
 

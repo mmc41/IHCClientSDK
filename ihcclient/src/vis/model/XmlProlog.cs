@@ -13,7 +13,9 @@ namespace Ihc.Vis.Model
     /// </summary>
     internal static class XmlProlog
     {
-        private static readonly Regex DeclaredEncoding = new("encoding=[\"']([^\"']+)[\"']", RegexOptions.Compiled);
+        // XML permits whitespace around the '=' in an attribute (encoding = "…"); allow it so the declared-encoding
+        // read (and the project reader's foreign-encoding guard that depends on it) is not bypassed by a legal spacing (review C3).
+        private static readonly Regex DeclaredEncoding = new("encoding\\s*=\\s*[\"']([^\"']+)[\"']", RegexOptions.Compiled);
 
         /// <summary>Drains the stream to a byte array (MemoryStream fast path).</summary>
         public static byte[] ReadAllBytes(Stream stream)

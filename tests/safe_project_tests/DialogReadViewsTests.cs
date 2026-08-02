@@ -76,5 +76,25 @@ namespace Ihc.Vis.Tests
                     "ModemView.Name delegates to the shared ElementView.Name surface");
             });
         }
+
+        // review H1: a loadable-but-quirky library block whose master_date_year is outside 1..9999 must read as
+        // "no usable date" (the documented null contract) — not throw ArgumentOutOfRangeException out of
+        // DateTime.DaysInMonth and crash the properties-dialog read. Project.Modified already guards the same range.
+        [Test]
+        public void FunctionBlockView_MasterDate_YearAbove9999_ReturnsNull_WithoutThrowing()
+        {
+            var fb = new ProjectElement("functionblock", new ElementId(0x600, 0x28),
+                ImmutableArray.Create(("id", "_0x60028"), ("name", "FB"), ("master_type", "1.1.01"),
+                    ("master_date_year", "10000"), ("master_date_month", "6"), ("master_date_day", "15")),
+                ImmutableArray<ProjectElement>.Empty);
+            var root = new ProjectElement("utcs_project", null,
+                ImmutableArray.Create(("version_major", "4"), ("last_unique_id", "_0x600000")),
+                ImmutableArray.Create(fb));
+
+            var view = new FunctionBlockView(new Project(root), fb);
+
+            Assert.That(() => view.MasterDate, Throws.Nothing, "an out-of-range year must not crash the read");
+            Assert.That(view.MasterDate, Is.Null, "an unusable date reads as null");
+        }
     }
 }

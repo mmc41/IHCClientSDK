@@ -413,10 +413,12 @@ namespace Ihc.Vis
         public Session.ToggleLogMark ToggleLogMark(Project project, ElementId logRowId) =>
             new Session.ToggleLogMark(logRowId);
 
-        // Resolves the program owning an `events` container (US-028/US-033), or null when the target is not one.
+        // Resolves the program owning an `events` container (US-028/US-033), or null when the target is not one. The
+        // owner must be a program_simple — the only program that carries events — matching AddProgramEvent/AddPowerEvent's
+        // own RequireTag(…, "program_simple"), so the factory never mints a command those commands would then refuse (A4).
         private static ElementId? ProgramOfEventsContainer(Project project, ElementId containerId) =>
             project.FindById(containerId)?.IsEventsContainer == true
-            && project.FindParent(containerId) is { Id: { } programId } parent && parent.IsProgram
+            && project.FindParent(containerId) is { Id: { } programId } parent && parent.Tag == "program_simple"
                 ? programId : null;
 
         // ---- Metadata family (T008): project info, user texts, enum states, dimmer/modem documentation ----

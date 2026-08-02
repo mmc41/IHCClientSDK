@@ -3,6 +3,7 @@ using System;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
+using Ihc.Vis.Schema;
 
 namespace Ihc.Vis.Session
 {
@@ -37,9 +38,27 @@ namespace Ihc.Vis.Session
         : ProjectCommand
     {
         internal override string Describe(Project project) => "Link scenario";
-        internal override EditVerdict Evaluate(EditContext context) =>
-            context.Index.FindById(SceneOutputId) is not null && context.Index.FindById(ScenesId) is not null
-                ? EditVerdict.Allow : EditVerdict.Refuse("A scene endpoint no longer exists.");
+        internal override EditVerdict Evaluate(EditContext context)
+        {
+            if (context.Index.FindById(SceneOutputId) is null || context.Index.FindById(ScenesId) is not { } scenes)
+            {
+                return EditVerdict.Refuse("A scene endpoint no longer exists.");
+            }
+            // A3: the scenes container's bound output family pins which scene-member kind it accepts, and this command
+            // can only author a relay or dimmer value; a container bound to a family that pins a DIFFERENT kind is
+            // refused cleanly here rather than faulting in the engine's RequireSceneKindMatch. Mirrors that check
+            // (SceneRules.PinnedMemberTagFor) against the index, and the sibling UpdateSceneValue's RequireTag gate.
+            string produced = IsDimmer ? "scene_dimmer" : "scene_relay";
+            if (ElementId.TryParse(scenes.GetAttribute("scene_resource"), out ElementId boundId)
+                && context.Index.FindById(boundId) is { } bound
+                && SceneRules.PinnedMemberTagFor(bound.Tag) is { } pinned
+                && pinned != produced)
+            {
+                return EditVerdict.Refuse(
+                    $"This scenes container takes {pinned} members; a {produced} value cannot be linked here.");
+            }
+            return EditVerdict.Allow;
+        }
         internal override void Execute(ProjectEditor editor) =>
             editor.LinkScene(SceneOutputId, ScenesId, SceneValues.From(Result, IsDimmer));
     }

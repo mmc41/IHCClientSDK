@@ -135,7 +135,7 @@ namespace Ihc.Vis
                 DateOnly? date = null;
                 if (Part("master_date_year") is { } year && Part("master_date_month") is { } month
                     && Part("master_date_day") is { } day
-                    && month is >= 1 and <= 12 && day >= 1 && day <= DateTime.DaysInMonth(year, month))
+                    && year <= 9999 && month is >= 1 and <= 12 && day >= 1 && day <= DateTime.DaysInMonth(year, month))
                     date = new DateOnly(year, month, day);
                 return date;
             }

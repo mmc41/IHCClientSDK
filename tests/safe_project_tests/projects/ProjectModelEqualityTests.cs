@@ -47,6 +47,76 @@ namespace Ihc.Vis.Tests
             Assert.That(a, Is.EqualTo(b));
         }
 
+        // review C1: DefinitionDocumentation is a record whose Resources is an ImmutableDictionary (no value Equals),
+        // so the synthesized equality compared it BY REFERENCE. Content-equal documentation must compare equal,
+        // independent of dictionary identity or build order.
+        [Test]
+        public void DefinitionDocumentation_SameContent_DifferentDictionaries_AreEqual()
+        {
+            var a = new DefinitionDocumentation("overview",
+                ImmutableDictionary<string, string>.Empty.Add("In", "help A").Add("Out", "help B"));
+            var b = new DefinitionDocumentation("overview",
+                ImmutableDictionary<string, string>.Empty.Add("Out", "help B").Add("In", "help A"));   // built in a different order
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(a, Is.EqualTo(b));
+                Assert.That(a.GetHashCode(), Is.EqualTo(b.GetHashCode()));
+            });
+        }
+
+        [Test]
+        public void DefinitionDocumentation_DifferingResourceText_AreNotEqual()
+        {
+            var a = new DefinitionDocumentation("s", ImmutableDictionary<string, string>.Empty.Add("In", "x"));
+            var b = new DefinitionDocumentation("s", ImmutableDictionary<string, string>.Empty.Add("In", "y"));
+
+            Assert.That(a, Is.Not.EqualTo(b));
+        }
+
+        // review C1 propagation: a definition record carries Documentation, so once it is value-equal the whole
+        // definition compares by value even when the two Documentation instances were built independently.
+        [Test]
+        public void ProductDefinition_EqualDocumentation_PropagatesToRecordEquality()
+        {
+            ProjectElement body = Leaf("product_dataline", ("name", "P"));
+            ProductDefinition Def() => new ProductDefinition("_0x2101", "P", "cat", body)
+            {
+                Documentation = new DefinitionDocumentation("d", ImmutableDictionary<string, string>.Empty.Add("k", "v")),
+            };
+            ProductDefinition a = Def();
+            ProductDefinition b = Def();   // independently built Documentation instances
+
+            Assert.That(a, Is.EqualTo(b));
+        }
+
+        // review F2: FunctionBlockDefinition.ExplicitCloseIds is an ImmutableHashSet, previously reference-compared by
+        // the synthesized equality. Content-equal blocks with independently-built close-id sets must compare equal,
+        // while a genuinely different set stays unequal.
+        [Test]
+        public void FunctionBlockDefinition_ExplicitCloseIds_ComparedBySetContent()
+        {
+            ProjectElement body = Leaf("functionblock", ("name", "FB"));
+            FunctionBlockDefinition Def(params ElementId[] closeIds) =>
+                new FunctionBlockDefinition("1.1.01", "e", "Kip", "1.1.01.e. Kip", "cat", body)
+                {
+                    ExplicitCloseIds = ImmutableHashSet.CreateRange(closeIds),
+                };
+
+            FunctionBlockDefinition ab = Def(new ElementId(1, 2), new ElementId(3, 4));
+            FunctionBlockDefinition ba = Def(new ElementId(3, 4), new ElementId(1, 2));   // same set, different insertion order
+            FunctionBlockDefinition one = Def(new ElementId(1, 2));
+            FunctionBlockDefinition oneAgain = Def(new ElementId(1, 2));
+            FunctionBlockDefinition other = Def(new ElementId(9, 9));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(ab, Is.EqualTo(ba), "same set, different insertion order → equal");
+                Assert.That(one.GetHashCode(), Is.EqualTo(oneAgain.GetHashCode()));
+                Assert.That(one, Is.Not.EqualTo(other), "a different close set is unequal");
+            });
+        }
+
         [Test]
         public void ProjectValidationResult_ComparesErrorsByValue()
         {

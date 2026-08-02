@@ -8,9 +8,11 @@ using Ihc.Vis.Session;
 namespace ihc_openvisual.Views;
 
 /// <summary>
-/// The modal product documentation-properties dialog (US-011): Name, a <i>Location</i> drop-down of localities, and
-/// the free-text Note, Cable type, Cable numbering, Identification code and Light group fields. Returns the edited
-/// <see cref="ProductPropertiesResult"/>, or null on Cancel.
+/// The modal product documentation-properties dialog (US-011): Name, Position, and the free-text Note, Cable type,
+/// Cable numbering, Identification code and Light group fields, plus the terminal-addressing grids (US-012).
+/// Returns the edited <see cref="ProductPropertiesResult"/>, or null on Cancel.
+/// <para>There is deliberately no <i>Location</i> field: moving a product to another locality is a tree operation,
+/// not a dialog field (A-13). The product's current locality is carried through the dialog untouched.</para>
 /// </summary>
 public partial class ProductPropertiesWindow : ResultDialog<ProductPropertiesResult>
 {
@@ -42,6 +44,11 @@ public partial class ProductPropertiesWindow : ResultDialog<ProductPropertiesRes
         var outputs = terminals.Where(t => t.IsOutput).ToList();
         window.InputsList.ItemsSource = inputs;
         window.OutputsList.ItemsSource = outputs;
+        // Pre-select the first row of each grid so "Configure input/output" always acts on a terminal the installer
+        // can SEE selected. The button used to silently fall back to the first row when nothing was selected, which
+        // addressed terminal #1 with no indication that it was the one being configured.
+        window.InputsList.SelectedIndex = inputs.Count > 0 ? 0 : -1;
+        window.OutputsList.SelectedIndex = outputs.Count > 0 ? 0 : -1;
         window.ConfigInputButton.IsEnabled = inputs.Count > 0;    // disabled when the product has no input terminals
         window.ConfigOutputButton.IsEnabled = outputs.Count > 0;
         window.TerminalsPanel.IsVisible = terminals.Count > 0;
@@ -68,8 +75,9 @@ public partial class ProductPropertiesWindow : ResultDialog<ProductPropertiesRes
 
     private void ConfigureSelected(ListBox list)
     {
-        if ((list.SelectedItem as ProductTerminal ?? list.ItemsSource?.OfType<ProductTerminal>().FirstOrDefault())
-            is { } terminal)
+        // The selection is the only source: the grids are pre-selected on open, so "nothing selected" now means the
+        // installer actively cleared it — configuring the first row anyway would address a terminal they did not pick.
+        if (list.SelectedItem is ProductTerminal terminal)
         {
             CloseWith(configureTerminalPinId: terminal.PinId);
         }

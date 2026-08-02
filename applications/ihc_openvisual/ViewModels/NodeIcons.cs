@@ -43,6 +43,10 @@ public static class NodeIcons
         "resource_humidity_level" => "/Assets/var-humidity.svg",
         "resource_holiday" => "/Assets/var-holiday.svg",
         "resource_enum" => "/Assets/var-enum.svg",
+        // The S0/meter power & energy types are UNIT-NAMED element tags, not resource_* ones (icon_codes.md §3b),
+        // and carry no `icon` code — so without these four cases they fell through to the neutral fallback and every
+        // meter variable rendered as a locality. All four share one glyph, as the doc and the report mapping specify.
+        "kW" or "kWh" or "W" or "Wh" => "/Assets/var-energy.svg",
         "inputs" => "/Assets/section-input.svg",
         "outputs" => "/Assets/section-output.svg",
         "settings" => "/Assets/section-settings.svg",

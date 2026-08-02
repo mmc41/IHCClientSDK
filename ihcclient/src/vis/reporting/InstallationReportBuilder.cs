@@ -271,8 +271,14 @@ namespace Ihc.Vis.Reporting
                 : Unknown;
         }
 
-        // The numeric packed address value for sorting (B4); unaddressed/unparseable sorts first (A7).
-        private static long SortValue(ProjectElement terminal) =>
-            HexToken.ParseValueOrDefault(terminal.GetAttribute("address_dataline"), -1);
+        // The numeric packed address value for sorting (B4); unaddressed/unparseable sorts first (A7). A packed value
+        // of 0 (an explicit "_0x0") renders as unaddressed through AddressLabel (DatalineAddress.TryParse refuses a
+        // value <= 0), so it must SORT as unaddressed too — floor any value <= 0 to the same -1 key an absent token
+        // gets, or two identically-displayed "?" rows would order inconsistently (review G1).
+        private static long SortValue(ProjectElement terminal)
+        {
+            long value = HexToken.ParseValueOrDefault(terminal.GetAttribute("address_dataline"), -1);
+            return value <= 0 ? -1 : value;
+        }
     }
 }

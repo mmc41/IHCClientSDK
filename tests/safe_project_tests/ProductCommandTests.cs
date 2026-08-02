@@ -23,6 +23,20 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
+        public async Task UnlockFunctionBlock_WrongTagId_IsRefused_NotFailed()
+        {
+            // review A5: UnlockFunctionBlock on a non-functionblock id is a clean Refused (RequireTag), not the
+            // Failed the engine's FunctionBlock(id) throw would produce — matching the sibling SaveFunctionBlockToLibrary.
+            Project project = await Load("project3-KompleksWired.vis");
+            ElementId localityId = project.Groups.First().Id!.Value;   // a locality, not a function block
+            ProjectDocumentSession session = Session(project);
+
+            EditOutcome outcome = session.Apply(new UnlockFunctionBlock(localityId, "me", new DateOnly(2026, 1, 1)));
+
+            Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused));
+        }
+
+        [Test]
         public async Task AddProduct_Commits_ReturnsResolvableId()
         {
             Project project = await Load("project3-KompleksWired.vis");

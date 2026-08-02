@@ -1,4 +1,6 @@
 #nullable enable
+using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 
 namespace Ihc.Vis.Model
@@ -37,5 +39,46 @@ namespace Ihc.Vis.Model
         /// (an input/output/setting/variable or a product pin/family resource), or <c>null</c> when that resource carries none.</summary>
         public string? ForResource(string resourceName) =>
             Resources.TryGetValue(resourceName, out string? text) ? text : null;
+
+        // review C1: the synthesized record equality would compare Resources (an ImmutableDictionary, which has no
+        // value Equals) BY REFERENCE, so two content-identical documentations compare unequal — and that propagates
+        // to FunctionBlockDefinition/ProductDefinition, whose Documentation member feeds their record equality. Give
+        // this record content-based value equality (order-independent over the dictionary), the same guarantee
+        // ImmutableArrayValue gives ProjectElement/CatalogGrammar. Summary is Ordinal (help text is data, not culture).
+        public bool Equals(DefinitionDocumentation? other) =>
+            other is not null
+            && string.Equals(Summary, other.Summary, StringComparison.Ordinal)
+            && ResourcesEqual(Resources, other.Resources);
+
+        public override int GetHashCode()
+        {
+            int hash = Summary is null ? 0 : StringComparer.Ordinal.GetHashCode(Summary);
+            foreach (KeyValuePair<string, string> entry in Resources)
+            {
+                // XOR combine so the per-entry contribution is order-independent (a dictionary has no stable order).
+                hash ^= (StringComparer.Ordinal.GetHashCode(entry.Key) * 397) ^ StringComparer.Ordinal.GetHashCode(entry.Value);
+            }
+            return hash;
+        }
+
+        private static bool ResourcesEqual(ImmutableDictionary<string, string> a, ImmutableDictionary<string, string> b)
+        {
+            if (ReferenceEquals(a, b))
+            {
+                return true;
+            }
+            if (a.Count != b.Count)
+            {
+                return false;
+            }
+            foreach (KeyValuePair<string, string> entry in a)
+            {
+                if (!b.TryGetValue(entry.Key, out string? value) || !string.Equals(value, entry.Value, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 }

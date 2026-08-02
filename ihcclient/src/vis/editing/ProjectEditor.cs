@@ -72,15 +72,23 @@ namespace Ihc.Vis.Editing
         /// </summary>
         private static void GuardNoDuplicateIdTokens(ProjectElement root)
         {
-            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var seenIds = new HashSet<ElementId>();
+            var seenTokens = new HashSet<string>(StringComparer.Ordinal);   // fallback for an id attr that is not a parseable token
             void Walk(ProjectElement element)
             {
-                if (element.GetAttribute("id") is { } token && !seen.Add(token))
+                if (element.GetAttribute("id") is { } token)
                 {
-                    throw new InvalidOperationException(
-                        $"Cannot edit: several elements share the id token '{token}', so id-addressed editing " +
-                        "would silently target the wrong element. Repair the duplicate ids first " +
-                        $"({nameof(ProjectAppService)}.{nameof(ProjectAppService.Validate)} lists them).");
+                    // Dedup by the PARSED id, not the raw token: '_0x536' and '_0x0536' are distinct token strings but
+                    // the SAME ElementId, and every id-addressed lookup (e.Id == id) matches by parsed id — so a
+                    // token-only guard let exactly the first-match collision it exists to block slip through (review B3).
+                    bool duplicate = ElementId.TryParse(token, out ElementId id) ? !seenIds.Add(id) : !seenTokens.Add(token);
+                    if (duplicate)
+                    {
+                        throw new InvalidOperationException(
+                            $"Cannot edit: several elements share the id token '{token}', so id-addressed editing " +
+                            "would silently target the wrong element. Repair the duplicate ids first " +
+                            $"({nameof(ProjectAppService)}.{nameof(ProjectAppService.Validate)} lists them).");
+                    }
                 }
                 foreach (ProjectElement child in element.ChildrenOrEmpty())
                 {
@@ -960,7 +968,7 @@ namespace Ihc.Vis.Editing
             // Drop external reciprocal halves BEFORE the clone allocates ids: the vendor's paste consumes no id for
             // a dropped half, so removing them afterwards (copy-then-prune) would leave a phantom id burn. Internal
             // pairs (both ends inside the copy) stay and are remapped by InsertTransform.
-            ProjectElement body = policy switch
+            ProjectElement? body = policy switch
             {
                 LinkCopyPolicy.DropExternal => DropExternalReciprocalHalves(source),
                 // Clipboard paste: unwired AND unaddressed. A data-line terminal is exclusive, so the duplicate
@@ -969,6 +977,13 @@ namespace Ihc.Vis.Editing
                 LinkCopyPolicy.DropAll => ClearDatalineAddresses(DropAllReciprocalHalves(source)),
                 _ => source,
             };
+            if (body is null)
+            {
+                // DropExternal removed the ENTIRE copy: the source root was itself a bare external reciprocal half
+                // (review B2). Return an unassigned id so GroupRef.PasteInto's TryResolve detects "no live element"
+                // and reports it, instead of RemoveById silently keeping the root half and pasting a one-way link.
+                return default;
+            }
             // A catalog product's .def body carries its enum as its first child, so a vendor paste allocates (and
             // discards) that enum's def+value ids between the product id and its first serialized child — the
             // "enum-footprint" id burn. The in-project instance dropped that stub on its original insert;
@@ -1027,6 +1042,11 @@ namespace Ihc.Vis.Editing
             Require(targetParentId);
             RefuseIfLockedTarget(targetParentId, inclusive: true);   // T003: no move INTO a locked block (checked
                                                                      // before the detach, so a refused move is atomic)
+            RefuseIfLockedTarget(sourceId, inclusive: false);        // T003: no move of a node OUT of a locked block —
+                                                                     // tearing a child from a locked subtree mutates it,
+                                                                     // exactly as reorder/delete refuse (review B1). The
+                                                                     // block ITSELF has no locked ancestor, so relocating
+                                                                     // the whole block stays allowed (inclusive:false).
             if (!CanMoveSubtree(sourceId, targetParentId))
             {
                 throw new InvalidOperationException(

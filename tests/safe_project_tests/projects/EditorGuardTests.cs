@@ -20,6 +20,22 @@ namespace Ihc.Vis.Tests
         private static Task<Project> Load(string name) =>
             new ProjectAppService(Settings).Load("testdata/projects/" + name);
 
+        // review B3: '_0x532' and '_0x0532' are different token STRINGS but the SAME ElementId (leading zero in the
+        // counter). Every id-addressed lookup matches by parsed id, so the duplicate-id guard must reject this pair —
+        // a token-only guard passed it through, then id-addressed edits silently targeted the first match.
+        [Test]
+        public void Edit_DuplicateIds_AsLeadingZeroTokenVariants_AreRejected()
+        {
+            ProjectElement root = Node("utcs_project", null,
+                new[] { ("version_major", "4"), ("version_minor", "0"), ("last_unique_id", "_0x7000") },
+                Node("groups", "_0x2031", new[] { ("name", "L") },
+                    Node("group", "_0x532", new[] { ("name", "A") }),
+                    Node("group", "_0x0532", new[] { ("name", "B") })));
+
+            Assert.That(() => new Project(root).Edit(),
+                Throws.InvalidOperationException.With.Message.Contains("share the id"));
+        }
+
         // ----- DeleteById: dangling references block the delete; strays never cascade innocents -----
 
         [Test]

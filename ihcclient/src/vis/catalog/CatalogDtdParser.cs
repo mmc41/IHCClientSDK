@@ -72,14 +72,31 @@ namespace Ihc.Vis.Catalog
                 text = reader.ReadToEnd();
             }
             int doctype = text.IndexOf("<!DOCTYPE", StringComparison.Ordinal);
-            int open = doctype >= 0 ? text.IndexOf('[', doctype) : -1;
-            int close = open >= 0 ? FindSubsetEnd(text, open + 1) : -1;
-            int rootStart = close >= 0 ? text.IndexOf('<', close) : -1;
-            if (rootStart < 0)
+            int rootStart;
+            if (doctype < 0)
             {
-                // No inline DTD subset — the header is the prolog up to the first element after it.
+                // No DOCTYPE at all — the header is the prolog up to the first element after it.
                 int prologEnd = text.IndexOf("?>", StringComparison.Ordinal);
                 rootStart = text.IndexOf('<', prologEnd >= 0 ? prologEnd + 2 : 0);
+            }
+            else
+            {
+                // A '[' that opens the internal subset comes BEFORE the DOCTYPE's own closing '>'. If it does, skip
+                // past the subset's ']>' to the body root; otherwise the DOCTYPE has NO internal subset (a bare
+                // '<!DOCTYPE root>' or an external-id one), and the body root is the first element after the DOCTYPE's
+                // '>'. The old code took the first '<' after the prolog, which landed on '<!DOCTYPE' itself and dropped
+                // the whole DOCTYPE line from the captured head — a silent read→write byte-fidelity loss (review D1).
+                int open = text.IndexOf('[', doctype);
+                int doctypeGt = text.IndexOf('>', doctype);
+                if (open >= 0 && (doctypeGt < 0 || open < doctypeGt))
+                {
+                    int close = FindSubsetEnd(text, open + 1);
+                    rootStart = close >= 0 ? text.IndexOf('<', close) : -1;
+                }
+                else
+                {
+                    rootStart = doctypeGt >= 0 ? text.IndexOf('<', doctypeGt + 1) : -1;
+                }
             }
             return rootStart >= 0 ? text.Substring(0, rootStart) : text;
         }

@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Session;
 
+using static Ihc.Vis.Tests.Tree;
+
 namespace Ihc.Vis.Tests
 {
     /// <summary>
@@ -123,6 +125,34 @@ namespace Ihc.Vis.Tests
                     "the value applied (or was already set)");
                 Assert.That(session.Current!.Equals(viaEngine), Is.True, "matches the engine's own SetSceneValue byte-for-byte");
             });
+        }
+
+        // review A3: LinkScene can only author a relay or dimmer value; a scenes container bound to an output family
+        // that pins a DIFFERENT member kind must be a clean Refused, not the Failed the engine's RequireSceneKindMatch
+        // throw would produce. Here the container is bound to a relay (dataline_output), but IsDimmer asks for a dimmer.
+        [Test]
+        public void LinkScene_MemberKindMismatch_IsRefused_NotFailed()
+        {
+            ProjectElement product = Node("product_dataline", "_0x5153",
+                new[] { ("product_identifier", "_0x2202"), ("name", "Prod") },
+                Node("dataline_output", "_0x615b", new[] { ("name", "Relay") }),
+                Node("scenes", "_0x5349", new[] { ("name", "Scenarier"), ("scene_resource", "_0x615b") }));
+            ProjectElement block = Node("functionblock", "_0x5228", new[] { ("name", "FB") },
+                Node("outputs", "_0x5424", new[] { ("name", "Output") },
+                    Node("resource_output", "_0x6312", new[] { ("name", "SceneOut") })));
+            ProjectElement root = Node("utcs_project", null,
+                new[] { ("version_major", "4"), ("version_minor", "0"), ("last_unique_id", "_0x7000") },
+                Node("groups", "_0x2031", new[] { ("name", "L") },
+                    Node("group", "_0x2132", new[] { ("name", "Stue") }, product, block)));
+            ProjectDocumentSession session = Session(new Project(root));
+            ElementId.TryParse("_0x6312", out ElementId sceneOut);
+            ElementId.TryParse("_0x5349", out ElementId scenes);
+
+            EditOutcome outcome = session.Apply(
+                new LinkScene(sceneOut, scenes, new SceneValueResult(On: true, LevelPercent: 50, RampMinutes: 0, RampSeconds: 0), IsDimmer: true));
+
+            Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused),
+                "a dimmer value cannot bind a relay-bound scenes container");
         }
 
         [Test]

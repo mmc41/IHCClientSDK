@@ -63,6 +63,14 @@ namespace Ihc.Vis.Tests
             Assert.That(() => Load(Latin1("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<utcs_project version_major=\"4\"/>")),
                 Throws.TypeOf<ProjectFormatException>().With.Message.Contains("UTF-8").And.Message.Contains("ISO-8859-1"));
 
+        // review C3: XML permits whitespace around the '=' in an attribute; the foreign-encoding guard must still
+        // fire for 'encoding = "UTF-8"'. The old declared-encoding regex required 'encoding=' with no surrounding
+        // space, so a spaced declaration silently bypassed the guard and the file was transcoded instead of refused.
+        [Test]
+        public void Load_ForeignDeclaredEncoding_WithWhitespaceAroundEquals_ThrowsProjectFormatException() =>
+            Assert.That(() => Load(Latin1("<?xml version=\"1.0\" encoding = \"UTF-8\"?>\r\n<utcs_project version_major=\"4\"/>")),
+                Throws.TypeOf<ProjectFormatException>().With.Message.Contains("UTF-8").And.Message.Contains("ISO-8859-1"));
+
         [Test]
         public void Load_WrongRootElement_ThrowsProjectFormatException() =>
             Assert.That(() => Load(Latin1("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\r\n<product_definition/>")),

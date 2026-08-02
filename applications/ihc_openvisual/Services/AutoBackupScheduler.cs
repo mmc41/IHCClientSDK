@@ -40,7 +40,13 @@ internal sealed class AutoBackupScheduler(
             if (snapshot is null)
                 return;
             backup.EnsureDirectory();
-            await service.Save(snapshot, backup.RecoveryProjectPath);
+            // ConfigureAwait(false) on the WRITE too, not just on the lock: the change-counter path calls WriteAsync
+            // from the UI thread, where an uncontended semaphore completes synchronously and leaves the Avalonia
+            // SynchronizationContext current — so this await would post its continuation back to the UI thread. That
+            // continuation is what releases the lock, and Dispose() (App's ShutdownRequested, also the UI thread)
+            // blocks on the same lock — quitting during a backup write would deadlock. Legal here for the documented
+            // reason: this whole path only READS the lock-serialized document (crudarch D04).
+            await service.Save(snapshot, backup.RecoveryProjectPath).ConfigureAwait(false);
             backup.WriteMarker(origin, timeProvider.GetUtcNow());
         }
         catch (Exception ex)

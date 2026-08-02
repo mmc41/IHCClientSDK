@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -41,9 +42,14 @@ public partial class DataTablesViewModel : ViewModelBase, ihc_openvisual.Service
         SystemTables.Clear();
         foreach (DataTableView table in model.SystemTables)
             SystemTables.Add(table);
+        // Reload replaces every row with a fresh instance, and an edited row is no longer VALUE-equal to the one that
+        // was selected — so without re-selecting by id the caret vanished after each Add/Edit and a second edit
+        // needed a manual re-select first.
+        string? selectedId = SelectedUserText?.Id;
         UserTexts.Clear();
         foreach (UserText text in model.UserTexts)
             UserTexts.Add(new UserTextItem(text.Id, text.Text));
+        SelectedUserText = selectedId is null ? null : UserTexts.FirstOrDefault(t => t.Id == selectedId);
     }
 
     [RelayCommand]
