@@ -29,7 +29,7 @@ namespace Ihc.Vis.Tests
         };
 
         private static string GeneratedDir =>
-            Path.Combine(VendorCorpus.RequireRepoRoot(), "ihcclient", "src", "vis", "catalog", "generated");
+            Path.Combine(TestRepository.RequireRoot(), "ihcclient", "src", "vis", "catalog", "generated");
 
         [Test]
         public void GeneratedCatalog_AndBuilders_CarryNoDtdText()
@@ -37,8 +37,8 @@ namespace Ihc.Vis.Tests
             var offenders = new List<string>();
             IEnumerable<string> targets = GeneratedFiles.Select(f => Path.Combine(GeneratedDir, f)).Concat(new[]
             {
-                Path.Combine(VendorCorpus.RequireRepoRoot(), "ihcclient", "src", "vis", "products", "ProductDefinitionBuilder.cs"),
-                Path.Combine(VendorCorpus.RequireRepoRoot(), "ihcclient", "src", "vis", "functionblocks", "FunctionBlockDefinitionBuilder.cs"),
+                Path.Combine(TestRepository.RequireRoot(), "ihcclient", "src", "vis", "products", "ProductDefinitionBuilder.cs"),
+                Path.Combine(TestRepository.RequireRoot(), "ihcclient", "src", "vis", "functionblocks", "FunctionBlockDefinitionBuilder.cs"),
             });
             foreach (string path in targets)
             {
@@ -56,7 +56,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void CatalogNamespace_CarriesDtdDeclarationTokens_OnlyInEmitterAndParser()
         {
-            string catalogDir = Path.Combine(VendorCorpus.RequireRepoRoot(), "ihcclient", "src", "vis", "catalog");
+            string catalogDir = Path.Combine(TestRepository.RequireRoot(), "ihcclient", "src", "vis", "catalog");
             var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "CatalogDtdEmitter.cs", "CatalogDtdParser.cs",

@@ -14,31 +14,31 @@ namespace Ihc.Vis.Tests
     /// <summary>
     /// Phase H fidelity gate for the generated <see cref="BuiltInCatalog"/> function-block catalog.
     /// <list type="bullet">
-    /// <item><b>Install-gated differential</b> — every code-authored block reduces to the same canonical component
-    /// <see cref="CatalogDiscovery.FromInstallDir"/> loads from the matching vendor <c>.ifb</c> (position-paired,
+    /// <item><b>Reference-catalog differential</b> — every code-authored block reduces to the same canonical component
+    /// <see cref="CatalogDiscovery.FromInstallDir"/> loads from the matching reference <c>.ifb</c> (position-paired,
     /// path-sorted, so all 72 — the four master_type-duplicating favorites included — are checked).</item>
-    /// <item><b>Install-free round-trip</b> — an embedded block inserts into a fresh project, saves and re-loads
-    /// structurally equal, with no IHC Visual install present.</item>
+    /// <item><b>Reference-independent round-trip</b> — an embedded block inserts into a fresh project, saves and re-loads
+    /// structurally equal without reading the configured reference directory.</item>
     /// <item><b>Favorites / by-name</b> — the four favorites that duplicate a master_type are all listed, with the
     /// real-category copy winning the last-wins lookup; blocks resolve by display name.</item>
-    /// <item><b>Documentation</b> — each block carries the syn_en help text baked into the generated source, matching a
-    /// fresh parse of the sibling <c>syn_en*.md</c>.</item>
+    /// <item><b>Documentation</b> — each block carries the syn_en help text baked into the generated source
+    /// (reference-independent; a reference catalog need not ship any <c>.md</c> help documents).</item>
     /// </list>
     /// </summary>
     public class BuiltInCatalogFunctionBlockDifferentialTests
     {
         [Test]
-        public void EveryFunctionBlock_MatchesInstallDir()
+        public void EveryFunctionBlock_MatchesReferenceCatalog()
         {
-            ICatalog installed = VendorCorpus.InstalledOrIgnore(VendorCorpus.ResolveCorpusThenInstall(), "block differential");
+            ICatalog reference = ReferenceCatalog.OpenOrIgnore("block differential");
             ICatalog built = new BuiltInCatalog();
 
-            Assert.That(built.FunctionBlocks.Count, Is.EqualTo(installed.FunctionBlocks.Count),
+            Assert.That(built.FunctionBlocks.Count, Is.EqualTo(reference.FunctionBlocks.Count),
                 "the generated catalog registers exactly the discovered blocks (favorites duplicates included)");
 
-            for (int i = 0; i < installed.FunctionBlocks.Count; i++)
+            for (int i = 0; i < reference.FunctionBlocks.Count; i++)
             {
-                FunctionBlockDefinition expected = installed.FunctionBlocks[i];
+                FunctionBlockDefinition expected = reference.FunctionBlocks[i];
                 FunctionBlockDefinition actual = built.FunctionBlocks[i];
                 Assert.Multiple(() =>
                 {
@@ -49,25 +49,25 @@ namespace Ihc.Vis.Tests
                     Assert.That(actual.CategoryPath, Is.EqualTo(expected.CategoryPath), $"[{i}] category path");
                 });
                 // The structured grammar is value-comparable: the generated block must carry the exact grammar the
-                // install-dir parse yields (declarations, prolog datum, DOCTYPE root — the D1 primary model).
+                // reference-catalog parse yields (declarations, prolog datum, DOCTYPE root — the D1 primary model).
                 Assert.That(actual.Grammar, Is.EqualTo(expected.Grammar), $"[{i}] structured grammar");
-                VendorCorpus.AssertStructural(
-                    $"Generated function block '{expected.DisplayName}' differs from the install-dir .ifb.",
+                ReferenceCatalog.AssertStructural(
+                    $"Generated function block '{expected.DisplayName}' differs from the reference-catalog .ifb.",
                     DefinitionNormalizer.Normalize(expected.Body, expected.Grammar),
                     DefinitionNormalizer.Normalize(actual.Body, expected.Grammar));
             }
         }
 
         [Test]
-        public void EmittedFunctionBlock_InsertsAndRoundTrips_WithoutInstall()
+        public void EmittedFunctionBlock_InsertsAndRoundTrips_WithoutReferenceCatalog()
         {
-            var catalog = new BuiltInCatalog();   // no IhcVisualInstallDir involved
+            var catalog = new BuiltInCatalog();   // no reference catalog directory involved
             var app = new ProjectAppService(TestSetup.Settings, catalog,
                 new Microsoft.Extensions.Time.Testing.FakeTimeProvider(
                     new DateTimeOffset(2026, 7, 7, 12, 0, 0, TimeSpan.Zero)));
             Project blank = app.CreateNew(new ProjectDetails("P", "I", "DK"));
 
-            FunctionBlockDefinition block = catalog.FunctionBlock("1.1.01");   // a stock block, resolved install-free
+            FunctionBlockDefinition block = catalog.FunctionBlock("1.1.01");   // resolved without reading the reference catalog
             ProjectEditor editor = blank.Edit();
             editor.Group("Stue").AddFunctionBlock(block);
             Project built = editor.ToProject();
@@ -76,7 +76,8 @@ namespace Ihc.Vis.Tests
             app.Save(built, ms, ProjectSaveOptions.PreserveExistingMetadata).GetAwaiter().GetResult();
             Project reloaded = app.Load(new MemoryStream(ms.ToArray())).GetAwaiter().GetResult();
 
-            Assert.That(reloaded.Equals(built), Is.True, "the inserted block round-trips structurally, no install present");
+            Assert.That(reloaded.Equals(built), Is.True,
+                "the inserted block round-trips structurally without reading the reference catalog");
         }
 
         [Test]
@@ -112,11 +113,11 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
-        public void EveryBlock_CarriesBakedSynEnDocumentation_InstallFree()
+        public void EveryBlock_CarriesBakedSynEnDocumentation_WithoutReferenceCatalog()
         {
             ICatalog catalog = new BuiltInCatalog();
 
-            // The syn_en help text is baked into the generated source, so it is present with no install dir.
+            // The syn_en help text is baked into the generated source, so no reference catalog is read.
             FunctionBlockDefinition kip = catalog.FunctionBlock("1.1.01");
             Assert.Multiple(() =>
             {
@@ -129,38 +130,6 @@ namespace Ihc.Vis.Tests
             int documented = catalog.FunctionBlocks.Count(b => b.Documentation.Summary is { Length: > 0 });
             Assert.That(documented, Is.GreaterThan(catalog.FunctionBlocks.Count / 2),
                 "most blocks carry baked documentation");
-        }
-
-        [Test]
-        public void Documentation_MatchesFreshSynEnParse()
-        {
-            // Doc-equality is corpus-only: the baked syn_en text comes from the repo corpus the catalog was
-            // generated from, and (unlike the version-stable bodies) help text differs across IHC Visual
-            // versions — a configured-install fallback would fail on wording, not on machinery.
-            string? dir = VendorCorpus.CorpusDir();
-            if (dir is null)
-            {
-                Assert.Ignore("Repo corpus (tmp/orginstall) not present; skipping corpus-gated doc-equality.");
-            }
-            IReadOnlyList<string> files = Directory
-                .EnumerateFiles(Path.Combine(dir!, "FunctionBlocks"), "*.ifb", SearchOption.AllDirectories)
-                .OrderBy(p => p, StringComparer.Ordinal)
-                .ToArray();
-            ICatalog built = new BuiltInCatalog();
-            Assert.That(built.FunctionBlocks.Count, Is.EqualTo(files.Count), "block count matches the install .ifb count");
-
-            for (int i = 0; i < files.Count; i++)
-            {
-                DefinitionDocumentation expected =
-                    FunctionBlockDocReader.ForFunctionBlock(files[i], synEnOnly: true) ?? DefinitionDocumentation.Empty;
-                DefinitionDocumentation actual = built.FunctionBlocks[i].Documentation;
-                Assert.Multiple(() =>
-                {
-                    Assert.That(actual.Summary, Is.EqualTo(expected.Summary), $"[{i}] {Path.GetFileName(files[i])} summary");
-                    Assert.That(actual.Resources, Is.EquivalentTo(expected.Resources),
-                        $"[{i}] {Path.GetFileName(files[i])} per-resource docs");
-                });
-            }
         }
 
     }

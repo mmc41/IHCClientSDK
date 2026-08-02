@@ -1,26 +1,16 @@
-using System.IO;
 using System.Linq;
 
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// Phase-3 gate (a), install-dir-gated: every discovered <c>.def</c>/<c>.ifb</c> parses, and the catalog
-    /// surfaces the expected products/function blocks by their stable lookup keys (spec ch. 09). Skips gracefully
-    /// when no IHC Visual install is configured.
+    /// Phase-3 gate (a), reference-catalog-gated: every discovered <c>.def</c>/<c>.ifb</c> parses, and the catalog
+    /// surfaces the expected products/function blocks by their stable lookup keys (spec ch. 09). The reference
+    /// directory is specified by <see cref="IhcSettings.IhcVisualInstallDir"/>; the tests skip when it is unset.
     /// </summary>
     public class CatalogDiscoveryTests
     {
-        private static IhcSettings Settings => TestSetup.Settings;
-
-        private static ICatalog RequireCatalog()
-        {
-            string dir = Settings.IhcVisualInstallDir;
-            if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
-            {
-                Assert.Ignore($"No IHC Visual install dir configured ('{dir}'); skipping install-dir-gated test.");
-            }
-            return CatalogDiscovery.FromInstallDir(dir);
-        }
+        private static ICatalog RequireCatalog() =>
+            ReferenceCatalog.OpenOrIgnore("reference-catalog discovery test");
 
         [Test]
         public void Discovery_ParsesEveryProductAndFunctionBlock()

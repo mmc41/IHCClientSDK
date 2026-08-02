@@ -167,9 +167,21 @@ namespace Ihc.Tests
         /// members of <paramref name="targetTypeFullName"/> (crudarch T022). Distinct from the two scans above:
         /// the subtree may legitimately depend on the target type every other way — hold it, call its OTHER
         /// members — and only the named member calls are forbidden (the stateless one-shot facade methods, once
-        /// interactive edits must go through the document port).</summary>
+        /// interactive edits must go through the document port).
+        ///
+        /// Pass <paramref name="targetTypeFullName"/> as <c>null</c> to ban a member NAME on any declaring type —
+        /// the shape a blanket ban needs (<c>ConfigureAwait</c> is declared on Task, Task&lt;T&gt;, ValueTask,
+        /// ValueTask&lt;T&gt; and the async-enumerable extensions, so enumerating target types would leave holes).
+        /// <paramref name="exemptOriginTypeFullNames"/> is the sanctioned-caller allowlist; origins are normalised
+        /// to their outermost authored type so an exempt type's own async/lambda bodies stay exempt.
+        ///
+        /// Note the deliberate asymmetry with <see cref="AssertMembersCalledOnlyFrom"/>: that rule REQUIRES the
+        /// members to be called (a chokepoint nobody routes through is not being enforced), whereas here zero calls
+        /// is the ideal end state and must stay green — so the only vacuity guard is that call detection works at all.
+        /// </summary>
         public static void AssertDoesNotCallMembers(Architecture arch, string fromNamespaceRoot,
-            string targetTypeFullName, IReadOnlyCollection<string> forbiddenMemberNames, string forbiddenLabel, string because)
+            string? targetTypeFullName, IReadOnlyCollection<string> forbiddenMemberNames, string forbiddenLabel, string because,
+            IReadOnlyCollection<string>? exemptOriginTypeFullNames = null)
         {
             Assert.That(forbiddenMemberNames, Is.Not.Empty,
                 $"{forbiddenLabel}: the forbidden member-name set is empty — this rule would pass vacuously; fix how the set is computed, not the assert");
@@ -183,12 +195,75 @@ namespace Ihc.Tests
                 $"{forbiddenLabel}: no method-call edges were seen at all — the call detection is not working, so this rule cannot be trusted");
 
             var offending = calls
-                .Where(e => e.TargetType == targetTypeFullName
-                            && forbiddenMemberNames.Contains(e.Member))
+                .Where(e => (targetTypeFullName is null || e.TargetType == targetTypeFullName)
+                            && forbiddenMemberNames.Contains(e.Member)
+                            && exemptOriginTypeFullNames?.Contains(OutermostType(e.Origin)) != true)
                 .ToList();
 
             Assert.That(offending, Is.Empty,
                 because + " — offending calls: " + string.Join("; ", offending.Select(e => $"{e.Origin} -> {e.Member}")));
+        }
+
+        /// <summary>A declared type and every type it REACHES — through <c>ref</c>/pointer, <c>Nullable&lt;T&gt;</c>,
+        /// array elements and generic arguments. Shared by both fixtures' reflection rules (the GUI's retained-state
+        /// and purity-zone detectors, the SDK's port-surface scan) so they cannot drift apart in what "the types this
+        /// member involves" means — a divergence that would silently narrow one rule while the other stayed strict.</summary>
+        public static IEnumerable<Type> TypeAndArguments(Type type)
+        {
+            if (type.IsByRef || type.IsPointer)
+                type = type.GetElementType()!;
+            Type core = Nullable.GetUnderlyingType(type) ?? type;
+            yield return core;
+            if (core.IsArray && core.GetElementType() is { } element)
+                foreach (Type inner in TypeAndArguments(element))
+                    yield return inner;
+            if (core.IsGenericType)
+                foreach (Type argument in core.GetGenericArguments())
+                    foreach (Type inner in TypeAndArguments(argument))
+                        yield return inner;
+        }
+
+        /// <summary>Asserts that inside the <paramref name="fromNamespaceRoot"/> subtree, the named members of
+        /// <paramref name="targetTypeFullName"/> are called ONLY from the chokepoint types in
+        /// <paramref name="chokepointTypeFullNames"/>. The complement of <see cref="AssertDoesNotCallMembers"/>:
+        /// there the members are forbidden outright, here they are legal but must have exactly one caller — the
+        /// shape a lifecycle invariant needs ("one owner opens/closes the document"), which no dependency-direction
+        /// rule can express. Call origins are normalised to their outermost authored type, so a call made from a
+        /// lambda or async body inside the chokepoint still counts as the chokepoint's own.</summary>
+        public static void AssertMembersCalledOnlyFrom(Architecture arch, string fromNamespaceRoot,
+            string targetTypeFullName, IReadOnlyCollection<string> chokepointMemberNames,
+            IReadOnlyCollection<string> chokepointTypeFullNames, string forbiddenLabel, string because)
+        {
+            Assert.That(chokepointMemberNames, Is.Not.Empty,
+                $"{forbiddenLabel}: the member-name set is empty — this rule would pass vacuously; fix how the set is computed, not the assert");
+            Assert.That(chokepointTypeFullNames, Is.Not.Empty,
+                $"{forbiddenLabel}: the chokepoint set is empty — every call would be an offence; fix how the set is computed, not the assert");
+
+            var relevant = MethodCallEdges(arch, fromNamespaceRoot)
+                .Where(e => e.TargetType == targetTypeFullName && chokepointMemberNames.Contains(e.Member))
+                .ToList();
+
+            // Vacuity guard: a chokepoint that nobody routes through is not being enforced, it is being ignored. If
+            // these members stop being called at all the rule below would go green by seeing nothing — which is
+            // exactly how a lifecycle rule rots after a refactor renames or inlines the call.
+            Assert.That(relevant, Is.Not.Empty,
+                $"{forbiddenLabel}: no calls to these members were seen anywhere in '{fromNamespaceRoot}' — the rule is watching nothing, so its green result is meaningless");
+
+            var offending = relevant
+                .Where(e => !chokepointTypeFullNames.Contains(OutermostType(e.Origin)))
+                .ToList();
+
+            Assert.That(offending, Is.Empty, because + " — called from outside the chokepoint: "
+                + string.Join("; ", offending.Select(e => $"{e.Origin} -> {e.Member}")));
+        }
+
+        // The authored type a (possibly compiler-generated) origin belongs to: ArchUnitNET renders nested types as
+        // "Outer+Inner", and a call written inside an async body or lambda is emitted on a nested state machine /
+        // display class, so the raw origin of a ProjectWorkflow call can read "…ProjectWorkflow+<StartAsync>d__12".
+        private static string OutermostType(string fullName)
+        {
+            int cut = fullName.IndexOfAny(new[] { '+', '/' });
+            return cut < 0 ? fullName : fullName.Substring(0, cut);
         }
 
         // ArchUnitNET member names carry the signature ("Apply(Ihc.Vis.Projects.Project, ...)") and generic arity

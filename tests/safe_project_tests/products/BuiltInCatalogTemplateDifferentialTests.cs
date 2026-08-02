@@ -7,12 +7,11 @@ using Ihc.Vis.Model;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// Install-gated differential (plan Phase C, C1–C3): the three hand-authored <see cref="BuiltInCatalog"/>
+    /// Reference-catalog differential (plan Phase C, C1–C3): the three hand-authored <see cref="BuiltInCatalog"/>
     /// File→New templates must be <b>structurally identical</b> to what
-    /// <see cref="CatalogDiscovery.FromInstallDir"/> loads from the vendor <c>NewDoc.idf</c>,
-    /// <c>EnumeratorDefinitions.def</c> and <c>fb.def</c> (i.e. their POST-parse, DTD-defaulted shape). Resolves a
-    /// complete IHC Visual install — the configured install dir, or the repo's <c>tmp/orginstall</c> corpus in a
-    /// dev tree — and skips gracefully when neither is present (clean CI).
+    /// <see cref="CatalogDiscovery.FromInstallDir"/> loads from the reference catalog's <c>NewDoc.idf</c>,
+    /// <c>EnumeratorDefinitions.def</c> and <c>fb.def</c> (i.e. their POST-parse, DTD-defaulted shape). The reference
+    /// directory comes only from <see cref="IhcSettings.IhcVisualInstallDir"/>; the tests skip when it is unset.
     /// </summary>
     /// <remarks>
     /// The empty-FB template's <c>InlineDtdBlocks</c> are deliberately excluded from the comparison: the
@@ -21,31 +20,31 @@ namespace Ihc.Vis.Tests
     /// </remarks>
     public class BuiltInCatalogTemplateDifferentialTests
     {
-        private static ICatalog Installed() =>
-            VendorCorpus.InstalledOrIgnore(VendorCorpus.ResolveInstallThenCorpus(), "template differential");
+        private static ICatalog Reference() =>
+            ReferenceCatalog.OpenOrIgnore("template differential");
 
         [Test]
-        public void NewProjectSkeleton_MatchesInstallDir()
+        public void NewProjectSkeleton_MatchesReferenceCatalog()
         {
-            ICatalog installed = Installed();
+            ICatalog reference = Reference();
             ICatalog built = new BuiltInCatalog();
-            AssertStructural(installed.NewProjectSkeleton, built.NewProjectSkeleton);
+            AssertStructural(reference.NewProjectSkeleton, built.NewProjectSkeleton);
         }
 
         [Test]
-        public void BuiltInEnumerators_MatchInstallDir()
+        public void BuiltInEnumerators_MatchReferenceCatalog()
         {
-            ICatalog installed = Installed();
+            ICatalog reference = Reference();
             ICatalog built = new BuiltInCatalog();
-            AssertStructural(installed.BuiltInEnumerators, built.BuiltInEnumerators);
+            AssertStructural(reference.BuiltInEnumerators, built.BuiltInEnumerators);
         }
 
         [Test]
-        public void EmptyFunctionBlockTemplate_BodyAndIdentityMatchInstallDir()
+        public void EmptyFunctionBlockTemplate_BodyAndIdentityMatchReferenceCatalog()
         {
-            ICatalog installed = Installed();
+            ICatalog reference = Reference();
             ICatalog built = new BuiltInCatalog();
-            var expected = installed.EmptyFunctionBlockTemplate;
+            var expected = reference.EmptyFunctionBlockTemplate;
             var actual = built.EmptyFunctionBlockTemplate;
             Assert.Multiple(() =>
             {
@@ -60,7 +59,7 @@ namespace Ihc.Vis.Tests
         }
 
         private static void AssertStructural(ProjectElement expected, ProjectElement actual) =>
-            VendorCorpus.AssertStructural(
-                "Structural mismatch between the code-authored template and the install-dir file.", expected, actual);
+            ReferenceCatalog.AssertStructural(
+                "Structural mismatch between the code-authored template and the reference-catalog file.", expected, actual);
     }
 }

@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using ArchUnitNET.Domain;
 using ArchUnitNET.Loader;
 using Ihc.App;
@@ -12,6 +15,8 @@ using Ihc.Vis.Programs;
 using Ihc.Vis.Reporting;
 using Ihc.Vis.Session;
 using static Ihc.Tests.ArchRuleHelpers;
+// ArchUnitNET.Loader also exports a `Type`; the reflection helpers in this fixture mean System.Type throughout.
+using Type = System.Type;
 
 namespace Ihc.Tests
 {
@@ -97,6 +102,76 @@ namespace Ihc.Tests
         public void Reporting_DoesNotDependOn_MutatingOrIoLayers(string mutatingOrIoNamespace) =>
             AssertNoDependency(Sdk, Subtree(Reporting), mutatingOrIoNamespace,
                 "reports read the project and never mutate it or do IO — Ihc.Vis.Reporting must stay independent of the editing, session and IO layers");
+
+        /// <summary>
+        /// Port-surface purity (archtests T008, proposal §0.3): no type from <c>Ihc.Vis.Editing</c> or
+        /// <c>Ihc.Vis.Io</c> may appear anywhere in <see cref="IProjectDocument"/>'s signatures — return types,
+        /// parameters, generic arguments or event delegate payloads.
+        ///
+        /// The GUI is banned from depending on those two layers, and <see cref="IProjectDocument"/> is the one
+        /// object it holds and drives everything through. So a single future member handing back (say) a
+        /// <c>ProjectEditor</c> would deliver the banned layer to the GUI through the front door, legitimately,
+        /// while every existing GUI-side rule stayed green — a dependency ban is powerless against a type the
+        /// subject is *given*. This closes the port itself rather than policing its callers.
+        ///
+        /// Signature-level, not dependency-level, on purpose: the implementation may of course use the engine
+        /// internally (it IS the session layer). What must not leak is the CONTRACT.
+        /// Armed by <see cref="PortSurfaceScan_IsArmed"/>.
+        /// </summary>
+        [Test]
+        public void DocumentPort_ExposesNoEngineTypes()
+        {
+            var surface = PortSurfaceTypes(typeof(IProjectDocument)).ToList();
+
+            // Vacuity guard: the scan must actually observe the port's own contract types. Without this, a reflection
+            // slip that returned nothing would read as a perfectly pure port.
+            Assert.That(surface, Does.Contain(typeof(Ihc.Vis.Projects.Project)),
+                "the port-surface scan must see the port's real signature types — otherwise its purity verdict is meaningless");
+
+            Assert.That(EngineTypesOn(typeof(IProjectDocument)), Is.Empty,
+                "IProjectDocument must not expose Ihc.Vis.Editing or Ihc.Vis.Io types — the GUI is banned from those layers and reaches everything through this port");
+        }
+
+        /// <summary>Positive control for <see cref="DocumentPort_ExposesNoEngineTypes"/>: the same checker, pointed at
+        /// a synthetic port that leaks an editing type through a return and an IO type through a parameter, must
+        /// report both — proving the scan inspects returns AND parameters rather than passing because it looked at
+        /// neither.</summary>
+        [Test]
+        public void PortSurfaceScan_IsArmed() =>
+            Assert.That(EngineTypesOn(typeof(ISeededLeakyPort)), Has.Count.EqualTo(2),
+                "the port-surface scan must report both the leaked editing return type and the leaked IO parameter");
+
+        // Synthetic violator for the control: the two leak shapes a real port regression would take. (The IO leak
+        // uses ProjectSaveOptions rather than the ProjectSerializer anchor — the latter is a static class, which C#
+        // permits neither as a parameter nor as a return type, so it cannot express a leak at all.)
+        private interface ISeededLeakyPort
+        {
+            ProjectEditor OpenEditor();
+            void WriteWith(ProjectSaveOptions options);
+        }
+
+        // Every type named anywhere in a port's public signatures: property types, method returns and parameters,
+        // and event delegate types — each expanded through Nullable/array/generic arguments.
+        private static IEnumerable<Type> PortSurfaceTypes(Type port) =>
+            port.GetMembers(BindingFlags.Public | BindingFlags.Instance)
+                .SelectMany(DeclaredSignatureTypes)
+                .SelectMany(TypeAndArguments)
+                .Distinct();
+
+        private static IEnumerable<Type> DeclaredSignatureTypes(MemberInfo member) => member switch
+        {
+            PropertyInfo property => new[] { property.PropertyType },
+            EventInfo declaredEvent => new[] { declaredEvent.EventHandlerType! },
+            MethodInfo method => method.GetParameters().Select(parameter => parameter.ParameterType)
+                .Append(method.ReturnType),
+            _ => Enumerable.Empty<Type>(),
+        };
+
+        private static IReadOnlyList<string> EngineTypesOn(Type port) =>
+            PortSurfaceTypes(port)
+                .Where(type => type.Namespace == Editing || type.Namespace == Io)
+                .Select(type => type.FullName!)
+                .ToList();
 
         /// <summary>
         /// The <c>.vis</c> engine is a pure offline file engine: it must stay independent of the SOAP/controller

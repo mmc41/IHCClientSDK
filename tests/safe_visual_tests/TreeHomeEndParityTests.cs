@@ -49,13 +49,15 @@ Assert.That(vm.SelectedInstallationNode, Is.SameAs(vm.InstallationNodes[0]), "Ho
         await vm.InitializeAsync();
         var lastLocalityId = vm.InstallationNodes[0].Children[^1].ElementId!.Value;
         await harness.Session.AddEmptyFunctionBlockAsync(lastLocalityId);
-        var root = vm.InstallationNodes[0];
+        // The block shows in the FUNCTIONS pane — the installation pane nests products only — so the descent
+        // is exercised there (the walk itself is pane-agnostic).
+        var root = vm.FunctionNodes[0];
         var last = root.Children[^1];
         Assert.That(last.Children, Is.Not.Empty, "arrangement: the last locality has an expanded descendant");
         last.IsExpanded = true;
 
-        vm.SelectLastVisibleRowCommand.Execute(false);
+        vm.SelectLastVisibleRowCommand.Execute(true);
 
-        Assert.That(vm.SelectedInstallationNode, Is.SameAs(last.Children[^1]));
+        Assert.That(vm.SelectedFunctionsNode, Is.SameAs(last.Children[^1]));
     }
 }

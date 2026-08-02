@@ -8,10 +8,8 @@ using Ihc;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// Loads optional IHC settings before any test runs. A clean checkout has no ihcsettings.json, so
-    /// the install-dir setting stays empty and install-dir-gated tests skip gracefully (matching the
-    /// pattern in safe_integration_tests). Stage 1 has no running tests, but the field is needed so the
-    /// illustrative authoring-API preview compiles.
+    /// Loads optional settings before any test runs. A clean checkout has no ihcsettings.json, so the reference
+    /// catalog option stays empty and disk-backed catalog comparisons skip gracefully.
     /// </summary>
     [SetUpFixture]
     public class TestSetup
