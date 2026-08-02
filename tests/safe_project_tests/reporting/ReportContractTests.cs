@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
+using Ihc.Tests.Shared;
 using Ihc.Vis.Reporting;
 
 namespace Ihc.Vis.Tests
@@ -16,14 +17,9 @@ namespace Ihc.Vis.Tests
     /// </summary>
     public class ReportContractTests
     {
-        /// <summary>The pinned report clock (S10) — also what makes two generation calls byte-comparable.</summary>
-        private sealed class ReportClock : TimeProvider
-        {
-            public override DateTimeOffset GetUtcNow() => new(2026, 7, 30, 12, 0, 0, TimeSpan.Zero);
-            public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
-        }
-
-        private static ProjectAppService App() => new(TestSetup.Settings, new BuiltInCatalog(), new ReportClock());
+        // The pinned report clock (S10) is also what makes two generation calls byte-comparable.
+        private static ProjectAppService App() =>
+            new(TestSetup.Settings, new BuiltInCatalog(), ReportOracles.Clock());
 
         private static Project Load() =>
             App().Load(new MemoryStream(TestData.ReadBytes(Path.Combine("projects", "project5-Dokumentation.vis"))))

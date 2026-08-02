@@ -25,7 +25,7 @@ namespace Ihc.Vis.Reporting
     /// </summary>
     internal static class FunctionBlockReportBuilder
     {
-        private const string Title = "Functionsblok dokumentation";
+        private static readonly string Title = ReportTitles.For(ReportKind.FunctionBlocks);
 
         // The vendor-scope variable types the settings/internalsettings sections render (staleness gaps —
         // holiday/humidity/lux/energy — stay omitted in Standard; register C owns their future).
@@ -70,24 +70,19 @@ namespace Ihc.Vis.Reporting
             var shapes = ImmutableArray.CreateBuilder<ReportShape>();
             shapes.Add(FullModeShapes.MetaLine(project, generatedAt));
             shapes.Add(FullModeShapes.ProjektBlock(project));
-            foreach (ProjectElement locality in Localities(project))
+            foreach (ProjectElement locality in TreeIndex.Localities(project))
             {
                 foreach (ProjectElement block in locality.ChildrenOrEmpty().Where(c => c.Tag == "functionblock"))
                 {
-                    shapes.Add(BuildBlock(block, index));
+                    shapes.Add(BuildBlock(project, block, index));
                 }
             }
             shapes.AddRange(FullModeShapes.FindingsAppendix(project, index));
-            return new ReportShapeDocument(ReportKind.FunctionBlocks, Title, shapes.ToImmutable());
+            // The FB report's first shape sits directly under the h1 with no blank separator.
+            return new ReportShapeDocument(Title, shapes.ToImmutable(), TitleHugsFirstShape: true);
         }
 
-        // U5: every group in document order, nesting flattened.
-        private static IEnumerable<ProjectElement> Localities(Project project) =>
-            project.Child("groups") is { } groups
-                ? groups.Descendants().Where(e => e.Tag == "group")
-                : Enumerable.Empty<ProjectElement>();
-
-        private static FbBlockShape BuildBlock(ProjectElement block, TreeIndex index)
+        private static FbBlockShape BuildBlock(Project project, ProjectElement block, TreeIndex index)
         {
             string name = ReportText.Collapse(block.GetAttribute("name"));
             var rows = ImmutableArray.CreateBuilder<ReportTreeRow>();
@@ -119,18 +114,18 @@ namespace Ihc.Vis.Reporting
                     }
                 }
             }
-            return new FbBlockShape(name, block.GetAttribute("id"), Identity(block, index),
-                Paragraphs(name, block.GetAttribute("note")), rows.ToImmutable());
+            return new FbBlockShape(name, block.GetAttribute("id"), Identity(project, block, index),
+                Paragraphs(name, block.GetAttribute("note")), rows.ToImmutable(), Standalone: true);
         }
 
         // The Full-only per-block identity grid: locality (nearest group), the library master type/version,
         // and the locked state as Ja/Nej — A1 masthead placeholders for the blanks.
-        private static ImmutableArray<KeyValueRow> Identity(ProjectElement block, TreeIndex index) =>
+        private static ImmutableArray<KeyValueRow> Identity(Project project, ProjectElement block, TreeIndex index) =>
             ImmutableArray.Create(
-                new KeyValueRow("Lokalitet", ReportText.Display(index.NearestAncestorOrSelf(block, "group")?.GetAttribute("name"))),
+                new KeyValueRow("Lokalitet", ReportText.Display(index.LocalityName(block))),
                 new KeyValueRow("Type", ReportText.Display(block.GetAttribute("master_type"))),
                 new KeyValueRow("Version", ReportText.Display(block.GetAttribute("master_version"))),
-                new KeyValueRow("Låst", block.GetAttribute("locked") == "yes" ? "Ja" : "Nej"));
+                new KeyValueRow("Låst", project.View(block).Locked ? "Ja" : "Nej"));
 
         // ----- B7 heading/paragraph rules -----
 

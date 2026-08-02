@@ -25,7 +25,7 @@ namespace Ihc.Vis.Reporting
         /// <summary>Gap between a key/value grid's key column (and between table columns) in spaces.</summary>
         private const int ColumnGap = 2;
 
-        public static byte[] Write(ReportShapeDocument document, IReportIconProvider? iconProvider = null)
+        public static byte[] Write(ReportShapeDocument document, IReportIconProvider? iconProvider)
         {
             var text = new StringBuilder();
             Line(text, Banner);
@@ -74,7 +74,7 @@ namespace Ihc.Vis.Reporting
                     AppendTable(text, table, margin: 2);
                     break;
                 default:
-                    throw new System.NotSupportedException($"The text writer has no rendering for shape '{shape.GetType().Name}'.");
+                    throw new NotSupportedException($"The text writer has no rendering for shape '{shape.GetType().Name}'.");
             }
         }
 
@@ -169,7 +169,7 @@ namespace Ihc.Vis.Reporting
         // The icon-tree layout: a fixed-width icon column (depth-0 icons pad to 2), then per-BLOCK
         // alignment columns — E for the `=`/note column (floored at 24) computed over annotated rows
         // only, and N for the note column of rows carrying both a value and a note.
-        private static void AppendIconTree(StringBuilder text, System.Collections.Immutable.ImmutableArray<ReportTreeRow> rows, IReportIconProvider? iconProvider)
+        private static void AppendIconTree(StringBuilder text, ImmutableArray<ReportTreeRow> rows, IReportIconProvider? iconProvider)
         {
             var lines = rows.Cast<IconTreeRow>()
                 .Select(row =>
@@ -204,7 +204,7 @@ namespace Ihc.Vis.Reporting
             NamedTreeRow named => named.Name + Chip(named.IdToken) + (named.Detail is null ? string.Empty : " " + named.Detail),
             PlainTreeRow plain => plain.Text + Chip(plain.IdToken),
             NoteTreeRow note => note.Text + (note.LocalitySuffix is null ? string.Empty : $" ({note.LocalitySuffix})"),
-            _ => throw new System.NotSupportedException($"The text writer has no rendering for row '{row.GetType().Name}'."),
+            _ => throw new NotSupportedException($"The text writer has no rendering for row '{row.GetType().Name}'."),
         };
 
         private static string Chip(string? idToken) => idToken is null ? string.Empty : $" (ID {idToken})";

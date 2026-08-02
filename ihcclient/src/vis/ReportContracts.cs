@@ -30,6 +30,23 @@ namespace Ihc.Vis
         Full,
     }
 
+    /// <summary>
+    /// Each report kind's Danish title — the <c>&lt;h1&gt;</c> / underlined heading the generated document
+    /// carries, and the label a frontend shows for that kind. Published so a picker's menu entry and the
+    /// document it produces cannot drift apart; the titles themselves are pinned by the report oracles.
+    /// </summary>
+    public static class ReportTitles
+    {
+        /// <summary>The title of <paramref name="kind"/>'s report.</summary>
+        public static string For(ReportKind kind) => kind switch
+        {
+            ReportKind.Functions => "Funktionsdokumentation",
+            ReportKind.Installation => "Installationsdokumentation",
+            ReportKind.FunctionBlocks => "Functionsblok dokumentation",
+            _ => throw new System.ArgumentOutOfRangeException(nameof(kind), kind, "Unknown report kind."),
+        };
+    }
+
     /// <summary>The report output formats <see cref="ProjectAppService.GenerateReport(Projects.Project, ReportKind, ReportMode, string, System.IO.Stream, IReportIconProvider?)"/> accepts (spec R1/R3). Any other mimetype is rejected with a clear error.</summary>
     public static class ReportMimeTypes
     {

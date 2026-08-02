@@ -79,7 +79,7 @@ public class ReportPickerTests
 
         await picker.SaveAsCommand.ExecuteAsync(null);
 
-        using var expected = new System.IO.MemoryStream();
+        using var expected = new MemoryStream();
         await harness.ProjectService.GenerateReport(harness.Session.Current!, ReportKind.Functions,
             ReportMode.Standard, ReportMimeTypes.PlainText, expected);
         Assert.Multiple(() =>

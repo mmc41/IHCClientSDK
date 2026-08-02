@@ -69,9 +69,19 @@ namespace Ihc.Vis.Addressing
         }
 
         /// <summary>
-        /// The report's <c>"dataline.bit"</c> display for an <c>address_dataline</c> token ("?" when unassigned or
+        /// The vendor's terminal half of a <c>"dataline.bit"</c> label: zero-padded at position 8 and below,
+        /// and shifted by <c>+2</c> above it (the vendor's <c>get_address</c> skips two codes at that
+        /// boundary). The single owner of that rule — the reports compose it with their own separator.
+        /// </summary>
+        public static string TerminalLabel(int terminal) =>
+            terminal > 8
+                ? (terminal + 2).ToString(CultureInfo.InvariantCulture)
+                : "0" + terminal.ToString(CultureInfo.InvariantCulture);
+
+        /// <summary>
+        /// The dotted <c>"dataline.bit"</c> display for an <c>address_dataline</c> token ("?" when unassigned or
         /// zero), replicating the vendor <c>get_address</c>: it reads only the first two hex digits and shows the
-        /// bit as <c>0n</c> for bit ≤ 7, else <c>bit+3</c>.
+        /// terminal per <see cref="TerminalLabel"/>.
         /// </summary>
         public static string ToVendorLabel(string? token, bool isOutput)
         {
@@ -103,10 +113,7 @@ namespace Ihc.Vis.Addressing
             }
             int dataline = (value - 1) / divider + 1;
             int bit = (value - 1) % divider;
-            string low = bit > 7
-                ? (bit + 3).ToString(CultureInfo.InvariantCulture)
-                : "0" + (bit + 1).ToString(CultureInfo.InvariantCulture);
-            return dataline.ToString(CultureInfo.InvariantCulture) + "." + low;
+            return dataline.ToString(CultureInfo.InvariantCulture) + "." + TerminalLabel(bit + 1);
         }
 
         private const string Unknown = "?";

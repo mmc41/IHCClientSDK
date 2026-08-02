@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ihc_openvisual.Services;
 using Ihc;
+using Ihc.Tests.Shared;
 using Ihc.Vis;
 using Ihc.Vis.Catalog;
 using Ihc.Vis.Projects;
@@ -21,12 +22,6 @@ namespace safe_unit_tests;
 /// </summary>
 public class ReportIconStructureTests
 {
-    private sealed class ReportClock : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(2026, 7, 30, 12, 0, 0, TimeSpan.Zero);
-        public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
-    }
-
     private static readonly Regex IconFragment = new(
         """<svg class="icon icon-([a-z0-9-]+)" aria-hidden="true"><use href="#icon-\1"/></svg>""",
         RegexOptions.Compiled);
@@ -34,7 +29,7 @@ public class ReportIconStructureTests
     [Test]
     public async Task DefaultUnicodeHtml_IsTheSvgVariant_WithSpriteRemoved_AndFragmentsAsStandIns()
     {
-        var app = new ProjectAppService(new IhcSettings(), new BuiltInCatalog(), new ReportClock());
+        var app = new ProjectAppService(new IhcSettings(), new BuiltInCatalog(), ReportOracles.Clock());
         Project project = await app.Load(Path.Combine(
             TestContext.CurrentContext.TestDirectory, "testdata", "projects", "project5-Dokumentation.vis"));
 

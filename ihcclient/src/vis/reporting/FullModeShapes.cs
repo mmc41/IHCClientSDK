@@ -28,29 +28,24 @@ namespace Ihc.Vis.Reporting
 
         public static MetaLineShape MetaLine(Project project, DateTimeOffset generatedAt) =>
             new(generatedAt.ToString(GeneratedAtFormat, CultureInfo.InvariantCulture),
-                Display(project.Child("project_info")?.GetAttribute("programmer")));
+                ReportText.Display(project.Programmer));
 
-        public static KeyValueBlockShape ProjektBlock(Project project)
-        {
-            ProjectElement? info = project.Child("project_info");
-            return new KeyValueBlockShape("Projekt", ImmutableArray.Create(
-                    new KeyValueRow("Beskrivelse", Display(info?.GetAttribute("description"))),
-                    new KeyValueRow("Nummer", Display(info?.GetAttribute("number"))),
-                    new KeyValueRow("Programmør", Display(info?.GetAttribute("programmer")))),
+        public static KeyValueBlockShape ProjektBlock(Project project) =>
+            new("Projekt", ImmutableArray.Create(
+                    new KeyValueRow("Beskrivelse", ReportText.Display(project.Description)),
+                    new KeyValueRow("Nummer", ReportText.Display(project.ProjectNumber)),
+                    new KeyValueRow("Programmør", ReportText.Display(project.Programmer))),
                 KeyValueStyle.Meta,
                 ReportMembership.FullOnly);
-        }
 
         /// <summary>The appendix pair: the section break and the four-column findings table.</summary>
         public static IEnumerable<ReportShape> FindingsAppendix(Project project, TreeIndex index)
         {
-            yield return new SectionBreakShape(AppendixHeading, ReportMembership.FullOnly);
+            yield return new SectionBreakShape(AppendixHeading, SectionBreakStyle.Flush, ReportMembership.FullOnly);
             yield return new TableShape(
                 Heading: null,
                 ImmutableArray.Create("Lokalitet", "Produkt", "Terminal", "Fejl"),
-                FindingRows(project, index)
-                    .Select(r => ImmutableArray.Create<ReportCell>(r.Locality, r.Product, r.Terminal, r.Problem))
-                    .ToImmutableArray(),
+                FindingRows(project, index),
                 TableStyle.Plain,
                 ReportMembership.FullOnly);
         }
@@ -58,19 +53,17 @@ namespace Ihc.Vis.Reporting
         /// <summary>
         /// The appendix rows (R10 mapping): one per Documentation finding in the verification API's pinned
         /// order; Lokalitet/Produkt from the subject's ancestry, Terminal only for terminal-level findings,
-        /// Fejl = the check's fixed Danish label. Also feeds the legacy combined report's completeness list
-        /// until that surface retires.
+        /// Fejl = the check's fixed Danish label.
         /// </summary>
-        public static ImmutableArray<(string Locality, string Product, string Terminal, string Problem)> FindingRows(
-            Project project, TreeIndex index)
+        private static ImmutableArray<ImmutableArray<ReportCell>> FindingRows(Project project, TreeIndex index)
         {
-            var rows = ImmutableArray.CreateBuilder<(string, string, string, string)>();
+            var rows = ImmutableArray.CreateBuilder<ImmutableArray<ReportCell>>();
             foreach ((ProjectValidationFinding finding, ProjectElement subject) in DocumentationValidator.CheckWithSubjects(project))
             {
                 bool terminalLevel = subject.Tag is "dataline_input" or "dataline_output";
                 ProjectElement? product = terminalLevel ? index.Parent(subject) : subject;
                 ProjectElement? locality = product is null ? null : index.Parent(product);
-                rows.Add((
+                rows.Add(ImmutableArray.Create<ReportCell>(
                     ReportText.SingleLine(locality?.GetAttribute("name")),
                     ReportText.SingleLine(product?.GetAttribute("name")),
                     terminalLevel ? ReportText.SingleLine(subject.GetAttribute("name")) : string.Empty,
@@ -78,7 +71,5 @@ namespace Ihc.Vis.Reporting
             }
             return rows.ToImmutable();
         }
-
-        private static string Display(string? value) => ReportText.Display(value);
     }
 }

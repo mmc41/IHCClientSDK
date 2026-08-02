@@ -594,24 +594,5 @@ namespace Ihc.Vis.Validation
             }
         }
 
-        private sealed class FindingCollector
-        {
-            private readonly ImmutableArray<ProjectValidationFinding>.Builder items =
-                ImmutableArray.CreateBuilder<ProjectValidationFinding>();
-
-            public void Error(string ruleId, ProjectElement? element, string message) =>
-                Add(ValidationSeverity.Error, ruleId, element, message);
-
-            public void Warning(string ruleId, ProjectElement? element, string message) =>
-                Add(ValidationSeverity.Warning, ruleId, element, message);
-
-            public ImmutableArray<ProjectValidationFinding> ToImmutable() => items.ToImmutable();
-
-            private void Add(ValidationSeverity severity, string ruleId, ProjectElement? element, string message) =>
-                items.Add(new ProjectValidationFinding(severity, ruleId, Locate(element), message));
-
-            private static string? Locate(ProjectElement? element) =>
-                element is null ? null : element.GetAttribute("id") ?? element.Tag;
-        }
     }
 }

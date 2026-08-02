@@ -10,11 +10,13 @@ using Microsoft.Extensions.Logging;
 namespace ihc_openvisual.Services;
 
 /// <summary>
-/// T019 (M6): the reporting collaborator extracted from <see cref="ProjectWorkflow"/> — builds the render-ready
-/// installation / end-user / function-block report models for the open project (US-040/041) over the stateless
-/// <see cref="ProjectAppService"/>, and writes a rendered HTML page to a temp file for the browser to open. Holds
-/// no document state: it reads the current project through the passed getter, so <see cref="ProjectWorkflow"/>
-/// keeps the document lifecycle and just delegates its report methods here.
+/// T019 (M6): the reporting collaborator extracted from <see cref="ProjectWorkflow"/>. The SDK generates the
+/// FINISHED report bytes (content AND formatting) through <see cref="ProjectAppService.GenerateReport(Project,
+/// ReportKind, ReportMode, string, string, IReportIconProvider?)"/>; this collaborator only picks the format and
+/// icon mapping for the requested flow (US-040/041) and routes the returned bytes — to a temp file the OS browser
+/// opens for view/print, or to the target the user chose in the save dialog. Holds no document state: it reads the
+/// current project through the passed getter, so <see cref="ProjectWorkflow"/> keeps the document lifecycle and
+/// just delegates its report methods here.
 /// </summary>
 internal sealed class ProjectReportWorkflow(
     ProjectAppService service, IDialogService dialogs, ILogger logger, Func<Project?> getCurrent)

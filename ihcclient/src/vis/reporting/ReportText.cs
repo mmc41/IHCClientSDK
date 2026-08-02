@@ -27,16 +27,24 @@ namespace Ihc.Vis.Reporting
         /// through HTML, which collapses runs). The other reports keep interior spacing verbatim and use
         /// <see cref="SingleLine"/> instead.
         /// </summary>
-        public static string Collapse(string? value)
+        public static string Collapse(string? value) => CollapseRuns(value, " \r\n\t").Trim();
+
+        /// <summary>The value as one line: each maximal run of CR/LF/TAB characters becomes one space.</summary>
+        public static string SingleLine(string? value) => CollapseRuns(value, "\r\n\t");
+
+        // Each maximal run of separator characters becomes a single space; everything else passes through.
+        // Collapsing the two classes in one pass is equivalent to collapsing line breaks first and spaces
+        // after, because both passes map their run to the same single space.
+        private static string CollapseRuns(string? value, ReadOnlySpan<char> separators)
         {
-            string result = SingleLine(value);
-            if (result.Contains("  ", StringComparison.Ordinal))
+            string result = value ?? string.Empty;
+            if (result.AsSpan().IndexOfAny(separators) >= 0)
             {
                 var text = new StringBuilder(result.Length);
                 bool inRun = false;
                 foreach (char c in result)
                 {
-                    if (c == ' ')
+                    if (separators.Contains(c))
                     {
                         if (!inRun)
                         {
@@ -48,35 +56,6 @@ namespace Ihc.Vis.Reporting
                     {
                         text.Append(c);
                         inRun = false;
-                    }
-                }
-                result = text.ToString();
-            }
-            return result.Trim();
-        }
-
-        /// <summary>The value as one line: each maximal run of CR/LF/TAB characters becomes one space.</summary>
-        public static string SingleLine(string? value)
-        {
-            string result = value ?? string.Empty;
-            if (result.AsSpan().IndexOfAny('\r', '\n', '\t') >= 0)
-            {
-                var text = new StringBuilder(result.Length);
-                bool inBreak = false;
-                foreach (char c in result)
-                {
-                    if (c is '\r' or '\n' or '\t')
-                    {
-                        if (!inBreak)
-                        {
-                            text.Append(' ');
-                            inBreak = true;
-                        }
-                    }
-                    else
-                    {
-                        text.Append(c);
-                        inBreak = false;
                     }
                 }
                 result = text.ToString();

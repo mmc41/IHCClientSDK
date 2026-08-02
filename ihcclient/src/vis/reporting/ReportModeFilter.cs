@@ -6,9 +6,10 @@ namespace Ihc.Vis.Reporting
 {
     /// <summary>
     /// Selects a mode's view of a full-tagged <see cref="ReportShapeDocument"/> (spec R4): Full passes the
-    /// document through untouched; Standard drops <see cref="ReportMembership.FullOnly"/> shapes and strips
-    /// the Full-only row FIELDS (the <c>(ID …)</c> chip and the note's locality suffix). This is the single
-    /// home of mode membership at render time — the writers never see the mode.
+    /// document through untouched; Standard drops <see cref="ReportMembership.FullOnly"/> shapes, strips the
+    /// Full-only row FIELDS (the <c>(ID …)</c> chip and the note's locality suffix), and re-tags the layout
+    /// a stripped shape switches to. This is the single home of mode membership at render time — the writers
+    /// never see the mode.
     /// </summary>
     internal static class ReportModeFilter
     {
@@ -42,6 +43,9 @@ namespace Ihc.Vis.Reporting
             {
                 IdToken = null,
                 Identity = ImmutableArray<KeyValueRow>.Empty,
+                // Without the identity grid the section joins the single-line run: the mode decision becomes
+                // an explicit layout property here, so the writers never infer it from the stripped content.
+                Standalone = false,
                 Rows = block.Rows.Select(StripRow).ToImmutableArray(),
             },
             _ => shape,

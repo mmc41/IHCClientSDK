@@ -824,16 +824,9 @@ namespace Ihc.Vis
         public Task GenerateReport(Project project, ReportKind kind, ReportMode mode, string mimeType,
             Stream output, IReportIconProvider? iconProvider = null)
         {
-            ArgumentNullException.ThrowIfNull(project);
-            ArgumentNullException.ThrowIfNull(mimeType);
             ArgumentNullException.ThrowIfNull(output);
-            return RunTracedAsync(nameof(GenerateReport), async activity =>
-            {
-                byte[] bytes = ReportGenerator.Generate(project, kind, mode, mimeType, iconProvider,
-                    timeProvider.GetLocalNow());
-                await output.WriteAsync(bytes).ConfigureAwait(false);
-                activity?.SetReturnValue(bytes.Length);
-            });
+            return GenerateReportCore(project, kind, mode, mimeType, iconProvider,
+                bytes => output.WriteAsync(bytes).AsTask());
         }
 
         /// <summary>
@@ -844,14 +837,23 @@ namespace Ihc.Vis
         public Task GenerateReport(Project project, ReportKind kind, ReportMode mode, string mimeType,
             string path, IReportIconProvider? iconProvider = null)
         {
+            ArgumentNullException.ThrowIfNull(path);
+            return GenerateReportCore(project, kind, mode, mimeType, iconProvider,
+                bytes => File.WriteAllBytesAsync(path, bytes));
+        }
+
+        // The one generation path both overloads share; they differ only in the sink. The sink runs after
+        // generation succeeds, so a rejected mimetype never leaves a truncated file (or a partial stream).
+        private Task GenerateReportCore(Project project, ReportKind kind, ReportMode mode, string mimeType,
+            IReportIconProvider? iconProvider, Func<byte[], Task> write)
+        {
             ArgumentNullException.ThrowIfNull(project);
             ArgumentNullException.ThrowIfNull(mimeType);
-            ArgumentNullException.ThrowIfNull(path);
             return RunTracedAsync(nameof(GenerateReport), async activity =>
             {
                 byte[] bytes = ReportGenerator.Generate(project, kind, mode, mimeType, iconProvider,
                     timeProvider.GetLocalNow());
-                await File.WriteAllBytesAsync(path, bytes).ConfigureAwait(false);
+                await write(bytes).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 activity?.SetReturnValue(bytes.Length);
             });
         }

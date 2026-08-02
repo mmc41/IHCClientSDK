@@ -36,7 +36,7 @@ namespace Ihc.Vis.Validation
             void Add(string ruleId, ProjectElement subject, string label) =>
                 findings.Add(new SubjectFinding(
                     new ProjectValidationFinding(ValidationSeverity.Warning, ruleId,
-                        subject.GetAttribute("id") ?? subject.Tag, label)
+                        FindingCollector.Locate(subject), label)
                     { Category = ValidationCategory.Documentation },
                     subject));
 

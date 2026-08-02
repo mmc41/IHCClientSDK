@@ -25,7 +25,7 @@ namespace Ihc.Vis.Reporting
     /// </summary>
     internal static class InstallationReportBuilder
     {
-        private const string Title = "Installationsdokumentation";
+        private static readonly string Title = ReportTitles.For(ReportKind.Installation);
         private const string Unknown = "?";
 
         // The component-block families (A8): the detail products every block renders, and the modem tags
@@ -44,19 +44,19 @@ namespace Ihc.Vis.Reporting
             var shapes = ImmutableArray.CreateBuilder<ReportShape>();
             shapes.Add(FullModeShapes.MetaLine(project, generatedAt));
             shapes.Add(FullModeShapes.ProjektBlock(project));
-            shapes.Add(Party("Installatør", project.Child("installer_info")));
-            shapes.Add(Party("Kunde", project.Child("customer_info")));
+            shapes.Add(Party("Installatør", project.InstallerName, project.InstallerAddress, project.InstallerPhone));
+            shapes.Add(Party("Kunde", project.CustomerName, project.CustomerAddress, project.CustomerPhone));
             shapes.Add(ModuleTable("Datalinie inputmoduler", all, "dataline_input_module"));
             shapes.Add(ModuleTable("Datalinie outputmoduler", all, "dataline_output_module"));
 
-            shapes.Add(new SectionBreakShape("Lokaliteter og komponenter", ReportMembership.Common));
+            shapes.Add(new SectionBreakShape("Lokaliteter og komponenter", SectionBreakStyle.Indented, ReportMembership.Common));
             foreach (ProjectElement product in all.Where(e => DetailProductTags.Contains(e.Tag))
                 .Concat(all.Where(e => ModemTags.Contains(e.Tag))))   // U1: modems hoisted after all others
             {
                 shapes.Add(ComponentBlock(product, index));
             }
 
-            shapes.Add(new SectionBreakShape("Datalinjer", ReportMembership.Common));
+            shapes.Add(new SectionBreakShape("Datalinjer", SectionBreakStyle.Indented, ReportMembership.Common));
             shapes.Add(CrossReferenceTable("Datalinie indgange", "Indgang", all, index, isOutput: false));
             shapes.Add(CrossReferenceTable("Datalinie udgange", "Udgang", all, index, isOutput: true));
             shapes.Add(SpecialProductsTable(all, index));
@@ -64,16 +64,16 @@ namespace Ihc.Vis.Reporting
 
             shapes.AddRange(TerminalConnections(all, index));
             shapes.AddRange(FullModeShapes.FindingsAppendix(project, index));
-            return new ReportShapeDocument(ReportKind.Installation, Title, shapes.ToImmutable());
+            return new ReportShapeDocument(Title, shapes.ToImmutable());
         }
 
         // ----- mastheads and module tables -----
 
-        private static KeyValueBlockShape Party(string heading, ProjectElement? info) =>
+        private static KeyValueBlockShape Party(string heading, string? name, string? address, string? phone) =>
             new(heading, ImmutableArray.Create(
-                    new KeyValueRow("Navn", ReportText.Display(info?.GetAttribute("name"))),
-                    new KeyValueRow("Adresse", ReportText.Display(info?.GetAttribute("address"))),
-                    new KeyValueRow("Telefon", ReportText.Display(info?.GetAttribute("phone")))),
+                    new KeyValueRow("Navn", ReportText.Display(name)),
+                    new KeyValueRow("Adresse", ReportText.Display(address)),
+                    new KeyValueRow("Telefon", ReportText.Display(phone))),
                 KeyValueStyle.People,
                 ReportMembership.Common);
 
@@ -96,8 +96,10 @@ namespace Ihc.Vis.Reporting
         private static ComponentBlockShape ComponentBlock(ProjectElement product, TreeIndex index)
         {
             var fields = ImmutableArray.CreateBuilder<KeyValueRow>();
-            fields.Add(new KeyValueRow("Lokalitet", ReportText.Display(Locality(product, index)),
-                index.NearestAncestorOrSelf(product, "group")?.GetAttribute("id")));
+            // The only site needing the locality ELEMENT (its id chips the row), not just its name (U12).
+            ProjectElement? locality = index.NearestAncestorOrSelf(product, "group");
+            fields.Add(new KeyValueRow("Lokalitet", ReportText.Display(locality?.GetAttribute("name")),
+                locality?.GetAttribute("id")));
             fields.Add(new KeyValueRow("Placering", ReportText.Display(product.GetAttribute("position"))));
             fields.Add(new KeyValueRow("Komponent", ReportText.Display(product.GetAttribute("name")),
                 product.GetAttribute("id")));
@@ -166,10 +168,10 @@ namespace Ihc.Vis.Reporting
                         product is null ? Unknown : ReportText.SingleLine(product.GetAttribute(name));
                     return ImmutableArray.Create<ReportCell>(
                         AddressLabel(t),
-                        product is null ? Unknown : ReportText.SingleLine(product.GetAttribute("name")),
+                        ProductAttr("name"),
                         ReportText.SingleLine(t.GetAttribute("name")),
                         ReportText.SingleLine(t.GetAttribute("note")),
-                        product is null ? Unknown : ReportText.SingleLine(Locality(product, index)),
+                        product is null ? Unknown : ReportText.SingleLine(index.LocalityName(product)),
                         ProductAttr("position"),
                         ProductAttr("documentation_tag"),
                         ProductAttr("cabletype"),
@@ -193,7 +195,7 @@ namespace Ihc.Vis.Reporting
                         ReportText.SingleLine(m.GetAttribute("name")),
                         ReportText.SingleLine(m.GetAttribute("name")),   // the vendor prints the name in both columns
                         ReportText.SingleLine(m.GetAttribute("note")),
-                        ReportText.SingleLine(Locality(m, index)),
+                        ReportText.SingleLine(index.LocalityName(m)),
                         ReportText.SingleLine(m.GetAttribute("position")),
                         ReportText.SingleLine(m.GetAttribute("documentation_tag")),
                         ReportText.SingleLine(m.GetAttribute("cablecolour_0V")),
@@ -212,7 +214,7 @@ namespace Ihc.Vis.Reporting
                     .Select(d => ImmutableArray.Create<ReportCell>(
                         new ReportCell(ReportText.SingleLine(d.GetAttribute("name")), d.GetAttribute("id")),
                         ReportText.SingleLine(d.GetAttribute("note")),
-                        ReportText.SingleLine(Locality(d, index)),
+                        ReportText.SingleLine(index.LocalityName(d)),
                         ReportText.SingleLine(d.GetAttribute("position")),
                         ReportText.SingleLine(d.GetAttribute("documentation_tag")),
                         ReportText.SingleLine(d.GetAttribute("cable_colour_minus")),
@@ -232,12 +234,7 @@ namespace Ihc.Vis.Reporting
                 foreach (ProjectElement terminal in product.Descendants()
                     .Where(e => e.Tag is "dataline_input" or "dataline_output"))
                 {
-                    string linkTag = terminal.Tag == "dataline_output" ? "link_to_resource" : "link_from_resource";
-                    ProjectElement? target = terminal.ChildrenOrEmpty()
-                        .Where(c => c.Tag == linkTag)
-                        .Select(linkRow => index.ById(linkRow.GetAttribute("link")))
-                        .FirstOrDefault(t => t is not null);
-                    if (target is null)
+                    if (index.LinkTargets(terminal).FirstOrDefault() is not { } target)
                     {
                         continue;   // unlinked (or dangling) terminals carry no connection row
                     }
@@ -253,7 +250,7 @@ namespace Ihc.Vis.Reporting
                         ReportText.SingleLine(pin?.GetAttribute("note"))));
                 }
             }
-            yield return new SectionBreakShape("Terminal-forbindelser", ReportMembership.FullOnly);
+            yield return new SectionBreakShape("Terminal-forbindelser", SectionBreakStyle.Flush, ReportMembership.FullOnly);
             yield return new TableShape(Heading: null,
                 ImmutableArray.Create("Produkt", "Terminal", "Forbindelse", "Funktion"),
                 rows.ToImmutable(), TableStyle.Plain, ReportMembership.FullOnly);
@@ -261,34 +258,21 @@ namespace Ihc.Vis.Reporting
 
         // ----- shared helpers -----
 
-        /// <summary>U12: a product's locality is its nearest ancestor group's name (any nesting depth).</summary>
-        private static string? Locality(ProjectElement product, TreeIndex index) =>
-            index.NearestAncestorOrSelf(product, "group")?.GetAttribute("name");
-
         private static string Direction(ProjectElement terminal) =>
             terminal.Tag == "dataline_output" ? "Udgang" : "Indgang";
 
-        /// <summary>A2/B3/B5/B6: <c>module . position</c> with the input +2 display offset above position 8,
-        /// zero-padded below; <c>?</c> for an unaddressed/zero/unparseable token.</summary>
+        /// <summary>A2/B3/B5/B6: <c>module . position</c> — the addressing layer's terminal label with this
+        /// report's spaced separator; <c>?</c> for an unaddressed/zero/unparseable token.</summary>
         private static string AddressLabel(ProjectElement terminal)
         {
             bool isOutput = terminal.Tag == "dataline_output";
             return DatalineAddress.TryParse(terminal.GetAttribute("address_dataline"), isOutput, out DatalineAddress address)
-                ? address.DataLine.ToString(CultureInfo.InvariantCulture) + " . " + (address.Terminal > 8
-                    ? (address.Terminal + 2).ToString(CultureInfo.InvariantCulture)
-                    : "0" + address.Terminal.ToString(CultureInfo.InvariantCulture))
+                ? address.DataLine.ToString(CultureInfo.InvariantCulture) + " . " + DatalineAddress.TerminalLabel(address.Terminal)
                 : Unknown;
         }
 
         // The numeric packed address value for sorting (B4); unaddressed/unparseable sorts first (A7).
-        private static long SortValue(ProjectElement terminal)
-        {
-            string? token = terminal.GetAttribute("address_dataline");
-            return token is not null
-                   && token.StartsWith("_0x", StringComparison.Ordinal)
-                   && long.TryParse(token.AsSpan(3), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out long value)
-                ? value
-                : -1;
-        }
+        private static long SortValue(ProjectElement terminal) =>
+            HexToken.ParseValueOrDefault(terminal.GetAttribute("address_dataline"), -1);
     }
 }

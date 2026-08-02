@@ -1,14 +1,18 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 using Ihc.Vis.Model;
+using Ihc.Vis.Projects;
 
 namespace Ihc.Vis.Reporting
 {
     /// <summary>
-    /// Parent pointers, id resolution and ancestor walks over an immutable project tree (which has no parent
-    /// links), built once per report. Keyed by reference so distinct nodes never collide.
+    /// The tree navigation the report builders share: parent pointers, id resolution and ancestor walks over
+    /// an immutable project tree (which has no parent links), built once per report, plus the locality (U5/U12)
+    /// and terminal-link (A5/U2) queries every report kind asks the same way. Keyed by reference so distinct
+    /// nodes never collide.
     /// </summary>
     internal sealed class TreeIndex
     {
@@ -37,16 +41,6 @@ namespace Ihc.Vis.Reporting
         public ProjectElement? ById(string? idToken) =>
             idToken is not null && byId.TryGetValue(idToken, out ProjectElement? element) ? element : null;
 
-        public ProjectElement? Ancestor(ProjectElement element, int levels)
-        {
-            ProjectElement? current = element;
-            for (int i = 0; i < levels && current is not null; i++)
-            {
-                current = Parent(current);
-            }
-            return current;
-        }
-
         /// <summary>The nearest ancestor (or the element itself) with the given tag, or null when none.</summary>
         public ProjectElement? NearestAncestorOrSelf(ProjectElement element, string tag)
         {
@@ -69,5 +63,33 @@ namespace Ihc.Vis.Reporting
             }
             return current;
         }
+
+        /// <summary>U12: an element's locality is its nearest ancestor group's name (any nesting depth), or
+        /// null when it sits outside every group.</summary>
+        public string? LocalityName(ProjectElement element) =>
+            NearestAncestorOrSelf(element, "group")?.GetAttribute("name");
+
+        /// <summary>
+        /// A5/U2: the far-end elements a dataline terminal's links resolve to, in document order. An output's
+        /// links are <c>link_to_resource</c>, an input's <c>link_from_resource</c>; a dangling IDREF resolves
+        /// to nothing and is skipped (the vendor's empty <c>id(@link)</c> node set).
+        /// </summary>
+        public IEnumerable<ProjectElement> LinkTargets(ProjectElement terminal)
+        {
+            string linkTag = terminal.Tag == "dataline_output" ? "link_to_resource" : "link_from_resource";
+            foreach (ProjectElement linkRow in terminal.ChildrenOrEmpty())
+            {
+                if (linkRow.Tag == linkTag && ById(linkRow.GetAttribute("link")) is { } target)
+                {
+                    yield return target;
+                }
+            }
+        }
+
+        /// <summary>U5: every group renders as a top-level locality in document order, nesting flattened.</summary>
+        public static IEnumerable<ProjectElement> Localities(Project project) =>
+            project.Child("groups") is { } groups
+                ? groups.Descendants().Where(e => e.Tag == "group")
+                : Enumerable.Empty<ProjectElement>();
     }
 }

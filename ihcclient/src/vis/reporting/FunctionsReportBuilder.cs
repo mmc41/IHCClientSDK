@@ -21,7 +21,7 @@ namespace Ihc.Vis.Reporting
     /// </summary>
     internal static class FunctionsReportBuilder
     {
-        private const string Title = "Funktionsdokumentation";
+        private static readonly string Title = ReportTitles.For(ReportKind.Functions);
 
         public static ReportShapeDocument Build(Project project, DateTimeOffset generatedAt)
         {
@@ -29,10 +29,10 @@ namespace Ihc.Vis.Reporting
             var index = new TreeIndex(project.Root);
             var rows = ImmutableArray.CreateBuilder<ReportTreeRow>();
 
-            foreach (ProjectElement locality in Localities(project))
+            foreach (ProjectElement locality in TreeIndex.Localities(project))
             {
                 rows.Add(new NamedTreeRow(0, Name(locality), Detail: null, locality.GetAttribute("id")));
-                foreach (ProjectElement product in EndUserProducts(locality))
+                foreach (ProjectElement product in EndUserProducts(project, locality))
                 {
                     string? position = product.GetAttribute("position");
                     rows.Add(new NamedTreeRow(1, Name(product),
@@ -51,18 +51,12 @@ namespace Ihc.Vis.Reporting
             shapes.Add(FullModeShapes.ProjektBlock(project));
             shapes.Add(new TreeShape(rows.ToImmutable()));
             shapes.AddRange(FullModeShapes.FindingsAppendix(project, index));
-            return new ReportShapeDocument(ReportKind.Functions, Title, shapes.ToImmutable());
+            return new ReportShapeDocument(Title, shapes.ToImmutable());
         }
-
-        // U5: every group renders as a top-level locality in document order, nesting flattened.
-        private static IEnumerable<ProjectElement> Localities(Project project) =>
-            project.Child("groups") is { } groups
-                ? groups.Descendants().Where(e => e.Tag == "group")
-                : Enumerable.Empty<ProjectElement>();
 
         // A4 + U12: end-user-flagged dataline/airlink products anywhere under the locality whose NEAREST
         // ancestor group is this locality — a nested group's subtree belongs to that nested locality.
-        private static IEnumerable<ProjectElement> EndUserProducts(ProjectElement locality)
+        private static IEnumerable<ProjectElement> EndUserProducts(Project project, ProjectElement locality)
         {
             foreach (ProjectElement child in locality.ChildrenOrEmpty())
             {
@@ -70,11 +64,11 @@ namespace Ihc.Vis.Reporting
                 {
                     continue;   // its own top-level locality (U5/U12 nearest-ancestor scope)
                 }
-                if (child.Tag is "product_dataline" or "product_airlink" && child.GetAttribute("enduser_report") == "yes")
+                if (child.Tag is "product_dataline" or "product_airlink" && project.View(child).EnduserReport)
                 {
                     yield return child;
                 }
-                foreach (ProjectElement nested in EndUserProducts(child))
+                foreach (ProjectElement nested in EndUserProducts(project, child))
                 {
                     yield return nested;
                 }
@@ -96,18 +90,11 @@ namespace Ihc.Vis.Reporting
         private static void AddNoteRows(ProjectElement terminal, string localityName, TreeIndex index,
             ImmutableArray<ReportTreeRow>.Builder rows)
         {
-            string linkTag = terminal.Tag == "dataline_output" ? "link_to_resource" : "link_from_resource";
-            foreach (ProjectElement linkRow in terminal.ChildrenOrEmpty().Where(c => c.Tag == linkTag))
+            foreach (ProjectElement target in index.LinkTargets(terminal))
             {
-                if (index.ById(linkRow.GetAttribute("link")) is not { } target)
-                {
-                    continue;   // dangling IDREF — the vendor's id(@link) empty node set (U2)
-                }
                 ProjectElement? pin = index.Parent(target);
                 string note = ReportText.SingleLine(pin?.GetAttribute("note"));
-                string fbLocality = pin is { } p && index.NearestAncestorOrSelf(p, "group") is { } fbGroup
-                    ? Name(fbGroup)
-                    : string.Empty;
+                string fbLocality = ReportText.SingleLine(pin is null ? null : index.LocalityName(pin));
                 string? suffix = fbLocality.Length > 0 && fbLocality != localityName ? fbLocality : null;
                 rows.Add(new NoteTreeRow(3, note, suffix));
             }

@@ -15,6 +15,13 @@
     <PackageReference Include="CsCheck" />
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="FakeItEasy" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The report-oracle matrix, naming convention, pinned clock and byte assert, shared with
+         safe_project_tests (which owns the .txt half of the same 24-oracle contract). -->
+    <Compile Include="..\shared\ReportOracles.cs" Link="shared\ReportOracles.cs" />
   </ItemGroup>
 
     <ItemGroup>

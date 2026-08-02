@@ -34,13 +34,12 @@ public sealed partial class ReportPickerViewModel : ObservableObject, IReportPic
         _selectedKind = Kinds.Single(option => option.Kind == preselected);
     }
 
-    /// <summary>The three reports, in the fixed menu order.</summary>
+    /// <summary>The three reports, in the fixed menu order, labelled with the SDK's own report titles so a
+    /// dropdown entry always reads exactly like the heading of the document it generates.</summary>
     public IReadOnlyList<ReportKindOption> Kinds { get; } = new[]
     {
-        new ReportKindOption(ReportKind.Functions, "Funktionsdokumentation"),
-        new ReportKindOption(ReportKind.Installation, "Installationsdokumentation"),
-        new ReportKindOption(ReportKind.FunctionBlocks, "Functionsblok dokumentation"),
-    };
+        ReportKind.Functions, ReportKind.Installation, ReportKind.FunctionBlocks,
+    }.Select(kind => new ReportKindOption(kind, ReportTitles.For(kind))).ToArray();
 
     [ObservableProperty] private ReportKindOption _selectedKind;
 

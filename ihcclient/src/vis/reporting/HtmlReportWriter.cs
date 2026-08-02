@@ -90,16 +90,16 @@ namespace Ihc.Vis.Reporting
             html.Append("</header>\n");
             html.Append($"<h1>{title}</h1>\n");
 
-            // Identity-less function-block sections render as ONE source line per run: blobs concatenate
-            // with no separator, the run is closed by the next shape (or the tail), and it takes the
-            // generic blank separator only when it does not directly follow the h1. A section carrying the
-            // Full identity grid renders as an ordinary blank-separated block instead (the two witnessed
-            // layouts, keyed by shape content).
+            // Run function-block sections render as ONE source line per run: blobs concatenate with no
+            // separator, the run is closed by the next shape (or the tail), and it takes the generic blank
+            // separator only when it does not directly follow the h1. A standalone section renders as an
+            // ordinary blank-separated block instead (the two witnessed layouts, keyed by the shape's own
+            // layout flag).
             bool first = true;
             bool inSectionRun = false;
             foreach (ReportShape shape in document.Shapes)
             {
-                if (shape is FbBlockShape { Identity.IsEmpty: true } runBlock)
+                if (shape is FbBlockShape { Standalone: false } runBlock)
                 {
                     if (!inSectionRun && !first)
                     {
@@ -117,7 +117,7 @@ namespace Ihc.Vis.Reporting
                     }
                     // The FB report's first shape sits directly under the h1 (no blank) — full mode's
                     // meta line as much as std mode's section run.
-                    if (!(first && document.Kind == ReportKind.FunctionBlocks))
+                    if (!(first && document.TitleHugsFirstShape))
                     {
                         html.Append('\n');
                     }
@@ -186,8 +186,8 @@ namespace Ihc.Vis.Reporting
             html.Append("<hr class=\"divider\">");
             (List<TreeNode> nodes, _) = BuildForest(block.Rows, 0, 0);
             AppendFbList(html, nodes, "tree root", iconProvider);
-            // An identity-carrying (Full) section closes on its own line; the std blob stays single-line.
-            html.Append(block.Identity.IsEmpty ? "</section>" : "\n</section>");
+            // A standalone section closes on its own line; a run section's blob stays single-line.
+            html.Append(block.Standalone ? "\n</section>" : "</section>");
         }
 
         private static void AppendFbList(StringBuilder html, List<TreeNode> nodes, string cssClass, IReportIconProvider? iconProvider)
@@ -259,10 +259,7 @@ namespace Ihc.Vis.Reporting
                     AppendTree(html, tree.Rows);
                     break;
                 case SectionBreakShape sectionBreak:
-                    // The shared Full-mode appendix break is kind-independent (byte-identical across the
-                    // three reports), hence unindented; the installation body's own breaks carry the
-                    // installation body indent.
-                    string breakIndent = sectionBreak.Membership == ReportMembership.FullOnly ? string.Empty : "  ";
+                    string breakIndent = sectionBreak.Style == SectionBreakStyle.Indented ? "  " : string.Empty;
                     html.Append(breakIndent).Append("<hr class=\"divider\">\n");
                     html.Append(breakIndent).Append($"<h2>{Escape(sectionBreak.Heading)}</h2>\n");
                     break;
@@ -289,27 +286,24 @@ namespace Ihc.Vis.Reporting
             {
                 case TableStyle.Plain:
                     html.Append("<table>\n");
-                    html.Append("  <tr>").AppendJoin(string.Empty, table.Columns.Select(c => $"<th>{Escape(c)}</th>"))
-                        .Append("</tr>\n");
+                    AppendRow(html, "  ", HeaderCells(table.Columns));
                     foreach (ImmutableArray<ReportCell> row in table.Rows)
                     {
-                        html.Append("  <tr>").AppendJoin(string.Empty, row.Select(c => Cell(c)))
-                            .Append("</tr>\n");
+                        AppendRow(html, "  ", DataCells(row));
                     }
                     html.Append("</table>\n");
                     break;
                 case TableStyle.Module:
                     html.Append("  <table>\n    <thead>\n");
                     html.Append($"    <tr class=\"title-row\"><th colspan=\"{table.Columns.Length}\">{Escape(table.Heading!)}</th></tr>\n");
-                    html.Append("    <tr>").AppendJoin(string.Empty, table.Columns.Select(c => $"<th>{Escape(c)}</th>"))
-                        .Append("</tr>\n    </thead>\n");
+                    AppendRow(html, "    ", HeaderCells(table.Columns));
+                    html.Append("    </thead>\n");
                     if (!table.Rows.IsEmpty)
                     {
                         html.Append("    <tbody>\n");
                         foreach (ImmutableArray<ReportCell> row in table.Rows)
                         {
-                            html.Append("    <tr>").AppendJoin(string.Empty, row.Select(c => Cell(c)))
-                                .Append("</tr>\n");
+                            AppendRow(html, "    ", DataCells(row));
                         }
                         html.Append("    </tbody>\n");
                     }
@@ -342,7 +336,7 @@ namespace Ihc.Vis.Reporting
             html.Append("      <thead>\n");
             html.Append($"      <tr class=\"title-row\"><th colspan=\"{table.Columns.Length}\">{Escape(table.Heading!)}</th></tr>\n");
             html.Append("      <tr>\n");
-            AppendCellChunks(html, table.Columns.Select(c => $"<th>{Escape(c)}</th>"), firstChunk);
+            AppendCellChunks(html, HeaderCells(table.Columns), firstChunk);
             html.Append("      </tr>\n      </thead>\n");
             if (!table.Rows.IsEmpty)
             {
@@ -350,7 +344,7 @@ namespace Ihc.Vis.Reporting
                 foreach (ImmutableArray<ReportCell> row in table.Rows)
                 {
                     html.Append("      <tr>\n");
-                    AppendCellChunks(html, row.Select(c => Cell(c)), firstChunk);
+                    AppendCellChunks(html, DataCells(row), firstChunk);
                     html.Append("      </tr>\n");
                 }
                 html.Append("      </tbody>\n");
@@ -377,16 +371,23 @@ namespace Ihc.Vis.Reporting
             }
             if (component.Terminals is { } terminals)
             {
-                html.Append("    <tr>").AppendJoin(string.Empty, terminals.Columns.Select(c => $"<th>{Escape(c)}</th>"))
-                    .Append("</tr>\n");
+                AppendRow(html, "    ", HeaderCells(terminals.Columns));
                 foreach (ImmutableArray<ReportCell> row in terminals.Rows)
                 {
-                    html.Append("    <tr>").AppendJoin(string.Empty, row.Select(c => Cell(c)))
-                        .Append("</tr>\n");
+                    AppendRow(html, "    ", DataCells(row));
                 }
             }
             html.Append("  </table>\n");
         }
+
+        /// <summary>One <c>&lt;tr&gt;</c> source line: the style's indent, the joined cells, the row close.</summary>
+        private static void AppendRow(StringBuilder html, string indent, IEnumerable<string> cells) =>
+            html.Append(indent).Append("<tr>").AppendJoin(string.Empty, cells).Append("</tr>\n");
+
+        private static IEnumerable<string> HeaderCells(ImmutableArray<string> columns) =>
+            columns.Select(c => $"<th>{Escape(c)}</th>");
+
+        private static IEnumerable<string> DataCells(ImmutableArray<ReportCell> row) => row.Select(Cell);
 
         /// <summary>One data cell: escaped text plus the Full-only id chip when present.</summary>
         private static string Cell(ReportCell cell) => $"<td>{Escape(cell.Text)}{Chip(cell.IdToken)}</td>";

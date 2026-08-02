@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -45,7 +46,7 @@ public sealed class SvgReportIconProvider : IReportIconProvider
     private static readonly Regex Attribute = new(@"([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*""([^""]*)""", RegexOptions.Compiled);
 
     public string? GetFragment(string mimeType, string iconKey) =>
-        mimeType == ReportMimeTypes.Html && ReadAsset(iconKey) is not null
+        mimeType == ReportMimeTypes.Html && Assets.ContainsKey(AssetStem(iconKey))
             ? $"""<svg class="icon icon-{iconKey}" aria-hidden="true"><use href="#icon-{iconKey}"/></svg>"""
             : null;
 
@@ -111,23 +112,38 @@ public sealed class SvgReportIconProvider : IReportIconProvider
         return symbol.Append('>').Append(inner).Append("</symbol>").ToString();
     }
 
-    // The embedded asset for a key ("logo" → openvisual-logo.svg, otherwise <key>.svg), or null when the
-    // key has no shipped glyph — the caller then falls back per the R11 rule.
-    private static string? ReadAsset(string iconKey)
+    // Every shipped Assets/*.svg, read ONCE at type init and keyed by file stem. A single report references
+    // the same handful of icons hundreds of times (1099 instances over 28 distinct keys in the largest
+    // fixture), so a manifest scan plus a stream read per instance dominated generation; the whole asset set
+    // is ~20 KB, so holding it costs less than one such scan.
+    private static readonly FrozenDictionary<string, string> Assets = LoadAssets();
+
+    private static FrozenDictionary<string, string> LoadAssets()
     {
-        string file = (iconKey == LogoKey ? "openvisual-logo" : iconKey) + ".svg";
+        const string marker = ".Assets.";
+        const string extension = ".svg";
         Assembly assembly = typeof(SvgReportIconProvider).Assembly;
-        string? name = assembly.GetManifestResourceNames()
-            .FirstOrDefault(n => n.EndsWith(".Assets." + file, StringComparison.Ordinal));
-        string? content = null;
-        if (name is not null)
+        var assets = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (string name in assembly.GetManifestResourceNames())
         {
-            using Stream stream = assembly.GetManifestResourceStream(name)!;
-            using var reader = new StreamReader(stream);
-            // Reports emit LF-only bytes (spec S06); an asset checked out with CRLF must not leak \r
-            // into the sprite, so line endings normalize here regardless of checkout/embedding EOLs.
-            content = reader.ReadToEnd().Replace("\r\n", "\n");
+            int start = name.LastIndexOf(marker, StringComparison.Ordinal);
+            if (start >= 0 && name.EndsWith(extension, StringComparison.Ordinal))
+            {
+                using Stream stream = assembly.GetManifestResourceStream(name)!;
+                using var reader = new StreamReader(stream);
+                // Reports emit LF-only bytes (spec S06); an asset checked out with CRLF must not leak \r
+                // into the sprite, so line endings normalize here regardless of checkout/embedding EOLs.
+                assets[name[(start + marker.Length)..^extension.Length]] = reader.ReadToEnd().Replace("\r\n", "\n");
+            }
         }
-        return content;
+        return assets.ToFrozenDictionary(StringComparer.Ordinal);
     }
+
+    /// <summary>The asset file stem a key maps to: "logo" → <c>openvisual-logo</c>, otherwise the key itself.</summary>
+    private static string AssetStem(string iconKey) => iconKey == LogoKey ? "openvisual-logo" : iconKey;
+
+    // The embedded asset for a key, or null when the key has no shipped glyph — the caller then falls back
+    // per the R11 rule.
+    private static string? ReadAsset(string iconKey) =>
+        Assets.TryGetValue(AssetStem(iconKey), out string? content) ? content : null;
 }

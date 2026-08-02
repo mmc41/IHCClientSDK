@@ -5,8 +5,10 @@ namespace Ihc.Vis.Reporting
 {
     /// <summary>
     /// Mode membership of a shape (spec R4/D1): <see cref="Common"/> shapes appear in Standard AND Full;
-    /// <see cref="FullOnly"/> shapes only in Full. Declared here in the layout metadata — the writers never
-    /// see the mode (<see cref="ReportModeFilter"/> strips full-only content before writing).
+    /// <see cref="FullOnly"/> shapes only in Full. Read by <see cref="ReportModeFilter"/> alone — the writers
+    /// never see the mode, and never infer it: every layout choice they make keys off an explicit layout
+    /// property (<see cref="SectionBreakStyle"/>, <see cref="FbBlockShape.Standalone"/>, …), never off which
+    /// content a mode happened to strip.
     /// </summary>
     internal enum ReportMembership
     {
@@ -104,12 +106,21 @@ namespace Ihc.Vis.Reporting
     internal sealed record ComponentBlockShape(ImmutableArray<KeyValueRow> Fields, TableShape? Terminals)
         : ReportShape(ReportMembership.Common);
 
+    /// <summary>The HTML indentation of a <see cref="SectionBreakShape"/> (text renders both the same way):
+    /// <see cref="Flush"/> = at column 0 (the shared appendix form), <see cref="Indented"/> = carrying the
+    /// installation body's indent.</summary>
+    internal enum SectionBreakStyle
+    {
+        Flush,
+        Indented,
+    }
+
     /// <summary>
     /// A section break before a titled section (the "Fejl i dokumentation" appendix; the installation and
-    /// FB report sections): HTML renders <c>&lt;hr class="divider"&gt;</c> + <c>&lt;h2&gt;</c>, text a
-    /// full-width dash rule + the heading line.
+    /// FB report sections): HTML renders <c>&lt;hr class="divider"&gt;</c> + <c>&lt;h2&gt;</c> at the
+    /// <see cref="Style"/>'s indent, text a full-width dash rule + the heading line.
     /// </summary>
-    internal sealed record SectionBreakShape(string Heading, ReportMembership Membership)
+    internal sealed record SectionBreakShape(string Heading, SectionBreakStyle Style, ReportMembership Membership)
         : ReportShape(Membership);
 
     /// <summary>
@@ -155,18 +166,19 @@ namespace Ihc.Vis.Reporting
     /// One function block of the FB report: the B7 heading (the block's <c>@name</c>), the Full-only id
     /// chip, the Full-only identity grid (Lokalitet/Type/Version/Låst — stripped to empty in Standard),
     /// the description paragraphs, and the icon-tree rows. The fixed "Anvendelse" kicker label above the
-    /// paragraphs is writer boilerplate, emitted only when paragraphs exist. Sections carrying an identity
-    /// grid render as ordinary blank-separated blocks; identity-less sections join a single-line run (the
-    /// two witnessed layouts, keyed by content, never by mode).
+    /// paragraphs is writer boilerplate, emitted only when paragraphs exist. <see cref="Standalone"/> picks
+    /// between the two witnessed layouts: set, the section renders as an ordinary blank-separated block;
+    /// clear, it joins the single-line section run. <see cref="ReportModeFilter"/> clears it along with the
+    /// identity grid, so the writers pick a layout without ever inferring the mode.
     /// </summary>
-    internal sealed record FbBlockShape(string Heading, string? IdToken, ImmutableArray<KeyValueRow> Identity, ImmutableArray<FbParagraph> Paragraphs, ImmutableArray<ReportTreeRow> Rows)
+    internal sealed record FbBlockShape(string Heading, string? IdToken, ImmutableArray<KeyValueRow> Identity, ImmutableArray<FbParagraph> Paragraphs, ImmutableArray<ReportTreeRow> Rows, bool Standalone)
         : ReportShape(ReportMembership.Common);
 
     /// <summary>
     /// One complete report as shapes (spec D1): the fixed house banner and the <see cref="Title"/> heading
     /// are writer boilerplate; everything below the title is <see cref="Shapes"/> in render order.
-    /// <see cref="Kind"/> is content metadata the writers may key fixed per-kind layout constants on
-    /// (the FB report's h1-adjacent first shape; the installation body indent).
+    /// <see cref="TitleHugsFirstShape"/> is the one document-level LAYOUT property: set, the first shape
+    /// renders directly under the title with no blank separator (the FB report's witnessed layout).
     /// </summary>
-    internal sealed record ReportShapeDocument(ReportKind Kind, string Title, ImmutableArray<ReportShape> Shapes);
+    internal sealed record ReportShapeDocument(string Title, ImmutableArray<ReportShape> Shapes, bool TitleHugsFirstShape = false);
 }
