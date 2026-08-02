@@ -344,9 +344,15 @@
                           IsEnabled="{Binding Registry.Bar[project.moduleMap].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[project.moduleMap].Reason}"/>
                 <Separator/>
-                <MenuItem Header="_Reports…" Command="{Binding OpenReportsCommand}"
-                          IsEnabled="{Binding Registry.Bar[reports.open].Enabled}"
-                          ToolTip.Tip="{Binding Registry.Bar[reports.open].Reason}"/>
+                <MenuItem Header="_Funktionsdokumentation…" Command="{Binding FunctionsReportCommand}"
+                          IsEnabled="{Binding Registry.Bar[reports.functions].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[reports.functions].Reason}"/>
+                <MenuItem Header="_Installationsdokumentation…" Command="{Binding InstallationReportCommand}"
+                          IsEnabled="{Binding Registry.Bar[reports.installation].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[reports.installation].Reason}"/>
+                <MenuItem Header="Functionsblok _dokumentation…" Command="{Binding FunctionBlocksReportCommand}"
+                          IsEnabled="{Binding Registry.Bar[reports.functionBlocks].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[reports.functionBlocks].Reason}"/>
             </MenuItem>
 
             <MenuItem Header="_Help" a:AutomationProperties.AutomationId="MenuHelp">

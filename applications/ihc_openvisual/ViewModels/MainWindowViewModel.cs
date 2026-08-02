@@ -103,7 +103,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     public IAsyncRelayCommand ModuleMapCommand => Registry.Commands["project.moduleMap"];
     public IAsyncRelayCommand SendProjectCommand => Registry.Commands["controller.send"];
     public IAsyncRelayCommand RetrieveProjectCommand => Registry.Commands["controller.retrieve"];
-    public IAsyncRelayCommand OpenReportsCommand => Registry.Commands["reports.open"];
+    public IAsyncRelayCommand FunctionsReportCommand => Registry.Commands["reports.functions"];
+    public IAsyncRelayCommand InstallationReportCommand => Registry.Commands["reports.installation"];
+    public IAsyncRelayCommand FunctionBlocksReportCommand => Registry.Commands["reports.functionBlocks"];
     public IAsyncRelayCommand ImportCatalogFileCommand => Registry.Commands["catalog.importFile"];
     public IAsyncRelayCommand ImportCatalogFolderCommand => Registry.Commands["catalog.importFolder"];
     public IAsyncRelayCommand AboutCommand => Registry.Commands["help.about"];
@@ -462,16 +464,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         StatusText = "Controller transfer requires a connected controller.";
     });
 
-    /// <summary>Documentation ▸ Reports… (US-040 / D14 / T021): open the single Reports view rendering the combined
-    /// project-documentation model as ONE navigable HTML document (on-screen or printer variant) — the one command
-    /// that replaces the former six direct installation/end-user/function-block screen/print commands.</summary>
-    private Task OpenReports() => RunAsync(nameof(OpenReports), async () =>
+    /// <summary>Documentation ▸ the three report entries (T015, R12/D4/D01): each opens the ONE shared
+    /// picker dialog with its report pre-selected in the type dropdown; [Vis i browser] generates via the
+    /// facade (SVG icons) to a temp HTML page and opens the default browser (US-063).</summary>
+    private Task OpenReportPicker(ReportKind preselected) => RunAsync(nameof(OpenReportPicker), async () =>
     {
-        if (_session.GenerateProjectDocumentationReport() is not { } report)
-            return;   // no project open
-        var viewModel = new ReportsViewModel(report, _session.WriteReportHtmlAsync, _dialogs.OpenExternalUrlAsync);
-        await _dialogs.ShowReportsAsync(viewModel);
-        StatusText = "Reports opened.";
+        var viewModel = new ReportPickerViewModel(preselected,
+            _session.ViewReportInBrowserAsync, _session.SaveReportAsAsync);
+        await _dialogs.ShowReportPickerAsync(viewModel);
     });
 
     // T018: AddPowerEvent / ToggleSaveValue / AddSubProgram / AddLogicGroup / SetConditionsOr / SetConditionsAnd /
@@ -1314,7 +1314,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             Surfaces.MenuBar | Surfaces.Toolbar);   // T020: a real toolbar button (persistent surface)
         RegisterAppRow("controller.retrieve", null, _ => RetrieveProject(), AllowGate,
             Surfaces.MenuBar | Surfaces.Toolbar);
-        RegisterAppRow("reports.open", null, _ => OpenReports(), ProjectOpenGate);
+        // T015 (R12/D01): the three report entries, each opening the shared picker pre-selected.
+        RegisterAppRow("reports.functions", null, _ => OpenReportPicker(ReportKind.Functions), ProjectOpenGate);
+        RegisterAppRow("reports.installation", null, _ => OpenReportPicker(ReportKind.Installation), ProjectOpenGate);
+        RegisterAppRow("reports.functionBlocks", null, _ => OpenReportPicker(ReportKind.FunctionBlocks), ProjectOpenGate);
         RegisterAppRow("catalog.importFile", null, _ => ImportCatalogFile(), AllowGate);
         RegisterAppRow("catalog.importFolder", null, _ => ImportCatalogFolder(), AllowGate);
         RegisterAppRow("help.about", null, _ => AboutAsync(), AllowGate,

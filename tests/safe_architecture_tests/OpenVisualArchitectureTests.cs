@@ -64,16 +64,10 @@ namespace Ihc.Tests
         private static readonly string Editing =
             typeof(global::Ihc.Vis.Editing.ProjectEditor).Namespace!; // Ihc.Vis.Editing
 
-        // The report-generation layer, anchored to a public type so a rename fails the compile, not the check.
-        // (The render-ready report DTOs now live in Ihc.Vis; only the ReportBuilder generator remains here.)
-        private static readonly string Reporting =
-            typeof(global::Ihc.Vis.Reporting.ReportBuilder).Namespace!; // Ihc.Vis.Reporting
-
-        // The GUI's report RENDERER layer (T021/T035), anchored to the renderer type so its DTO-only purity can be
-        // scoped and pinned separately from the rest of Services. (The original justification — "the other Services
-        // legitimately hold a Project" — was retired by the T007 audit: none of them does any more.)
-        private static readonly string Renderer =
-            typeof(global::ihc_openvisual.Services.Reporting.ReportHtmlRenderer).Namespace!; // ihc_openvisual.Services.Reporting
+        // The SDK's report-generation layer. T019 (reportdesign): the pipeline is INTERNAL-ONLY (its public
+        // contract lives in root Ihc.Vis), so no public typeof anchor exists; the SDK fixture's
+        // ReportingSubtree_SpansTheNewPipelineTypes pins that this namespace is real and populated.
+        private const string Reporting = "Ihc.Vis.Reporting";
 
         /// <summary>
         /// The GUI is a thin shell over the <c>ProjectAppService</c> facade; it reaches the controller only through
@@ -121,31 +115,48 @@ namespace Ihc.Tests
                 "the GUI must mutate projects through the Ihc.Vis.Session command layer, not the low-level editing types directly");
 
         /// <summary>
-        /// Report <i>generation</i> belongs to the SDK: <c>ProjectAppService.Generate*Report</c> runs
-        /// <c>ReportBuilder</c> and hands back the render-ready DTOs (which live in <c>Ihc.Vis</c>). The GUI renders
-        /// those DTOs 1-to-1 into HTML but must never run <c>ReportBuilder</c> itself — that is report business
-        /// logic, and re-deriving it in the UI would fork the report content from the SDK's single source of truth.
+        /// Report generation AND formatting belong to the SDK (reportdesign R13/D1): the GUI receives
+        /// finished report BYTES from <c>ProjectAppService.GenerateReport</c> and must never reach the
+        /// <c>Ihc.Vis.Reporting</c> pipeline (builders, shape document, format writers). The forbidden set
+        /// is REFLECTED from the SDK assembly — the pipeline is internal-only, so a fluent referenced-stub
+        /// ban would go vacuous the moment the GUI is compliant (the false-negative shape the name-based
+        /// edge scan exists for); armed by the set-non-empty guard and the shared positive control
+        /// <see cref="CustomScans_DetectKnownFacadeEdges"/>.
         /// </summary>
         [Test]
         public void Gui_DoesNotDependOn_Reporting() =>
-            AssertAssemblyHasNoDependency(Gui, Reporting,
-                "the GUI renders report DTOs but must generate them through ProjectAppService, not run ReportBuilder itself");
+            AssertNoDependencyOnTypeNames(Gui, GuiRoot, ReportingPipelineTypeNames(),
+                "Ihc.Vis.Reporting pipeline types",
+                "report generation and formatting live in the SDK; the GUI holds finished report bytes, never the pipeline");
+
+        /// <summary>Every type of the SDK's internal report pipeline, reflected by full name from the SDK
+        /// assembly (compiler-generated nested types included — an edge onto any of them is an edge too).</summary>
+        private static IReadOnlyCollection<string> ReportingPipelineTypeNames() =>
+            typeof(global::Ihc.Vis.ProjectAppService).Assembly.GetTypes()
+                .Where(type => type.Namespace is { } ns
+                               && (ns == Reporting || ns.StartsWith(Reporting + ".", StringComparison.Ordinal)))
+                .Select(type => type.FullName!)
+                .ToHashSet();
 
         /// <summary>
-        /// The GUI's report RENDERER (<c>ReportHtmlRenderer</c>) is a pure 1-to-1 transform of the render-ready
-        /// combined model into HTML (D14: "the app renders and applies switches, it computes nothing"). It must see
-        /// ONLY the public type graph reachable from <c>ProjectDocumentationReport</c>, including its legacy report
-        /// DTOs and module-map data. Every other SDK type is forbidden, so the renderer cannot reach mutable project,
-        /// generation, IO, or editing APIs and re-derive content the SDK owns. Scoped to the isolated renderer
-        /// namespace, which now buys strictness rather than tolerance: since T007 no GUI type may RETAIN a
-        /// <c>Project</c>, and this rule additionally forbids the renderer from even naming one. Armed by the shared name-based scan
-        /// whose positive control is <see cref="CustomScans_DetectKnownFacadeEdges"/>.
+        /// The replacement for the retired <c>Renderer_SeesOnlyRenderReadyDtos</c> (reportdesign T020/R13):
+        /// the GUI does not COMPOSE report HTML/text — its single report door is
+        /// <c>ProjectAppService.GenerateReport</c>, and only the report workflow calls it (view-models and
+        /// dialogs hand kind+mode to the workflow). Together with the Reporting ban above this makes GUI-side
+        /// report composition structurally impossible; the sanctioned <c>SvgReportIconProvider</c> only
+        /// answers icon fragments through the root-<c>Ihc.Vis</c> contract. Armed by
+        /// <see cref="ArchRuleHelpers.AssertMembersCalledOnlyFrom"/>'s calls-must-exist guard — if the
+        /// workflow stopped calling <c>GenerateReport</c> (or the chokepoint name rotted), the rule fails
+        /// loudly instead of watching nothing.
         /// </summary>
         [Test]
-        public void Renderer_SeesOnlyRenderReadyDtos() =>
-            AssertNoDependencyOnTypeNames(Gui, Renderer, NonRenderReadySdkTypeNames(),
-                "SDK types outside the public report DTO graph",
-                "the report renderer must transform only the render-ready report DTO graph and never reach other SDK model, generation, IO, or editing types");
+        public void Gui_GeneratesReportsOnlyThroughTheReportWorkflow() =>
+            AssertMembersCalledOnlyFrom(Gui, GuiRoot,
+                typeof(global::Ihc.Vis.ProjectAppService).FullName!,
+                new[] { "GenerateReport" },
+                new[] { "ihc_openvisual.Services.ProjectReportWorkflow" },
+                "report generation calls",
+                "ProjectReportWorkflow is the single GenerateReport caller — the GUI never composes report output elsewhere");
 
         /// <summary>
         /// Command execution belongs to the SDK: interactive code holds the <c>IProjectDocument</c> PORT from
@@ -782,8 +793,6 @@ namespace Ihc.Tests
                 Assert.That(Converters, Is.EqualTo("ihc_openvisual.Converters"), "the Avalonia value converters");
                 Assert.That(VisIo, Is.EqualTo("Ihc.Vis.Io"), $"{nameof(global::Ihc.Vis.Io.ProjectSerializer)} anchors the offline IO engine");
                 Assert.That(Editing, Is.EqualTo("Ihc.Vis.Editing"), $"{nameof(global::Ihc.Vis.Editing.ProjectEditor)} anchors the editing layer");
-                Assert.That(Reporting, Is.EqualTo("Ihc.Vis.Reporting"), $"{nameof(global::Ihc.Vis.Reporting.ReportBuilder)} anchors the report generator");
-                Assert.That(Renderer, Is.EqualTo("ihc_openvisual.Services.Reporting"), $"{nameof(global::ihc_openvisual.Services.Reporting.ReportHtmlRenderer)} anchors the GUI report renderer");
                 Assert.That(SoapNs, Is.EqualTo("Ihc.Soap"), "the generated SOAP parent namespace");
             });
 
@@ -908,35 +917,6 @@ namespace Ihc.Tests
             typeof(global::Ihc.Vis.ProjectCommands).FullName!,
             typeof(global::Ihc.Vis.IProjectDocument).FullName!,
         };
-
-        /// <summary>The types the DTO-only report renderer must not depend on (T035): the mutable project tree
-        /// (<c>Project</c>/<c>ProjectElement</c>), the report generator's private tree indexer (<c>TreeIndex</c>,
-        /// reflected by name), and every live-session <c>Ihc.Vis.Editing</c> type (reflected from the SDK assembly).
-        /// <c>ElementId</c> is deliberately NOT here — it is sanctioned switch data on the combined model.</summary>
-        private static IReadOnlyCollection<string> NonRenderReadySdkTypeNames()
-        {
-            Assembly sdk = typeof(global::Ihc.Vis.ProjectDocumentationReport).Assembly;
-            var allowed = new HashSet<Type>();
-            var pending = new Queue<Type>();
-            pending.Enqueue(typeof(global::Ihc.Vis.ProjectDocumentationReport));
-
-            while (pending.TryDequeue(out Type? candidate))
-            {
-                foreach (Type type in TypeAndArguments(candidate))
-                {
-                    if (type.Assembly != sdk || !allowed.Add(type))
-                        continue;
-
-                    foreach (PropertyInfo property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-                        pending.Enqueue(property.PropertyType);
-                }
-            }
-
-            return sdk.GetTypes()
-                .Where(type => !allowed.Contains(type))
-                .Select(type => type.FullName!)
-                .ToHashSet();
-        }
 
         /// <summary>The engine's <see cref="Ihc.Vis.Session.ProjectDocumentSession"/> command-runner, by full name —
         /// the single <c>Ihc.Vis.Session</c> type the GUI must reach only behind the <c>ProjectAppService</c> facade

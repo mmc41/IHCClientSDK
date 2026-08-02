@@ -19,30 +19,66 @@ namespace ihc_openvisual.Services;
 internal sealed class ProjectReportWorkflow(
     ProjectAppService service, IDialogService dialogs, ILogger logger, Func<Project?> getCurrent)
 {
-    /// <summary>The COMBINED project-documentation report model for the open project (US-040/D14/T021), or null if none
-    /// — the single model the Reports view renders and toggles.</summary>
-    public ProjectDocumentationReport? ProjectDocumentation() =>
-        getCurrent() is { } project ? service.GenerateProjectDocumentationReport(project) : null;
-
-    /// <summary>Writes a rendered report HTML page to a temp file (US-040) and returns its path for the browser to
-    /// open; null on failure. The file is a self-contained static page — no controller contact.</summary>
-    public async Task<string?> WriteHtmlAsync(string fileStem, string html)
+    /// <summary>
+    /// T015 (R12): generates the picked report via the facade — HTML with the app's SVG icon provider —
+    /// to a temp file and opens it in the OS default browser (the US-063 view/print flow). Generation or
+    /// write failures surface through the standard message dialog; browser-open failures are handled by
+    /// <see cref="IDialogService.OpenExternalUrlAsync"/> itself.
+    /// </summary>
+    public async Task ViewInBrowserAsync(ReportKind kind, ReportMode mode)
     {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectReportWorkflow)}.{nameof(WriteHtmlAsync)}");
+        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectReportWorkflow)}.{nameof(ViewInBrowserAsync)}");
         try
         {
+            if (getCurrent() is not { } project)
+            {
+                return;   // no project open — the registry gate normally prevents this
+            }
             string dir = Path.Combine(Path.GetTempPath(), "ihc-openvisual-reports");
             Directory.CreateDirectory(dir);
-            string path = Path.Combine(dir, fileStem + ".html");
-            await File.WriteAllTextAsync(path, html, System.Text.Encoding.UTF8);
-            return path;
+            string path = Path.Combine(dir, $"{kind}-{mode}.html".ToLowerInvariant());
+            await service.GenerateReport(project, kind, mode, ReportMimeTypes.Html, path, new SvgReportIconProvider());
+            await dialogs.OpenExternalUrlAsync(path);
         }
         catch (Exception ex)
         {
             ActivityExtensions.SetError(activity, ex);
-            logger.LogError(ex, "Failed to write report HTML {Stem}", fileStem);
+            logger.LogError(ex, "Failed to generate the {Kind} {Mode} report for browser view", kind, mode);
             await dialogs.ShowMessageAsync("Report failed", ex.Message);
-            return null;
         }
     }
+
+    /// <summary>
+    /// T016 (R12): [Gem som…] — asks for a target path (.html/.txt), then generates the picked report via
+    /// the facade to that file: text/plain with the default unicode stand-ins for a .txt target, HTML with
+    /// the app's SVG icons otherwise. Generation and save failures surface through the message dialog.
+    /// </summary>
+    public async Task SaveAsAsync(ReportKind kind, ReportMode mode)
+    {
+        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectReportWorkflow)}.{nameof(SaveAsAsync)}");
+        try
+        {
+            if (getCurrent() is not { } project)
+            {
+                return;   // no project open — the registry gate normally prevents this
+            }
+            string? path = await dialogs.PickSaveReportAsync($"{kind}-{mode}.html".ToLowerInvariant());
+            if (path is null)
+            {
+                return;   // cancelled
+            }
+            bool asText = path.EndsWith(".txt", StringComparison.OrdinalIgnoreCase);
+            await service.GenerateReport(project, kind, mode,
+                asText ? ReportMimeTypes.PlainText : ReportMimeTypes.Html,
+                path,
+                asText ? null : new SvgReportIconProvider());
+        }
+        catch (Exception ex)
+        {
+            ActivityExtensions.SetError(activity, ex);
+            logger.LogError(ex, "Failed to save the {Kind} {Mode} report", kind, mode);
+            await dialogs.ShowMessageAsync("Report failed", ex.Message);
+        }
+    }
+
 }

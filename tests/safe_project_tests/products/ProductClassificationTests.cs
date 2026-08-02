@@ -68,23 +68,26 @@ namespace Ihc.Vis.Tests
         // ----- No-leak: an open-world tag the predicates admit never reaches a closed-set report section -----
 
         [Test]
-        public void Report_ClosedSectionMembership_ExcludesOpenWorldTags()
+        public async System.Threading.Tasks.Task Report_ClosedSectionMembership_ExcludesOpenWorldTags()
         {
             ProjectElement openModem = Element("product_x_modem", ("name", "Rogue modem"));
             ProjectElement openAirlink = Element("product_x_airlink", ("name", "Rogue airlink"));
             ProjectElement group = new("group", null,
                 ImmutableArray.Create(("name", "Room")), ImmutableArray.Create(openModem, openAirlink));
+            ProjectElement groups = new("groups", null,
+                ImmutableArray.Create(("name", "L")), ImmutableArray.Create(group));
             ProjectElement root = new("utcs_project", null,
-                ImmutableArray<(string, string)>.Empty, ImmutableArray.Create(group));
-            InstallationReport report = new ProjectAppService(TestSetup.Settings)
-                .GenerateProjectDocumentationReport(new Project(root)).Installation;
+                ImmutableArray<(string, string)>.Empty, ImmutableArray.Create(groups));
+            // T017: membership is observed through the NEW pipeline — the generated installation report.
+            using var output = new System.IO.MemoryStream();
+            await new ProjectAppService(TestSetup.Settings).GenerateReport(new Project(root),
+                ReportKind.Installation, ReportMode.Standard, ReportMimeTypes.PlainText, output);
+            string report = System.Text.Encoding.UTF8.GetString(output.ToArray());
 
             Assert.Multiple(() =>
             {
                 // Membership stayed closed: the open-world products entered no report section.
-                Assert.That(report.ProductDetails, Is.Empty);
-                Assert.That(report.ModemDetails, Is.Empty);
-                Assert.That(report.SpecialProducts, Is.Empty);
+                Assert.That(report, Does.Not.Contain("Rogue modem").And.Not.Contain("Rogue airlink"));
                 // ...yet the UI-facing predicates DO recognise them.
                 Assert.That(ProductClassifier.IsModem("product_x_modem"), Is.True);
                 Assert.That(ProductClassifier.IsWireless("product_x_airlink"), Is.True);

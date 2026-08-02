@@ -10,10 +10,12 @@ using Ihc.Vis.Catalog;
 using Ihc.Vis.Editing;
 using Ihc.Vis.FunctionBlocks;
 using Ihc.Vis.Io;
+using Ihc.Vis.Model;
 using Ihc.Vis.Products;
 using Ihc.Vis.Programs;
-using Ihc.Vis.Reporting;
+using Ihc.Vis.Projects;
 using Ihc.Vis.Session;
+using Ihc.Vis.Validation;
 using static Ihc.Tests.ArchRuleHelpers;
 // ArchUnitNET.Loader also exports a `Type`; the reflection helpers in this fixture mean System.Type throughout.
 using Type = System.Type;
@@ -53,7 +55,14 @@ namespace Ihc.Tests
         private static readonly string Editing = typeof(ProjectEditor).Namespace!;        // Ihc.Vis.Editing
         private static readonly string Session = typeof(ProjectDocumentSession).Namespace!;// Ihc.Vis.Session (command runner)
         private static readonly string Io = typeof(ProjectSerializer).Namespace!;         // Ihc.Vis.Io
-        private static readonly string Reporting = typeof(ReportBuilder).Namespace!;      // Ihc.Vis.Reporting
+        // T019 (reportdesign): the report pipeline is now INTERNAL-ONLY (its public contract lives in root
+        // Ihc.Vis), so no public typeof anchor exists. The string is kept honest by
+        // ReportingSubtree_SpansTheNewPipelineTypes (the subtree must contain the named pipeline types)
+        // plus every consuming rule's non-empty vacuity guard.
+        private const string Reporting = "Ihc.Vis.Reporting";
+        private static readonly string Validation = typeof(ProjectValidationFinding).Namespace!; // Ihc.Vis.Validation
+        private static readonly string Model = typeof(ProjectElement).Namespace!;         // Ihc.Vis.Model
+        private static readonly string ProjectsNs = typeof(Project).Namespace!;           // Ihc.Vis.Projects
 
         /// <summary>
         /// The whole catalog definition layer — every code-authoring/catalog namespace, not just one of them.
@@ -102,6 +111,107 @@ namespace Ihc.Tests
         public void Reporting_DoesNotDependOn_MutatingOrIoLayers(string mutatingOrIoNamespace) =>
             AssertNoDependency(Sdk, Subtree(Reporting), mutatingOrIoNamespace,
                 "reports read the project and never mutate it or do IO — Ihc.Vis.Reporting must stay independent of the editing, session and IO layers");
+
+        /// <summary>
+        /// Proves <see cref="Reporting_DoesNotDependOn_MutatingOrIoLayers"/> demonstrably COVERS the new
+        /// report-generation pipeline (reportdesign T004/D07): its source set — the <c>Ihc.Vis.Reporting</c>
+        /// subtree — must contain the new pipeline's builder, writer, filter and orchestrator types. Without
+        /// this, moving the pipeline to a sibling namespace would leave that rule green while guarding nothing
+        /// of the new code.
+        /// </summary>
+        [Test]
+        public void ReportingSubtree_SpansTheNewPipelineTypes()
+        {
+            var reportingTypeNames = Sdk.Types
+                .Where(t => t.FullName.StartsWith(Reporting + ".", StringComparison.Ordinal))
+                .Select(t => t.Name)
+                .ToList();
+            Assert.That(reportingTypeNames,
+                Does.Contain("FunctionsReportBuilder").And.Contain("TextReportWriter")
+                    .And.Contain("ReportModeFilter").And.Contain("ReportGenerator"),
+                "the mutating/IO ban's source subtree must span the new pipeline types, or its green result covers nothing new");
+        }
+
+        /// <summary>
+        /// The D1 single-content-path guarantee (reportdesign T004): the generic FORMAT WRITERS render the
+        /// shape document plus the icon contract and never read the project model — all content decisions
+        /// live in the builders, so the two formats cannot drift by one writer reaching into the tree. The
+        /// writer set is matched by the <c>*ReportWriter</c> naming convention (the writers are internal, so
+        /// no <c>typeof</c> anchor is possible from this fixture); the guard below pins that the convention
+        /// actually matches the real writers. Armed by <see cref="WriterModelScan_IsArmed"/>.
+        /// </summary>
+        [Test]
+        public void ReportFormatWriters_DoNotDependOn_ProjectModel()
+        {
+            List<string> writers = ReportWriterTypeNames();
+            Assert.That(writers, Does.Contain(Reporting + ".TextReportWriter"),
+                "the writer-name convention must match the real text writer — otherwise this rule guards an empty set");
+
+            Assert.That(ForbiddenModelEdges(writers), Is.Empty,
+                "format writers render the shape document + icon contract only; project-model access belongs in the builders (D1)");
+        }
+
+        /// <summary>Positive control for <see cref="ReportFormatWriters_DoNotDependOn_ProjectModel"/>: the same
+        /// edge scan pointed at the functions BUILDER — which reads the project model by design — must report
+        /// forbidden edges, proving the scan sees model dependencies rather than passing because it sees none.</summary>
+        [Test]
+        public void WriterModelScan_IsArmed() =>
+            Assert.That(ForbiddenModelEdges(new List<string> { Reporting + ".FunctionsReportBuilder" }), Is.Not.Empty,
+                "the builder depends on the project model by design; the scan must report those edges or the writer rule cannot be trusted");
+
+        // The outermost authored types in Ihc.Vis.Reporting following the writer naming convention.
+        private static List<string> ReportWriterTypeNames() =>
+            Sdk.Types
+                .Select(t => OutermostTypeName(t.FullName))
+                .Where(name => name.StartsWith(Reporting + ".", StringComparison.Ordinal)
+                               && name.EndsWith("ReportWriter", StringComparison.Ordinal))
+                .Distinct()
+                .ToList();
+
+        // Every dependency edge from the given outermost types (compiler-generated nested types included)
+        // onto the project model namespaces (Ihc.Vis.Model / Ihc.Vis.Projects).
+        private static List<string> ForbiddenModelEdges(List<string> outermostTypeNames) =>
+            Sdk.Types
+                .Where(t => outermostTypeNames.Contains(OutermostTypeName(t.FullName)))
+                .SelectMany(t => t.Dependencies, (t, d) => (Origin: t.FullName, Target: d.Target.FullName))
+                .Where(e => e.Target.StartsWith(Model + ".", StringComparison.Ordinal)
+                            || e.Target.StartsWith(ProjectsNs + ".", StringComparison.Ordinal))
+                .Select(e => $"{e.Origin} -> {e.Target}")
+                .Distinct()
+                .ToList();
+
+        // A nested/compiler-generated type's authored outer type ("Outer+<>c" -> "Outer").
+        private static string OutermostTypeName(string fullName)
+        {
+            int cut = fullName.IndexOfAny(new[] { '+', '/' });
+            return cut < 0 ? fullName : fullName.Substring(0, cut);
+        }
+
+        /// <summary>
+        /// R10's independence direction (reportdesign T004): the verification API is reusable OUTSIDE
+        /// reporting — reporting consumes validation findings, never the reverse. A validation type reaching
+        /// into <c>Ihc.Vis.Reporting</c> would invert that and couple the save-gate path to report code.
+        /// </summary>
+        [Test]
+        public void Validation_DoesNotDependOn_Reporting() =>
+            AssertNoDependency(Sdk, Subtree(Validation), Reporting,
+                "verification is independently reusable (R10): reporting consumes validation, never the reverse");
+
+        /// <summary>
+        /// R13's placement convention (reportdesign T004): the public report contract types live in the root
+        /// <c>Ihc.Vis</c> namespace next to the facade — not inside the internal pipeline namespace. The
+        /// <c>typeof</c> references make this self-arming: deleting or moving a contract type breaks the
+        /// compile or this assertion, never silently.
+        /// </summary>
+        [Test]
+        public void ReportContractTypes_ResideInRootIhcVis() =>
+            Assert.Multiple(() =>
+            {
+                Assert.That(typeof(ReportKind).Namespace, Is.EqualTo(VisRoot), $"{nameof(ReportKind)} is public API next to the facade");
+                Assert.That(typeof(ReportMode).Namespace, Is.EqualTo(VisRoot), $"{nameof(ReportMode)} is public API next to the facade");
+                Assert.That(typeof(ReportMimeTypes).Namespace, Is.EqualTo(VisRoot), $"{nameof(ReportMimeTypes)} is public API next to the facade");
+                Assert.That(typeof(IReportIconProvider).Namespace, Is.EqualTo(VisRoot), $"{nameof(IReportIconProvider)} is public API next to the facade");
+            });
 
         /// <summary>
         /// Port-surface purity (archtests T008, proposal §0.3): no type from <c>Ihc.Vis.Editing</c> or
@@ -252,7 +362,9 @@ namespace Ihc.Tests
                 Assert.That(Editing, Is.EqualTo("Ihc.Vis.Editing"), $"{nameof(ProjectEditor)} anchors the editing layer");
                 Assert.That(Session, Is.EqualTo("Ihc.Vis.Session"), $"{nameof(ProjectDocumentSession)} anchors the session command layer");
                 Assert.That(Io, Is.EqualTo("Ihc.Vis.Io"), $"{nameof(ProjectSerializer)} anchors the IO layer");
-                Assert.That(Reporting, Is.EqualTo("Ihc.Vis.Reporting"), $"{nameof(ReportBuilder)} anchors the reporting layer");
+                Assert.That(Validation, Is.EqualTo("Ihc.Vis.Validation"), $"{nameof(ProjectValidationFinding)} anchors the validation layer");
+                Assert.That(Model, Is.EqualTo("Ihc.Vis.Model"), $"{nameof(ProjectElement)} anchors the element model");
+                Assert.That(ProjectsNs, Is.EqualTo("Ihc.Vis.Projects"), $"{nameof(Project)} anchors the project model");
                 Assert.That(SoapNs, Is.EqualTo("Ihc.Soap"), "the SOAP parent namespace spans the generated per-service namespaces");
             });
 

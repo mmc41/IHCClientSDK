@@ -77,6 +77,8 @@ public sealed class FakeDialogService : IDialogService
     public Task<string?> PickOpenProjectAsync(string? initialDirectory) => Task.FromResult(OpenPath);
     public Task<string?> PickSaveProjectAsync(string? initialDirectory, string suggestedFileName) => Task.FromResult(SavePath);
     public Task<string?> PickSaveFunctionBlockAsync(string suggestedFileName) => Task.FromResult(SaveBlockPath);
+    public string? SaveReportPath { get; set; }
+    public Task<string?> PickSaveReportAsync(string suggestedFileName) => Task.FromResult(SaveReportPath);
     public string? CatalogFilePath { get; set; }
     public string? CatalogFolderPath { get; set; }
     public Task<string?> PickCatalogFileAsync() => Task.FromResult(CatalogFilePath);
@@ -198,12 +200,12 @@ public sealed class FakeDialogService : IDialogService
         return Task.CompletedTask;
     }
 
-    public ihc_openvisual.ViewModels.ReportsViewModel? LastReportsViewModel { get; private set; }
-    public int ShowReportsCalls { get; private set; }
-    public Task ShowReportsAsync(IReportsDialogViewModel viewModel)
+    public ihc_openvisual.ViewModels.ReportPickerViewModel? LastReportPickerViewModel { get; private set; }
+    public int ShowReportPickerCalls { get; private set; }
+    public Task ShowReportPickerAsync(IReportPickerViewModel viewModel)
     {
-        ShowReportsCalls++;
-        LastReportsViewModel = viewModel as ihc_openvisual.ViewModels.ReportsViewModel;   // tests use the concrete VM (T021 seam)
+        ShowReportPickerCalls++;
+        LastReportPickerViewModel = viewModel as ihc_openvisual.ViewModels.ReportPickerViewModel;   // tests use the concrete VM (T015 seam)
         return Task.CompletedTask;
     }
 

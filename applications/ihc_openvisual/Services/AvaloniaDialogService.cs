@@ -92,6 +92,24 @@ public sealed class AvaloniaDialogService : IDialogService
         return file?.TryGetLocalPath();
     }
 
+    public async Task<string?> PickSaveReportAsync(string suggestedFileName)
+    {
+        if (Owner is null)
+            return null;
+        IStorageFile? file = await Owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Gem rapport",
+            SuggestedFileName = suggestedFileName,
+            DefaultExtension = "html",
+            FileTypeChoices = new[]
+            {
+                new FilePickerFileType("HTML report") { Patterns = new[] { "*.html" } },
+                new FilePickerFileType("Text report") { Patterns = new[] { "*.txt" } },
+            }
+        });
+        return file?.TryGetLocalPath();
+    }
+
     public async Task<string?> PickCatalogFileAsync()
     {
         if (Owner is null)
@@ -198,11 +216,11 @@ public sealed class AvaloniaDialogService : IDialogService
         return await ProjectInfoWindow.ShowAsync(Owner, current);
     }
 
-    public async Task ShowReportsAsync(IReportsDialogViewModel viewModel)
+    public async Task ShowReportPickerAsync(IReportPickerViewModel viewModel)
     {
         if (Owner is null)
             return;
-        await ReportsWindow.ShowAsync(Owner, viewModel);
+        await ReportPickerWindow.ShowAsync(Owner, viewModel);
     }
 
     public async Task ShowDataTablesAsync(IDataTablesDialogViewModel viewModel)

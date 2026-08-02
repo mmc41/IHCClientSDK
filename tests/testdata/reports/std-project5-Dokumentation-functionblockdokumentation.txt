@@ -24,7 +24,7 @@ Dækker æøåÆØÅ i en funktionsbloknote.
   123 Tæller            = 5
   ℕ Tal                 = 42
   # Tilstand            = Tilstand B
-  ▤ Dato                = 30. januar
+  ▤ Dato                = 30. juli
   ≣7 Ugedag             = fredag
  ⚙  Interne variable
   ⚑ Flag                = On
@@ -47,7 +47,7 @@ Dækker æøåÆØÅ i en funktionsbloknote.
     ✓ Fremkald Scenarie
     ✓ Aktiver nedtælling på Timer med initial værdi
     ✓ Tidspunkt         = 22:15:00
-    ✓ Dato              = 24. januar
+    ✓ Dato              = 24. december
     ✓ Temperatur        = 18.50 C
     ✓ Kommatal          = 2.72
   ◆ Betingelser

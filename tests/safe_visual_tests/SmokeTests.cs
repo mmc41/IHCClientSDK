@@ -831,28 +831,6 @@ public class SmokeTests : AvaloniaTestBase
         });
     }
 
-    // The Reports dialog renders the report as an actual HTML view (NativeWebView), not a raw-HTML-source text box.
-    // The window is deliberately not Shown: attaching NativeWebView to a live visual tree makes it create a real
-    // WebView2 environment (Avalonia.Controls.Win.WebView2.WebView2HwndAdapter), which needs an STA COM apartment —
-    // this suite's shared headless dispatcher thread is MTA, so a live attach throws RPC_E_CHANGED_MODE. That's a
-    // test-harness-only constraint (the real app's Main is [STAThread]); FindControl resolves named elements from
-    // the compiled XAML's NameScope without attaching, which is all this wiring check needs.
-    [AvaloniaTest]
-    public async Task ReportsWindow_RendersHtmlViaNativeWebView_NotRawTextBox()
-    {
-        using var harness = ShellHarness.Create();
-        var viewModel = harness.CreateViewModel();
-        await viewModel.InitializeAsync();
-        await viewModel.OpenReportsCommand.ExecuteAsync(null);
-
-        var window = new ReportsWindow { DataContext = harness.Dialogs.LastReportsViewModel };
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(window.FindControl<NativeWebView>("ReportView"), Is.Not.Null,
-                "the report content renders via a native web view, not a raw HTML-source text box");
-            Assert.That(window.FindControl<TextBox>("HtmlSource"), Is.Null,
-                "the old raw-HTML-source text box is gone");
-        });
-    }
+    // T018: the old Reports window (NativeWebView) died with the combined-document surface — report viewing
+    // now goes facade → temp HTML → default browser, covered by ReportPickerTests.
 }

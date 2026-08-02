@@ -12,10 +12,10 @@ namespace ihc_openvisual.Services;
 /// DataContext; the window's compiled bindings resolve against the concrete VM at runtime.</summary>
 public interface IDataTablesDialogViewModel;
 
-/// <summary>The seam the Reports view is shown through (T021): a marker for the view-model the Reports window binds
-/// to (the app-side <c>ReportsViewModel</c>), so <see cref="IDialogService"/> stays uncoupled from a concrete
-/// ViewModels type. The dialog service passes the instance to the window as its DataContext.</summary>
-public interface IReportsDialogViewModel;
+/// <summary>The seam the shared report picker is shown through (R12/D4): a marker for the picker view-model,
+/// keeping <see cref="IDialogService"/> uncoupled from the concrete ViewModels type. The dialog service passes
+/// the instance to the picker window as its DataContext.</summary>
+public interface IReportPickerViewModel;
 
 /// <summary>The installer's answer to a "save changes before closing?" prompt.</summary>
 public enum SaveChangesResult
@@ -210,9 +210,13 @@ public interface IDialogService
     /// <see cref="IDataTablesDialogViewModel"/> seam, not the concrete VM).</summary>
     Task ShowDataTablesAsync(IDataTablesDialogViewModel viewModel);
 
-    /// <summary>Shows the Reports view (US-040 / T021) — the single navigable project-documentation document —
-    /// bound to the given view-model (through the <see cref="IReportsDialogViewModel"/> seam, not the concrete VM).</summary>
-    Task ShowReportsAsync(IReportsDialogViewModel viewModel);
+    /// <summary>Shows the shared report picker (R12/D4) — report type pre-selected per the invoking menu
+    /// entry, mode choice, and the view/save actions — bound through the <see cref="IReportPickerViewModel"/> seam.</summary>
+    Task ShowReportPickerAsync(IReportPickerViewModel viewModel);
+
+    /// <summary>Opens the save dialog for a generated report, offering the two formats (.html/.txt);
+    /// returns the chosen path or null when the installer cancels.</summary>
+    Task<string?> PickSaveReportAsync(string suggestedFileName);
 
     /// <summary>Opens the read-only Wired module address map dialog (US-050).</summary>
     Task ShowModuleMapAsync(ModuleAddressMap map);

@@ -277,14 +277,13 @@ public sealed class ProjectWorkflow : IDisposable
     /// format's own placeholder rather than an English one.</summary>
     public const string NewLocalityName = "Lokalitet";
 
-    // Reports (US-040/041) delegate to the ProjectReportWorkflow collaborator (T019). The app renders ONE combined
-    // model (D14); the former per-section report entry points were retired in T032.
-    /// <summary>The COMBINED project-documentation report model for the open project (D14/T021), or null if none.</summary>
-    public ProjectDocumentationReport? GenerateProjectDocumentationReport() => _reports.ProjectDocumentation();
+    /// <summary>Generates the picked report (facade, SVG icons) to a temp HTML file and opens it in the
+    /// default browser (T015/R12) — delegates to the ProjectReportWorkflow collaborator.</summary>
+    public Task ViewReportInBrowserAsync(ReportKind kind, ReportMode mode) => _reports.ViewInBrowserAsync(kind, mode);
 
-    /// <summary>Writes a rendered report HTML page to a temp file (US-040) and returns its path for the browser to
-    /// open; null on failure — delegates to the ProjectReportWorkflow collaborator (T019).</summary>
-    public Task<string?> WriteReportHtmlAsync(string fileStem, string html) => _reports.WriteHtmlAsync(fileStem, html);
+    /// <summary>[Gem som…] for the picked report (T016/R12): file dialog (.html/.txt) then facade
+    /// generation to the chosen file — delegates to the ProjectReportWorkflow collaborator.</summary>
+    public Task SaveReportAsAsync(ReportKind kind, ReportMode mode) => _reports.SaveAsAsync(kind, mode);
 
     /// <summary>Reads the current project/customer/installer information (US-039) to prefill the dialog. Delegates
     /// to the SDK projection (<c>Ihc.Vis.ProjectProjections</c>) over <see cref="Current"/>.</summary>

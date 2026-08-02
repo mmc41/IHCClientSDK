@@ -16,6 +16,10 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+    <!-- The SVG icons are ALSO plain embedded resources: the report icon provider reads them without a
+         running Avalonia platform (spec S09), so headless tests and report generation share the exact
+         glyphs the app ships. -->
+    <EmbeddedResource Include="Assets\**\*.svg" />
     <InternalsVisibleTo Include="safe_visual_tests" />
   </ItemGroup>
 

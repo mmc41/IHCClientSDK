@@ -29,7 +29,8 @@ public sealed class NullDialogService : IDialogService
     public Task<EnumDefinitionResult?> EditEnumDefinitionAsync(EnumDefinitionInput input) => Task.FromResult<EnumDefinitionResult?>(null);
     public Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current) => Task.FromResult<ProjectInfoData?>(null);
     public Task ShowDataTablesAsync(IDataTablesDialogViewModel viewModel) => Task.CompletedTask;
-    public Task ShowReportsAsync(IReportsDialogViewModel viewModel) => Task.CompletedTask;
+    public Task ShowReportPickerAsync(IReportPickerViewModel viewModel) => Task.CompletedTask;
+    public Task<string?> PickSaveReportAsync(string suggestedFileName) => Task.FromResult<string?>(null);
     public Task ShowModuleMapAsync(ModuleAddressMap map) => Task.CompletedTask;
     public Task<string?> PickCatalogFileAsync() => Task.FromResult<string?>(null);
     public Task<string?> PickCatalogFolderAsync() => Task.FromResult<string?>(null);

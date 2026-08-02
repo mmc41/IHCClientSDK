@@ -68,6 +68,22 @@ namespace Ihc.Vis.Validation
             return ProjectValidationResult.FromFindings(findings.ToImmutable());
         }
 
+        /// <summary>
+        /// The full categorized verification (R10): the structural checklist above plus the
+        /// <see cref="DocumentationValidator"/> completeness checks, the latter appended as
+        /// <see cref="ValidationCategory.Documentation"/> warnings in their own pinned order.
+        /// <c>IsValid</c>/<c>Errors</c> semantics are unchanged by construction — documentation
+        /// findings are never <see cref="ValidationSeverity.Error"/>s.
+        /// </summary>
+        public static ProjectValidationResult ValidateCategorized(Project project)
+        {
+            ProjectValidationResult structural = Validate(project);
+            ImmutableArray<ProjectValidationFinding> documentation = DocumentationValidator.Check(project);
+            return documentation.IsEmpty
+                ? structural
+                : ProjectValidationResult.FromFindings(structural.Findings.AddRange(documentation));
+        }
+
         // ----- ids -----
 
         private static long ValidateIds(IReadOnlyList<ProjectElement> elements,

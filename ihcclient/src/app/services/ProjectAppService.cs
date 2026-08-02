@@ -781,35 +781,6 @@ namespace Ihc.Vis
                 .ExportDefinition(name, author, exportDate, string.IsNullOrEmpty(note) ? null : note);
         }
 
-        /// <summary>
-        /// Builds the COMBINED project-documentation report model (D14/T020): ONE render-ready model composing the
-        /// installation, end-user and function-block content in the fixed section order and carrying the
-        /// switch-supporting data — per-section/per-element internal ids + inclusion flags, raw-blank-beside-display
-        /// values, and a unified locality representation. The app renders this and applies switches; it computes
-        /// nothing. All report business logic lives in the SDK (<see cref="ReportBuilder.BuildProjectDocumentation"/>).
-        /// </summary>
-        public ProjectDocumentationReport GenerateProjectDocumentationReport(Project project)
-        {
-            ArgumentNullException.ThrowIfNull(project);
-            return RunTraced(nameof(GenerateProjectDocumentationReport), activity =>
-            {
-                // D16/T031: the report identifies a product by its resolved catalog TYPE-NAME text (image-free), not the
-                // raw product_identifier image key. The catalog lives here (above the pure ReportBuilder), so resolve
-                // the identifier→type-name map once and hand the builder a resolver keyed by each product's identifier.
-                Dictionary<string, string> typeNames = catalog.Value.Products
-                    .GroupBy(p => p.ProductIdentifier, StringComparer.Ordinal)
-                    .ToDictionary(g => g.Key, g => g.First().DisplayName, StringComparer.Ordinal);
-                string ResolveProductType(ProjectElement element) =>
-                    element.GetAttribute("product_identifier") is { } id && typeNames.TryGetValue(id, out string? name)
-                        ? name
-                        : string.Empty;
-                ProjectDocumentationReport report = ReportBuilder.BuildProjectDocumentation(
-                    project, timeProvider.GetLocalNow(), ResolveProductType);
-                activity?.SetReturnValue(report.Sections.Length);
-                return report;
-            });
-        }
-
         /// <summary>Validates a project against the pre-serialize checklist.</summary>
         public ProjectValidationResult Validate(Project project)
         {
@@ -819,6 +790,69 @@ namespace Ihc.Vis
                 ProjectValidationResult result = ProjectValidator.Validate(project);
                 activity?.SetReturnValue(result);
                 return result;
+            });
+        }
+
+        /// <summary>
+        /// Validates a project against the FULL categorized verification (R10): the structural
+        /// pre-serialize checklist (<see cref="Validate"/>, <see cref="ValidationCategory.Structural"/>)
+        /// plus the documentation-completeness checks
+        /// (<see cref="ValidationCategory.Documentation"/>, always
+        /// <see cref="ValidationSeverity.Warning"/>). <c>IsValid</c>/<c>Errors</c> mean exactly what
+        /// <see cref="Validate"/> means — documentation findings only ever add <c>Warnings</c>.
+        /// </summary>
+        public ProjectValidationResult ValidateCategorized(Project project)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            return RunTraced(nameof(ValidateCategorized), activity =>
+            {
+                ProjectValidationResult result = ProjectValidator.ValidateCategorized(project);
+                activity?.SetReturnValue(result);
+                return result;
+            });
+        }
+
+        /// <summary>
+        /// Generates a documentation report (spec R3): renders <paramref name="project"/> as the given
+        /// <paramref name="kind"/> × <paramref name="mode"/> to <paramref name="output"/> in the format
+        /// selected by <paramref name="mimeType"/> (<see cref="ReportMimeTypes.Html"/> or
+        /// <see cref="ReportMimeTypes.PlainText"/>; anything else is rejected). Bytes are UTF-8 without BOM
+        /// with LF line endings. <paramref name="iconProvider"/> customizes icon glyphs (R11); null uses the
+        /// default unicode stand-ins. The Full-mode generation timestamp comes from the injected
+        /// <see cref="TimeProvider"/>.
+        /// </summary>
+        public Task GenerateReport(Project project, ReportKind kind, ReportMode mode, string mimeType,
+            Stream output, IReportIconProvider? iconProvider = null)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            ArgumentNullException.ThrowIfNull(mimeType);
+            ArgumentNullException.ThrowIfNull(output);
+            return RunTracedAsync(nameof(GenerateReport), async activity =>
+            {
+                byte[] bytes = ReportGenerator.Generate(project, kind, mode, mimeType, iconProvider,
+                    timeProvider.GetLocalNow());
+                await output.WriteAsync(bytes).ConfigureAwait(false);
+                activity?.SetReturnValue(bytes.Length);
+            });
+        }
+
+        /// <summary>
+        /// File convenience overload of
+        /// <see cref="GenerateReport(Project, ReportKind, ReportMode, string, Stream, IReportIconProvider?)"/>:
+        /// writes the generated report bytes to <paramref name="path"/> (overwriting an existing file).
+        /// </summary>
+        public Task GenerateReport(Project project, ReportKind kind, ReportMode mode, string mimeType,
+            string path, IReportIconProvider? iconProvider = null)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            ArgumentNullException.ThrowIfNull(mimeType);
+            ArgumentNullException.ThrowIfNull(path);
+            return RunTracedAsync(nameof(GenerateReport), async activity =>
+            {
+                byte[] bytes = ReportGenerator.Generate(project, kind, mode, mimeType, iconProvider,
+                    timeProvider.GetLocalNow());
+                await File.WriteAllBytesAsync(path, bytes).ConfigureAwait(false);
+                activity?.SetReturnValue(bytes.Length);
             });
         }
     }

@@ -8,51 +8,52 @@ status: draft
 
 > **Scope:** Partly in scope. Entering project information (US-039), editing user-defined data-table
 > texts (US-049) and viewing the Wired module address map (US-050) are project-metadata / read-only CRUD.
-> Report generation reads the project to produce output: one **navigable project-documentation report**
-> whose content sections and detail options the installer can switch on and off (US-040 + US-071), a
-> **documentation-completeness / issues report** (US-072), and a deep **function-block logic report**
-> (US-041). All report output is **image-free** — product identity, wire colours and module addressing are
-> rendered as text/tables, never as pictures, icons, diagrams or logos.
+> Report generation reads the project to produce a finished document: **three documentation reports** —
+> Funktionsdokumentation (end-user functions), Installationsdokumentation (installer) and Functionsblok
+> dokumentation (function-block logic) — each in a **Standard** or **Fuld** mode and as **HTML** or
+> **plain text** (US-040), with the installation content specified in US-073, the function-block content
+> in US-041, and the Fuld-mode "Fejl i dokumentation" section fed by the project verification checks
+> (US-072). Report output carries **no images apart from the app's icon language**: product identity,
+> wire colours and module addressing render as text/tables; the function-block report renders its logic
+> tree with the same icon set the app uses (as inline vector glyphs in HTML, unicode stand-ins in text).
 
-**Goal:** Let an IHC installer capture project- and product-level documentation and generate a complete,
-tailorable set of project reports — technical/installation, end-user/function, cabling and addressing
-cross-references, a documentation-completeness check, and the function-block logic — so the delivered
-installation is fully and consistently documented.
+**Goal:** Let an IHC installer capture project- and product-level documentation and generate the three
+project reports — end-user functions, installation, and function-block logic — so the delivered
+installation is fully and consistently documented for each reader.
 
 **Scope:** entering project information (*Documentation ▸ Project info*); viewing and editing the
 project's data tables — the read-only system tables and the editable user-defined texts
-(*Documentation ▸ Data tables*); viewing the Wired input/output module address map
-(*Documentation*); and the reporting view under *Documentation ▸ Reports* — the project-documentation
-report and its selectable purposes (US-040), the per-report **content-section and detail-option
-switches** (US-071), the **documentation-completeness / issues** report (US-072), and the
-**function-block logic** report (US-041). **Scope excludes:** any picture/icon/diagram/logo in report
-output (images are out of scope — reports are redesigned to convey the same information as text and
-tables); the per-product documentation *fields* (US-011) and the note text on function-block inputs
-(authored in E7), which *feed* these reports.
+(*Documentation ▸ Data tables*); viewing the Wired input/output module address map (*Documentation*);
+and generating the three documentation reports from the *Documentation* menu through one shared picker
+(US-040) — the report content per type in US-073 (installation) and US-041 (function blocks), and the
+Fuld-mode documentation-issues section in US-072. **Scope excludes:** any report option beyond
+type × mode × format (the former section/detail switches and purpose presets are retired — US-071); any
+navigation apparatus in the output (no table of contents, anchors or back-to-top); pictures, diagrams or
+logos beyond the icon glyphs; the per-product documentation *fields* (US-011) and the note text on
+function-block inputs (authored in E7), which *feed* these reports.
 
 **Acceptance criteria (epic level):**
 
-- MUST: The installer can enter project / customer / installer information and generate the project
-  documentation report from the data entered while building the project.
-- MUST: The report is presented as **one navigable document** whose **content sections** (project
-  identity, installer, customer, cabling & addressing cross-references, per-locality wiring & function
-  detail, documentation-completeness issues, function blocks) and **detail options** (empty fields,
-  internal ids, wire colours, link display, function documentation, all-vs-connected terminals, end-user
-  filter) the installer can switch **on and off**, with selectable purpose presets (installation /
-  technical, end-user / function, function-block, full).
-- MUST: A **documentation-completeness** report lists, per product and terminal, what documentation is
-  missing or inconsistent (unlinked terminal, missing identification code / light group / cable type /
-  cable number / wire colour / placement / data-line address), so the installer gets a punch-list.
-- MUST: In the **end-user / function** purpose, products not flagged for end-user documentation are
-  omitted; in the **installation / technical** purpose every product is listed and un-filled fields render
-  as blank placeholders (omission is end-user-purpose-only; see the US-040 appendix).
+- MUST: The installer can enter project / customer / installer information and generate each of the
+  three documentation reports from the data entered while building the project.
+- MUST: Every report generates in six user-selectable combinations — three types × Standard/Fuld — and
+  in both output formats, where **Fuld** is the Standard content plus additions only (generation
+  timestamp + programmer line, the Projekt identity block, inline `(ID …)` element ids at definition
+  sites, the "Fejl i dokumentation" section, and the installation-only terminal-connections table).
+- MUST: The Fuld-mode **"Fejl i dokumentation"** section lists, per locality → product → terminal, what
+  documentation is missing or inconsistent, fed by the project verification checks (US-072), so the
+  installer gets a punch-list.
+- MUST: The **Funktionsdokumentation** report lists only products flagged for end-user documentation;
+  the **Installationsdokumentation** report lists every product, with un-filled fields rendered as
+  `--` placeholders in its masthead/per-locality blocks and as blank cells in its flat tables.
 - MUST: The installer can add, edit and delete user-defined data-table texts, while the built-in system
   tables and the Wired module address map are shown read-only.
-- MUST: All report output is **image-free**: no product icons, no graphical module diagrams, no installer
-  logo, no external manual/help pictures — the same information is conveyed as text and tables.
+- MUST: Report output carries no images apart from the icon glyphs: no product photos, no graphical
+  module diagrams, no installer logo image, no external manual/help pictures — module addressing and
+  wiring are tables.
 
-**Readiness:** Ready — the report content, the section/option switches, the completeness report and the
-per-field function-block layout are all specified in this epic (see the US-040 appendix and US-041/071/072).
+**Readiness:** Ready — the per-report content is specified in US-073/US-041, the generate/view/save flow
+in US-040, and the issues section in US-072; the committed report oracles pin the exact output.
 
 ---
 
@@ -106,420 +107,316 @@ Scenario: Project info feeds the reports
 
 ### Constraints
 
-- The **report** renders the installer/customer **Navn / Adresse / Telefon** (name / address / phone) in
-  their masthead blocks, and the **Projekt** identity (description, number, programmer). The other
-  project-info fields (city, zip, country, mobile, email, udf) are captured by the dialog but appear in
-  **no** report section (see the US-040 appendix). This asymmetry is deliberate: the dialog is the
-  project's record, the report is a subset of it.
-- The report also carries a **generation / last-updated timestamp** so a printed copy is dated; the
-  installer identity that fills the report's installer masthead is part of the project's captured
-  identity. Whether a masthead block (installer / customer) appears at all is governed by the report's
-  content switches (US-071).
+- The **installation report** renders the installer/customer **Navn / Adresse / Telefon** (name /
+  address / phone) in its masthead blocks, and Fuld-mode reports render the **Projekt** identity
+  (description, number, programmer). The other project-info fields (city, zip, country, mobile, email,
+  udf) are captured by the dialog but appear in **no** report section (US-073/US-040). This asymmetry is
+  deliberate: the dialog is the project's record, the report is a subset of it.
+- Fuld-mode reports also carry a **generation timestamp** beside the programmer, so a printed copy is
+  dated (US-040).
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented (report generation-timestamp surfacing follows US-040/071).
+**Implementation status:** ✅ Implemented (the Fuld-mode generation-timestamp line is specified in US-040).
 
 ---
 
-## US-040 — Generate the project documentation report
+## US-040 — Generate a documentation report (type × mode × format)
 
-**Scope:** In scope — report generation reads the open project to produce output. The report is one
-navigable document that carries the **installation / technical** content and the **end-user / function**
-content as selectable purposes; its sections and detail options are switched on and off in US-071, its
-completeness section is US-072, and its function-block section is US-041.
+**Scope:** In scope — report generation reads the open project to produce a finished document. The three
+report types' content is specified per type: the functions content below, the installation content in
+US-073, the function-block content in US-041; the Fuld-mode issues section is US-072.
 
-**As an** IHC installer, **I want** to generate the project documentation report — its technical /
-installation content and its end-user / function content — from the data I entered while building the
-project, **so that** I can hand over complete, dated documentation of the installation.
+**As an** IHC installer, **I want** to pick one of the three documentation reports, a Standard or Fuld
+mode and an output format, and view or save the generated document, **so that** I can hand each reader —
+end user or installer — exactly the documentation they need without maintaining report options.
 
-### Acceptance criteria (Checklist)
+**Scope excludes:** any report option beyond type × mode × format (US-071 is retired); navigation
+apparatus in the output (no table of contents, anchors or back-to-top in either mode).
 
-- MUST: *Documentation ▸ Reports* opens the reporting view. It offers the project documentation report
-  with selectable **purpose presets** — **Installation / technical**, **End-user / function**,
-  **Function-block** (US-041) and **Full** — each preset a predefined combination of the content-section
-  and detail-option switches (US-071).
-- MUST: The report renders as **one navigable document** for the whole open project, with a
-  section-jump / back-to-top **overview** so the reader can move between sections (screen), and a
-  **printer-friendly** variant (see appendix).
-- MUST: The **installation / technical** content contains the project / installer / customer identity;
-  the cabling & addressing cross-references (US-073 section content); and, per locality, each product's
-  Locality, Placement, Component type, Identification code, Cable no., Cable type, Light group, and its
-  input/output terminals with decoded data-line address and wire colour.
-- MUST: Products and localities are documented **in the order they appear** in the *Installation* pane;
-  function blocks in *Functions*-pane order (US-041).
-- MUST: The **end-user / function** content lists localities and, per locality, the input functions
-  (e.g. buttons), where each input's text comes from the *Name* + *Placement* of the product and the
-  *Note* on the function-block input it drives (note propagation — see appendix).
-- MUST: In the **end-user / function** purpose, a product not flagged for end-user documentation is
-  **omitted**; in the **installation / technical** purpose every product is listed and any un-filled field
-  renders as a blank placeholder (`--`), not suppressed. (Omission is end-user-purpose-only; see the
-  output-format appendix.)
-- MUST: The report is **image-free** — a product is identified by its **type name + name/placement text**,
-  not by an icon; module addressing is a **table**, not a diagram; there is **no installer logo** and **no
-  external manual/help picture**. (See the appendix "Image-free redesign".)
-- SHOULD: Every purpose is available in a **printer-friendly** variant (compact, black-on-white, gridded,
-  tables kept whole across page breaks; screen-only navigation dropped — see appendix).
+### Acceptance criteria (Given-When-Then)
+
+```gherkin
+Scenario: The Documentation menu lists the three reports
+  Given a project is open
+  When I open the "Documentation" menu
+  Then it lists Funktionsdokumentation, Installationsdokumentation and Functionsblok dokumentation as separate entries
+
+Scenario: A report entry opens the shared picker pre-selected
+  Given a project is open
+  When I choose one of the three report entries
+  Then the one shared report picker opens with that report pre-selected in its type dropdown
+  And the picker offers a Standard/Fuld mode choice and the actions "Vis i browser" and "Gem som…"
+
+Scenario: View and print in the browser
+  Given the report picker is open
+  When I choose "Vis i browser"
+  Then the picked report generates as a self-contained HTML page and opens in the default browser
+  And printing is the browser's own print function (US-063)
+
+Scenario: Save as a file in either format
+  Given the report picker is open
+  When I choose "Gem som…" and pick a target file name ending in .html or .txt
+  Then the picked report generates to that file — HTML for a .html target, plain text for a .txt target
+
+Scenario: No project open
+  Given no project is open
+  When I open the "Documentation" menu
+  Then the three report entries are disabled
+
+Scenario: A generation or save failure is reported
+  Given the report picker is open
+  When generating or writing the picked report fails
+  Then the standard error dialog reports the failure and the app stays responsive
+```
+
+### Business rules (modes and formats)
+
+- MUST: **Standard** mode is the report's standard information scope; **Fuld** mode is Standard plus
+  additions only — a `Fuld rapport — Genereret: <timestamp> — Programmør: <name>` line under the title,
+  the **Projekt** identity block (description / number / programmer), inline `(ID …)` element ids where
+  an element is defined, the **"Fejl i dokumentation"** section (US-072), and — installation report
+  only — the **Terminal-forbindelser** table (US-073).
+- MUST: The **Funktionsdokumentation** content lists every locality in Installation-pane order; under a
+  locality, the products flagged for end-user documentation with their *Name* + *Placement*; per product
+  its terminals (inputs before outputs); and per linked terminal the *Note* of the function-block input
+  it drives — one note written on the block propagates to every linked terminal, and a terminal with
+  several links shows one note line per link. In Fuld mode a note line whose function block sits in a
+  locality with a different name is suffixed `(<that locality>)`.
+- MUST: Both formats convey the same content: the HTML page is self-contained (styles and icon glyphs
+  inline, screen and print variants in one page); the plain-text file renders the same structure with
+  unicode icon stand-ins and aligned columns.
+- MUST: The generation timestamp shown in Fuld mode is the generation time; Standard output carries no
+  timestamp.
 
 ### AC illustrations
 
-- An end-user row "<product> By door" is formed from the product's *Name* ("<product>") + *Placement*
-  ("By door"); the sub-line under a terminal comes from the *Note* on the function-block input that button
-  drives — writing that note once propagates it to every physical terminal linked to the block.
-- Selecting the **Installation / technical** preset shows every product with its full terminal/cable
-  detail and the cross-reference tables; selecting **End-user / function** hides the technical columns and
-  shows only end-user-flagged products with their behaviour notes — the **same** underlying report, two
-  switch combinations (US-071).
+- Choosing *Documentation ▸ Installationsdokumentation…*, mode **Fuld**, then "Gem som…" with
+  `rapport.txt` writes the plain-text installation report including the Projekt block, `(ID …)` ids and
+  the "Fejl i dokumentation" section; the same picker choice with "Vis i browser" opens the identical
+  content as an HTML page.
+- An end-user row "Tryk (venstre)" under a button product shows the note of the block input it drives —
+  e.g. "Kort tryk < 1 sek. Tænd / sluk: Loftlampe i stue" — once per link on that terminal.
 
 ### Constraints
 
-- Verification method — **Demonstration** that the report renders entered data in installation order, that
-  each purpose preset shows the right sections, that the end-user purpose omits undocumented products, and
-  that no report output contains an image.
-- **Report content comes from the engine.** The engine supplies a render-ready report model — sections in
-  order, resolved field values, blank→`--` decisions, the end-user omission filter, note propagation, and
-  decoded data-line addresses — and this story covers the model→HTML transform, the switch application
-  (US-071), the print variant, and standard-browser display (see the appendix "OpenVisual approach"). The
-  field / order / omission spec in the appendix is the contract that model satisfies.
+- Verification method — the committed report oracles (`tests/testdata/reports/`, 24 files: 3 types × 2
+  modes × 2 formats × 2 reference projects) are the executable output contract; generating each
+  combination reproduces its oracle byte-for-byte.
+- Report generation, content and formatting live in the engine; the app only offers the picker, hands
+  over type × mode × format, and shows or saves the returned document.
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Installation and end-user content implemented; the SDK builds ONE combined
-project-documentation model (all three sections in fixed order, with the switch-supporting data — per-section and
-per-element internal ids + inclusion flags, raw-blank-beside-display values, a unified locality view); and a single
-**Reports…** view renders it as ONE navigable HTML document (a screen overview / section-jump / back-to-top that the
-printer variant drops), replacing the former six direct report commands. The heading carries the report **generation
-timestamp** (from an injected clock, fixed format) and the **programmer**, a **Projekt** identity section
-(description / number / programmer) renders near the top, the technical terminal detail now carries the **link
-display** (`→ FB input → function block → its locality`) and the **function note** of each linked terminal's driving
-FB input, a consolidated **Kabler** cabling table lists one row per addressed terminal in address order, and the
-module section is a **per-terminal address map** (which product terminal occupies each address, per input/output
-module). The content-section and detail-option switches over that model, and the **purpose presets** (Installation /
-technical, End-user / function, Function-block, Full — each a named starting combination of the switches, selectable
-in the Reports… view), are implemented. The **image-free redesign** is also in place: a product is identified by its
-**resolved catalog type-name text** (beside its name/placement) rather than a product-image key or icon, the module
-section is a tabular per-terminal address map (no diagram), and the document carries no logo or banner image.
-
-<!-- BEGIN appendix — report output format (delimited; removable wholesale) -->
-
-### Appendix — report output format
-
-This appendix specifies the content and layout of the project documentation report over the reference
-project `project3-KompleksWired.vis`. The report is **not a dialog and not an export step**: choosing
-*Documentation ▸ Reports* renders a static HTML page for the whole open project, which the user views and
-prints in a standard browser. The rules below (sections, order, columns, blank handling, omission, note
-propagation, switch behaviour and the image-free rule) fully specify the output.
-
-> **OpenVisual approach.** Two layers, matching the app's architecture (business logic in the engine,
-> GUI thin):
-> - **Engine.** The engine returns a render-ready **report model** with *all* content already computed:
->   the sections in order, each product's resolved field values, the blank→`--` decisions, the end-user
->   omission filter applied, note propagation resolved, the documentation-completeness issues found
->   (US-072), and data-line addresses decoded. **The field / order / omission spec below is the contract
->   that model satisfies.**
-> - **This story (US-040).** IHC OpenVisual transforms the report model into HTML (a mechanical template —
->   no business logic), applies the active content/detail switches (US-071) and the print CSS variant, and
->   displays it in the user's **standard browser**. The only runtime dependency is a standard browser able
->   to display static HTML — the app is self-contained and needs no prior IHC software installation
->   (US-063).
-
-> **Image-free redesign.** Reports carry **no images of any kind** — the same information is conveyed as
-> text and tables:
-> - A product is identified by its **type name** (a heading) plus its **name / placement** text — never by
->   a product icon or photo.
-> - Input/output **module addressing** is presented only as **tables** (US-073); there is **no graphical
->   module diagram**.
-> - There is **no installer logo**, **no title-banner image** (a text heading replaces it), and **no
->   external manual / help / PDF picture or link**.
-> - A **wire colour** is shown by its **colour name** (text); an optional inline colour chip is a CSS
->   swatch, not an image file, and the report remains fully legible in black-and-white without it.
-
-**Output mechanism / view.** *Documentation ▸ Reports* presents the reporting view titled "Projekt
-dokumentation" with the **purpose presets** (Installation / technical, End-user / function,
-Function-block, Full) and the content/detail switches (US-071). Choosing a purpose renders one HTML page.
-There is **no on-screen-preview vs. direct-print vs. export distinction** — every choice renders an HTML
-page; printing is the browser's own Ctrl+P. No app-supplied page header/footer/page-number; the report's
-**generation timestamp** is rendered once near the top; the only app page-break hint is "avoid breaking
-inside a table".
-
-**Report structure (top→bottom).** Each numbered block is a **content section** that US-071 can switch on
-or off; the order is fixed.
-
-1. **Heading + metadata** — text heading "Projekt dokumentation" and the **generation / last-updated
-   timestamp** and programmer. Always present.
-2. **Projekt** — project description, number, programmer.
-3. **Installatør** masthead — `Navn / Adresse / Telefon`. Blank → `--`.
-4. **Kunde** masthead — `Navn / Adresse / Telefon`. Blank → `--`. (Other captured identity fields — city,
-   zip, country, mobile, email, udf — are **not** shown.)
-5. **Cabling & addressing cross-references** (US-073) — the *Kabler* table (one row per addressed terminal,
-   by data-line address, with wire colour), the *Datalinie indgange* / *Datalinie udgange* flat tables
-   (all inputs / all outputs, by address), the *Datalinie input/output-moduler* address map, and the
-   *Specielle Produkter* / *S0 Device* tables. In these flat tables a blank field is an **empty cell**.
-6. **Per-locality wiring & function detail** — **every** locality in Installation-pane order (empty
-   localities included). Under each, each product renders as a heading (**type name + name/placement**, no
-   icon) with label→value rows `Lokalitet, Placering, Komponent, Identifikationskode, Kabelnummer,
-   Kabeltype, Lysgruppe` and a terminal sub-block. Per terminal: the terminal name, its `Adresse`
-   (`Indgang`/`Udgang` + decoded data-line address, unassigned → `?`), its wire colour, and — when the
-   detail options are on — the **link display** (`→ <FB input> → <function block> → <its locality>`, the
-   terminal(s) it drives) and the **function documentation** (the behaviour note resolved from the driving
-   FB input). Airlink, RS485-LED-dimmer and RS485-modem products use reduced field sets (serial number /
-   cable-colour rows). Blank → `--`.
-7. **Fejl i dokumentation** — the documentation-completeness / issues section (US-072).
-8. **Funktionsblokke** — the function-block logic section (US-041).
-
-**Purpose presets = switch combinations.**
-- **Installation / technical** — sections 1–6 on; every product listed; blank fields shown as `--`; no
-  end-user filter; technical detail (cable/terminal/address) on.
-- **End-user / function** — a locality list, and under each locality **only products flagged for end-user
-  documentation**; per input terminal a bullet `• <terminal name>` and, **per link on that terminal**, a
-  sub-line `- <Note of the FB input it drives>`. The note lives on the FB input and is reached through the
-  link, so **one note propagates to every physical terminal linked to the block**, and a terminal with
-  several links repeats the note once per link. **[screen only]** when the driving FB sits in a different
-  locality than the product, the note sub-line is suffixed `(<that locality>)`. Technical columns
-  (cable/address/id) are hidden.
-- **Function-block** — the *Funktionsblokke* section only (US-041).
-- **Full** — every section and detail option on.
-
-**Omission rule.** In the **end-user / function** purpose a product not flagged for end-user documentation
-is dropped; localities are never dropped. In every other purpose no product is dropped — undocumented
-fields appear blank (`--` / empty).
-
-**Printer variant.** A CSS swap: black text, compact `xx-small`, gridded borders, tables kept whole
-across page breaks. It drops the screen-only navigation (overview / section-jump / collapsibility) and the
-end-user differing-locality suffix, and — like the whole report — contains no image.
-
-<!-- END appendix -->
-
+**Implementation status:** ✅ Implemented — the three Documentation-menu entries open the shared picker
+pre-selected; view-in-browser and save-as (.html/.txt) generate through the engine for all
+3 × 2 × 2 combinations; the 24 report oracles regenerate byte-identically in the test suites.
 
 ---
 
-## US-041 — Generate the function-block logic report
+## US-041 — The function-block report content (Functionsblok dokumentation)
 
-**Scope:** In scope — report generation reads the project to produce output; the **function-block** purpose
-of the project documentation report (US-040), specified here as a **deep, per-block logic listing**.
+**Scope:** In scope — the content specification of the **Functionsblok dokumentation** report type
+generated via US-040: a deep, per-block logic listing.
 
-**As an** IHC installer, **I want** to generate a report that documents each function block in full — its
-purpose, its inputs and outputs, its settings and internal variables, and its programmed logic — **so
-that** I can hand over and review the control logic alongside the installation and end-user content.
+**As an** IHC installer, **I want** the function-block report to document each block in full — its
+purpose, its variables with values, and its programmed logic as an icon tree — **so that** I can hand
+over and review the control logic alongside the installation and end-user documentation.
 
-**Scope excludes:** the installation / end-user content (US-040); the section/detail switches (US-071).
+**Scope excludes:** the generate/view/save flow (US-040); the installation and functions content
+(US-073 / US-040).
 
 ### Acceptance criteria (Checklist)
 
-- MUST: *Documentation ▸ Reports* offers a **Function-block** purpose (section heading *"Funktionsblokke"*)
-  alongside the other purposes, in both a screen and a **printer** variant.
-- MUST: Produced from the engine's report model and transformed into HTML, shown in the standard browser
-  for viewing/printing — same mechanism as US-040 (see the US-040 appendix "OpenVisual approach"), and
-  **image-free** (no block diagram; the logic is rendered as text and an indented outline).
-- MUST: Blocks are documented **in Functions-pane order** (document order — no re-sort), consistent with
-  US-040's ordering rule.
-- MUST: **Each function block** renders the fields specified in the "Function-block layout" appendix below —
-  its name, application text, inputs, outputs, settings, internal variables and programs.
-- SHOULD: The **printer** variant is the same layout with the print stylesheet (black text, compact
-  `xx-small`, gridded borders, blocks/tables kept whole across page breaks) — a CSS swap.
+- MUST: Blocks are documented per locality in Installation-pane order, each as its own section: the
+  block's **name** as the heading, then — when the block carries a description — the fixed
+  **"Anvendelse"** label and the description's lines (a repeated first line equal to the block name is
+  not shown; trailing library boiler-plate lines render as small print in HTML).
+- MUST: Each block renders its four variable sections and its programs per the layout appendix below,
+  as an indented tree whose rows carry the app's **icon language** — vector glyphs in HTML, the unicode
+  stand-ins in plain text.
+- MUST: Variable rows show `= value` **only** under *Indstillinger* and *Interne variable*, with
+  per-type value formats (timer `HH:MM:SS,mmm`, time of day `HH:MM:SS`, date as day + real month name,
+  weekday in Danish, on/off as `On`/`Off`, temperature with ` C`, light level with `%`, enum by its
+  value name); inputs/outputs show the pin's note text instead.
+- MUST: Statement rows (events, conditions, commands) render their text with the referenced variable
+  names substituted into the stored statement template.
+- MUST: In **Fuld** mode each block section additionally carries its `(ID …)` chip on the heading and an
+  identity grid (Lokalitet / Type / Version / Låst).
+- MUST: A block with no description renders its heading directly; a block with no programmed logic
+  still lists its (empty) sections and its empty program skeleton.
 
 ### AC illustrations
 
-- Over `project3-KompleksWired.vis` the report documents each function block (e.g. the *Kip tænd sluk*
-  and *PIR styring* blocks) with its application text, its inputs/outputs and their notes, its settings
-  (e.g. `Timer = 00:03:00,000`), and its program as an indented event → command outline; an unprogrammed
-  block renders as *Tom blok* with no internals.
+- Over the reference projects, the *Doku zoo* block renders `⧖ Timer = 00:03:00,000` under
+  Indstillinger, `→ Kip  Tænd/sluk af stuelys` under Input, and its Case program as nested
+  `↳◆ Case (Tilstand)` / `✓✓ Case Tilstand = Tilstand A` rows; the unprogrammed *Tom blok* renders its
+  empty sections and program skeleton.
 
 ### Constraints
 
-- Verification method — **Demonstration** that the report documents the project's function blocks in
-  document order with the appendix's field layout, screen and print variants, and no image.
+- Verification method — the committed function-block report oracles pin the exact output byte-for-byte
+  in both formats and modes.
 
 **Readiness:** Ready — the per-field layout is itemised in the appendix below.
 
-**Implementation status:** ✅ Implemented — the combined report renders the deep per-block layout: the block
-description, input/output notes, settings and internal variables as `name = value`, and a flattened program outline
-(events → commands, sub-programs with conditions and commands, scene invocations); an unprogrammed block renders as
-*Tom blok*.
+**Implementation status:** ✅ Implemented — the engine builds the block sections (heading/description
+rules, vendor-scope variable sections with per-type value formats, statement substitution, program-tree
+nesting) and both format writers render them; pinned by the four function-block report oracles per
+reference project.
 
 <!-- BEGIN appendix — function-block layout (delimited; removable wholesale) -->
 
 ### Appendix — function-block layout
 
-Per function block, in Functions-pane document order, the report renders the following, as headings and an
-indented outline (no tables of images; internal element ids appear only when the *internal ids* option is
-on, US-071):
+Per function block, in Installation-pane document order, the report renders the following as an
+icon-tree outline (element `(ID …)` chips appear on the block heading in Fuld mode only):
 
-1. **Block heading** — the block's name / catalogue designation.
-2. **Application** — the block's descriptive purpose text (the "Anvendelse" text).
-3. **Input** — one entry per block input: the input name and its **note / behaviour text** (the note an
-   installer fills to explain what that input does).
-4. **Output** — one entry per block output: the output name and its note / behaviour text.
-5. **Indstillinger** (settings) — each configurable setting as `name = value` (e.g. a timer duration).
-6. **Interne variable** (internal variables) — each internal variable as `name = value`.
-7. **Programmer** (programs) — each program in the block, rendered as an **indented outline**:
-   - **Hændelser** (events / triggers) — the events that start the program (e.g. `<input> -> ON`).
+1. **Block heading** — the block's name; in Fuld mode followed by the identity grid
+   (Lokalitet / Type / Version / Låst).
+2. **Anvendelse** — the block's descriptive purpose text, line by line.
+3. **Input** — one row per input pin: icon, name, and its **note / behaviour text**.
+4. **Output** — one row per output pin or scene: icon, name, and its note text.
+5. **Indstillinger** (settings) — each variable as icon, `name = value` (and its note when present).
+6. **Interne variable** (internal variables) — each variable as icon, `name = value`.
+7. **Programmer** (programs) — each program as an indented icon tree:
+   - **Hændelser** (events) — the events that start the program (e.g. `<input> -> ON`).
    - **Kommandoer** (commands) — the actions, including nested **Under program** groups with their
-     **Betingelser** (conditions) and **Kommandoer ved betingelser sande** (commands run when the
-     conditions hold), and any scene invocations (`Fremkald Scenarie <name>`).
-8. **Empty block** — a block with no programmed logic renders as **Tom blok** with the heading only and no
-   internals.
+     **Betingelser** (and/or condition groups) and their true/false command groups, case groups with
+     their case values, and scene invocations (`Fremkald <scene>`).
+8. **Empty block** — a block with no programmed logic renders its heading, its empty sections and the
+   empty program skeleton.
 
 <!-- END appendix -->
 
 ---
 
-## US-071 — Tailor the report: switch content sections and detail options on/off
+## US-071 — Tailor the report with section/detail switches (RETIRED)
 
-**Scope:** In scope — the on/off model that lets one report serve several purposes. Governs which
-sections of US-040 / US-072 / US-073 render and how much detail each shows.
+**Status: Retired (2026-08-02).** This story's content-section and detail-option switches, and the
+purpose presets built from them, were removed from the product. A report is now fully specified by
+**type × mode × format** alone (US-040): the three report types replace the sections-as-switches model,
+the Fuld mode replaces the detail options and the "Full" preset, and the committed report oracles pin
+the exact output of every combination. The completeness content this story could toggle lives on as the
+Fuld-mode "Fejl i dokumentation" section (US-072). No switch or preset behaviour described here is
+current product behaviour.
 
-**As an** IHC installer, **I want** to switch the report's content sections and detail options on and off,
-**so that** I can produce a document focused on exactly what a given reader needs — a technical hand-over,
-an end-user guide, a cabling list, or the full record — without maintaining separate report files.
+**Readiness:** Retired — no open work.
 
-### Acceptance criteria (Checklist)
-
-- MUST: **Content-section switches** — each of these sections can be individually turned on or off, and the
-  report re-renders with the section shown or hidden while the top-to-bottom order stays fixed: *Projekt*,
-  *Installatør*, *Kunde*, the cabling & addressing cross-references (US-073), the per-locality wiring &
-  function detail, the documentation-completeness issues (US-072), and the function blocks (US-041).
-- MUST: A switched-**off** section produces **no output at all** (not an empty heading).
-- MUST: **Detail-option switches** apply within the sections that are on:
-  - **Show empty fields/columns** — when off, a field or column that is blank for every row is dropped and
-    blank cells render as nothing; when on, blanks render as placeholders (`--` / empty cell).
-  - **Show internal ids** — reveal each element's internal id beside its name.
-  - **Show wire colours** — show or hide the wire-colour column/annotation (as colour-name text).
-  - **Link display** — show or hide, per terminal, the path to the function-block input it drives.
-  - **Function documentation** — show or hide the behaviour notes resolved from the driving FB input.
-  - **Show all inputs/outputs** — include unconnected terminals, or restrict to terminals in use.
-  - **End-user filter** — restrict the per-locality content to products flagged for end-user documentation.
-- MUST: The US-040 **purpose presets** (Installation / technical, End-user / function, Function-block,
-  Full) are named starting combinations of these switches; changing a switch adjusts from the chosen preset.
-- SHOULD: On screen, an **overview** control lists the sections that are on and jumps to them / back to the
-  top; sections MAY be collapsible. The printer variant drops these navigation aids (US-040 appendix).
-- SHOULD: Switch state applies to the current report view and persists for the session; it MAY persist per
-  project.
-
-### AC illustrations
-
-- Turning off *Installatør*, *Kunde* and the completeness section, and turning off the end-user filter,
-  yields a pure cabling-and-wiring document; turning the end-user filter on and the technical columns off
-  yields an end-user guide — one report, two switch sets.
-- Turning **Show internal ids** on adds each terminal's internal id beside its name throughout; turning it
-  off removes them everywhere.
-
-### Constraints
-
-- Verification method — **Demonstration** that toggling each switch shows/hides the corresponding section,
-  column or annotation, and that an off section emits nothing.
-- The switch surface (menu grouping, checklist, presets) is a fixed requirement; its exact placement and
-  wording are not itemised here.
-- A **graphical module overview** option is deliberately **excluded** — images are out of scope, so the
-  module addressing is always tabular (US-073), and there is no picture/diagram toggle.
-
-**Readiness:** Ready.
-
-**Implementation status:** 🟡 Implemented in the Reports view — the three **content sections** toggle on/off (an
-off section emits nothing), and the render-level **detail options** (show empty fields, internal ids, wire colours,
-link display, function documentation) apply within the sections that are on; the view-model owns the toggles for the
-session. ⚠ The two rebuild-level options (all-vs-in-use terminals, end-user omission filter) remain, as they need
-both the filtered and unfiltered data carried on the combined model rather than a render toggle.
+**Implementation status:** ✅ Retired — the switch/preset surface was removed with the reporting
+redesign (2026-08-02).
 
 ---
 
-## US-072 — Documentation-completeness (issues) report
+## US-072 — Documentation-issues section fed by project verification
 
-**Scope:** In scope — report generation reads the project to produce output; a read-only validation
-section that reports gaps, it never edits the project.
+**Scope:** In scope — a read-only section of every Fuld-mode report that reports documentation gaps; it
+never edits the project. The checks themselves belong to the project verification capability, which is
+also callable on its own (without generating a report).
 
-**As an** IHC installer, **I want** a report that lists what documentation is missing or inconsistent
-across the project, **so that** I get a punch-list of everything to finish before hand-over.
+**As an** IHC installer, **I want** every Fuld-mode report to end with a list of what documentation is
+missing or inconsistent across the project, **so that** I get a punch-list of everything to finish
+before hand-over.
 
 ### Acceptance criteria (Checklist)
 
-- MUST: A content section headed **"Fejl i dokumentation"** — a switchable section (US-071) and a report
-  purpose in its own right — grouped **per locality → product → terminal**, listing **only** the products
-  and terminals that have an issue (fully documented ones are omitted).
-- MUST: The checks MUST include, per terminal / product:
-  - terminal **not linked** to anything;
-  - missing **identification code**;
-  - missing **light group**;
-  - missing **cable type**;
-  - missing **cable number**;
-  - missing **wire colour**;
-  - missing **placement**;
-  - missing **data-line address** (terminal left unaddressed).
-- MUST: Each issue is a plain-text line naming the product, the terminal (where applicable) and the missing
-  or inconsistent item.
-- MUST: When the project has **no** issues, the section states that none were found (rather than rendering
-  empty).
-- MUST: **Image-free**; available in a screen and a **printer** variant like the rest of the report.
+- MUST: Each Fuld-mode report's final section is headed **"Fejl i dokumentation"**: a table with the
+  columns *Lokalitet / Produkt / Terminal / Fejl*, one row per documentation finding, in project scan
+  order (a product's own findings before its terminals'). Cells that do not apply — the Terminal cell of
+  a product-level finding — stay blank. Standard mode carries no such section.
+- MUST: The section is fed by the project **verification checks** (documentation category), whose seed
+  set MUST cover, per product / terminal: terminal **not linked**; missing **identification code**;
+  missing **light group**; missing **cable type**; missing **cable number**; missing **wire colour**;
+  missing **placement**; missing or undecodable **data-line address**.
+- MUST: Each finding renders its fixed Danish label (e.g. *Mangler Id-kode*, *Ikke forbundet*,
+  *Mangler Ledningsfarve*, *Mangler Adresse*); fully documented products and terminals produce no rows.
+- MUST: The section lists the whole project's findings in every report type — the same rows in the
+  functions, installation and function-block reports of the same project.
+- MUST: Documentation findings are advisory: they never block saving the project or affect its validity.
+- SHOULD: A clean project renders the section with its header and no rows.
 
 ### AC illustrations
 
-- Over a project where a socket has no light group and no wire colour and one button terminal drives no
-  block, the section lists that locality → that socket → *Mangler Lysgruppe*, *Mangler ledningsfarve*, and
-  that button → *Er ikke forbundet/linked til noget*; a fully documented lamp in the same locality does not
-  appear.
+- Over a project where a button product lacks an identification code and its lower-right terminal is
+  unlinked, uncoloured and unaddressed, the section lists `<locality> / <product> / / Mangler Id-kode`
+  followed by three rows for that terminal — *Ikke forbundet*, *Mangler Ledningsfarve*,
+  *Mangler Adresse* — and a fully documented lamp in the same locality contributes no rows.
 
 ### Constraints
 
-- Verification method — **Demonstration** over a project with known gaps that each gap is reported and
-  fully documented elements are omitted.
+- Verification method — the committed Fuld-mode report oracles pin the section's exact rows over the
+  reference projects; the verification checks are additionally covered by their own engine tests,
+  independent of reporting.
 - The checks read the same documentation fields the product / terminal properties dialogs write (US-011,
   US-012); this section **reports**, it never edits.
-- The listed check set is a fixed requirement; the exact per-issue wording / localisation and any checks
-  beyond the listed set are not itemised here.
+- The seed check set is a fixed requirement; checks beyond it may be added to the verification
+  capability over time and then appear in this section without a report-side change.
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Implemented in the combined report — a **Fejl i dokumentation** section lists every
-missing/blank item (unlinked terminal; missing id-code / light group / cable type / cable number / wire colour /
-placement / data-line address) located by locality → product → terminal, listing only elements with an issue and
-rendering "Ingen fejl fundet." when the project is clean. Surfaced through the single Reports view (US-040).
+**Implementation status:** ✅ Implemented — the engine's categorized verification supplies the
+documentation findings (the 8 seed checks, advisory warnings that never affect validity or saving), and
+every Fuld-mode report renders them as the final "Fejl i dokumentation" table; pinned by the six full-*
+report oracles.
 
 ---
 
-## US-073 — Cabling and addressing cross-references
+## US-073 — The installation report content (Installationsdokumentation)
 
-**Scope:** In scope — report generation reads the project to produce output; the report's cabling and
-data-line addressing cross-reference tables. Distinct from the interactive in-app module map (US-050).
+**Scope:** In scope — the content specification of the **Installationsdokumentation** report type
+generated via US-040. Distinct from the interactive in-app module map (US-050).
 
-**As an** IHC installer, **I want** the report to include cross-reference tables of the cabling and the
-data-line addressing, **so that** I can trace every wire and every occupied module terminal in one place.
+**As an** IHC installer, **I want** the installation report to cover the mastheads, the data-line
+modules, every product's wiring detail and the flat addressing cross-references, **so that** I can trace
+every wire and every occupied module terminal in one printable document.
 
 ### Acceptance criteria (Checklist)
 
-- MUST: A **cabling** table headed **"Kabler"** — one row per **addressed** terminal, **sorted by data-line
-  address**, with columns *Ledningsfarve* (wire colour), *Adresse*, *Modul*, *Modul-lokation*, *Lysgruppe*,
-  *Id-kode*, *Lokalitet*, *Placering*, *Produkt*, *Ind-/Udgang*. Unaddressed terminals are excluded.
-- MUST: Flat data-line cross-references **"Datalinie indgange"** / **"Datalinie udgange"** — all inputs /
-  all outputs, **sorted by address**, with columns *Adresse, Produkt, Indgang|Udgang, Note, Lokalitet,
-  Placering, Id-kode, Kabeltype, Kabelnummer, Lysgruppe, Ledningsfarve*. A blank field is an empty cell.
-- MUST: A **module address map** **"Datalinie input/output-moduler"** — per input and per output module,
-  the terminals in use and which product terminal occupies each address, rendered **as a table** (there is
-  **no graphical module diagram**).
-- MUST: The *Specielle Produkter* (special products, e.g. modems) and *S0 Device* tables where applicable.
-- MUST: These are content sections switchable via US-071 and honour the wire-colour, empty-column and
-  internal-id options.
-- MUST: **Image-free**; available in a screen and a **printer** variant.
+- MUST: **Mastheads** — *Installatør* and *Kunde* blocks with `Navn / Adresse / Telefon`; a blank value
+  renders `--`.
+- MUST: **Module tables** — *Datalinie inputmoduler* and *Datalinie outputmoduler*, sorted numerically
+  by data-line number, with columns *Datalinie, Modul type, Lokalitet, Beskrivelse*; blanks render `--`;
+  an empty table still renders its headers.
+- MUST: **Per-locality component blocks** under *"Lokaliteter og komponenter"* — every product in
+  Installation-pane order with its family's field set (wired: identification code, cable number, cable
+  type, light group; wireless: identification code, serial number, light group; LED dimmer: serial
+  number; RS485 modem: identification code and the four wire colours), a wired product additionally
+  carrying its terminal sub-table (*Terminal / Adresse / Ledning*, document order, nested terminals
+  included). Modem blocks list after all other products. Blanks render `--`.
+- MUST: **Flat cross-reference tables** under *"Datalinjer"* — *Datalinie indgange* / *Datalinie
+  udgange* (all inputs / all outputs, unaddressed rows first then sorted numerically by address, columns
+  *Adresse, Produkt, Indgang|Udgang, Note, Lokalitet, Placering, Id-kode, Kabeltype, Kabelnummer,
+  Lysgruppe, Ledningsfarve*), plus *Specielle Produkter* (RS485 modems) and *S0 Device*. A blank field
+  is an empty cell; an unaddressed or undecodable address renders `?`.
+- MUST: A data-line address displays as `module . position`, decoded from the stored address with the
+  input/output terminal-per-module division; an unaddressed terminal shows `?`.
+- MUST: In **Fuld** mode the report additionally carries the **Terminal-forbindelser** table before the
+  issues section — one row per linked wired terminal (*Produkt, Terminal, Forbindelse, Funktion*), the
+  connection rendered as `-> <block input> -> <function block> -> <its locality>` with the input's note
+  as *Funktion* — and `(ID …)` ids at each element's defining row.
+- MUST: Module addressing and wiring render as **tables** (no graphical module diagram).
 
 ### AC illustrations
 
-- A wired lamp output addressed to output module 3, terminal 2, with a brown wire, appears once in *Kabler*
-  as a row `brun | 3.02 | Output 230/10 | … | <locality> | <placement> | Lampeudtag | Udgang`, and again in
-  *Datalinie udgange* at address `3.02`; an unaddressed terminal appears in neither.
+- A wired lamp output addressed to output module 1, terminal 3, with a brown wire appears in its
+  product's block as `Udgang | Udgang 1 . 03 | Brun` and again in *Datalinie udgange* at address
+  `1 . 03`; an unaddressed button terminal appears in its product block and cross-reference row with
+  address `?`.
 
 ### Constraints
 
-- Verification method — **Demonstration** that each addressed terminal appears once, sorted by address,
-  with its wire colour; that unaddressed terminals are excluded from *Kabler*; and that the module map is a
-  table, not a diagram.
-- The precise column set MAY vary by product family (wired / airlink / RS485); the graphical module
-  overview is **excluded** (images out of scope).
+- Verification method — the committed installation report oracles pin the exact tables, sorting, blank
+  conventions and Fuld additions byte-for-byte over the reference projects.
 - This is the **report's** addressing cross-reference; the interactive, in-app module-map **view** is
   US-050 — the two present the same addressing, one as a printable report section, the other as a live
   read-only view.
 
 **Readiness:** Ready.
 
-**Implementation status:** 🔴 Planned.
+**Implementation status:** ✅ Implemented — the engine builds the full installation content (mastheads,
+module tables, per-locality component blocks with terminal sub-tables, flat cross-references, special
+products and S0 devices, Fuld terminal-connections) and both format writers render it; pinned by the
+four installation report oracles per reference project.
 
 ---
 
@@ -534,8 +431,8 @@ variants must satisfy.
 paper hand-over documentation stays complete and legible regardless of the reader's printer or browser
 print settings.
 
-**Scope excludes:** the reports' field content and section/detail switches (US-040/041/071/072/073); any
-app-supplied page header/footer/page-number (explicitly excluded by the US-040 appendix).
+**Scope excludes:** the reports' field content (US-040/041/072/073); any app-supplied page
+header/footer/page-number.
 
 ### Acceptance criteria (Checklist)
 
@@ -567,19 +464,18 @@ app-supplied page header/footer/page-number (explicitly excluded by the US-040 a
 
 ### Constraints
 
-- Verification method — **Demonstration**: print-preview (or print-to-PDF) each report purpose and each of
-  US-040/041/072/073's sections and tables, and confirm no clipped column, no split row, no orphaned
-  heading, and a legible heading with default browser print settings (background graphics off).
-- This story specifies the print CSS/layout contract only; report field content and the section/detail
-  switches are specified in US-040/041/071/072/073.
+- Verification method — **Demonstration**: print-preview (or print-to-PDF) each report type and mode and
+  confirm no clipped column, no split row, no orphaned heading, and a legible heading with default
+  browser print settings (background graphics off).
+- This story specifies the print CSS/layout contract only; report field content is specified in
+  US-040/041/072/073.
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Partially implemented — `ReportHtmlRenderer`'s print variant already applies a
-compact black-on-white stylesheet with `page-break-inside:avoid` on tables; banner-contrast fallback,
-heading break-after avoidance, wide-table print reflow and repeating table headers are not yet ported into
-the renderer. The full print-safety CSS contract is captured in the
-`tests/testdata/reports/std-*/full-*.html` report-format oracles (2026-07-30).
+**Implementation status:** ✅ Implemented — every generated HTML report embeds the one shared
+screen+print stylesheet: explicit page margins, banner print fallback (black text with a border when
+backgrounds are off), heading break-after avoidance, row/table break-inside avoidance, repeating table
+headers, and wide-table print reflow. Pinned byte-for-byte by the twelve `.html` report oracles.
 
 ---
 

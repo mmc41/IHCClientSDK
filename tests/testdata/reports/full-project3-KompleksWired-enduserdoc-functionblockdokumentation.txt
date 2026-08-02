@@ -447,7 +447,7 @@ Bemærk: Dette virker kun hvis blokken er rød-markeret.
     ✓ Manuelt betjent                   = OFF
 
 ------------------------------------------------------------------------------
-2.1.01.a. 7 dages ur, med 1 tænd tidspunkt (ID _0x42a28)
+2.1.01.a. Ur, med 1 tidspunkt (ID _0x42a28)
 
   Lokalitet  Køkken
   Type       2.1.01
@@ -455,6 +455,7 @@ Bemærk: Dette virker kun hvis blokken er rød-markeret.
   Låst       Ja
 
 Anvendelse
+2.1.01.a. 7 dages ur, med 1 tænd tidspunkt
 7 dages ur, hvor der kun er et tænd- og sluktidspunkt. Dvs. at alle ugens 7 dage har samme tænd- og sluktidspunkt.
 For at se den fulde beskrivelse marker denne linje og tryk "F1".
 Bemærk: Dette virker kun hvis "Blokken" er rød-markeret.

@@ -1,5 +1,7 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Ihc.Vis;
 using Ihc.Vis.Model;
 
 namespace safe_visual_tests;
@@ -60,14 +62,20 @@ public class ReorderTests
 
         await harness.Session.ReorderNodeAsync(second, -1);   // move the second product above the first
 
-        var afterOrder = harness.Session.Current!.FindById(loc)!.ChildrenOrEmpty()
-            .Where(c => c.Tag.StartsWith("product_")).Select(c => c.Id!.Value).ToList();
-        var report = harness.Session.GenerateProjectDocumentationReport()!.Installation;
+        var after = harness.Session.Current!.FindById(loc)!.ChildrenOrEmpty()
+            .Where(c => c.Tag.StartsWith("product_")).ToList();
+        // T017: the report-order observation goes through the NEW pipeline — the generated installation
+        // report lists the component blocks in tree (document) order, so the moved product renders first.
+        using var output = new System.IO.MemoryStream();
+        await harness.ProjectService.GenerateReport(harness.Session.Current!, ReportKind.Installation,
+            ReportMode.Standard, ReportMimeTypes.PlainText, output);
+        string report = System.Text.Encoding.UTF8.GetString(output.ToArray());
         Assert.Multiple(() =>
         {
-            Assert.That(afterOrder[0], Is.EqualTo(second), "the reordered product is now first in the tree");
-            Assert.That(report.ProductDetails.Length, Is.GreaterThanOrEqualTo(2),
-                "the installation report lists the products (in Installation-pane order — US-040)");
+            Assert.That(after[0].Id!.Value, Is.EqualTo(second), "the reordered product is now first in the tree");
+            Assert.That(report.IndexOf(after[0].GetAttribute("name")!, StringComparison.Ordinal),
+                Is.GreaterThanOrEqualTo(0).And.LessThan(report.IndexOf(after[1].GetAttribute("name")!, StringComparison.Ordinal)),
+                "the installation report lists the products in the reordered pane order (US-040)");
         });
     }
 

@@ -25,9 +25,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- .vis project oracles, .def product / .ifb function-block catalog oracles, and the vendor-captured
-         .html report oracles. -->
-    <None Include="$(SharedTestDataRoot)**\*.vis;$(SharedTestDataRoot)**\*.def;$(SharedTestDataRoot)**\*.ifb;$(SharedTestDataRoot)**\*.html"
+    <!-- .vis project oracles, .def product / .ifb function-block catalog oracles, and the report oracles
+         (.html pages plus their plain-text .txt companions). -->
+    <None Include="$(SharedTestDataRoot)**\*.vis;$(SharedTestDataRoot)**\*.def;$(SharedTestDataRoot)**\*.ifb;$(SharedTestDataRoot)**\*.html;$(SharedTestDataRoot)**\*.txt"
           LinkBase="testdata"
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

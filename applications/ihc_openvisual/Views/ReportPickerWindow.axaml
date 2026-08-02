@@ -1,0 +1,28 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:ihc_openvisual.ViewModels"
+        x:Class="ihc_openvisual.Views.ReportPickerWindow"
+        x:DataType="vm:ReportPickerViewModel"
+        Title="Rapporter"
+        Width="400" SizeToContent="Height" CanResize="False"
+        WindowStartupLocation="CenterOwner">
+  <StackPanel Margin="16" Spacing="12">
+    <StackPanel Spacing="4">
+      <TextBlock Text="Rapport"/>
+      <ComboBox ItemsSource="{Binding Kinds}" SelectedItem="{Binding SelectedKind}"
+                HorizontalAlignment="Stretch"/>
+    </StackPanel>
+    <StackPanel Spacing="4">
+      <TextBlock Text="Tilstand"/>
+      <StackPanel Orientation="Horizontal" Spacing="16">
+        <RadioButton Content="Standard" GroupName="ReportMode" IsChecked="{Binding IsStandardMode, Mode=TwoWay}"/>
+        <RadioButton Content="Fuld" GroupName="ReportMode" IsChecked="{Binding IsFullMode, Mode=TwoWay}"/>
+      </StackPanel>
+    </StackPanel>
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button Content="Vis i browser" Command="{Binding ViewInBrowserCommand}"/>
+      <Button Content="Gem som…" Command="{Binding SaveAsCommand}"/>
+      <Button Content="Luk" Click="OnClose" IsCancel="True"/>
+    </StackPanel>
+  </StackPanel>
+</Window>
