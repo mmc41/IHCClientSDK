@@ -7,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using ihc_openvisual.ViewModels;
+using Microsoft.Extensions.Logging;
 
 namespace ihc_openvisual.Views;
 
@@ -14,6 +15,12 @@ public partial class MainWindow : Window
 {
     private MainWindowViewModel? _viewModel;
     private bool _forceClose;
+
+    // The app's logger for the handler guard below. Read from the process-wide factory rather than injected: a
+    // Window is constructed by the XAML loader and by tests, so there is no constructor to inject into. Null when
+    // no factory was built (headless tests, the designer), which HandlerGuard tolerates.
+    private static ILogger? Logger =>
+        Program.LoggerFactory?.CreateLogger("Ihc.OpenVisual.Views.MainWindow");
 
     // ── Wave 9 / A-P0 spike: drag-and-drop state (Installation tree, product → locality move POC). ──
     private TreeNodeViewModel? _dragCandidate;
@@ -106,11 +113,17 @@ public partial class MainWindow : Window
             return;   // below the click/drag threshold — leave the candidate armed
         _dragCandidate = null;
         _dragTrigger = null;
-        if (TreeDragData.BuildDragData(node) is not { } data)
-            return;
-        DragInitiatedForTest = true;   // the source path was entered (Poc3 guards this — proves the handledEventsToo wiring)
-        try { await DragDrop.DoDragDropAsync(trigger, data, DragDropEffects.Move | DragDropEffects.Link); }
-        catch (Exception ex) { DragSourceError = ex.GetType().Name; }
+        // BuildDragData is INSIDE the guard: it reads the node's own state, and a fault there used to escape an
+        // async void handler with nothing to catch it — the DoDragDropAsync catch below started one line too late.
+        Exception? fault = await HandlerGuard.RunAsync(async () =>
+        {
+            if (TreeDragData.BuildDragData(node) is not { } data)
+                return;
+            DragInitiatedForTest = true;   // the source path was entered (Poc3 guards this — proves the handledEventsToo wiring)
+            await DragDrop.DoDragDropAsync(trigger, data, DragDropEffects.Move | DragDropEffects.Link);
+        }, Logger, nameof(OnTreeSourcePointerMoved));
+        if (fault is not null)
+            DragSourceError = fault.GetType().Name;
     }
 
     private void OnTreeSourcePointerReleased(object? sender, PointerReleasedEventArgs e)
@@ -158,7 +171,10 @@ public partial class MainWindow : Window
         if ((e.Source as Control)?.FindAncestorOfType<TreeViewItem>(includeSelf: true)?.DataContext is not TreeNodeViewModel { ElementId: { } targetId })
             return;
         e.Handled = true;
-        await _viewModel.DragDrop.PerformDropAsync(draggedId, targetId);
+        // PerformDropAsync routes through the view-model's RunAsync boundary today, so this guard is a backstop
+        // rather than the primary net — but an async void handler must never RELY on its callee staying guarded.
+        await HandlerGuard.RunAsync(() => _viewModel.DragDrop.PerformDropAsync(draggedId, targetId),
+            Logger, nameof(OnTreeDrop));
     }
 
     private void OnTreePointerPressed(object? sender, PointerPressedEventArgs e)
@@ -333,7 +349,10 @@ public partial class MainWindow : Window
             return;
         _gestureRows ??= vm.Registry.Rows
             .Where(r => r.Gesture is not null)
-            .Select(r => (KeyGesture.Parse(r.Gesture!), Row: r))
+            // PlatformGesture, not KeyGesture.Parse: on macOS the rows' "Ctrl+…" fires as Cmd+… (the KeyBindings
+            // say so via {OnPlatform}), so a literal Ctrl parse here would match nothing and the refusal would go
+            // unexplained — silently, since an unexplained refusal looks exactly like a working one (AP-13).
+            .Select(r => (PlatformGesture.Parse(r.Gesture!), Row: r))
             .ToList();
         foreach ((KeyGesture gesture, CommandSpec row) in _gestureRows)
         {
@@ -347,17 +366,22 @@ public partial class MainWindow : Window
 
     // Closing is synchronous, but the save prompt is async: cancel the first close, run the prompt, and only
     // close for real once the session confirms it is safe to quit (US-064).
+    // Guarded end to end: Closing runs directly off the window message loop, so a fault here reaches NO global
+    // handler (AP-06/WS-11). CanCloseAsync contains its own faults and answers false; this guard covers the rest
+    // of the body (the second Close()), leaving the window open rather than half-quitting.
     private async void OnClosing(object? sender, WindowClosingEventArgs e)
     {
         if (_forceClose || _viewModel is null)
             return;
 
         e.Cancel = true;
-        bool canClose = await _viewModel.CanCloseAsync();
-        if (canClose)
+        await HandlerGuard.RunAsync(async () =>
         {
-            _forceClose = true;
-            Close();
-        }
+            if (await _viewModel.CanCloseAsync())
+            {
+                _forceClose = true;
+                Close();
+            }
+        }, Logger, nameof(OnClosing));
     }
 }

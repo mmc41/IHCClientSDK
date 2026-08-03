@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using ihc_openvisual.Services;
@@ -7,6 +8,7 @@ using Ihc;
 using Ihc.Vis;
 using Ihc.Vis.Model;
 using Ihc.Vis.Session;
+using Microsoft.Extensions.Logging;
 
 namespace safe_visual_tests;
 
@@ -59,9 +61,16 @@ public sealed class FakeDialogService : IDialogService
     public int EditProjectInfoCalls { get; private set; }
     public Func<ProjectInfoData, ProjectInfoData?>? ProjectInfoResponder { get; set; }
 
+    /// <summary>When set, the save prompt throws this instead of answering — the fault-injection seam for the
+    /// window-lifecycle containment tests (a Closing handler runs off the window message loop, outside every global
+    /// exception handler, so what it does with a throw is a behaviour worth pinning).</summary>
+    public Exception? ConfirmSaveChangesThrows { get; set; }
+
     public Task<SaveChangesResult> ConfirmSaveChangesAsync(string documentName)
     {
         ConfirmSaveCalls++;
+        if (ConfirmSaveChangesThrows is { } ex)
+            throw ex;
         return Task.FromResult(SaveChangesResult);
     }
 
@@ -235,6 +244,33 @@ public sealed class FakeDialogService : IDialogService
     }
 }
 
+/// <summary>
+/// A real <see cref="ILogger"/> that records what was written to it. NOT a mock: main code depends only on the
+/// <see cref="ILogger"/> abstraction (never on an implementation), so tests assert on real logged OUTPUT — which is
+/// also why the repo forbids mocking logger interfaces. Shared by every suite that has to prove a failure reached
+/// the logging pipeline (and therefore OTLP) rather than vanishing.
+/// </summary>
+public sealed class CapturingLogger : ILogger
+{
+    public List<string> Messages { get; } = new();
+    public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+    public bool IsEnabled(LogLevel logLevel) => true;
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+        Func<TState, Exception?, string> formatter) =>
+        Messages.Add($"{logLevel}: {formatter(state, exception)}{(exception is null ? "" : " | " + exception.Message)}");
+}
+
+/// <summary>An <see cref="ILoggerFactory"/> that hands every category the SAME <see cref="CapturingLogger"/>, so a
+/// test can inject it into a component and read back everything that component logged.</summary>
+public sealed class CapturingLoggerFactory : ILoggerFactory
+{
+    public CapturingLogger Logger { get; } = new();
+    public List<string> Messages => Logger.Messages;
+    public ILogger CreateLogger(string categoryName) => Logger;
+    public void AddProvider(ILoggerProvider provider) { }
+    public void Dispose() { }
+}
+
 /// <summary>Builds file-only <see cref="ProjectWorkflow"/>/<see cref="MainWindowViewModel"/> instances over a
 /// throwaway temp directory, with a fake dialog service and no controller — the whole shell is exercised without
 /// a network, controller or IHC install.</summary>
@@ -284,8 +320,12 @@ public sealed class ShellHarness : IDisposable
 
     public string TempPath(string fileName) => Path.Combine(TempDir, fileName);
 
-    public MainWindowViewModel CreateViewModel() =>
-        new(Session, Dialogs, Recent, new NullThemeService());
+    /// <summary>The shell view-model over this harness. Pass <paramref name="loggerFactory"/> (a
+    /// <see cref="CapturingLoggerFactory"/>) when the test needs to prove a failure reached the logging pipeline,
+    /// and <paramref name="theme"/> (the real <c>ThemeService</c>) when it needs the appearance choices to reach
+    /// the running application's resources rather than being recorded inertly.</summary>
+    public MainWindowViewModel CreateViewModel(ILoggerFactory? loggerFactory = null, IThemeService? theme = null) =>
+        new(Session, Dialogs, Recent, theme ?? new NullThemeService(), null, loggerFactory);
 
     /// <summary>
     /// The setup every programming-mode test shares: an initialized shell with an empty (unlocked) function block

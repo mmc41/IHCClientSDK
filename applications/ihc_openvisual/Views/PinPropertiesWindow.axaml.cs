@@ -51,11 +51,13 @@ public partial class PinPropertiesWindow : ResultDialog<PinPropertiesResult>
             SaveValueCheck.IsChecked ?? false);
 
     // Apply commits the current values and leaves the dialog open, so several terminals can be addressed in one
-    // visit (the vendor's Anvend).
+    // visit (the vendor's Anvend). Guarded: the callback is arbitrary application code and this is an async void
+    // handler, so an unguarded fault would be raised with nothing to catch it (AP-06/WS-11).
     private async void OnApply(object? sender, RoutedEventArgs e)
     {
         if (_onApply is { } apply)
-            await apply(BuildResult());
+            await HandlerGuard.RunAsync(() => apply(BuildResult()),
+                Program.LoggerFactory?.CreateLogger("Ihc.OpenVisual.Views.PinPropertiesWindow"), nameof(OnApply));
     }
 
     private void OnOk(object? sender, RoutedEventArgs e) => Accept(BuildResult());

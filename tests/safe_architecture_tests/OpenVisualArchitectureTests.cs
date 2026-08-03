@@ -718,8 +718,9 @@ namespace Ihc.Tests
         /// <c>IThemeService</c>), never their Avalonia <b>adapters</b>. The adapters live in the same
         /// <c>Services</c> namespace as the Avalonia-free <c>ProjectWorkflow</c> the view-models legitimately use, so
         /// this cannot be a namespace ban; it forbids the two concrete adapter types by name. (The inert
-        /// <c>NullDialogService</c>/<c>NullThemeService</c> used by the design-time constructor are deliberately not
-        /// forbidden — they are the test/design seam, not Avalonia.)
+        /// <c>NullDialogService</c>/<c>NullThemeService</c> null objects are deliberately not forbidden — they are
+        /// the test seam, and contain no Avalonia. The design-time constructor that used to reach for them is gone;
+        /// see <c>OpenVisualDesignTimeTests</c>.)
         /// </summary>
         [Test]
         public void ViewModels_DoNotDependOn_AvaloniaAdapters() =>

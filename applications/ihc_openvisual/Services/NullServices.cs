@@ -5,8 +5,9 @@ using Ihc.Vis.Session;
 
 namespace ihc_openvisual.Services;
 
-/// <summary>A no-op <see cref="IDialogService"/> for the XAML designer and the parameterless design-time
-/// view-model. Never shows UI; treats every save prompt as "discard" so design-time flows never block.</summary>
+/// <summary>An inert <see cref="IDialogService"/>: never shows UI, and treats every save prompt as "discard" so a
+/// non-interactive flow never blocks. Retained as the null-object seam for a host that has no dialog surface (the
+/// headless suites use <c>FakeDialogService</c>, which additionally records calls and can answer them).</summary>
 public sealed class NullDialogService : IDialogService
 {
     public Task<SaveChangesResult> ConfirmSaveChangesAsync(string documentName) => Task.FromResult(SaveChangesResult.Discard);
@@ -37,9 +38,14 @@ public sealed class NullDialogService : IDialogService
     public Task<string?> PickCatalogFolderAsync() => Task.FromResult<string?>(null);
 }
 
-/// <summary>A no-op <see cref="IThemeService"/> for the designer/design-time view-model.</summary>
+/// <summary>An inert <see cref="IThemeService"/> that records the choices without touching Avalonia — the theme
+/// port's null object, used by the headless test harness.</summary>
 public sealed class NullThemeService : IThemeService
 {
     public AppTheme Current { get; private set; } = AppTheme.System;
+    public TextScale TextScale { get; private set; } = TextScale.Normal;
+    public bool IsHighContrast { get; private set; }
     public void Apply(AppTheme theme) => Current = theme;
+    public void ApplyTextScale(TextScale scale) => TextScale = scale;
+    public void ApplyContrast(bool isHighContrast) => IsHighContrast = isHighContrast;
 }

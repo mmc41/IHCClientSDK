@@ -13,6 +13,7 @@
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/openvisual.ico"
         Width="1000" Height="680"
+        FontSize="{DynamicResource WorkspaceFontSize}"
         Title="{Binding Title}">
 
     <!-- D06 (owner ruling 2026-08-02): a shortcut follows the MENU BAR's availability, not the row's bare gate —
@@ -23,24 +24,24 @@
          never shows (Ctrl+I/Ctrl+U, and the context-menu-only rows) is judged by its own gate. The window's
          OnWindowKeyDownGateGestures then explains whatever did not fire. -->
     <Window.KeyBindings>
-        <KeyBinding Gesture="Ctrl+N" Command="{Binding Registry.GestureCommands[file.new]}"/>
-        <KeyBinding Gesture="Ctrl+O" Command="{Binding Registry.GestureCommands[file.open]}"/>
-        <KeyBinding Gesture="Ctrl+S" Command="{Binding Registry.GestureCommands[file.save]}"/>
-        <KeyBinding Gesture="Ctrl+Shift+B" Command="{Binding Registry.GestureCommands[insert.emptyFunctionBlock]}"/>
-        <KeyBinding Gesture="Ctrl+G" Command="{Binding Registry.GestureCommands[node.saveBlock]}"/>
+        <KeyBinding Gesture="{OnPlatform 'Ctrl+N', macOS='Cmd+N'}" Command="{Binding Registry.GestureCommands[file.new]}"/>
+        <KeyBinding Gesture="{OnPlatform 'Ctrl+O', macOS='Cmd+O'}" Command="{Binding Registry.GestureCommands[file.open]}"/>
+        <KeyBinding Gesture="{OnPlatform 'Ctrl+S', macOS='Cmd+S'}" Command="{Binding Registry.GestureCommands[file.save]}"/>
+        <KeyBinding Gesture="{OnPlatform 'Ctrl+Shift+B', macOS='Cmd+Shift+B'}" Command="{Binding Registry.GestureCommands[insert.emptyFunctionBlock]}"/>
+        <KeyBinding Gesture="{OnPlatform 'Ctrl+G', macOS='Cmd+G'}" Command="{Binding Registry.GestureCommands[node.saveBlock]}"/>
         <KeyBinding Gesture="F3" Command="{Binding Registry.GestureCommands[view.showProgram]}"/>
         <KeyBinding Gesture="Escape" Command="{Binding Registry.GestureCommands[program.leaveMode]}"/>
         <KeyBinding Gesture="F5" Command="{Binding Registry.GestureCommands[controller.send]}"/>
         <KeyBinding Gesture="F1" Command="{Binding Registry.GestureCommands[help.onNode]}"/>
-        <KeyBinding Gesture="Ctrl+I" Command="{Binding Registry.GestureCommands[program.insertInput]}"/>
-        <KeyBinding Gesture="Ctrl+U" Command="{Binding Registry.GestureCommands[program.insertOutput]}"/>
-        <KeyBinding Gesture="Ctrl+Z" Command="{Binding Registry.GestureCommands[edit.undo]}"/>
-        <KeyBinding Gesture="Ctrl+Y" Command="{Binding Registry.GestureCommands[edit.redo]}"/>
-        <KeyBinding Gesture="Ctrl+X" Command="{Binding Registry.GestureCommands[edit.cut]}"/>
-        <KeyBinding Gesture="Ctrl+C" Command="{Binding Registry.GestureCommands[edit.copy]}"/>
-        <KeyBinding Gesture="Ctrl+V" Command="{Binding Registry.GestureCommands[edit.paste]}"/>
-        <KeyBinding Gesture="Ctrl+Shift+Up" Command="{Binding Registry.GestureCommands[edit.moveUp]}"/>
-        <KeyBinding Gesture="Ctrl+Shift+Down" Command="{Binding Registry.GestureCommands[edit.moveDown]}"/>
+        <KeyBinding Gesture="{OnPlatform 'Ctrl+I', macOS='Cmd+I'}" Command="{Binding Registry.GestureCommands[program.insertInput]}"/>
+        <KeyBinding Gesture="{OnPlatform 'Ctrl+U', macOS='Cmd+U'}" Command="{Binding Registry.GestureCommands[program.insertOutput]}"/>
+        <KeyBinding Gesture="{OnPlatform 'Ctrl+Z', macOS='Cmd+Z'}" Command="{Binding Registry.GestureCommands[edit.undo]}"/>
+        <KeyBinding Gesture="{OnPlatform 'Ctrl+Y', macOS='Cmd+Y'}" Command="{Binding Registry.GestureCommands[edit.redo]}"/>
+        <KeyBinding Gesture="{OnPlatform 'Ctrl+X', macOS='Cmd+X'}" Command="{Binding Registry.GestureCommands[edit.cut]}"/>
+        <KeyBinding Gesture="{OnPlatform 'Ctrl+C', macOS='Cmd+C'}" Command="{Binding Registry.GestureCommands[edit.copy]}"/>
+        <KeyBinding Gesture="{OnPlatform 'Ctrl+V', macOS='Cmd+V'}" Command="{Binding Registry.GestureCommands[edit.paste]}"/>
+        <KeyBinding Gesture="{OnPlatform 'Ctrl+Shift+Up', macOS='Cmd+Shift+Up'}" Command="{Binding Registry.GestureCommands[edit.moveUp]}"/>
+        <KeyBinding Gesture="{OnPlatform 'Ctrl+Shift+Down', macOS='Cmd+Shift+Down'}" Command="{Binding Registry.GestureCommands[edit.moveDown]}"/>
     </Window.KeyBindings>
 
     <Window.Resources>
@@ -70,7 +71,7 @@
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanInsertFunctionBlock, FallbackValue=False}"/>
             <MenuItem Header="_Tom Funktionsblok" Command="{Binding InsertEmptyFunctionBlockCommand}"
-                      InputGesture="Ctrl+Shift+B"
+                      InputGesture="{OnPlatform 'Ctrl+Shift+B', macOS='Cmd+Shift+B'}"
                       IsVisible="{Binding Registry.ContextMenu[insert.emptyFunctionBlock].Visible, FallbackValue=False}"/>
             <MenuItem Header="Indsæt _variabel" ItemsSource="{Binding VariablePaletteMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
@@ -126,20 +127,20 @@
                           IsVisible="{Binding Registry.ContextMenu[program.setConditionsOr].Visible, FallbackValue=False}"/>
             </MenuItem>
             <MenuItem Header="_Gem Funktionsblok…" Command="{Binding SaveFunctionBlockCommand}"
-                      InputGesture="Ctrl+G"
+                      InputGesture="{OnPlatform 'Ctrl+G', macOS='Cmd+G'}"
                       IsVisible="{Binding Registry.ContextMenu[node.saveBlock].Visible, FallbackValue=False}"/>
             <MenuItem Header="_Klip" Command="{Binding CutCommand}"
-                      InputGesture="Ctrl+X"
+                      InputGesture="{OnPlatform 'Ctrl+X', macOS='Cmd+X'}"
                       IsVisible="{Binding Registry.ContextMenu[edit.cut].Visible, FallbackValue=False}"/>
             <MenuItem Header="_Kopier" Command="{Binding CopyCommand}"
-                      InputGesture="Ctrl+C"
+                      InputGesture="{OnPlatform 'Ctrl+C', macOS='Cmd+C'}"
                       IsVisible="{Binding Registry.ContextMenu[edit.copy].Visible, FallbackValue=False}"/>
             <!-- "Op_lås", not "_Oplås": a locked block is also reorderable, so Flyt _op is on this same flyout
                  beside it. L is free here — Indsæt lokalitet, Logmærke and Logik gruppe never show on a block. -->
             <MenuItem Header="Op_lås" Command="{Binding UnlockCommand}"
                       IsVisible="{Binding Registry.ContextMenu[node.unlock].Visible, FallbackValue=False}"/>
             <MenuItem Header="_Indsæt" Command="{Binding PasteCommand}"
-                      InputGesture="Ctrl+V"
+                      InputGesture="{OnPlatform 'Ctrl+V', macOS='Cmd+V'}"
                       IsVisible="{Binding Registry.ContextMenu[edit.paste].Visible, FallbackValue=False}"/>
             <MenuItem Header="_Hop til modsat link" Command="{Binding NavigateLinkOppositeCommand}"
                       InputGesture="F4"
@@ -204,10 +205,10 @@
         <!-- ============ Menu bar: the stable title hosts ============ -->
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_Filer" a:AutomationProperties.AutomationId="MenuFile">
-                <MenuItem Header="_Nyt projekt" Command="{Binding NewCommand}" InputGesture="Ctrl+N"/>
-                <MenuItem Header="Å_bn projekt…" Command="{Binding OpenCommand}" InputGesture="Ctrl+O"/>
+                <MenuItem Header="_Nyt projekt" Command="{Binding NewCommand}" InputGesture="{OnPlatform 'Ctrl+N', macOS='Cmd+N'}"/>
+                <MenuItem Header="Å_bn projekt…" Command="{Binding OpenCommand}" InputGesture="{OnPlatform 'Ctrl+O', macOS='Cmd+O'}"/>
                 <Separator/>
-                <MenuItem Header="_Gem projekt" Command="{Binding SaveCommand}" InputGesture="Ctrl+S"/>
+                <MenuItem Header="_Gem projekt" Command="{Binding SaveCommand}" InputGesture="{OnPlatform 'Ctrl+S', macOS='Cmd+S'}"/>
                 <MenuItem Header="Gem projekt _som…" Command="{Binding SaveAsCommand}"
                           IsEnabled="{Binding Registry.Bar[file.saveAs].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[file.saveAs].Reason}"/>
@@ -228,10 +229,14 @@
                         <!-- Scoped to #RecentProjectsMenu's own children: an unscoped "MenuItem > MenuItem" also
                              matches this MenuItem itself (its real parent, the File menu, is a MenuItem too),
                              applying these setters against MainWindowViewModel instead of the per-item
-                             RecentProjectViewModel — Path doesn't exist there, hence a binding warning. -->
-                        <Style Selector="MenuItem#RecentProjectsMenu > MenuItem">
-                            <Setter Property="Command" Value="{ReflectionBinding OpenCommand}"/>
-                            <Setter Property="CommandParameter" Value="{ReflectionBinding Path}"/>
+                             RecentProjectViewModel — Path doesn't exist there, hence a binding warning.
+                             x:DataType names that per-item type, which is what keeps these setters COMPILED
+                             (architecture review A-06): a renamed RecentProjectViewModel member now breaks the
+                             build, where the ReflectionBinding these replaced would have silently bound nothing
+                             and left the menu items inert. Same annotation as the ItemTemplate above. -->
+                        <Style Selector="MenuItem#RecentProjectsMenu > MenuItem" x:DataType="vm:RecentProjectViewModel">
+                            <Setter Property="Command" Value="{Binding OpenCommand}"/>
+                            <Setter Property="CommandParameter" Value="{Binding Path}"/>
                         </Style>
                     </MenuItem.Styles>
                 </MenuItem>
@@ -243,20 +248,20 @@
 
             <!-- Edit is owned by later epics (E14–E15); present as a stable host. -->
             <MenuItem Header="_Rediger" a:AutomationProperties.AutomationId="MenuEdit">
-                <MenuItem Header="{Binding UndoMenuHeader}" Command="{Binding UndoCommand}" InputGesture="Ctrl+Z"
+                <MenuItem Header="{Binding UndoMenuHeader}" Command="{Binding UndoCommand}" InputGesture="{OnPlatform 'Ctrl+Z', macOS='Cmd+Z'}"
                           IsEnabled="{Binding Registry.Bar[edit.undo].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[edit.undo].Reason}"/>
-                <MenuItem Header="{Binding RedoMenuHeader}" Command="{Binding RedoCommand}" InputGesture="Ctrl+Y"
+                <MenuItem Header="{Binding RedoMenuHeader}" Command="{Binding RedoCommand}" InputGesture="{OnPlatform 'Ctrl+Y', macOS='Cmd+Y'}"
                           IsEnabled="{Binding Registry.Bar[edit.redo].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[edit.redo].Reason}"/>
                 <!-- No separator here: the vendor's Rediger runs Fortryd…Egenskaber ungrouped (uxparity S-27). -->
-                <MenuItem Header="_Klip" Command="{Binding CutCommand}" InputGesture="Ctrl+X"
+                <MenuItem Header="_Klip" Command="{Binding CutCommand}" InputGesture="{OnPlatform 'Ctrl+X', macOS='Cmd+X'}"
                           IsEnabled="{Binding Registry.Bar[edit.cut].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[edit.cut].Reason}"/>
-                <MenuItem Header="_Kopier" Command="{Binding CopyCommand}" InputGesture="Ctrl+C"
+                <MenuItem Header="_Kopier" Command="{Binding CopyCommand}" InputGesture="{OnPlatform 'Ctrl+C', macOS='Cmd+C'}"
                           IsEnabled="{Binding Registry.Bar[edit.copy].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[edit.copy].Reason}"/>
-                <MenuItem Header="_Indsæt" Command="{Binding PasteCommand}" InputGesture="Ctrl+V"
+                <MenuItem Header="_Indsæt" Command="{Binding PasteCommand}" InputGesture="{OnPlatform 'Ctrl+V', macOS='Cmd+V'}"
                           IsEnabled="{Binding Registry.Bar[edit.paste].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[edit.paste].Reason}"/>
                 <MenuItem Header="_Slet" Command="{Binding DeleteCommand}" InputGesture="Delete"
@@ -297,6 +302,23 @@
                               Command="{Binding SetThemeCommand}" CommandParameter="{x:Static svc:AppTheme.Dark}"
                               IsChecked="{Binding CurrentTheme, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter=Dark}"/>
                 </MenuItem>
+                <!-- Tekststørrelse (US-001 SHOULD): the only route to OS-level text scaling, which Avalonia does
+                     not honour (accessibility BP-12). Same shape as the Tema submenu above — a parameterized
+                     item command, one of the narrow registry exemptions. -->
+                <MenuItem Header="Tekststørrelse">
+                    <MenuItem Header="Lille" ToggleType="Radio"
+                              Command="{Binding SetTextScaleCommand}" CommandParameter="{x:Static svc:TextScale.Small}"
+                              IsChecked="{Binding CurrentTextScale, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter=Small}"/>
+                    <MenuItem Header="Normal" ToggleType="Radio"
+                              Command="{Binding SetTextScaleCommand}" CommandParameter="{x:Static svc:TextScale.Normal}"
+                              IsChecked="{Binding CurrentTextScale, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter=Normal}"/>
+                    <MenuItem Header="Stor" ToggleType="Radio"
+                              Command="{Binding SetTextScaleCommand}" CommandParameter="{x:Static svc:TextScale.Large}"
+                              IsChecked="{Binding CurrentTextScale, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter=Large}"/>
+                    <MenuItem Header="Størst" ToggleType="Radio"
+                              Command="{Binding SetTextScaleCommand}" CommandParameter="{x:Static svc:TextScale.Largest}"
+                              IsChecked="{Binding CurrentTextScale, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter=Largest}"/>
+                </MenuItem>
             </MenuItem>
 
             <!-- Insert mirrors IHC Visual's Indsæt inventory AND order (uxparity S-27). These commands are also on
@@ -322,7 +344,7 @@
                 <MenuItem Header="_Tom Funktionsblok" Command="{Binding InsertEmptyFunctionBlockCommand}"
                           IsEnabled="{Binding Registry.Bar[insert.emptyFunctionBlock].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[insert.emptyFunctionBlock].Reason}"
-                          InputGesture="Ctrl+Shift+B"/>
+                          InputGesture="{OnPlatform 'Ctrl+Shift+B', macOS='Cmd+Shift+B'}"/>
                 <MenuItem Header="_Lokalitet" Command="{Binding InsertLocalityCommand}"
                           IsEnabled="{Binding Registry.Bar[insert.locality].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[insert.locality].Reason}"/>
@@ -390,7 +412,13 @@
         </Menu>
 
         <!-- ============ Toolbar ============ -->
+        <!-- Landmark: lets a screen-reader user jump straight to the command chrome instead of walking the tree.
+             AccessibilityView MUST accompany it — Narrator ignores a landmark below Control, so the annotation
+             would look present and do nothing. Same for the status bar and the two panes below. -->
         <Border DockPanel.Dock="Top" IsVisible="{Binding IsToolbarVisible}"
+                a:AutomationProperties.LandmarkType="Banner"
+                a:AutomationProperties.AccessibilityView="Control"
+                a:AutomationProperties.Name="Toolbar"
                 Background="{DynamicResource ToolbarBackgroundBrush}"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,0,1"
                 Padding="6,4">
@@ -485,12 +513,21 @@
 
         <!-- ============ Status bar ============ -->
         <Border Name="StatusBar" DockPanel.Dock="Bottom" IsVisible="{Binding IsStatusBarVisible}"
+                a:AutomationProperties.LandmarkType="ContentInfo"
+                a:AutomationProperties.AccessibilityView="Control"
+                a:AutomationProperties.Name="Statuslinje"
                 Background="{DynamicResource StatusBarBackgroundBrush}"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,1,0,0"
                 Padding="8,3">
             <Grid ColumnDefinitions="*,Auto,Auto">
+                <!-- A POLITE live region, and not a nicety: this is where a REFUSED shortcut's reason is written
+                     (T021 branch B — a disabled control shows no tooltip, so the status bar is the only channel).
+                     Without a live setting that explanation is announced to nobody, leaving a screen-reader user
+                     the one user who never learns why a key did nothing. Polite, not Assertive: it must not
+                     interrupt what the reader is already saying. -->
                 <TextBlock Grid.Column="0" Text="{Binding StatusText}" VerticalAlignment="Center"
-                           FontSize="{StaticResource CaptionFontSize}"/>
+                           a:AutomationProperties.LiveSetting="Polite"
+                           FontSize="{DynamicResource CaptionFontSize}"/>
                 <!-- Controller-connection indicator (W9/F10): the reference application carries one at this end of
                      the status bar. The two states are two GLYPHS, never one glyph recoloured. -->
                 <svg:Svg Name="ControllerConnectionIndicator" Grid.Column="1"
@@ -511,10 +548,16 @@
 
         <!-- ============ Two tree panes with a splitter ============ -->
         <Grid ColumnDefinitions="*,Auto,*">
-            <DockPanel Grid.Column="0">
+            <!-- Both panes are Region landmarks rather than Main/Complementary: they carry equal weight in this
+                 shell, and Main is singular. A Region is only navigable if it is NAMED, so each takes its pane
+                 header as its accessible name — which also keeps the two apart in a landmark list. -->
+            <DockPanel Grid.Column="0"
+                       a:AutomationProperties.LandmarkType="Region"
+                       a:AutomationProperties.AccessibilityView="Control"
+                       a:AutomationProperties.Name="{Binding InstallationPaneHeader}">
                 <Border DockPanel.Dock="Top" Background="{DynamicResource PaneHeaderBackgroundBrush}" Padding="10,5">
                     <TextBlock Text="{Binding InstallationPaneHeader}" Foreground="{DynamicResource PaneHeaderForegroundBrush}"
-                               FontWeight="SemiBold" FontSize="{StaticResource BodyFontSize}"/>
+                               FontWeight="SemiBold" FontSize="{DynamicResource BodyFontSize}"/>
                 </Border>
                 <controls:AccessibleTreeView x:Name="InstallationTree" ItemsSource="{Binding InstallationNodes}" KeyDown="OnTreeKeyDown"
                           SelectedItem="{Binding SelectedInstallationNode, Mode=TwoWay}"
@@ -526,10 +569,13 @@
             <GridSplitter Grid.Column="1" Width="4" ResizeDirection="Columns"
                           Background="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
 
-            <DockPanel Grid.Column="2">
+            <DockPanel Grid.Column="2"
+                       a:AutomationProperties.LandmarkType="Region"
+                       a:AutomationProperties.AccessibilityView="Control"
+                       a:AutomationProperties.Name="{Binding FunctionsPaneHeader}">
                 <Border DockPanel.Dock="Top" Background="{DynamicResource PaneHeaderBackgroundBrush}" Padding="10,5">
                     <TextBlock Text="{Binding FunctionsPaneHeader}" Foreground="{DynamicResource PaneHeaderForegroundBrush}"
-                               FontWeight="SemiBold" FontSize="{StaticResource BodyFontSize}"/>
+                               FontWeight="SemiBold" FontSize="{DynamicResource BodyFontSize}"/>
                 </Border>
                 <controls:AccessibleTreeView x:Name="FunctionsTree" ItemsSource="{Binding FunctionNodes}" KeyDown="OnTreeKeyDown"
                           SelectedItem="{Binding SelectedFunctionsNode, Mode=TwoWay}"

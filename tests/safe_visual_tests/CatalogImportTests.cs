@@ -207,4 +207,31 @@ public class CatalogImportTests
             Assert.That(vm.StatusText, Does.Contain("Importerede 1 komponent"));
         });
     }
+
+    /// <summary>
+    /// Rebuilding the insertion menus must not raise one collection notification PER ITEM. Each notification on a
+    /// bound <c>ObservableCollection</c> costs a UI update, and both official Avalonia sources say the same thing:
+    /// replace the collection instead of adding into it (performance review BP-22 / architecture AP-20). The
+    /// product forest is catalog-sized, so a per-item rebuild is a burst of hundreds of updates for one import.
+    /// <para>Asserted as a BOUND on notifications rather than an exact count, so a legitimate change of rebuild
+    /// strategy does not break the test — only a return to per-item churn does.</para>
+    /// </summary>
+    [Test]
+    public async Task RebuildingTheCatalogMenus_DoesNotNotifyPerItem()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        int notifications = 0;
+        vm.ProductsMenu.CollectionChanged += (_, _) => notifications++;
+        int topLevelCategories = vm.ProductsMenu.Count;
+        Assert.That(topLevelCategories, Is.GreaterThan(1), "precondition: the product menu has several categories");
+
+        await harness.Session.ImportCatalogFileAsync(SampleProductDef(), persist: false);   // raises CatalogChanged
+
+        Assert.That(vm.ProductsMenu, Is.Not.Empty, "the menu is rebuilt, not emptied");
+        Assert.That(notifications, Is.LessThanOrEqualTo(2),
+            $"a rebuild should be a wholesale replacement (a clear plus a reset at worst), not {notifications} "
+            + "notifications for a menu of " + vm.ProductsMenu.Count + " categories");
+    }
 }

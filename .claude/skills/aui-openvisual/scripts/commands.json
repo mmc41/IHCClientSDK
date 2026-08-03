@@ -2,218 +2,757 @@
   "version": 1,
   "note": "Command vocabulary for IHC OpenVisual UI automation. status: confirmed = verified live; partial = mechanism wired but a sub-flow is unverified; planned = declared, mechanism not yet wired. mechanism drives dispatch in aui.ps1. Add a command by adding one object here that reuses an existing mechanism.",
   "commands": [
-
-    { "id": "doctor", "status": "confirmed", "mutating": "no", "mechanism": "passive",
-      "gates": [], "description": "Readiness preflight: Windows OS, app running, main window usable." },
-    { "id": "session.status", "status": "confirmed", "mutating": "no", "mechanism": "passive",
-      "gates": [], "description": "Passive context snapshot: window title, toolbar visible, open modal, current selection." },
-    { "id": "session.probe", "status": "confirmed", "mutating": "no", "mechanism": "passive",
-      "gates": [], "description": "Context snapshot (alias of session.status for run parity)." },
-    { "id": "dialog.cancel", "status": "confirmed", "mutating": "noState", "mechanism": "dialogCancel",
-      "gates": [], "description": "Cancel/close the topmost open modal dialog (Esc). Use to dismiss orphaned dialogs." },
-    { "id": "dialog.read", "status": "confirmed", "mutating": "no", "mechanism": "dialogRead",
-      "gates": [], "description": "Enumerate the OPEN modal's controls into data as {dialog:{title}, controlCount, controls:[{id, name, class, enabled, visible, rect, text, items[], selectedIndex, toggleState}]}. READ-ONLY: opens nothing, changes nothing, closes nothing -- open the dialog first (node.doubleClick / node.properties) and close it with dialog.cancel. `enabled` and `visible` are INDEPENDENT: visible:false = not rendered; visible:true + enabled:false = greyed. `id` is the control's AutomationId, which Avalonia falls back to x:Name -- so a XAML dialog's fields address as NameBox/NoteBox/OkButton/CancelButton; the CODE-BUILT message boxes (AvaloniaDialogService.ShowButtonsAsync) set no Name and so have an EMPTY id, addressable only by `name` (the button text). DialogNotFound when no modal is open; zero controls on a resolved modal is a WALK FAILURE, not a fact about the dialog -- capture.modal before recording it.",
-      "note": "The counterpart to the vendor's dialog.read, and deliberately the same shape so compare3 C1.2c can compare the two variable dialogs. It SUPPLIES the readback the five dialog-opening rows lack (node.getProperties, node.rename, projectInfo.get, modules.list, dataTables.list) -- but it does not change what those rows do: each still opens its dialog and stops, so they stay partial and the readback is THIS command, run next. (Corrected 2026-08-02: the note used to say it 'unblocks' them, which read as though their status had changed.)" },
-    { "id": "dialog.setText", "status": "confirmed", "mutating": "yes", "mechanism": "dialogSetText",
-      "gates": [], "description": "Type a value into a field of the OPEN modal: --field <AutomationId|Name> --text <value> (also positional: `dialog set-text NameBox \"New name\"`). The write counterpart to dialog.read, so an \"edit via its properties dialog\" flow can go past the inventory. Fields address by AutomationId (Avalonia falls back to x:Name, so NameBox/NoteBox work) and then by UIA Name. Sets through ValuePattern, NOT keystrokes: a keystroke needs the foreground, goes wherever focus is, and APPENDS to what the field already holds, whereas SetValue replaces it. The value is read back and returned as data.readBack -- a read-only or one-way-bound field accepts the call and keeps its old text, which comes back as Code=NoEffect rather than a false success. Open the dialog first (node.getProperties) and commit it with dialog.click --button OK.",
-      "note": "Added 2026-08-01 (uxparity S-08) for the DLG scenarios that must SET fields, not just read them: S-08, S-13, S-14, S-19, S-32." },
-
-    { "id": "dialog.click", "status": "confirmed", "mutating": "noState", "mechanism": "dialogButton",
-      "gates": [], "description": "Invoke a named button in the open modal: --button \"No\"|\"Yes\"|\"OK\"|\"Cancel\". Needed because not every dialog honours Esc (OpenVisual's Delete confirm does not), and an undismissable modal blocks every later command. OpenVisual dialogs are SEPARATE TOP-LEVEL WINDOWS (Views\\ResultDialog.cs calls ShowDialog(owner); the app defines 14 dialog Window subclasses beside MainWindow); this resolves the modal with Get-OpenModalWindow -- a RootElement search for a ControlType.Window in the app's process that is not the main window BY WINDOW HANDLE (it used to be 'whose title is not the main window's', which hid the About dialog, titled 'About IHC OpenVisual') -- and then searches THAT window's subtree. On an unknown --button it lists the buttons it did find. dialog.cancel falls back to No/Cancel/Annuller/Nej/Close/Luk automatically -- dismissal labels only, never OK/Yes, since a \"cancel\" that commits is worse than one that fails.",
-      "note": "CORRECTED 2026-07-17 (enabler3 S3): this row previously asserted OpenVisual's dialogs are 'IN-WINDOW OVERLAYS - one HWND, buttons are descendants of the main window'. That was wrong, and two independent sources agree it was: the app shows every dialog via ResultDialog<TResult> -> ShowDialog(owner) across separate Windows, and this driver's OWN Get-OpenModalWindow has always found them by searching RootElement for a separate top-level Window. The overlay claim never matched the code that was already working underneath it." },
-    { "id": "catalog.commands", "status": "confirmed", "mutating": "no", "mechanism": "static",
-      "gates": [], "description": "List every semantic command with status (machine-readable self-description)." },
-    { "id": "catalog.products", "status": "confirmed", "mutating": "no", "mechanism": "menuBarDump", "menu": "Indsæt",
-      "gates": [], "description": "List insertable products by walking Insert > Products > … into data.titles[]. Raise --depth (default 2) to descend into product categories; the paths it reports are what product.insert --menu-path consumes." },
-    { "id": "catalog.functionBlocks", "status": "confirmed", "mutating": "no", "mechanism": "menuBarDump", "menu": "Bibliotek",
-      "gates": [], "description": "List FB templates by walking Library > Insert function block > … into data.titles[]. Raise --depth (default 2) to descend; the paths it reports are what fb.insertTemplate --menu-path consumes." },
-
-    { "id": "capture.window", "status": "confirmed", "mutating": "no", "mechanism": "capture", "scope": "window",
-      "gates": [], "description": "Capture the whole app window to a PNG (foregrounds it first)." },
-    { "id": "capture.client", "status": "partial", "mutating": "no", "mechanism": "capture", "scope": "window",
-      "gates": [], "description": "Capture the client area to a PNG.",
-      "note": "Currently captures the full window frame (Avalonia chrome is minimal); true client-rect trim not yet split out." },
-    { "id": "capture.modal", "status": "confirmed", "mutating": "no", "mechanism": "capture", "scope": "modal",
-      "gates": [], "description": "Capture the open modal dialog to a PNG; DialogNotFound if none is open." },
-    { "id": "capture.control", "status": "planned", "mutating": "no", "mechanism": "notImplemented",
-      "gates": [], "description": "Capture a single child control (e.g. a tree pane) to a PNG.",
-      "note": "Per-control rect capture not yet wired." },
-
-    { "id": "project.new", "status": "confirmed", "mutating": "yes", "mechanism": "invoke", "automationId": "ToolbarNew",
-      "gates": [], "description": "New project (toolbar New). If there are unsaved changes a save-guard dialog appears — answer it with dialog.cancel or save first." },
-    { "id": "project.open", "status": "confirmed", "mutating": "yes", "mechanism": "fileDialog", "automationId": "ToolbarOpen", "dialogKind": "open",
-      "gates": [], "description": "Open a project file: raises the toolbar Open picker, types --path <file> into it and commits. Verifies by effect (the title bar must name the file) and reports which check carried it in data.verifiedBy. That check is 'titleBaseName': an exact literal prefix comparison, NOT a wildcard match ('[' and ']' are legal in a Windows filename and would be read as a character class). The caption carries no directory, so it cannot tell this file from another of the same name in another folder -- the leftover-modal check (DialogBlocked) is what catches the usual form of that trap. If the current project has unsaved changes a save-guard may appear first — deal with it before calling this." },
-    { "id": "project.save", "status": "confirmed", "mutating": "no", "mechanism": "invoke", "automationId": "ToolbarSave",
-      "gates": [], "description": "Save project (toolbar Save). An untitled project raises Save-As instead." },
-    { "id": "project.saveAs", "status": "confirmed", "mutating": "yes", "mechanism": "fileDialog", "menuPath": "Filer/Gem projekt som…", "dialogKind": "save",
-      "gates": [], "description": "Save the project to --path <file> via Filer > Gem projekt som…: types the path into the save picker and commits, verifying by effect. A ROOTED --path is verified against the filesystem (data.verifiedBy 'fileOnDisk'), which the title bar cannot do -- it carries the base name only, so it cannot tell 'written where I asked' from 'a file of that name was already open'; a relative path falls back to the caption ('titleBaseName') because the picker resolves it against ITS working directory, not this session's. Refuses an existing target unless --overwrite is passed, which also answers the picker's replace prompt." },
-    { "id": "project.recent.list", "status": "confirmed", "mutating": "no", "mechanism": "menuBarDump", "menu": "Filer",
-      "gates": [], "description": "List recent projects by walking Filer > Seneste projekter. Read data.titles[0] and find the 'Seneste projekter' child; its children are the MRU entries in menu order." },
-
-    { "id": "view.configuration", "status": "confirmed", "mutating": "noState", "mechanism": "key", "gesture": "{ESC}",
-      "gates": [], "description": "Return to configuration view / leave programming mode (Esc). GLOBAL, so it takes no --path. Effect-verified 2026-07-16: both pane roots return from the FB's name to 'Lokaliteter' -- read it with `tree dump --depth 1`, which since enabler3 really does bound the walk to the root (it was silently ignored before, so this documented one-node probe used to realize the entire pane)." },
-    { "id": "programming.enter", "selectionRelative": true, "status": "confirmed", "mutating": "noState", "mechanism": "key", "gesture": "{F3}",
-      "gates": [], "description": "Enter programming mode for a function block (F3): pass --path (and --tree TV2) to address it, or select an FB first, else it is a no-op. READ THE EFFECT with `tree dump --depth 1` on EITHER pane: in configuration mode both panes root at 'Lokaliteter'; in programming mode BOTH re-root at the FB's own name (its Input/Output sections beneath). Since enabler3 `--depth 1` really does bound the walk to the root -- it was silently swallowed before, so this probe used to realize the entire pane on every call. context.statusText also says 'Programmeringstilstand -- tryk Esc for at vende tilbage til konfiguration.' Effect-verified 2026-07-16 -- this closes census E-3, which recorded the transition as unmeasurable; the same pane-root probe reads the vendor too (whose tree.read --depth is likewise real). READ THE EFFECT YOURSELF: like every `key` row, this one returns Ok with verified:false and never probes the roots. (The vendor driver returns NoEffect when the roots do not move; an earlier version of this sentence carried that clause where it read as a promise about THIS command -- corrected 2026-08-02.)" },
-    { "id": "view.toolbar.toggle", "status": "confirmed", "mutating": "no", "mechanism": "menu", "menuPath": "Vis/Værktøjslinie",
-      "gates": [], "description": "Toggle toolbar visibility (Vis > Værktøjslinie)." },
-    { "id": "view.statusbar.toggle", "status": "confirmed", "mutating": "no", "mechanism": "menu", "menuPath": "Vis/Statuslinie",
-      "gates": [], "description": "Toggle status bar visibility (Vis > Statuslinie). Invoke as `view statusbar-toggle`." },
-
-    { "id": "tree.select", "status": "confirmed", "mutating": "noState", "mechanism": "treeSelect",
-      "gates": [], "description": "Select a node (single click) by label path (\"Localities/Kitchen\") or 0-based index path (\"0\") in --tree TV1 (installation, default) or TV2 (functions). Verifies the caret landed. Prerequisite for selection-relative commands." },
-    { "id": "node.select", "status": "confirmed", "mutating": "noState", "mechanism": "treeSelect",
-      "gates": [], "description": "Single-click select a node by --path (alias of tree.select)." },
-    { "id": "node.expand", "status": "confirmed", "mutating": "noState", "mechanism": "expandCollapse", "action": "expand",
-      "gates": [], "description": "Expand a tree node via the ExpandCollapse pattern. Select by --path (and --tree)." },
-    { "id": "node.collapse", "status": "confirmed", "mutating": "noState", "mechanism": "expandCollapse", "action": "collapse",
-      "gates": [], "description": "Collapse a tree node via the ExpandCollapse pattern. Select by --path (and --tree)." },
-    { "id": "node.doubleClick", "status": "confirmed", "mutating": "noState", "mechanism": "doubleClick",
-      "gates": [], "description": "Double-click (activate) a node. Select by --path (and --tree); the row is scrolled into view for you. Clicks the node's OWN header strip and hit-tests that point back to the target before clicking, reporting data.targetVerified:true -- an Avalonia TreeViewItem's bounds enclose its whole EXPANDED SUBTREE, so a naive rect-centre/GetClickablePoint() click silently lands on a DESCENDANT row and still reports success (this fabricated census cells: 'double-click does nothing on a locality' when the locality was never clicked). If no point on the row hit-tests back to it (occluded, or clipped by the tree's own scrollbar) it returns TargetNotFound rather than clicking a different row. --x-offset N clicks N px RIGHT OF THE ROW'S LABEL instead of on it -- census C16 (does a double-click in the empty space past a short label still activate the row?); the same hit-test-back guard applies, so an offset that leaves the row/viewport is REFUSED rather than clamped, and data.hitArea echoes which point ran. EFFECT (re-read from the app 2026-08-02): double-click is HANDLED -- MainWindow.axaml binds DoubleTapped on the row content and MainWindow.axaml.cs selects the row, runs ActivateNodeCommand and marks the event Handled, so it OPENS THE NODE'S PROPERTIES DIALOG and the Avalonia default expand-toggle does NOT run. A pin opens its owning product's dialog; the Localities root, link rows and unresolvable rows do nothing. Read the result with session.status.openModal / dialog.read and close it with dialog.click or dialog.cancel. (This row previously said no node type handled double-click and that expandable nodes would toggle -- both halves went stale when the activation handler landed.) COORDINATE NOTE: data.point is a diagnostic for a mis-aimed gesture -- it records where the driver actually clicked, so a wrong landing stays readable after the fact -- and NOT an input: do not hand it to SetCursorPos or do coordinate math on it. Address the node with --path (and --tree) instead; every pointing command here is path-addressed, so no caller needs a screen coordinate. That the point is declared (native space plus the sibling in the other one, see doctor's display block) is what makes a mis-aimed gesture diagnosable, not an invitation to re-use the number: a coordinate carried into another process is the failure this note exists to prevent.",
-      "note": "C16 TRAP, measured 2026-07-17 (enabler3 S5): on THIS side the DEFAULT click point is already in the empty space right of a short label. Get-TreeItemClickPoint takes the ROW rect's centre, and the row rect spans the pane width -- clicking 'Stue' landed at x=728 while the label ends near x=301, so the default and the --x-offset 40 point (x=341) are BOTH right of the text, just at different distances. The vendor is not like this: its click point comes from TVM_GETITEMRECT(wParam=TRUE), the LABEL-only rect (measured: label right=106, row right=641, so a 535 px gap). So a C16 comparison of 'default double-click' against 'default double-click' is NOT comparing the same hit area -- pin both sides with an explicit --x-offset, or the cell measures the two drivers' click-point conventions rather than the two apps." },
-    { "id": "node.rightClick", "status": "confirmed", "mutating": "noState", "mechanism": "rightClick",
-      "gates": [], "description": "Right-click a node with the REAL mouse and report what it did to the selection: data.selectedBefore/selectedAfter/selectionMoved answer 'does right-click move the caret?' (C2/D3), and data.items[] carries whatever flyout it raised. Deliberately does NOT select the target first -- selecting it would answer the question in advance -- so point --path at a node that is NOT currently selected and a no-op stays distinguishable from a hit. Distinct from menu.dumpContext, whose Shift+F10 is a KEYBOARD gesture acting on the already-focused row and so cannot move the caret by construction. COORDINATE NOTE: data.point is a diagnostic for a mis-aimed gesture -- it records where the driver actually clicked, so a wrong landing stays readable after the fact -- and NOT an input: do not hand it to SetCursorPos or do coordinate math on it. Address the node with --path (and --tree) instead; every pointing command here is path-addressed, so no caller needs a screen coordinate. That the point is declared (native space plus the sibling in the other one, see doctor's display block) is what makes a mis-aimed gesture diagnosable, not an invitation to re-use the number: a coordinate carried into another process is the failure this note exists to prevent.",
-      "note": "Effect-verified 2026-07-16 (verify2) against a same-integrity elevated app: with 'Stue' selected, right-clicking 'Udestue' reported selectedBefore=Stue, selectedAfter=Udestue, selectionMoved=true, flyoutOpened=true, 7 items -- so right-click DOES move the caret, and the readback proves it hit the addressed node." },
-    { "id": "node.tooltip", "status": "confirmed", "mutating": "noState", "mechanism": "readProperty", "property": "helpText",
-      "gates": [], "description": "Read a node's tooltip (exposed to automation as HelpText). Address it with --path (and --tree). The row is RESOLVED, not selected: since 2026-08-02 this reader no longer moves the caret (it used to, silently, which pre-answers the very question node.rightClick measures). mutating is noState rather than no only because reaching a deep row still expands its ancestors." },
-    { "id": "tree.dump", "status": "confirmed", "mutating": "noState", "mechanism": "treeDump",
-      "gates": [], "description": "Recursively dump a pane's tree as JSON {pane, capturedAfter, expandAll, withKind, maxDepth, nodeCount, root:{label, expanded, children[]}} in data. --tree TV1|TV2, optional --path to scope to a subtree, --after <slug> to stamp capturedAfter. --path RESOLVES the subtree without selecting it (since 2026-08-02 -- it used to select, so dumping a subtree to choose a target moved the caret you were about to measure); mutating is noState rather than no because reaching a deep row expands its ancestors. --depth/--after are read as NAMED flags only, so a positional path cannot be swallowed by either. Does NOT expand collapsed nodes (expansion state is itself observable data) unless --expand-all is passed; collapsed nodes report expanded:false with children:[] because Avalonia does not realize their children. --depth N bounds the walk (default 40) -- use --depth 1 for the mode probe, which reads the root only instead of realizing the whole pane. --with-kind adds `kind` per node (the row's TYPE, from AutomationId): needed in programming mode, where the LABEL is user data and cannot identify a row -- 'Kip Udgang' is a command, 'Kip ved kort tryk -> ON' an event. Additive and off by default so the schema stays identical to the vendor's tree.read dump and tools\\tree-diff.ps1 keeps working. Children come from the control-view TreeWalker, the same enumeration --path resolution uses: FindAll(TreeScope::Children) does not return a TreeViewItem's own rows in this app (it skips real children and runs past the end of the subtree), and this dump -- the comparison's structural oracle -- used it while reporting verified:true until 2026-08-02." },
-    { "id": "key.send", "status": "confirmed", "mutating": "yes", "mechanism": "keySend",
-      "gates": [], "description": "Send a raw key gesture in SendKeys syntax to the app: --gesture \"{F2}\"|\"{DOWN}\"|\"+{F10}\"|\"{DELETE}\"|\"{ESC}\". Optional --path (+--tree) selects a node first so the key lands on a known selection. data reports the selection/modal/title before and after so the effect is readable from the envelope. Refuses {F5} (controller Send-project), and requires --confirm-destructive for {DELETE}/{DEL}: MainWindow routes Key.Delete to the edit.delete command, so the raw gesture IS node.delete, and this row's gates:[] would otherwise be a way around the removal gate. Answering the confirmation prompt it raises stays ungated (dialog.click).",
-      "note": "GATED 2026-08-02. Also fixed here: --path is optional, but the returned delta read the tree id unconditionally, so the plain form threw under StrictMode AFTER SendWait had fired -- the gesture happened and the envelope said MutationFailed, inviting a retry that would repeat it." },
-    { "id": "menu.dumpContext", "status": "confirmed", "mutating": "noState", "mechanism": "contextMenuDump",
-      "gates": [], "description": "Open the context flyout on the current selection (Shift+F10), enumerate its items with enabled state into data.items[], screenshot it, then close it. --depth N (default 1, matching the vendor driver's context default) bounds submenu recursion: depth 1 is the flat top level, 2 lists each submenu's leaves in children[] -- raise it whenever a row offers a nested palette (a section's 'Insert variable >'), because a flat read reports that whole palette as ONE item while the vendor lists its leaves. Rows carry the same {label, accelerator, separator, enabled, children[]} shape as menu.dumpBar. The screenshot is taken BEFORE descending, so it always shows the top level. Select the node with --path (and --tree) first. noState, not no: unlike the other readers this one MUST select and focus the addressed row, because Shift+F10 acts on whatever holds keyboard focus -- so it does move the caret. Fails TargetNotFound if the flyout does not open, and NEVER returns an empty inventory as a verified reading: both trees share one MenuFlyout resource, so zero items always means the gesture failed, never 'this node type has no menu'. data.attempts reports whether the bounded retry was needed -- a recurring 2 means the foreground/focus order regressed." },
-    { "id": "menu.dumpBar", "status": "confirmed", "mutating": "no", "mechanism": "menuBarDump",
-      "gates": [], "description": "Walk the menu bar and enumerate titles/items/enabled state into data.titles[] (nested children[]) -- the same {titleCount, maxDepth, titles:[{label, enabled, children[]}]} shape the vendor driver's `app menu dump-bar` emits, so the two sides' submenu trees diff mechanically. --menu <Title> narrows to one title; --depth N (default 2, matching the vendor's default) bounds submenu recursion -- raise it to reach catalog leaves, which nest 4+ deep, and heed the truncation warning. Opens and closes real menus by HOVER (never clicking a leaf), so it is slow but it is the only route: Avalonia menu items expose no UIA patterns." },
-
-    { "id": "locality.insert", "status": "confirmed", "mutating": "yes", "mechanism": "contextMenu", "item": "Insert locality",
-      "gates": [], "description": "Insert a new locality (room) under the selected node. Pass a path to select first (e.g. --path Localities)." },
-    { "id": "node.delete", "status": "confirmed", "mutating": "yes", "mechanism": "contextMenu", "item": "Delete",
-      "gates": ["confirmDestructive"], "description": "Delete the selected node (context menu Delete). Select via --path first. Destructive: pass --confirm-destructive." },
-    { "id": "node.cut", "selectionRelative": true, "status": "confirmed", "mutating": "yes", "mechanism": "key", "gesture": "^x",
-      "gates": [], "description": "Cut a node (Ctrl+X): pass --path (and --tree) to address it, or it acts on the current selection. UNGATED since 2026-08-02: this row required --confirm-destructive while its own note (below) says Cut removes nothing, and node.paste -- which actually performs the move -- was ungated, so the gate sat on the harmless half of the pair. The destructive gate now means what it says: irreversible removal (node.delete, product.delete). NOTE Cut does NOT remove the node -- it only STAGES a move (the tree is deliberately unchanged until node.paste lands it on a locality), so verify it via context.statusText ('Cut <name> -- paste onto a locality to move it'), never via a tree diff. Effect-verified 2026-07-16: with a DIFFERENT node selected, --path made the status bar name the ADDRESSED node." },
-    { "id": "node.copy", "selectionRelative": true, "status": "confirmed", "mutating": "noState", "mechanism": "key", "gesture": "^c",
-      "gates": [], "description": "Copy a node to the clipboard (Ctrl+C): pass --path (and --tree) to address it, or it acts on the current selection. Like node.cut it changes no tree state, so read context.statusText ('Copied <name> ...') for the effect. Effect-verified 2026-07-16: with a different node selected, --path made the status bar name the ADDRESSED node." },
-    { "id": "node.paste", "selectionRelative": true, "status": "confirmed", "mutating": "yes", "mechanism": "key", "gesture": "^v",
-      "gates": [], "description": "Paste the clipboard node onto the addressed locality (Ctrl+V) -- this is what completes a node.cut move or a node.copy duplicate. Effect-verified 2026-07-16 by tree delta: cut a product from one locality and paste onto another moved it (source 5->4 children, target 4->5, statusText 'Moved.'), and edit.undo reverted it." },
-    { "id": "node.getProperties", "status": "partial", "mutating": "no", "mechanism": "contextMenu", "item": "Properties",
-      "gates": [], "description": "Open the selected node's properties dialog (context menu Properties).",
-      "note": "Opens the dialog and stops there -- that is the whole of this row. Read the fields with dialog.read, change them with dialog.setText, commit or abandon with dialog.click --button OK|Cancel (dialog.cancel also works on dialogs that honour Esc). Partial because which dialog a given node kind raises has not been read back kind by kind." },
-    { "id": "node.rename", "status": "partial", "mutating": "yes", "mechanism": "contextMenu", "item": "Properties",
-      "gates": [], "description": "Rename a node via its Properties dialog.",
-      "note": "This row is only the FIRST of three steps: it opens the dialog. The rename is dialog.setText --field NameBox --text \"<new name>\" then dialog.click --button OK. (Corrected 2026-08-02: the note said field-set and commit were 'not yet wired' -- they are, as those two commands.)" },
-
-    { "id": "product.insert", "status": "partial", "mutating": "yes", "mechanism": "menu", "menuPath": "Indsæt/Produkter",
-      "gates": [], "description": "Insert a catalog product into the selected locality. Select the locality with tree.select first, then address the catalog subtree with --menu-path, e.g. --menu-path \"Datalinie produkter/<category>/<product>\". Use `aui catalog products` to discover the available paths.",
-      "note": "The menu walk is verified; the per-product leaf paths depend on the loaded catalog, and the properties dialog the app may raise on insert is not answered here — check session.status.openModal afterwards." },
-    { "id": "product.setProperties", "status": "planned", "mutating": "yes", "mechanism": "notImplemented",
-      "gates": [], "description": "Edit a placed product's properties.",
-      "note": "Product properties dialog field-set not yet wired." },
-    { "id": "product.setAddress", "status": "planned", "mutating": "yes", "mechanism": "notImplemented",
-      "gates": [], "description": "Assign a wired product terminal's module+port address.",
-      "note": "Terminal addressing dialog not yet wired." },
-    { "id": "product.delete", "status": "confirmed", "mutating": "yes", "mechanism": "contextMenu", "item": "Delete",
-      "gates": ["confirmDestructive"], "description": "Delete a placed product (context menu Delete). Select the product via --path first." },
-
-    { "id": "fb.insertEmpty", "selectionRelative": true, "status": "confirmed", "mutating": "yes", "mechanism": "key", "gesture": "^+b",
-      "gates": [], "description": "Insert a blank function block under the selected locality (Ctrl+Shift+B). Select a locality first." },
-    { "id": "fb.insertTemplate", "status": "partial", "mutating": "yes", "mechanism": "menu", "menuPath": "Bibliotek/Indsæt Funktionsblok",
-      "gates": [], "description": "Insert a library function-block template. Select the target locality first, then address the template with --menu-path, e.g. --menu-path \"<category>/<template>\". Use `aui catalog function-blocks` to discover the available paths.",
-      "note": "The menu walk is verified; the per-template leaf paths depend on the loaded catalog." },
-    { "id": "menu.invokeContext", "status": "partial", "mutating": "yes", "mechanism": "contextMenu", "gates": [],
-      "description": "Invoke a context-flyout item BY LABEL on the addressed row: --path <row> [--tree] --item <label>. A '/' walks one submenu level ('Insert variable/Input'); escape a literal slash as '\\/'. This is the generic form of the pinned-item rows (fb.unlock, node.delete, …) and exists so a census can exercise authoring items -- Logic group, Sub-program, Add Powerup event, Use in program -- without a registry row per item. Enumerate first with menu.dumpContext: a missing item returns TargetNotFound listing what WAS realized, and a present-but-greyed one returns PreconditionMissing rather than a hopeful Ok. Verified:false by design -- the flyout closing proves the item ACTIVATED, not that it had its intended effect, so read the effect back yourself." },
-    { "id": "fb.unlock", "status": "confirmed", "mutating": "yes", "mechanism": "contextMenu", "item": "Unlock",
-      "gates": [], "description": "Unlock a locked (library) function block (context menu Unlock). Select the locked FB via --path first." },
-    { "id": "fb.saveToLibrary", "selectionRelative": true, "status": "partial", "mutating": "yes", "mechanism": "key", "gesture": "^g",
-      "gates": [], "description": "Save the selected function block to the library (Ctrl+G).",
-      "note": "Opens the save dialog + OS picker; field entry and picker path are not yet automated." },
-    { "id": "fb.setProperties", "status": "planned", "mutating": "yes", "mechanism": "notImplemented",
-      "gates": [], "description": "Rename / set note on a function-block node.",
-      "note": "FB properties dialog field-set not yet wired." },
-
-    { "id": "variable.insert", "status": "planned", "mutating": "yes", "mechanism": "notImplemented",
-      "gates": [], "description": "Insert a resource/variable into the current FB section (Insert variable > …).",
-      "note": "Dynamic variable palette submenu not yet wired." },
-    { "id": "resource.setProperties", "status": "planned", "mutating": "yes", "mechanism": "notImplemented",
-      "gates": [], "description": "Name a resource / set its initial value.",
-      "note": "Resource dialog field-set not yet wired." },
-    { "id": "scene.insert", "status": "planned", "mutating": "yes", "mechanism": "notImplemented",
-      "gates": [], "description": "Insert a scene resource in the Output section.",
-      "note": "Not yet wired." },
-
-    { "id": "program.insertElement", "status": "planned", "mutating": "yes", "mechanism": "notImplemented",
-      "gates": [], "description": "Insert a program container (sub-program / logic group / case) into the selected program group.",
-      "note": "Program authoring context items not yet wired." },
-    { "id": "program.addCondition", "status": "planned", "mutating": "yes", "mechanism": "notImplemented",
-      "gates": [], "description": "Add a condition row to a Conditions group.",
-      "note": "Two-step Use-in-program flow not yet wired." },
-    { "id": "program.addAction", "status": "planned", "mutating": "yes", "mechanism": "notImplemented",
-      "gates": [], "description": "Add an action/command row to a Commands group.",
-      "note": "Two-step Use-in-program flow not yet wired." },
-    { "id": "program.addCase", "status": "planned", "mutating": "yes", "mechanism": "notImplemented",
-      "gates": [], "description": "Add a case statement to a Commands group.",
-      "note": "Not yet wired." },
-
-    { "id": "link.startFromHere", "status": "confirmed", "mutating": "noState", "mechanism": "contextMenu", "item": "Link from here",
-      "gates": [], "description": "Begin a link from the selected source pin (context menu Link from here). Select the pin via --path first." },
-    { "id": "link.toHere", "status": "confirmed", "mutating": "yes", "mechanism": "contextMenu", "item": "Link to here",
-      "gates": [], "description": "Complete a link to the selected destination pin (context menu Link to here). Run link.startFromHere first, then select the target pin." },
-    { "id": "link.productToFb", "status": "planned", "mutating": "yes", "mechanism": "notImplemented",
-      "gates": [], "description": "Wire a product input pin to an FB input pin (compound of link.startFromHere + link.toHere).",
-      "note": "Use link.startFromHere then link.toHere explicitly for now." },
-    { "id": "link.fbToProduct", "status": "planned", "mutating": "yes", "mechanism": "notImplemented",
-      "gates": [], "description": "Wire an FB output pin to a product output pin.",
-      "note": "Use link.startFromHere then link.toHere explicitly for now." },
-
-    { "id": "enum.listTypes", "status": "planned", "mutating": "no", "mechanism": "notImplemented",
-      "gates": [], "description": "List enumerator type names.",
-      "note": "Enum dialog read not yet wired." },
-    { "id": "enum.createType", "status": "planned", "mutating": "yes", "mechanism": "notImplemented",
-      "gates": ["confirmCaution"], "description": "Create a new enumerator type.",
-      "note": "Enum dialog mutation not yet wired." },
-
-    { "id": "projectInfo.get", "status": "partial", "mutating": "no", "mechanism": "menu", "menuPath": "Dokumentation/Projektinfo…",
-      "gates": [], "description": "Open the project information dialog (Dokumentation > Projektinfo…).",
-      "note": "Opens the dialog and stops there; read the fields with dialog.read, set them with dialog.setText, dismiss with dialog.click --button Cancel or dialog.cancel. Partial because the row itself returns no field data." },
-    { "id": "projectInfo.set", "status": "planned", "mutating": "yes", "mechanism": "notImplemented",
-      "gates": [], "description": "Set project information fields.",
-      "note": "Project info dialog mutation not yet wired." },
-    { "id": "modules.list", "status": "partial", "mutating": "no", "mechanism": "menu", "menuPath": "Dokumentation/Datalinie moduler…",
-      "gates": [], "description": "Open the data-line module map (Dokumentation > Datalinie moduler…).",
-      "note": "Opens the dialog and stops there; read the map with dialog.read and dismiss with dialog.cancel. Partial because the row itself returns no map data." },
-    { "id": "dataTables.list", "status": "partial", "mutating": "no", "mechanism": "menu", "menuPath": "Dokumentation/Rediger data tabeller…",
-      "gates": [], "description": "Open the data tables dialog (Dokumentation > Rediger data tabeller…).",
-      "note": "Opens the dialog and stops there; read the tables with dialog.read and dismiss with dialog.cancel. Partial because the row itself returns no table data." },
-    { "id": "report.generate", "status": "partial", "mutating": "no", "mechanism": "menu", "menuPath": "Dokumentation",
-      "gates": [], "description": "Open one of the three documentation reports. Pass --menu-path with the EXACT menu label -- \"Funktionsdokumentation…\", \"Installationsdokumentation…\" or \"Functionsblok dokumentation…\" -- which sit flat in the Documentation menu below the separator. Each opens the SHARED report picker dialog (window title \"Rapporter\") with that report type pre-selected; pick mode/format and commit there with dialog.read / dialog.setText / dialog.click. There is no deeper menu path to walk.",
-      "note": "CORRECTED 2026-08-02: this row declared menuPath \"Documentation/Reports\" and suggested --menu-path \"Installation documentation\". Neither exists -- MainWindow.axaml has no Reports submenu and no leaf by that name -- so every call failed TargetNotFound on the first segment, i.e. the row had never worked since the reporting rework landed. Still partial: what the picker does with the choice, and where the rendered output lands, is not driven from here." },
-
-    { "id": "edit.undo", "status": "confirmed", "mutating": "yes", "mechanism": "key", "gesture": "^z",
-      "gates": [], "description": "Undo the last change (Ctrl+Z). GLOBAL, so it takes no --path: it acts on the document, not the selection. Effect-verified 2026-07-16 by tree delta (it reverted a cross-locality move: source 4->5, target 5->4)." },
-    { "id": "edit.redo", "status": "confirmed", "mutating": "yes", "mechanism": "key", "gesture": "^y",
-      "gates": [], "description": "Redo (Ctrl+Y). GLOBAL, so it takes no --path. Effect-verified 2026-07-16 by tree delta (it reapplied the undone move)." },
-    { "id": "node.drag", "selectionRelative": false, "status": "confirmed", "mutating": "yes", "mechanism": "nodeDrag",
-      "gates": [], "description": "Move a node onto another by a REAL mouse drag within one pane: --from <path> --to <path> [--tree TV1|TV2]. The gesture the menu supplements (edit.moveUp/moveDown, link start-from-here/to-here) stand in for, so a 3WAY scenario can prove supplement and drag agree -- without it the OpenVisual drag path itself is never measured. Synthesized as press, threshold nudge, interpolated moves, release: a drag only STARTS once the pointer travels past the toolkit's drag threshold while held, and it drops where the pointer last moved, so a single jump between down and up is delivered as a plain CLICK on the source row. Steals the foreground for the whole gesture and refuses rather than dragging blind. Effect-verified against the pane's row order -- Code=NoEffect when nothing moved.",
-      "note": "Added 2026-08-01 (uxparity S-11). Counterpart to the vendor driver's node.drag." },
-    { "id": "edit.moveUp", "selectionRelative": true, "status": "confirmed", "mutating": "yes", "mechanism": "key", "gesture": "^+{UP}",
-      "gates": [], "description": "Move a node up among its siblings (Ctrl+Shift+Up): pass --path (and --tree) to address it, or it acts on the current selection. Effect-verified 2026-07-16 as the exact inverse of edit.moveDown (it restored the baseline sibling order)." },
-    { "id": "edit.moveDown", "selectionRelative": true, "status": "confirmed", "mutating": "yes", "mechanism": "key", "gesture": "^+{DOWN}",
-      "gates": [], "description": "Move a node down among its siblings (Ctrl+Shift+Down): pass --path (and --tree) to address it, or it acts on the current selection. Effect-verified 2026-07-16 by tree delta with a DIFFERENT node selected: it swapped the ADDRESSED node with its next sibling, leaving the selection untouched." },
-
-    { "id": "help.about", "status": "confirmed", "mutating": "no", "mechanism": "invoke", "automationId": "ToolbarHelp",
-      "gates": [], "description": "Open the About dialog (toolbar Help/About). It is a separate top-level window titled \"About IHC OpenVisual\", so it BLOCKS every later command until dismissed -- read it with dialog.read, close it with dialog.cancel.",
-      "note": "Until 2026-08-02 this dialog was invisible to the whole dialog surface: Get-OpenModalWindow identified the main window by title suffix, and this caption ends with the product name, so context.openModal read null, dialog.read/capture.modal answered DialogNotFound, and dialog.cancel returned ok:true 'No modal open.' while it sat there blocking the queue. The modal is now identified by window HANDLE, so About behaves like any other dialog." },
-    { "id": "help.forSelection", "selectionRelative": true, "status": "partial", "mutating": "no", "mechanism": "key", "gesture": "{F1}",
-      "gates": [], "description": "Show help for the current selection (F1). PARTIAL, and deliberately so: this row has NEVER been driven and its effect has never been read back -- it was registered 'confirmed' on the strength of being wired, which is not the same thing. The --path plumbing it shares with node.cut/copy IS verified; what is unproven is F1's own effect. (An earlier version of this note claimed CLAUDE.md forbids driving F1. No CLAUDE.md in this repo says any such thing -- the citation was checked on 2026-08-02 and removed. The real reason is simply that it has never been run.)" },
-    { "id": "help.settings", "status": "confirmed", "mutating": "no", "mechanism": "menu", "menuPath": "Hjælp/Vis indstillinger",
-      "gates": [], "description": "Show the settings view (Hjælp > Vis indstillinger)." },
-    { "id": "help.telemetry", "status": "confirmed", "mutating": "no", "mechanism": "menu", "menuPath": "Hjælp/Telemetridiagnostik",
-      "gates": [], "description": "Open telemetry diagnostics (Hjælp > Telemetridiagnostik)." },
-
-    { "id": "controller.send", "status": "partial", "mutating": "yes", "mechanism": "key", "gesture": "{F5}",
-      "gates": ["confirmCaution"], "description": "Send the project to the controller (F5). Caution-gated: pass --confirm-caution. This writes to real hardware, and it is the ONE command that performs the controller traffic key.send refuses outright.",
-      "note": "GATED 2026-08-02. key.send blocks {F5} unconditionally and the skill advertises that as a safety property -- but this row sent the same gesture with gates:[] and status=partial, and only status=planned is blocked by the confirmation gate, so `aui controller send` walked straight past the refusal it points at. mutating was also 'no' for a command that writes the project to the controller. Still partial: requires a configured, reachable controller (the toolbar button is disabled until then) and the send itself has never been driven here." },
-    { "id": "controller.retrieve", "status": "planned", "mutating": "yes", "mechanism": "notImplemented",
-      "gates": ["confirmCaution"], "description": "Retrieve the project from the controller.",
-      "note": "DELIBERATELY UNWIRED, not merely un-built: the toolbar button exists and carries AutomationId ToolbarRetrieve, so this is a one-row change to a working mechanism -- but controller traffic is a hard exclusion for this driver (see controller.send), and retrieving overwrites the open project from hardware. Wire it only with a controller you own and keep the confirmCaution gate." }
+    {
+      "id": "doctor",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "passive",
+      "gates": [],
+      "description": "Readiness preflight: Windows OS, app running, main window usable."
+    },
+    {
+      "id": "session.status",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "passive",
+      "gates": [],
+      "description": "Passive context snapshot: window title, toolbar visible, open modal, current selection."
+    },
+    {
+      "id": "session.probe",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "passive",
+      "gates": [],
+      "description": "Context snapshot (alias of session.status for run parity)."
+    },
+    {
+      "id": "dialog.cancel",
+      "status": "confirmed",
+      "mutating": "noState",
+      "mechanism": "dialogCancel",
+      "gates": [],
+      "description": "Cancel/close the topmost open modal dialog (Esc). Use to dismiss orphaned dialogs."
+    },
+    {
+      "id": "dialog.read",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "dialogRead",
+      "gates": [],
+      "description": "Enumerate the OPEN modal's controls into data as {dialog:{title}, controlCount, controls:[{id, name, class, enabled, visible, rect, text, items[], selectedIndex, toggleState}]}. READ-ONLY: opens nothing, changes nothing, closes nothing -- open the dialog first (node.doubleClick / node.properties) and close it with dialog.cancel. `enabled` and `visible` are INDEPENDENT: visible:false = not rendered; visible:true + enabled:false = greyed. `id` is the control's AutomationId, which Avalonia falls back to x:Name -- so a XAML dialog's fields address as NameBox/NoteBox/OkButton/CancelButton; the CODE-BUILT message boxes (AvaloniaDialogService.ShowButtonsAsync) set no Name and so have an EMPTY id, addressable only by `name` (the button text). DialogNotFound when no modal is open; zero controls on a resolved modal is a WALK FAILURE, not a fact about the dialog -- capture.modal before recording it.",
+      "note": "The counterpart to the vendor's dialog.read, and deliberately the same shape so compare3 C1.2c can compare the two variable dialogs. It SUPPLIES the readback the five dialog-opening rows lack (node.getProperties, node.rename, projectInfo.get, modules.list, dataTables.list) -- but it does not change what those rows do: each still opens its dialog and stops, so they stay partial and the readback is THIS command, run next. (Corrected 2026-08-02: the note used to say it 'unblocks' them, which read as though their status had changed.)"
+    },
+    {
+      "id": "dialog.setText",
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "dialogSetText",
+      "gates": [],
+      "description": "Type a value into a field of the OPEN modal: --field <AutomationId|Name> --text <value> (also positional: `dialog set-text NameBox \"New name\"`). The write counterpart to dialog.read, so an \"edit via its properties dialog\" flow can go past the inventory. Fields address by AutomationId (Avalonia falls back to x:Name, so NameBox/NoteBox work) and then by UIA Name. Sets through ValuePattern, NOT keystrokes: a keystroke needs the foreground, goes wherever focus is, and APPENDS to what the field already holds, whereas SetValue replaces it. The value is read back and returned as data.readBack -- a read-only or one-way-bound field accepts the call and keeps its old text, which comes back as Code=NoEffect rather than a false success. Open the dialog first (node.getProperties) and commit it with dialog.click --button OK.",
+      "note": "Added 2026-08-01 (uxparity S-08) for the DLG scenarios that must SET fields, not just read them: S-08, S-13, S-14, S-19, S-32."
+    },
+    {
+      "id": "dialog.click",
+      "status": "confirmed",
+      "mutating": "noState",
+      "mechanism": "dialogButton",
+      "gates": [],
+      "description": "Invoke a named button in the open modal: --button \"No\"|\"Yes\"|\"OK\"|\"Cancel\". Needed because not every dialog honours Esc (OpenVisual's Delete confirm does not), and an undismissable modal blocks every later command. OpenVisual dialogs are SEPARATE TOP-LEVEL WINDOWS (Views\\ResultDialog.cs calls ShowDialog(owner); the app defines 14 dialog Window subclasses beside MainWindow); this resolves the modal with Get-OpenModalWindow -- a RootElement search for a ControlType.Window in the app's process that is not the main window BY WINDOW HANDLE (it used to be 'whose title is not the main window's', which hid the About dialog, titled 'About IHC OpenVisual') -- and then searches THAT window's subtree. On an unknown --button it lists the buttons it did find. dialog.cancel falls back to No/Cancel/Annuller/Nej/Close/Luk automatically -- dismissal labels only, never OK/Yes, since a \"cancel\" that commits is worse than one that fails.",
+      "note": "CORRECTED 2026-07-17 (enabler3 S3): this row previously asserted OpenVisual's dialogs are 'IN-WINDOW OVERLAYS - one HWND, buttons are descendants of the main window'. That was wrong, and two independent sources agree it was: the app shows every dialog via ResultDialog<TResult> -> ShowDialog(owner) across separate Windows, and this driver's OWN Get-OpenModalWindow has always found them by searching RootElement for a separate top-level Window. The overlay claim never matched the code that was already working underneath it."
+    },
+    {
+      "id": "catalog.commands",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "static",
+      "gates": [],
+      "description": "List every semantic command with status (machine-readable self-description)."
+    },
+    {
+      "id": "catalog.products",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "menuBarDump",
+      "menu": "Indsæt",
+      "gates": [],
+      "description": "List insertable products by walking Insert > Products > … into data.titles[]. Raise --depth (default 2) to descend into product categories; the paths it reports are what product.insert --menu-path consumes."
+    },
+    {
+      "id": "catalog.functionBlocks",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "menuBarDump",
+      "menu": "Bibliotek",
+      "gates": [],
+      "description": "List FB templates by walking Library > Insert function block > … into data.titles[]. Raise --depth (default 2) to descend; the paths it reports are what fb.insertTemplate --menu-path consumes."
+    },
+    {
+      "id": "capture.window",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "capture",
+      "scope": "window",
+      "gates": [],
+      "description": "Capture the whole app window to a PNG (foregrounds it first)."
+    },
+    {
+      "id": "capture.client",
+      "status": "partial",
+      "mutating": "no",
+      "mechanism": "capture",
+      "scope": "window",
+      "gates": [],
+      "description": "Capture the client area to a PNG.",
+      "note": "Currently captures the full window frame (Avalonia chrome is minimal); true client-rect trim not yet split out."
+    },
+    {
+      "id": "capture.modal",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "capture",
+      "scope": "modal",
+      "gates": [],
+      "description": "Capture the open modal dialog to a PNG; DialogNotFound if none is open."
+    },
+    {
+      "id": "capture.control",
+      "status": "planned",
+      "mutating": "no",
+      "mechanism": "notImplemented",
+      "gates": [],
+      "description": "Capture a single child control (e.g. a tree pane) to a PNG.",
+      "note": "Per-control rect capture not yet wired."
+    },
+    {
+      "id": "project.new",
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "invoke",
+      "automationId": "ToolbarNew",
+      "gates": [],
+      "description": "New project (toolbar New). If there are unsaved changes a save-guard dialog appears — answer it with dialog.cancel or save first."
+    },
+    {
+      "id": "project.open",
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "fileDialog",
+      "automationId": "ToolbarOpen",
+      "dialogKind": "open",
+      "gates": [],
+      "description": "Open a project file: raises the toolbar Open picker, types --path <file> into it and commits. Verifies by effect (the title bar must name the file) and reports which check carried it in data.verifiedBy. That check is 'titleBaseName': an exact literal prefix comparison, NOT a wildcard match ('[' and ']' are legal in a Windows filename and would be read as a character class). The caption carries no directory, so it cannot tell this file from another of the same name in another folder -- the leftover-modal check (DialogBlocked) is what catches the usual form of that trap. If the current project has unsaved changes a save-guard may appear first — deal with it before calling this."
+    },
+    {
+      "id": "project.save",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "invoke",
+      "automationId": "ToolbarSave",
+      "gates": [],
+      "description": "Save project (toolbar Save). An untitled project raises Save-As instead."
+    },
+    {
+      "id": "project.saveAs",
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "fileDialog",
+      "menuPath": "Filer/Gem projekt som…",
+      "dialogKind": "save",
+      "gates": [],
+      "description": "Save the project to --path <file> via Filer > Gem projekt som…: types the path into the save picker and commits, verifying by effect. A ROOTED --path is verified against the filesystem (data.verifiedBy 'fileOnDisk'), which the title bar cannot do -- it carries the base name only, so it cannot tell 'written where I asked' from 'a file of that name was already open'; a relative path falls back to the caption ('titleBaseName') because the picker resolves it against ITS working directory, not this session's. Refuses an existing target unless --overwrite is passed, which also answers the picker's replace prompt."
+    },
+    {
+      "id": "project.recent.list",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "menuBarDump",
+      "menu": "Filer",
+      "gates": [],
+      "description": "List recent projects by walking Filer > Seneste projekter. Read data.titles[0] and find the 'Seneste projekter' child; its children are the MRU entries in menu order."
+    },
+    {
+      "id": "view.configuration",
+      "status": "confirmed",
+      "mutating": "noState",
+      "mechanism": "key",
+      "gesture": "{ESC}",
+      "gates": [],
+      "description": "Return to configuration view / leave programming mode (Esc). GLOBAL, so it takes no --path. Effect-verified 2026-07-16: both pane roots return from the FB's name to 'Lokaliteter' -- read it with `tree dump --depth 1`, which since enabler3 really does bound the walk to the root (it was silently ignored before, so this documented one-node probe used to realize the entire pane)."
+    },
+    {
+      "id": "programming.enter",
+      "selectionRelative": true,
+      "status": "confirmed",
+      "mutating": "noState",
+      "mechanism": "key",
+      "gesture": "{F3}",
+      "gates": [],
+      "description": "Enter programming mode for a function block (F3): pass --path (and --tree TV2) to address it, or select an FB first, else it is a no-op. READ THE EFFECT with `tree dump --depth 1` on EITHER pane: in configuration mode both panes root at 'Lokaliteter'; in programming mode BOTH re-root at the FB's own name (its Input/Output sections beneath). Since enabler3 `--depth 1` really does bound the walk to the root -- it was silently swallowed before, so this probe used to realize the entire pane on every call. context.statusText also says 'Programmeringstilstand -- tryk Esc for at vende tilbage til konfiguration.' Effect-verified 2026-07-16 -- this closes census E-3, which recorded the transition as unmeasurable; the same pane-root probe reads the vendor too (whose tree.read --depth is likewise real). READ THE EFFECT YOURSELF: like every `key` row, this one returns Ok with verified:false and never probes the roots. (The vendor driver returns NoEffect when the roots do not move; an earlier version of this sentence carried that clause where it read as a promise about THIS command -- corrected 2026-08-02.)"
+    },
+    {
+      "id": "view.toolbar.toggle",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "menu",
+      "menuPath": "Vis/Værktøjslinie",
+      "gates": [],
+      "description": "Toggle toolbar visibility (Vis > Værktøjslinie)."
+    },
+    {
+      "id": "view.statusbar.toggle",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "menu",
+      "menuPath": "Vis/Statuslinie",
+      "gates": [],
+      "description": "Toggle status bar visibility (Vis > Statuslinie). Invoke as `view statusbar-toggle`."
+    },
+    {
+      "id": "view.textSize",
+      "status": "partial",
+      "mutating": "no",
+      "mechanism": "menu",
+      "menuPath": "Vis/Tekststørrelse",
+      "gates": [],
+      "description": "Set the workspace text size (Vis > Tekststørrelse). Pass --menu-path with the step label -- \"Lille\", \"Normal\", \"Stor\" or \"Størst\". Scales every workspace font token at once; US-001. Session-scoped, so it does not survive a restart."
+    },
+    {
+      "id": "tree.select",
+      "status": "confirmed",
+      "mutating": "noState",
+      "mechanism": "treeSelect",
+      "gates": [],
+      "description": "Select a node (single click) by label path (\"Localities/Kitchen\") or 0-based index path (\"0\") in --tree TV1 (installation, default) or TV2 (functions). Verifies the caret landed. Prerequisite for selection-relative commands."
+    },
+    {
+      "id": "node.select",
+      "status": "confirmed",
+      "mutating": "noState",
+      "mechanism": "treeSelect",
+      "gates": [],
+      "description": "Single-click select a node by --path (alias of tree.select)."
+    },
+    {
+      "id": "node.expand",
+      "status": "confirmed",
+      "mutating": "noState",
+      "mechanism": "expandCollapse",
+      "action": "expand",
+      "gates": [],
+      "description": "Expand a tree node via the ExpandCollapse pattern. Select by --path (and --tree)."
+    },
+    {
+      "id": "node.collapse",
+      "status": "confirmed",
+      "mutating": "noState",
+      "mechanism": "expandCollapse",
+      "action": "collapse",
+      "gates": [],
+      "description": "Collapse a tree node via the ExpandCollapse pattern. Select by --path (and --tree)."
+    },
+    {
+      "id": "node.doubleClick",
+      "status": "confirmed",
+      "mutating": "noState",
+      "mechanism": "doubleClick",
+      "gates": [],
+      "description": "Double-click (activate) a node. Select by --path (and --tree); the row is scrolled into view for you. Clicks the node's OWN header strip and hit-tests that point back to the target before clicking, reporting data.targetVerified:true -- an Avalonia TreeViewItem's bounds enclose its whole EXPANDED SUBTREE, so a naive rect-centre/GetClickablePoint() click silently lands on a DESCENDANT row and still reports success (this fabricated census cells: 'double-click does nothing on a locality' when the locality was never clicked). If no point on the row hit-tests back to it (occluded, or clipped by the tree's own scrollbar) it returns TargetNotFound rather than clicking a different row. --x-offset N clicks N px RIGHT OF THE ROW'S LABEL instead of on it -- census C16 (does a double-click in the empty space past a short label still activate the row?); the same hit-test-back guard applies, so an offset that leaves the row/viewport is REFUSED rather than clamped, and data.hitArea echoes which point ran. EFFECT (re-read from the app 2026-08-02): double-click is HANDLED -- MainWindow.axaml binds DoubleTapped on the row content and MainWindow.axaml.cs selects the row, runs ActivateNodeCommand and marks the event Handled, so it OPENS THE NODE'S PROPERTIES DIALOG and the Avalonia default expand-toggle does NOT run. A pin opens its owning product's dialog; the Localities root, link rows and unresolvable rows do nothing. Read the result with session.status.openModal / dialog.read and close it with dialog.click or dialog.cancel. (This row previously said no node type handled double-click and that expandable nodes would toggle -- both halves went stale when the activation handler landed.) COORDINATE NOTE: data.point is a diagnostic for a mis-aimed gesture -- it records where the driver actually clicked, so a wrong landing stays readable after the fact -- and NOT an input: do not hand it to SetCursorPos or do coordinate math on it. Address the node with --path (and --tree) instead; every pointing command here is path-addressed, so no caller needs a screen coordinate. That the point is declared (native space plus the sibling in the other one, see doctor's display block) is what makes a mis-aimed gesture diagnosable, not an invitation to re-use the number: a coordinate carried into another process is the failure this note exists to prevent.",
+      "note": "C16 TRAP, measured 2026-07-17 (enabler3 S5): on THIS side the DEFAULT click point is already in the empty space right of a short label. Get-TreeItemClickPoint takes the ROW rect's centre, and the row rect spans the pane width -- clicking 'Stue' landed at x=728 while the label ends near x=301, so the default and the --x-offset 40 point (x=341) are BOTH right of the text, just at different distances. The vendor is not like this: its click point comes from TVM_GETITEMRECT(wParam=TRUE), the LABEL-only rect (measured: label right=106, row right=641, so a 535 px gap). So a C16 comparison of 'default double-click' against 'default double-click' is NOT comparing the same hit area -- pin both sides with an explicit --x-offset, or the cell measures the two drivers' click-point conventions rather than the two apps."
+    },
+    {
+      "id": "node.rightClick",
+      "status": "confirmed",
+      "mutating": "noState",
+      "mechanism": "rightClick",
+      "gates": [],
+      "description": "Right-click a node with the REAL mouse and report what it did to the selection: data.selectedBefore/selectedAfter/selectionMoved answer 'does right-click move the caret?' (C2/D3), and data.items[] carries whatever flyout it raised. Deliberately does NOT select the target first -- selecting it would answer the question in advance -- so point --path at a node that is NOT currently selected and a no-op stays distinguishable from a hit. Distinct from menu.dumpContext, whose Shift+F10 is a KEYBOARD gesture acting on the already-focused row and so cannot move the caret by construction. COORDINATE NOTE: data.point is a diagnostic for a mis-aimed gesture -- it records where the driver actually clicked, so a wrong landing stays readable after the fact -- and NOT an input: do not hand it to SetCursorPos or do coordinate math on it. Address the node with --path (and --tree) instead; every pointing command here is path-addressed, so no caller needs a screen coordinate. That the point is declared (native space plus the sibling in the other one, see doctor's display block) is what makes a mis-aimed gesture diagnosable, not an invitation to re-use the number: a coordinate carried into another process is the failure this note exists to prevent.",
+      "note": "Effect-verified 2026-07-16 (verify2) against a same-integrity elevated app: with 'Stue' selected, right-clicking 'Udestue' reported selectedBefore=Stue, selectedAfter=Udestue, selectionMoved=true, flyoutOpened=true, 7 items -- so right-click DOES move the caret, and the readback proves it hit the addressed node."
+    },
+    {
+      "id": "node.tooltip",
+      "status": "confirmed",
+      "mutating": "noState",
+      "mechanism": "readProperty",
+      "property": "helpText",
+      "gates": [],
+      "description": "Read a node's tooltip (exposed to automation as HelpText). Address it with --path (and --tree). The row is RESOLVED, not selected: since 2026-08-02 this reader no longer moves the caret (it used to, silently, which pre-answers the very question node.rightClick measures). mutating is noState rather than no only because reaching a deep row still expands its ancestors."
+    },
+    {
+      "id": "tree.dump",
+      "status": "confirmed",
+      "mutating": "noState",
+      "mechanism": "treeDump",
+      "gates": [],
+      "description": "Recursively dump a pane's tree as JSON {pane, capturedAfter, expandAll, withKind, maxDepth, nodeCount, root:{label, expanded, children[]}} in data. --tree TV1|TV2, optional --path to scope to a subtree, --after <slug> to stamp capturedAfter. --path RESOLVES the subtree without selecting it (since 2026-08-02 -- it used to select, so dumping a subtree to choose a target moved the caret you were about to measure); mutating is noState rather than no because reaching a deep row expands its ancestors. --depth/--after are read as NAMED flags only, so a positional path cannot be swallowed by either. Does NOT expand collapsed nodes (expansion state is itself observable data) unless --expand-all is passed; collapsed nodes report expanded:false with children:[] because Avalonia does not realize their children. --depth N bounds the walk (default 40) -- use --depth 1 for the mode probe, which reads the root only instead of realizing the whole pane. --with-kind adds `kind` per node (the row's TYPE, from AutomationId): needed in programming mode, where the LABEL is user data and cannot identify a row -- 'Kip Udgang' is a command, 'Kip ved kort tryk -> ON' an event. Additive and off by default so the schema stays identical to the vendor's tree.read dump and tools\\tree-diff.ps1 keeps working. Children come from the control-view TreeWalker, the same enumeration --path resolution uses: FindAll(TreeScope::Children) does not return a TreeViewItem's own rows in this app (it skips real children and runs past the end of the subtree), and this dump -- the comparison's structural oracle -- used it while reporting verified:true until 2026-08-02."
+    },
+    {
+      "id": "key.send",
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "keySend",
+      "gates": [],
+      "description": "Send a raw key gesture in SendKeys syntax to the app: --gesture \"{F2}\"|\"{DOWN}\"|\"+{F10}\"|\"{DELETE}\"|\"{ESC}\". Optional --path (+--tree) selects a node first so the key lands on a known selection. data reports the selection/modal/title before and after so the effect is readable from the envelope. Refuses {F5} (controller Send-project), and requires --confirm-destructive for {DELETE}/{DEL}: MainWindow routes Key.Delete to the edit.delete command, so the raw gesture IS node.delete, and this row's gates:[] would otherwise be a way around the removal gate. Answering the confirmation prompt it raises stays ungated (dialog.click).",
+      "note": "GATED 2026-08-02. Also fixed here: --path is optional, but the returned delta read the tree id unconditionally, so the plain form threw under StrictMode AFTER SendWait had fired -- the gesture happened and the envelope said MutationFailed, inviting a retry that would repeat it."
+    },
+    {
+      "id": "menu.dumpContext",
+      "status": "confirmed",
+      "mutating": "noState",
+      "mechanism": "contextMenuDump",
+      "gates": [],
+      "description": "Open the context flyout on the current selection (Shift+F10), enumerate its items with enabled state into data.items[], screenshot it, then close it. --depth N (default 1, matching the vendor driver's context default) bounds submenu recursion: depth 1 is the flat top level, 2 lists each submenu's leaves in children[] -- raise it whenever a row offers a nested palette (a section's 'Insert variable >'), because a flat read reports that whole palette as ONE item while the vendor lists its leaves. Rows carry the same {label, accelerator, separator, enabled, children[]} shape as menu.dumpBar. The screenshot is taken BEFORE descending, so it always shows the top level. Select the node with --path (and --tree) first. noState, not no: unlike the other readers this one MUST select and focus the addressed row, because Shift+F10 acts on whatever holds keyboard focus -- so it does move the caret. Fails TargetNotFound if the flyout does not open, and NEVER returns an empty inventory as a verified reading: both trees share one MenuFlyout resource, so zero items always means the gesture failed, never 'this node type has no menu'. data.attempts reports whether the bounded retry was needed -- a recurring 2 means the foreground/focus order regressed."
+    },
+    {
+      "id": "menu.dumpBar",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "menuBarDump",
+      "gates": [],
+      "description": "Walk the menu bar and enumerate titles/items/enabled state into data.titles[] (nested children[]) -- the same {titleCount, maxDepth, titles:[{label, enabled, children[]}]} shape the vendor driver's `app menu dump-bar` emits, so the two sides' submenu trees diff mechanically. --menu <Title> narrows to one title; --depth N (default 2, matching the vendor's default) bounds submenu recursion -- raise it to reach catalog leaves, which nest 4+ deep, and heed the truncation warning. Opens and closes real menus by HOVER (never clicking a leaf), so it is slow but it is the only route: Avalonia menu items expose no UIA patterns."
+    },
+    {
+      "id": "locality.insert",
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "contextMenu",
+      "item": "Insert locality",
+      "gates": [],
+      "description": "Insert a new locality (room) under the selected node. Pass a path to select first (e.g. --path Localities)."
+    },
+    {
+      "id": "node.delete",
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "contextMenu",
+      "item": "Delete",
+      "gates": [
+        "confirmDestructive"
+      ],
+      "description": "Delete the selected node (context menu Delete). Select via --path first. Destructive: pass --confirm-destructive."
+    },
+    {
+      "id": "node.cut",
+      "selectionRelative": true,
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "key",
+      "gesture": "^x",
+      "gates": [],
+      "description": "Cut a node (Ctrl+X): pass --path (and --tree) to address it, or it acts on the current selection. UNGATED since 2026-08-02: this row required --confirm-destructive while its own note (below) says Cut removes nothing, and node.paste -- which actually performs the move -- was ungated, so the gate sat on the harmless half of the pair. The destructive gate now means what it says: irreversible removal (node.delete, product.delete). NOTE Cut does NOT remove the node -- it only STAGES a move (the tree is deliberately unchanged until node.paste lands it on a locality), so verify it via context.statusText ('Cut <name> -- paste onto a locality to move it'), never via a tree diff. Effect-verified 2026-07-16: with a DIFFERENT node selected, --path made the status bar name the ADDRESSED node."
+    },
+    {
+      "id": "node.copy",
+      "selectionRelative": true,
+      "status": "confirmed",
+      "mutating": "noState",
+      "mechanism": "key",
+      "gesture": "^c",
+      "gates": [],
+      "description": "Copy a node to the clipboard (Ctrl+C): pass --path (and --tree) to address it, or it acts on the current selection. Like node.cut it changes no tree state, so read context.statusText ('Copied <name> ...') for the effect. Effect-verified 2026-07-16: with a different node selected, --path made the status bar name the ADDRESSED node."
+    },
+    {
+      "id": "node.paste",
+      "selectionRelative": true,
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "key",
+      "gesture": "^v",
+      "gates": [],
+      "description": "Paste the clipboard node onto the addressed locality (Ctrl+V) -- this is what completes a node.cut move or a node.copy duplicate. Effect-verified 2026-07-16 by tree delta: cut a product from one locality and paste onto another moved it (source 5->4 children, target 4->5, statusText 'Moved.'), and edit.undo reverted it."
+    },
+    {
+      "id": "node.getProperties",
+      "status": "partial",
+      "mutating": "no",
+      "mechanism": "contextMenu",
+      "item": "Properties",
+      "gates": [],
+      "description": "Open the selected node's properties dialog (context menu Properties).",
+      "note": "Opens the dialog and stops there -- that is the whole of this row. Read the fields with dialog.read, change them with dialog.setText, commit or abandon with dialog.click --button OK|Cancel (dialog.cancel also works on dialogs that honour Esc). Partial because which dialog a given node kind raises has not been read back kind by kind."
+    },
+    {
+      "id": "node.rename",
+      "status": "partial",
+      "mutating": "yes",
+      "mechanism": "contextMenu",
+      "item": "Properties",
+      "gates": [],
+      "description": "Rename a node via its Properties dialog.",
+      "note": "This row is only the FIRST of three steps: it opens the dialog. The rename is dialog.setText --field NameBox --text \"<new name>\" then dialog.click --button OK. (Corrected 2026-08-02: the note said field-set and commit were 'not yet wired' -- they are, as those two commands.)"
+    },
+    {
+      "id": "product.insert",
+      "status": "partial",
+      "mutating": "yes",
+      "mechanism": "menu",
+      "menuPath": "Indsæt/Produkter",
+      "gates": [],
+      "description": "Insert a catalog product into the selected locality. Select the locality with tree.select first, then address the catalog subtree with --menu-path, e.g. --menu-path \"Datalinie produkter/<category>/<product>\". Use `aui catalog products` to discover the available paths.",
+      "note": "The menu walk is verified; the per-product leaf paths depend on the loaded catalog, and the properties dialog the app may raise on insert is not answered here — check session.status.openModal afterwards."
+    },
+    {
+      "id": "product.setProperties",
+      "status": "planned",
+      "mutating": "yes",
+      "mechanism": "notImplemented",
+      "gates": [],
+      "description": "Edit a placed product's properties.",
+      "note": "Product properties dialog field-set not yet wired."
+    },
+    {
+      "id": "product.setAddress",
+      "status": "planned",
+      "mutating": "yes",
+      "mechanism": "notImplemented",
+      "gates": [],
+      "description": "Assign a wired product terminal's module+port address.",
+      "note": "Terminal addressing dialog not yet wired."
+    },
+    {
+      "id": "product.delete",
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "contextMenu",
+      "item": "Delete",
+      "gates": [
+        "confirmDestructive"
+      ],
+      "description": "Delete a placed product (context menu Delete). Select the product via --path first."
+    },
+    {
+      "id": "fb.insertEmpty",
+      "selectionRelative": true,
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "key",
+      "gesture": "^+b",
+      "gates": [],
+      "description": "Insert a blank function block under the selected locality (Ctrl+Shift+B). Select a locality first."
+    },
+    {
+      "id": "fb.insertTemplate",
+      "status": "partial",
+      "mutating": "yes",
+      "mechanism": "menu",
+      "menuPath": "Bibliotek/Indsæt Funktionsblok",
+      "gates": [],
+      "description": "Insert a library function-block template. Select the target locality first, then address the template with --menu-path, e.g. --menu-path \"<category>/<template>\". Use `aui catalog function-blocks` to discover the available paths.",
+      "note": "The menu walk is verified; the per-template leaf paths depend on the loaded catalog."
+    },
+    {
+      "id": "menu.invokeContext",
+      "status": "partial",
+      "mutating": "yes",
+      "mechanism": "contextMenu",
+      "gates": [],
+      "description": "Invoke a context-flyout item BY LABEL on the addressed row: --path <row> [--tree] --item <label>. A '/' walks one submenu level ('Insert variable/Input'); escape a literal slash as '\\/'. This is the generic form of the pinned-item rows (fb.unlock, node.delete, …) and exists so a census can exercise authoring items -- Logic group, Sub-program, Add Powerup event, Use in program -- without a registry row per item. Enumerate first with menu.dumpContext: a missing item returns TargetNotFound listing what WAS realized, and a present-but-greyed one returns PreconditionMissing rather than a hopeful Ok. Verified:false by design -- the flyout closing proves the item ACTIVATED, not that it had its intended effect, so read the effect back yourself."
+    },
+    {
+      "id": "fb.unlock",
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "contextMenu",
+      "item": "Unlock",
+      "gates": [],
+      "description": "Unlock a locked (library) function block (context menu Unlock). Select the locked FB via --path first."
+    },
+    {
+      "id": "fb.saveToLibrary",
+      "selectionRelative": true,
+      "status": "partial",
+      "mutating": "yes",
+      "mechanism": "key",
+      "gesture": "^g",
+      "gates": [],
+      "description": "Save the selected function block to the library (Ctrl+G).",
+      "note": "Opens the save dialog + OS picker; field entry and picker path are not yet automated."
+    },
+    {
+      "id": "fb.setProperties",
+      "status": "planned",
+      "mutating": "yes",
+      "mechanism": "notImplemented",
+      "gates": [],
+      "description": "Rename / set note on a function-block node.",
+      "note": "FB properties dialog field-set not yet wired."
+    },
+    {
+      "id": "variable.insert",
+      "status": "planned",
+      "mutating": "yes",
+      "mechanism": "notImplemented",
+      "gates": [],
+      "description": "Insert a resource/variable into the current FB section (Insert variable > …).",
+      "note": "Dynamic variable palette submenu not yet wired."
+    },
+    {
+      "id": "resource.setProperties",
+      "status": "planned",
+      "mutating": "yes",
+      "mechanism": "notImplemented",
+      "gates": [],
+      "description": "Name a resource / set its initial value.",
+      "note": "Resource dialog field-set not yet wired."
+    },
+    {
+      "id": "scene.insert",
+      "status": "planned",
+      "mutating": "yes",
+      "mechanism": "notImplemented",
+      "gates": [],
+      "description": "Insert a scene resource in the Output section.",
+      "note": "Not yet wired."
+    },
+    {
+      "id": "program.insertElement",
+      "status": "planned",
+      "mutating": "yes",
+      "mechanism": "notImplemented",
+      "gates": [],
+      "description": "Insert a program container (sub-program / logic group / case) into the selected program group.",
+      "note": "Program authoring context items not yet wired."
+    },
+    {
+      "id": "program.addCondition",
+      "status": "planned",
+      "mutating": "yes",
+      "mechanism": "notImplemented",
+      "gates": [],
+      "description": "Add a condition row to a Conditions group.",
+      "note": "Two-step Use-in-program flow not yet wired."
+    },
+    {
+      "id": "program.addAction",
+      "status": "planned",
+      "mutating": "yes",
+      "mechanism": "notImplemented",
+      "gates": [],
+      "description": "Add an action/command row to a Commands group.",
+      "note": "Two-step Use-in-program flow not yet wired."
+    },
+    {
+      "id": "program.addCase",
+      "status": "planned",
+      "mutating": "yes",
+      "mechanism": "notImplemented",
+      "gates": [],
+      "description": "Add a case statement to a Commands group.",
+      "note": "Not yet wired."
+    },
+    {
+      "id": "link.startFromHere",
+      "status": "confirmed",
+      "mutating": "noState",
+      "mechanism": "contextMenu",
+      "item": "Link from here",
+      "gates": [],
+      "description": "Begin a link from the selected source pin (context menu Link from here). Select the pin via --path first."
+    },
+    {
+      "id": "link.toHere",
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "contextMenu",
+      "item": "Link to here",
+      "gates": [],
+      "description": "Complete a link to the selected destination pin (context menu Link to here). Run link.startFromHere first, then select the target pin."
+    },
+    {
+      "id": "link.productToFb",
+      "status": "planned",
+      "mutating": "yes",
+      "mechanism": "notImplemented",
+      "gates": [],
+      "description": "Wire a product input pin to an FB input pin (compound of link.startFromHere + link.toHere).",
+      "note": "Use link.startFromHere then link.toHere explicitly for now."
+    },
+    {
+      "id": "link.fbToProduct",
+      "status": "planned",
+      "mutating": "yes",
+      "mechanism": "notImplemented",
+      "gates": [],
+      "description": "Wire an FB output pin to a product output pin.",
+      "note": "Use link.startFromHere then link.toHere explicitly for now."
+    },
+    {
+      "id": "enum.listTypes",
+      "status": "planned",
+      "mutating": "no",
+      "mechanism": "notImplemented",
+      "gates": [],
+      "description": "List enumerator type names.",
+      "note": "Enum dialog read not yet wired."
+    },
+    {
+      "id": "enum.createType",
+      "status": "planned",
+      "mutating": "yes",
+      "mechanism": "notImplemented",
+      "gates": [
+        "confirmCaution"
+      ],
+      "description": "Create a new enumerator type.",
+      "note": "Enum dialog mutation not yet wired."
+    },
+    {
+      "id": "projectInfo.get",
+      "status": "partial",
+      "mutating": "no",
+      "mechanism": "menu",
+      "menuPath": "Dokumentation/Projektinfo…",
+      "gates": [],
+      "description": "Open the project information dialog (Dokumentation > Projektinfo…).",
+      "note": "Opens the dialog and stops there; read the fields with dialog.read, set them with dialog.setText, dismiss with dialog.click --button Cancel or dialog.cancel. Partial because the row itself returns no field data."
+    },
+    {
+      "id": "projectInfo.set",
+      "status": "planned",
+      "mutating": "yes",
+      "mechanism": "notImplemented",
+      "gates": [],
+      "description": "Set project information fields.",
+      "note": "Project info dialog mutation not yet wired."
+    },
+    {
+      "id": "modules.list",
+      "status": "partial",
+      "mutating": "no",
+      "mechanism": "menu",
+      "menuPath": "Dokumentation/Datalinie moduler…",
+      "gates": [],
+      "description": "Open the data-line module map (Dokumentation > Datalinie moduler…).",
+      "note": "Opens the dialog and stops there; read the map with dialog.read and dismiss with dialog.cancel. Partial because the row itself returns no map data."
+    },
+    {
+      "id": "dataTables.list",
+      "status": "partial",
+      "mutating": "no",
+      "mechanism": "menu",
+      "menuPath": "Dokumentation/Rediger data tabeller…",
+      "gates": [],
+      "description": "Open the data tables dialog (Dokumentation > Rediger data tabeller…).",
+      "note": "Opens the dialog and stops there; read the tables with dialog.read and dismiss with dialog.cancel. Partial because the row itself returns no table data."
+    },
+    {
+      "id": "report.generate",
+      "status": "partial",
+      "mutating": "no",
+      "mechanism": "menu",
+      "menuPath": "Dokumentation",
+      "gates": [],
+      "description": "Open one of the three documentation reports. Pass --menu-path with the EXACT menu label -- \"Funktionsdokumentation…\", \"Installationsdokumentation…\" or \"Functionsblok dokumentation…\" -- which sit flat in the Documentation menu below the separator. Each opens the SHARED report picker dialog (window title \"Rapporter\") with that report type pre-selected; pick mode/format and commit there with dialog.read / dialog.setText / dialog.click. There is no deeper menu path to walk.",
+      "note": "CORRECTED 2026-08-02: this row declared menuPath \"Documentation/Reports\" and suggested --menu-path \"Installation documentation\". Neither exists -- MainWindow.axaml has no Reports submenu and no leaf by that name -- so every call failed TargetNotFound on the first segment, i.e. the row had never worked since the reporting rework landed. Still partial: what the picker does with the choice, and where the rendered output lands, is not driven from here."
+    },
+    {
+      "id": "edit.undo",
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "key",
+      "gesture": "^z",
+      "gates": [],
+      "description": "Undo the last change (Ctrl+Z). GLOBAL, so it takes no --path: it acts on the document, not the selection. Effect-verified 2026-07-16 by tree delta (it reverted a cross-locality move: source 4->5, target 5->4)."
+    },
+    {
+      "id": "edit.redo",
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "key",
+      "gesture": "^y",
+      "gates": [],
+      "description": "Redo (Ctrl+Y). GLOBAL, so it takes no --path. Effect-verified 2026-07-16 by tree delta (it reapplied the undone move)."
+    },
+    {
+      "id": "node.drag",
+      "selectionRelative": false,
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "nodeDrag",
+      "gates": [],
+      "description": "Move a node onto another by a REAL mouse drag within one pane: --from <path> --to <path> [--tree TV1|TV2]. The gesture the menu supplements (edit.moveUp/moveDown, link start-from-here/to-here) stand in for, so a 3WAY scenario can prove supplement and drag agree -- without it the OpenVisual drag path itself is never measured. Synthesized as press, threshold nudge, interpolated moves, release: a drag only STARTS once the pointer travels past the toolkit's drag threshold while held, and it drops where the pointer last moved, so a single jump between down and up is delivered as a plain CLICK on the source row. Steals the foreground for the whole gesture and refuses rather than dragging blind. Effect-verified against the pane's row order -- Code=NoEffect when nothing moved.",
+      "note": "Added 2026-08-01 (uxparity S-11). Counterpart to the vendor driver's node.drag."
+    },
+    {
+      "id": "edit.moveUp",
+      "selectionRelative": true,
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "key",
+      "gesture": "^+{UP}",
+      "gates": [],
+      "description": "Move a node up among its siblings (Ctrl+Shift+Up): pass --path (and --tree) to address it, or it acts on the current selection. Effect-verified 2026-07-16 as the exact inverse of edit.moveDown (it restored the baseline sibling order)."
+    },
+    {
+      "id": "edit.moveDown",
+      "selectionRelative": true,
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "key",
+      "gesture": "^+{DOWN}",
+      "gates": [],
+      "description": "Move a node down among its siblings (Ctrl+Shift+Down): pass --path (and --tree) to address it, or it acts on the current selection. Effect-verified 2026-07-16 by tree delta with a DIFFERENT node selected: it swapped the ADDRESSED node with its next sibling, leaving the selection untouched."
+    },
+    {
+      "id": "help.about",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "invoke",
+      "automationId": "ToolbarHelp",
+      "gates": [],
+      "description": "Open the About dialog (toolbar Help/About). It is a separate top-level window titled \"About IHC OpenVisual\", so it BLOCKS every later command until dismissed -- read it with dialog.read, close it with dialog.cancel.",
+      "note": "Until 2026-08-02 this dialog was invisible to the whole dialog surface: Get-OpenModalWindow identified the main window by title suffix, and this caption ends with the product name, so context.openModal read null, dialog.read/capture.modal answered DialogNotFound, and dialog.cancel returned ok:true 'No modal open.' while it sat there blocking the queue. The modal is now identified by window HANDLE, so About behaves like any other dialog."
+    },
+    {
+      "id": "help.forSelection",
+      "selectionRelative": true,
+      "status": "partial",
+      "mutating": "no",
+      "mechanism": "key",
+      "gesture": "{F1}",
+      "gates": [],
+      "description": "Show help for the current selection (F1). PARTIAL, and deliberately so: this row has NEVER been driven and its effect has never been read back -- it was registered 'confirmed' on the strength of being wired, which is not the same thing. The --path plumbing it shares with node.cut/copy IS verified; what is unproven is F1's own effect. (An earlier version of this note claimed CLAUDE.md forbids driving F1. No CLAUDE.md in this repo says any such thing -- the citation was checked on 2026-08-02 and removed. The real reason is simply that it has never been run.)"
+    },
+    {
+      "id": "help.settings",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "menu",
+      "menuPath": "Hjælp/Vis indstillinger",
+      "gates": [],
+      "description": "Show the settings view (Hjælp > Vis indstillinger)."
+    },
+    {
+      "id": "help.telemetry",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "menu",
+      "menuPath": "Hjælp/Telemetridiagnostik",
+      "gates": [],
+      "description": "Open telemetry diagnostics (Hjælp > Telemetridiagnostik)."
+    },
+    {
+      "id": "controller.send",
+      "status": "partial",
+      "mutating": "yes",
+      "mechanism": "key",
+      "gesture": "{F5}",
+      "gates": [
+        "confirmCaution"
+      ],
+      "description": "Send the project to the controller (F5). Caution-gated: pass --confirm-caution. This writes to real hardware, and it is the ONE command that performs the controller traffic key.send refuses outright.",
+      "note": "GATED 2026-08-02. key.send blocks {F5} unconditionally and the skill advertises that as a safety property -- but this row sent the same gesture with gates:[] and status=partial, and only status=planned is blocked by the confirmation gate, so `aui controller send` walked straight past the refusal it points at. mutating was also 'no' for a command that writes the project to the controller. Still partial: requires a configured, reachable controller (the toolbar button is disabled until then) and the send itself has never been driven here."
+    },
+    {
+      "id": "controller.retrieve",
+      "status": "planned",
+      "mutating": "yes",
+      "mechanism": "notImplemented",
+      "gates": [
+        "confirmCaution"
+      ],
+      "description": "Retrieve the project from the controller.",
+      "note": "DELIBERATELY UNWIRED, not merely un-built: the toolbar button exists and carries AutomationId ToolbarRetrieve, so this is a one-row change to a working mechanism -- but controller traffic is a hard exclusion for this driver (see controller.send), and retrieving overwrites the open project from hardware. Wire it only with a controller you own and keep the confirmCaution gate."
+    }
   ]
 }

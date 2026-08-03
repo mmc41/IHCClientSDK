@@ -111,6 +111,13 @@ per-menu command inventory beyond the top-level menu titles.
   reallocate width between *Installation* and *Funktioner*.
 - SHOULD: The workspace renders in either a light or a dark theme; tree icon ink and node state
   colours follow the active theme's tokens (per the icon design guideline).
+- SHOULD: The installer can change the workspace **text size** from *Vis*, choosing among a small set of
+  named steps with a normal default. Every piece of workspace text scales together — tree labels, menu
+  and status text — so the relative hierarchy is preserved and no text is clipped or overlapped at any
+  step. The choice takes effect immediately, without reopening the project or restarting.
+- SHOULD: When the operating system reports a **high-contrast** display preference, the workspace adopts
+  a high-contrast palette without the installer having to ask. The workspace follows the preference for
+  as long as it is set, and returns to the ordinary palette when it is cleared, both while running.
 
 ### AC illustrations
 
@@ -133,6 +140,10 @@ per-menu command inventory beyond the top-level menu titles.
 - Verification method — **Inspection** of the application window.
 - Exact pixel dimensions and default window size are not specified (out of scope).
 - Pane headers read the fixed words *Installation* / *Funktioner*.
+- The theme, text size and contrast choices are session-scoped: nothing requires them to survive a
+  restart. (Remembering workspace preferences across sessions is not specified here.)
+- The named text-size steps and their exact scale factors are not specified; only that there are
+  several, that *Normal* is the default, and that they are ordered smallest to largest.
 
 **Readiness:** Ready.
 

@@ -2,8 +2,10 @@
 using System;
 using System.Diagnostics;
 using System.Reflection;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Logging;
+using Avalonia.Threading;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
@@ -164,6 +166,42 @@ namespace Ihc.Bootstrap
                 activity.Dispose();
                 activity = parent;
             }
+        }
+
+        /// <summary>Builds the <see cref="Dispatcher.UnhandledException"/> handler — the SECOND of the four documented
+        /// exception layers (Avalonia logging review BP-09). It is the only route to a fault raised inside a dispatcher
+        /// operation: the dispatcher decides what to do with such a fault before it could ever reach an
+        /// <see cref="AppDomain.UnhandledException"/> handler. Register it once the logger factory exists:
+        /// <c>Dispatcher.UIThread.UnhandledException += DispatcherExceptionHandler(logger);</c>
+        /// <para>Deliberately does NOT set <c>Handled</c> (review WS-05/AP-07): resuming a UI thread whose operation
+        /// faulted continues on possibly corrupt state, and the flag is set-once-true (BP-08), so marking it here could
+        /// never be overruled later. This handler observes; the framework still escalates, and the AppDomain handler
+        /// below owns the terminal path (which is also why this one does not tear down the Activity chain — doing it
+        /// in both would dispose it twice).</para></summary>
+        public static DispatcherUnhandledExceptionEventHandler DispatcherExceptionHandler(ILogger logger) =>
+            (_, args) => LogDispatcherException(logger, args.Exception);
+
+        // The handler body, callable directly so a test can assert against real logged output (ILogger is never mocked).
+        public static void LogDispatcherException(ILogger logger, Exception ex)
+        {
+            logger.LogCritical(ex, "Unhandled dispatcher exception: {Message}", ex.Message);
+            Activity.Current?.AddException(ex);
+        }
+
+        /// <summary>Builds the <see cref="TaskScheduler.UnobservedTaskException"/> handler — the THIRD documented
+        /// exception layer (BP-09). Register it once the logger factory exists:
+        /// <c>TaskScheduler.UnobservedTaskException += UnobservedTaskExceptionHandler(logger);</c></summary>
+        public static EventHandler<UnobservedTaskExceptionEventArgs> UnobservedTaskExceptionHandler(ILogger logger) =>
+            (_, args) => LogUnobservedTaskException(logger, args);
+
+        /// <summary>Records a dropped task's fault and marks it observed. Warning, not Critical: this event fires on the
+        /// finalizer thread at an arbitrary later time, so it is a LEAK DETECTOR rather than a primary error path
+        /// (review WS-06) — anything that needs timely reporting must be awaited. Observing it stops the fault
+        /// re-surfacing as a process-killing finalizer throw.</summary>
+        public static void LogUnobservedTaskException(ILogger logger, UnobservedTaskExceptionEventArgs args)
+        {
+            logger.LogWarning(args.Exception, "Unobserved task exception: {Message}", args.Exception?.Message);
+            args.SetObserved();
         }
 
         public static LogEventLevel MapFromIlogToAvaloniaLogLevel(LogLevel logLevel) => logLevel switch

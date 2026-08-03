@@ -163,6 +163,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private bool _isToolbarVisible = true;
     [ObservableProperty] private bool _isStatusBarVisible = true;
     [ObservableProperty] private AppTheme _currentTheme;
+    /// <summary>The active workspace text-size step (US-001) — what the <i>Vis ▸ Tekststørrelse</i> radio items check.</summary>
+    [ObservableProperty] private TextScale _currentTextScale;
 
     /// <summary>The active tree node — whichever pane the installer last selected in. Context-menu commands, F2 and
     /// the insert target all read this. Not bound directly to a tree (each pane binds its own selection below), so a
@@ -280,10 +282,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// "Imported/Uncategorized" bucket for empty-category imported <c>.def</c> products), each nesting its
     /// subcategories and product leaves that insert under the selected locality. The top categories are catalog data,
     /// not a hardcoded set, so an imported product can never be dropped from the menu.</summary>
-    public ObservableCollection<ProductMenuItemViewModel> ProductsMenu { get; } = new();
+    public BulkObservableCollection<ProductMenuItemViewModel> ProductsMenu { get; } = new();
 
     /// <summary>The library function-block insertion submenu (US-018), built from the catalog's FB folders.</summary>
-    public ObservableCollection<ProductMenuItemViewModel> FunctionBlocksMenu { get; } = new();
+    public BulkObservableCollection<ProductMenuItemViewModel> FunctionBlocksMenu { get; } = new();
 
     /// <summary>The variable types insertable into the currently selected block section (US-027); rebuilt when the
     /// selection changes so it only offers the types that section accepts.</summary>
@@ -588,6 +590,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _config = config;
         _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<MainWindowViewModel>();
         CurrentTheme = theme.Current;
+        CurrentTextScale = theme.TextScale;
         _properties = new PropertiesDialogCoordinator(
             _session, _dialogs, (command, status) => ApplyAsync(command, status), status => StatusText = status);
         _programAuthoring = new ProgramAuthoringCoordinator(
@@ -644,13 +647,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     // Rebuilds the product/function-block insertion menus from the current catalog (US-059/US-060: after an import
-    // the newly available components appear here).
-    private void RebuildCatalogMenus()
-    {
-        ProductsMenu.Clear();
-        FunctionBlocksMenu.Clear();
-        BuildProductMenu();
-    }
+    // the newly available components appear here). Same call as the initial build — nothing to clear first, since
+    // ReplaceAll below does the clearing as part of its single notification.
+    private void RebuildCatalogMenus() => BuildProductMenu();
 
     private void BuildProductMenu()
     {
@@ -659,15 +658,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
         // The top categories are derived from the catalog data (H2/D08) — so an imported .def (empty CategoryPath)
         // lands in the "Imported/Uncategorized" bucket instead of being dropped by a hardcoded four-category filter.
-        foreach (ProductMenuItemViewModel item in CatalogMenu.BuildProductForest(_session.GetProductCatalogItems(), Insert))
-            ProductsMenu.Add(item);
-
-        foreach (ProductMenuItemViewModel item in CatalogMenu.BuildFunctionBlocks(
-                     _session.GetFunctionBlockCatalogItems(),
-                     fb => new AsyncRelayCommand(() => InsertFunctionBlockAsync(fb.Identifier, fb.DisplayName))))
-        {
-            FunctionBlocksMenu.Add(item);
-        }
+        ProductsMenu.ReplaceAll(CatalogMenu.BuildProductForest(_session.GetProductCatalogItems(), Insert));
+        FunctionBlocksMenu.ReplaceAll(CatalogMenu.BuildFunctionBlocks(
+            _session.GetFunctionBlockCatalogItems(),
+            fb => new AsyncRelayCommand(() => InsertFunctionBlockAsync(fb.Identifier, fb.DisplayName))));
     }
 
     /// <summary>Library ▸ Import catalog file (US-059): imports a single <c>.def</c>/<c>.ifb</c> so its component
@@ -728,16 +722,26 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             await ApplyAsync(command, $"Funktionsblokken '{blockName}' er indsat under {localityName}");
         });
 
-    /// <summary>Parameterless constructor for the XAML designer / template smoke test only.</summary>
-    public MainWindowViewModel()
-        : this(CreateDesignSession(), new NullDialogService(), new RecentProjectsStore(System.IO.Path.GetTempFileName()), new NullThemeService())
-    {
-    }
+    // No parameterless "design-time" constructor: the one that used to be here had no caller anywhere (no view
+    // declares Design.DataContext), and it created two never-deleted temp files plus a whole ProjectAppService on
+    // every instantiation — heavy work in a view-model constructor is exactly what the previewer cannot afford
+    // (Avalonia architecture review AP-18/A-13). If design-time data is wanted, add a side-effect-free
+    // DesignMainWindowViewModel subclass and point Design.DataContext at it, rather than a second production
+    // constructor that drifts from this one. Pinned by OpenVisualDesignTimeTests.
 
     public Task InitializeAsync(bool skipRecovery = false) => _session.StartAsync(skipRecovery);
 
-    /// <summary>Runs the window-close save prompt (US-064); returns false to cancel the quit.</summary>
-    public Task<bool> CanCloseAsync() => _session.CanQuitAsync();
+    /// <summary>Runs the window-close save prompt (US-064); returns false to cancel the quit.
+    /// <para>Routed through <see cref="RunAsync"/> — the view-model's one error boundary — because the caller is
+    /// <c>Window.Closing</c>, which runs off the window message loop where NO global exception handler can see a
+    /// fault (Avalonia logging review AP-06/WS-11). A failure therefore leaves the answer <c>false</c>: the quit is
+    /// cancelled, since a save prompt that never completed cannot be read as "the installer chose to discard".</para></summary>
+    public async Task<bool> CanCloseAsync()
+    {
+        bool canClose = false;
+        await RunAsync(nameof(CanCloseAsync), async () => canClose = await _session.CanQuitAsync());
+        return canClose;
+    }
 
     private Task NewAsync() => RunAsync(nameof(NewAsync), async () =>
     {
@@ -792,6 +796,17 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _themeService.Apply(theme);
         CurrentTheme = theme;
         StatusText = $"Tema: {theme}.";
+    }
+
+    /// <summary>Vis ▸ Tekststørrelse (US-001): scales all workspace text at once. A parameterized item command
+    /// like <see cref="SetThemeCommand"/> — presentation-only, with no SDK edit verdict and no per-surface
+    /// availability policy — so it is one of the narrow, registry-exempt commands (see CommandRegistry).</summary>
+    [RelayCommand]
+    private void SetTextScale(TextScale scale)
+    {
+        _themeService.ApplyTextScale(scale);
+        CurrentTextScale = scale;
+        StatusText = $"Tekststørrelse: {scale}.";
     }
 
     /// <summary>Inserts a new locality under <i>Localities</i> (US-008), then selects it in the Installation pane.
@@ -1874,10 +1889,4 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         static string OrNone(string? value) => string.IsNullOrWhiteSpace(value) ? "(ikke angivet)" : value;
     }
 
-    private static ProjectWorkflow CreateDesignSession()
-    {
-        var service = new Ihc.Vis.ProjectAppService(new Ihc.IhcSettings());
-        string tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ihc_openvisual_design");
-        return new ProjectWorkflow(service, new BackupService(tempDir), new RecentProjectsStore(System.IO.Path.GetTempFileName()), new NullDialogService());
-    }
 }

@@ -26,11 +26,11 @@
     </Window.Styles>
     <StackPanel Margin="24" Spacing="10">
         <TextBlock Text="IHC OpenVisual"
-                   FontSize="{StaticResource TitleFontSize}" FontWeight="Bold"
+                   FontSize="{DynamicResource TitleFontSize}" FontWeight="Bold"
                    HorizontalAlignment="Center"/>
 
         <TextBlock Name="AppDescription"
-                   FontSize="{StaticResource BodyFontSize}"
+                   FontSize="{DynamicResource BodyFontSize}"
                    Foreground="{DynamicResource SecondaryTextBrush}"
                    TextWrapping="Wrap" TextAlignment="Center"
                    HorizontalAlignment="Center"/>
@@ -46,16 +46,16 @@
         </StackPanel>
 
         <TextBlock Name="RepoAuthors"
-                   FontSize="{StaticResource BodyFontSize}"
+                   FontSize="{DynamicResource BodyFontSize}"
                    HorizontalAlignment="Center"/>
 
         <StackPanel HorizontalAlignment="Center" Spacing="2" Margin="0,6,0,0">
             <TextBlock Name="AppVersionText"
-                       FontSize="{StaticResource CaptionFontSize}"
+                       FontSize="{DynamicResource CaptionFontSize}"
                        Foreground="{DynamicResource SecondaryTextBrush}"
                        HorizontalAlignment="Center"/>
             <TextBlock Name="SdkVersionText"
-                       FontSize="{StaticResource CaptionFontSize}"
+                       FontSize="{DynamicResource CaptionFontSize}"
                        Foreground="{DynamicResource SecondaryTextBrush}"
                        HorizontalAlignment="Center"/>
         </StackPanel>

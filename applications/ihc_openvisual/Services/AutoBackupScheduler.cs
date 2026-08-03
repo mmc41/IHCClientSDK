@@ -19,8 +19,15 @@ namespace ihc_openvisual.Services;
 /// </summary>
 internal sealed class AutoBackupScheduler(
     BackupService backup, ProjectAppService service, TimeProvider timeProvider, ILogger logger,
-    TimeSpan interval, Func<(Project? Snapshot, string? Origin)> captureSnapshot) : IDisposable
+    TimeSpan interval, Func<(Project? Snapshot, string? Origin)> captureSnapshot,
+    TimeSpan? disposeTimeout = null) : IDisposable
 {
+    /// <summary>How long <see cref="Dispose"/> waits for an in-flight backup before giving up. Bounded because
+    /// Dispose runs on the UI thread (the app's ShutdownRequested): an unbounded wait would freeze the quit for as
+    /// long as a save takes, and a save to a disconnected network path never finishes at all.</summary>
+    private static readonly TimeSpan DefaultDisposeTimeout = TimeSpan.FromSeconds(5);
+
+    private readonly TimeSpan _disposeTimeout = disposeTimeout ?? DefaultDisposeTimeout;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private ITimer? _timer;
     private bool _disposed;
@@ -62,12 +69,28 @@ internal sealed class AutoBackupScheduler(
     public void Dispose()
     {
         if (_disposed)
-            return;   // idempotent: the guarded _lock.Wait() below would throw on a second (disposed) call
+            return;   // idempotent: the guarded drain below would throw on a second (disposed) call
         _disposed = true;
         _timer?.Dispose();   // stop new timer-driven backups from firing
         // Wait for any in-flight auto-backup to finish and release the lock before disposing it — disposing a
         // SemaphoreSlim held by a running backup would fault that backup's Release.
-        _lock.Wait();
-        _lock.Dispose();
+        //
+        // BOUNDED, because this runs on the UI thread (App's ShutdownRequested): an unbounded wait hangs the quit
+        // for as long as the save takes, and a save to a slow or disconnected path would hang it forever, with the
+        // window already closing and nothing left to report the stall (threading review WS-01). On timeout the
+        // backup is still running and still owns the lock, so the semaphore is deliberately NOT disposed — freeing
+        // it under its holder would fault that backup's Release on the way out. Leaking one SemaphoreSlim (which
+        // holds no unmanaged handle unless its AvailableWaitHandle was read, and it never is here) at process exit
+        // is the cheaper of the two outcomes.
+        if (_lock.Wait(_disposeTimeout))
+        {
+            _lock.Dispose();
+        }
+        else
+        {
+            logger.LogWarning(
+                "Auto-backup still running after {Timeout}; abandoning the drain so shutdown can proceed",
+                _disposeTimeout);
+        }
     }
 }

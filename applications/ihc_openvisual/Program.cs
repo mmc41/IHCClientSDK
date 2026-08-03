@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Logging;
+using Avalonia.Threading;
 using ihc_openvisual.Configuration;
 using Ihc.Bootstrap;
 using Microsoft.Extensions.Configuration;
@@ -40,8 +41,20 @@ internal sealed class Program
             LoggerFactory = AppTelemetryBootstrap.SetupTelemetryAndLogging(
                 Telemetry.AppServiceName, Telemetry.AppServiceNamespace, Telemetry.ActivitySourceName,
                 Config.TelemetryConfig, Config.LoggingConfig);
+            // All four documented exception layers, because each catches faults the others cannot see (Avalonia
+            // logging review BP-09/QC-03): the DISPATCHER layer for faults inside a dispatcher operation, the
+            // UNOBSERVED-TASK layer for dropped tasks, the APPDOMAIN layer for everything else on any thread, and
+            // Main's catch below as the last-resort log-and-exit. Note the layers NOT covered by any of these:
+            // window-lifecycle handlers (Closing/Closed/Activated) run straight off the window message loop, so each
+            // carries its own try/catch (AP-06/WS-11), and on Linux the GLib boundary needs
+            // X11PlatformOptions.ExternalGLibMainLoopExceptionLogger (wired in BuildAvaloniaApp).
             AppDomain.CurrentDomain.UnhandledException += AppTelemetryBootstrap.UnhandledExceptionHandler(
                 LoggerFactory.CreateLogger("Ihc.OpenVisual.UnhandledException"));
+            // Plain BCL, so it is safe here; the DISPATCHER layer is attached from BuildAvaloniaApp's AfterSetup
+            // instead, because reading Dispatcher.UIThread this early would initialize the dispatcher before
+            // Avalonia is set up (see the method comment above).
+            TaskScheduler.UnobservedTaskException += AppTelemetryBootstrap.UnobservedTaskExceptionHandler(
+                LoggerFactory.CreateLogger("Ihc.OpenVisual.UnobservedTaskException"));
 
             // Probe the configured OTLP endpoint so a wrong endpoint/token fails loudly instead of silently
             // dropping all telemetry. Runs in the background; never blocks the workspace from opening. The fault is
@@ -70,13 +83,37 @@ internal sealed class Program
         }
     }
 
+    /// <summary>The X11 (Linux) platform options, whose only job here is the FIFTH exception route: when Avalonia
+    /// controls no run-loop frame, an exception crossing the native GLib boundary cannot be propagated (letting it
+    /// escape would corrupt GLib, which knows nothing of managed exceptions), so Avalonia discards it — with no
+    /// record at all unless this logger is supplied (review BP-12/QC-04/AP-10). A factory rather than an inline
+    /// object so a test can assert the logger is wired without standing up an AppBuilder.
+    /// <para>No <c>WaylandPlatformOptions</c> counterpart: the app does not opt into <c>Avalonia.Wayland</c>, and
+    /// should not — that backend silently removes AT-SPI2, i.e. all Linux accessibility (accessibility review
+    /// BP-16/AP-10). If Wayland is ever adopted, its options need the same logger.</para></summary>
+    internal static X11PlatformOptions CreateX11Options(ILoggerFactory loggerFactory)
+    {
+        ILogger logger = loggerFactory.CreateLogger("Ihc.OpenVisual.GLibException");
+        return new X11PlatformOptions
+        {
+            ExternalGLibMainLoopExceptionLogger = ex =>
+                logger.LogError(ex, "Exception crossing the GLib main-loop boundary: {Message}", ex.Message),
+        };
+    }
+
     // Avalonia configuration, don't remove; also used by the visual designer.
     public static AppBuilder BuildAvaloniaApp()
     {
         AppBuilder builder = AppBuilder.Configure<App>()
             .UsePlatformDetect()
 #if DEBUG
-            .WithDeveloperTools()
+            // Feed the app's OWN ILogger output into the Dev Tools Logs table alongside Avalonia's, so framework
+            // and application logs are filterable in one place instead of two disjoint streams (BP-20).
+            .WithDeveloperTools(options =>
+            {
+                if (LoggerFactory is { } factory)
+                    options.AddMicrosoftLoggerObservable(factory, LogLevel.Debug);
+            })
 #endif
             .WithInterFont();
 
@@ -85,7 +122,12 @@ internal sealed class Program
             LogLevel avaloniaLevel = config.LoggingConfig.GetValue("LogLevel:Avalonia", LogLevel.Warning);
             LogEventLevel level = AppTelemetryBootstrap.MapFromIlogToAvaloniaLogLevel(avaloniaLevel);
             // The default trace logger must be installed before our sink so our sink can chain to it.
-            builder = builder.LogToTrace(level).LogToSink(loggerFactory);
+            builder = builder.LogToTrace(level).LogToSink(loggerFactory).With(CreateX11Options(loggerFactory));
+            // The DISPATCHER exception layer (BP-09). AfterSetup, not Main: the dispatcher must exist first, and
+            // reading Dispatcher.UIThread before Avalonia is initialized would create it too early.
+            builder = builder.AfterSetup(_ =>
+                Dispatcher.UIThread.UnhandledException += AppTelemetryBootstrap.DispatcherExceptionHandler(
+                    loggerFactory.CreateLogger("Ihc.OpenVisual.DispatcherException")));
         }
         else
         {

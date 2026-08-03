@@ -1,0 +1,42 @@
+# Repository-wide editor and analyzer configuration.
+#
+# Scope note: this file currently exists for ONE purpose — pinning the severity of Avalonia's XAML diagnostics
+# (AVLN*) deliberately rather than leaving them at framework defaults (Avalonia logging/debugging review BP-16,
+# QC-07). Formatting and .NET style rules are intentionally NOT configured here; adding them would reformat a
+# large existing codebase and is a separate decision.
+#
+# Why this is not redundant with Directory.Build.props: TreatWarningsAsErrors=true already promotes every AVLN
+# WARNING to an error, which is the blunt half. What it cannot do is raise a diagnostic Avalonia emits below
+# warning level. The entries below name the cases the team wants to fail the build regardless of the level
+# Avalonia ships them at, so a future Avalonia release that downgrades one cannot silently un-gate it.
+
+root = true
+
+# LF, because that is what the working tree actually holds for source (verified, not assumed) — declaring crlf
+# here would make every editor rewrite every file on save. Line endings that MATTER are pinned per-pattern in
+# .gitattributes instead (the .vis/.def/.ifb oracles check out CRLF, the report oracles LF, because the
+# serializers hardcode one and the report generator the other); this file must not contradict that, so the
+# fixture tree is left unset below.
+[*]
+end_of_line = lf
+insert_final_newline = true
+
+[tests/testdata/**]
+end_of_line = unset
+insert_final_newline = unset
+
+[*.{cs,axaml,xaml}]
+indent_style = space
+indent_size = 4
+
+[*.{csproj,props,targets,json}]
+indent_style = space
+indent_size = 2
+
+# ── Avalonia XAML diagnostics ────────────────────────────────────────────────────────────────────────────────
+# A binding, resource or template defect that reaches runtime shows up as a silently empty control, so these are
+# build errors here rather than advisory output.
+[*.{axaml,xaml}]
+# Use of a member marked [Obsolete] from XAML. (Note: the docs cite AVLN2001 for this; the shipped code defines
+# AVLN5001 and no AVLN2001 at all — the framework's own .editorconfig agrees on AVLN5001.)
+avalonia_xaml_diagnostic.AVLN5001.severity = error

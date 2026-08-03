@@ -18,16 +18,8 @@ namespace safe_visual_tests;
 /// partially written <c>.vis</c>.</summary>
 public class UnhandledExceptionTests
 {
-    // A real ILogger that captures its output — NOT a mock (main code depends only on ILogger; we assert on output).
-    private sealed class CapturingLogger : ILogger
-    {
-        public List<string> Messages { get; } = new();
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-        public bool IsEnabled(LogLevel logLevel) => true;
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) =>
-            Messages.Add($"{logLevel}: {formatter(state, exception)}{(exception is null ? "" : " | " + exception.Message)}");
-    }
+    // CapturingLogger (a real ILogger recording its output — never a mock) now lives in TestSupport.cs, shared with
+    // GlobalExceptionHandlerTests and the AutoBackupScheduler drain test.
 
     [Test]
     public async Task UnhandledException_LoggedAndNoPartialVis()

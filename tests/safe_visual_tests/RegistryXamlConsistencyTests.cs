@@ -27,6 +27,10 @@ public class RegistryXamlConsistencyTests : AvaloniaTestBase
     private static readonly IReadOnlySet<string> ParameterizedItemCommandExceptions = new HashSet<string>
     {
         nameof(MainWindowViewModel.SetThemeCommand),
+        // Same shape and same reason as SetThemeCommand: one parameterized item command backs the four
+        // Tekststørrelse radio items. Presentation-only — no SDK edit verdict, no per-surface availability
+        // policy — so it is not a CommandSpec row.
+        nameof(MainWindowViewModel.SetTextScaleCommand),
     };
 
     private static readonly Regex CommandBinding = new(@"Command=""\{Binding (?<prop>[A-Za-z0-9_]+)\}""", RegexOptions.Compiled);

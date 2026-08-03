@@ -395,4 +395,94 @@ public class AccessibilityTests : AvaloniaTestBase
                 "the link exposes an accessible name");
         });
     }
+
+    // ── Live region and landmarks (accessibility review BP-07/BP-09) ──────────────────────────────────────────
+
+    /// <summary>The status bar is a POLITE live region. This is not a checkbox item here: the shell deliberately
+    /// routes a refused shortcut's explanation to the status bar, precisely because a disabled control shows no
+    /// tooltip (the T016 spike verdict behind T021 branch B). Without a live setting that text is announced to
+    /// nobody, so a screen-reader user is the one user who gets NO explanation for a refusal.</summary>
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task StatusBar_IsAPoliteLiveRegion()
+    {
+        using var harness = ShellHarness.Create();
+        var viewModel = harness.CreateViewModel();
+        await viewModel.InitializeAsync();
+        var window = new MainWindow { DataContext = viewModel };
+        CurrentTestWindow = window;
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        TextBlock status = StatusTextBlock(window);
+
+        Assert.That(AutomationProperties.GetLiveSetting(status), Is.EqualTo(AutomationLiveSetting.Polite),
+            "the status bar announces its changes without interrupting (Polite, not Assertive/Off)");
+    }
+
+    /// <summary>The same property tied to the behaviour that needs it: press a gated-off shortcut, and the text
+    /// the registry writes must land in the live region — not merely somewhere on screen.</summary>
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task RefusedGesture_ExplanationLandsInTheLiveRegion()
+    {
+        using var harness = ShellHarness.Create();
+        var viewModel = harness.CreateViewModel();
+        await viewModel.InitializeAsync();
+        var window = new MainWindow { DataContext = viewModel };
+        CurrentTestWindow = window;
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.That(viewModel.Registry.Bar["edit.undo"].Enabled, Is.False,
+            "precondition: a fresh history gates Undo off");
+
+        window.KeyPressQwerty(Avalonia.Input.PhysicalKey.Z, Avalonia.Input.RawInputModifiers.Control);
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        TextBlock status = StatusTextBlock(window);
+        Assert.Multiple(() =>
+        {
+            Assert.That(status.Text, Is.EqualTo(viewModel.StatusText).And.Not.Empty,
+                "the refusal reason is what the status bar shows");
+            Assert.That(AutomationProperties.GetLiveSetting(status), Is.EqualTo(AutomationLiveSetting.Polite),
+                "and that control is the live region, so the reason is actually announced");
+        });
+    }
+
+    /// <summary>The shell's major regions are landmarks, each at an accessibility view Narrator will read: a
+    /// landmark below <see cref="AccessibilityView.Control"/> is silently ignored (review AP-04), which would make
+    /// the annotation look present while doing nothing.</summary>
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task MajorRegions_DeclareLandmarks()
+    {
+        using var harness = ShellHarness.Create();
+        var viewModel = harness.CreateViewModel();
+        await viewModel.InitializeAsync();
+        var window = new MainWindow { DataContext = viewModel };
+        CurrentTestWindow = window;
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        // "No landmark" is null, not a None member — AutomationProperties.GetLandmarkType returns a nullable.
+        var landmarks = window.GetVisualDescendants().OfType<Control>()
+            .Where(c => AutomationProperties.GetLandmarkType(c) is not null)
+            .ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(landmarks, Has.Count.GreaterThanOrEqualTo(4),
+                "the toolbar, the status bar and both tree panes are landmarks");
+            Assert.That(landmarks.Select(AutomationProperties.GetAccessibilityView),
+                Has.All.GreaterThanOrEqualTo(AccessibilityView.Control),
+                "every landmark sits at Control or above — Narrator ignores landmarks below that view (AP-04). "
+                + "Note the enum's default is Default(0), which is BELOW Control, so this must be set explicitly");
+            Assert.That(landmarks.Select(AutomationProperties.GetName), Has.All.Not.Null.And.All.Not.Empty,
+                "and each is named, since a landmark the user cannot tell apart is not navigable");
+        });
+    }
+
+    // The status bar's text control: the one bound to the view-model's StatusText inside the named StatusBar border.
+    private static TextBlock StatusTextBlock(MainWindow window) =>
+        window.FindControl<Border>("StatusBar")!.GetVisualDescendants().OfType<TextBlock>().First();
 }

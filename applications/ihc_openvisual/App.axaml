@@ -40,6 +40,15 @@
             <SolidColorBrush x:Key="PaneHeaderBackgroundBrush" Color="#FF1E5AA8"/>
             <SolidColorBrush x:Key="PaneHeaderForegroundBrush" Color="#FFFFFFFF"/>
             <SolidColorBrush x:Key="LinkBrush" Color="#FF3B82F6"/>
+            <!-- The workspace font scale (US-001 SHOULD). These are the DESIGN sizes at Tekststørrelse = Normal;
+                 ThemeService overwrites all three together when a step is chosen, which is why every consumer
+                 binds them with DynamicResource — a StaticResource resolves once at load and would never see the
+                 change. Avalonia does not honour the OS text-scaling setting, so this is the only route to it
+                 (accessibility BP-12). -->
+            <!-- The BASE size, set on the window root so every control that states no size of its own — the tree
+                 labels above all, which are the bulk of the workspace's text — inherits it and therefore scales.
+                 14 is the Fluent default, so at Normal this changes nothing. -->
+            <x:Double x:Key="WorkspaceFontSize">14</x:Double>
             <x:Double x:Key="TitleFontSize">22</x:Double>
             <x:Double x:Key="BodyFontSize">12</x:Double>
             <x:Double x:Key="CaptionFontSize">11</x:Double>
