@@ -1,0 +1,47 @@
+{
+  "skill_name": "openobserve",
+  "evals": [
+    {
+      "id": 0,
+      "name": "check-run-errors",
+      "prompt": "I just ran the ihc_lab utility — check OpenObserve and tell me if anything errored and why.",
+      "expected_output": "Connects to OpenObserve via ihcsettings.json telemetry config, queries the lowercase 'ihc' stream, finds the 'Telemetry logs endpoint rejected export: HTTP 400 ... data dropped silently' Error log from service IhcLab with timestamp and severity, correctly reports no error-status spans, and acknowledges the indexing delay.",
+      "assertions": [
+        {"text": "Report shows it reached OpenObserve at localhost:5080 (org default) using the ihcsettings.json telemetry settings and queried the lowercase 'ihc' stream (not 'Ihc')."},
+        {"text": "Report identifies the real error log about the telemetry logs endpoint rejecting export with HTTP 400 / data dropped silently."},
+        {"text": "Report gives concrete evidence for the finding: timestamp, service (IhcLab), and severity (Error)."},
+        {"text": "Report does not fabricate error-status spans; if it mentions traces it correctly notes there are no error spans."},
+        {"text": "Report acknowledges OpenObserve's indexing delay or the look-back window as a caveat when reasoning about completeness."}
+      ],
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "diagnose-slow-spans",
+      "prompt": "Are there any failing or slow spans in the traces? Diagnose the worst one.",
+      "expected_output": "Correctly reports there are no ERROR-status spans (all UNSET), identifies the slowest span(s) by duration with operation_name and duration, follows a trace_id to give context, and presents durations in sane units.",
+      "assertions": [
+        {"text": "Report shows it reached OpenObserve and queried the 'ihc' traces stream using the ihcsettings.json config."},
+        {"text": "Report correctly states there are no ERROR-status spans (span_status is UNSET for all), rather than inventing failing spans."},
+        {"text": "Report identifies the slowest span(s) by duration, naming the operation_name and a duration value."},
+        {"text": "Report follows a trace_id to show the worst operation's context (e.g. its spans or parent/child relationship)."},
+        {"text": "Durations are presented in sane, clearly-labelled units (microseconds converted to ms or explicitly labelled), not raw unexplained huge integers."}
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "silent-failure",
+      "prompt": "Something's silently failing at runtime — the app doesn't show an obvious error. Look at the telemetry and figure out what.",
+      "expected_output": "Searches both logs and traces, surfaces the 'data dropped silently' HTTP 400 telemetry-export error as the root cause with evidence (message, service, timestamp, any trace_id), and accounts for indexing delay.",
+      "assertions": [
+        {"text": "Report shows both logs and traces were searched (not just one)."},
+        {"text": "Report identifies the telemetry-export HTTP 400 'data dropped silently' error (or the actual error present) as the root cause of the silent failure."},
+        {"text": "Report backs the root cause with concrete evidence: message, service, and timestamp."},
+        {"text": "Report shows it used the ihcsettings.json telemetry config and the correct lowercase 'ihc' stream."},
+        {"text": "Report acknowledges OpenObserve's indexing delay or look-back window when reasoning about completeness."}
+      ],
+      "files": []
+    }
+  ]
+}

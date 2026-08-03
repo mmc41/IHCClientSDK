@@ -6,7 +6,7 @@ obj
 *.bak
 node_modules
 
-.claude
+.claude\.settings.loca.json
 .fake
 tmp
 
