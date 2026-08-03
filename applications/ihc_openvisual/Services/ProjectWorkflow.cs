@@ -159,10 +159,10 @@ public sealed class ProjectWorkflow : IDisposable
         else if (_backup.HasRecovery())
         {
             RecoveryInfo? info = _backup.ReadMarker();
-            string when = info is { } i ? $" from {i.SavedAtUtc.ToLocalTime():g}" : string.Empty;
+            string when = info is { } i ? $" fra {i.SavedAtUtc.ToLocalTime():g}" : string.Empty;
             bool recover = await _dialogs.ConfirmAsync(
-                "Recover project",
-                $"IHC OpenVisual did not close normally last time. Recover unsaved work{when}?");
+                "Gendan projekt",
+                $"IHC OpenVisual blev ikke lukket normalt sidste gang. Gendan ikke-gemt arbejde{when}?");
             if (recover)
             {
                 try
@@ -180,8 +180,8 @@ public sealed class ProjectWorkflow : IDisposable
                     // same error path as OpenAsync: report it, discard the unusable backup below, and fall through
                     // to a fresh project (review Low "startup async void").
                     _logger.LogError(ex, "Failed to recover crash backup {Path}", _backup.RecoveryProjectPath);
-                    await _dialogs.ShowMessageAsync("Recovery failed",
-                        $"The recovered project could not be loaded and was discarded:\n{ex.Message}");
+                    await _dialogs.ShowMessageAsync("Gendannelse mislykkedes",
+                        $"Det gendannede projekt kunne ikke indlæses og blev kasseret:\n{ex.Message}");
                 }
             }
             _backup.Delete();
@@ -222,7 +222,7 @@ public sealed class ProjectWorkflow : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to open project {Path}", path);
-            await _dialogs.ShowMessageAsync("Open failed", $"Could not open '{path}':\n{ex.Message}");
+            await _dialogs.ShowMessageAsync("Åbning mislykkedes", $"Kunne ikke åbne '{path}':\n{ex.Message}");
             return false;
         }
     }
@@ -370,7 +370,7 @@ public sealed class ProjectWorkflow : IDisposable
         {
             Ihc.ActivityExtensions.SetError(activity, ex);
             _logger.LogError(ex, "Failed to save function block {Id} to {Path}", functionBlockId.ToToken(), filePath);
-            await _dialogs.ShowMessageAsync("Save failed", ex.Message);
+            await _dialogs.ShowMessageAsync(SaveFailedTitle, ex.Message);
             return false;
         }
         EditOutcome outcome = await ApplyAsync(
@@ -473,7 +473,12 @@ public sealed class ProjectWorkflow : IDisposable
     // overloads and both probes answer with the same wording, built the same way, so re-wording it is one edit
     // rather than a hunt across the file. The stale-version guard that used to sit alongside it now lives in the
     // document, where the version does.
-    private const string NoDocumentReason = "No project is open.";
+    private const string NoDocumentReason = "Intet projekt er åbent.";
+
+    // Likewise the ONE title over every failed write this workflow reports — saving the project and saving a
+    // function block to the library both surface it, and one title for one kind of failure is what the installer
+    // learns to recognise.
+    private const string SaveFailedTitle = "Lagring mislykkedes";
 
     private static EditOutcome NoDocument(ProjectCommand command) =>
         new(EditStatus.Refused, command.GetType().Name, NoDocumentReason, null);
@@ -548,7 +553,7 @@ public sealed class ProjectWorkflow : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save project {Path}", path);
-            await _dialogs.ShowMessageAsync("Save failed", $"Could not save '{path}':\n{ex.Message}");
+            await _dialogs.ShowMessageAsync(SaveFailedTitle, $"Kunne ikke gemme '{path}':\n{ex.Message}");
             return false;
         }
     }

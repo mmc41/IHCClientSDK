@@ -55,8 +55,8 @@ public sealed record Availability(bool Visible, bool Enabled, string? Reason)
 /// <paramref name="Gate"/> — a row author never builds a command, so two authorities cannot disagree.
 /// </summary>
 /// <remarks>A row carries no CAPTION: the same command is legitimately worded differently per surface (the node
-/// flyout offers "Insert _locality" where the Insert menu says "_Locality"; Undo/Redo show the action-decorated
-/// "_Undo Insert locality"), so the menu text belongs to the markup that renders it, and a row-level copy could
+/// flyout offers "Indsæt _lokalitet" where the Insert menu says "_Lokalitet"; Undo/Redo show the action-decorated
+/// "_Fortryd Insert locality"), so the menu text belongs to the markup that renders it, and a row-level copy could
 /// only ever be a second, unread home for it (review F12).</remarks>
 public sealed record CommandSpec(
     string Id,

@@ -61,7 +61,7 @@ public class ProjectInfoDialogParityTests
     {
         var window = new ProjectInfoWindow();
 
-        Assert.That(Groups(window).Select(g => g.Header), Is.EqualTo(new[] { "Project", "Installer", "Customer" }));
+        Assert.That(Groups(window).Select(g => g.Header), Is.EqualTo(new[] { "Projekt oplysninger", "Installatør information", "Kunde oplysninger" }));
     }
 
     /// <summary>The two contact groups sit side by side in one row, as in the vendor's dialog — not stacked, which is
@@ -115,13 +115,13 @@ public class ProjectInfoDialogParityTests
         }));
     }
 
-    /// <summary>Field captions match the vendor's, translated — <c>Vej</c> is a street and <c>Postnummer</c> a postal
-    /// code, which is also the wording US-039 specifies. OpenVisual said "Address" and "Zip code".</summary>
+    /// <summary>Field captions are the vendor's own, now that the UI is Danish throughout: <c>Vej</c> and
+    /// <c>Postnummer</c>, which is also the wording US-039 specifies. OpenVisual said "Address"/"Zip code".</summary>
     [AvaloniaTest]
     public void ContactFieldLabels_UseTheVendorsWording()
     {
         var groups = Groups(new ProjectInfoWindow());
-        string[] expected = ["Name:", "Street:", "Phone:", "Postal code:", "Mobile:", "City:", "Email:", "Country:"];
+        string[] expected = ["Navn:", "Vej:", "Telefon:", "Postnummer:", "Mobil telefon:", "By:", "Email:", "Land:"];
 
         Assert.Multiple(() =>
         {
@@ -130,8 +130,8 @@ public class ProjectInfoDialogParityTests
         });
     }
 
-    /// <summary>US-039 names the second project field <em>Project type</em>, as the vendor's <c>Projekt type</c>
-    /// does; the dialog had shortened it to "Type".</summary>
+    /// <summary>US-039 names the second project field <em>Projekt type</em>, as the vendor does; the dialog had
+    /// shortened it to "Type".</summary>
     [AvaloniaTest]
     public void ProjectFieldLabels_UseTheVendorsWording()
     {
@@ -139,7 +139,7 @@ public class ProjectInfoDialogParityTests
 
         Assert.That(LabelTextsIn(groups[0]), Is.EqualTo(new[]
         {
-            "Number:", "Project type:", "Programmer:", "Drawing:", "Description:",
+            "Projektnummer:", "Projekt type:", "Programmør:", "Tegning:", "Beskrivelse:",
         }));
     }
 

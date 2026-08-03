@@ -50,7 +50,7 @@ colour, **so that** I can read the installation, function and program trees at a
 
 ### Acceptance criteria (Checklist)
 
-- MUST: **Structure nodes** are distinct: *Localities*/locality (container), **library function block**
+- MUST: **Structure nodes** are distinct: *Lokaliteter*/locality (container), **library function block**
   vs. editable **function block** (two different icons — the library badge signals a locked, supplied block),
   the four block sections *Input*, *Output*, *Settings*, *Internal variables* each with their own
   icon, and the *RS485 modules* container node.
@@ -74,7 +74,7 @@ colour, **so that** I can read the installation, function and program trees at a
   Conditions-AND vs Conditions-OR (the two logic-group operators), Condition (single condition), Command
   group, Command (single command).
 - MUST: **Scenario** pins carry the scenario icon (used to identify scenario-capable outputs,
-  US-024) in both *Installation* and *Functions*.
+  US-024) in both *Installation* and *Funktioner*.
 - MUST *(catalogued; out of scope pending E8)*: In **simulation mode**, input/output state is coloured
   **red = OFF** and **green = ON** (shown as red/green arrows in the program view); a **Breakpoint** shows a
   full-stop icon at the start of a line. The glyph documentation stays as the catalogue for if E8 is built.
@@ -85,7 +85,7 @@ colour, **so that** I can read the installation, function and program trees at a
 
 ### AC illustrations
 
-- In the *Functions* pane, a library `<function block>` shows the **library block** badge; its input pins
+- In the *Funktioner* pane, a library `<function block>` shows the **library block** badge; its input pins
   (`<pin>`) use the **FB-input** icon; its scene pins use the **scenario** icon.
 - Filling a block's internals shows type-icon + inline value rows: `Weekday = Monday`, `Flag = OFF`,
   `Counter = 0`, `Timer = 00:00:00.000`, `Humidity = 0.0% RH`.

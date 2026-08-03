@@ -8,7 +8,7 @@ namespace safe_visual_tests;
 /// fablerefac W3-2: the tree reconciler's row identity. A <see cref="NodeKey"/> must give value equality +
 /// hashing so it is a stable, alloc-free dictionary key — one form wrapping an element id (element-backed rows),
 /// one synthetic <c>(owner, role[, refId])</c> form for structural rows that own no element of their own
-/// (variable sections, "Programs", Events/Commands containers, link rows, scene members).
+/// (variable sections, "Programmer", Events/Commands containers, link rows, scene members).
 /// </summary>
 public class NodeKeyTests
 {

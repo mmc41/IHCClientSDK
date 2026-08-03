@@ -204,7 +204,7 @@ public class CatalogImportTests
         Assert.Multiple(() =>
         {
             Assert.That(harness.ProjectService.GetAvailableProducts().Count, Is.EqualTo(before + 1));
-            Assert.That(vm.StatusText, Does.Contain("Imported 1 component"));
+            Assert.That(vm.StatusText, Does.Contain("Importerede 1 komponent"));
         });
     }
 }

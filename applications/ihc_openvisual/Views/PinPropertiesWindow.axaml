@@ -5,7 +5,7 @@
         xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="420"
         x:Class="ihc_openvisual.Views.PinPropertiesWindow"
-        Title="Terminal addressing"
+        Title="Klemme adressering"
         Width="420" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
@@ -19,41 +19,41 @@
         </StackPanel.Styles>
 
         <!-- Properties above Address, matching IHC Visual's Egenskaber / Adresse grouping (uxparity S-14). -->
-        <TextBlock Name="NameLabel" Classes="label" Text="Name"/>
+        <TextBlock Name="NameLabel" Classes="label" Text="Navn"/>
         <TextBox Name="NameBox" IsReadOnly="True" a:AutomationProperties.LabeledBy="{Binding #NameLabel}"/>
 
         <TextBlock Name="NoteLabel" Classes="label" Text="Note"/>
         <TextBox Name="NoteBox" a:AutomationProperties.LabeledBy="{Binding #NoteLabel}"/>
 
-        <TextBlock Name="CableColourLabel" Classes="label" Text="Cable colour"/>
+        <TextBlock Name="CableColourLabel" Classes="label" Text="Ledningsfarve"/>
         <TextBox Name="CableColourBox" a:AutomationProperties.LabeledBy="{Binding #CableColourLabel}"/>
 
         <StackPanel Name="InitialValuePanel">
-            <TextBlock Name="InitialValueLabel" Classes="label" Text="Initial value"/>
+            <TextBlock Name="InitialValueLabel" Classes="label" Text="Startværdi"/>
             <ComboBox Name="InitialValueCombo" HorizontalAlignment="Stretch"
                       a:AutomationProperties.LabeledBy="{Binding #InitialValueLabel}">
-                <ComboBoxItem>OFF — normally-open (NO)</ComboBoxItem>
-                <ComboBoxItem>ON — normally-closed (NC)</ComboBoxItem>
+                <ComboBoxItem>OFF — normalt åben (NO)</ComboBoxItem>
+                <ComboBoxItem>ON — normalt lukket (NC)</ComboBoxItem>
             </ComboBox>
         </StackPanel>
 
         <!-- The output resumes its last state after a power cut instead of its initial value (the vendor's
              Ved strømsvigt / Gem aktuel værdi). Outputs only: an input has no state to restore. -->
         <StackPanel Name="PowerFailurePanel">
-            <TextBlock Name="OnPowerFailureLabel" Classes="label" Text="On power failure"/>
-            <CheckBox Name="SaveValueCheck" Content="Save the current value"
+            <TextBlock Name="OnPowerFailureLabel" Classes="label" Text="Ved strømsvigt"/>
+            <CheckBox Name="SaveValueCheck" Content="Gem aktuel værdi"
                       a:AutomationProperties.LabeledBy="{Binding #OnPowerFailureLabel}"/>
         </StackPanel>
 
-        <TextBlock Name="DataLineLabel" Classes="label" Text="Data line"/>
+        <TextBlock Name="DataLineLabel" Classes="label" Text="Datalinie"/>
         <NumericUpDown Name="DataLineBox" Minimum="1" Increment="1" FormatString="0"
                        a:AutomationProperties.LabeledBy="{Binding #DataLineLabel}"/>
 
-        <TextBlock Name="TerminalLabel" Classes="label" Text="Terminal"/>
+        <TextBlock Name="TerminalLabel" Classes="label" Text="Klemme"/>
         <NumericUpDown Name="TerminalBox" Minimum="1" Increment="1" FormatString="0"
                        a:AutomationProperties.LabeledBy="{Binding #TerminalLabel}"/>
 
-        <TextBlock Text="Terminals already in use:" Margin="0,6,0,0"
+        <TextBlock Text="Klemmer allerede i brug:" Margin="0,6,0,0"
                    Foreground="{DynamicResource SecondaryTextBrush}"/>
         <TextBlock Name="InUseText" TextWrapping="Wrap"
                    Foreground="{DynamicResource SecondaryTextBrush}"/>
@@ -61,8 +61,8 @@
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,14,0,0">
             <!-- OK, Cancel, Apply — the vendor's button order (uxparity S-14). -->
             <Button Name="OkButton" Content="OK" MinWidth="84" IsDefault="True" Click="OnOk"/>
-            <Button Name="CancelButton" Content="Cancel" MinWidth="84" IsCancel="True" Click="OnCancel"/>
-            <Button Name="ApplyButton" Content="Apply" MinWidth="84" Click="OnApply"/>
+            <Button Name="CancelButton" Content="Annuller" MinWidth="84" IsCancel="True" Click="OnCancel"/>
+            <Button Name="ApplyButton" Content="Anvend" MinWidth="84" Click="OnApply"/>
         </StackPanel>
     </StackPanel>
 </Window>

@@ -15,7 +15,7 @@ public class CatalogMenuTests
     {
         var products = new ProjectAppService(new IhcSettings()).GetProductCatalogItems();
 
-        var menu = CatalogMenu.Build(products, "Datalinie produkter", _ => new RelayCommand(() => { }));
+        var menu = CatalogMenu.Build(products, CatalogMenu.WiredProductsCategory, _ => new RelayCommand(() => { }));
         var leaves = AllLeaves(menu).ToList();
 
         Assert.Multiple(() =>
@@ -40,10 +40,10 @@ public class CatalogMenuTests
         var products = new ProjectAppService(new IhcSettings()).GetProductCatalogItems();
         RelayCommand Cmd(CatalogItem _) => new(() => { });
 
-        var wired = CatalogMenu.Build(products, "Datalinie produkter", Cmd);
-        var wireless = CatalogMenu.Build(products, "LK IHC Wireless produkter", Cmd);
-        var bus = CatalogMenu.Build(products, "Bus Produkter", Cmd);
-        var special = CatalogMenu.Build(products, "Specielle produkter", Cmd);
+        var wired = CatalogMenu.Build(products, CatalogMenu.WiredProductsCategory, Cmd);
+        var wireless = CatalogMenu.Build(products, CatalogMenu.WirelessProductsCategory, Cmd);
+        var bus = CatalogMenu.Build(products, CatalogMenu.BusProductsCategory, Cmd);
+        var special = CatalogMenu.Build(products, CatalogMenu.SpecialProductsCategory, Cmd);
 
         Assert.Multiple(() =>
         {
@@ -58,13 +58,14 @@ public class CatalogMenuTests
         });
     }
 
-    // A-29/R-1 (F-028): product-catalog structural subcategories render in English (Generelle→General); the FB
-    // library category names stay Danish (US-018 boundary — vendor data).
+    // The UI is Danish, so the catalog's own category names are shown VERBATIM — no translation layer. IHC Visual
+    // shows the same folder names (menu.dumpBar: Datalinie produkter ▸ Input / Output / Dimmer / Generelle), so this
+    // pins that the app no longer restates the catalog's language.
     [Test]
-    public void CatalogMenu_SubcategoriesInEnglish()
+    public void CatalogMenu_SubcategoriesRenderVerbatim()
     {
         var app = new ProjectAppService(new IhcSettings());
-        var wired = CatalogMenu.Build(app.GetProductCatalogItems(), "Datalinie produkter", _ => new RelayCommand(() => { }));
+        var wired = CatalogMenu.Build(app.GetProductCatalogItems(), CatalogMenu.WiredProductsCategory, _ => new RelayCommand(() => { }));
         var fb = CatalogMenu.BuildFunctionBlocks(app.GetFunctionBlockCatalogItems(), _ => new RelayCommand(() => { }));
 
         var wiredFolders = AllFolders(wired).Select(f => f.Header).ToList();
@@ -72,10 +73,11 @@ public class CatalogMenuTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(wiredFolders, Does.Contain("General"), "the Danish 'Generelle' subcategory renders in English");
-            Assert.That(wiredFolders, Does.Not.Contain("Generelle"), "no Danish 'Generelle' remains under the product catalog");
+            Assert.That(wiredFolders, Does.Contain("Generelle"), "the catalog's own 'Generelle' subcategory renders verbatim");
+            Assert.That(wiredFolders, Does.Contain("Input").And.Contain("Output"),
+                "…as do Input/Output, which the vendor also shows untranslated");
             Assert.That(fbFolders.Any(h => h.Contains("Foretrukne")), Is.True,
-                "FB library folders stay Danish verbatim (US-018)");
+                "FB library folders stay verbatim too (US-018)");
         });
     }
 

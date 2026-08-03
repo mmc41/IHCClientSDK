@@ -31,10 +31,10 @@ public static class CatalogMenu
     /// <summary>
     /// Builds the FULL product insertion menu (US-010, H2/D08): the top-level categories are DERIVED from the
     /// catalog products' own <c>CategoryPath</c> — never a hardcoded set — so a product whose top category is
-    /// unknown or empty (an imported <c>.def</c> has none) stays reachable, under an "Imported/Uncategorized"
-    /// bucket. The vendor top categories keep their app-side English labels and menu order
-    /// (<see cref="TopCategories"/>); any other named category appears by its own (stripped) name; the empty bucket
-    /// comes last. Taxonomy is catalog data; the labels and order are app presentation (D08).
+    /// unknown or empty (an imported <c>.def</c> has none) stays reachable, under an "Importeret/Ukategoriseret"
+    /// bucket. The vendor top categories keep their declared menu order (<see cref="TopCategories"/>) and show their
+    /// own names; any other named category appears by its own (stripped) name; the empty bucket comes last.
+    /// Taxonomy is catalog data; the order is app presentation (D08).
     /// </summary>
     public static IReadOnlyList<ProductMenuItemViewModel> BuildProductForest(
         IEnumerable<CatalogItem> products, Func<CatalogItem, ICommand> leafCommand)
@@ -62,29 +62,39 @@ public static class CatalogMenu
             products.Where(p => Segments(p.CategoryPath).FirstOrDefault() == topCategory),
             p => Segments(p.CategoryPath).Skip(1).ToArray(),   // drop the top category itself
             p => p.DisplayName, leafCommand, p => p.Identifier,
-            // Product-catalog subcategories render in English (A-29/R-1); the FB library folders stay verbatim.
-            raw => TranslateSubcategory(Strip(raw)));
+            // The catalog's own category names are already the UI language, so a folder shows its name verbatim.
+            raw => Strip(raw));
 
     /// <summary>The label of the bucket that holds imported / empty-category products (H2/D08), so an imported
     /// <c>.def</c> with no <c>CategoryPath</c> stays reachable in the insert menu.</summary>
-    public const string ImportedCategoryLabel = "Imported/Uncategorized";
+    public const string ImportedCategoryLabel = "Importeret/Ukategoriseret";
 
-    // The vendor top-level product categories, in menu order, mapped to their English display labels (D08: the
-    // taxonomy is catalog data; these labels and this order are app presentation). A product whose top category is
-    // none of these — an imported .def with an empty CategoryPath — falls into ImportedCategoryLabel, appended last.
-    private static readonly (string Category, string Label)[] TopCategories =
-    {
-        ("Datalinie produkter", "Wired products"),
-        ("LK IHC Wireless produkter", "IHC Wireless products"),
-        ("Bus Produkter", "Bus products"),
-        ("Specielle produkter", "Special products"),
-    };
+    /// <summary>The vendor top-level product category names, spelled as the catalog itself spells them. They are
+    /// <i>catalog data</i>, not app wording — <see cref="BuildProductForest"/> matches products on them and shows
+    /// them verbatim — so they are declared here for every caller that needs to address one category, rather than
+    /// re-typed at each site where the exact spelling would be an unchecked guess.</summary>
+    public const string WiredProductsCategory = "Datalinie produkter";
+    public const string WirelessProductsCategory = "LK IHC Wireless produkter";
+    public const string BusProductsCategory = "Bus Produkter";
+    public const string SpecialProductsCategory = "Specielle produkter";
+
+    /// <summary>The vendor top-level product categories in MENU ORDER (D08: the taxonomy is catalog data, the order
+    /// is app presentation). Their names are already in the UI language, so they are displayed verbatim — this list
+    /// carries only the order. A product whose top category is none of these — an imported <c>.def</c> with an empty
+    /// <c>CategoryPath</c> — falls into <see cref="ImportedCategoryLabel"/>, appended last.</summary>
+    public static readonly IReadOnlyList<string> TopCategories =
+    [
+        WiredProductsCategory,
+        WirelessProductsCategory,
+        BusProductsCategory,
+        SpecialProductsCategory,
+    ];
 
     // The present top categories in menu order: the known vendor categories first (their declared order), then any
     // other named category (ordinal), then the empty/imported bucket (null) last.
     private static IEnumerable<string?> OrderTopCategories(IReadOnlyCollection<string?> present)
     {
-        foreach ((string category, _) in TopCategories)
+        foreach (string category in TopCategories)
             if (present.Contains(category))
                 yield return category;
         foreach (string? other in present.Where(c => c is not null && !IsKnownTopCategory(c)).OrderBy(c => c, StringComparer.Ordinal))
@@ -93,25 +103,11 @@ public static class CatalogMenu
             yield return null;
     }
 
-    private static bool IsKnownTopCategory(string category) => TopCategories.Any(t => t.Category == category);
+    private static bool IsKnownTopCategory(string category) => TopCategories.Contains(category, StringComparer.Ordinal);
 
-    // A top category's menu label: the vendor English label for a known category, ImportedCategoryLabel for the
-    // empty bucket, else the category's own stripped name (a defensive path for an unexpected non-empty category).
+    // A top category's menu label: its own stripped name, or ImportedCategoryLabel for the empty bucket.
     private static string TopCategoryLabel(string? category) =>
-        category is null ? ImportedCategoryLabel
-        : TopCategories.FirstOrDefault(t => t.Category == category).Label ?? Strip(category);
-
-    // The product-catalog STRUCTURAL subcategories the vendor left Danish, mapped to English (R-1). Family/brand names
-    // (LK FUGA, Vinduer, IR fjernbetjeninger…) are vendor data and stay as-is, like the FB library categories.
-    private static readonly Dictionary<string, string> SubcategoryEnglish = new(StringComparer.Ordinal)
-    {
-        ["Generelle"] = "General",
-        ["Indgang"] = "Input",
-        ["Udgang"] = "Output",
-    };
-
-    private static string TranslateSubcategory(string label) =>
-        SubcategoryEnglish.TryGetValue(label, out string? english) ? english : label;
+        category is null ? ImportedCategoryLabel : Strip(category);
 
     /// <summary>Builds the full library-folder tree for the catalog function blocks (US-018), keyed by their
     /// <see cref="CatalogItem.Identifier"/> (the function block's <c>master_type</c>).</summary>

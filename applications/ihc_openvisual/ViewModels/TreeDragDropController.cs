@@ -31,13 +31,18 @@ public sealed class TreeDragDropController(
 {
     private TreeNodeViewModel? _dropTargetNode;
 
+    /// <summary>The status a completed reparent reports. Declared here rather than at each call site because the
+    /// drag reparent and Edit ▸ Paste-after-Cut are the SAME outcome to the installer — one node moved — and two
+    /// copies of the sentence would let the two routes drift into describing it differently.</summary>
+    public const string MovedStatus = "Flyttet.";
+
     /// <summary>Whether — and how — the dragged node may drop onto the target: a <see cref="DropVerdict"/> of ok +
     /// effect + the resolved <see cref="DropRoute"/>, or a reason when refused. Only the legality every route shares
     /// is decided here (a node cannot drop onto itself); the per-route grammar is asked of the SDK.</summary>
     public DropVerdict CanDropOn(ElementId dragged, ElementId target)
     {
         if (dragged == target)
-            return DropVerdict.Refused("Cannot drop a node onto itself.");
+            return DropVerdict.Refused("En node kan ikke slippes på sig selv.");
         TreeNodeViewModel? draggedNode = findNode(dragged);
         TreeNodeViewModel? targetNode = findNode(target);
         if (draggedNode is null || targetNode is null)
@@ -48,7 +53,7 @@ public sealed class TreeDragDropController(
         {
             return session.CanApply(session.Commands.LinkPins(session.Current!, dragged, target)).Ok
                 ? DropVerdict.PinLink()
-                : DropVerdict.Refused("Those two pins can't be linked in that direction.");
+                : DropVerdict.Refused("De to klemmer kan ikke linkes i den retning.");
         }
         // Program build: dropping a variable/pin onto an events, commands OR conditions container arms the method
         // popup for that family (US-028 "one drag gesture, three families" — the target group picks Event/Command/
@@ -56,7 +61,7 @@ public sealed class TreeDragDropController(
         if (draggedNode.IsPin && (targetNode.IsEventsContainer || targetNode.IsCommandsContainer || targetNode.IsConditionsContainer))
         {
             return isProgrammingBlockLocked()
-                ? DropVerdict.Refused("This block is locked — unlock it to edit its program.")
+                ? DropVerdict.Refused("Denne blok er låst — lås den op for at redigere dens program.")
                 : DropVerdict.ProgramBuild();
         }
         // Reorder: dropping onto a same-parent, same-tag sibling moves the node to that position (US-055). The SDK owns
@@ -70,7 +75,7 @@ public sealed class TreeDragDropController(
         {
             return session.CanApply(session.Commands.MoveNode(session.Current!, dragged, target)).Ok
                 ? DropVerdict.Reparent()
-                : DropVerdict.Refused("That location can't hold this item.");
+                : DropVerdict.Refused("Den placering kan ikke indeholde dette element.");
         }
         return DropVerdict.None;
     }
@@ -95,14 +100,14 @@ public sealed class TreeDragDropController(
                     useVariableInProgram(variable, container);
                 break;
             case DropRoute.PinLink:
-                await applyAndReport(session.Commands.LinkPins(session.Current!, dragged, target), "Linked.");
+                await applyAndReport(session.Commands.LinkPins(session.Current!, dragged, target), "Linket.");
                 break;
             case DropRoute.Reorder:
                 if (session.Commands.ReorderNodeToSibling(session.Current!, dragged, target) is { } command)
-                    await applyAndReport(command, "Reordered.");
+                    await applyAndReport(command, "Omarrangeret.");
                 break;
             case DropRoute.Reparent:
-                await applyAndReport(session.Commands.MoveNode(session.Current!, dragged, target), "Moved.");
+                await applyAndReport(session.Commands.MoveNode(session.Current!, dragged, target), MovedStatus);
                 break;
         }
         // The row that was dropped ONTO opens, with everything under it, and stays open — measured against IHC

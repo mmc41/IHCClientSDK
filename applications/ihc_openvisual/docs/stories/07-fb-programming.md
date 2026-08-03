@@ -49,7 +49,7 @@ Scenario: Enter programming mode for a block
 
 Scenario: Enter programming mode from a pin or section
   Given a pin or section INSIDE a function block is selected (not the block node itself)
-  When I press F3 (or choose "Show program")
+  When I press F3 (or choose "Vis program")
   Then programming mode opens for the block that OWNS the selected node
   And a node outside any function block leaves the view unchanged
 
@@ -70,18 +70,18 @@ Scenario: Switch focus between the two panes
   to its variable sections, the right pane to its program container. Every container caption renders
   its **stored name** from the project file (US-018's stored-caption rule) — e.g. `Programmer`,
   `Hændelser`, `Kommandoer` in the standard seed — never a hard-coded UI string.
-- MUST: `F3` / *Show program* works from **any node inside a block** — the block itself, or a pin or
+- MUST: `F3` / *Vis program* works from **any node inside a block** — the block itself, or a pin or
   section under it — and opens the **owning** block's program; on a node outside any block it does
   nothing.
 - MUST: Inserting an **empty** function block enters programming mode for the new block automatically
   (US-019) — creation is the one entry route that needs no `F3`.
-- MUST: Leaving programming mode re-roots **both** panes back to *Localities*.
+- MUST: Leaving programming mode re-roots **both** panes back to *Lokaliteter*.
 - MUST: **Programming mode opens expanded.** On entry the left pane shows the block root **and all four
   variable sections** already open, so the block's variables are readable without a click. The expansion
   survives later edits — a mutation that re-projects the tree does not collapse the sections again
   (US-070). **Configuration mode is deliberately the opposite**: a function block there stays collapsed,
   so opening a project does not unfold every block in the installation.
-- MUST: The pane roots are what tell the two modes apart — configuration mode roots at *Localities*,
+- MUST: The pane roots are what tell the two modes apart — configuration mode roots at *Lokaliteter*,
   programming mode roots at the block's name. (This is the only reliable signal of which mode the view is
   in; IHC OpenVisual additionally reports the transition in the status bar.)
 - MUST: **`Internal variables` is a programming-mode section.** It appears when the block's program is open
@@ -89,12 +89,12 @@ Scenario: Switch focus between the two panes
   installer's.
 - MUST: **Programming mode on a *locked* (library) block is view-only.** Its program **renders for reading**
   — the lock never gates viewing — but **every authoring command is gated on the block being unlocked**:
-  variable / program / enum inserts, `Ctrl+I` / `Ctrl+U` pin inserts, **and the mutations *Delete* and
-  *Move up/down***, are **removed (not greyed)** on a locked block. *Properties* stays — it is offered
+  variable / program / enum inserts, `Ctrl+I` / `Ctrl+U` pin inserts, **and the mutations *Slet* and
+  *Move up/down***, are **removed (not greyed)** on a locked block. *Egenskaber* stays — it is offered
   on every node. Unlocking (US-020) is the separate, deliberate act that enables editing. This must be
   enforced both by removing the commands (UI) and by an **engine guard**, so a locked block keeps matching
   its master whoever drives the editor.
-- MUST: **Entry is not withheld on a locked block, on any route.** *Show program* / `F3` opens a locked
+- MUST: **Entry is not withheld on a locked block, on any route.** *Vis program* / `F3` opens a locked
   block's program from the **menu bar and the context menu alike** — the two surfaces give the same answer
   (US-044). The lock changes what can be *done* inside, never whether the program can be *opened*.
 - MUST: **A locked block says it is read-only.** When a locked block's program opens, the status bar
@@ -112,15 +112,15 @@ Scenario: Switch focus between the two panes
   `Trappe-automatik` — the pin's owner — exactly as if the block itself had been selected.
 - The same `Tom blok` entry shows all four section rows without any expanding: the block root and
   `{Input, Output, Indstillinger, Interne variable}` are open on arrival. Returning to configuration mode
-  and reopening the project shows `Tom blok` collapsed again in the *Functions* tree.
-- Choosing *Show program* on a **locked** library block opens its program and the status bar reports the
+  and reopening the project shows `Tom blok` collapsed again in the *Funktioner* tree.
+- Choosing *Vis program* on a **locked** library block opens its program and the status bar reports the
   view as read-only because the block is locked; doing the same on an unlocked block reports plain
   programming mode. Comparing the two messages tells the two states apart.
 
 ### Constraints
 
 - Verification method — **Demonstration** that entering re-roots both panes to the block name and leaving
-  restores both to *Localities*.
+  restores both to *Lokaliteter*.
 - Commands route to the **selected element**, not to whichever pane holds keyboard focus.
 
 **Readiness:** Ready.
@@ -258,7 +258,7 @@ their name/note/initial value/persistence, **so that** the program has the data 
 selected section accepts, so every section offers its signal type plus all 19 value types (the kW/kWh/W/Wh
 power/energy types included) and the rule has exactly one home; adding an enum variable offers the existing types
 (or a new one); a generic variable edits its **Name, both documentation fields, and typed initial value** via
-*Properties* (a bool checkbox, a number box, or an H/M/S(/ms) group per type) as one undoable, locked-block-refused
+*Egenskaber* (a bool checkbox, a number box, or an H/M/S(/ms) group per type) as one undoable, locked-block-refused
 step that round-trips byte-faithfully; and every typed row renders its **value per type in all four sections**
 (unit, decimal places and separator per type — a date shows day and month, a weekday and an enum show a name).
 
@@ -307,7 +307,7 @@ Scenario: Event and command semantics
   singleton — a further program can be inserted into a block that already has one, and each program keeps
   its own events and commands.
 - MUST: **Inserting a program is reachable from both surfaces**, per US-044's route parity: from the
-  `Programs` container's own context menu, and from the menu bar's *Insert* group of program elements —
+  `Programs` container's own context menu, and from the menu bar's *Indsæt* group of program elements —
   the same group that offers the case value, the sub-program and the logic group. Inside a **locked**
   block the route is withheld like every other authoring command (US-026).
 - MUST: **The target group decides the row family; the dragged pin's type decides the operator list.**
@@ -359,7 +359,7 @@ condition lists are complete** too: a timer on Events offers `-> 0` and `is writ
 `= 0`, the two-operand `>`/`>=`/`<=`, and the `counting up`/`counting down`/`stopped` predicates — the vendor's
 dead `Timer ->` event and `<` condition are never offered, and the count-state predicates reuse the command
 opcodes with condition-family semantics ((code, family)-scoped). **Inserting a program** is offered on both
-surfaces — the `Programs` container's context menu and the *Insert* menu's program-elements group — so a block
+surfaces — the `Programs` container's context menu and the *Indsæt* menu's program-elements group — so a block
 can hold several programs; the route is withheld inside a locked block and the added program round-trips
 byte-faithfully.
 
@@ -375,7 +375,7 @@ logic groups, **so that** commands run only when the intended logical expression
 ```gherkin
 Scenario: Turn a program into a conditional sub-program
   Given a command group in a program
-  When I right-click the command group and choose "Sub-program"
+  When I right-click the command group and choose "Under program"
   Then a conditional structure is inserted with a "Conditions" group,
     "Commands when conditions true" and
     "Commands when conditions false"
@@ -408,7 +408,7 @@ Scenario: Nest a logic group for a compound expression
   logic group and for the two conditional command branches is **in the application's own UI language**
   (US-001) — and where the project file already stores that same wording, the app renders the stored text
   rather than restating it in another language (US-018's stored-caption rule).
-- MUST: Inserting a sub-program appends the four-node skeleton the first scenario describes — *Sub-program →
+- MUST: Inserting a sub-program appends the four-node skeleton the first scenario describes — *Under program →
   { Conditions, Commands when conditions true, Commands when conditions false }*.
 
 ### AC illustrations
@@ -424,9 +424,9 @@ Scenario: Nest a logic group for a compound expression
 **Implementation status:** ✅ Implemented — sub-program + conditions authoring with AND/OR logic groups, and the
 user-set sub-program **name** renders as the tree label (falling back to the default sub-program token only
 when the name is absent or still the default). The default labels the app supplies for an unnamed sub-program,
-the conditions group, a nested logic group and the two conditional command branches now read in the
+the conditions group, a nested logic group and the two conditional command branches read in the
 application's UI language, and where the file stores that same wording the stored text is rendered rather than
-restated in English.
+restated.
 
 ---
 
@@ -482,12 +482,12 @@ Scenario: Reach the project's enumerator types from the Library menu
 - A **standalone / empty** custom enumerator *type* (0 states, referenced by no variable) is authorable via a
   distinct **"New standalone type…"** action in the enum picker — decoupled from inserting a variable, so an empty
   project-global type can be created and referenced later.
-- MUST: **The project's enumerator types are reachable from the *Library* menu**, not only from a
+- MUST: **The project's enumerator types are reachable from the *Bibliotek* menu**, not only from a
   variable-insert popup. The manager reached from there **lists** the types the project holds and lets a
   further type be **created**; creating one leads into the same type-definition flow the insert route uses,
   so there are not two editors for one thing. Cancelling changes nothing.
 - SHOULD: A type **listed** in that manager can be selected and edited from there, reaching the same
-  state editor the *Edit* button on a variable's properties reaches. *(**Not implemented** — selecting a
+  state editor the *Rediger* button on a variable's properties reaches. *(**Not implemented** — selecting a
   listed type does nothing today; editing a type's states is reachable only through a variable of that
   type. See the implementation status.)*
 
@@ -689,13 +689,13 @@ the linked variable (US-028/US-029).
 
 ```gherkin
 Scenario: Link a variable from one block to a variable in another block
-  Given two function blocks exist in the "Functions" pane, each carrying variables
+  Given two function blocks exist in the "Funktioner" pane, each carrying variables
   When I link a source variable of block A (e.g. a "Flag" or "Output") onto a compatible
     target variable of block B (e.g. a "Flag" or "Input")
   Then a direct function-block-to-function-block variable link is created between them
 
 Scenario: Link a block's output back to its own input (self-link)
-  Given a function block whose output and input are both shown in the "Functions" pane
+  Given a function block whose output and input are both shown in the "Funktioner" pane
   When I link the block's own output onto its own input (a feedback pattern)
   Then the self-link is created — the same block at both ends is allowed
 
@@ -729,8 +729,8 @@ Scenario: An incompatible pair is refused
 - Verification method — **Demonstration** that a variable link between two blocks propagates the source
   value to the target, and **Test** of the refusals (the legality matrix lives in US-022).
 - MUST: Linking variables between compatible endpoints is done **by dragging one pin onto another**
-  (US-022's gesture and legality rule apply); the two-step *Link from here* /
-  *Link to here* is the non-drag **supplement**.
+  (US-022's gesture and legality rule apply); the two-step *Link fra her* /
+  *Link til her* is the non-drag **supplement**.
 - A block's output feeding **its own** input is **allowed**; do not re-tighten to a different-blocks-only
   rule by symmetry.
 - The *Incompatible link* message is a **deliberate feature** — IHC OpenVisual explains the refusal rather than failing silently. It stays; only

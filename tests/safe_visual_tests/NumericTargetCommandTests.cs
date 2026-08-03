@@ -9,7 +9,7 @@ namespace safe_visual_tests;
 
 /// <summary>
 /// W3 / F5 (uxparity2 T025): a NUMERIC variable is not a boolean, so its Add-command menu must not offer
-/// <c>set to ON</c> / <c>set to OFF</c> / <c>set to NOT …</c>.
+/// <c>sættes til ON</c> / <c>sættes til OFF</c> / <c>sættes til IKKE …</c>.
 /// <para>
 /// T008/T009 located the cause in the SDK rather than the GUI: <c>ClassifyPin</c> mapped <c>resource_integer</c> and
 /// <c>resource_counter</c> to <see cref="Ihc.Vis.Programs.ProgramPinType.Bool"/> — the documented default — so
@@ -46,7 +46,9 @@ public class NumericTargetCommandTests : AvaloniaTestBase
             var (harness, commands) = await CommandMenuFor(tag, name);
             using var _ = harness;
 
-            Assert.That(commands.Where(h => h.Contains("ON") || h.Contains("OFF") || h.Contains("NOT")), Is.Empty,
+            // "IKKE", not "NOT": the negating verb is "sættes til IKKE" (see the class comment). Matching the English
+            // word would leave this third of the guard permanently satisfied and so never able to fail.
+            Assert.That(commands.Where(h => h.Contains("ON") || h.Contains("OFF") || h.Contains("IKKE")), Is.Empty,
                 $"{tag}: a numeric register has no ON/OFF state to be set to — got [{string.Join(" | ", commands)}]");
         }
     }

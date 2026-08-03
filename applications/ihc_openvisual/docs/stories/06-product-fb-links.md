@@ -43,7 +43,7 @@ function-block-to-function-block variable links (covered in E7's programming sto
 that** actuating the sensor/button triggers the block.
 
 **Gesture:** the link is created by **dragging one pin onto another**. A non-drag
-**supplement** — *Link from here* on the source pin, then *Link to here* on the target (context menu,
+**supplement** — *Link fra her* on the source pin, then *Link til her* on the target (context menu,
 US-044 route-parity) — reaches the identical result. Both use the same legality rule and orientation
 specified below; neither is a substitute for the other. Creating a link (and deleting one, US-057)
 **leaves the tree expanded exactly as it was** (US-070).
@@ -53,7 +53,7 @@ specified below; neither is a substitute for the other. Creating a link (and del
 ```gherkin
 Scenario: Drag a product input onto a block input
   Given the "Installation" pane shows a product input pin (e.g. <pin> of <product>)
-    and the "Functions" pane shows a function-block input (e.g. <pin>)
+    and the "Funktioner" pane shows a function-block input (e.g. <pin>)
   When I press and hold the mouse on the product input, drag it onto the block input, and release
   Then a link is created between them
 
@@ -135,7 +135,7 @@ absent from it is **not covered, therefore permitted**, not forbidden.
   surface instead.
 - MUST: The path's product segment renders **exactly as US-010 renders that product in the tree** — i.e.
   `name (position) ` when the product carries a `position`. This applies in **both panes**: a link row in
-  the *Functions* pane names its product the same way the *Installation* pane does.
+  the *Funktioner* pane names its product the same way the *Installation* pane does.
 - MUST: **Every segment of a link path is bare.** The `= <value>` decoration US-010 puts on a state row
   belongs to the *state row itself*, never to a path segment that happens to name one. A path segment also
   renders the **node's own name** as the project holds it — never a translated or derived value token.
@@ -163,7 +163,7 @@ absent from it is **not covered, therefore permitted**, not forbidden.
 
 **Implementation status:** 🟡 Partly implemented — link create, reciprocal rendering, legality across all
 three families, and the correct half orientation work; the `→`/`←` prefix and `(saved)` suffix are gone.
-⚠ Two narrower label gaps remain: the *Functions*-pane path drops the product's `(position)` (making
+⚠ Two narrower label gaps remain: the *Funktioner*-pane path drops the product's `(position)` (making
 same-named products ambiguous), and a `Scenarier/regulering` path renders a value token instead of the
 node's own name.
 
@@ -178,7 +178,7 @@ node's own name.
 
 ```gherkin
 Scenario: Drag a block output onto a product output
-  Given the "Functions" pane shows a block output (e.g. <pin>)
+  Given the "Funktioner" pane shows a block output (e.g. <pin>)
     and the "Installation" pane shows a product output (e.g. <pin> of a <product>)
   When I drag the block output onto the product output and release
   Then a reciprocal link is created (the block output shows a "link to" child; the product output a "link from" child)
@@ -391,7 +391,7 @@ Scenario: Remove is undoable
 - Verification method — **Demonstration** that removing a link from either end deletes exactly its pair,
   leaves sibling links intact, and undoes/redoes cleanly.
 - A link is removed by **selecting the link row and deleting it** — there is **no** dedicated *Remove link*
-  command; a link row's context menu is exactly two commands — *jump to the opposite end* and *Delete*
+  command; a link row's context menu is exactly two commands — *jump to the opposite end* and *Slet*
   (US-068).
 
 **Readiness:** Ready.

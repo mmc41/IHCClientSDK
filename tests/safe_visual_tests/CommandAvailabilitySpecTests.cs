@@ -528,7 +528,7 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
         Assert.Multiple(() =>
         {
             Assert.That(liveVm.Registry.Bar["edit.undo"].Enabled, Is.True, "an edit arms Undo");
-            Assert.That(liveVm.UndoMenuHeader, Does.StartWith("_Undo ").And.Not.EqualTo("_Undo"),
+            Assert.That(liveVm.UndoMenuHeader, Does.StartWith("_Fortryd ").And.Not.EqualTo("_Fortryd"),
                 "the header names the action (E14)");
         });
         await live.Session.UndoAsync();

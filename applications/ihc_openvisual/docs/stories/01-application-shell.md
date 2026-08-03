@@ -19,7 +19,7 @@ later capability area (E2–E16) has a predictable home to plug into.
 logging/telemetry and project-service composition root, capturing unhandled errors, and quitting with
 an unsaved-changes prompt); the main window and its chrome (title bar, the eight-title menu bar
 *as the extensible host for every epic's commands*, toolbar, the two tree panes, status bar);
-light/dark theme; showing/hiding the toolbar and status bar from *View*; and the *File* project
+light/dark theme; showing/hiding the toolbar and status bar from *Vis*; and the *Filer* project
 operations: new, open, save, save-as, close (with its save prompt), recent projects, auto-backup, and
 the single-project constraint. **Scope excludes:** the *command inventory* inside
 *Edit/Insert/Library/Controller/Documentation* (owned by E2–E7, E9–E10, E14–E16),
@@ -31,20 +31,20 @@ simulation Start/Stop pair.
 **Acceptance criteria (epic level):**
 - MUST: On launch the app presents a single top-level window titled *`<project> - IHC OpenVisual`*
   with an eight-item menu bar (no *Simulation*), a toolbar, two headed tree panes (*Installation*,
-  *Functions*), and a status bar.
+  *Funktioner*), and a status bar.
 - MUST: The application starts without a controller, network or prior IHC software installation, establishes one
   shared logging/telemetry pipeline and one project service for the whole window, and captures
   unhandled errors to diagnostics rather than terminating silently or leaving a corrupt file.
-- MUST: The eight-title menu bar is a stable host — the shell owns *File*, *View* and *Help*; the
+- MUST: The eight-title menu bar is a stable host — the shell owns *Filer*, *Vis* and *Hjælp*; the
   remaining titles are always present and populated by their owning epics.
 - MUST: A project can be created, named and saved to a `.vis` file, and exactly one project is open at
   a time.
-- SHOULD: The four most recent projects are reachable from the *File* menu, and an automatic backup
+- SHOULD: The four most recent projects are reachable from the *Filer* menu, and an automatic backup
   protects against crash/power loss.
-- SHOULD: The installer can show or hide the toolbar and the status bar from the *View* menu, and the
+- SHOULD: The installer can show or hide the toolbar and the status bar from the *Vis* menu, and the
   menu reflects each element's current visibility.
 - SHOULD: The workspace renders in either a light or a dark theme.
-- SHOULD: An *About* item on the *Help* menu identifies the application, its author and source repository, and its application and SDK versions.
+- SHOULD: An *About* item on the *Hjælp* menu identifies the application, its author and source repository, and its application and SDK versions.
 
 **Readiness:** Ready.
 
@@ -88,14 +88,14 @@ per-menu command inventory beyond the top-level menu titles.
   rule; catalog names per US-010 and US-063). Where the application supplies a default for text the file
   does not carry, that default is its own chrome and follows the previous rule.
 - MUST: The menu bar is a stable host for the whole application: all eight titles are present at
-  all times; the shell populates *File*, *View* and *Help* itself, while *Edit* (E14–E15), *Insert*
-  (E2–E7), *Library* (E5, E16), *Controller* (E10) and *Documentation* (E9) are
+  all times; the shell populates *Filer*, *Vis* and *Hjælp* itself, while *Rediger* (E14–E15), *Indsæt*
+  (E2–E7), *Bibliotek* (E5, E16), *Controller* (E10) and *Dokumentation* (E9) are
   populated by their owning epics and remain visible even before those epics land.
 - MUST: A toolbar sits below the menu bar with, left to right, New / Open / Save, a separator,
   Help, and a controller send/retrieve pair, then Cut / Copy / Paste. (The simulation Start/Stop pair
   is out of scope (E8) and omitted.)
 - MUST: The client area is split into two vertical panes of equal prominence; the left pane has a
-  blue header reading **Installation** and the right a blue header reading **Functions**.
+  blue header reading **Installation** and the right a blue header reading **Funktioner**.
 - MUST: In configuration mode both panes show a tree rooted at the project's locality-container node
   (see US-006); the left tree is the installation view and the right tree is the functions view of the
   same localities.
@@ -108,7 +108,7 @@ per-menu command inventory beyond the top-level menu titles.
   present: "not connected" is a state it displays, not a reason to hide it. (Sending and retrieving a
   project are E10's; this is only the at-a-glance state.)
 - SHOULD: The vertical boundary between the two panes is a splitter the installer can drag to
-  reallocate width between *Installation* and *Functions*.
+  reallocate width between *Installation* and *Funktioner*.
 - SHOULD: The workspace renders in either a light or a dark theme; tree icon ink and node state
   colours follow the active theme's tokens (per the icon design guideline).
 
@@ -132,17 +132,17 @@ per-menu command inventory beyond the top-level menu titles.
 
 - Verification method — **Inspection** of the application window.
 - Exact pixel dimensions and default window size are not specified (out of scope).
-- Pane headers read the fixed words *Installation* / *Functions*.
+- Pane headers read the fixed words *Installation* / *Funktioner*.
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Largely implemented — the window, the eight-title menu bar, the toolbar, the
-two headed panes and the status bar are all in place, and the status bar now carries the
+**Implementation status:** ✅ Implemented — the window, the eight-title menu bar, the toolbar, the two
+headed panes and the status bar are all in place, and the status bar now carries the
 **controller-connection indicator** (two distinct glyphs plus the state in words; the app is offline today,
-so only the not-connected state is ever shown in practice). The **verbatim** rule holds — a stored caption is
-no longer restated in English. The **one-language** rule is only partly met: the eight menu-bar titles, the
-default names supplied for program containers and the unsaved-document name are Danish, while the individual
-menu items, the dialog labels and the status-bar sentences are still English.
+so only the not-connected state is ever shown in practice). Both language rules hold: the **verbatim** rule
+(a stored caption is never restated), and the **one-language** rule — the menu titles and items, the dialog
+labels and captions, the status-bar sentences, the default container names and the unsaved-document name are
+all Danish.
 
 ---
 
@@ -366,7 +366,7 @@ crash or power loss does not cost me my recent work.
 
 ## US-051 — Show or hide the toolbar and status bar
 
-**As an** IHC installer, **I want** to toggle the toolbar and the status bar on or off from the *View*
+**As an** IHC installer, **I want** to toggle the toolbar and the status bar on or off from the *Vis*
 menu, **so that** I can reclaim screen space or restore the chrome to suit how I am working.
 
 **Scope excludes:** switching between configuration and programming views (US-026); the toolbar's
@@ -395,12 +395,12 @@ Scenario: Hide and show the status bar
 ### AC illustrations
 
 - Toggling the toolbar off collapses the strip of New/Open/Save… buttons and the panes grow upward;
-  toggling it on restores the exact same strip. The *View* menu item's check mark tracks the current
+  toggling it on restores the exact same strip. The *Vis* menu item's check mark tracks the current
   state.
 
 ### Constraints
 
-- Verification method — **Demonstration** of each toggle and **Inspection** that the *View* menu check
+- Verification method — **Demonstration** of each toggle and **Inspection** that the *Vis* menu check
   state matches the visible/hidden state.
 
 **Readiness:** Ready.
@@ -439,7 +439,7 @@ foundation only.
   rejecting endpoint to diagnostics, so a misconfigured collector fails visibly instead of dropping
   telemetry silently; leaving the self-check endpoint unset skips the probe.
 - SHOULD: The current effective settings and an entry point to telemetry diagnostics are reachable
-  from the *Help* menu.
+  from the *Hjælp* menu.
 
 ### AC illustrations
 
@@ -517,12 +517,12 @@ Scenario: Cancel the quit
 version, source repository and author, **so that** I can confirm exactly which build I am running and
 reach the project's source when I need support or want to report a problem.
 
-**Scope excludes:** context-sensitive topic help (US-049) and the *Help* menu's diagnostics/settings
-entry (US-063); this story covers only the About dialog and the *Help* menu command that opens it.
+**Scope excludes:** context-sensitive topic help (US-049) and the *Hjælp* menu's diagnostics/settings
+entry (US-063); this story covers only the About dialog and the *Hjælp* menu command that opens it.
 
 ### Acceptance criteria (Checklist)
 
-- MUST: Choosing *Help* > *About…* opens a single modal About dialog titled `About IHC OpenVisual`,
+- MUST: Choosing *Hjælp* > *About…* opens a single modal About dialog titled `About IHC OpenVisual`,
   centred on the main window and blocking interaction with the main window until it is dismissed.
 - MUST: The dialog shows the application name **IHC OpenVisual** as its heading.
 - MUST: The dialog shows two labelled version lines — the application version and the SDK
@@ -538,7 +538,7 @@ entry (US-063); this story covers only the About dialog and the *Help* menu comm
 
 ### AC illustrations
 
-- Choosing *Help* > *About…* in the application opens a centred, fixed-size window titled
+- Choosing *Hjælp* > *About…* in the application opens a centred, fixed-size window titled
   `About IHC OpenVisual` showing the heading `IHC OpenVisual`, the lines `App Version: <x.y.z>` and
   `SDK Version: <a.b.c>`, the author `Morten Christensen (mmc41)`, a short description, and the link
   `https://github.com/mmc41/IHCClientSDK`; the main window cannot be clicked until the dialog closes.

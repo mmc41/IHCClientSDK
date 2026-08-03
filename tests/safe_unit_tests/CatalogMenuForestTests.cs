@@ -11,7 +11,7 @@ namespace safe_unit_tests;
 /// <summary>
 /// H2 / D08 (T004): the product insertion menu's top-level categories are DERIVED from the catalog products' own
 /// <c>CategoryPath</c> — never a hardcoded four-category filter — so a product with an empty <c>CategoryPath</c>
-/// (an imported <c>.def</c>) stays reachable, under an "Imported/Uncategorized" bucket. <see cref="CatalogMenu"/> is
+/// (an imported <c>.def</c>) stays reachable, under an "Importeret/Ukategoriseret" bucket. <see cref="CatalogMenu"/> is
 /// Avalonia-free projection logic, so it is unit-tested here.
 /// </summary>
 public class CatalogMenuForestTests
@@ -39,7 +39,7 @@ public class CatalogMenuForestTests
         var products = real.Append(imported).ToList();
 
         // The finding (H2): the legacy fixed four-category projections cannot reach an empty-category product at all.
-        bool legacyReaches = new[] { "Datalinie produkter", "LK IHC Wireless produkter", "Bus Produkter", "Specielle produkter" }
+        bool legacyReaches = new[] { CatalogMenu.WiredProductsCategory, CatalogMenu.WirelessProductsCategory, CatalogMenu.BusProductsCategory, CatalogMenu.SpecialProductsCategory }
             .SelectMany(cat => Leaves(CatalogMenu.Build(products, cat, Cmd)))
             .Any(l => l.ProductIdentifier == "_0ximported");
         Assert.That(legacyReaches, Is.False, "the four hardcoded categories drop an empty-category product (the H2 bug)");
@@ -58,7 +58,7 @@ public class CatalogMenuForestTests
             Assert.That(Leaves(forest).Count(), Is.EqualTo(products.Count),
                 "every product is reachable — none is dropped by the menu projection");
             Assert.That(forest.Select(f => f.Header),
-                Is.SupersetOf(new[] { "Wired products", "IHC Wireless products", "Bus products", "Special products" }),
+                Is.SupersetOf(new[] { CatalogMenu.WiredProductsCategory, CatalogMenu.WirelessProductsCategory, CatalogMenu.BusProductsCategory, CatalogMenu.SpecialProductsCategory }),
                 "the vendor categories keep their app-side English labels, derived from the catalog data (D08)");
             Assert.That(forest[^1].Header, Is.EqualTo(CatalogMenu.ImportedCategoryLabel),
                 "the imported/uncategorized bucket sorts last");

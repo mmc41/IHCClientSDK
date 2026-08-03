@@ -21,14 +21,14 @@
         <TextBlock Name="TypeNameLabel" Classes="label" Text="Enumerator type"/>
         <TextBox Name="TypeNameBox" a:AutomationProperties.LabeledBy="{Binding #TypeNameLabel}"/>
 
-        <TextBlock Name="StatesLabel" Classes="label" Text="States (one per line, in order)"/>
+        <TextBlock Name="StatesLabel" Classes="label" Text="Tilstande (én pr. linje, i rækkefølge)"/>
         <TextBox Name="StatesBox" AcceptsReturn="True" TextWrapping="NoWrap"
                  Height="140" VerticalContentAlignment="Top"
                  a:AutomationProperties.LabeledBy="{Binding #StatesLabel}"/>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,14,0,0">
             <Button Name="OkButton" Content="OK" MinWidth="84" IsDefault="True" Click="OnOk"/>
-            <Button Name="CancelButton" Content="Cancel" MinWidth="84" IsCancel="True" Click="OnCancel"/>
+            <Button Name="CancelButton" Content="Annuller" MinWidth="84" IsCancel="True" Click="OnCancel"/>
         </StackPanel>
     </StackPanel>
 </Window>

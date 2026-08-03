@@ -36,17 +36,17 @@ public class InsertMenuRouteTests : AvaloniaTestBase
         var insert = menu.Items.OfType<MenuItem>()
             .Single(m => AutomationProperties.GetAutomationId(m) == "MenuInsert");
         var products = insert.Items.OfType<MenuItem>()
-            .Single(m => Normalize(m.Header) == "Products");
+            .Single(m => Normalize(m.Header) == "Produkter");
 
         // The menu-bar Products submenu is wired to the single data-driven product menu (H2/D08) — the same source
         // the tree context menu binds — so both routes always expose the same catalog-derived categories.
         Assert.That(products.ItemsSource, Is.SameAs(viewModel.ProductsMenu),
             "the menu-bar Insert ▸ Products submenu is bound to the data-driven ProductsMenu");
         var categories = viewModel.ProductsMenu.Select(m => m.Header).ToList();
-        Assert.That(categories, Is.EqualTo(new[] { "Wired products", "IHC Wireless products", "Bus products", "Special products" }),
+        Assert.That(categories, Is.EqualTo(new[] { CatalogMenu.WiredProductsCategory, CatalogMenu.WirelessProductsCategory, CatalogMenu.BusProductsCategory, CatalogMenu.SpecialProductsCategory }),
             "the built-in catalog derives exactly the four vendor categories, in order (F-088); imports would add an Imported/Uncategorized bucket");
     }
 
-    // Menu headers carry an access-key underscore ("_Products"); strip it for a stable label comparison.
+    // Menu headers carry an access-key underscore ("_Produkter"); strip it for a stable label comparison.
     private static string Normalize(object? header) => (header as string ?? string.Empty).Replace("_", string.Empty);
 }

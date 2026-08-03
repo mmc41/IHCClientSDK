@@ -30,7 +30,7 @@ public sealed class ProjectTreeProjector(Project project)
         // Container captions are the containers' STORED names (S-33): `programs`, `events` and `actions` all carry
         // one in the file, so an invented English word would drift from what the project actually says.
         var programsNode = new TreeNodeViewModel(
-            programs is null ? "Programs" : project.NameOr(programs, "Programs"),
+            programs is null ? "Programmer" : project.NameOr(programs, "Programmer"),
             NodeIcons.For("programs", null),
             isExpanded: true, elementId: programs?.Id) { Kind = TreeNodeKind.Programs };
         if (programs is not null)
@@ -42,7 +42,7 @@ public sealed class ProjectTreeProjector(Project project)
                     { Kind = TreeNodeKind.Program };
                 if (program.FindChild("events") is { } events)
                 {
-                    var eventsNode = new TreeNodeViewModel(project.NameOr(events, "Events"),
+                    var eventsNode = new TreeNodeViewModel(project.NameOr(events, "Hændelser"),
                         NodeIcons.For("events", null),
                         isExpanded: true, elementId: events.Id) { Kind = TreeNodeKind.Events };
                     foreach (ProjectElement ev in events.ChildrenOrEmpty().Where(e => e.IsProgramEvent))
@@ -53,7 +53,7 @@ public sealed class ProjectTreeProjector(Project project)
                 }
                 if (program.FindChild("actions") is { } actions)
                 {
-                    var commandsNode = new TreeNodeViewModel(project.NameOr(actions, "Commands"),
+                    var commandsNode = new TreeNodeViewModel(project.NameOr(actions, "Kommandoer"),
                         NodeIcons.For("actions", null),
                         isExpanded: true, elementId: actions.Id) { Kind = TreeNodeKind.Commands };
                     RenderActionsInto(commandsNode, actions);
@@ -149,7 +149,7 @@ public sealed class ProjectTreeProjector(Project project)
                 // "caseValue", not "commands": this row's LABEL is user data and it is ALSO an
                 // IsCommandsContainer, so neither the label nor the flag can tell it from a real
                 // Commands container — it needs a kind of its own or the two merge in the census.
-                var valueNode = new TreeNodeViewModel(project.NameOr(child, "value"),
+                var valueNode = new TreeNodeViewModel(project.NameOr(child, "værdi"),
                     NodeIcons.For("case_action", null), isExpanded: true, elementId: child.Id)
                     { Kind = TreeNodeKind.CaseValue };
                 RenderActionsInto(valueNode, child);   // the embedded criterion operand is skipped (not a command)
@@ -212,24 +212,30 @@ public sealed class ProjectTreeProjector(Project project)
         return ids;
     }
 
+    /// <summary>The caption the localities root falls back to when a file leaves the <c>groups</c> container
+    /// unnamed. Declared here, where the row is built, because the status messages that name the container an edit
+    /// landed in must read the same word the row shows — they resolve the stored name first and fall back to this
+    /// one, so a message saying "under X" beside a root reading "Y" is not expressible.</summary>
+    public const string LocalitiesRootName = "Lokaliteter";
+
     // Both panes share the Localities skeleton; the Installation pane nests each locality's products (with their
     // pins), the Functions pane its function blocks (US-006/US-010).
     public TreeNodeViewModel BuildLocalitiesRoot(bool functions)
     {
         // The root row shows the container's own stored name — it is project data (the vendor's "Lokaliteter"),
-        // not a caption the app owns; "Localities" only stands in when a file leaves it unnamed.
+        // not a caption the app owns; LocalitiesRootName only stands in when a file leaves it unnamed.
         // The root row deliberately carries NO element id, even though the <groups> container is a real element:
         // an id would make it a target for every id-addressed command (delete, properties, help), and what the
         // root should answer to is a separate question per command. Kind is what identifies it; the one command
         // that needs the container — paste, whose target parent this is — resolves it from the project by kind.
         string rootName = project.Child("groups") is { } container
-            ? project.NameOr(container, "Localities")
-            : "Localities";
+            ? project.NameOr(container, LocalitiesRootName)
+            : LocalitiesRootName;
         var root = new TreeNodeViewModel(rootName, NodeIcons.Locality, isExpanded: true)
             { Kind = TreeNodeKind.LocalitiesRoot };
         foreach (ProjectElement group in project.Groups)
         {
-            string name = project.NameOr(group, "(unnamed)");
+            string name = project.NameOr(group, "(uden navn)");
             var components = new List<ProjectElement>();
             foreach (ProjectElement child in group.ChildrenOrEmpty())
             {

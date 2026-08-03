@@ -22,7 +22,7 @@ public sealed class CommandRegistry : ObservableObject
 
     // What a refusal that carries no reason of its own still tells the user (QC-06 — a disabled command explains
     // itself). ONE home: both the per-surface grey and the keyboard-route explanation fall back to it.
-    private const string NoReason = "Not available now.";
+    private const string NoReason = "Ikke tilgængelig nu.";
 
     private readonly Func<ShellContext> _context;
     private readonly Action<object?>? _beforeExecute;

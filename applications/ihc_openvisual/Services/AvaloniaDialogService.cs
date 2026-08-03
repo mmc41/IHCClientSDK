@@ -27,24 +27,24 @@ public sealed class AvaloniaDialogService : IDialogService
     /// <summary>The main window, used as the modal owner and storage-provider source. Set after it is created.</summary>
     public Window? Owner { get; set; }
 
-    private static readonly FilePickerFileType VisFileType = new("IHC project (*.vis)") { Patterns = new[] { "*.vis" } };
-    private static readonly FilePickerFileType IfbFileType = new("IHC function block (*.ifb)") { Patterns = new[] { "*.ifb" } };
+    private static readonly FilePickerFileType VisFileType = new("IHC projekt (*.vis)") { Patterns = new[] { "*.vis" } };
+    private static readonly FilePickerFileType IfbFileType = new("IHC funktionsblok (*.ifb)") { Patterns = new[] { "*.ifb" } };
     private static readonly FilePickerFileType CatalogFileType =
-        new("IHC catalog definition (*.def, *.ifb)") { Patterns = new[] { "*.def", "*.ifb" } };
+        new("IHC katalogdefinition (*.def, *.ifb)") { Patterns = new[] { "*.def", "*.ifb" } };
 
     public async Task<SaveChangesResult> ConfirmSaveChangesAsync(string documentName)
     {
         var result = await ShowButtonsAsync(
-            "Save changes?",
-            $"Save changes to {documentName} before continuing?",
-            ("Save", SaveChangesResult.Save),
-            ("Don't save", SaveChangesResult.Discard),
-            ("Cancel", SaveChangesResult.Cancel));
+            "Gem ændringer?",
+            $"Gem ændringer i {documentName} før du fortsætter?",
+            ("Gem", SaveChangesResult.Save),
+            ("Gem ikke", SaveChangesResult.Discard),
+            ("Annuller", SaveChangesResult.Cancel));
         return result;
     }
 
     public Task<bool> ConfirmAsync(string title, string message) =>
-        ShowButtonsAsync(title, message, ("Yes", true), ("No", false));
+        ShowButtonsAsync(title, message, ("Ja", true), ("Nej", false));
 
     public Task ShowMessageAsync(string title, string message) =>
         ShowButtonsAsync(title, message, ("OK", true));
@@ -55,7 +55,7 @@ public sealed class AvaloniaDialogService : IDialogService
             return null;
         IReadOnlyList<IStorageFile> files = await Owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Open project",
+            Title = "Åbn projekt",
             AllowMultiple = false,
             FileTypeFilter = new[] { VisFileType },
             SuggestedStartLocation = await GetFolderAsync(initialDirectory)
@@ -69,7 +69,7 @@ public sealed class AvaloniaDialogService : IDialogService
             return null;
         IStorageFile? file = await Owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Save project as",
+            Title = "Gem projekt som",
             SuggestedFileName = suggestedFileName,
             DefaultExtension = "vis",
             FileTypeChoices = new[] { VisFileType },
@@ -84,7 +84,7 @@ public sealed class AvaloniaDialogService : IDialogService
             return null;
         IStorageFile? file = await Owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Save function block",
+            Title = "Gem funktionsblok",
             SuggestedFileName = suggestedFileName,
             DefaultExtension = "ifb",
             FileTypeChoices = new[] { IfbFileType }
@@ -108,7 +108,7 @@ public sealed class AvaloniaDialogService : IDialogService
             DefaultExtension = extension,
             FileTypeChoices = new[]
             {
-                new FilePickerFileType(asText ? "Text report" : "HTML report") { Patterns = new[] { "*." + extension } },
+                new FilePickerFileType(asText ? "Tekstrapport" : "HTML-rapport") { Patterns = new[] { "*." + extension } },
             }
         });
         return file?.TryGetLocalPath();
@@ -120,7 +120,7 @@ public sealed class AvaloniaDialogService : IDialogService
             return null;
         IReadOnlyList<IStorageFile> files = await Owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Import catalog file",
+            Title = "Importer katalogfil",
             AllowMultiple = false,
             FileTypeFilter = new[] { CatalogFileType }
         });
@@ -133,7 +133,7 @@ public sealed class AvaloniaDialogService : IDialogService
             return null;
         IReadOnlyList<IStorageFolder> folders = await Owner.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Import catalog folder",
+            Title = "Importer katalogmappe",
             AllowMultiple = false
         });
         return folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
@@ -147,7 +147,7 @@ public sealed class AvaloniaDialogService : IDialogService
     }
 
     public Task ShowSettingsAsync(string settingsText) =>
-        ShowButtonsAsync("Effective settings", settingsText, selectable: true, ("Close", true));
+        ShowButtonsAsync("Effektive indstillinger", settingsText, selectable: true, ("Luk", true));
 
     public async Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note, LibraryOrigin? origin = null,
         string affirmative = "OK")

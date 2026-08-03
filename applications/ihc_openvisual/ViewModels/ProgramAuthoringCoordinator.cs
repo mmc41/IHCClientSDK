@@ -48,7 +48,7 @@ internal sealed class ProgramAuthoringCoordinator(
     /// <summary>The arithmetic operations offered on a Commands node when a numeric target register is armed (US-032).</summary>
     public ObservableCollection<ProductMenuItemViewModel> ProgramArithmeticMenu { get; } = new();
 
-    // The variable armed by "Use in program" to become the operand of the next event/command (US-028). Setting it
+    // The variable armed by "Brug i program" to become the operand of the next event/command (US-028). Setting it
     // rebuilds the menus against the current selection, mirroring the old [ObservableProperty]/OnChanged pair.
     private TreeNodeViewModel? _pendingProgramVariable;
 
@@ -73,54 +73,54 @@ internal sealed class ProgramAuthoringCoordinator(
     // simply not surfaced (the app owns which methods it presents and how it phrases them; the SDK owns the tokens/
     // names/notes/semantics). The full (PinType, Category, Token) triple is the method's identity — the token alone is
     // reused across categories, AND the same (Category, Token) means different things across pin-type families (e.g.
-    // (Command,_0xa) is "set to ON" for a Bool pin but "= 0" for a Timer pin), which is why PinType is part of the key.
+    // (Command,_0xa) is "sættes til ON" for a Bool pin but "= 0" for a Timer pin), which is why PinType is part of the key.
     private static readonly FrozenDictionary<(ProgramPinType PinType, ProgramMethodCategory Category, string Token), string> MethodVerbs =
         new Dictionary<(ProgramPinType, ProgramMethodCategory, string), string>
         {
-            [(ProgramPinType.Bool, ProgramMethodCategory.Event, "_0xa")] = "changes to ON",
-            [(ProgramPinType.Bool, ProgramMethodCategory.Event, "_0x14")] = "changes to OFF",
-            [(ProgramPinType.Bool, ProgramMethodCategory.Event, "_0x1e")] = "changes to",           // 2-operand (second pin)
-            [(ProgramPinType.Bool, ProgramMethodCategory.Event, "_0x28")] = "changes to NOT",       // 2-operand
-            [(ProgramPinType.Bool, ProgramMethodCategory.Event, "_0x96")] = "changes state",
-            [(ProgramPinType.Bool, ProgramMethodCategory.Event, "_0x9b")] = "is assigned",
-            [(ProgramPinType.Bool, ProgramMethodCategory.Command, "_0xa")] = "set to ON",
-            [(ProgramPinType.Bool, ProgramMethodCategory.Command, "_0x14")] = "set to OFF",
-            [(ProgramPinType.Bool, ProgramMethodCategory.Command, "_0x1e")] = "set to",             // 2-operand
-            [(ProgramPinType.Bool, ProgramMethodCategory.Command, "_0x28")] = "set to NOT",         // 2-operand
-            [(ProgramPinType.Bool, ProgramMethodCategory.Command, "_0x23")] = "toggled",
-            [(ProgramPinType.Bool, ProgramMethodCategory.Condition, "_0xa")] = "is ON",
-            [(ProgramPinType.Bool, ProgramMethodCategory.Condition, "_0x14")] = "is OFF",
-            [(ProgramPinType.Bool, ProgramMethodCategory.Condition, "_0x1e")] = "equals",           // 2-operand
-            [(ProgramPinType.Bool, ProgramMethodCategory.Condition, "_0x28")] = "differs from",     // 2-operand (was unary "is NOT ON")
+            [(ProgramPinType.Bool, ProgramMethodCategory.Event, "_0xa")] = "skifter til ON",
+            [(ProgramPinType.Bool, ProgramMethodCategory.Event, "_0x14")] = "skifter til OFF",
+            [(ProgramPinType.Bool, ProgramMethodCategory.Event, "_0x1e")] = "skifter til",           // 2-operand (second pin)
+            [(ProgramPinType.Bool, ProgramMethodCategory.Event, "_0x28")] = "skifter til IKKE",       // 2-operand
+            [(ProgramPinType.Bool, ProgramMethodCategory.Event, "_0x96")] = "skifter tilstand",
+            [(ProgramPinType.Bool, ProgramMethodCategory.Event, "_0x9b")] = "tildeles",
+            [(ProgramPinType.Bool, ProgramMethodCategory.Command, "_0xa")] = "sættes til ON",
+            [(ProgramPinType.Bool, ProgramMethodCategory.Command, "_0x14")] = "sættes til OFF",
+            [(ProgramPinType.Bool, ProgramMethodCategory.Command, "_0x1e")] = "sættes til",             // 2-operand
+            [(ProgramPinType.Bool, ProgramMethodCategory.Command, "_0x28")] = "sættes til IKKE",         // 2-operand
+            [(ProgramPinType.Bool, ProgramMethodCategory.Command, "_0x23")] = "kippes",
+            [(ProgramPinType.Bool, ProgramMethodCategory.Condition, "_0xa")] = "er ON",
+            [(ProgramPinType.Bool, ProgramMethodCategory.Condition, "_0x14")] = "er OFF",
+            [(ProgramPinType.Bool, ProgramMethodCategory.Condition, "_0x1e")] = "er lig med",           // 2-operand
+            [(ProgramPinType.Bool, ProgramMethodCategory.Condition, "_0x28")] = "er forskellig fra",     // 2-operand (was unary "is NOT ON")
             // Weekday (PG-1b): the System-weekday assignment reads pin-first in the menu though it stores "System ugedag -> %P".
-            [(ProgramPinType.Weekday, ProgramMethodCategory.Event, "_0x5")] = "= system weekday",
+            [(ProgramPinType.Weekday, ProgramMethodCategory.Event, "_0x5")] = "= system ugedag",
             // Timer (D21/D22, the full nine) — a shared token (_0xa) means something different than the bool verb.
             [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0xa")] = "= 0",
-            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0x19")] = "= initial value",
-            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0x1e")] = "= another timer",           // 2-operand
-            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0x5a")] = "increased by",              // 2-operand
-            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0x64")] = "decreased by",              // 2-operand
-            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0xbe")] = "count-down from initial value",
-            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0xc8")] = "count-up activated",
-            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0xd2")] = "count-down activated",
-            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0xdc")] = "stop counting",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0x19")] = "= initial værdi",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0x1e")] = "= en anden timer",           // 2-operand
+            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0x5a")] = "øges med",              // 2-operand
+            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0x64")] = "mindskes med",              // 2-operand
+            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0xbe")] = "nedtælling fra initial værdi",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0xc8")] = "optælling aktiveret",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0xd2")] = "nedtælling aktiveret",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Command, "_0xdc")] = "stop tælling",
             // Timer events (D22/progmode3).
-            [(ProgramPinType.Timer, ProgramMethodCategory.Event, "_0xa")] = "reaches 0",
-            [(ProgramPinType.Timer, ProgramMethodCategory.Event, "_0x9b")] = "is written",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Event, "_0xa")] = "når 0",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Event, "_0x9b")] = "skrives",
             // Timer conditions (D22/progmode3) — the comparisons are two-operand; the count-state predicates reuse
             // the command opcodes but are (code, family)-scoped, so their verbs live under the Condition family here.
-            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0xa")] = "is 0",
-            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0x32")] = "greater than",   // 2-operand
-            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0x46")] = "at least",       // 2-operand
-            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0x50")] = "at most",        // 2-operand
-            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0xc8")] = "counting up",
-            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0xd2")] = "counting down",
-            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0xdc")] = "stopped",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0xa")] = "er 0",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0x32")] = "større end",   // 2-operand
+            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0x46")] = "mindst",       // 2-operand
+            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0x50")] = "højst",        // 2-operand
+            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0xc8")] = "tæller op",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0xd2")] = "tæller ned",
+            [(ProgramPinType.Timer, ProgramMethodCategory.Condition, "_0xdc")] = "stoppet",
         }.ToFrozenDictionary();
 
     /// <summary>Pairs each catalog method with its GUI menu label ("<paramref name="varName"/> &lt;verb&gt;") by the
     /// method's (<paramref name="pinType"/>, Category, Token) — a timer's <c>_0xa</c> ("= 0") differs from a bool's
-    /// ("set to ON") for the same token, so the pin type is part of the key; a type without its own verb falls back to
+    /// ("sættes til ON") for the same token, so the pin type is part of the key; a type without its own verb falls back to
     /// the bool verb (analog/weekday reuse the bool changes-state/is-assigned verbs). Order-independent and
     /// resize-safe: a method with no verb is dropped rather than mis-labelled or throwing. The pure core each
     /// Event/Command/Condition menu is built from (internal so it is unit-testable against a reordered method list).</summary>
@@ -139,7 +139,7 @@ internal sealed class ProgramAuthoringCoordinator(
     {
         if (node is { IsPin: true })
         {
-            setStatus($"Using {node.DisplayName} — pick 'Add event' or 'Add command' on the program.");
+            setStatus($"Bruger {node.DisplayName} — vælg 'Tilføj hændelse' eller 'Tilføj kommando' på programmet.");
             PendingProgramVariable = node;
         }
     }
@@ -147,7 +147,7 @@ internal sealed class ProgramAuthoringCoordinator(
     /// <summary>Arms <paramref name="variable"/> and surfaces the method popup on <paramref name="container"/> — the
     /// drag gesture behind US-028. It selects the drop-target container so the shared menu-builder populates that
     /// container's Add-event/Add-command menu for the armed variable; the user then chooses a method, which builds the
-    /// event/command exactly as the two-step "Use in program" does. A-27's locked-block gate is applied upstream.</summary>
+    /// event/command exactly as the two-step "Brug i program" does. A-27's locked-block gate is applied upstream.</summary>
     public void ArmAndSelect(TreeNodeViewModel variable, TreeNodeViewModel container)
     {
         PendingProgramVariable = variable;
@@ -240,28 +240,33 @@ internal sealed class ProgramAuthoringCoordinator(
         }
     }
 
+    // The one-operand and two-operand authors of a family report the SAME outcome — the installer sees an event or a
+    // condition appear either way — so each family's status is declared once instead of at both call sites.
+    private const string EventAddedStatus = "Hændelse tilføjet til programmet.";
+    private const string ConditionAddedStatus = "Betingelse tilføjet.";
+
     private Task AddProgramEventAsync(ElementId eventsId, ElementId variableId, string method, string name, string note) =>
         runAsync(nameof(AddProgramEventAsync), async () =>
         {
             if (session.Commands.AddProgramEvent(session.Current!, eventsId, variableId, method, name, note) is { } command)
-                await applyAndReport(command, "Event added to the program.");
+                await applyAndReport(command, EventAddedStatus);
         });
 
     private Task AddProgramCommandAsync(ElementId actionsId, ElementId variableId, string method, string name, string note) =>
         runAsync(nameof(AddProgramCommandAsync), () =>
-            applyAndReport(session.Commands.AddProgramCommand(session.Current!, actionsId, variableId, method, name, note), "Command added to the program."));
+            applyAndReport(session.Commands.AddProgramCommand(session.Current!, actionsId, variableId, method, name, note), "Kommando tilføjet til programmet."));
 
     private Task AddConditionAsync(ElementId conditionsId, ElementId variableId, string method, string name, string note) =>
         runAsync(nameof(AddConditionAsync), () =>
-            applyAndReport(session.Commands.AddCondition(session.Current!, conditionsId, variableId, method, name, note), "Condition added."));
+            applyAndReport(session.Commands.AddCondition(session.Current!, conditionsId, variableId, method, name, note), ConditionAddedStatus));
 
     private Task AddCaseAsync(ElementId commandsId, ElementId switchVariableId) =>
         runAsync(nameof(AddCaseAsync), () =>
-            applyAndReport(session.Commands.AddCase(session.Current!, commandsId, switchVariableId), "Case structure inserted."));
+            applyAndReport(session.Commands.AddCase(session.Current!, commandsId, switchVariableId), "Case struktur indsat."));
 
     private Task AddArithmeticAsync(ElementId commandsId, ElementId targetId, string method, ElementId operandId, string name) =>
         runAsync(nameof(AddArithmeticAsync), () =>
-            applyAndReport(session.Commands.AddArithmeticCommand(session.Current!, commandsId, targetId, method, operandId, name), "Arithmetic command added."));
+            applyAndReport(session.Commands.AddArithmeticCommand(session.Current!, commandsId, targetId, method, operandId, name), "Aritmetisk kommando tilføjet."));
 
     // T008: the two-operand event / condition authors — the arithmetic peer for the Events/Conditions families
     // (%P <op> %S with the author-chosen operand %S), through the extended AddProgramEvent/AddCondition (link2).
@@ -269,12 +274,12 @@ internal sealed class ProgramAuthoringCoordinator(
         runAsync(nameof(AddTwoOperandEventAsync), async () =>
         {
             if (session.Commands.AddProgramEvent(session.Current!, eventsId, variableId, method, name, note, operandId) is { } command)
-                await applyAndReport(command, "Event added to the program.");
+                await applyAndReport(command, EventAddedStatus);
         });
 
     private Task AddTwoOperandConditionAsync(ElementId conditionsId, ElementId variableId, ElementId operandId, string method, string name, string note) =>
         runAsync(nameof(AddTwoOperandConditionAsync), () =>
-            applyAndReport(session.Commands.AddCondition(session.Current!, conditionsId, variableId, method, name, note, operandId), "Condition added."));
+            applyAndReport(session.Commands.AddCondition(session.Current!, conditionsId, variableId, method, name, note, operandId), ConditionAddedStatus));
 
     // The numeric variables (decimal/integer/counter) in the programming block — the operand candidates for an
     // arithmetic command line (US-032).
@@ -337,7 +342,7 @@ internal sealed class ProgramAuthoringCoordinator(
     {
         if (node is { IsEventsContainer: true, ElementId: { } eventsId } && session.Current is { } project
             && session.Commands.AddPowerEvent(project, eventsId) is { } command)
-            await applyAndReport(command, "Powerup event added to the program.");
+            await applyAndReport(command, "Powerup hændelse tilføjet til programmet.");
     });
 
     /// <summary>Toggles an output's <i>Save current value</i> power-loss persistence (US-033).</summary>
@@ -345,7 +350,7 @@ internal sealed class ProgramAuthoringCoordinator(
     {
         if (node is { IsOutputPin: true, ElementId: { } outputId } && session.Current is { } project)
             await applyAndReport(session.Commands.SetOutputBackup(project, outputId, !node.IsValueSaved),
-                node.IsValueSaved ? "Output value no longer saved on power loss." : "Output value saved on power loss.");
+                node.IsValueSaved ? "Udgangsværdi gemmes ikke længere ved strømsvigt." : "Udgangsværdi gemmes ved strømsvigt.");
     });
 
     /// <summary>Adds a new, empty program to a block's Programs group (US-026, uxparity2 W4). A block may hold more
@@ -353,21 +358,21 @@ internal sealed class ProgramAuthoringCoordinator(
     public Task AddProgramAsync(TreeNodeViewModel? node) => runAsync("AddProgram", async () =>
     {
         if (node is { Kind: TreeNodeKind.Programs, ElementId: { } id } && session.Current is { } project)
-            await applyAndReport(session.Commands.AddProgram(project, id, ProgramDefaultName), "Program inserted.");
+            await applyAndReport(session.Commands.AddProgram(project, id, ProgramDefaultName), "Program indsat.");
     });
 
     /// <summary>Inserts a conditional sub-program (Conditions + true/false command branches) into a Commands group (US-029).</summary>
     public Task AddSubProgramAsync(TreeNodeViewModel? node) => runAsync("AddSubProgram", async () =>
     {
         if (node is { IsCommandsContainer: true, ElementId: { } id } && session.Current is { } project)
-            await applyAndReport(session.Commands.AddSubProgram(project, id), "Sub-program inserted.");
+            await applyAndReport(session.Commands.AddSubProgram(project, id), "Under program indsat.");
     });
 
     /// <summary>Inserts a nested logic group inside a Conditions group for a compound expression (US-029).</summary>
     public Task AddLogicGroupAsync(TreeNodeViewModel? node) => runAsync("AddLogicGroup", async () =>
     {
         if (node is { IsConditionsContainer: true, ElementId: { } id } && session.Current is { } project)
-            await applyAndReport(session.Commands.AddLogicGroup(project, id), "Logic group inserted.");
+            await applyAndReport(session.Commands.AddLogicGroup(project, id), "Logik gruppe indsat.");
     });
 
     /// <summary>Combines a Conditions group with OR (<c>&gt;=1</c>) (US-029).</summary>
@@ -380,7 +385,7 @@ internal sealed class ProgramAuthoringCoordinator(
     {
         if (node is { IsConditionsContainer: true, ElementId: { } id } && session.Current is { } project)
             await applyAndReport(session.Commands.SetConditionsLogic(project, id, or),
-                or ? "Conditions combined with OR (>=1)." : "Conditions combined with AND (&).");
+                or ? "Betingelser kombineret med OR (>=1)." : "Betingelser kombineret med AND (&).");
     });
 
     /// <summary>Adds a case value branch to the selected Case node (US-031): prompts for the criterion value, then
@@ -394,15 +399,15 @@ internal sealed class ProgramAuthoringCoordinator(
         // An enum switch takes one of its type's STATE names as the criterion (the gateway rejects any other value);
         // surface the states so the user enters a real one. A literal switch (counter/integer/…) takes a free value.
         IReadOnlyList<string> states = EnumSwitchStates(project, caseId);
-        string title = states.Count > 0 ? $"New case value ({string.Join(", ", states)})" : "New case value";
+        string title = states.Count > 0 ? $"Ny case værdi ({string.Join(", ", states)})" : "Ny case værdi";
         PropertiesResult? result = await dialogs.EditPropertiesAsync(title, string.Empty, string.Empty);
         if (result is null || string.IsNullOrWhiteSpace(result.Name))
             return;
         string criterion = result.Name.Trim();
         if (session.Commands.AddCaseValue(project, caseId, criterion) is { } command)
-            await applyAndReport(command, $"Case value '{criterion}' added.");
+            await applyAndReport(command, $"Case værdi '{criterion}' tilføjet.");
         else if (states.Count > 0)
-            setStatus($"'{criterion}' is not a state of this enumerator — choose one of: {string.Join(", ", states)}.");
+            setStatus($"'{criterion}' er ikke en tilstand i denne enumerator — vælg en af: {string.Join(", ", states)}.");
     });
 
     // The state names of an enum-keyed case's switch (US-031/T014), or an empty list when the switch is not an enum —

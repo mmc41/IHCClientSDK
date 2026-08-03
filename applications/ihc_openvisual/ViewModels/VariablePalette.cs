@@ -16,32 +16,33 @@ namespace ihc_openvisual.ViewModels;
 /// </summary>
 public static class VariablePalette
 {
-    // App presentation: the display label for each variable type. Every registry tag must appear here (the
-    // completeness test enforces it); the Entries projection reads the label by tag.
+    // App presentation: the display label for each variable type, in the wording IHC Visual's Indsæt ▸ Variable
+    // menu uses. Every registry tag must appear here (the completeness test enforces it); the Entries projection
+    // reads the label by tag.
     private static readonly IReadOnlyDictionary<string, string> Labels = new Dictionary<string, string>(StringComparer.Ordinal)
     {
-        ["resource_input"] = "Input",
-        ["resource_output"] = "Output",
+        ["resource_input"] = "Indgang",
+        ["resource_output"] = "Udgang",
         ["resource_flag"] = "Flag",
-        ["resource_counter"] = "Counter",
-        ["resource_integer"] = "Integer",
-        ["resource_floating_point"] = "Decimal",
+        ["resource_counter"] = "Tæller",
+        ["resource_integer"] = "Tal",
+        ["resource_floating_point"] = "Kommatal",
         ["resource_timer"] = "Timer",
-        ["resource_timertime"] = "Timer value",
-        ["resource_weekday"] = "Weekday",
-        ["resource_date"] = "Date",
-        ["resource_time"] = "Time of day",
-        ["resource_temperature"] = "Temperature",
-        ["resource_light"] = "Light",
-        ["resource_light_level"] = "Light level",
-        ["resource_humidity_level"] = "Humidity",
-        ["resource_holiday"] = "Holiday",
+        ["resource_timertime"] = "Timertid",
+        ["resource_weekday"] = "Ugedag",
+        ["resource_date"] = "Dato",
+        ["resource_time"] = "Tidspunkt",
+        ["resource_temperature"] = "Temperatur",
+        ["resource_light"] = "Lys",
+        ["resource_light_level"] = "Lysniveau",
+        ["resource_humidity_level"] = "Fugtighed",
+        ["resource_holiday"] = "Helligdag",
         ["resource_enum"] = "Enum",
         // Power/energy meter types (T017, D03): now user-insertable variable types mapped to their SDK resource tags.
-        ["kW"] = "Power (kW)",
-        ["kWh"] = "Energy (kWh)",
-        ["W"] = "Power (W)",
-        ["Wh"] = "Energy (Wh)",
+        ["kW"] = "kW",
+        ["kWh"] = "kWh",
+        ["W"] = "W",
+        ["Wh"] = "Wh",
     };
 
     /// <summary>The palette entries — (display label, resource tag) — projected over the SDK registry in registry
@@ -49,6 +50,13 @@ public static class VariablePalette
     /// cannot silently vanish from the UI.</summary>
     public static readonly IReadOnlyList<(string Label, string Tag)> Entries =
         VariableTypeRegistry.All.Select(t => (Labels[t.Tag], t.Tag)).ToList();
+
+    /// <summary>The label the palette gives <paramref name="tag"/> — the read side of <see cref="Labels"/>, for
+    /// callers that need to FIND a palette entry by its SDK type rather than assert its wording. Addressing a menu
+    /// item through the tag keeps the caller correct when the wording is revised, and keeps the wording itself
+    /// stated in exactly one place. Throws for a tag the registry does not carry, which the completeness test makes
+    /// unreachable.</summary>
+    public static string LabelFor(string tag) => Labels[tag];
 
     /// <summary>
     /// Labels the <paramref name="tags"/> the engine reports insertable for a section

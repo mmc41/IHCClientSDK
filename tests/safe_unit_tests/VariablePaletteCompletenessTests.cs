@@ -59,7 +59,7 @@ public class VariablePaletteCompletenessTests
         {
             Assert.That(offered.Select(e => e.Tag), Is.EquivalentTo(new[] { "resource_input", "resource_flag", "kW" }),
                 "every tag the engine reports is labelled — the palette filters nothing by section");
-            Assert.That(offered.Select(e => e.Label), Is.EqualTo(new[] { "Input", "Flag", "Power (kW)" }),
+            Assert.That(offered.Select(e => e.Label), Is.EqualTo(new[] { "Indgang", "Flag", "kW" }),
                 "…and comes back in REGISTRY order, not the caller's, so the menu reads the same wherever it is raised");
             Assert.That(VariablePalette.LabelledTypes(System.Array.Empty<string>()), Is.Empty,
                 "a container that accepts no variables yields no palette");

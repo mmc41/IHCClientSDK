@@ -31,12 +31,12 @@ public class DisabledReasonStatusBarTests
 
         window.KeyPressQwerty(PhysicalKey.Z, RawInputModifiers.Control);
         Dispatcher.UIThread.RunJobs();
-        Assert.That(vm.StatusText, Is.EqualTo("Nothing to undo."),
+        Assert.That(vm.StatusText, Is.EqualTo("Intet at fortryde."),
             "Ctrl+Z with an empty history explains itself in the status bar");
 
         window.KeyPressQwerty(PhysicalKey.F4, RawInputModifiers.None);
         Dispatcher.UIThread.RunJobs();
-        Assert.That(vm.StatusText, Is.EqualTo("Select a link row to jump to its opposite half."),
+        Assert.That(vm.StatusText, Is.EqualTo("Vælg en link-række for at hoppe til dens modsatte halvdel."),
             "F4 with no link row selected explains itself too");
 
         window.Close();

@@ -55,7 +55,7 @@ public partial class DataTablesViewModel : ViewModelBase, ihc_openvisual.Service
     [RelayCommand]
     private async Task AddText()
     {
-        PropertiesResult? result = await _dialogs.EditPropertiesAsync("New user-defined text", string.Empty, string.Empty);
+        PropertiesResult? result = await _dialogs.EditPropertiesAsync("Ny brugerdefineret tekst", string.Empty, string.Empty);
         if (result is null || string.IsNullOrWhiteSpace(result.Name) || _session.Current is not { } project)
             return;
         await ApplyAndReloadAsync(_session.Commands.AddUserText(project, result.Name.Trim()));
@@ -67,7 +67,7 @@ public partial class DataTablesViewModel : ViewModelBase, ihc_openvisual.Service
         if (SelectedUserText is not { } selected || !ElementId.TryParse(selected.Id, out ElementId id)
             || _session.Current is not { } project)
             return;
-        PropertiesResult? result = await _dialogs.EditPropertiesAsync("Edit user-defined text", selected.Text, string.Empty);
+        PropertiesResult? result = await _dialogs.EditPropertiesAsync("Rediger brugerdefineret tekst", selected.Text, string.Empty);
         if (result is null || string.IsNullOrWhiteSpace(result.Name))
             return;
         await ApplyAndReloadAsync(_session.Commands.UpdateUserText(project, id, result.Name.Trim()));
@@ -79,7 +79,7 @@ public partial class DataTablesViewModel : ViewModelBase, ihc_openvisual.Service
         if (SelectedUserText is not { } selected || !ElementId.TryParse(selected.Id, out ElementId id)
             || _session.Current is not { } project)
             return;
-        if (!await _dialogs.ConfirmAsync("Delete text", $"Delete the text '{selected.Text}'?"))
+        if (!await _dialogs.ConfirmAsync("Slet tekst", $"Slet teksten '{selected.Text}'?"))
             return;
         await ApplyAndReloadAsync(_session.Commands.DeleteUserText(project, id));
     }
@@ -98,10 +98,10 @@ public partial class DataTablesViewModel : ViewModelBase, ihc_openvisual.Service
                 Reload();
                 break;
             case EditStatus.Refused:
-                await _dialogs.ShowMessageAsync("Cannot edit", outcome.Reason ?? "The edit was refused.");
+                await _dialogs.ShowMessageAsync("Kan ikke redigere", outcome.Reason ?? "Redigeringen blev afvist.");
                 break;
             case EditStatus.Failed:
-                await _dialogs.ShowMessageAsync("Edit failed", outcome.Reason ?? "The edit failed.");
+                await _dialogs.ShowMessageAsync("Redigering mislykkedes", outcome.Reason ?? "Redigeringen mislykkedes.");
                 break;
         }
     }

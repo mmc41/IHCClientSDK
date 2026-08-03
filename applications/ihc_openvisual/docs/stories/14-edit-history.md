@@ -14,7 +14,7 @@ status: draft
 so that a mistake in any editing area (localities, products, function blocks, links, programming,
 project metadata) can be recovered without rebuilding the work by hand.
 
-**Scope:** the *Edit* menu's *Undo* and *Redo* actions and their `Ctrl+Z` /
+**Scope:** the *Rediger* menu's *Undo* and *Redo* actions and their `Ctrl+Z` /
 `Ctrl+Y` shortcuts; the requirement that every mutating operation across E2–E9 enters the history; the
 status-bar confirmation of what was undone/redone; redo invalidation on a new edit; and the
 empty-history behaviour (greyed menu items, inert shortcuts). **Scope excludes:** the automatic crash/power-loss backup (E1, US-005); the

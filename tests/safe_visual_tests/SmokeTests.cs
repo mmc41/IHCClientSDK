@@ -91,7 +91,7 @@ public class SmokeTests : AvaloniaTestBase
         window.CaptureRenderedFrame();
 
         var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
-        Assert.That(labels, Does.Contain("Lokalitet"), "the newly inserted locality renders in the tree");
+        Assert.That(labels, Does.Contain(ProjectWorkflow.NewLocalityName), "the newly inserted locality renders in the tree");
     }
 
     // US-010: an inserted wired product renders (nested under its auto-expanded locality) in the Installation tree.
@@ -177,7 +177,7 @@ public class SmokeTests : AvaloniaTestBase
         window.CaptureRenderedFrame();
 
         var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
-        Assert.That(labels, Does.Contain("Tom blok"), "the empty function block renders in the Functions pane");
+        Assert.That(labels, Does.Contain(ProjectWorkflow.EmptyBlockName), "the empty function block renders in the Functions pane");
     }
 
     // Selection: a Functions-pane function block, when selected, becomes the active node so its context-menu
@@ -266,10 +266,10 @@ public class SmokeTests : AvaloniaTestBase
 
         vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[0].Children[0]);   // arm the Input
         vm.SelectNode(FindFlag(vm.FunctionNodes, n => n.IsEventsContainer)!);
-        await ((IAsyncRelayCommand)vm.ProgramEventMenu[0].Command!).ExecuteAsync(null);    // "Doorbell changes to ON"
+        await ((IAsyncRelayCommand)vm.ProgramEventMenu[0].Command!).ExecuteAsync(null);    // "Doorbell skifter til ON"
         vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[1].Children[0]);   // arm the Output
         vm.SelectNode(FindFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
-        await ((IAsyncRelayCommand)vm.ProgramCommandMenu.First(m => m.Header.Contains("toggled")).Command!).ExecuteAsync(null);
+        await ((IAsyncRelayCommand)vm.ProgramCommandMenu.First(m => m.Header.Contains("kippes")).Command!).ExecuteAsync(null);
 
         var window = new MainWindow { DataContext = vm };
         CurrentTestWindow = window;
@@ -324,7 +324,7 @@ public class SmokeTests : AvaloniaTestBase
         Assert.Multiple(() =>
         {
             Assert.That(labels, Does.Contain("Under program"), "the sub-program renders");
-            Assert.That(labels.Any(t => t?.StartsWith("Conditions") == true && t.Contains(">=1")), Is.True, "the OR-toggled Conditions group renders");
+            Assert.That(labels.Any(t => t?.StartsWith("Betingelser") == true && t.Contains(">=1")), Is.True, "the OR-toggled Conditions group renders");
             Assert.That(labels, Does.Contain("Kommandoer ved betingelser sande"));
             Assert.That(labels, Does.Contain("Kommandoer ved betingelser falske"));
         });
@@ -342,7 +342,7 @@ public class SmokeTests : AvaloniaTestBase
         vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
         harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Mode", new[] { "Direct", "With delay", "Switched off" });
         vm.SelectNode(vm.InstallationNodes[0].Children[2]);   // Settings
-        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "New…").Command!).ExecuteAsync(null);
+        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "Ny…").Command!).ExecuteAsync(null);
 
         var window = new MainWindow { DataContext = vm };
         CurrentTestWindow = window;
@@ -452,7 +452,7 @@ public class SmokeTests : AvaloniaTestBase
         vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
         await vm.AddPowerEventCommand.ExecuteAsync(FindFlag(vm.FunctionNodes, n => n.IsEventsContainer));
         var outputSectionId = vm.InstallationNodes[0].Children[1].ElementId!.Value;
-        var outputId = (await harness.Session.AddVariableAsync(outputSectionId, "resource_output", "Light"))!.Value;
+        var outputId = (await harness.Session.AddVariableAsync(outputSectionId, "resource_output", "Lys"))!.Value;
         await vm.ToggleSaveValueCommand.ExecuteAsync(FindFlag(vm.InstallationNodes, n => n.ElementId == outputId));
 
         var window = new MainWindow { DataContext = vm };
@@ -475,7 +475,7 @@ public class SmokeTests : AvaloniaTestBase
             Assert.That(labels, Does.Contain("Powerup"), "the Powerup event renders");
             // The vendor renders the bare pin name — no "(saved)" suffix (F-019). The backup flag surfaces on the
             // "Save current value" menu item instead.
-            Assert.That(labels, Does.Contain("Light"), "the output renders under its section");
+            Assert.That(labels, Does.Contain("Lys"), "the output renders under its section");
             Assert.That(labels, Does.Not.Contain("Light (saved)"), "no (saved) suffix in the tree label");
         });
     }
@@ -599,8 +599,8 @@ public class SmokeTests : AvaloniaTestBase
         var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
         Assert.Multiple(() =>
         {
-            Assert.That(labels, Does.Contain("System tables (read-only)"));
-            Assert.That(labels, Does.Contain("User-defined texts"));
+            Assert.That(labels, Does.Contain("System tabeller (skrivebeskyttet)"));
+            Assert.That(labels, Does.Contain("Brugerdefinerede tekster"));
             Assert.That(labels, Does.Contain("By main door"), "the user text renders in the editable list");
         });
     }
@@ -627,13 +627,13 @@ public class SmokeTests : AvaloniaTestBase
             .Where(t => t.IsVisible).Select(t => t.Text).ToList();
         Assert.Multiple(() =>
         {
-            Assert.That(labels, Does.Contain("Input modules"));
-            Assert.That(labels, Does.Contain("Output modules"));
-            Assert.That(labels, Does.Contain("Data line").And.Contain("Module type")
-                .And.Contain("Locality").And.Contain("Description"), "the vendor's four column headers");
+            Assert.That(labels, Does.Contain("Indgangsmoduler"));
+            Assert.That(labels, Does.Contain("Udgangsmoduler"));
+            Assert.That(labels, Does.Contain("Datalinie").And.Contain("Modul type")
+                .And.Contain("Lokalitet").And.Contain("Beskrivelse"), "the vendor's four column headers");
             Assert.That(labels, Does.Contain("Input 24/3").And.Contain("I sidetavle")
                 .And.Contain("Sensorer, lavt forbrug"), "a documented module renders its whole row");
-            Assert.That(labels, Does.Contain("<not in use>"), "a line carrying no module is marked, not blank");
+            Assert.That(labels, Does.Contain("<ikke i brug>"), "a line carrying no module is marked, not blank");
         });
     }
 
@@ -654,9 +654,9 @@ public class SmokeTests : AvaloniaTestBase
         var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
         Assert.Multiple(() =>
         {
-            Assert.That(labels, Does.Contain("Project"));
-            Assert.That(labels, Does.Contain("Customer"));
-            Assert.That(labels, Does.Contain("Installer"));
+            Assert.That(labels, Does.Contain("Projekt oplysninger"));
+            Assert.That(labels, Does.Contain("Kunde oplysninger"));
+            Assert.That(labels, Does.Contain("Installatør information"));
             Assert.That(custName, Is.Not.Null);
         });
     }
@@ -720,7 +720,7 @@ public class SmokeTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public void ProductProperties_HasPlaceringTextBox_NoLocationDropdown()
     {
-        var window = new ProductPropertiesWindow { Title = "Product properties" };
+        var window = new ProductPropertiesWindow { Title = "Produkt egenskaber" };
         var name = window.FindControl<TextBox>("NameBox");
         var placering = window.FindControl<TextBox>("PlaceringBox");
         var location = window.FindControl<ComboBox>("LocationCombo");
@@ -736,7 +736,7 @@ public class SmokeTests : AvaloniaTestBase
 
         Assert.Multiple(() =>
         {
-            Assert.That(window.Title, Is.EqualTo("Product properties"));
+            Assert.That(window.Title, Is.EqualTo("Produkt egenskaber"));
             Assert.That(name?.Text, Is.EqualTo("LK FUGA Tryk 2 tast"));
             Assert.That(placering, Is.Not.Null, "an editable Placement text field is present");
             Assert.That(placering!.Text, Is.EqualTo("i loft"), "Placement is a plain, editable textbox");
@@ -777,7 +777,7 @@ public class SmokeTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public void ModemPropertiesWindow_ShowsModemFields()
     {
-        var window = new ModemPropertiesWindow { Title = "SMS modem properties" };
+        var window = new ModemPropertiesWindow { Title = "SMS modem egenskaber" };
         var name = window.FindControl<TextBox>("NameBox");
         var pin = window.FindControl<TextBox>("PinCodeBox");
         var cable = window.FindControl<TextBox>("Cable0VBox");
@@ -789,7 +789,7 @@ public class SmokeTests : AvaloniaTestBase
 
         Assert.Multiple(() =>
         {
-            Assert.That(window.Title, Is.EqualTo("SMS modem properties"));
+            Assert.That(window.Title, Is.EqualTo("SMS modem egenskaber"));
             Assert.That(name?.Text, Is.EqualTo("SMS Modem"));
             Assert.That(pin, Is.Not.Null, "the PIN field is present");
             Assert.That(cable, Is.Not.Null, "the cabling fields are present");
@@ -813,7 +813,7 @@ public class SmokeTests : AvaloniaTestBase
 
         Assert.Multiple(() =>
         {
-            Assert.That(window.Title, Is.EqualTo("Advanced dimmer properties"));
+            Assert.That(window.Title, Is.EqualTo("Avancerede lysdæmper egenskaber"));
             Assert.That(softOn?.Value, Is.EqualTo(700));
             Assert.That(minimum, Is.Not.Null);
             Assert.That(loadMode, Is.Not.Null, "the load-characteristic selector is present");
@@ -833,9 +833,9 @@ public class SmokeTests : AvaloniaTestBase
 
         Assert.Multiple(() =>
         {
-            Assert.That(about.Title, Is.EqualTo("About IHC OpenVisual"));
-            Assert.That(appVersion?.Text, Does.StartWith("App Version:"));
-            Assert.That(sdkVersion?.Text, Does.StartWith("SDK Version:"));
+            Assert.That(about.Title, Is.EqualTo("Om IHC OpenVisual"));
+            Assert.That(appVersion?.Text, Does.StartWith("App version:"));
+            Assert.That(sdkVersion?.Text, Does.StartWith("SDK version:"));
         });
     }
 

@@ -16,7 +16,7 @@ namespace safe_visual_tests;
 
 /// <summary>
 /// A-34 (US-028) — in programming mode, dragging a variable onto an events/commands container opens the same method
-/// popup the two-step <i>Use in program</i> arms, and the chosen method builds the event/command. The menu-building is
+/// popup the two-step <i>Brug i program</i> arms, and the chosen method builds the event/command. The menu-building is
 /// shared (<c>RebuildProgramMenus</c>), the drop is gated on the A-27 locked-block rule, and the two-step supplement
 /// stays.
 /// </summary>
@@ -53,10 +53,10 @@ public class DragProgramTests : AvaloniaTestBase
         // The drop armed the variable and populated the Events method popup for that container — identical to the
         // two-step Use-in-program menu (US-028).
         Assert.That(vm.ProgramEventMenu.Select(m => m.Header),
-            Is.EquivalentTo(new[] { "Doorbell changes to ON", "Doorbell changes to OFF", "Doorbell changes state", "Doorbell is assigned" }),
+            Is.EquivalentTo(new[] { "Doorbell skifter til ON", "Doorbell skifter til OFF", "Doorbell skifter tilstand", "Doorbell tildeles" }),
             "the drop offers the same method set as Use-in-program");
 
-        var option = vm.ProgramEventMenu.First(m => m.Header == "Doorbell changes to ON");
+        var option = vm.ProgramEventMenu.First(m => m.Header == "Doorbell skifter til ON");
         await ((IAsyncRelayCommand)option.Command!).ExecuteAsync(null);
 
         var eventsAfter = TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsEventsContainer)!;

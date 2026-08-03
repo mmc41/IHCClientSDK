@@ -13,7 +13,7 @@ status: draft
 hovering the mouse over the node — with no modifier key — so that the note text authored in the project is
 discoverable at a glance and the resource ID needed to cross-reference the controller is always visible.
 
-**Scope:** on-hover tooltips for nodes in both the *Installation* and *Functions* panes (localities,
+**Scope:** on-hover tooltips for nodes in both the *Installation* and *Funktioner* panes (localities,
 products, product inputs/outputs, function blocks, and function-block pins); the tooltip's content (the
 node's documentation note and its IHC resource ID); and the always-on behaviour that shows the resource ID
 without holding a modifier key. **Scope excludes:** editing the note or the resource ID (that is the
@@ -25,7 +25,7 @@ icon/state language (E12).
   exists.
 - MUST: For a node that maps to an IHC resource (input, output, function block), the tooltip always shows
   the node's IHC resource ID without the user holding any modifier key.
-- SHOULD: The tooltip appears for nodes in both the *Installation* and *Functions* panes.
+- SHOULD: The tooltip appears for nodes in both the *Installation* and *Funktioner* panes.
 
 **Readiness:** Ready.
 
@@ -46,8 +46,8 @@ menus, dialogs).
   shows a tooltip containing that note text, preserving the note's line breaks.
 - MUST: The tooltip requires **no modifier key** — plain hover is sufficient.
 - MUST: Hovering a node that has **no** documentation note and **no** resource ID (for example the
-  *Localities* root or an empty locality) shows **no** tooltip.
-- SHOULD: The tooltip is available for nodes in both the *Installation* and *Functions* panes.
+  *Lokaliteter* root or an empty locality) shows **no** tooltip.
+- SHOULD: The tooltip is available for nodes in both the *Installation* and *Funktioner* panes.
 - SHOULD: The tooltip dismisses when the pointer leaves the node.
 
 ### AC illustrations
@@ -55,7 +55,7 @@ menus, dialogs).
 - Hovering a product input whose note reads `Connected to presence indication from the PIR sensor.\n
   Mode is defined under settings:` shows a tooltip with that exact text, the second line beneath
   the first (the note associated with that node), on plain hover.
-- Hovering the *Localities* root (no note, no resource ID) shows no tooltip.
+- Hovering the *Lokaliteter* root (no note, no resource ID) shows no tooltip.
 
 **Readiness:** Ready.
 

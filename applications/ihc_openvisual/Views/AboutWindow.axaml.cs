@@ -21,8 +21,8 @@ public partial class AboutWindow : Window
         AppDescription.Text = Constants.AppDescription;
         RepoLinkText.Text = Constants.SdkRepoLink;
         RepoAuthors.Text = Constants.Authors;
-        AppVersionText.Text = $"App Version: {Ihc.Bootstrap.AppTelemetryBootstrap.GetAppVersionStr()}";
-        SdkVersionText.Text = $"SDK Version: {Ihc.VersionInfo.GetSdkVersionStr()}";
+        AppVersionText.Text = $"App version: {Ihc.Bootstrap.AppTelemetryBootstrap.GetAppVersionStr()}";
+        SdkVersionText.Text = $"SDK version: {Ihc.VersionInfo.GetSdkVersionStr()}";
     }
 
     private void OnRepoLinkClick(object? sender, RoutedEventArgs e)

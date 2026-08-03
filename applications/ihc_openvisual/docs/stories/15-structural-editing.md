@@ -16,7 +16,7 @@ locality, a product, a function block, a variable, a program element or a link �
 set of gestures, so a mistake or a change of plan can be fixed without rebuilding the tree by hand and
 without leaving orphaned logic behind.
 
-**Scope:** the general *Delete* of any node and its reference cascade; moving a node to another
+**Scope:** the general *Slet* of any node and its reference cascade; moving a node to another
 container (across localities/sections); reordering siblings within a container (which drives report
 order, US-040); and copy/paste of a node subtree within the project via the toolbar Cut/Copy/Paste and
 `Ctrl+X`/`Ctrl+C`/`Ctrl+V` (US-001, US-045). **Scope excludes:** the single-type instances already
@@ -96,7 +96,7 @@ Scenario: Delete is equivalent across all three activation routes
 ### Business rules (what is deletable at all)
 
 - MUST: **A product's pins are not deletable.** A pin exists because the product's catalog type declares it,
-  so it is not the installer's to remove — *Delete* is **absent** from a pin's context menu (US-068), and the
+  so it is not the installer's to remove — *Slet* is **absent** from a pin's context menu (US-068), and the
   `Delete` key on a pin does nothing. This holds whether or not the pin is linked. (Deleting a pin would
   produce a product that contradicts its own catalog type: a six-button switch carrying five inputs, the
   sixth button unaddressable, unwireable, and invisible in the tree — and for an unlinked pin the delete is
@@ -181,7 +181,7 @@ Scenario: Move a product to another locality by dragging it (primary gesture)
   When I drag the product onto another locality and release
   Then the product is re-parented under the target locality, keeping its documentation, terminal
     addressing and every link it participates in
-  And the same relocation is reflected in the "Functions" pane
+  And the same relocation is reflected in the "Funktioner" pane
   And the status bar confirms the move
 
 Scenario: Move a product to another locality with Cut/Paste (non-drag supplement)
@@ -241,7 +241,7 @@ with a reason.
 ## US-055 — Reorder nodes within a container
 
 **As an** IHC installer, **I want** to change the order of siblings under a container — localities under
-*Localities*, products under a locality, variables within a section — **so that** the tree and the
+*Lokaliteter*, products under a locality, variables within a section — **so that** the tree and the
 generated reports present components in the order I choose (US-040 documents products *in the order they
 appear* in the *Installation* pane).
 
@@ -251,14 +251,14 @@ appear* in the *Installation* pane).
 
 ```gherkin
 Scenario: Reorder siblings by dragging one to a new position (primary gesture)
-  Given several siblings under one container (e.g. the ten default localities under "Localities")
+  Given several siblings under one container (e.g. the ten default localities under "Lokaliteter")
   When I drag one sibling to a new position among its siblings and release
   Then the sibling takes the new position and the others close up around it
   And the new order is reflected identically in both panes, and in report output (US-040)
   And the status bar confirms the reorder
 
 Scenario: Reorder siblings with Move up / Move down (non-drag supplement)
-  Given several siblings under one container (e.g. the ten default localities under "Localities")
+  Given several siblings under one container (e.g. the ten default localities under "Lokaliteter")
   When I move one sibling with "Move up" / "Move down" (or Ctrl+Shift+Up / Ctrl+Shift+Down)
   Then the sibling takes the new position and the others close up around it, identically to the drag
   And the new order is reflected identically in both panes
@@ -284,19 +284,19 @@ Scenario: Reorder preserves identity and links
 - Verification method — **Demonstration** that a reorder changes sibling position in both panes and in
   report output, and preserves ids/links.
 - MUST: Reordering is offered **primarily by dragging a sibling to a new position**,
-  **with *Move up* / *Move down* (and cut/paste) as the non-drag supplements** that satisfy US-044
+  **with *Flyt op* / *Flyt ned* (and cut/paste) as the non-drag supplements** that satisfy US-044
   route-parity. A drag reorder is the same id-preserving move as US-054 with an in-container target index;
   while dragging, the legal insertion position is indicated and a drop outside the container's own sibling
-  list is refused. *Move up*/*Move down* stay **off the link row** and **off a pin** (US-068).
-- MUST: At the container's ends the move command is **unavailable rather than a silent no-op**: *Move up*
-  on the first sibling and *Move down* on the last (both, for an only child) are omitted from the context
+  list is refused. *Flyt op*/*Flyt ned* stay **off the link row** and **off a pin** (US-068).
+- MUST: At the container's ends the move command is **unavailable rather than a silent no-op**: *Flyt op*
+  on the first sibling and *Flyt ned* on the last (both, for an only child) are omitted from the context
   menu and greyed in the menu bar (US-044/US-068); a middle sibling offers both.
 
 **Readiness:** Ready.
 
 **Implementation status:** ✅ Implemented — the primary drag-to-reorder gesture moves a sibling to a new
 position (reflected in both panes and in report order), the move commands gate on reorderability at the
-container's ends; *Move up* / *Move down* and cut/paste stay as
+container's ends; *Flyt op* / *Flyt ned* and cut/paste stay as
 supplements.
 
 ---

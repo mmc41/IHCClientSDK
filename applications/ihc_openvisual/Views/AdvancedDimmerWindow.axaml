@@ -5,7 +5,7 @@
         xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="420"
         x:Class="ihc_openvisual.Views.AdvancedDimmerWindow"
-        Title="Advanced dimmer properties"
+        Title="Avancerede lysdæmper egenskaber"
         Width="420" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
@@ -18,37 +18,37 @@
             </Style>
         </StackPanel.Styles>
 
-        <TextBlock Name="SoftOnLabel" Classes="label" Text="Soft on-time (ms)"/>
+        <TextBlock Name="SoftOnLabel" Classes="label" Text="Blød opstart (ms)"/>
         <NumericUpDown Name="SoftOnBox" Minimum="200" Maximum="60000" Increment="100" FormatString="0"
                        a:AutomationProperties.LabeledBy="{Binding #SoftOnLabel}"/>
 
-        <TextBlock Name="SoftOffLabel" Classes="label" Text="Soft off-time (ms)"/>
+        <TextBlock Name="SoftOffLabel" Classes="label" Text="Blød nedlukning (ms)"/>
         <NumericUpDown Name="SoftOffBox" Minimum="200" Maximum="60000" Increment="100" FormatString="0"
                        a:AutomationProperties.LabeledBy="{Binding #SoftOffLabel}"/>
 
-        <TextBlock Name="ManualRampLabel" Classes="label" Text="Manual ramp time (s)"/>
+        <TextBlock Name="ManualRampLabel" Classes="label" Text="Manuel ramptid (s)"/>
         <NumericUpDown Name="ManualRampBox" Minimum="2" Maximum="10" Increment="1" FormatString="0"
                        a:AutomationProperties.LabeledBy="{Binding #ManualRampLabel}"/>
 
-        <TextBlock Name="MinimumLabel" Classes="label" Text="Minimum value (%)"/>
+        <TextBlock Name="MinimumLabel" Classes="label" Text="Minimum værdi (%)"/>
         <NumericUpDown Name="MinimumBox" Minimum="0" Maximum="100" Increment="1" FormatString="0"
                        a:AutomationProperties.LabeledBy="{Binding #MinimumLabel}"/>
 
-        <TextBlock Name="MaximumLabel" Classes="label" Text="Maximum value (%)"/>
+        <TextBlock Name="MaximumLabel" Classes="label" Text="Maksimum værdi (%)"/>
         <NumericUpDown Name="MaximumBox" Minimum="0" Maximum="100" Increment="1" FormatString="0"
                        a:AutomationProperties.LabeledBy="{Binding #MaximumLabel}"/>
 
-        <TextBlock Name="LoadModeLabel" Classes="label" Text="Load characteristic"/>
+        <TextBlock Name="LoadModeLabel" Classes="label" Text="Belastningstype"/>
         <ComboBox Name="LoadModeCombo" HorizontalAlignment="Stretch"
                   a:AutomationProperties.LabeledBy="{Binding #LoadModeLabel}">
-            <ComboBoxItem>Inductive</ComboBoxItem>
-            <ComboBoxItem>Capacitive</ComboBoxItem>
+            <ComboBoxItem>Induktiv</ComboBoxItem>
+            <ComboBoxItem>Kapacitiv</ComboBoxItem>
             <ComboBoxItem>Auto</ComboBoxItem>
         </ComboBox>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,14,0,0">
             <Button Name="OkButton" Content="OK" MinWidth="84" IsDefault="True" Click="OnOk"/>
-            <Button Name="CancelButton" Content="Cancel" MinWidth="84" IsCancel="True" Click="OnCancel"/>
+            <Button Name="CancelButton" Content="Annuller" MinWidth="84" IsCancel="True" Click="OnCancel"/>
         </StackPanel>
     </StackPanel>
 </Window>

@@ -7,7 +7,7 @@
 ## Vision and Purpose
 
 IHC OpenVisual exists to allow owners and installers of IHC installations to keep
-maintaining them for the long term — on any modern desktop OS, in English, using an open codebase.
+maintaining them for the long term — on any modern desktop OS, in Danish, using an open codebase.
 
 ## Key Features
 
@@ -17,7 +17,7 @@ maintaining them for the long term — on any modern desktop OS, in English, usi
 | Full project editing: localities, products, function blocks, links | The complete authoring workflow — model rooms, place wired/wireless devices, add logic blocks, wire inputs to outputs — in one two-pane workspace: **what is installed on the left, what it does on the right**, linked across the middle. |
 | Function-block programming | Author control logic (typed variables, events, conditions, commands, enums, case structures) so installations do exactly what the household needs. |
 | Built-in component catalog | The stock products and function blocks are embedded, so nothing else needs to be installed to create or extend a project. |
-| Modern flat-line SVG icon language + English help | A themeable (light/dark), accessible UI that new users can actually read: purpose-designed glyphs plus context-sensitive English help. |
+| Modern flat-line SVG icon language + help | A themeable (light/dark), accessible UI that new users can actually read: purpose-designed glyphs plus context-sensitive help in the application's own language. |
 
 ## Architecture Overview
 
@@ -41,7 +41,7 @@ desktop OS.
 | Cross-platform | Runs natively on Windows, macOS, and Linux. |
 | Self-contained catalog | The stock product and function-block catalog is embedded; no separate catalog installation is required. |
 | Open source (Apache-2.0) | The full source is open for inspection, extension, and long-term maintenance. |
-| Modern, accessible UX | An English UI and help with themeable flat-line SVG icons designed for legibility, using non-color-alone state cues. |
+| Modern, accessible UX | A Danish UI and help with themeable flat-line SVG icons designed for legibility, using non-color-alone state cues. |
 
 ## Differences from the Original IHC Visual
 
@@ -61,7 +61,7 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
 
 **Presentation**
 
-- The user interface is in English; the original is in Danish.
+- The user interface is in Danish, as the original is — including the menu and dialog wording, which follows the original's where the two apps offer the same command.
 - A title-bar dirty marker (`•`) shows at a glance that the project has unsaved changes.
 - Tree-node tooltips always include the node's IHC resource ID, without holding a modifier key.
 - Modern flat-line SVG icon set, themeable, and never signalling state by colour alone.
@@ -106,7 +106,7 @@ optional bridge for downloading and uploading projects from and to a live contro
 | User Class | Characteristics | Frequency of Use | Technical Proficiency |
 |-----------|-----------------|-------------------|---------------------|
 | Professional installer | Knows the IHC domain deeply (products, wiring, logic blocks); may be new to this app but already fluent in IHC project concepts | Weekly on customer projects | Domain: high · Software: medium |
-| Technical homeowner | Knows software well; learns the IHC domain as they go; benefits most from English UI, help, and validation feedback | Bursts (renovations, tweaks) | Domain: low-medium · Software: high |
+| Technical homeowner | Knows software well; learns the IHC domain as they go; benefits most from clear UI, help, and validation feedback | Bursts (renovations, tweaks) | Domain: low-medium · Software: high |
 | Contributor / developer | Extends the app or engine; needs strict layering so UI logic is testable without a running UI and the engine stays free of UI concerns | Ongoing | High |
 
 ## Operating Environment
@@ -129,7 +129,7 @@ optional bridge for downloading and uploading projects from and to a live contro
 - **Where a behaviour is unspecified, the app stays permissive** rather than guessing — it refuses only what is known to be invalid.
 - **Commands act on the selected element, never on which pane holds keyboard focus.** All mutations run on the engine's immutable model; the UI holds element ids, not object references.
 - **UI logic is testable without a running UI** — view-model logic avoids UI-framework types where feasible.
-- **English is the product language** for UI text and help. Project file content (the user's own names/notes, catalog text) is data and is preserved verbatim, whatever language it is in.
+- **Danish is the product language** for UI text and help. Project file content (the user's own names/notes, catalog text) is data and is preserved verbatim, whatever language it is in — the application never restates it in another language.
 - **Icon rules**: one flat-line SVG family (24-unit grid, `currentColor`, legible at small sizes); state is conveyed by colour *plus* a glyph/decoration, never colour alone. See the icon design guideline (linked in Part 4).
 
 ### Assumptions
@@ -286,11 +286,11 @@ taken on.
 
 ### F11 — Help and project documentation
 
-**Description**: English help and installation documentation output.
+**Description**: Danish help and installation documentation output.
 
 **Functional Requirements**:
 
-- FR-11.1: Context-sensitive English help: one action (e.g. `F1`) opens the topic for the selected element/view; all-new, originally authored content.
+- FR-11.1: Context-sensitive Danish help: one action (e.g. `F1`) opens the topic for the selected element/view; all-new, originally authored content.
 - FR-11.2: Edit project-level information (project, customer, installer identity) stored in the file.
 - FR-11.3: Generate the **three documentation reports** — end-user functions (Funktionsdokumentation), installation (Installationsdokumentation) and function-block logic (Functionsblok dokumentation) — each in **Standard** or **Fuld** mode and as **HTML** or **plain text**; each report has its own Documentation-menu entry opening the one shared picker pre-selected, with view-in-browser (printing is the browser's) and save-as actions. There are no report options beyond type × mode × format, and the output carries no navigation apparatus.
 - FR-11.4: **Fuld** mode is Standard plus additions only: the generation timestamp + programmer line, the Projekt identity block, inline `(ID …)` element ids at definition sites, the installation-only terminal-connections table, and a final **"Fejl i dokumentation"** section fed by the project verification checks — per locality → product → terminal, covering at least: unlinked terminal, missing identification code / light group / cable type / cable number / wire colour / placement / data-line address.

@@ -43,7 +43,7 @@ internal sealed class LinkingCoordinator(
             && source.IsPin && target.IsPin && session.Current is { } project)
         {
             linked = await applyAndReport(session.Commands.LinkPins(project, fromId, toId),
-                $"Linked {source.DisplayName} to {target.DisplayName}.");
+                $"Linkede {source.DisplayName} til {target.DisplayName}.");
         }
         return linked;
     }
@@ -54,7 +54,7 @@ internal sealed class LinkingCoordinator(
         if (node is { IsPin: true })
         {
             setPendingSource(node);
-            setStatus($"Linking from {node.DisplayName} — choose 'Link to here' on the other pin.");
+            setStatus($"Linker fra {node.DisplayName} — vælg 'Link til her' på den anden klemme.");
         }
     }
 
@@ -68,7 +68,7 @@ internal sealed class LinkingCoordinator(
                 return;
             if (getPendingSource() is not { } source || ReferenceEquals(source, node))
             {
-                setStatus("Choose 'Link from here' on the source pin first.");
+                setStatus("Vælg først 'Link fra her' på kilde-klemmen.");
                 return;
             }
             // The armed source is consumed by a link that was actually CREATED, never merely attempted: clearing it
@@ -107,10 +107,10 @@ internal sealed class LinkingCoordinator(
             return false;
         // The scene value variant (sliver #11) is the SDK's decision — used to shape the dialog and stamp the command.
         bool isDimmer = session.Commands.IsSceneWirelessDimming(project, scenesId);
-        var input = new SceneValueInput("Scene value", isDimmer, On: true, LevelPercent: isDimmer ? 100 : 0, RampMinutes: 0, RampSeconds: 0);
+        var input = new SceneValueInput("Scenarie værdi", isDimmer, On: true, LevelPercent: isDimmer ? 100 : 0, RampMinutes: 0, RampSeconds: 0);
 
         SceneValueResult? result = await dialogs.EditSceneValueAsync(input);
         return result is not null
-            && await applyAndReport(session.Commands.LinkScene(project, sceneOutputId, scenesId, result), "Scene link created.");
+            && await applyAndReport(session.Commands.LinkScene(project, sceneOutputId, scenesId, result), "Scenarie link oprettet.");
     }
 }

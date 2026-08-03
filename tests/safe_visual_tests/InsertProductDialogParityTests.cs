@@ -36,7 +36,7 @@ public class InsertProductDialogParityTests
             }
             return null;
         }
-        return Leaf(vm.ProductsMenu.First(c => c.Header == "Wired products").Children)!;
+        return Leaf(vm.ProductsMenu.First(c => c.Header == CatalogMenu.WiredProductsCategory).Children)!;
     }
 
     private static int ProductCount(Project project) =>

@@ -6,18 +6,18 @@ status: draft
 
 # E2 — Locality management
 
-**Goal:** Let an IHC installer model the rooms and places of the installation as a *Localities*
+**Goal:** Let an IHC installer model the rooms and places of the installation as a *Lokaliteter*
 tree — renaming the defaults, adding new ones, and deleting ones not needed — so that
 every product and function block has a meaningful location.
 
-**Scope:** the *Localities* root and its child locality nodes in both panes; rename via the
+**Scope:** the *Lokaliteter* root and its child locality nodes in both panes; rename via the
 *Properties* dialog; add; delete (including the cascade when a locality holds products).
 **Scope excludes:** the products/function blocks placed *inside* localities (E3–E5).
 
 **Acceptance criteria (epic level):**
-- MUST: The installer can rename any locality, add a new locality under *Localities*, and delete a
+- MUST: The installer can rename any locality, add a new locality under *Lokaliteter*, and delete a
   locality.
-- MUST: Renaming and adding are reflected identically in both the *Installation* and *Functions* panes
+- MUST: Renaming and adding are reflected identically in both the *Installation* and *Funktioner* panes
   and confirmed in the status bar.
 - SHOULD: Deleting a locality that contains products requires explicit confirmation and cascades to the
   commands/conditions that referenced those products.
@@ -35,23 +35,23 @@ both panes, **so that** I have realistic starting rooms to adapt to my installat
 
 - MUST: Both panes show a root node with an expand/collapse control, expanded by default, labelled
   with the **name the project file itself gives its locality container** (the standard template names it
-  *Lokaliteter*); *Localities* stands in only when a file leaves that container unnamed.
+  *Lokaliteter*); the application supplies *Lokaliteter* only when a file leaves that container unnamed.
 - MUST: Under the root are exactly the ten localities of the standard template, in its order:
   **Stue, Entré, Køkken, Soveværelse, Værelse, Bad, Bryggers, Garage, Kælder, Udendørs**. Locality
   names are project *data*, not UI text, so a new project starts from the file format's own default
   names and a project authored here is interchangeable with one authored in any other IHC editor.
   Renaming them to suit the installation is the user's first edit, not the app's.
 - MUST: Each locality renders as a node with a small square (checkbox-style) icon followed by its
-  bold name; the same ten localities appear in the *Functions* pane as in the *Installation* pane.
+  bold name; the same ten localities appear in the *Funktioner* pane as in the *Installation* pane.
 - SHOULD: A locality is a container: expanding it reveals the products (Installation pane) or
-  function blocks (Functions pane) placed in it; when empty it has no expand control.
+  function blocks (Funktioner pane) placed in it; when empty it has no expand control.
 - MUST: When a project is opened, every locality starts **collapsed** — only the root is expanded.
   A populated locality is never auto-expanded by the act of opening: the whole-installation overview
   is the initial state, and drilling in is the installer's move.
 - SHOULD: A collapsed locality opens automatically around its **first** inserted child, so the
   arrival of content is visible; gaining further children does not re-open a locality the installer
   has closed (expansion-state rules: US-070).
-- MAY: The *Functions* pane groups a locality's function blocks under the same locality node used
+- MAY: The *Funktioner* pane groups a locality's function blocks under the same locality node used
   in the *Installation* pane, keeping one shared locality structure across the two views.
 
 ### AC illustrations
@@ -121,15 +121,15 @@ Scenario: Cancel discards the edit
 
 ## US-008 — Add a new locality
 
-**As an** IHC installer, **I want** to add a locality under *Localities*, **so that** I can represent
+**As an** IHC installer, **I want** to add a locality under *Lokaliteter*, **so that** I can represent
 a room the defaults do not cover.
 
 ### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Insert a new locality under the root
-  Given the "Localities" root is selected in the "Installation" pane
-  When I right-click "Localities" and choose to insert a locality
+  Given the "Lokaliteter" root is selected in the "Installation" pane
+  When I right-click "Lokaliteter" and choose to insert a locality
   Then a new locality node is appended under the locality root at the bottom of the list
   And it carries the template's placeholder name "Lokalitet" — a name is project data, so the
     placeholder is the file format's own and the installer renames it next
@@ -142,9 +142,9 @@ Scenario: Name the new locality
   Then the node label updates to the chosen name (US-007)
 
 Scenario: Insertion targets the current selection
-  Given some other node (not "Localities") is selected
+  Given some other node (not "Lokaliteter") is selected
   When I intend to add a locality
-  Then I first select the "Localities" root, because a new locality is added under the
+  Then I first select the "Lokaliteter" root, because a new locality is added under the
     currently selected container
 ```
 
@@ -160,7 +160,7 @@ Scenario: Insertion targets the current selection
 - With the locality root selected, inserting a locality yields a new node named `Lokalitet` at the
   bottom of the tree (below `Udendørs`), selected, with **no dialog opening**, and the status bar
   showing `Lokalitet was inserted under Lokaliteter`.
-- *Insert locality* is offered only where a locality can go: a locality's own context menu does not
+- *Indsæt lokalitet* is offered only where a locality can go: a locality's own context menu does not
   carry it, because a locality is not a container for other localities.
 
 **Readiness:** Ready.

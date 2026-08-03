@@ -36,7 +36,7 @@ public class ModuleMapDialogParityTests
     public void Dialog_PresentsTheInputAndOutputModuleGroups()
     {
         Assert.That(Groups(Window()).Select(g => g.Header),
-            Is.EqualTo(new[] { "Input modules", "Output modules" }));
+            Is.EqualTo(new[] { "Indgangsmoduler", "Udgangsmoduler" }));
     }
 
     /// <summary>Each group is headed by the vendor's four columns, in the vendor's order. These are the same
@@ -44,7 +44,7 @@ public class ModuleMapDialogParityTests
     [AvaloniaTest]
     public void EachGroup_CarriesTheVendorsFourColumnHeaders()
     {
-        string[] expected = ["Data line", "Module type", "Locality", "Description"];
+        string[] expected = ["Datalinie", "Modul type", "Lokalitet", "Beskrivelse"];
 
         Assert.Multiple(() =>
         {

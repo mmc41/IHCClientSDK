@@ -64,7 +64,7 @@ public class DragReorderTests : AvaloniaTestBase
             Assert.That(harness.Session.Current!.Groups[0].Id!.Value, Is.EqualTo(second), "the first locality moved to the second's slot");
             Assert.That(harness.Session.Current!.Groups[1].Id!.Value, Is.EqualTo(first), "order is now [second, first] — one Move-down of the first");
             Assert.That(harness.Session.Current!.FindById(first), Is.Not.Null, "the id is preserved (a move, not a copy)");
-            Assert.That(vm.StatusText, Is.EqualTo("Reordered."));
+            Assert.That(vm.StatusText, Is.EqualTo("Omarrangeret."));
         });
     }
 

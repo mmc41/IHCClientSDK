@@ -133,7 +133,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly ILogger<MainWindowViewModel> _logger;
 
     [ObservableProperty] private string _title = $"{Constants.UntitledDocument} - {Constants.AppName}";
-    [ObservableProperty] private string _statusText = "For help, press F1";
+    [ObservableProperty] private string _statusText = "Tryk F1 for hjælp";
 
     /// <summary>
     /// Whether the application currently has a controller connection (W9/F10) — surfaced as an indicator at the
@@ -154,7 +154,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     public string ControllerConnectionText =>
         IsControllerConnected ? "Forbundet til controller" : "Ikke forbundet til controller";
     [ObservableProperty] private string _installationPaneHeader = "Installation";
-    [ObservableProperty] private string _functionsPaneHeader = "Functions";
+    [ObservableProperty] private string _functionsPaneHeader = "Funktioner";
 
     /// <summary>Whether the window is in programming mode (one function block's variables + program), vs the two
     /// locality trees of configuration mode (US-026).</summary>
@@ -312,17 +312,17 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             if (tag == "resource_enum")
             {
                 // PG-4: an enum insertion offers a TYPE PICKER — the existing enumerator types (pick one → reference
-                // its def-id, no new type) plus a "New…" that authors a new type through the enumerator dialog.
+                // its def-id, no new type) plus a "Ny…" that authors a new type through the enumerator dialog.
                 var enumNode = new ProductMenuItemViewModel(label);
                 foreach (string typeName in _session.Current?.GetEnumeratorTypes() ?? System.Array.Empty<string>())
                 {
                     enumNode.Children.Add(new ProductMenuItemViewModel(typeName, "enum-type",
                         new AsyncRelayCommand(() => InsertEnumOfExistingTypeAsync(sectionId, typeName, sectionLabel))));
                 }
-                enumNode.Children.Add(new ProductMenuItemViewModel("New…", "enum-new",
+                enumNode.Children.Add(new ProductMenuItemViewModel("Ny…", "enum-new",
                     new AsyncRelayCommand(() => InsertEnumAsync(sectionId, sectionLabel))));
                 // PG-7/D02: a DISTINCT route that authors a standalone (0-state, unreferenced) type — NO variable.
-                enumNode.Children.Add(new ProductMenuItemViewModel("New standalone type…", "enum-standalone",
+                enumNode.Children.Add(new ProductMenuItemViewModel("Ny selvstændig type…", "enum-standalone",
                     new AsyncRelayCommand(AddStandaloneEnumTypeAsync)));
                 VariablePaletteMenu.Add(enumNode);
             }
@@ -342,7 +342,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             : RunAsync(nameof(InsertVariableAsync), async () =>
             {
                 if (_session.Current is { } project && _session.Commands.AddVariable(project, sectionId, tag, label) is { } command)
-                    await ApplyAsync(command, $"{label} was inserted under {sectionLabel}");
+                    await ApplyAsync(command, $"{label} blev indsat under {sectionLabel}");
             });
 
     // T030: the program-authoring menus + engine (US-028/029/031/032) live in ProgramAuthoringCoordinator. The
@@ -370,10 +370,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>The Edit ▸ Undo menu header, naming the action it would reverse (E14): e.g. "Undo Insert locality",
     /// or just "Undo" when the history is empty. The leading underscore keeps the Alt+U access key.</summary>
-    public string UndoMenuHeader => _session.CanUndo ? $"_Undo {_session.UndoLabel}" : "_Undo";
+    public string UndoMenuHeader => _session.CanUndo ? $"_Fortryd {_session.UndoLabel}" : "_Fortryd";
 
     /// <summary>The Edit ▸ Redo menu header, naming the action it would re-apply (E14), or just "Redo".</summary>
-    public string RedoMenuHeader => _session.CanRedo ? $"_Redo {_session.RedoLabel}" : "_Redo";
+    public string RedoMenuHeader => _session.CanRedo ? $"_Gentag {_session.RedoLabel}" : "_Gentag";
 
     /// <summary>Edit ▸ Undo (US-052, Ctrl+Z): reverses the last project-mutating edit; a no-op when there is nothing
     /// to undo. Refreshes both panes via the session's StateChanged.</summary>
@@ -381,8 +381,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         string? label = _session.UndoLabel;   // capture before the stack pops — names the action (E14)
         StatusText = await _session.UndoAsync()
-            ? label is null ? "Undid the last change." : $"Undid: {label}"
-            : "Nothing to undo.";
+            ? label is null ? "Fortrød den seneste ændring." : $"Fortrød: {label}"
+            : "Intet at fortryde.";
     });
 
     /// <summary>Edit ▸ Redo (US-052, Ctrl+Y): re-applies the last undone edit; a no-op when the redo history is empty.</summary>
@@ -390,8 +390,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         string? label = _session.RedoLabel;
         StatusText = await _session.RedoAsync()
-            ? label is null ? "Redid the change." : $"Redid: {label}"
-            : "Nothing to redo.";
+            ? label is null ? "Gentog ændringen." : $"Gentog: {label}"
+            : "Intet at gentage.";
     });
 
     // The single outcome→status/dialog rule (W2-14): Committed → success status; NoChange → silent (a no-op edit
@@ -403,7 +403,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         {
             case EditStatus.Committed when successStatus is not null: StatusText = successStatus; break;
             case EditStatus.Refused when outcome.Reason is not null: StatusText = outcome.Reason; break;
-            case EditStatus.Failed: await _dialogs.ShowMessageAsync("Edit failed", outcome.Reason ?? "The edit failed."); break;
+            case EditStatus.Failed: await _dialogs.ShowMessageAsync("Redigering mislykkedes", outcome.Reason ?? "Redigeringen mislykkedes."); break;
         }
         return outcome;
     }
@@ -429,8 +429,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         string help = node?.ElementId is { } id && _session.Current?.FindById(id) is { } element
             && _session.Current!.View(element).Note is { Length: > 0 } note
             ? note
-            : "No specific help is available for this element.";
-        await _dialogs.ShowMessageAsync($"Help — {name}", help);
+            : "Der findes ingen specifik hjælp til dette element.";
+        await _dialogs.ShowMessageAsync($"Hjælp — {name}", help);
     });
 
     /// <summary>Inserts an input variable into the programming block's Input section (US-045, Ctrl+I).</summary>
@@ -445,12 +445,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             || _session.Current?.FindById(blockId)?.FindChild(container) is not { Id: { } sectionId })
         {
             StatusText = IsProgrammingBlockLocked
-                ? "This is a locked library block — unlock it to edit its program."
-                : "Enter a block's programming mode to insert an input or output.";
+                ? "Dette er en låst biblioteksblok — lås den op for at redigere dens program."
+                : "Gå ind i en bloks programmeringstilstand for at indsætte en indgang eller udgang.";
             return;
         }
         if (_session.Current is { } project && _session.Commands.AddVariable(project, sectionId, tag, label) is { } command)
-            await ApplyAsync(command, $"{label} inserted into the block.");
+            await ApplyAsync(command, $"{label} indsat i blokken.");
     });
 
     /// <summary>Opens the Project information dialog (US-039) prefilled from the project, and applies edits.</summary>
@@ -459,7 +459,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         ProjectInfoData? result = await _dialogs.EditProjectInfoAsync(_session.GetProjectInfo());
         if (result is null || _session.Current is not { } project)
             return;
-        if (await ApplyAsync(_session.Commands.UpdateProjectInfo(project, result), "Project information updated."))
+        if (await ApplyAsync(_session.Commands.UpdateProjectInfo(project, result), "Projekt oplysninger opdateret."))
         {
             // The installer's OWN contact details are an application setting, not per-project data (US-002) — this
             // dialog is where they are entered, so this is where they are remembered, and every later File → New
@@ -498,7 +498,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>The message shown when a controller-only operation is invoked in this controller-free build (E10).</summary>
     private const string ControllerRequiredMessage =
-        "requires a connected controller. This build does not contact a controller (no controller side effects).";
+        "kræver en tilsluttet controller. Denne version kontakter ikke en controller (ingen controller-sideeffekter).";
+
+    /// <summary>The dialog title and the status line that go with <see cref="ControllerRequiredMessage"/>. Send and
+    /// Retrieve differ only in the verb naming the operation, so the surrounding wording is declared once — the two
+    /// halves of one E10 answer cannot drift apart.</summary>
+    private const string ControllerRequiredTitle = "Controller påkrævet";
+    private const string ControllerRequiredStatus = "Controller-overførsel kræver en tilsluttet controller.";
 
     /// <summary>Controller ▸ Send project (US-042, F5): runs the offline pre-flight — warns about unlinked wireless
     /// products (they can be linked later) — then reports that the actual transfer needs a connected controller (the
@@ -507,23 +513,23 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         IReadOnlyList<string> unlinked = _session.GetUnlinkedWirelessProducts();
         if (unlinked.Count > 0 &&
-            !await _dialogs.ConfirmAsync("Unlinked wireless products",
-                $"{unlinked.Count} wireless product(s) are not linked to the controller ({string.Join(", ", unlinked)}). "
-                + "They can be linked later. Send anyway?"))
+            !await _dialogs.ConfirmAsync("Ikke-linkede trådløse produkter",
+                $"{unlinked.Count} trådløst produkt/produkter er ikke linket til controlleren ({string.Join(", ", unlinked)}). "
+                + "De kan linkes senere. Send alligevel?"))
         {
-            StatusText = "Send cancelled.";
+            StatusText = "Afsendelse annulleret.";
             return;
         }
-        await _dialogs.ShowMessageAsync("Controller required", "Sending the project " + ControllerRequiredMessage);
-        StatusText = "Controller transfer requires a connected controller.";
+        await _dialogs.ShowMessageAsync(ControllerRequiredTitle, "Afsendelse af projektet " + ControllerRequiredMessage);
+        StatusText = ControllerRequiredStatus;
     });
 
     /// <summary>Controller ▸ Retrieve project (US-043): reports that retrieving needs a connected controller — the
     /// transfer is deferred per E10 and this build never contacts a controller.</summary>
     private Task RetrieveProject() => RunAsync(nameof(RetrieveProject), async () =>
     {
-        await _dialogs.ShowMessageAsync("Controller required", "Retrieving a project " + ControllerRequiredMessage);
-        StatusText = "Controller transfer requires a connected controller.";
+        await _dialogs.ShowMessageAsync(ControllerRequiredTitle, "Hentning af et projekt " + ControllerRequiredMessage);
+        StatusText = ControllerRequiredStatus;
     });
 
     /// <summary>Documentation ▸ the three report entries (T015, R12/D4/D01): each opens the ONE shared
@@ -671,7 +677,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         if (await _dialogs.PickCatalogFileAsync() is not { } path)
             return;
         if (await _session.ImportCatalogFileAsync(path, persist: true))
-            StatusText = "Imported 1 component (persisted to the catalog folder).";
+            StatusText = "Importerede 1 komponent (gemt i katalogmappen).";
     });
 
     /// <summary>Library ▸ Import catalog folder (US-060): imports every <c>.def</c>/<c>.ifb</c> in a folder and its
@@ -682,7 +688,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             return;
         int count = await _session.ImportCatalogFolderAsync(dir, persist: true);
         if (count >= 0)
-            StatusText = $"Imported {count} component{(count == 1 ? string.Empty : "s")} (persisted to the catalog folder).";
+            StatusText = $"Importerede {count} komponent{(count == 1 ? string.Empty : "er")} (gemt i katalogmappen).";
     });
 
     /// <summary>Inserts an empty function block under the selected locality (US-019). Invoked from the right-click
@@ -691,12 +697,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         if (SelectedNode?.ElementId is not { } localityId || _session.Current is not { } project)
         {
-            StatusText = "Select a locality first, then insert the empty function block.";
+            StatusText = "Vælg først en lokalitet, indsæt derefter den tomme funktionsblok.";
             return;
         }
         string localityName = SelectedNode.DisplayName;
         if (await ApplyAsync(_session.Commands.AddEmptyFunctionBlock(project, localityId, ProjectWorkflow.EmptyBlockName),
-                $"{ProjectWorkflow.EmptyBlockName} was inserted under {localityName}") is not { } blockId)
+                $"{ProjectWorkflow.EmptyBlockName} blev indsat under {localityName}") is not { } blockId)
             return;
         // A blank block exists only to be authored, so creating one opens it: both panes re-root at the new block
         // exactly as F3 would (uxparity S-18 — the vendor does this too).
@@ -710,16 +716,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         {
             if (SelectedNode?.ElementId is not { } localityId || _session.Current is not { } project)
             {
-                StatusText = "Select a locality first, then insert the function block.";
+                StatusText = "Vælg først en lokalitet, indsæt derefter funktionsblokken.";
                 return;
             }
             string localityName = SelectedNode.DisplayName;
             if (_session.Commands.AddFunctionBlock(project, localityId, masterType) is not { } command)
             {
-                await _dialogs.ShowMessageAsync("Insert failed", $"No library function block with master type '{masterType}'.");
+                await _dialogs.ShowMessageAsync("Indsætning mislykkedes", $"Ingen biblioteks-funktionsblok med master type '{masterType}'.");
                 return;
             }
-            await ApplyAsync(command, $"Function block '{blockName}' has been inserted under {localityName}");
+            await ApplyAsync(command, $"Funktionsblokken '{blockName}' er indsat under {localityName}");
         });
 
     /// <summary>Parameterless constructor for the XAML designer / template smoke test only.</summary>
@@ -736,38 +742,38 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private Task NewAsync() => RunAsync(nameof(NewAsync), async () =>
     {
         if (await _session.NewAsync())
-            StatusText = "Started a new project.";
+            StatusText = "Startede et nyt projekt.";
     });
 
     private Task OpenAsync() => RunAsync(nameof(OpenAsync), async () =>
     {
         if (await _session.OpenWithPickerAsync())
-            StatusText = $"Opened {_session.DocumentName}.";
+            StatusText = $"Åbnede {_session.DocumentName}.";
     });
 
     [RelayCommand]
     private Task OpenRecentAsync(string path) => RunAsync(nameof(OpenRecentAsync), async () =>
     {
         if (await _session.OpenAsync(path))
-            StatusText = $"Opened {_session.DocumentName}.";
+            StatusText = $"Åbnede {_session.DocumentName}.";
     });
 
     private Task SaveAsync() => RunAsync(nameof(SaveAsync), async () =>
     {
         if (await _session.SaveAsync())
-            StatusText = $"Saved {_session.DocumentName}.";
+            StatusText = $"Gemte {_session.DocumentName}.";
     });
 
     private Task SaveAsAsync() => RunAsync(nameof(SaveAsAsync), async () =>
     {
         if (await _session.SaveAsAsync())
-            StatusText = $"Saved {_session.DocumentName}.";
+            StatusText = $"Gemte {_session.DocumentName}.";
     });
 
     private Task CloseAsync() => RunAsync(nameof(CloseAsync), async () =>
     {
         if (await _session.CloseAsync())
-            StatusText = "Closed the project.";
+            StatusText = "Lukkede projektet.";
     });
 
     private void Exit() => CloseRequested?.Invoke(this, EventArgs.Empty);
@@ -775,7 +781,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private void ToggleToolbar()
     {
         IsToolbarVisible = !IsToolbarVisible;
-        StatusText = IsToolbarVisible ? "Toolbar shown." : "Toolbar hidden.";
+        StatusText = IsToolbarVisible ? "Værktøjslinie vist." : "Værktøjslinie skjult.";
     }
 
     private void ToggleStatusBar() => IsStatusBarVisible = !IsStatusBarVisible;
@@ -785,7 +791,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         _themeService.Apply(theme);
         CurrentTheme = theme;
-        StatusText = $"Theme: {theme}.";
+        StatusText = $"Tema: {theme}.";
     }
 
     /// <summary>Inserts a new locality under <i>Localities</i> (US-008), then selects it in the Installation pane.
@@ -796,10 +802,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             return;
         // Name the container the way the tree does — from the project, not a hard-coded caption. The two must
         // agree: a message reading "under Localities" beside a root row reading "Lokaliteter" names nothing the
-        // installer can see.
-        string container = project.Child("groups") is { } groups ? project.NameOr(groups, "Localities") : "Localities";
+        // installer can see, so the fallback is the projector's own (ProjectTreeProjector.LocalitiesRootName)
+        // rather than a second copy of the word.
+        string container = project.Child("groups") is { } groups
+            ? project.NameOr(groups, ProjectTreeProjector.LocalitiesRootName)
+            : ProjectTreeProjector.LocalitiesRootName;
         if (await ApplyAsync(_session.Commands.AddLocality(project, ProjectWorkflow.NewLocalityName),
-                $"{ProjectWorkflow.NewLocalityName} was inserted under {container}") is not { } id)
+                $"{ProjectWorkflow.NewLocalityName} blev indsat under {container}") is not { } id)
             return;
         // Refresh already rebuilt the trees (StateChanged); highlight the new locality in the Installation pane
         // (which sets it as the active node).
@@ -814,15 +823,15 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             return;
         string currentName = _session.Current!.View(fb).Name ?? "block";
         string currentNote = _session.Current!.View(fb).Note ?? string.Empty;
-        PropertiesResult? meta = await _dialogs.EditPropertiesAsync("Save function block", currentName, currentNote,
-            affirmative: "Save");   // this dialog goes on to write a file (S-22)
+        PropertiesResult? meta = await _dialogs.EditPropertiesAsync("Gem funktionsblok", currentName, currentNote,
+            affirmative: "Gem");   // this dialog goes on to write a file (S-22)
         if (meta is null)
             return;   // cancelled the name/note step
         string? path = await _dialogs.PickSaveFunctionBlockAsync($"{meta.Name}.ifb");
         if (path is null)
             return;   // cancelled the file picker
         if (await _session.SaveFunctionBlockAsync(id, path, meta.Name, meta.Note))
-            StatusText = $"Saved function block '{meta.Name}'.";
+            StatusText = $"Gemte funktionsblokken '{meta.Name}'.";
     });
 
     /// <summary>Unlocks a locked library function block (US-020) so its internals become editable; the tree rebuild
@@ -833,7 +842,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             return;
         string name = node.DisplayName;
         // Unlocking takes ownership of the block (uxparity S-20), so it is stamped with whoever did it.
-        await ApplyAsync(_session.Commands.UnlockFunctionBlock(project, id, Environment.UserName), $"Unlocked {name}.");
+        await ApplyAsync(_session.Commands.UnlockFunctionBlock(project, id, Environment.UserName), $"Låste {name} op.");
     });
 
     /// <summary>Deletes the selected node (US-053), dispatching by type: a link row removes its reciprocal pair
@@ -853,13 +862,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         DeleteImpact impact = _session.Commands.PreviewDelete(project, id);
         if (!impact.Deletable)
         {
-            await _dialogs.ShowMessageAsync("Cannot delete", "This node cannot be deleted.");
+            await _dialogs.ShowMessageAsync("Kan ikke slette", "Denne node kan ikke slettes.");
             return;
         }
         if (impact.Kind == DeleteKind.Link)
         {
             // Removing a link deletes its reciprocal pair, not a subtree (US-057).
-            await ApplyAsync(_session.Commands.RemoveLink(project, id), "Link removed.");
+            await ApplyAsync(_session.Commands.RemoveLink(project, id), "Link fjernet.");
             return;
         }
         string name = node.DisplayName;
@@ -869,18 +878,18 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // reference-CASCADE flag below; only the question is dropped.
         if (impact.NeedsConfirm && impact.Kind == DeleteKind.Locality)
         {
-            if (!await _dialogs.ConfirmAsync("Delete locality",
-                    $"'{name}' contains products. Deleting it also removes those products and the "
-                    + "commands and conditions that use them. Delete anyway?"))
+            if (!await _dialogs.ConfirmAsync("Slet lokalitet",
+                    $"'{name}' indeholder produkter. Sletter du den, fjernes også de produkter og de "
+                    + "kommandoer og betingelser, der bruger dem. Slet alligevel?"))
             {
                 return;   // declined — nothing is deleted
             }
         }
         if (impact.Kind == DeleteKind.Locality)
-            await ApplyAsync(_session.Commands.DeleteLocality(project, id), $"Deleted {name}.");   // the US-009 locality worked example
+            await ApplyAsync(_session.Commands.DeleteLocality(project, id), $"Slettede {name}.");   // the US-009 locality worked example
         else
             // impact.NeedsConfirm is the reference-cascade flag PreviewDelete computed for this node.
-            await ApplyAsync(_session.Commands.DeleteNode(project, id, impact.NeedsConfirm), $"Deleted {name}.");   // US-053
+            await ApplyAsync(_session.Commands.DeleteNode(project, id, impact.NeedsConfirm), $"Slettede {name}.");   // US-053
     });
 
     // The structural-editing clipboard (US-054/US-056): the id of the cut/copied node and whether it is a cut
@@ -902,7 +911,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         if (node?.ElementId is not { } id)
             return;
         SetClipboard(id, isCut: true);
-        StatusText = $"Cut {node.DisplayName} — paste onto a locality to move it.";
+        StatusText = $"Klippede {node.DisplayName} — indsæt på en lokalitet for at flytte den.";
     }
 
     /// <summary>Copy the selected node (US-056, Ctrl+C): stashes it so a Paste onto a locality duplicates it.</summary>
@@ -911,7 +920,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         if (node?.ElementId is not { } id)
             return;
         SetClipboard(id, isCut: false);
-        StatusText = $"Copied {node.DisplayName} — paste onto a locality to duplicate it.";
+        StatusText = $"Kopierede {node.DisplayName} — indsæt på en lokalitet for at duplikere den.";
     }
 
     /// <summary>Paste the clipboard node onto the selected target (US-054 move / US-056 duplicate, Ctrl+V).</summary>
@@ -927,12 +936,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             return;
         if (_clipboardIsCut)
         {
-            if (await ApplyAsync(_session.Commands.MoveNode(project, sourceId, targetId), "Moved."))
+            if (await ApplyAsync(_session.Commands.MoveNode(project, sourceId, targetId), TreeDragDropController.MovedStatus))
             {
                 SetClipboard(null, isCut: false);   // a cut is consumed by its paste
             }
         }
-        else if (await ApplyAsync(_session.Commands.CopyNode(project, sourceId, targetId), "Pasted a copy.") is { } pastedId)
+        else if (await ApplyAsync(_session.Commands.CopyNode(project, sourceId, targetId), "Indsatte en kopi.") is { } pastedId)
         {
             // A copy is not consumed by its paste, so the clipboard stays. Open the arrival all the way down:
             // a pasted subtree lands already populated, so the "reveal on first child" rule never fires for it,
@@ -961,7 +970,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         if (node?.ElementId is { } id && _session.Current is { } project
             && _session.Commands.ReorderNode(project, id, delta) is { } command)
-            await ApplyAsync(command, delta < 0 ? "Moved up." : "Moved down.");
+            await ApplyAsync(command, delta < 0 ? "Flyttet op." : "Flyttet ned.");
     });
 
     /// <summary>Opens the Properties dialog for a tree node to rename a locality (US-007). Invoked from the
@@ -1032,19 +1041,19 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         {
             if (SelectedNode?.ElementId is not { } localityId || _session.Current is not { } project)
             {
-                StatusText = "Select a locality first, then insert the product.";
+                StatusText = "Vælg først en lokalitet, indsæt derefter produktet.";
                 return;
             }
             string localityName = SelectedNode.DisplayName;
             if (_session.Commands.AddProduct(project, localityId, productIdentifier) is not { } command)
             {
-                await _dialogs.ShowMessageAsync("Insert failed", $"No catalog product with identifier '{productIdentifier}'.");
+                await _dialogs.ShowMessageAsync("Indsætning mislykkedes", $"Intet katalogprodukt med identifikator '{productIdentifier}'.");
                 return;
             }
             if (_session.Commands.WouldExceedModemLimit(project, productIdentifier))   // at most one modem per project (US-013)
             {
-                await _dialogs.ShowMessageAsync("Only one modem",
-                    "A project may contain at most one modem. Remove the existing modem before adding another.");
+                await _dialogs.ShowMessageAsync("Kun ét modem",
+                    "Et projekt må højst indeholde ét modem. Fjern det eksisterende modem, før du tilføjer et nyt.");
                 return;
             }
             // Placing a product ASKS for its documentation as part of placing it, and cancelling places nothing —
@@ -1052,14 +1061,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // Annuller leaves both the tree and the id counter untouched. (An earlier note here claimed the vendor
             // does not auto-open on insert; that came from a driver verb which posts the catalog command directly
             // and skips the dialog — see tmp/uxparity/MCPFIXES.md.)
-            if (await ApplyAsync(command, $"Product '{productName}' inserted under {localityName}") is not { } newId)
+            if (await ApplyAsync(command, $"Produktet '{productName}' indsat under {localityName}") is not { } newId)
                 return;
             if (!await _properties.OpenForInsertAsync(newId))
             {
                 // Cancelled: undo the insert. Undo restores the whole project snapshot, so the id counter goes back
                 // too — the vendor burns no ids on a cancelled insert either.
                 await _session.UndoAsync();
-                StatusText = $"Insert of '{productName}' cancelled.";
+                StatusText = $"Indsætning af '{productName}' annulleret.";
                 return;
             }
             // The placed product opens, showing the terminals it brought — the same reveal a drop does (S-11), and
@@ -1076,7 +1085,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private Task ToggleLogMark(TreeNodeViewModel? node) => RunAsync(nameof(ToggleLogMark), async () =>
     {
         if (node is { IsLogMarkPin: true, ElementId: { } id } && _session.Current is { } project)
-            await ApplyAsync(_session.Commands.ToggleLogMark(project, id), $"Toggled the log mark on {node.DisplayName}.");
+            await ApplyAsync(_session.Commands.ToggleLogMark(project, id), $"Skiftede logmærket på {node.DisplayName}.");
     });
 
     /// <summary>Enters programming mode for the selected function block (US-026, F3): the panes switch to the block's
@@ -1097,8 +1106,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 // just re-projected FunctionNodes into the programming-mode tree, so a node lookup there found
                 // nothing carrying the flag and this message silently never appeared (uxparity2 T007/V4).
                 StatusText = IsProgrammingBlockLocked
-                    ? "Programming mode (read-only — the block is locked). Press Esc to return."
-                    : "Programming mode — press Esc to return to configuration.";
+                    ? "Programmeringstilstand (skrivebeskyttet — blokken er låst). Tryk Esc for at vende tilbage."
+                    : "Programmeringstilstand — tryk Esc for at vende tilbage til konfiguration.";
             });
         }
     }
@@ -1142,7 +1151,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // cutting the block itself is legal from either surface.
             Gate: ctx => ctx.Node is { CanCut: true, Id: not null }
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Select a locality, product or function block to cut.")));
+                : EditVerdict.Refuse("Vælg en lokalitet, et produkt eller en funktionsblok, der skal klippes.")));
 
         Registry.Register(new CommandSpec("edit.copy", "Ctrl+C",
             Surfaces.MenuBar | Surfaces.ContextMenu | Surfaces.Toolbar,
@@ -1150,7 +1159,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // Bar semantics (D13): ANY pin copies from Rediger — measured on `Tryk (venstre)`.
             Gate: ctx => ctx.Node is { Id: not null } node && (node.CanCopy || node.IsPin)
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Select a node to copy."),
+                : EditVerdict.Refuse("Vælg en node, der skal kopieres."),
             // The flyout is NARROWER: Kopier on a product terminal, none on an FB pin (uxparity S-28).
             SurfacePolicy: (ctx, surface) =>
                 surface == Surface.ContextMenu && ctx.Node is { } node && !(node.CanCopy || node.IsProductTerminal)
@@ -1161,10 +1170,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             Surfaces.MenuBar | Surfaces.ContextMenu | Surfaces.Toolbar,
             Execute: ctx => Paste(ResolveNode(ctx)),
             Gate: ctx => ctx.Clipboard is null
-                ? EditVerdict.Refuse("Cut or copy a node first.")
+                ? EditVerdict.Refuse("Klip eller kopier først en node.")
                 : ctx.Node is { Kind: TreeNodeKind.Locality }
                     ? EditVerdict.Allow
-                    : EditVerdict.Refuse("Paste onto a locality.")));
+                    : EditVerdict.Refuse("Indsæt på en lokalitet.")));
 
         Registry.Register(new CommandSpec("edit.delete", "Delete",
             Surfaces.MenuBar | Surfaces.ContextMenu,
@@ -1179,7 +1188,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // a locked block's INTERIOR — so the bar and the flyout can share one answer.
             Gate: ctx => ctx.Node?.Id is { } id && _session.Current is { } project
                 ? _session.CanApply(_session.Commands.DeleteNode(project, id, cascade: false))
-                : EditVerdict.Refuse("Select an element to delete.")));
+                : EditVerdict.Refuse("Vælg et element, der skal slettes.")));
 
         Registry.Register(new CommandSpec("view.showProgram", "F3",
             Surfaces.MenuBar | Surfaces.ContextMenu,
@@ -1188,7 +1197,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             Gate: ctx => ctx.Node is { } node
                 && (node.Kind == TreeNodeKind.FunctionBlock ? node.Id : OwningFunctionBlockByAncestry(node.Id)) is not null
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Select a function block to show its program."),
+                : EditVerdict.Refuse("Vælg en funktionsblok for at vise dens program."),
             // The BAR is stricter than the flyout in ONE way only: it needs a block selected DIRECTLY, where the
             // flyout also accepts a pin and resolves the owning block (S-28).
             //
@@ -1200,7 +1209,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             SurfacePolicy: (ctx, surface) =>
                 surface == Surface.ContextMenu || ctx.Node is { Kind: TreeNodeKind.FunctionBlock }
                     ? null
-                    : Availability.Disabled("Select a function block in the tree.")));
+                    : Availability.Disabled("Vælg en funktionsblok i træet.")));
     }
 
     // crudarch T013: the remaining node-scoped tree commands as rows — gates are the former IsVisible/CanExecute
@@ -1213,35 +1222,35 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             Execute: _ => InsertLocality(),
             Gate: ctx => ctx.Node is { Kind: TreeNodeKind.LocalitiesRoot }
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Select the Localities root to insert a locality.")));
+                : EditVerdict.Refuse("Vælg Lokaliteter-roden for at indsætte en lokalitet.")));
 
         Registry.Register(new CommandSpec("insert.emptyFunctionBlock", "Ctrl+Shift+B",
             Surfaces.MenuBar | Surfaces.ContextMenu,
             Execute: _ => InsertEmptyFunctionBlock(),
             Gate: ctx => !ctx.InstallationPaneActive && ctx.Node is { Kind: TreeNodeKind.Locality }
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Select a locality in the Functions pane.")));
+                : EditVerdict.Refuse("Vælg en lokalitet i Funktioner-ruden.")));
 
         Registry.Register(new CommandSpec("node.saveBlock", "Ctrl+G",
             Surfaces.ContextMenu,
             Execute: ctx => SaveFunctionBlock(ResolveNode(ctx)),
             Gate: ctx => ctx.Node is { Kind: TreeNodeKind.FunctionBlock }
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Select a function block to save.")));
+                : EditVerdict.Refuse("Vælg en funktionsblok, der skal gemmes.")));
 
         Registry.Register(new CommandSpec("node.unlock", null,
             Surfaces.ContextMenu,
             Execute: ctx => Unlock(ResolveNode(ctx)),
             Gate: ctx => ctx.Node is { IsLockedBlock: true }
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Only a locked library block can be unlocked.")));
+                : EditVerdict.Refuse("Kun en låst biblioteksblok kan låses op.")));
 
         Registry.Register(new CommandSpec("node.toggleLogMark", null,
             Surfaces.ContextMenu,
             Execute: ctx => ToggleLogMark(ResolveNode(ctx)),
             Gate: ctx => ctx.Node is { IsLogMarkPin: true }
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Select a log-markable pin.")));
+                : EditVerdict.Refuse("Vælg en klemme der kan logmærkes.")));
 
         Registry.Register(new CommandSpec("help.onNode", "F1",
             Surfaces.MenuBar,
@@ -1253,28 +1262,28 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             Execute: Sync(ctx => UseInProgram(ResolveNode(ctx))),
             Gate: ctx => ctx.Node is { IsPin: true }
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Select a variable or pin.")));
+                : EditVerdict.Refuse("Vælg en variabel eller klemme.")));
 
         Registry.Register(new CommandSpec("link.startFromHere", null,
             Surfaces.ContextMenu,
             Execute: Sync(ctx => StartLink(ResolveNode(ctx))),
             Gate: ctx => ctx.Node is { IsPin: true }
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Select a pin to link from.")));
+                : EditVerdict.Refuse("Vælg en klemme at linke fra.")));
 
         Registry.Register(new CommandSpec("link.toHere", null,
             Surfaces.ContextMenu,
             Execute: ctx => LinkToHere(ResolveNode(ctx)),
             Gate: ctx => ctx.Node is { IsLinkTarget: true }
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Select a pin or scenes container to link to.")));
+                : EditVerdict.Refuse("Vælg en klemme eller scenarie-beholder at linke til.")));
 
         Registry.Register(new CommandSpec("link.jumpOpposite", "F4",
             Surfaces.MenuBar | Surfaces.ContextMenu,
             Execute: Sync(ctx => NavigateLinkOpposite(ResolveNode(ctx))),
             Gate: ctx => ctx.Node is { IsLinkRow: true }
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Select a link row to jump to its opposite half.")));
+                : EditVerdict.Refuse("Vælg en link-række for at hoppe til dens modsatte halvdel.")));
 
         Registry.Register(new CommandSpec("edit.moveUp", "Ctrl+Shift+Up",
             Surfaces.ContextMenu,
@@ -1291,7 +1300,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             Execute: ctx => Properties(ResolveNode(ctx)),
             Gate: ctx => ctx.Node is { Id: not null, Kind: not TreeNodeKind.LocalitiesRoot }
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Select a node with properties."),
+                : EditVerdict.Refuse("Vælg en node med egenskaber."),
             // The flyout is narrower than Rediger: no Egenskaber on a link row (measured) — the bar keeps it.
             SurfacePolicy: (ctx, surface) => surface == Surface.ContextMenu && ctx.Node is { IsLinkRow: true }
                 ? Availability.Hidden
@@ -1308,7 +1317,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             Execute: Sync(_ => LeaveProgrammingMode()),
             Gate: ctx => ctx.IsProgrammingMode
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Already in configuration view.")));
+                : EditVerdict.Refuse("Allerede i konfigurationsvisning.")));
 
         Registry.Register(new CommandSpec("program.insertInput", "Ctrl+I",
             Surfaces.None,   // keybinding-only (Ctrl+I) — no menu surface
@@ -1325,14 +1334,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             Execute: ctx => AddPowerEvent(ResolveNode(ctx)),
             Gate: ctx => ctx.Node is { IsEventsContainer: true } && !ctx.ProgrammingBlockLocked
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Select an events group in an unlocked block.")));
+                : EditVerdict.Refuse("Vælg en hændelsesgruppe i en ulåst blok.")));
 
         Registry.Register(new CommandSpec("program.toggleSaveValue", null,
             Surfaces.ContextMenu,
             Execute: ctx => ToggleSaveValue(ResolveNode(ctx)),
             Gate: ctx => ctx.Node is { IsOutputPin: true }
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Select an output.")));
+                : EditVerdict.Refuse("Vælg en udgang.")));
 
         // W4/F11: creating a PROGRAM, the fourth Insert ▸ Program elements entry. A block may hold several programs
         // (project2-CustomBlock's AutoProof holds two), and the SDK command behind this is AddProgram (T018).
@@ -1341,14 +1350,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             Execute: ctx => AddProgram(ResolveNode(ctx)),
             Gate: ctx => ctx.Node is { Kind: TreeNodeKind.Programs } && !ctx.ProgrammingBlockLocked
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Select the Programs group of an unlocked block.")));
+                : EditVerdict.Refuse("Vælg Programmer-gruppen i en ulåst blok.")));
 
         Registry.Register(new CommandSpec("program.addSubProgram", null,
             Surfaces.MenuBar | Surfaces.ContextMenu,
             Execute: ctx => AddSubProgram(ResolveNode(ctx)),
             Gate: ctx => ctx.Node is { IsCommandsContainer: true } && !ctx.ProgrammingBlockLocked
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Select a command group in an unlocked block.")));
+                : EditVerdict.Refuse("Vælg en kommandogruppe i en ulåst blok.")));
 
         Registry.Register(new CommandSpec("program.addLogicGroup", null,
             Surfaces.MenuBar | Surfaces.ContextMenu,
@@ -1370,7 +1379,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             Execute: ctx => NewCaseValue(ResolveNode(ctx)),
             Gate: ctx => ctx.Node is { IsCaseNode: true } && !ctx.ProgrammingBlockLocked
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Select a case in an unlocked block.")));
+                : EditVerdict.Refuse("Vælg en case i en ulåst blok.")));
     }
 
     // crudarch T015: the app-level rows. Most gate on ProjectOpen or Allow; Save is ALWAYS enabled (D07 —
@@ -1380,9 +1389,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // T017 (US-052/U-BP-07): Undo/Redo gate on the document's history — greyed when empty. The XAML owns the
         // captions, which here are DYNAMIC and action-named (UndoMenuHeader/RedoMenuHeader).
         RegisterAppRow("edit.undo", "Ctrl+Z", _ => Undo(),
-            ctx => ctx.CanUndo ? EditVerdict.Allow : EditVerdict.Refuse("Nothing to undo."));
+            ctx => ctx.CanUndo ? EditVerdict.Allow : EditVerdict.Refuse("Intet at fortryde."));
         RegisterAppRow("edit.redo", "Ctrl+Y", _ => Redo(),
-            ctx => ctx.CanRedo ? EditVerdict.Allow : EditVerdict.Refuse("Nothing to redo."));
+            ctx => ctx.CanRedo ? EditVerdict.Allow : EditVerdict.Refuse("Intet at gentage."));
         RegisterAppRow("file.new", "Ctrl+N", _ => NewAsync(), AllowGate,
             Surfaces.MenuBar | Surfaces.Toolbar);
         RegisterAppRow("file.open", "Ctrl+O", _ => OpenAsync(), AllowGate,
@@ -1429,19 +1438,19 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private static EditVerdict AllowGate(ShellContext ctx) => EditVerdict.Allow;
 
     private static EditVerdict ProjectOpenGate(ShellContext ctx) =>
-        ctx.ProjectOpen ? EditVerdict.Allow : EditVerdict.Refuse("No project is open.");
+        ctx.ProjectOpen ? EditVerdict.Allow : EditVerdict.Refuse("Intet projekt er åbent.");
 
     // Ctrl+I/Ctrl+U pin authoring: only inside an UNLOCKED block's programming view (A-27).
     private EditVerdict ProgrammingAuthoringGate(ShellContext ctx) =>
         ctx.IsProgrammingMode && !ctx.ProgrammingBlockLocked
             ? EditVerdict.Allow
-            : EditVerdict.Refuse("Open an unlocked block's program first.");
+            : EditVerdict.Refuse("Åbn først en ulåst bloks program.");
 
     // Conditions-group authoring (US-029): a conditions/logic group in an unlocked block.
     private EditVerdict ConditionsGate(ShellContext ctx) =>
         ctx.Node is { IsConditionsContainer: true } && !ctx.ProgrammingBlockLocked
             ? EditVerdict.Allow
-            : EditVerdict.Refuse("Select a conditions group in an unlocked block.");
+            : EditVerdict.Refuse("Vælg en betingelsesgruppe i en ulåst blok.");
 
     // Move up/down (US-055/US-068 D07, crudarch T018/G6): a reorderable structural node, an unlocked
     // programming block (F-087), AND actual reorderability in the asked direction — the document's index-backed
@@ -1452,8 +1461,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         ctx.Node is { CanReorder: true, Id: { } id } && !ctx.ProgrammingBlockLocked
             ? _session.CanReorder(id, delta)
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse(delta < 0 ? "Already first among its siblings." : "Already last among its siblings.")
-            : EditVerdict.Refuse("Select a locality, product or function block to move.");
+                : EditVerdict.Refuse(delta < 0 ? "Allerede først blandt sine søskende." : "Allerede sidst blandt sine søskende.")
+            : EditVerdict.Refuse("Vælg en lokalitet, et produkt eller en funktionsblok, der skal flyttes.");
 
     // (uxparity2 T017/T031) There is deliberately NO shared "the bar is stricter on a locked block" helper here any
     // more. That rule — the bar greying a locked block's structural commands while its own flyout offers them — was
@@ -1499,7 +1508,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             _programmingBlockId = null;
             Refresh();
             NotifyProgrammingAuthoringGates();
-            StatusText = "Configuration mode.";
+            StatusText = "Konfigurationstilstand.";
         });
     }
 
@@ -1577,7 +1586,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         {
             return;
         }
-        StatusText = $"Jumped to {SelectedNode?.DisplayName}.";
+        StatusText = $"Hoppede til {SelectedNode?.DisplayName}.";
         // Keyboard focus follows the caret across the panes (uxparity S-25) — otherwise the jump moves the selection
         // somewhere the arrow keys and F4 cannot reach without first pressing F6.
         JumpedToPane?.Invoke(this, inFunctionsPane);
@@ -1615,12 +1624,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private Task InsertEnumAsync(ElementId sectionId, string sectionLabel) => RunAsync(nameof(InsertEnumAsync), async () =>
     {
         EnumDefinitionResult? result = await _dialogs.EditEnumDefinitionAsync(
-            new EnumDefinitionInput("New enumerator", string.Empty, System.Array.Empty<string>(), IsNew: true));
+            new EnumDefinitionInput("Ny enumerator", string.Empty, System.Array.Empty<string>(), IsNew: true));
         if (result is null || string.IsNullOrWhiteSpace(result.TypeName))
             return;
         if (_session.Current is { } project
             && _session.Commands.AddEnumVariable(project, sectionId, result.TypeName, result.TypeName, result.States) is { } command)
-            await ApplyAsync(command, $"Enumerator '{result.TypeName}' was inserted under {sectionLabel}");
+            await ApplyAsync(command, $"Enumeratoren '{result.TypeName}' blev indsat under {sectionLabel}");
     });
 
     // PG-7/D02: authors a standalone (0-state, unreferenced) enumerator TYPE — no variable is inserted, decoupled from
@@ -1628,12 +1637,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private Task AddStandaloneEnumTypeAsync() => RunAsync(nameof(AddStandaloneEnumTypeAsync), async () =>
     {
         EnumDefinitionResult? result = await _dialogs.EditEnumDefinitionAsync(
-            new EnumDefinitionInput("New standalone enumerator type", string.Empty, System.Array.Empty<string>(), IsNew: true));
+            new EnumDefinitionInput("Ny selvstændig enumerator type", string.Empty, System.Array.Empty<string>(), IsNew: true));
         if (result is null || string.IsNullOrWhiteSpace(result.TypeName))
             return;
         if (_session.Current is { } project)
             await ApplyAsync(_session.Commands.AddStandaloneEnumType(project, result.TypeName, result.States),
-                $"Enumerator type '{result.TypeName}' was created");
+                $"Enumerator typen '{result.TypeName}' blev oprettet");
     });
 
     /// <summary>
@@ -1652,14 +1661,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             await AddStandaloneEnumTypeAsync();
     });
 
-    // PG-4: inserts a variable of an EXISTING enumerator type — references its def-id, authoring NO new type (the "New…"
+    // PG-4: inserts a variable of an EXISTING enumerator type — references its def-id, authoring NO new type (the "Ny…"
     // option above authors a new one).
     private Task InsertEnumOfExistingTypeAsync(ElementId sectionId, string typeName, string sectionLabel) =>
         RunAsync(nameof(InsertEnumOfExistingTypeAsync), async () =>
         {
             if (_session.Current is { } project
                 && _session.Commands.AddEnumVariableOfType(project, sectionId, typeName, typeName) is { } command)
-                await ApplyAsync(command, $"Enumerator '{typeName}' was inserted under {sectionLabel}");
+                await ApplyAsync(command, $"Enumeratoren '{typeName}' blev indsat under {sectionLabel}");
         });
 
 
@@ -1671,7 +1680,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         string? host = _config?.TelemetryConfig.Host;
         if (string.IsNullOrWhiteSpace(host))
-            await _dialogs.ShowMessageAsync("Telemetry diagnostics", "No telemetry host is configured in ihcsettings.json.");
+            await _dialogs.ShowMessageAsync("Telemetridiagnostik", "Der er ikke konfigureret nogen telemetri-vært i ihcsettings.json.");
         else
             await _dialogs.OpenExternalUrlAsync(host);
     });
@@ -1687,8 +1696,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         {
             Ihc.ActivityExtensions.SetError(activity, ex);
             _logger.LogError(ex, "Command {Operation} failed", operation);
-            StatusText = $"Error: {ex.Message}";
-            await _dialogs.ShowMessageAsync("Unexpected error", ex.Message);
+            StatusText = $"Fejl: {ex.Message}";
+            await _dialogs.ShowMessageAsync("Uventet fejl", ex.Message);
         }
     }
 
@@ -1781,7 +1790,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 IsProgrammingMode = false;   // the block is gone (or never set) → configuration mode
                 _programmingBlockId = null;
                 InstallationPaneHeader = "Installation";
-                FunctionsPaneHeader = "Functions";
+                FunctionsPaneHeader = "Funktioner";
                 bool sameView = _treePanes.SameViewAsLastBuild("config");
                 // Reconcile in place when this is an incremental transition on the SAME view whose panes still hold the
                 // reconcilers' roots — edits AND undo/redo, whose outcomes carry their exact delta (crudarch G3/T007);
@@ -1841,28 +1850,28 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private string BuildSettingsText()
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"Application: {Constants.AppName} {Ihc.Bootstrap.AppTelemetryBootstrap.GetAppVersionStr()}");
+        sb.AppendLine($"Program: {Constants.AppName} {Ihc.Bootstrap.AppTelemetryBootstrap.GetAppVersionStr()}");
         sb.AppendLine($"SDK: {Ihc.VersionInfo.GetSdkVersionStr()}");
         sb.AppendLine();
         if (_config is null)
         {
-            sb.AppendLine("No configuration loaded.");
+            sb.AppendLine("Ingen konfiguration indlæst.");
             return sb.ToString();
         }
 
-        sb.AppendLine($"Settings file: {(_config.SettingsFileFound ? _config.SettingsFilePath : "(none — using defaults)")}");
+        sb.AppendLine($"Indstillingsfil: {(_config.SettingsFileFound ? _config.SettingsFilePath : "(ingen — bruger standardværdier)")}");
         sb.AppendLine();
         sb.AppendLine("Controller:");
-        sb.AppendLine($"  Endpoint: {OrNone(_config.IhcSettings.Endpoint)}");
-        sb.AppendLine($"  User: {OrNone(_config.IhcSettings.UserName)}");
+        sb.AppendLine($"  Slutpunkt: {OrNone(_config.IhcSettings.Endpoint)}");
+        sb.AppendLine($"  Bruger: {OrNone(_config.IhcSettings.UserName)}");
         sb.AppendLine();
-        sb.AppendLine("Telemetry:");
-        sb.AppendLine($"  Logs: {OrNone(_config.TelemetryConfig.Logs)}");
-        sb.AppendLine($"  Traces: {OrNone(_config.TelemetryConfig.Traces)}");
-        sb.AppendLine($"  Self-check: {OrNone(_config.TelemetryConfig.SelfCheckEndpoint)}");
+        sb.AppendLine("Telemetri:");
+        sb.AppendLine($"  Log: {OrNone(_config.TelemetryConfig.Logs)}");
+        sb.AppendLine($"  Spor: {OrNone(_config.TelemetryConfig.Traces)}");
+        sb.AppendLine($"  Selvtjek: {OrNone(_config.TelemetryConfig.SelfCheckEndpoint)}");
         return sb.ToString();
 
-        static string OrNone(string? value) => string.IsNullOrWhiteSpace(value) ? "(not set)" : value;
+        static string OrNone(string? value) => string.IsNullOrWhiteSpace(value) ? "(ikke angivet)" : value;
     }
 
     private static ProjectWorkflow CreateDesignSession()

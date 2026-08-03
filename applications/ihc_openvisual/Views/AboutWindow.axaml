@@ -5,7 +5,7 @@
         xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="280"
         x:Class="ihc_openvisual.Views.AboutWindow"
-        Title="About IHC OpenVisual"
+        Title="Om IHC OpenVisual"
         Width="420" Height="290"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
@@ -36,10 +36,10 @@
                    HorizontalAlignment="Center"/>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
-            <TextBlock Text="Source:" VerticalAlignment="Center"/>
+            <TextBlock Text="Kilde:" VerticalAlignment="Center"/>
             <Button Name="RepoLink" Classes="link"
                     Click="OnRepoLinkClick"
-                    a:AutomationProperties.Name="Open source repository in browser"
+                    a:AutomationProperties.Name="Åbn kildekode-arkivet i browseren"
                     VerticalAlignment="Center">
                 <TextBlock Name="RepoLinkText" TextDecorations="Underline"/>
             </Button>
@@ -60,7 +60,7 @@
                        HorizontalAlignment="Center"/>
         </StackPanel>
 
-        <Button Content="Close" MinWidth="84"
+        <Button Content="Luk" MinWidth="84"
                 HorizontalAlignment="Center" Margin="0,8,0,0"
                 IsCancel="True" IsDefault="True" Click="OnCloseClick"/>
     </StackPanel>

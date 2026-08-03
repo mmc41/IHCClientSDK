@@ -10,11 +10,11 @@ status: draft
 > the component library at runtime — its UI is IHC OpenVisual's own design.
 
 **Goal:** Let an IHC installer import product and function-block definition files —
-a single file or a whole folder — from the *Library* menu, see the imported components become
+a single file or a whole folder — from the *Bibliotek* menu, see the imported components become
 available to insert, and optionally persist them into an IHC OpenVisual app-data folder that is loaded
 on startup, so the components remain available in later sessions.
 
-**Scope:** the *Library*-menu commands that launch a file or folder import (with their pickers); the
+**Scope:** the *Bibliotek*-menu commands that launch a file or folder import (with their pickers); the
 confirmation feedback (which/how many components were imported); the imported components appearing in
 the product and function-block insertion menus; the persist option (defaulted on) that copies the
 imported files into the app-data catalog folder; loading that folder on startup; and the error message
@@ -23,7 +23,7 @@ importing a component's sibling help document for tooltips/reports (E13); removi
 component; and any controller-side catalog (E10).
 
 **Acceptance criteria (epic level):**
-- MUST: From the *Library* menu the installer can import a single product or function-block definition
+- MUST: From the *Bibliotek* menu the installer can import a single product or function-block definition
   file, or a folder of such files, and the imported components then appear among those available to
   insert (E3–E5).
 - MUST: A folder import reports how many components were imported and includes files in subfolders.
@@ -33,7 +33,7 @@ component; and any controller-side catalog (E10).
 - SHOULD: A file that cannot be read is reported with a message that names it, and a folder import
   stops at that file.
 
-**Readiness:** Ready. The import commands live in the **Library** menu (`Import catalog file…` /
+**Readiness:** Ready. The import commands live in the **Bibliotek** menu (`Import catalog file…` /
 `Import catalog folder…`); persisted files are copied to the app-data catalog folder
 (`%APPDATA%\IHC OpenVisual\catalog`) that loads on startup (US-061); a folder import **stops at the
 first unreadable file** (US-062); a file-name collision on persist **keeps both** files (US-061).
@@ -43,7 +43,7 @@ first unreadable file** (US-062); a file-name collision on persist **keeps both*
 ## US-059 — Import a catalog file from the Library menu
 
 **As an** IHC installer, **I want** to import a single product or function-block definition
-file from the *Library* menu, **so that** the component becomes available to place in my project.
+file from the *Bibliotek* menu, **so that** the component becomes available to place in my project.
 
 **Scope excludes:** importing a whole folder (US-060); persisting the import (US-061).
 
@@ -52,18 +52,18 @@ file from the *Library* menu, **so that** the component becomes available to pla
 ```gherkin
 Scenario: Import a product definition file
   Given IHC OpenVisual is running with a project open
-  When I use the *Library* menu's import command and select a single product definition file
+  When I use the *Bibliotek* menu's import command and select a single product definition file
   Then a confirmation reports that one component was imported
   And the product appears among the products available for insertion into a locality (E3)
 
 Scenario: Import a function-block definition file
   Given IHC OpenVisual is running with a project open
-  When I use the *Library* menu's import command and select a single function-block definition file
+  When I use the *Bibliotek* menu's import command and select a single function-block definition file
   Then a confirmation reports that one component was imported
   And the function block appears among the function blocks available for insertion (E5)
 
 Scenario: A file that cannot be read leaves the menus unchanged
-  Given I use the *Library* menu's import command and select a file that cannot be read
+  Given I use the *Bibliotek* menu's import command and select a file that cannot be read
   When the import fails
   Then the components available for insertion are unchanged
   And the failure names the offending file (message detail in US-062)
@@ -72,7 +72,7 @@ Scenario: A file that cannot be read leaves the menus unchanged
 ### AC illustrations
 
 - Importing a product definition `MyDimmer` makes *MyDimmer* selectable from the same *Products*
-  insertion routes as the built-ins (context menu on a locality, or the *Insert* menu); importing a
+  insertion routes as the built-ins (context menu on a locality, or the *Indsæt* menu); importing a
   function-block definition `MyTimer` makes *MyTimer* selectable among the function blocks — so the
   file's kind determines which insertion menu it appears in.
 
@@ -80,7 +80,7 @@ Scenario: A file that cannot be read leaves the menus unchanged
 
 - Verification method — **Demonstration** that a product definition and a function-block definition each
   import and then appear in the matching insertion menu.
-- The import commands live in the *Library* menu (`Import catalog file…` / `Import catalog folder…`) and
+- The import commands live in the *Bibliotek* menu (`Import catalog file…` / `Import catalog folder…`) and
   open a native OS file/folder picker.
 
 **Readiness:** Ready.
@@ -103,7 +103,7 @@ for a file that fails mid-import (US-062).
 ```gherkin
 Scenario: Import a folder of catalog files
   Given a folder that contains product and function-block definition files, some in nested subfolders
-  When I use the *Library* menu's import command and select that folder
+  When I use the *Bibliotek* menu's import command and select that folder
   Then the components defined by those files (at any depth) become available for insertion (E3, E5)
   And a confirmation reports the number of components imported
 

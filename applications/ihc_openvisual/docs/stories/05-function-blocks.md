@@ -7,7 +7,7 @@ status: draft
 # E5 — Function blocks: insert & structure
 
 **Goal:** Let an installer add ready-made library or empty function blocks into localities in the
-*Functions* pane, understand a function block's internal structure, unlock library blocks for editing, and
+*Funktioner* pane, understand a function block's internal structure, unlock library blocks for editing, and
 organise blocks into their own and favourite folders — so control functions can be assembled and
 reused.
 
@@ -18,7 +18,7 @@ inside a block (E7) and product↔block links (E6).
 
 **Acceptance criteria (epic level):**
 - MUST: The installer can insert a preprogrammed library block or an empty block into a selected locality in
-  the *Functions* pane, confirmed in the status bar.
+  the *Funktioner* pane, confirmed in the status bar.
 - MUST: A function block **owns** four variable sections (Input, Output, Settings, Internal variables) and a
   program subtree (Programs > Program > Events / Commands). **Which of them the tree draws depends on the
   mode and on whether the section is empty** — see US-018's rendering rules; do not read this criterion as
@@ -39,7 +39,7 @@ library folders, **so that** I get a tested sub-program without writing logic.
 
 ```gherkin
 Scenario: Insert a library block from the library folders
-  Given the "Functions" pane shows a locality (e.g. "Living room")
+  Given the "Funktioner" pane shows a locality (e.g. "Living room")
   When I right-click the locality and choose a block from the library folder list
   Then the block is inserted as a child of that locality
   And the status bar reads: Function block '<block>' has been inserted under <locality>
@@ -63,14 +63,13 @@ Scenario: A block bundles its variables and program
   blocks self-contained, with no separate installation (US-063).
 - MUST: The library **categories keep the catalog's own names, verbatim** — not renamed, re-homed or
   translated (`00. Foretrukne`, `01. Lysstyring`, `02. Tid, ur og kalender`, `03. Persienne og vindue`,
-  `04. Specielle funktioner`, `05. Klimastyring`, `06. Alarm`, `08. Viewer`, `AutoProof`). This differs
-  from the **product** catalog (US-010), whose structural labels render in English — the FB library
-  categories are treated as catalog data.
+  `04. Specielle funktioner`, `05. Klimastyring`, `06. Alarm`, `08. Viewer`, `AutoProof`). The **product**
+  catalog (US-010) is rendered verbatim on the same principle — both are catalog data.
 - MAY: IHC OpenVisual's own catalog-import entries (US-059/US-060) sit alongside the stock catalog categories.
 
 ### Business rules (the function-block properties dialog)
 
-- MUST: A function block's properties dialog (F2 / right-click > *Properties* / double-click) carries
+- MUST: A function block's properties dialog (F2 / right-click > *Egenskaber* / double-click) carries
   **Name** and **Note** plus OK/Cancel — the same two-field pattern as a locality (US-007).
 - MUST: For a block that is a **library instance** (it carries a library-identity key, see US-020),
   the dialog additionally shows a read-only **original properties** group — the origin's name, number,
@@ -82,7 +81,7 @@ Scenario: A block bundles its variables and program
 
 ### Business rules — which of a block's sections the tree draws
 
-In **configuration mode** (the *Functions* pane's normal view), IHC OpenVisual does not draw every section a
+In **configuration mode** (the *Funktioner* pane's normal view), IHC OpenVisual does not draw every section a
 block owns. Two rules decide it:
 
 - MUST: A section with **no members is not drawn at all**. An `Input` or `Settings` section that holds no
@@ -126,7 +125,7 @@ custom function from scratch.
 
 ```gherkin
 Scenario: Insert an empty block into a locality
-  Given a locality is selected in the "Functions" pane, in configuration mode
+  Given a locality is selected in the "Funktioner" pane, in configuration mode
   When I right-click it and choose "Empty function block", or press Ctrl+Shift+B
   Then an empty block named "Tom blok" is inserted under the locality — the placeholder name is
     the file format's own, written into the project as data (the same rule as "Lokalitet", US-008)
@@ -236,8 +235,8 @@ Scenario: Locked blocks resist internal edits
 ### AC illustrations
 
 - A library block shows a distinct library badge (a red-outlined square marker in the tree). Choosing
-  *Unlock* switches the badge to the plain function-block icon, signalling it is now editable, and removes
-  *Unlock* from its context menu. `Ctrl+Z` puts the badge and the menu item back.
+  *Oplås* switches the badge to the plain function-block icon, signalling it is now editable, and removes
+  *Oplås* from its context menu. `Ctrl+Z` puts the badge and the menu item back.
 - In a large project most blocks ship locked, so unlock is a routine step on the way to editing a
   library block — not a rare, dangerous one.
 
@@ -246,7 +245,7 @@ Scenario: Locked blocks resist internal edits
 - Verification method — **Test**: unlock a locked block, assert it unlocked with **no dialog**, then
   `Ctrl+Z` and assert the block is **locked again** and the application is still running.
 - A block becomes locked **either** by shipping from the catalog **or** by being saved to the library
-  (US-021); the view-only guard must hold for both. Saving to the library also keeps `Show program` enabled
+  (US-021); the view-only guard must hold for both. Saving to the library also keeps `Vis program` enabled
   on the locked result — the lock gates *editing*, never *viewing*.
 
 **Readiness:** Ready.
@@ -277,12 +276,12 @@ Scenario: Create an own folder on disk
     and own folders are preserved when IHC OpenVisual is updated
 
 Scenario: Save a block into a folder
-  Given a block is selected in the "Functions" pane
+  Given a block is selected in the "Funktioner" pane
   When I right-click it and choose "Save..." — or press Ctrl+G — give it a name and optional note, and pick a target folder
   Then the block is stored there and its note is shown as a tooltip when hovering the block later
 
 Scenario: Saving a block to the library locks the in-project copy
-  Given an unlocked block is selected in the "Functions" pane
+  Given an unlocked block is selected in the "Funktioner" pane
   When I save it to a library folder under a name
   Then the in-project block is renamed to that library name and becomes a locked library block
     (its master name/author/date are stamped, its icon switches to the library badge, and the note is applied)
@@ -332,9 +331,9 @@ Scenario: Add and use a favourite
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented — Save block works and folder/favourites management is adapted for the
+**Implementation status:** ✅ Implemented — Gem Funktionsblok works and folder/favourites management is adapted for the
 install-free design, the written `.ifb` master always carries `locked="yes"` even when exported from an unlocked
 block, and saving now **auto-locks the in-project copy** in place: after the `.ifb` write, the block is renamed to
 the saved name, `master_*`-stamped, badged and set `locked="yes"` via an undoable command — so the T003/T004
-guard makes it view-only (Show program stays), and one undo restores the prior unlocked block. The export runs
+guard makes it view-only (Vis program stays), and one undo restores the prior unlocked block. The export runs
 first, so a failed export leaves the project unmutated.

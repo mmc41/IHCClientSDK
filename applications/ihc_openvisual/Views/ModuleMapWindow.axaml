@@ -7,7 +7,7 @@
         mc:Ignorable="d" d:DesignWidth="760" d:DesignHeight="620"
         x:Class="ihc_openvisual.Views.ModuleMapWindow"
         x:DataType="vis:DatalineModuleMap"
-        Title="Data line modules"
+        Title="Datalinie moduler"
         Width="760" Height="620"
         WindowStartupLocation="CenterOwner"
         CanResize="True"
@@ -49,24 +49,24 @@
         <!-- Inputs above outputs, as the vendor stacks them; the output group is the taller of the two because a
              direction's data-line count is its own (8 input lines, 16 output). -->
         <Grid RowDefinitions="Auto,*" RowSpacing="12">
-            <HeaderedContentControl Grid.Row="0" Classes="group" Header="Input modules">
+            <HeaderedContentControl Grid.Row="0" Classes="group" Header="Indgangsmoduler">
                 <Grid RowDefinitions="Auto,Auto">
                     <Grid Grid.Row="0" ColumnDefinitions="70,*,170,*">
-                        <TextBlock Grid.Column="0" Classes="colhead" Text="Data line"/>
-                        <TextBlock Grid.Column="1" Classes="colhead" Text="Module type"/>
-                        <TextBlock Grid.Column="2" Classes="colhead" Text="Locality"/>
-                        <TextBlock Grid.Column="3" Classes="colhead" Text="Description"/>
+                        <TextBlock Grid.Column="0" Classes="colhead" Text="Datalinie"/>
+                        <TextBlock Grid.Column="1" Classes="colhead" Text="Modul type"/>
+                        <TextBlock Grid.Column="2" Classes="colhead" Text="Lokalitet"/>
+                        <TextBlock Grid.Column="3" Classes="colhead" Text="Beskrivelse"/>
                     </Grid>
                     <ScrollViewer Grid.Row="1" MaxHeight="212">
                         <ItemsControl Name="InputModulesList" Classes="rows" ItemsSource="{Binding InputModules}"
-                                      a:AutomationProperties.Name="Input modules">
+                                      a:AutomationProperties.Name="Indgangsmoduler">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vis:DatalineModule">
                                     <Grid ColumnDefinitions="70,*,170,*">
                                         <TextBlock Grid.Column="0" Classes="cell" Text="{Binding DataLine}"/>
                                         <TextBlock Grid.Column="1" Classes="cell" Text="{Binding ModuleType}"
                                                    IsVisible="{Binding InUse}"/>
-                                        <TextBlock Grid.Column="1" Classes="cell" Text="&lt;not in use&gt;"
+                                        <TextBlock Grid.Column="1" Classes="cell" Text="&lt;ikke i brug&gt;"
                                                    IsVisible="{Binding !InUse}"
                                                    Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                                         <TextBlock Grid.Column="2" Classes="cell" Text="{Binding Location}"/>
@@ -79,24 +79,24 @@
                 </Grid>
             </HeaderedContentControl>
 
-            <HeaderedContentControl Grid.Row="1" Classes="group" Header="Output modules" VerticalAlignment="Stretch">
+            <HeaderedContentControl Grid.Row="1" Classes="group" Header="Udgangsmoduler" VerticalAlignment="Stretch">
                 <Grid RowDefinitions="Auto,*">
                     <Grid Grid.Row="0" ColumnDefinitions="70,*,170,*">
-                        <TextBlock Grid.Column="0" Classes="colhead" Text="Data line"/>
-                        <TextBlock Grid.Column="1" Classes="colhead" Text="Module type"/>
-                        <TextBlock Grid.Column="2" Classes="colhead" Text="Locality"/>
-                        <TextBlock Grid.Column="3" Classes="colhead" Text="Description"/>
+                        <TextBlock Grid.Column="0" Classes="colhead" Text="Datalinie"/>
+                        <TextBlock Grid.Column="1" Classes="colhead" Text="Modul type"/>
+                        <TextBlock Grid.Column="2" Classes="colhead" Text="Lokalitet"/>
+                        <TextBlock Grid.Column="3" Classes="colhead" Text="Beskrivelse"/>
                     </Grid>
                     <ScrollViewer Grid.Row="1">
                         <ItemsControl Name="OutputModulesList" Classes="rows" ItemsSource="{Binding OutputModules}"
-                                      a:AutomationProperties.Name="Output modules">
+                                      a:AutomationProperties.Name="Udgangsmoduler">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vis:DatalineModule">
                                     <Grid ColumnDefinitions="70,*,170,*">
                                         <TextBlock Grid.Column="0" Classes="cell" Text="{Binding DataLine}"/>
                                         <TextBlock Grid.Column="1" Classes="cell" Text="{Binding ModuleType}"
                                                    IsVisible="{Binding InUse}"/>
-                                        <TextBlock Grid.Column="1" Classes="cell" Text="&lt;not in use&gt;"
+                                        <TextBlock Grid.Column="1" Classes="cell" Text="&lt;ikke i brug&gt;"
                                                    IsVisible="{Binding !InUse}"
                                                    Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                                         <TextBlock Grid.Column="2" Classes="cell" Text="{Binding Location}"/>

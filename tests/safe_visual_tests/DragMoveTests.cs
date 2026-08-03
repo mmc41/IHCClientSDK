@@ -82,7 +82,7 @@ public class DragMoveTests : AvaloniaTestBase
     }
 
     // The core gesture: drop the product on locality B and it re-parents there with its identity preserved (same SDK op
-    // as Cut/Paste — the id is unchanged, not a fresh copy), reflected in the Installation tree, with "Moved." feedback.
+    // as Cut/Paste — the id is unchanged, not a fresh copy), reflected in the Installation tree, with "Flyttet." feedback.
     [Test]
     public async Task DropProductOnLocality_Reparents_LikeCutPaste()
     {
@@ -101,7 +101,7 @@ public class DragMoveTests : AvaloniaTestBase
             Assert.That(harness.Session.Current!.FindParent(productId)!.Id, Is.EqualTo(locB), "re-parented under the target locality");
             Assert.That(TreeNodes.FindById(treeLocB.Children, productId), Is.Not.Null, "shown under locality B in the tree");
             Assert.That(TreeNodes.FindById(treeLocA.Children, productId), Is.Null, "no longer under locality A");
-            Assert.That(vm.StatusText, Is.EqualTo("Moved."));
+            Assert.That(vm.StatusText, Is.EqualTo("Flyttet."));
         });
     }
 

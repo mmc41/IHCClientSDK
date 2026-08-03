@@ -9,13 +9,13 @@
         mc:Ignorable="d" d:DesignWidth="560" d:DesignHeight="420"
         x:Class="ihc_openvisual.Views.DataTablesWindow"
         x:DataType="vm:DataTablesViewModel"
-        Title="Data tables"
+        Title="Data tabeller"
         Width="560" Height="440"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False">
     <Grid Margin="16" ColumnDefinitions="*,12,*" RowDefinitions="Auto,*,Auto">
-        <TextBlock Grid.Row="0" Grid.Column="0" Name="SystemTablesLabel" Text="System tables (read-only)" FontWeight="Bold" Margin="0,0,0,6"/>
-        <TextBlock Grid.Row="0" Grid.Column="2" Name="UserTextsLabel" Text="User-defined texts" FontWeight="Bold" Margin="0,0,0,6"/>
+        <TextBlock Grid.Row="0" Grid.Column="0" Name="SystemTablesLabel" Text="System tabeller (skrivebeskyttet)" FontWeight="Bold" Margin="0,0,0,6"/>
+        <TextBlock Grid.Row="0" Grid.Column="2" Name="UserTextsLabel" Text="Brugerdefinerede tekster" FontWeight="Bold" Margin="0,0,0,6"/>
 
         <!-- System tables: each table name then its reference rows, read-only -->
         <ListBox Grid.Row="1" Grid.Column="0" ItemsSource="{Binding SystemTables}" IsEnabled="False"
@@ -48,12 +48,12 @@
         </ListBox>
 
         <StackPanel Grid.Row="2" Grid.Column="2" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
-            <Button Content="Add" Command="{Binding AddTextCommand}"/>
-            <Button Content="Edit" Command="{Binding EditTextCommand}"/>
-            <Button Content="Delete" Command="{Binding DeleteTextCommand}"/>
+            <Button Content="Tilføj" Command="{Binding AddTextCommand}"/>
+            <Button Content="Rediger" Command="{Binding EditTextCommand}"/>
+            <Button Content="Slet" Command="{Binding DeleteTextCommand}"/>
         </StackPanel>
 
-        <Button Grid.Row="2" Grid.Column="0" Content="Close" MinWidth="84" IsCancel="True"
+        <Button Grid.Row="2" Grid.Column="0" Content="Luk" MinWidth="84" IsCancel="True"
                 HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnClose"/>
     </Grid>
 </Window>

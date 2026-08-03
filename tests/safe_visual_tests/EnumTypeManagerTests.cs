@@ -48,7 +48,7 @@ public class EnumTypeManagerTests : AvaloniaTestBase
         await vm.InitializeAsync();
         int before = harness.Session.Current!.GetEnumeratorTypes().Count;
 
-        // "New…" in the manager, then the definition dialog supplies the name and states.
+        // "Ny…" in the manager, then the definition dialog supplies the name and states.
         harness.Dialogs.EnumTypeManagerResult = new EnumTypeManagerResult(SelectedType: null);
         harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Ventilation", new[] { "Lav", "Høj" });
         await vm.ManageEnumTypesCommand.ExecuteAsync(null);

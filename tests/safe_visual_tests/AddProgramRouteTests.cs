@@ -15,7 +15,7 @@ namespace safe_visual_tests;
 /// </summary>
 public class AddProgramRouteTests : AvaloniaTestBase
 {
-    // An unlocked block in programming mode, with its "Programs" container node selected.
+    // An unlocked block in programming mode, with its "Programmer" container node selected.
     private static async Task<(ShellHarness harness, MainWindowViewModel vm, TreeNodeViewModel programs)> ProgrammingAsync()
     {
         var harness = ShellHarness.Create();

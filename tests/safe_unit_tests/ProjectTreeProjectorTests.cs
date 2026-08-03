@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using ihc_openvisual.Services;
 using ihc_openvisual.ViewModels;
 using Ihc;
 using Ihc.Vis;
@@ -68,13 +69,13 @@ public class ProjectTreeProjectorTests
         var session = new ProjectDocumentSession();
         session.Open(project);
         EditOutcome<ElementId> added =
-            session.Apply(service.Commands.AddEmptyFunctionBlock(session.Current!, localityId, "Tom blok"));
+            session.Apply(service.Commands.AddEmptyFunctionBlock(session.Current!, localityId, ProjectWorkflow.EmptyBlockName));
         Project withBlock = session.Current!;
         ProjectElement emptyBlock = withBlock.FindById(added.Value)!;
 
         var projector = new ProjectTreeProjector(withBlock);
-        TreeNodeViewModel config = projector.BuildFunctionBlockNode(emptyBlock, "Tom blok", programmingMode: false);
-        TreeNodeViewModel programming = projector.BuildFunctionBlockNode(emptyBlock, "Tom blok", programmingMode: true);
+        TreeNodeViewModel config = projector.BuildFunctionBlockNode(emptyBlock, ProjectWorkflow.EmptyBlockName, programmingMode: false);
+        TreeNodeViewModel programming = projector.BuildFunctionBlockNode(emptyBlock, ProjectWorkflow.EmptyBlockName, programmingMode: true);
 
         Assert.Multiple(() =>
         {

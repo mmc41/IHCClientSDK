@@ -27,7 +27,7 @@ public class EditHistoryTests
             Assert.That(vm.InstallationNodes[0].Children.Count, Is.EqualTo(paneBefore), "the Installation pane reflects the undo");
             Assert.That(vm.FunctionNodes[0].Children.Count, Is.EqualTo(paneBefore), "the Functions pane reflects it identically");
             Assert.That(harness.Session.CanRedo, Is.True);
-            Assert.That(vm.StatusText, Is.EqualTo("Undid: Insert locality"), "the undo status names the action (E14)");
+            Assert.That(vm.StatusText, Is.EqualTo("Fortrød: Insert locality"), "the undo status names the action (E14)");
         });
 
         await vm.RedoCommand.ExecuteAsync(null);
@@ -63,7 +63,7 @@ public class EditHistoryTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        Assert.That(vm.UndoMenuHeader, Is.EqualTo("_Undo"), "no history yet → bare header");
+        Assert.That(vm.UndoMenuHeader, Is.EqualTo("_Fortryd"), "no history yet → bare header");
 
         await harness.Session.AddLocalityAsync();
         Assert.That(vm.UndoMenuHeader, Does.Contain("Insert locality"), "the Undo header names the action");
@@ -71,7 +71,7 @@ public class EditHistoryTests
         await vm.UndoCommand.ExecuteAsync(null);
         Assert.Multiple(() =>
         {
-            Assert.That(vm.UndoMenuHeader, Is.EqualTo("_Undo"), "nothing left to undo → bare header");
+            Assert.That(vm.UndoMenuHeader, Is.EqualTo("_Fortryd"), "nothing left to undo → bare header");
             Assert.That(vm.RedoMenuHeader, Does.Contain("Insert locality"), "the Redo header names the re-applyable action");
         });
     }

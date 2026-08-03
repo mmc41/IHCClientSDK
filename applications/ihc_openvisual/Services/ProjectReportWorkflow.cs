@@ -48,7 +48,7 @@ internal sealed class ProjectReportWorkflow(
         {
             ActivityExtensions.SetError(activity, ex);
             logger.LogError(ex, "Failed to generate the {Kind} {Mode} report for browser view", kind, mode);
-            await dialogs.ShowMessageAsync("Report failed", ex.Message);
+            await dialogs.ShowMessageAsync(ReportFailedTitle, ex.Message);
         }
     }
 
@@ -78,9 +78,13 @@ internal sealed class ProjectReportWorkflow(
         {
             ActivityExtensions.SetError(activity, ex);
             logger.LogError(ex, "Failed to save the {Kind} {Mode} report", kind, mode);
-            await dialogs.ShowMessageAsync("Report failed", ex.Message);
+            await dialogs.ShowMessageAsync(ReportFailedTitle, ex.Message);
         }
     }
+
+    // The ONE title over a report that could not be produced. Viewing and saving fail for the same reasons — the
+    // facade generates the bytes either way — so both routes name the failure identically.
+    private const string ReportFailedTitle = "Rapport mislykkedes";
 
     /// <summary>The file name a generated report gets, carrying the extension of the picked format so the
     /// temp page and the save dialog's suggestion both match what the facade writes.</summary>

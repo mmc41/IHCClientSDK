@@ -73,7 +73,7 @@ public class DragLinkTests : AvaloniaTestBase
             // US-022 orientation: the dragged block output owns the from-half, the target block input the to-half.
             Assert.That(HasChildTag(harness, fbOutputId, "link_from_resource"), Is.True, "US-022: source owns the link_from half");
             Assert.That(HasChildTag(harness, fbDstInputId, "link_to_resource"), Is.True, "US-022: target owns the link_to half");
-            Assert.That(vm.StatusText, Does.StartWith("Linked"), "the drop reports the link");
+            Assert.That(vm.StatusText, Does.StartWith("Linket"), "the drop reports the link");
         });
     }
 

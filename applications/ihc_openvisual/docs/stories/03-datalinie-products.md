@@ -11,7 +11,7 @@ address their inputs and outputs to physical data lines and I/O-module terminals
 model matches the real wiring.
 
 **Scope:** inserting wired products (the product categories the catalog defines) via context menu
-or the *Insert* menu; the product-properties (documentation) dialog; per-terminal configuration of
+or the *Indsæt* menu; the product-properties (documentation) dialog; per-terminal configuration of
 inputs and outputs (data line + module terminal, in-use indication, output initial value); and the
 special-products path for a `<product>` special product. **Scope excludes:** wireless products (E4),
 function-block links (E6), reporting (E9), and the remaining *Special products* (discontinued,
@@ -73,12 +73,12 @@ The insert menu's categories come from the catalog; that catalog structure is th
 - MUST: The **special-products** category holds the full set — `Modificeret Wireless produkter`,
   `Vinduer` and `Udgaet produkter` (discontinued), plus the loose specials `S0 Device`,
   `Controller Link OUT`, `Controller Link IN` and the signal-strength test equipment.
-- MUST: Every **structural / chrome** label renders in English — the three top-level category names
-  (`Datalinie produkter` → *Wired products*) **and** the subcategories (`Generelle` → *General*;
-  `Indgang`/`Udgang`/`Dimmer` → *Input*/*Output*/*Dimmer*). Only **user-entered** content (product names,
-  notes, `Placering`, program names) stays Danish — as do the **function-block library** category names,
-  which US-018 keeps verbatim as catalog data. The structural category rules above define which
-  categories exist; only the rendered labels change.
+- MUST: Every category label renders **verbatim** — the catalog's own names, for the top-level categories
+  (`Datalinie produkter`, `LK IHC Wireless produkter`, `Bus Produkter`, `Specielle produkter`) as much as for
+  the subcategories (`Generelle`, `Indgang`, `Udgang`, `Dimmer`). The application translates none of them: its
+  own language is the catalog's, so restating a stored name would only risk drift. This matches the
+  **function-block library** categories, which US-018 keeps verbatim for the same reason. The structural
+  category rules above define which categories exist; the labels are whatever the catalog says.
 
 ### Business rules — how the tree renders a product
 
@@ -142,7 +142,7 @@ OpenVisual deliberately does **not** draw. The tree shows only some of them, by 
 
 ### Constraints
 
-- Verification method — **Demonstration** that both the context-menu and *Insert*-menu routes insert
+- Verification method — **Demonstration** that both the context-menu and *Indsæt*-menu routes insert
   the product under the selected locality with the confirming status-bar string.
 
 **Readiness:** Ready.
@@ -333,8 +333,7 @@ rule.
 
 **Insertion & constraint rules:**
 - MUST: A modem is inserted via right-click a locality > *Products* > *Bus Produkter* > `<product>`
-  (US-010's category structure; the category label renders in English — *Bus Products* — per the
-  Full-English rule). Per US-010's dialog-gated insert, the modem's **own** properties dialog opens as
+  (US-010's category structure; the category label renders verbatim — *Bus Produkter*). Per US-010's dialog-gated insert, the modem's **own** properties dialog opens as
   part of the insert — not the generic product dialog — and cancelling it inserts nothing.
 - MUST: A project may contain **at most one** modem, regardless of `<product>`.
 - SHOULD: A refused second-modem insertion **tells the installer why** rather than appearing to do nothing.

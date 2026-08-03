@@ -61,7 +61,7 @@ public class CommandRegistryTests
         CommandSpec row = Row(gate: _ => new EditVerdict(false, null));
 
         Assert.That(CommandRegistry.For(row, Open, Surface.MenuBar),
-            Is.EqualTo(Availability.Disabled("Not available now.")),
+            Is.EqualTo(Availability.Disabled("Ikke tilgængelig nu.")),
             "a reasonless refusal still explains itself with the fallback text");
     }
 
@@ -160,7 +160,7 @@ public class CommandRegistryTests
         Assert.Multiple(() =>
         {
             Assert.That(registry.Explain("gated"), Is.EqualTo("No project."), "a refusal explains itself");
-            Assert.That(registry.Explain("silent"), Is.EqualTo("Not available now."),
+            Assert.That(registry.Explain("silent"), Is.EqualTo("Ikke tilgængelig nu."),
                 "an unplaced row's reasonless refusal still gets the fallback the bar would have greyed with");
             Assert.That(registry.Explain("nosuchrow"), Is.Null, "an unknown row has nothing to explain");
         });

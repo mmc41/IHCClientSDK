@@ -31,6 +31,8 @@ public class InsertEmptyFunctionBlockParityTests
         await vm.InsertEmptyFunctionBlockCommand.ExecuteAsync(null);
         vm.LeaveProgrammingModeCommand.Execute(null);   // the insert opens the block; read it back in its locality
 
+        // The one place the placeholder's WORDING is pinned: everywhere else the tests address the block through
+        // ProjectWorkflow.EmptyBlockName, so this assertion is what would fail if the vendor name were changed.
         Assert.That(vm.FunctionNodes[0].Children[7].Children[0].DisplayName, Is.EqualTo("Tom blok"),
             "the placeholder name is project data, so it matches the file format's own");
     }
@@ -49,8 +51,8 @@ public class InsertEmptyFunctionBlockParityTests
         {
             Assert.That(vm.IsProgrammingMode, Is.True);
             // Both panes re-root at the block itself — the same shape EnterProgrammingMode produces.
-            Assert.That(vm.InstallationNodes[0].DisplayName, Is.EqualTo("Tom blok"));
-            Assert.That(vm.FunctionNodes[0].DisplayName, Is.EqualTo("Tom blok"));
+            Assert.That(vm.InstallationNodes[0].DisplayName, Is.EqualTo(ProjectWorkflow.EmptyBlockName));
+            Assert.That(vm.FunctionNodes[0].DisplayName, Is.EqualTo(ProjectWorkflow.EmptyBlockName));
         });
     }
 
@@ -97,7 +99,7 @@ public class InsertEmptyFunctionBlockParityTests
 
         await vm.InsertEmptyFunctionBlockCommand.ExecuteAsync(null);
 
-        Assert.That(vm.FunctionNodes[0].DisplayName, Is.EqualTo("Tom blok"),
+        Assert.That(vm.FunctionNodes[0].DisplayName, Is.EqualTo(ProjectWorkflow.EmptyBlockName),
             "programming mode must open the block just created, not its already-named sibling");
     }
 }

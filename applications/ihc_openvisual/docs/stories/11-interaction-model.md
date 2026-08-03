@@ -53,7 +53,7 @@ bar, and shortcut — **so that** I can work whichever way suits the moment.
   right-click a locality to insert a product); `Shift+F10` opens the same context menu for the selected
   node without the mouse. **Which actions are valid per node type is specified in US-068.**
 - MUST: The **menu bar** offers the same actions (e.g. *Insert > Products > …* mirrors the
-  right-click insertion); `F10` activates the menu bar at *File*, after which the arrow keys navigate
+  right-click insertion); `F10` activates the menu bar at *Filer*, after which the arrow keys navigate
   it.
 - MUST: The **menu bar is not filtered by which pane has focus**, and not by what is selected — every
   command stays **present** at all times. But a command that **cannot apply to the current selection is
@@ -67,36 +67,36 @@ bar, and shortcut — **so that** I can work whichever way suits the moment.
 - MUST: `F1` shows help text for the selected element; `F2` shows the properties of the selected
   element. **Double-click is a fourth route to the same properties** — see US-067.
 - MUST: The routes are genuinely equivalent — IHC OpenVisual must not implement an action in
-  one route only (e.g. an insertion available on right-click must also exist under *Insert* and, where
-  documented, on a shortcut). **This applies to the clipboard commands too:** *Cut*, *Copy* and *Paste*
+  one route only (e.g. an insertion available on right-click must also exist under the *Indsæt* menu and, where
+  documented, on a shortcut). **This applies to the clipboard commands too:** *Klip*, *Kopier* and *Indsæt* (paste)
   MUST be reachable from a node's **context menu**, not only from the toolbar and `Ctrl+X`/`Ctrl+C`/`Ctrl+V`
   (US-068 fixes the inventory).
 
 ### Business rules (menu-bar enablement — what greys, and when)
 
 - MUST: With the **localities root** selected, the bar greys everything that cannot apply to it:
-  *Cut*, *Copy*, *Paste*, *Properties*, *Configuration view*, *Show program*, *Jump to opposite link*
-  and *Empty function block* are all disabled.
+  *Klip*, *Kopier*, *Indsæt*, *Egenskaber*, *Konfigurationsvisning*, *Vis program*, *Hop til modsat link*
+  and *Tom Funktionsblok* are all disabled.
 - MUST: *Insert > Locality* is disabled whenever the selection is a locality's content (a product, a
   function block or a pin) — a locality can only be inserted at the root level (US-008).
-- MUST: **A locked function block is not a bar-enablement discriminator.** *Cut*, *Copy*, *Delete* and
-  *Show program* are **enabled** on a locked block in the **menu bar** exactly as they are in its context
+- MUST: **A locked function block is not a bar-enablement discriminator.** *Klip*, *Kopier*, *Slet* and
+  *Vis program* are **enabled** on a locked block in the **menu bar** exactly as they are in its context
   menu — the two surfaces give the same answer, on every project. The lock governs what may be changed
   **inside** the block (US-020, US-026), not whether the block itself can be cut, copied, deleted or read.
   Any rule that greys these four on the bar because the block is locked is wrong and must not be
   reintroduced.
-- MUST: In the bar, *Copy* is enabled on **any pin** even where *Cut* is not — Copy reaches strictly
+- MUST: In the bar, *Kopier* is enabled on **any pin** even where *Klip* is not — Copy reaches strictly
   further than Cut (a pin can be duplicated with its product, never cut out of it).
 - MUST: The menu bar and the context menu apply **different, independently specified enablement
-  rules** where the surfaces genuinely differ (US-068 lists the context side): *Show program* needs a
+  rules** where the surfaces genuinely differ (US-068 lists the context side): *Vis program* needs a
   **block selected directly** in the bar, while the flyout also accepts a **pin** and opens the owning
-  block's program; and *Copy* is bar-enabled on any pin but context-offered on product terminals only.
+  block's program; and *Kopier* is bar-enabled on any pin but context-offered on product terminals only.
   Each surface reproduces its own rule — they are not to be "reconciled" into one. **Lockedness is not
   one of these divergences** — see the locked-block rule above.
 - MUST: **Keyboard shortcuts follow the menu bar's enablement.** Where the two surfaces deliberately
   diverge (previous rule), the shortcut refuses exactly when the bar item is greyed — `F3` opens a
-  program only where the bar enables *Show program* (a block selected directly, **locked or not**),
-  while the flyout keeps the pin route as well. Because the bar enables *Cut* and *Delete* on a locked
+  program only where the bar enables *Vis program* (a block selected directly, **locked or not**),
+  while the flyout keeps the pin route as well. Because the bar enables *Klip* and *Slet* on a locked
   block, `Ctrl+X` stages the cut and `Delete` removes it, matching the flyout. A command whose shortcut
   has no menu-bar item (`Ctrl+I` / `Ctrl+U`, US-045) is governed by its own availability rule.
 - MUST: **A refused shortcut explains itself in the status bar.** Pressing the shortcut of a command
@@ -108,23 +108,23 @@ bar, and shortcut — **so that** I can work whichever way suits the moment.
 - Saving a document is offered as *File > Save* first, with `[Ctrl+S]` shown as the alternative.
 - A locality product insertion is reachable by right-click the locality **and** via
   *Insert > Products > Wired products > … > <product>*.
-- Copying a product is reachable by right-click > *Copy*, by the toolbar *Copy* button, and by `Ctrl+C` —
+- Copying a product is reachable by right-click > *Kopier*, by the toolbar *Kopier* button, and by `Ctrl+C` —
   all three name the copied product in the status bar.
-- Selecting the localities root and opening *Edit* shows *Undo*/*Redo* enabled (history permitting)
-  and *Cut*, *Copy*, *Paste* and *Properties* greyed; selecting a product re-enables them.
-- Selecting a **locked** library block and opening *Edit* shows *Cut*, *Copy* and *Delete* enabled, and
-  *View* shows *Show program* enabled — the same four the block's own right-click menu offers. Selecting
+- Selecting the localities root and opening *Rediger* shows *Undo*/*Redo* enabled (history permitting)
+  and *Klip*, *Kopier*, *Indsæt* and *Egenskaber* greyed; selecting a product re-enables them.
+- Selecting a **locked** library block and opening *Rediger* shows *Klip*, *Kopier* and *Slet* enabled, and
+  *Vis* shows *Vis program* enabled — the same four the block's own right-click menu offers. Selecting
   an unlocked block in the same pane shows exactly the same four enabled: the lock makes no difference to
   this set on either surface.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented — the double-click route exists, *Cut*/*Copy*/*Paste* are
+**Implementation status:** ✅ Implemented — the double-click route exists, *Klip*/*Kopier*/*Indsæt* are
 reachable from the node context menu, and the menu bar greys selection-dependent commands per the
 enablement rules above (including the deliberate bar-vs-context differences). The status-bar explanation
 for refused shortcuts is in place, and shortcuts now follow the **bar's** availability on every route —
 including `Delete`, which the trees service themselves. The locked-block bar rule this story previously
-carried (bar greys *Cut*/*Delete*/*Show program*) was **retired**: re-measurement showed the two surfaces
+carried (bar greys *Klip*/*Slet*/*Vis program*) was **retired**: re-measurement showed the two surfaces
 agree, and all four commands are enabled on the bar for a locked block.
 
 ---
@@ -145,7 +145,7 @@ conditions):
 - MUST — **Project & app:** `Ctrl+N` new project; `Ctrl+O` open project; `Ctrl+S` save project;
   `F5` send project; `Alt+F4` quit IHC OpenVisual.
 - MUST — **Windows/menus:** `F6` switch between the two windows; `F10` activate the menu bar at
-  *File*; `Shift+F10` context menu for the selected element.
+  *Filer*; `Shift+F10` context menu for the selected element.
 - MUST — **Edit clipboard/undo:** `Ctrl+Z` undo; `Ctrl+Y` redo; `Ctrl+X` cut; `Ctrl+C` copy;
   `Ctrl+V` paste; `Delete` delete selected; `Ctrl+I` insert input; `Ctrl+U` insert output.
 - MUST — **Simulation** *(documents the simulation shortcuts; the simulation feature itself is out of
@@ -163,7 +163,7 @@ conditions):
   its last **visible** row — `End` walks the last-child chain only through **expanded** nodes, so a
   collapsed node's children are unreachable by it. Both keys act only on the focused tree and keep
   their normal text-editing meaning inside a text field.
-- MAY: IHC OpenVisual adds `Ctrl+Shift+Up` / `Ctrl+Shift+Down` (*Move up* / *Move down*) — a deliberate
+- MAY: IHC OpenVisual adds `Ctrl+Shift+Up` / `Ctrl+Shift+Down` (*Flyt op* / *Flyt ned*) — a deliberate
   addition, consistent with the non-drag reorder supplement (US-055/US-068).
 
 ### AC illustrations
@@ -206,7 +206,7 @@ the expander caret, which continues to toggle expansion when clicked directly.
 
 **Activation rules:**
 - MUST: Double-clicking a node opens the properties dialog listed for its type in the table below — the
-  **same** dialog the `F2` and right-click > *Properties* routes already open (US-044 route equivalence).
+  **same** dialog the `F2` and right-click > *Egenskaber* routes already open (US-044 route equivalence).
 - MUST: Double-clicking a node **does not** expand or collapse it. The gesture is handled by the
   application, which suppresses the toolkit's expand-toggle default; a node's expansion state is
   unchanged by opening (and cancelling) its dialog.
@@ -219,7 +219,7 @@ the expander caret, which continues to toggle expansion when clicked directly.
 
 | Node type | Double-click opens |
 |---|---|
-| Installation root (*Localities*) | **nothing** |
+| Installation root (*Lokaliteter*) | **nothing** |
 | Locality | its *Edit `<name>` properties* dialog (Name + Note — US-007) |
 | Product (wired or wireless) | the product properties dialog, titled with the **product type** (US-011) |
 | Product pin (input or output) | **its parent product's** dialog — *not* a pin-specific one |
@@ -267,66 +267,66 @@ toolbar for a command the menu omits.
 **Inventory rules:**
 - MUST: A node's context menu contains the commands valid for **its own node type** — the menu is not one
   generic list reused across node types. In particular, a command that cannot apply to the clicked node
-  (e.g. *Insert product* on a link row, or on a **pin**) is **absent**, not merely disabled.
-- MUST: The **insert vocabulary is split by pane**: *Insert product* appears on a locality in the
-  *Installation* pane only; *Insert function block* and *Empty function block* on a locality in the
-  *Functions* pane only. Each appears in exactly one pane — mirroring the split the **tree itself already
+  (e.g. *Indsæt produkt* on a link row, or on a **pin**) is **absent**, not merely disabled.
+- MUST: The **insert vocabulary is split by pane**: *Indsæt produkt* appears on a locality in the
+  *Installation* pane only; *Insert function block* and *Tom Funktionsblok* on a locality in the
+  *Funktioner* pane only. Each appears in exactly one pane — mirroring the split the **tree itself already
   makes**, which shows products on the left and blocks on the right.
 - MUST: **A pin is not a container and not a sibling.** A product's pins come from its catalog type, so a
-  pin's menu offers **no insert command, no *Move up*/*Move down*, and no *Delete*.** (Deleting a pin would
+  pin's menu offers **no insert command, no *Flyt op*/*Flyt ned*, and no *Slet*.** (Deleting a pin would
   produce a product that contradicts its own catalog type — e.g. a six-button switch carrying five inputs,
   with the sixth button unaddressable and invisible in the tree.) An **engine guard** is required in
   addition to this menu gate, so a project written by any route stays conformant with its own catalog
   (US-053).
-- MUST: *Cut*, *Copy* and *Paste* appear in the context menu of every node type that supports them
+- MUST: *Klip*, *Kopier* and *Indsæt* appear in the context menu of every node type that supports them
   (locality, product, function block), satisfying the US-044 route-parity MUST.
-- MUST: *Paste* is shown **conditionally on clipboard state** — it is absent when the clipboard is empty and
+- MUST: *Indsæt* is shown **conditionally on clipboard state** — it is absent when the clipboard is empty and
   present when it holds a node. (A locality's menu is 6 items with an empty clipboard and 7 with a
-  full one; the delta is exactly *Paste*.)
+  full one; the delta is exactly *Indsæt*.)
 - MUST: A **link row**'s menu offers exactly two commands: *jump to the opposite end of the link* (US-025)
-  and *Delete* (US-057). It offers no properties item.
-- MUST: An **unlocked function block**'s menu includes a *show program* command — a context-menu route into
+  and *Slet* (US-057). It offers no properties item.
+- MUST: An **unlocked function block**'s menu includes a *Vis program* command — a context-menu route into
   programming mode (US-026).
-- MUST: A **locked** function block's menu offers **both** *show program* **and** *Unlock* — they are
-  **additive, not alternatives**. The locked menu is the unlocked one **plus** *Unlock* (8 items vs 7);
-  *show program* is on both. ⇒ **A locked library block's program CAN be opened for reading**: the lock
+- MUST: A **locked** function block's menu offers **both** *Vis program* **and** *Oplås* — they are
+  **additive, not alternatives**. The locked menu is the unlocked one **plus** *Oplås* (8 items vs 7);
+  *Vis program* is on both. ⇒ **A locked library block's program CAN be opened for reading**: the lock
   gates *editing*, never *viewing*, and no unlock is needed to read a block's program.
 - MUST: **Inside a *locked* block's program (programming mode), every program node is view-only.** Its context
-  menu offers *Properties* (Egenskaber) only; **Delete and *Move up*/*Move down* are removed** — the locked-block program menu is fully view-only (see `07-fb-programming.md`, US-026).
+  menu offers *Egenskaber* (Egenskaber) only; **Delete and *Flyt op*/*Flyt ned* are removed** — the locked-block program menu is fully view-only (see `07-fb-programming.md`, US-026).
 - MUST: A **product pin**'s menu offers a **log mark** toggle — the command behind the `Log …` state rows
   US-010 renders. (This is a missing feature, not just a missing menu entry; IHC OpenVisual offers no
   equivalent anywhere today.)
-- MUST: A **product terminal**'s menu offers *Copy* (while *Cut* is never offered on a pin); a
-  **function-block pin**'s menu offers **no** *Copy*. The context menu's Copy scope (product terminals
+- MUST: A **product terminal**'s menu offers *Kopier* (while *Klip* is never offered on a pin); a
+  **function-block pin**'s menu offers **no** *Kopier*. The context menu's Copy scope (product terminals
   only) is deliberately **narrower than the menu bar's** (any pin, US-044) — each surface keeps its own
   rule.
-- MUST: A **locked** function block's flyout offers *Cut* and *Delete* — and they really run. So does the
-  menu bar: the two surfaces **agree** on a locked block, for *Cut*, *Copy*, *Delete* and *Show program*
-  alike (US-044). *Show program* is additionally offered from a **pin** in the flyout (opening the owning
-  block's program, US-026), where the bar requires a block selected directly — that one, and *Copy*'s
+- MUST: A **locked** function block's flyout offers *Klip* and *Slet* — and they really run. So does the
+  menu bar: the two surfaces **agree** on a locked block, for *Klip*, *Kopier*, *Slet* and *Vis program*
+  alike (US-044). *Vis program* is additionally offered from a **pin** in the flyout (opening the owning
+  block's program, US-026), where the bar requires a block selected directly — that one, and *Kopier*'s
   narrower context scope above, are the real bar-vs-context differences and are specified behaviour, not
   inconsistencies to fix.
-- MUST: A **scene container**'s menu offers *Copy*.
-- SHOULD: *Move up* / *Move down* remain on the node types that can be reordered (locality, product,
+- MUST: A **scene container**'s menu offers *Kopier*.
+- SHOULD: *Flyt op* / *Flyt ned* remain on the node types that can be reordered (locality, product,
   function block) and are **absent** from a link row **and from a pin**. They are IHC OpenVisual's non-drag
   supplement to drag reorder (US-055) and are kept — but only on reorderable nodes.
 
-**Target inventories** (the user stories are the authoritative spec; IHC OpenVisual's wording is its own
-English — the *language* of a label is an allowed difference, the *inventory* is not).
+**Target inventories** (the user stories are the authoritative spec; a label's exact *wording* is an allowed
+difference, its *inventory* is not).
 
 **A locality's menu depends on which pane it is in. Every other node type's does not.**
 
 | Node type | Pane | Commands |
 |---|---|---|
-| Installation root | **both** (identical) | insert locality — **1 item** |
-| Locality | *Installation* | **insert product** (submenu), Cut, Copy, Delete, separator, Properties — **6 items**; **+ Paste** when the clipboard is full |
-| Locality | *Functions* | **insert function block** (submenu), Cut, Copy, Delete, **empty function block**, separator, Properties — **7 items** |
-| Product | *Installation* | Cut, Copy, Delete, separator, Properties — **5 items** |
-| Product pin (input or output) | *Installation* | **log mark**, **Copy**, separator, Properties — **4 items** |
-| Scene container (*Scenarier*) | *Installation* | Copy, separator, Properties — **exactly 3 items** |
-| Link row | either | jump to opposite end, Delete — **exactly 2 items** |
-| Function block (unlocked) | *Functions* | Save block…, Cut, Copy, Delete, **show program**, separator, Properties — **7 items** |
-| Function block (locked) | *Functions* | Save block…, Cut, Copy, **Unlock**, Delete, **show program**, separator, Properties — **8 items** — the unlocked row **plus** *Unlock* |
+| Installation root | **both** (identical) | Indsæt lokalitet — **1 item** |
+| Locality | *Installation* | **Indsæt produkt** (submenu), Klip, Kopier, Slet, separator, Egenskaber — **6 items**; **+ Indsæt** (paste) when the clipboard is full |
+| Locality | *Funktioner* | **Indsæt Funktionsblok** (submenu), Klip, Kopier, Slet, **Tom Funktionsblok**, separator, Egenskaber — **7 items** |
+| Product | *Installation* | Klip, Kopier, Slet, separator, Egenskaber — **5 items** |
+| Product pin (input or output) | *Installation* | **Logmærke**, **Kopier**, separator, Egenskaber — **4 items** |
+| Scene container (*Scenarier*) | *Installation* | Kopier, separator, Egenskaber — **exactly 3 items** |
+| Link row | either | Hop til modsat link, Slet — **exactly 2 items** |
+| Function block (unlocked) | *Funktioner* | Gem Funktionsblok…, Klip, Kopier, Slet, **Vis program**, separator, Egenskaber — **7 items** |
+| Function block (locked) | *Funktioner* | Gem Funktionsblok…, Klip, Kopier, **Oplås**, Slet, **Vis program**, separator, Egenskaber — **8 items** — the unlocked row **plus** *Oplås* |
 
 **Output:**
 - Every node type's right-click menu is a valid, minimal command set for that node, and no command is
@@ -334,16 +334,16 @@ English — the *language* of a label is an allowed difference, the *inventory* 
 
 ### AC illustrations
 
-- Right-clicking a link row offers exactly *jump to the opposite end* and *Delete* — not the seven generic
-  items, and not *Insert product*.
-- Right-clicking a locality with an empty clipboard offers no *Paste*; copying a product first and
-  right-clicking the same locality now offers *Paste*.
+- Right-clicking a link row offers exactly *Hop til modsat link* and *Slet* — not the seven generic
+  items, and not *Indsæt produkt*.
+- Right-clicking a locality with an empty clipboard offers no *Indsæt* (paste); copying a product first and
+  right-clicking the same locality now offers it.
 
 ### Constraints
 
 - Verification method — **Test**: one inventory assertion per node type **× pane**. **The pane axis is the
-  part that matters.** Include the **clipboard-state-dependent** *Paste* item (which needs a test that copies
-  something first) and a case asserting that a **pin** offers no *Delete*.
+  part that matters.** Include the **clipboard-state-dependent** *Indsæt* (paste) item (which needs a test that copies
+  something first) and a case asserting that a **pin** offers no *Slet*.
 - **The gate to replace is a pane-blind, type-blind "can this node be edited?" condition.** That single
   condition is why the same list appears on a locality in both panes *and* on a pin — the two defects have
   one cause, and the pin case is not a cosmetic one.
@@ -351,8 +351,8 @@ English — the *language* of a label is an allowed difference, the *inventory* 
 **Readiness:** Ready.
 
 **Implementation status:** 🟡 Largely implemented — the per-node-kind inventories (room, product, product
-pin, function block, function-block pin), the flyout ordering, *Copy* on product terminals, the
-locked-block flyout offering *Cut*/*Delete*/*Show program*, and *Show program* from a pin (resolving the
+pin, function block, function-block pin), the flyout ordering, *Kopier* on product terminals, the
+locked-block flyout offering *Klip*/*Slet*/*Vis program*, and *Vis program* from a pin (resolving the
 owning block) are all in place, including the two surviving bar-vs-context enablement differences (US-044).
 The locked block is no longer one of them — the bar was brought into line with the flyout on all four
 commands.
@@ -395,7 +395,7 @@ raise a confirmation at all (US-009, US-053).
 ### Constraints
 
 - Verification method — **Test**: assert the negative button holds focus when a destructive confirm opens,
-  and that `Esc` closes it, on **every** confirm dialog — not only *Delete*.
+  and that `Esc` closes it, on **every** confirm dialog — not only *Slet*.
 - **This story fixes the guard's ergonomics; it never removes a guard.** IHC OpenVisual deliberately
   confirms these actions (US-053, US-056) — those confirmations **stay**. What is
   wrong today is that the confirmation cannot be answered without the mouse, which is an accessibility
@@ -403,7 +403,7 @@ raise a confirmation at all (US-009, US-053).
 
 **Readiness:** Ready.
 
-**Implementation status:** ⛔ Not implemented for confirmations — the *Delete* confirm ignores `Esc` and
+**Implementation status:** ⛔ Not implemented for confirmations — the *Slet* confirm ignores `Esc` and
 focuses neither button, leaving focus on the dialog window itself.
 
 ---
@@ -461,7 +461,7 @@ Scenario: A mode switch opens fresh
   gains its *first* child opens by default rather than inheriting a stale collapsed state.
 - MUST: After a successful **drag-drop**, the **drop-target row is left expanded together with its
   entire subtree**, and that expansion **persists** — it is a drop rule making the landing place
-  visible, not a hover artifact. The keyboard reorder supplement (*Move up*/*Move down*, US-055) does
+  visible, not a hover artifact. The keyboard reorder supplement (*Flyt op*/*Flyt ned*, US-055) does
   **not** touch expansion state.
 - MUST: A **pasted** subtree (US-056) and a **freshly placed product** (US-010) are revealed fully
   expanded — an arrival the installer caused is made visible rather than landing as one collapsed row.

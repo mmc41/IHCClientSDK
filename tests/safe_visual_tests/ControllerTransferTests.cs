@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Threading.Tasks;
+using ihc_openvisual.ViewModels;
 
 namespace safe_visual_tests;
 
@@ -16,7 +17,7 @@ public class ControllerTransferTests
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var wireless = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("LK IHC Wireless produkter"));
+            .First(p => p.CategoryPath.StartsWith(CatalogMenu.WirelessProductsCategory));
         await harness.Session.AddProductAsync(loc, wireless.ProductIdentifier);
 
         var unlinked = harness.Session.GetUnlinkedWirelessProducts();
@@ -33,13 +34,13 @@ public class ControllerTransferTests
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var wireless = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("LK IHC Wireless produkter"));
+            .First(p => p.CategoryPath.StartsWith(CatalogMenu.WirelessProductsCategory));
         await harness.Session.AddProductAsync(loc, wireless.ProductIdentifier);
         harness.Dialogs.ConfirmResult = false;   // decline the "send anyway?" warning
 
         await vm.SendProjectCommand.ExecuteAsync(null);
 
-        Assert.That(vm.StatusText, Is.EqualTo("Send cancelled."), "declining the unlinked-wireless warning cancels the send");
+        Assert.That(vm.StatusText, Is.EqualTo("Afsendelse annulleret."), "declining the unlinked-wireless warning cancels the send");
     }
 
     // US-042: accepting the warning proceeds to the controller-required notice (this build never contacts a controller).
@@ -51,7 +52,7 @@ public class ControllerTransferTests
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var wireless = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("LK IHC Wireless produkter"));
+            .First(p => p.CategoryPath.StartsWith(CatalogMenu.WirelessProductsCategory));
         await harness.Session.AddProductAsync(loc, wireless.ProductIdentifier);
         harness.Dialogs.ConfirmResult = true;
 
@@ -59,7 +60,7 @@ public class ControllerTransferTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.LastMessage, Does.Contain("connected controller"), "the transfer requires a controller");
+            Assert.That(harness.Dialogs.LastMessage, Does.Contain("tilsluttet controller"), "the transfer requires a controller");
             Assert.That(vm.StatusText, Does.Contain("controller"));
         });
     }
@@ -74,6 +75,6 @@ public class ControllerTransferTests
 
         await vm.RetrieveProjectCommand.ExecuteAsync(null);
 
-        Assert.That(harness.Dialogs.LastMessage, Does.Contain("connected controller"));
+        Assert.That(harness.Dialogs.LastMessage, Does.Contain("tilsluttet controller"));
     }
 }

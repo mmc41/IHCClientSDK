@@ -193,7 +193,7 @@ public class AccessibilityTests : AvaloniaTestBase
         window.Show();
         window.CaptureRenderedFrame();
 
-        // The root "Localities" node has children, so it is a genuine expand/collapse target.
+        // The root "Lokaliteter" node has children, so it is a genuine expand/collapse target.
         var root = window.GetVisualDescendants().OfType<TreeViewItem>().First(c => c.ItemCount > 0);
         var peer = ControlAutomationPeer.CreatePeerForElement(root);
 
@@ -268,7 +268,7 @@ public class AccessibilityTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public void PropertiesWindow_Fields_AreLabelAssociated()
     {
-        var window = new PropertiesWindow { Title = "Edit properties" };
+        var window = new PropertiesWindow { Title = "Rediger egenskaber" };
         var name = window.FindControl<TextBox>("NameBox");
         var note = window.FindControl<TextBox>("NoteBox");
         CurrentTestWindow = window;

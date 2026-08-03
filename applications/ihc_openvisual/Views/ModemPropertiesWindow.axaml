@@ -6,7 +6,7 @@
         xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="460" d:DesignHeight="640"
         x:Class="ihc_openvisual.Views.ModemPropertiesWindow"
-        Title="SMS modem properties"
+        Title="SMS modem egenskaber"
         Width="460" MaxHeight="720" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
@@ -24,10 +24,10 @@
                 </Style>
             </StackPanel.Styles>
 
-            <TextBlock Name="NameLabel" Classes="label" Text="Name"/>
+            <TextBlock Name="NameLabel" Classes="label" Text="Navn"/>
             <TextBox Name="NameBox" a:AutomationProperties.LabeledBy="{Binding #NameLabel}"/>
 
-            <TextBlock Name="LocationLabel" Classes="label" Text="Location"/>
+            <TextBlock Name="LocationLabel" Classes="label" Text="Placering"/>
             <ComboBox Name="LocationCombo" HorizontalAlignment="Stretch"
                       a:AutomationProperties.LabeledBy="{Binding #LocationLabel}">
                 <ComboBox.ItemTemplate>
@@ -40,10 +40,10 @@
             <TextBlock Name="NoteLabel" Classes="label" Text="Note"/>
             <TextBox Name="NoteBox" a:AutomationProperties.LabeledBy="{Binding #NoteLabel}"/>
 
-            <TextBlock Name="IdentificationLabel" Classes="label" Text="Identification code"/>
+            <TextBlock Name="IdentificationLabel" Classes="label" Text="Id-kode"/>
             <TextBox Name="IdentificationBox" a:AutomationProperties.LabeledBy="{Binding #IdentificationLabel}"/>
 
-            <TextBlock Classes="group" Text="Cabling"/>
+            <TextBlock Classes="group" Text="Kabling"/>
             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="4">
                 <TextBlock Grid.Row="0" Grid.Column="0" Name="Cable0VLabel" Text="0 V" VerticalAlignment="Center"/>
                 <TextBox Grid.Row="0" Grid.Column="1" Name="Cable0VBox" a:AutomationProperties.LabeledBy="{Binding #Cable0VLabel}"/>
@@ -55,25 +55,25 @@
                 <TextBox Grid.Row="3" Grid.Column="1" Name="CableRS485PlusBox" a:AutomationProperties.LabeledBy="{Binding #CableRS485PlusLabel}"/>
             </Grid>
 
-            <TextBlock Classes="group" Text="Settings"/>
-            <TextBlock Name="PinCodeLabel" Classes="label" Text="PIN code"/>
+            <TextBlock Classes="group" Text="Indstillinger"/>
+            <TextBlock Name="PinCodeLabel" Classes="label" Text="PIN kode"/>
             <TextBox Name="PinCodeBox" a:AutomationProperties.LabeledBy="{Binding #PinCodeLabel}"/>
 
-            <TextBlock Classes="group" Text="Telephone numbers"/>
+            <TextBlock Classes="group" Text="Telefon numre"/>
             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="4">
-                <TextBlock Grid.Row="0" Grid.Column="0" Name="Phone1Label" Text="Number 1" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="0" Grid.Column="0" Name="Phone1Label" Text="Nummer 1" VerticalAlignment="Center"/>
                 <TextBox Grid.Row="0" Grid.Column="1" Name="Phone1Box" a:AutomationProperties.LabeledBy="{Binding #Phone1Label}"/>
-                <TextBlock Grid.Row="1" Grid.Column="0" Name="Phone2Label" Text="Number 2" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" Name="Phone2Label" Text="Nummer 2" VerticalAlignment="Center"/>
                 <TextBox Grid.Row="1" Grid.Column="1" Name="Phone2Box" a:AutomationProperties.LabeledBy="{Binding #Phone2Label}"/>
-                <TextBlock Grid.Row="2" Grid.Column="0" Name="Phone3Label" Text="Number 3" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" Name="Phone3Label" Text="Nummer 3" VerticalAlignment="Center"/>
                 <TextBox Grid.Row="2" Grid.Column="1" Name="Phone3Box" a:AutomationProperties.LabeledBy="{Binding #Phone3Label}"/>
-                <TextBlock Grid.Row="3" Grid.Column="0" Name="Phone4Label" Text="Number 4" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="3" Grid.Column="0" Name="Phone4Label" Text="Nummer 4" VerticalAlignment="Center"/>
                 <TextBox Grid.Row="3" Grid.Column="1" Name="Phone4Box" a:AutomationProperties.LabeledBy="{Binding #Phone4Label}"/>
             </Grid>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,14,0,0">
                 <Button Name="OkButton" Content="OK" MinWidth="84" IsDefault="True" Click="OnOk"/>
-                <Button Name="CancelButton" Content="Cancel" MinWidth="84" IsCancel="True" Click="OnCancel"/>
+                <Button Name="CancelButton" Content="Annuller" MinWidth="84" IsCancel="True" Click="OnCancel"/>
             </StackPanel>
         </StackPanel>
     </ScrollViewer>

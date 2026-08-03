@@ -49,7 +49,7 @@ public class LockedBlockProgrammingStatusTests : AvaloniaTestBase
         {
             Assert.That(vm.IsProgrammingMode, Is.True, "a locked block still ENTERS programming mode (C3)");
             Assert.That(vm.IsProgrammingBlockLocked, Is.True, "the fixture block really is locked");
-            Assert.That(vm.StatusText, Does.Contain("read-only"),
+            Assert.That(vm.StatusText, Does.Contain("skrivebeskyttet"),
                 "a locked block's program is view-only and the status bar must say so");
         });
     }
@@ -64,7 +64,7 @@ public class LockedBlockProgrammingStatusTests : AvaloniaTestBase
         {
             Assert.That(vm.IsProgrammingMode, Is.True);
             Assert.That(vm.IsProgrammingBlockLocked, Is.False, "an empty block is editable");
-            Assert.That(vm.StatusText, Does.Not.Contain("read-only"),
+            Assert.That(vm.StatusText, Does.Not.Contain("skrivebeskyttet"),
                 "an editable block must NOT be described as read-only");
         });
     }

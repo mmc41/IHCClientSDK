@@ -23,8 +23,8 @@ installation is fully and consistently documented for each reader.
 
 **Scope:** entering project information (*Documentation ▸ Project info*); viewing and editing the
 project's data tables — the read-only system tables and the editable user-defined texts
-(*Documentation ▸ Data tables*); viewing the input/output data-line modules (*Documentation*);
-and generating the three documentation reports from the *Documentation* menu through one shared picker
+(*Documentation ▸ Data tables*); viewing the input/output data-line modules (*Dokumentation*);
+and generating the three documentation reports from the *Dokumentation* menu through one shared picker
 (US-040) — the report content per type in US-073 (installation) and US-041 (function blocks), and the
 Fuld-mode documentation-issues section in US-072. **Scope excludes:** any report option beyond
 type × mode × format (the former section/detail switches and purpose presets are retired — US-071); any
@@ -92,7 +92,7 @@ Scenario: Project info feeds the reports
   dialog does not show. (A field that is shown must be written back as edited; a value the file
   carries but the dialog does not surface must be carried through unchanged, not dropped when the
   dialog is committed.)
-- MUST: It is reachable from the *Documentation* menu.
+- MUST: It is reachable from the *Dokumentation* menu.
 
 ### AC illustrations
 
@@ -538,17 +538,17 @@ Scenario: Delete a user-defined text without a confirmation prompt
 ### AC illustrations
 
 - With the user-defined-texts list selected, *Add* → typing `By main door` → *OK* appends
-  `By main door`; selecting it and *Delete* removes it at once with no "are you sure?" prompt.
-- Selecting a system table shows its rows greyed for reference; *Add*/*Edit*/*Delete* are
+  `By main door`; selecting it and *Slet* removes it at once with no "are you sure?" prompt.
+- Selecting a system table shows its rows greyed for reference; *Add*/*Rediger*/*Slet* are
   unavailable for it.
 
 ### Constraints
 
 - Verification method — **Demonstration** of the add/edit/delete flow on the user-defined-texts list
   and **Inspection** that the system tables are read-only.
-- Because *Delete* deletes with no confirmation, IHC OpenVisual SHOULD guard the action (e.g. an
+- Because *Slet* deletes with no confirmation, IHC OpenVisual SHOULD guard the action (e.g. an
   app-level confirm).
-- The read-only-system-tables vs editable-user-texts split and the no-confirm *Delete* are fixed
+- The read-only-system-tables vs editable-user-texts split and the no-confirm *Slet* are fixed
   requirements; the exact set and contents of the system tables are not itemised here.
 
 **Readiness:** Ready.
@@ -568,7 +568,7 @@ sit and which data lines are still free, in one place instead of opening each pr
 
 ### Acceptance criteria (Checklist)
 
-- MUST: A menu action under **Documentation** opens a modules view showing two groups — the
+- MUST: A menu action under **Dokumentation** opens a modules view showing two groups — the
   **input** data-line modules and the **output** data-line modules, inputs first.
 - MUST: Each group lists **every** data line the direction has — not only the documented ones — so the
   installer sees which lines are still free. The number of lines per direction is the addressing

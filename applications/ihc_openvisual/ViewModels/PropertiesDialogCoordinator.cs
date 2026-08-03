@@ -115,7 +115,7 @@ internal sealed class PropertiesDialogCoordinator(
         // W5: a variable carries TWO documentation fields — the function documentation and the installer help text
         // (note-2) — so both are pre-filled from the project and both are applied.
         VariablePropertiesResult? result = await dialogs.EditVariablePropertiesAsync(new VariablePropertiesInput(
-            $"Edit {view.Name} properties", view.Name ?? string.Empty, view.Note ?? string.Empty,
+            $"Rediger egenskaber for {view.Name}", view.Name ?? string.Empty, view.Note ?? string.Empty,
             ReadInitialValue(variable), view.HelpNote ?? string.Empty));
         if (result is null)
             return;   // cancelled
@@ -252,7 +252,7 @@ internal sealed class PropertiesDialogCoordinator(
         bool isOutput = view.IsOutput;
         (int dataLine, int terminal) = view.Address is { } addr ? (addr.DataLine, addr.Terminal) : (1, 0);
         var input = new PinPropertiesInput(
-            $"{(isOutput ? "Output" : "Input")} '{view.Name}'",
+            $"{(isOutput ? "Udgang" : "Indgang")} '{view.Name}'",
             isOutput, dataLine, terminal,
             view.CableColour ?? string.Empty,
             view.Note ?? string.Empty,

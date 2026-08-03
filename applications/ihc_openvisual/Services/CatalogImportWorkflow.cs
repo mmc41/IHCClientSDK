@@ -23,6 +23,11 @@ internal sealed class CatalogImportWorkflow(
     /// <summary>Raised after a catalog import changes the available products/function blocks (US-059/US-060).</summary>
     public event EventHandler? CatalogChanged;
 
+    // The ONE title over an import that never started: an unreadable single file (US-059) and a folder that is not
+    // there (US-060) are the same answer to the installer, so the wording is declared once. The mid-folder abort
+    // (US-062) is deliberately titled differently — earlier files WERE imported, which is a different outcome.
+    private const string ImportFailedTitle = "Import mislykkedes";
+
     private static IEnumerable<string> EnumerateCatalogFiles(string dir) =>
         Directory.EnumerateFiles(dir, "*.*", SearchOption.AllDirectories)
             .Where(f => f.EndsWith(".def", StringComparison.OrdinalIgnoreCase)
@@ -82,8 +87,8 @@ internal sealed class CatalogImportWorkflow(
         {
             ActivityExtensions.SetError(activity, ex);
             logger.LogError(ex, "Failed to import catalog file {File}", path);
-            await dialogs.ShowMessageAsync("Import failed",
-                $"'{Path.GetFileName(path)}' is not a valid product or function-block definition file:\n{ex.Message}");
+            await dialogs.ShowMessageAsync(ImportFailedTitle,
+                $"'{Path.GetFileName(path)}' er ikke en gyldig produkt- eller funktionsblok-definitionsfil:\n{ex.Message}");
             return false;
         }
     }
@@ -96,7 +101,7 @@ internal sealed class CatalogImportWorkflow(
         using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(CatalogImportWorkflow)}.{nameof(ImportFolderAsync)}");
         if (!Directory.Exists(dir))
         {
-            await dialogs.ShowMessageAsync("Import failed", $"The folder '{dir}' does not exist.");
+            await dialogs.ShowMessageAsync(ImportFailedTitle, $"Mappen '{dir}' findes ikke.");
             return -1;
         }
         int count = 0;
@@ -115,8 +120,8 @@ internal sealed class CatalogImportWorkflow(
                 {
                     ActivityExtensions.SetError(activity, ex);
                     logger.LogError(ex, "Folder import stopped at {File}", file);
-                    await dialogs.ShowMessageAsync("Import stopped",
-                        $"'{Path.GetFileName(file)}' could not be imported ({count} imported before it):\n{ex.Message}");
+                    await dialogs.ShowMessageAsync("Import stoppet",
+                        $"'{Path.GetFileName(file)}' kunne ikke importeres ({count} importeret før den):\n{ex.Message}");
                     break;   // stop at the first unreadable file (US-062)
                 }
             }

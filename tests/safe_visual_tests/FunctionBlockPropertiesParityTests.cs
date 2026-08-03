@@ -80,7 +80,7 @@ public class FunctionBlockPropertiesParityTests
     /// edits in place, keeps OK.
     /// </summary>
     [Test]
-    public async Task SaveFunctionBlockDialog_AffirmativeIsSave_NotOk()
+    public async Task SaveFunctionBlockDialog_AffirmativeIsGem_NotOk()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
@@ -90,7 +90,7 @@ public class FunctionBlockPropertiesParityTests
 
         await vm.SaveFunctionBlockCommand.ExecuteAsync(block);
 
-        Assert.That(harness.Dialogs.LastPropertiesAffirmative, Is.EqualTo("Save"));
+        Assert.That(harness.Dialogs.LastPropertiesAffirmative, Is.EqualTo("Gem"));
     }
 
     [Test]
