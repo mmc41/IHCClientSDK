@@ -357,7 +357,7 @@
                 <MenuItem Header="_Data tables…" Command="{Binding DataTablesCommand}"
                           IsEnabled="{Binding Registry.Bar[project.dataTables].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[project.dataTables].Reason}"/>
-                <MenuItem Header="_Wired module map…" Command="{Binding ModuleMapCommand}"
+                <MenuItem Header="_Data line modules…" Command="{Binding ModuleMapCommand}"
                           IsEnabled="{Binding Registry.Bar[project.moduleMap].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[project.moduleMap].Reason}"/>
                 <Separator/>

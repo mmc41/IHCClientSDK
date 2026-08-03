@@ -306,12 +306,12 @@ public sealed class ProjectWorkflow : IDisposable
         Current?.GetUnlinkedWirelessProducts() ?? new List<string>();
 
     /// <summary>
-    /// Builds the read-only Wired module address map (US-050): every addressed <c>dataline_input</c>/<c>dataline_output</c>
-    /// terminal across all products, decoded to its <c>line.terminal</c> address and split into input/output modules,
-    /// sorted by address. Delegates to the SDK projection over <see cref="Current"/>.
+    /// Builds the read-only data-line module map (US-050): every input and output data line, each carrying the
+    /// module documented on it — type, locality and description — or blank when the line carries none. Delegates
+    /// to the SDK projection over <see cref="Current"/>.
     /// </summary>
-    public ModuleAddressMap GetModuleAddressMap() =>
-        Current?.GetModuleAddressMap() ?? ModuleAddressMap.Empty;
+    public DatalineModuleMap GetDatalineModuleMap() =>
+        Current?.GetDatalineModuleMap() ?? DatalineModuleMap.Empty;
 
     /// <summary>
     /// The variable types the engine accepts directly under <paramref name="containerId"/>, as SDK tags (US-027,

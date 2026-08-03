@@ -1,6 +1,7 @@
 #nullable enable
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Linq;
 using Ihc.Vis.Addressing;
 using Ihc.Vis.Model;
@@ -48,6 +49,25 @@ namespace Ihc.Vis
     /// <summary>One occupied module terminal (US-050): the decoded <c>line.terminal</c> address and the product
     /// terminal that occupies it.</summary>
     public sealed record ModuleAddressEntry(string Address, string Product, string Terminal);
+
+    /// <summary>One data-line module slot (US-050): the data line, plus the module documented on it — its type,
+    /// where it sits and its description, as the <c>documentation_modules</c> block records them. A line with no
+    /// module documented on it carries the three blank and reads <see cref="InUse"/> <c>false</c>.</summary>
+    public sealed record DatalineModule(int DataLine, string ModuleType, string Location, string Description)
+    {
+        /// <summary>Whether a module is documented on this data line.</summary>
+        public bool InUse => ModuleType.Length > 0;
+    }
+
+    /// <summary>The data-line module map (US-050): every input and output data line the addressing model defines,
+    /// each with the module documented on it (if any). The full slot inventory, not just the documented lines, so
+    /// a reader sees which lines are still free.</summary>
+    public sealed record DatalineModuleMap(
+        ImmutableArray<DatalineModule> InputModules, ImmutableArray<DatalineModule> OutputModules)
+    {
+        /// <summary>The map of a closed/empty document — every slot present, none in use.</summary>
+        public static DatalineModuleMap Empty { get; } = ProjectProjections.BuildDatalineModuleMap([]);
+    }
 
     /// <summary>The Wired module address map (US-050): the addressed input-module and output-module terminals,
     /// read-only. Unaddressed terminals do not appear.</summary>
@@ -193,6 +213,45 @@ namespace Ihc.Vis
                 }
                 return new ModuleAddressMap(SortByAddress(inputs), SortByAddress(outputs));
             }
+
+            /// <summary>Builds the read-only data-line module map (US-050): every input and output data line, each
+            /// carrying the <c>documentation_modules</c> entry documented on it — module type, location and
+            /// description. Lines with nothing documented on them are still listed, blank. A module whose
+            /// <c>dataline</c> is unparseable or outside its direction's range is dropped; a second module on the
+            /// same line loses to the first, so a line is one slot.</summary>
+            public DatalineModuleMap GetDatalineModuleMap() =>
+                BuildDatalineModuleMap(project.Root.DescendantsAndSelf());
+        }
+
+        // Shared by the projection and DatalineModuleMap.Empty, so the empty map is the same shape as a real one
+        // (every slot present) rather than two empty arrays that would render as a grid with no rows.
+        internal static DatalineModuleMap BuildDatalineModuleMap(IReadOnlyList<ProjectElement> all) =>
+            new(Slots(all, "dataline_input_module", isOutput: false),
+                Slots(all, "dataline_output_module", isOutput: true));
+
+        private static ImmutableArray<DatalineModule> Slots(
+            IReadOnlyList<ProjectElement> all, string tag, bool isOutput)
+        {
+            var documented = new Dictionary<int, DatalineModule>();
+            int lines = DatalineAddress.MaxDataLine(isOutput);
+            foreach (ProjectElement module in all.Where(e => e.Tag == tag))
+            {
+                if (!int.TryParse(module.GetAttribute("dataline"), NumberStyles.Integer, CultureInfo.InvariantCulture,
+                        out int line) || line < 1 || line > lines || documented.ContainsKey(line))
+                {
+                    continue;
+                }
+                documented[line] = new DatalineModule(line,
+                    module.GetAttribute("module_type") ?? string.Empty,
+                    module.GetAttribute("location") ?? string.Empty,
+                    module.GetAttribute("note") ?? string.Empty);
+            }
+            var slots = ImmutableArray.CreateBuilder<DatalineModule>(lines);
+            for (int line = 1; line <= lines; line++)
+            {
+                slots.Add(documented.TryGetValue(line, out DatalineModule? m) ? m : new DatalineModule(line, "", "", ""));
+            }
+            return slots.MoveToImmutable();
         }
 
         // The effective attribute value, or "" when the element is absent (all the metadata attributes default to

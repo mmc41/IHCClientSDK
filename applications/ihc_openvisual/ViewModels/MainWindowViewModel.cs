@@ -490,10 +490,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         await _dialogs.ShowDataTablesAsync(new DataTablesViewModel(_session, _dialogs));
     });
 
-    /// <summary>Documentation ▸ Wired module map (US-050): opens the read-only wired input/output module address map.</summary>
+    /// <summary>Documentation ▸ Data line modules (US-050): opens the read-only input/output data-line module map.</summary>
     private Task ModuleMap() => RunAsync(nameof(ModuleMap), async () =>
     {
-        await _dialogs.ShowModuleMapAsync(_session.GetModuleAddressMap());
+        await _dialogs.ShowModuleMapAsync(_session.GetDatalineModuleMap());
     });
 
     /// <summary>The message shown when a controller-only operation is invoked in this controller-free build (E10).</summary>

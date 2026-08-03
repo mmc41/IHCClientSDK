@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace safe_project_tests;
 
@@ -118,6 +119,121 @@ public class ProjectProjectionsTests
     public void GetUnlinkedWirelessProducts_EmptyProject_IsEmpty()
     {
         Assert.That(Proj().GetUnlinkedWirelessProducts(), Is.Empty);
+    }
+
+    // ---- GetDatalineModuleMap ----
+
+    private static Project ProjWithModules(ProjectElement[] inputs, ProjectElement[] outputs) =>
+        Proj(ProjectElement.Create("documentation_modules", null, [],
+        [
+            ProjectElement.Create("dataline_input_modules", null, [], inputs),
+            ProjectElement.Create("dataline_output_modules", null, [], outputs),
+        ]));
+
+    private static ProjectElement Module(string tag, string line, string type, string location, string note) =>
+        El(tag, ("dataline", line), ("module_type", type), ("location", location), ("note", note));
+
+    /// <summary>The documented modules land on their own data-line slots, carrying all four attributes the
+    /// <c>documentation_modules</c> block records.</summary>
+    [Test]
+    public void GetDatalineModuleMap_ReadsTheDocumentedModulesOntoTheirDataLines()
+    {
+        Project p = ProjWithModules(
+            [Module("dataline_input_module", "2", "Input 24", "I hovedtavle", "Tryk og kontakter")],
+            [Module("dataline_output_module", "15", "Output 24", "I hovedtavle", "Tryk-LED'er")]);
+
+        DatalineModuleMap map = p.GetDatalineModuleMap();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(map.InputModules[1],
+                Is.EqualTo(new DatalineModule(2, "Input 24", "I hovedtavle", "Tryk og kontakter")));
+            Assert.That(map.OutputModules[14],
+                Is.EqualTo(new DatalineModule(15, "Output 24", "I hovedtavle", "Tryk-LED'er")));
+            Assert.That(map.InputModules[1].InUse, Is.True);
+        });
+    }
+
+    /// <summary>Every data line the direction has gets a row whether or not a module is documented on it — the
+    /// map is the whole slot inventory, so an installer sees which lines are still free. The counts are the
+    /// addressing model's own (8 input lines of 16 terminals, 16 output lines of 8), not a magic number.</summary>
+    [Test]
+    public void GetDatalineModuleMap_CoversEveryDataLine_UndocumentedOnesNotInUse()
+    {
+        Project p = ProjWithModules(
+            [Module("dataline_input_module", "1", "Input 24/3", "I sidetavle", "Sensorer")], []);
+
+        DatalineModuleMap map = p.GetDatalineModuleMap();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(map.InputModules, Has.Length.EqualTo(DatalineAddress.MaxDataLine(isOutput: false)));
+            Assert.That(map.OutputModules, Has.Length.EqualTo(DatalineAddress.MaxDataLine(isOutput: true)));
+            Assert.That(map.InputModules.Select(m => m.DataLine), Is.EqualTo(Enumerable.Range(1, 8)));
+            Assert.That(map.InputModules[0].InUse, Is.True);
+            Assert.That(map.InputModules[1].InUse, Is.False, "no module documented on line 2");
+            Assert.That(map.InputModules[1],
+                Is.EqualTo(new DatalineModule(2, "", "", "")), "an undocumented slot is blank, not absent");
+            Assert.That(map.OutputModules.Any(m => m.InUse), Is.False);
+        });
+    }
+
+    /// <summary>The parity assertion, against the same fixture both apps have open: these are the rows IHC
+    /// Visual's <c>Datalinie moduler</c> shows for <c>project5-Dokumentation.vis</c>, read off the live dialog.
+    /// Note the file records the input modules in creation order 2, 1, 8 — the map sorts them onto their lines.</summary>
+    [Test]
+    public async Task GetDatalineModuleMap_Project5_MatchesTheVendorsDialog()
+    {
+        Project p = await new ProjectAppService(Ihc.Vis.Tests.TestSetup.Settings)
+            .Load("testdata/projects/project5-Dokumentation.vis");
+
+        DatalineModuleMap map = p.GetDatalineModuleMap();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(map.InputModules.Where(m => m.InUse), Is.EqualTo(new[]
+            {
+                new DatalineModule(1, "Input 24/3", "I sidetavle", "Sensorer, lavt forbrug"),
+                new DatalineModule(2, "Input 24", "I hovedtavle", "Tryk og kontakter"),
+                new DatalineModule(8, "Input 230", "I hovedtavle", "Grænseflade 230 V"),
+            }));
+            Assert.That(map.OutputModules.Where(m => m.InUse), Is.EqualTo(new[]
+            {
+                new DatalineModule(1, "Output 230/10", "I hovedtavle", "Grp. C/2: Lys i stue"),
+                new DatalineModule(15, "Output 24", "I hovedtavle", "Tryk-LED'er"),
+            }));
+            Assert.That(map.InputModules, Has.Length.EqualTo(8), "the vendor lists eight input lines");
+            Assert.That(map.OutputModules, Has.Length.EqualTo(16), "and sixteen output lines");
+        });
+    }
+
+    [Test]
+    public void GetDatalineModuleMap_EmptyProject_IsAllSlotsUnused()
+    {
+        DatalineModuleMap map = Proj().GetDatalineModuleMap();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(map.InputModules, Has.Length.EqualTo(8));
+            Assert.That(map.OutputModules, Has.Length.EqualTo(16));
+            Assert.That(map.InputModules.Concat(map.OutputModules).Any(m => m.InUse), Is.False);
+        });
+    }
+
+    /// <summary>A module documented on a line the direction does not have is dropped rather than widening the
+    /// grid — output lines run to 16, so an input module claiming line 12 has nowhere to sit.</summary>
+    [Test]
+    public void GetDatalineModuleMap_OutOfRangeAndUnparseableLines_AreDropped()
+    {
+        Project p = ProjWithModules(
+        [
+            Module("dataline_input_module", "12", "Input 24", "", ""),
+            Module("dataline_input_module", "", "Input 230", "", ""),
+        ], []);
+
+        DatalineModuleMap map = p.GetDatalineModuleMap();
+
+        Assert.That(map.InputModules.Any(m => m.InUse), Is.False);
     }
 
     // ---- GetModuleAddressMap ----

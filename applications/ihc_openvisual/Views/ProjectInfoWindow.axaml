@@ -3,80 +3,147 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:a="using:Avalonia.Automation"
-        mc:Ignorable="d" d:DesignWidth="440" d:DesignHeight="560"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="520"
         x:Class="ihc_openvisual.Views.ProjectInfoWindow"
         Title="Project information"
-        Width="440" Height="600"
+        Width="800" Height="520"
         WindowStartupLocation="CenterOwner"
         CanResize="True"
         ShowInTaskbar="False">
-    <DockPanel Margin="16">
+    <Window.Styles>
+        <!-- A captioned group box: the three sections IHC Visual draws (uxparity S-32). Avalonia has no GroupBox,
+             so a HeaderedContentControl carries the caption and a bordered panel the fields. -->
+        <Style Selector="HeaderedContentControl.group">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <StackPanel>
+                        <TextBlock Text="{TemplateBinding Header}" FontWeight="SemiBold" Margin="2,0,0,4"/>
+                        <Border BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                                BorderThickness="1" CornerRadius="4" Padding="12,10">
+                            <ContentPresenter Content="{TemplateBinding Content}"/>
+                        </Border>
+                    </StackPanel>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <!-- One field = its caption above its box, so a two-column grid of these reads row-major like the vendor's. -->
+        <Style Selector="StackPanel.field">
+            <Setter Property="Margin" Value="0,0,10,8"/>
+        </Style>
+        <Style Selector="StackPanel.field > TextBlock">
+            <Setter Property="Margin" Value="0,0,0,2"/>
+        </Style>
+    </Window.Styles>
+
+    <DockPanel Margin="12">
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
             <Button Name="OkButton" Content="OK" MinWidth="84" IsDefault="True" Click="OnOk"/>
             <Button Name="CancelButton" Content="Cancel" MinWidth="84" IsCancel="True" Click="OnCancel"/>
         </StackPanel>
-        <ScrollViewer>
-            <StackPanel Spacing="4">
-                <StackPanel.Styles>
-                    <Style Selector="TextBlock.section">
-                        <Setter Property="FontWeight" Value="Bold"/>
-                        <Setter Property="Margin" Value="0,10,0,2"/>
-                    </Style>
-                    <Style Selector="TextBlock.label">
-                        <Setter Property="Margin" Value="0,4,0,0"/>
-                    </Style>
-                </StackPanel.Styles>
 
-                <!-- Field order follows the vendor's reading order (Number, Type, Programmer, Drawing,
-                     Description) so the two dialogs present the same sequence — uxparity S-32. -->
-                <TextBlock Classes="section" Text="Project"/>
-                <TextBlock Name="ProjNumberLabel" Classes="label" Text="Number"/>
-                <TextBox Name="ProjNumberBox" a:AutomationProperties.LabeledBy="{Binding #ProjNumberLabel}"/>
-                <TextBlock Name="ProjTypeLabel" Classes="label" Text="Type"/>
-                <TextBox Name="ProjTypeBox" a:AutomationProperties.LabeledBy="{Binding #ProjTypeLabel}"/>
-                <TextBlock Name="ProjProgrammerLabel" Classes="label" Text="Programmer"/>
-                <TextBox Name="ProjProgrammerBox" a:AutomationProperties.LabeledBy="{Binding #ProjProgrammerLabel}"/>
-                <TextBlock Name="ProjDrawingLabel" Classes="label" Text="Drawing"/>
-                <TextBox Name="ProjDrawingBox" a:AutomationProperties.LabeledBy="{Binding #ProjDrawingLabel}"/>
-                <TextBlock Name="ProjDescriptionLabel" Classes="label" Text="Description"/>
-                <TextBox Name="ProjDescriptionBox" a:AutomationProperties.LabeledBy="{Binding #ProjDescriptionLabel}"/>
+        <!-- Project across the top; the two contact groups side by side beneath it, installer first — the vendor's
+             arrangement. Everything fits without scrolling at the dialog's default size. -->
+        <Grid RowDefinitions="Auto,*" ColumnDefinitions="*,*" ColumnSpacing="12" RowSpacing="12">
+            <HeaderedContentControl Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Classes="group" Header="Project">
+                <Grid ColumnDefinitions="*,*,*,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                    <!-- Field order follows the vendor's reading order (Number, Type, Programmer, Drawing,
+                         Description) so the two dialogs present the same sequence — uxparity S-32. -->
+                    <TextBlock Grid.Row="0" Grid.Column="0" Name="ProjNumberLabel" Text="Number:" Margin="0,0,10,2"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Name="ProjTypeLabel" Text="Project type:" Margin="0,0,10,2"/>
+                    <TextBlock Grid.Row="0" Grid.Column="2" Name="ProjProgrammerLabel" Text="Programmer:" Margin="0,0,10,2"/>
+                    <TextBlock Grid.Row="0" Grid.Column="3" Name="ProjDrawingLabel" Text="Drawing:" Margin="0,0,0,2"/>
+                    <TextBox Grid.Row="1" Grid.Column="0" Name="ProjNumberBox" Margin="0,0,10,0"
+                             a:AutomationProperties.LabeledBy="{Binding #ProjNumberLabel}"/>
+                    <TextBox Grid.Row="1" Grid.Column="1" Name="ProjTypeBox" Margin="0,0,10,0"
+                             a:AutomationProperties.LabeledBy="{Binding #ProjTypeLabel}"/>
+                    <TextBox Grid.Row="1" Grid.Column="2" Name="ProjProgrammerBox" Margin="0,0,10,0"
+                             a:AutomationProperties.LabeledBy="{Binding #ProjProgrammerLabel}"/>
+                    <TextBox Grid.Row="1" Grid.Column="3" Name="ProjDrawingBox"
+                             a:AutomationProperties.LabeledBy="{Binding #ProjDrawingLabel}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4" Name="ProjDescriptionLabel"
+                               Text="Description:" Margin="0,8,0,2"/>
+                    <TextBox Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="4" Name="ProjDescriptionBox"
+                             a:AutomationProperties.LabeledBy="{Binding #ProjDescriptionLabel}"/>
+                </Grid>
+            </HeaderedContentControl>
 
-                <TextBlock Classes="section" Text="Customer"/>
-                <TextBlock Name="CustNameLabel" Classes="label" Text="Name"/>
-                <TextBox Name="CustNameBox" a:AutomationProperties.LabeledBy="{Binding #CustNameLabel}"/>
-                <TextBlock Name="CustAddressLabel" Classes="label" Text="Address"/>
-                <TextBox Name="CustAddressBox" a:AutomationProperties.LabeledBy="{Binding #CustAddressLabel}"/>
-                <TextBlock Name="CustCityLabel" Classes="label" Text="City"/>
-                <TextBox Name="CustCityBox" a:AutomationProperties.LabeledBy="{Binding #CustCityLabel}"/>
-                <TextBlock Name="CustZipLabel" Classes="label" Text="Zip code"/>
-                <TextBox Name="CustZipBox" a:AutomationProperties.LabeledBy="{Binding #CustZipLabel}"/>
-                <TextBlock Name="CustCountryLabel" Classes="label" Text="Country"/>
-                <TextBox Name="CustCountryBox" a:AutomationProperties.LabeledBy="{Binding #CustCountryLabel}"/>
-                <TextBlock Name="CustPhoneLabel" Classes="label" Text="Phone"/>
-                <TextBox Name="CustPhoneBox" a:AutomationProperties.LabeledBy="{Binding #CustPhoneLabel}"/>
-                <TextBlock Name="CustMobileLabel" Classes="label" Text="Mobile"/>
-                <TextBox Name="CustMobileBox" a:AutomationProperties.LabeledBy="{Binding #CustMobileLabel}"/>
-                <TextBlock Name="CustEmailLabel" Classes="label" Text="Email"/>
-                <TextBox Name="CustEmailBox" a:AutomationProperties.LabeledBy="{Binding #CustEmailLabel}"/>
+            <!-- Both contact groups are a two-column grid: Name|Street, Phone|Postal code, Mobile|City,
+                 Email|Country — the vendor's cell order, so the fields read in the same sequence in both apps. -->
+            <HeaderedContentControl Grid.Row="1" Grid.Column="0" Classes="group" Header="Installer"
+                                    VerticalAlignment="Top">
+                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                    <StackPanel Grid.Row="0" Grid.Column="0" Classes="field">
+                        <TextBlock Name="InstNameLabel" Text="Name:"/>
+                        <TextBox Name="InstNameBox" a:AutomationProperties.LabeledBy="{Binding #InstNameLabel}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="0" Grid.Column="1" Classes="field" Margin="0,0,0,8">
+                        <TextBlock Name="InstAddressLabel" Text="Street:"/>
+                        <TextBox Name="InstAddressBox" a:AutomationProperties.LabeledBy="{Binding #InstAddressLabel}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Grid.Column="0" Classes="field">
+                        <TextBlock Name="InstPhoneLabel" Text="Phone:"/>
+                        <TextBox Name="InstPhoneBox" a:AutomationProperties.LabeledBy="{Binding #InstPhoneLabel}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Grid.Column="1" Classes="field" Margin="0,0,0,8">
+                        <TextBlock Name="InstZipLabel" Text="Postal code:"/>
+                        <TextBox Name="InstZipBox" a:AutomationProperties.LabeledBy="{Binding #InstZipLabel}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="2" Grid.Column="0" Classes="field">
+                        <TextBlock Name="InstMobileLabel" Text="Mobile:"/>
+                        <TextBox Name="InstMobileBox" a:AutomationProperties.LabeledBy="{Binding #InstMobileLabel}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="2" Grid.Column="1" Classes="field" Margin="0,0,0,8">
+                        <TextBlock Name="InstCityLabel" Text="City:"/>
+                        <TextBox Name="InstCityBox" a:AutomationProperties.LabeledBy="{Binding #InstCityLabel}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="3" Grid.Column="0" Classes="field" Margin="0,0,10,0">
+                        <TextBlock Name="InstEmailLabel" Text="Email:"/>
+                        <TextBox Name="InstEmailBox" a:AutomationProperties.LabeledBy="{Binding #InstEmailLabel}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="3" Grid.Column="1" Classes="field" Margin="0">
+                        <TextBlock Name="InstCountryLabel" Text="Country:"/>
+                        <TextBox Name="InstCountryBox" a:AutomationProperties.LabeledBy="{Binding #InstCountryLabel}"/>
+                    </StackPanel>
+                </Grid>
+            </HeaderedContentControl>
 
-                <TextBlock Classes="section" Text="Installer"/>
-                <TextBlock Name="InstNameLabel" Classes="label" Text="Name"/>
-                <TextBox Name="InstNameBox" a:AutomationProperties.LabeledBy="{Binding #InstNameLabel}"/>
-                <TextBlock Name="InstAddressLabel" Classes="label" Text="Address"/>
-                <TextBox Name="InstAddressBox" a:AutomationProperties.LabeledBy="{Binding #InstAddressLabel}"/>
-                <TextBlock Name="InstCityLabel" Classes="label" Text="City"/>
-                <TextBox Name="InstCityBox" a:AutomationProperties.LabeledBy="{Binding #InstCityLabel}"/>
-                <TextBlock Name="InstZipLabel" Classes="label" Text="Zip code"/>
-                <TextBox Name="InstZipBox" a:AutomationProperties.LabeledBy="{Binding #InstZipLabel}"/>
-                <TextBlock Name="InstCountryLabel" Classes="label" Text="Country"/>
-                <TextBox Name="InstCountryBox" a:AutomationProperties.LabeledBy="{Binding #InstCountryLabel}"/>
-                <TextBlock Name="InstPhoneLabel" Classes="label" Text="Phone"/>
-                <TextBox Name="InstPhoneBox" a:AutomationProperties.LabeledBy="{Binding #InstPhoneLabel}"/>
-                <TextBlock Name="InstMobileLabel" Classes="label" Text="Mobile"/>
-                <TextBox Name="InstMobileBox" a:AutomationProperties.LabeledBy="{Binding #InstMobileLabel}"/>
-                <TextBlock Name="InstEmailLabel" Classes="label" Text="Email"/>
-                <TextBox Name="InstEmailBox" a:AutomationProperties.LabeledBy="{Binding #InstEmailLabel}"/>
-            </StackPanel>
-        </ScrollViewer>
+            <HeaderedContentControl Grid.Row="1" Grid.Column="1" Classes="group" Header="Customer"
+                                    VerticalAlignment="Top">
+                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                    <StackPanel Grid.Row="0" Grid.Column="0" Classes="field">
+                        <TextBlock Name="CustNameLabel" Text="Name:"/>
+                        <TextBox Name="CustNameBox" a:AutomationProperties.LabeledBy="{Binding #CustNameLabel}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="0" Grid.Column="1" Classes="field" Margin="0,0,0,8">
+                        <TextBlock Name="CustAddressLabel" Text="Street:"/>
+                        <TextBox Name="CustAddressBox" a:AutomationProperties.LabeledBy="{Binding #CustAddressLabel}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Grid.Column="0" Classes="field">
+                        <TextBlock Name="CustPhoneLabel" Text="Phone:"/>
+                        <TextBox Name="CustPhoneBox" a:AutomationProperties.LabeledBy="{Binding #CustPhoneLabel}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Grid.Column="1" Classes="field" Margin="0,0,0,8">
+                        <TextBlock Name="CustZipLabel" Text="Postal code:"/>
+                        <TextBox Name="CustZipBox" a:AutomationProperties.LabeledBy="{Binding #CustZipLabel}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="2" Grid.Column="0" Classes="field">
+                        <TextBlock Name="CustMobileLabel" Text="Mobile:"/>
+                        <TextBox Name="CustMobileBox" a:AutomationProperties.LabeledBy="{Binding #CustMobileLabel}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="2" Grid.Column="1" Classes="field" Margin="0,0,0,8">
+                        <TextBlock Name="CustCityLabel" Text="City:"/>
+                        <TextBox Name="CustCityBox" a:AutomationProperties.LabeledBy="{Binding #CustCityLabel}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="3" Grid.Column="0" Classes="field" Margin="0,0,10,0">
+                        <TextBlock Name="CustEmailLabel" Text="Email:"/>
+                        <TextBox Name="CustEmailBox" a:AutomationProperties.LabeledBy="{Binding #CustEmailLabel}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="3" Grid.Column="1" Classes="field" Margin="0">
+                        <TextBlock Name="CustCountryLabel" Text="Country:"/>
+                        <TextBox Name="CustCountryBox" a:AutomationProperties.LabeledBy="{Binding #CustCountryLabel}"/>
+                    </StackPanel>
+                </Grid>
+            </HeaderedContentControl>
+        </Grid>
     </DockPanel>
 </Window>

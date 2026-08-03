@@ -7,8 +7,8 @@ using ihc_openvisual.Services;
 namespace ihc_openvisual.Views;
 
 /// <summary>
-/// The read-only Wired module address map (US-050): two lists — the wired input and output modules — each row
-/// showing an occupied terminal's decoded address and the product terminal on it. Mutates nothing.
+/// The read-only data-line module map (US-050): two grids — the input and the output data lines — each row
+/// giving a line's documented module type, locality and description, or marking the line unused. Mutates nothing.
 /// </summary>
 public partial class ModuleMapWindow : Window
 {
@@ -17,7 +17,7 @@ public partial class ModuleMapWindow : Window
         InitializeComponent();
     }
 
-    public static async Task ShowAsync(Window owner, ModuleAddressMap map)
+    public static async Task ShowAsync(Window owner, DatalineModuleMap map)
     {
         var window = new ModuleMapWindow { DataContext = map };
         await window.ShowDialog(owner);

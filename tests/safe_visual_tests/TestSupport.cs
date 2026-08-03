@@ -225,9 +225,9 @@ public sealed class FakeDialogService : IDialogService
         return Task.CompletedTask;
     }
 
-    public ModuleAddressMap? LastModuleMap { get; private set; }
+    public DatalineModuleMap? LastModuleMap { get; private set; }
     public int ShowModuleMapCalls { get; private set; }
-    public Task ShowModuleMapAsync(ModuleAddressMap map)
+    public Task ShowModuleMapAsync(DatalineModuleMap map)
     {
         ShowModuleMapCalls++;
         LastModuleMap = map;

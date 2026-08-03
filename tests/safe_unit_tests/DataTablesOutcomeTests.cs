@@ -47,7 +47,7 @@ public class DataTablesOutcomeTests
         public Task<EnumTypeManagerResult?> ManageEnumTypesAsync(EnumTypeManagerInput input) => Task.FromResult<EnumTypeManagerResult?>(null);
         public Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current) => Task.FromResult<ProjectInfoData?>(null);
         public Task ShowDataTablesAsync(IDataTablesDialogViewModel viewModel) => Task.CompletedTask;
-        public Task ShowModuleMapAsync(ModuleAddressMap map) => Task.CompletedTask;
+        public Task ShowModuleMapAsync(DatalineModuleMap map) => Task.CompletedTask;
         public Task<string?> PickCatalogFileAsync() => Task.FromResult<string?>(null);
         public Task<string?> PickCatalogFolderAsync() => Task.FromResult<string?>(null);
     }

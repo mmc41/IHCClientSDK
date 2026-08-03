@@ -7,7 +7,7 @@ status: draft
 # E9 — Documentation & reporting
 
 > **Scope:** Partly in scope. Entering project information (US-039), editing user-defined data-table
-> texts (US-049) and viewing the Wired module address map (US-050) are project-metadata / read-only CRUD.
+> texts (US-049) and viewing the data-line modules (US-050) are project-metadata / read-only CRUD.
 > Report generation reads the project to produce a finished document: **three documentation reports** —
 > Funktionsdokumentation (end-user functions), Installationsdokumentation (installer) and Functionsblok
 > dokumentation (function-block logic) — each in a **Standard** or **Fuld** mode and as **HTML** or
@@ -23,7 +23,7 @@ installation is fully and consistently documented for each reader.
 
 **Scope:** entering project information (*Documentation ▸ Project info*); viewing and editing the
 project's data tables — the read-only system tables and the editable user-defined texts
-(*Documentation ▸ Data tables*); viewing the Wired input/output module address map (*Documentation*);
+(*Documentation ▸ Data tables*); viewing the input/output data-line modules (*Documentation*);
 and generating the three documentation reports from the *Documentation* menu through one shared picker
 (US-040) — the report content per type in US-073 (installation) and US-041 (function blocks), and the
 Fuld-mode documentation-issues section in US-072. **Scope excludes:** any report option beyond
@@ -47,7 +47,7 @@ function-block inputs (authored in E7), which *feed* these reports.
   the **Installationsdokumentation** report lists every product, with un-filled fields rendered as
   `--` placeholders in its masthead/per-locality blocks and as blank cells in its flat tables.
 - MUST: The installer can add, edit and delete user-defined data-table texts, while the built-in system
-  tables and the Wired module address map are shown read-only.
+  tables and the data-line modules are shown read-only.
 - MUST: Report output carries no images apart from the icon glyphs: no product photos, no graphical
   module diagrams, no installer logo image, no external manual/help pictures — module addressing and
   wiring are tables.
@@ -557,37 +557,43 @@ Scenario: Delete a user-defined text without a confirmation prompt
 
 ---
 
-## US-050 — View the Wired module address map
+## US-050 — View the data-line modules
 
-**As an** IHC installer, **I want** to open a consolidated list of the Wired input and output
-modules and the terminals in use, **so that** I can review the whole installation's module addressing
-in one place instead of opening each product.
+**As an** IHC installer, **I want** to open a consolidated list of the input and output data lines and
+the module documented on each, **so that** I can review which modules the installation has, where they
+sit and which data lines are still free, in one place instead of opening each product.
 
 **Scope excludes:** *assigning* a terminal address (that is per-product, US-012); wireless products
 (they carry no module addressing).
 
 ### Acceptance criteria (Checklist)
 
-- MUST: A menu action under **Documentation** opens a modules view showing two lists — the Wired
-  **input** modules and the Wired **output** modules.
-- MUST: Each list shows, per addressed terminal, the module/terminal address and the product
-  terminal that occupies it, so an installer can see which addresses are taken.
-- MUST: The view is **read-only** — it presents the addressing entered via US-012 and offers no
-  editing action.
-- SHOULD: The view closes back to the workspace without changing the project.
-- MAY: The two lists are visually grouped or labelled as input vs output modules.
+- MUST: A menu action under **Documentation** opens a modules view showing two groups — the
+  **input** data-line modules and the **output** data-line modules, inputs first.
+- MUST: Each group lists **every** data line the direction has — not only the documented ones — so the
+  installer sees which lines are still free. The number of lines per direction is the addressing
+  model's own (US-012), not a separate figure this view defines.
+- MUST: Each row shows the line's *data line number*, *module type*, *locality* and *description*, in
+  that order — the four attributes the project file records per module, and the same four the
+  installation report's module tables use (US-073), so view and report agree.
+- MUST: A data line carrying no documented module is shown as **not in use**, rather than as a blank
+  row or omitted.
+- MUST: The view is **read-only** — it presents what the project records and offers no editing action.
+- SHOULD: The view closes back to the workspace without changing the project, dismissed by a single
+  acknowledging button.
 
 ### AC illustrations
 
-- After addressing `Push (left)` to data line 1 / input terminal 1 (US-012), opening the modules
-  view shows input-module terminal 1 occupied by that pin; an unaddressed product does not appear
-  against any terminal.
+- A project documenting an `Input 24/3` module on input data line 1, sited `I sidetavle` and described
+  `Sensorer, lavt forbrug`, shows exactly that on the first input row; input line 3, with nothing
+  documented on it, is still listed and reads *not in use*.
+- Modules recorded in the file in creation order 2, 1, 8 appear on lines 1, 2 and 8 — the view is
+  ordered by data line, not by the order the modules were entered.
 
 ### Constraints
 
-- Verification method — **Inspection** that the view lists the input and output module addressing and
-  mutates nothing.
-- The input/output module-map view is a fixed requirement; the precise columns shown are not itemised here.
+- Verification method — **Inspection** that the view lists both directions' data lines with their
+  documented modules and mutates nothing.
 
 **Readiness:** Ready.
 

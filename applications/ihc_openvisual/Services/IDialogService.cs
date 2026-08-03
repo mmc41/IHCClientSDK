@@ -239,6 +239,6 @@ public interface IDialogService
     /// when the installer cancels.</summary>
     Task<string?> PickSaveReportAsync(string suggestedFileName, string mimeType);
 
-    /// <summary>Opens the read-only Wired module address map dialog (US-050).</summary>
-    Task ShowModuleMapAsync(ModuleAddressMap map);
+    /// <summary>Opens the read-only data-line module map dialog (US-050).</summary>
+    Task ShowModuleMapAsync(DatalineModuleMap map);
 }

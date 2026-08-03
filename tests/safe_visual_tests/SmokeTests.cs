@@ -605,14 +605,17 @@ public class SmokeTests : AvaloniaTestBase
         });
     }
 
-    // US-050: the read-only Wired module map renders the input/output module list headers.
+    // US-050: the read-only data-line module map renders both groups, the vendor's four column headers, a
+    // documented module's row, and the not-in-use marker on a line carrying nothing.
     [AvaloniaTest]
     [CaptureScreenshotOnFailure]
     public void ModuleMapWindow_ShowsInputAndOutputModuleLists()
     {
-        var map = new ModuleAddressMap(
-            System.Collections.Immutable.ImmutableArray.Create(new ModuleAddressEntry("1.5", "Push", "Left")),
-            System.Collections.Immutable.ImmutableArray<ModuleAddressEntry>.Empty);
+        var map = new DatalineModuleMap(
+            System.Collections.Immutable.ImmutableArray.Create(
+                new DatalineModule(1, "Input 24/3", "I sidetavle", "Sensorer, lavt forbrug"),
+                new DatalineModule(2, "", "", "")),
+            System.Collections.Immutable.ImmutableArray<DatalineModule>.Empty);
 
         var window = new ModuleMapWindow { DataContext = map };
         CurrentTestWindow = window;
@@ -620,12 +623,17 @@ public class SmokeTests : AvaloniaTestBase
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
         window.CaptureRenderedFrame();
 
-        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+        var labels = window.GetVisualDescendants().OfType<TextBlock>()
+            .Where(t => t.IsVisible).Select(t => t.Text).ToList();
         Assert.Multiple(() =>
         {
-            Assert.That(labels, Does.Contain("Wired input modules"));
-            Assert.That(labels, Does.Contain("Wired output modules"));
-            Assert.That(labels, Does.Contain("1.5").And.Contain("Push"), "an addressed terminal renders with its product");
+            Assert.That(labels, Does.Contain("Input modules"));
+            Assert.That(labels, Does.Contain("Output modules"));
+            Assert.That(labels, Does.Contain("Data line").And.Contain("Module type")
+                .And.Contain("Locality").And.Contain("Description"), "the vendor's four column headers");
+            Assert.That(labels, Does.Contain("Input 24/3").And.Contain("I sidetavle")
+                .And.Contain("Sensorer, lavt forbrug"), "a documented module renders its whole row");
+            Assert.That(labels, Does.Contain("<not in use>"), "a line carrying no module is marked, not blank");
         });
     }
 

@@ -1,66 +1,52 @@
-using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using ihc_openvisual.Services;
-using Ihc.Vis.Model;
-using Ihc.Vis.Session;
 
 namespace safe_visual_tests;
 
-/// <summary>US-050: the read-only Wired module address map — addressed terminals appear with their occupying
-/// product terminal; unaddressed terminals do not; the view mutates nothing.</summary>
+/// <summary>US-050: the read-only data-line module map — every input and output data line is listed, each
+/// carrying the module documented on it; the view mutates nothing.</summary>
 public class ModuleMapTests
 {
-    private static ElementId? FindTagged(IEnumerable<ProjectElement> roots, string tag)
-    {
-        foreach (var e in roots)
-        {
-            if (e.Tag == tag && e.Id is { } id)
-                return id;
-            if (FindTagged(e.ChildrenOrEmpty(), tag) is { } found)
-                return found;
-        }
-        return null;
-    }
-
     [Test]
-    public async Task ModuleMap_EmptyProject_HasNoEntries()
+    public async Task ModuleMap_EmptyProject_ListsEveryLineWithNoneInUse()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
 
-        var map = harness.Session.GetModuleAddressMap();
+        var map = harness.Session.GetDatalineModuleMap();
 
         Assert.Multiple(() =>
         {
-            Assert.That(map.InputModules, Is.Empty);
-            Assert.That(map.OutputModules, Is.Empty);
+            Assert.That(map.InputModules, Has.Length.EqualTo(8));
+            Assert.That(map.OutputModules, Has.Length.EqualTo(16));
+            Assert.That(map.InputModules.Concat(map.OutputModules).Any(m => m.InUse), Is.False);
         });
     }
 
+    /// <summary>End to end through the shell, on the fixture both apps have open: the documented modules reach
+    /// the view on their own data lines, and the untouched lines are still listed as free.</summary>
     [Test]
-    public async Task ModuleMap_ListsAddressedWiredInput_WithOccupyingTerminal()
+    public async Task ModuleMap_DocumentedModules_ReachTheViewOnTheirDataLines()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.Resources.Any(r => r.Tag == "dataline_input"));
-        await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
-        var pinId = FindTagged(harness.Session.Current!.Groups, "dataline_input")!.Value;
-
-        await harness.Session.UpdatePinAsync(pinId, new PinPropertiesResult(1, 5, "red", string.Empty, false));
+        await harness.Session.OpenAsync(Path.Combine(
+            TestContext.CurrentContext.TestDirectory, "testdata", "projects", "project5-Dokumentation.vis"));
 
         var beforeProject = harness.Session.Current;
-        var map = harness.Session.GetModuleAddressMap();
-        var entry = map.InputModules.FirstOrDefault(e => e.Address == "1.5");
+        var map = harness.Session.GetDatalineModuleMap();
+
         Assert.Multiple(() =>
         {
-            Assert.That(entry, Is.Not.Null, "the addressed terminal appears on input module 1, terminal 5");
-            Assert.That(entry!.Product, Is.Not.Empty, "it names the occupying product");
-            Assert.That(entry.Terminal, Is.Not.Empty, "it names the occupying product terminal");
+            Assert.That(map.InputModules.Where(m => m.InUse).Select(m => m.DataLine), Is.EqualTo(new[] { 1, 2, 8 }));
+            Assert.That(map.InputModules[0].ModuleType, Is.EqualTo("Input 24/3"));
+            Assert.That(map.InputModules[0].Location, Is.EqualTo("I sidetavle"));
+            Assert.That(map.InputModules[0].Description, Is.EqualTo("Sensorer, lavt forbrug"));
+            Assert.That(map.OutputModules.Where(m => m.InUse).Select(m => m.DataLine), Is.EqualTo(new[] { 1, 15 }));
+            Assert.That(map.InputModules[2].InUse, Is.False, "line 3 carries no module and is still listed");
             Assert.That(harness.Session.Current, Is.SameAs(beforeProject), "reading the map mutates nothing");
         });
     }

@@ -241,7 +241,7 @@ public sealed class AvaloniaDialogService : IDialogService
         await DataTablesWindow.ShowAsync(Owner, viewModel);
     }
 
-    public async Task ShowModuleMapAsync(ModuleAddressMap map)
+    public async Task ShowModuleMapAsync(DatalineModuleMap map)
     {
         if (Owner is null)
             return;
