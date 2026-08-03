@@ -146,18 +146,26 @@ Scenario: A report entry opens the shared picker pre-selected
   Given a project is open
   When I choose one of the three report entries
   Then the one shared report picker opens with that report pre-selected in its type dropdown
-  And the picker offers a Standard/Fuld mode choice and the actions "Vis i browser" and "Gem som…"
+  And the picker offers a Standard/Fuld mode choice, an output-format dropdown listing HTML and TXT
+  And the actions "Vis i browser" and "Gem som…"
+
+Scenario: HTML is the default output format
+  Given a project is open
+  When I choose one of the three report entries
+  Then the format dropdown is pre-selected on HTML
 
 Scenario: View and print in the browser
   Given the report picker is open
   When I choose "Vis i browser"
-  Then the picked report generates as a self-contained HTML page and opens in the default browser
+  Then the picked report generates in the picked format — a self-contained HTML page, or a plain-text
+    document when TXT is picked — and opens in the default browser
   And printing is the browser's own print function (US-063)
 
-Scenario: Save as a file in either format
+Scenario: Save as a file in the picked format
   Given the report picker is open
-  When I choose "Gem som…" and pick a target file name ending in .html or .txt
-  Then the picked report generates to that file — HTML for a .html target, plain text for a .txt target
+  When I choose "Gem som…"
+  Then the save dialog suggests a file name in the picked format (.html or .txt)
+  And the picked report generates to the chosen file in that format
 
 Scenario: No project open
   Given no project is open
@@ -188,12 +196,15 @@ Scenario: A generation or save failure is reported
   unicode icon stand-ins and aligned columns.
 - MUST: The generation timestamp shown in Fuld mode is the generation time; Standard output carries no
   timestamp.
+- MUST: The output format is the installer's explicit choice in the picker — HTML by default, TXT the
+  alternative — and it governs both actions and the suggested save file name; the format is never inferred
+  from a typed file name.
 
 ### AC illustrations
 
-- Choosing *Documentation ▸ Installationsdokumentation…*, mode **Fuld**, then "Gem som…" with
-  `rapport.txt` writes the plain-text installation report including the Projekt block, `(ID …)` ids and
-  the "Fejl i dokumentation" section; the same picker choice with "Vis i browser" opens the identical
+- Choosing *Documentation ▸ Installationsdokumentation…*, mode **Fuld**, format **TXT**, then "Gem som…"
+  writes the plain-text installation report including the Projekt block, `(ID …)` ids and the
+  "Fejl i dokumentation" section; the same picker choice with format **HTML** produces the identical
   content as an HTML page.
 - An end-user row "Tryk (venstre)" under a button product shows the note of the block input it drives —
   e.g. "Kort tryk < 1 sek. Tænd / sluk: Loftlampe i stue" — once per link on that terminal.
@@ -209,8 +220,9 @@ Scenario: A generation or save failure is reported
 **Readiness:** Ready.
 
 **Implementation status:** ✅ Implemented — the three Documentation-menu entries open the shared picker
-pre-selected; view-in-browser and save-as (.html/.txt) generate through the engine for all
-3 × 2 × 2 combinations; the 24 report oracles regenerate byte-identically in the test suites.
+pre-selected, with an HTML/TXT format dropdown defaulting to HTML; view-in-browser and save-as generate
+the picked format through the engine for all 3 × 2 × 2 combinations; the 24 report oracles regenerate
+byte-identically in the test suites.
 
 ---
 

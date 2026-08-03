@@ -79,26 +79,29 @@ bar, and shortcut — **so that** I can work whichever way suits the moment.
   and *Empty function block* are all disabled.
 - MUST: *Insert > Locality* is disabled whenever the selection is a locality's content (a product, a
   function block or a pin) — a locality can only be inserted at the root level (US-008).
-- MUST: For a **locked** function block, *Cut*, *Delete* and *Show program* are disabled in the bar.
-  The **locked state is the discriminator, not the pane** — an unlocked block in the same pane
-  re-enables all three.
+- MUST: **A locked function block is not a bar-enablement discriminator.** *Cut*, *Copy*, *Delete* and
+  *Show program* are **enabled** on a locked block in the **menu bar** exactly as they are in its context
+  menu — the two surfaces give the same answer, on every project. The lock governs what may be changed
+  **inside** the block (US-020, US-026), not whether the block itself can be cut, copied, deleted or read.
+  Any rule that greys these four on the bar because the block is locked is wrong and must not be
+  reintroduced.
 - MUST: In the bar, *Copy* is enabled on **any pin** even where *Cut* is not — Copy reaches strictly
   further than Cut (a pin can be duplicated with its product, never cut out of it).
 - MUST: The menu bar and the context menu apply **different, independently specified enablement
-  rules** where the surfaces genuinely differ (US-068 lists the context side): for a locked block the
-  bar greys *Cut*/*Delete* while the block's flyout still offers them (and they really run); *Show
-  program* is bar-enabled on an unlocked block only, but context-offered on a block **or a pin**; and
-  *Copy* is bar-enabled on any pin but context-offered on product terminals only. Each surface
-  reproduces its own rule — they are not to be "reconciled" into one.
+  rules** where the surfaces genuinely differ (US-068 lists the context side): *Show program* needs a
+  **block selected directly** in the bar, while the flyout also accepts a **pin** and opens the owning
+  block's program; and *Copy* is bar-enabled on any pin but context-offered on product terminals only.
+  Each surface reproduces its own rule — they are not to be "reconciled" into one. **Lockedness is not
+  one of these divergences** — see the locked-block rule above.
 - MUST: **Keyboard shortcuts follow the menu bar's enablement.** Where the two surfaces deliberately
-  diverge (previous rule), the shortcut refuses exactly when the bar item is greyed — `Ctrl+X` on a
-  locked block changes nothing, even though the block's flyout still offers *Cut* and runs it; `F3`
-  opens a program only where the bar enables *Show program* (a direct, unlocked block), while the
-  flyout keeps the pin and locked-block routes. A command whose shortcut has no menu-bar item
-  (`Ctrl+I` / `Ctrl+U`, US-045) is governed by its own availability rule.
+  diverge (previous rule), the shortcut refuses exactly when the bar item is greyed — `F3` opens a
+  program only where the bar enables *Show program* (a block selected directly, **locked or not**),
+  while the flyout keeps the pin route as well. Because the bar enables *Cut* and *Delete* on a locked
+  block, `Ctrl+X` stages the cut and `Delete` removes it, matching the flyout. A command whose shortcut
+  has no menu-bar item (`Ctrl+I` / `Ctrl+U`, US-045) is governed by its own availability rule.
 - MUST: **A refused shortcut explains itself in the status bar.** Pressing the shortcut of a command
   that is currently unavailable leaves the project unchanged and shows the reason as the status-bar
-  hint (e.g. `Nothing to undo.`, `A locked block cannot be cut from the menu bar.`).
+  hint (e.g. `Nothing to undo.`, `Select a function block in the tree.`).
 
 ### AC illustrations
 
@@ -109,15 +112,20 @@ bar, and shortcut — **so that** I can work whichever way suits the moment.
   all three name the copied product in the status bar.
 - Selecting the localities root and opening *Edit* shows *Undo*/*Redo* enabled (history permitting)
   and *Cut*, *Copy*, *Paste* and *Properties* greyed; selecting a product re-enables them.
+- Selecting a **locked** library block and opening *Edit* shows *Cut*, *Copy* and *Delete* enabled, and
+  *View* shows *Show program* enabled — the same four the block's own right-click menu offers. Selecting
+  an unlocked block in the same pane shows exactly the same four enabled: the lock makes no difference to
+  this set on either surface.
 
 **Readiness:** Ready.
 
 **Implementation status:** ✅ Implemented — the double-click route exists, *Cut*/*Copy*/*Paste* are
 reachable from the node context menu, and the menu bar greys selection-dependent commands per the
 enablement rules above (including the deliberate bar-vs-context differences). The status-bar explanation
-for refused shortcuts is in place; 🟡 the shortcuts-follow-the-bar rule is in progress — shortcut
-*execution* still follows the flyout's wider rule where the surfaces diverge (a failing test pins the
-target behaviour).
+for refused shortcuts is in place, and shortcuts now follow the **bar's** availability on every route —
+including `Delete`, which the trees service themselves. The locked-block bar rule this story previously
+carried (bar greys *Cut*/*Delete*/*Show program*) was **retired**: re-measurement showed the two surfaces
+agree, and all four commands are enabled on the bar for a locked block.
 
 ---
 
@@ -292,10 +300,11 @@ toolbar for a command the menu omits.
   **function-block pin**'s menu offers **no** *Copy*. The context menu's Copy scope (product terminals
   only) is deliberately **narrower than the menu bar's** (any pin, US-044) — each surface keeps its own
   rule.
-- MUST: A **locked** function block's flyout still offers *Cut* and *Delete* — and they really run —
-  even though the menu bar greys both for a locked block (US-044). *Show program* is likewise offered
-  from a block **or a pin** in the flyout (opening the owning block's program, US-026), while the bar
-  enables it on an unlocked block only. These bar-vs-context differences are specified behaviour, not
+- MUST: A **locked** function block's flyout offers *Cut* and *Delete* — and they really run. So does the
+  menu bar: the two surfaces **agree** on a locked block, for *Cut*, *Copy*, *Delete* and *Show program*
+  alike (US-044). *Show program* is additionally offered from a **pin** in the flyout (opening the owning
+  block's program, US-026), where the bar requires a block selected directly — that one, and *Copy*'s
+  narrower context scope above, are the real bar-vs-context differences and are specified behaviour, not
   inconsistencies to fix.
 - MUST: A **scene container**'s menu offers *Copy*.
 - SHOULD: *Move up* / *Move down* remain on the node types that can be reordered (locality, product,
@@ -344,7 +353,9 @@ English — the *language* of a label is an allowed difference, the *inventory* 
 **Implementation status:** 🟡 Largely implemented — the per-node-kind inventories (room, product, product
 pin, function block, function-block pin), the flyout ordering, *Copy* on product terminals, the
 locked-block flyout offering *Cut*/*Delete*/*Show program*, and *Show program* from a pin (resolving the
-owning block) are all in place, including the deliberate bar-vs-context enablement differences (US-044).
+owning block) are all in place, including the two surviving bar-vs-context enablement differences (US-044).
+The locked block is no longer one of them — the bar was brought into line with the flyout on all four
+commands.
 One item still needs **owner confirmation**: the exact **log-mark scope** — whether a per-pin log-mark
 command must exist for loggable **value** resources (e.g. a temperature sensor), where a boolean pin's
 equivalent is inert; today the toggle is offered wherever a `Logning` log row is projected.

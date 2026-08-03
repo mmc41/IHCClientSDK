@@ -15,6 +15,20 @@ namespace Ihc.Vis.Tests
         private static IhcSettings Settings => TestSetup.Settings;
 
         [Test]
+        public void CanonicalBlocks_UseCrLf_WhateverTheCheckoutLineEndings()
+        {
+            // The blocks are emitted verbatim into every saved .vis, whose wire format is CRLF. They come from an
+            // embedded resource file, so on a checkout that stores it with LF (any non-Windows CI) every saved
+            // project's inline DTD silently switched to LF and byte-fidelity died.
+            string[] lfOnly = ProjectSchemaRegistry.AllSchemas
+                .Where(s => s.CanonicalDtdBlock.Replace("\r\n", "").Contains('\n'))
+                .Select(s => s.Tag)
+                .ToArray();
+
+            Assert.That(lfOnly, Is.Empty, "canonical DTD blocks must be CRLF-terminated on every platform");
+        }
+
+        [Test]
         public void ParseBlock_DoubleSpaceInsideQuotedDefault_IsPreserved()
         {
             ElementSchema schema = ProjectSchemaRegistry.ParseBlock(

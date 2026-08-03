@@ -76,6 +76,11 @@ Scenario: Switch focus between the two panes
 - MUST: Inserting an **empty** function block enters programming mode for the new block automatically
   (US-019) — creation is the one entry route that needs no `F3`.
 - MUST: Leaving programming mode re-roots **both** panes back to *Localities*.
+- MUST: **Programming mode opens expanded.** On entry the left pane shows the block root **and all four
+  variable sections** already open, so the block's variables are readable without a click. The expansion
+  survives later edits — a mutation that re-projects the tree does not collapse the sections again
+  (US-070). **Configuration mode is deliberately the opposite**: a function block there stays collapsed,
+  so opening a project does not unfold every block in the installation.
 - MUST: The pane roots are what tell the two modes apart — configuration mode roots at *Localities*,
   programming mode roots at the block's name. (This is the only reliable signal of which mode the view is
   in; IHC OpenVisual additionally reports the transition in the status bar.)
@@ -89,6 +94,13 @@ Scenario: Switch focus between the two panes
   on every node. Unlocking (US-020) is the separate, deliberate act that enables editing. This must be
   enforced both by removing the commands (UI) and by an **engine guard**, so a locked block keeps matching
   its master whoever drives the editor.
+- MUST: **Entry is not withheld on a locked block, on any route.** *Show program* / `F3` opens a locked
+  block's program from the **menu bar and the context menu alike** — the two surfaces give the same answer
+  (US-044). The lock changes what can be *done* inside, never whether the program can be *opened*.
+- MUST: **A locked block says it is read-only.** When a locked block's program opens, the status bar
+  states that the view is read-only and that the block is locked; opening an **unlocked** block's program
+  gives a different message. The two messages must not be interchangeable — an installer must be able to
+  tell from the status bar alone why authoring commands are missing.
 
 ### AC illustrations
 
@@ -98,6 +110,12 @@ Scenario: Switch focus between the two panes
   names (US-019).
 - Pressing `F3` on the `Indgang` pin of a block named `Trappe-automatik` opens programming mode for
   `Trappe-automatik` — the pin's owner — exactly as if the block itself had been selected.
+- The same `Tom blok` entry shows all four section rows without any expanding: the block root and
+  `{Input, Output, Indstillinger, Interne variable}` are open on arrival. Returning to configuration mode
+  and reopening the project shows `Tom blok` collapsed again in the *Functions* tree.
+- Choosing *Show program* on a **locked** library block opens its program and the status bar reports the
+  view as read-only because the block is locked; doing the same on an unlocked block reports plain
+  programming mode. Comparing the two messages tells the two states apart.
 
 ### Constraints
 
@@ -110,10 +128,11 @@ Scenario: Switch focus between the two panes
 **Implementation status:** ✅ Implemented — the mode transition works (including entry from a pin/section
 onto the owning block, and automatic entry on empty-block insert), `Internal variables` is correctly
 hidden in configuration mode, and the locked-block view-only gate is enforced both in the UI and by the
-central engine guard (see US-020's status for the guard's coverage). The pane now opens with the block
-root and all four sections **expanded**; a locked block additionally **says** it is read-only in the
-status bar (the message existed but was previously unreachable); and a block's Programs group offers
-**adding a further program**, so a block can hold several.
+central engine guard (see US-020's status for the guard's coverage). Programming mode now opens with the block
+root and all four sections **expanded**, while configuration mode still leaves blocks collapsed; entry on a
+locked block is offered from the menu bar and the context menu alike (US-044); and a locked block **says** it
+is read-only in the status bar, with wording distinct from the unlocked message (the message existed but was
+previously unreachable). Inserting a further program into a block is covered by US-028.
 
 ---
 
@@ -173,8 +192,8 @@ their name/note/initial value/persistence, **so that** the program has the data 
 | Counter | **Counter** | integer −32768…32767 |
 | Integer | **Integer** | integer −32768…32767 |
 | Decimal | **Decimal** | real number; usable in ×/÷ |
-| Timer | **Timer** | hh:mm:ss.sss 00:00:00.000…23:59:59.999 |
-| Timer value | **Timer value** | hh:mm:ss.sss; to preset a timer or store a measured value |
+| Timer | **Timer** | hh:mm:ss,fff 00:00:00,000…23:59:59,999 |
+| Timer value | **Timer value** | hh:mm:ss,fff; to preset a timer or store a measured value |
 | Humidity | **Humidity** | relative humidity % |
 | Time-of-day | **Time of day** | hh:mm:ss 00:00:00…23:59:59 |
 | Holiday | **Holiday** | holiday flag from an online server (configured in a separate administration tool) |
@@ -187,16 +206,43 @@ their name/note/initial value/persistence, **so that** the program has the data 
 | Temperature | **Temperature** | °C as a decimal, −100…100 |
 | Power/energy | **kW / kWh / W / Wh** | for S0 terminals (power/energy) |
 
+**Row rendering rules (how a variable row reads in the tree):**
+- MUST: A typed variable's row shows its **effective value** — `Name = <value>` — including the type's
+  default when the project file stores no explicit value. A row that shows only a name where the type has
+  a value is a defect, not a neutral omission.
+- MUST: The rendering is **identical in all four sections**. The same variable, with the same stored
+  attributes, reads the same in Input, Output, Settings and Internal variables; no section renders more
+  or less than another.
+- MUST: The value is formatted **per type** — the number of decimals, the unit and its spacing, and
+  whether a value is shown at all are properties of the type, not one shared numeric rule:
+  - **Decimal separator is a comma** wherever a fractional value is shown.
+  - **Decimals per type**: Decimal 2 · Temperature and Humidity 1 · kW/kWh 3 · W/Wh none.
+  - **Unit spacing per type**: a space before `Lux` and `°C`; none before `%`, `kW`, `kWh`, `W`, `Wh`;
+    Humidity reads `% RH` — tight `%`, then a space, then `RH`.
+  - **Date shows day and month only** (`dd:MM`), never the stored year.
+  - **Time of day carries no milliseconds** (`HH:mm:ss`) while **Timer and Timer value do**
+    (`HH:mm:ss,fff`) — the three are not one time format.
+  - **Weekday and Enum render a name, not a number** — the weekday's name in the project's own language,
+    and the enum's state name.
+  - **Three types render no value at all**: the `Input` and `Output` signal pins, and `Holiday`.
+- MUST: A type known to the project engine always has a rendering — adding a variable type must not leave
+  its rows blank by omission.
+
 **Output:**
-- Typed variables placed in their sections, each rendered in the tree as `Name = <initial value>` with
-  a type icon.
+- Typed variables placed in their sections, each rendered in the tree as `Name = <value>` with a type
+  icon, per the rendering rules above.
 
 ### AC illustrations
 
-- Filling a block's *Internal variables* section shows rows like `Weekday = Monday`, `Number = 0`,
-  `Flag = OFF`, `Counter = 0`, `Date = 01:01`, `Timer = 00:00:00.000`, `Decimal = 0.00`,
-  `Humidity = 0.0% RH`, `Temperature = 0.0 °C` — each with its type icon and localized default; the
+- Filling a block's *Internal variables* section shows rows like `Weekday = Mandag`, `Number = 0`,
+  `Flag = OFF`, `Counter = 0`, `Date = 01:01`, `Timer = 00:00:00,000`, `Time of day = 00:00:00`,
+  `Decimal = 0,00`, `Humidity = 0,0% RH`, `Temperature = 0,0 °C`, `Light = 0 Lux`,
+  `Light level = 0%`, `kW = 0,000kW`, `W = 0W` — each with its type icon and its own default; the
   status bar confirms each add, e.g. `Temperature was inserted under Internal variables`.
+- The same variables placed in *Input*, *Output* or *Settings* instead read **exactly the same** — a
+  `Timer` is `Timer = 00:00:00,000` in every section, not bare in some and valued in others.
+- An `Input` pin, an `Output` pin and a `Holiday` show their name alone — those three types carry no
+  rendered value in any section.
 - `Input` cannot be added to *Settings* (a settings section accepts no signal type).
 - An *Input* section offers `Input` **and** every value type — e.g. `Flag`, `Enum` and `Power (kW)`
   are all addable there, not only the `Input` pin type.
@@ -230,6 +276,12 @@ Scenario: Insert a standard program
   When I right-click "Programs" and choose "Program"
   Then a "Program" node is inserted with an "Events" group and a "Commands" group
 
+Scenario: A block holds more than one program
+  Given a block whose "Programs" group already holds a program
+  When I insert a further program into the same "Programs" group
+  Then both programs are listed under "Programs", each with its own events and commands groups
+  And each program is triggered by its own events, independently of the other
+
 Scenario: Add an event by dragging a variable onto the events group
   Given a program with an "Events" group
   When I drag a variable (e.g. an input) from the function pane onto "Events" and release
@@ -248,8 +300,15 @@ Scenario: Event and command semantics
     a command that activates another program runs that program immediately before continuing
 ```
 
-### Business rules (the operator vocabulary)
+### Business rules (programs, and the operator vocabulary)
 
+- MUST: **A block's `Programs` group holds one *or more* programs.** A program is not a per-block
+  singleton — a further program can be inserted into a block that already has one, and each program keeps
+  its own events and commands.
+- MUST: **Inserting a program is reachable from both surfaces**, per US-044's route parity: from the
+  `Programs` container's own context menu, and from the menu bar's *Insert* group of program elements —
+  the same group that offers the case value, the sub-program and the logic group. Inside a **locked**
+  block the route is withheld like every other authoring command (US-026).
 - MUST: **The target group decides the row family; the dragged pin's type decides the operator list.**
   Dropping a pin on an **Events** group raises the event popup, on a **Commands** group the command popup, on
   a **Conditions** group the condition popup (US-029) — one drag gesture, three families. There is **no
@@ -298,7 +357,10 @@ count-down, stop counting), byte-fidelity templates pinned against the authentic
 condition lists are complete** too: a timer on Events offers `-> 0` and `is written`; on Conditions it offers
 `= 0`, the two-operand `>`/`>=`/`<=`, and the `counting up`/`counting down`/`stopped` predicates — the vendor's
 dead `Timer ->` event and `<` condition are never offered, and the count-state predicates reuse the command
-opcodes with condition-family semantics ((code, family)-scoped).
+opcodes with condition-family semantics ((code, family)-scoped). **Inserting a program** is offered on both
+surfaces — the `Programs` container's context menu and the *Insert* menu's program-elements group — so a block
+can hold several programs; the route is withheld inside a locked block and the added program round-trips
+byte-faithfully.
 
 ---
 
@@ -339,8 +401,12 @@ Scenario: Nest a logic group for a compound expression
 
 - MUST: A conditional-command node (`program_sub`, *"Betinget kommando"*) that carries a user-set **`name`**
   renders that name as its tree label — e.g. `Kip udgang`, `Tænd`, `Sluk` — falling back to the default
-  *Sub-program* token (in English) **only when `name` is absent or default**. A fixed *Sub-program* for every
-  one would discard the name and collapse distinct sub-programs to indistinguishable rows.
+  sub-program token **only when `name` is absent or default**. A fixed default label for every one would
+  discard the name and collapse distinct sub-programs to indistinguishable rows.
+- MUST: The default label the app supplies for an unnamed sub-program, for a conditions group, for a nested
+  logic group and for the two conditional command branches is **in the application's own UI language**
+  (US-001) — and where the project file already stores that same wording, the app renders the stored text
+  rather than restating it in another language (US-018's stored-caption rule).
 - MUST: Inserting a sub-program appends the four-node skeleton the first scenario describes — *Sub-program →
   { Conditions, Commands when conditions true, Commands when conditions false }*.
 
@@ -355,8 +421,11 @@ Scenario: Nest a logic group for a compound expression
 **Readiness:** Ready.
 
 **Implementation status:** ✅ Implemented — sub-program + conditions authoring with AND/OR logic groups, and the
-user-set sub-program **name** renders as the tree label (falling back to the default *Sub-program* token only
-when the name is absent or still the default).
+user-set sub-program **name** renders as the tree label (falling back to the default sub-program token only
+when the name is absent or still the default). The default labels the app supplies for an unnamed sub-program,
+the conditions group, a nested logic group and the two conditional command branches now read in the
+application's UI language, and where the file stores that same wording the stored text is rendered rather than
+restated in English.
 
 ---
 
@@ -394,6 +463,13 @@ Scenario: Edit an existing enumerator type's states
   Given a variable of an enumerator type
   When I select it, press F2 (or right-click > "Properties") and click the "Edit" button
   Then a screen opens where I can add or change the type's states
+
+Scenario: Reach the project's enumerator types from the Library menu
+  Given a project that defines enumerator types
+  When I choose the enumerator-type manager from the "Library" menu
+  Then a dialog lists the enumerator types the project holds, including the built-in ones
+  And I can create a further type from that dialog without first inserting a variable
+  And cancelling the dialog leaves the project's set of types unchanged
 ```
 
 ### Business rules
@@ -405,6 +481,14 @@ Scenario: Edit an existing enumerator type's states
 - A **standalone / empty** custom enumerator *type* (0 states, referenced by no variable) is authorable via a
   distinct **"New standalone type…"** action in the enum picker — decoupled from inserting a variable, so an empty
   project-global type can be created and referenced later.
+- MUST: **The project's enumerator types are reachable from the *Library* menu**, not only from a
+  variable-insert popup. The manager reached from there **lists** the types the project holds and lets a
+  further type be **created**; creating one leads into the same type-definition flow the insert route uses,
+  so there are not two editors for one thing. Cancelling changes nothing.
+- SHOULD: A type **listed** in that manager can be selected and edited from there, reaching the same
+  state editor the *Edit* button on a variable's properties reaches. *(**Not implemented** — selecting a
+  listed type does nothing today; editing a type's states is reachable only through a variable of that
+  type. See the implementation status.)*
 
 ### AC illustrations
 
@@ -491,6 +575,19 @@ operation per command line, **so that** the block can derive values like average
 - MUST: A **counter** is adjusted with `+ 1` / `− 1`, two-operand `+`, or a reset to `0`; it offers no
   two-operand `−`, `×` or `÷`. Timer `+` / `−` (timer with timer) belongs to the timer command set
   (US-028).
+- MUST: **Which operators a numeric target gets depends on the target's type, and the type must be named
+  whenever the rule is stated.** An **integer** target offers `+`, `÷` and `×` and **no** subtraction; a
+  **decimal** target does offer subtraction. "Subtraction is (not) offered" without naming the target type
+  is wrong in one direction or the other.
+- MUST: **A numeric register is never offered the boolean commands.** `= ON`, `= OFF`, `= NOT` and
+  *Toggle* belong to a flag or a bool output (US-028); an integer, counter or decimal target must not be
+  offered them, because they cannot be applied to a number.
+- SHOULD: A numeric register can be **assigned** directly — reset to `= 0`, and set to another numeric
+  pin's value (`= <pin>`) — as commands in their own right, alongside the arithmetic operations.
+  *(**Not implemented.** The stored form of these two commands is not recorded in any reference project,
+  and the tool never offers an operation whose stored form it has not observed — an unverified guess could
+  write a command a controller reads as something else. Until one is captured, a numeric target is offered
+  the arithmetic operations only.)*
 - SHOULD: To convert a decimal to an integer, add the decimal to an integer variable (previously set to
   0); the assignment to the integer truncates toward zero (drops the fractional part).
 
@@ -502,20 +599,23 @@ operation per command line, **so that** the block can derive values like average
 
 **Output:**
 - A decimal or integer result stored in a variable, shown inline as `name = value` (e.g. `Display =
-  38.96`).
+  38,96`), per US-027's row rendering rules.
 
 ### AC illustrations
 
 - `Number ÷ F2` (integer target, decimal divisor) stores the truncated quotient in `Number`.
-- Converting `2.5` via an integer `Number` yields `Number = 2` (truncation); `−3.9` yields `−3`.
+- Converting `2,5` via an integer `Number` yields `Number = 2` (truncation); `−3,9` yields `−3`.
 - Deriving a decimal average: sum with decimal + integer lines, then multiply by a decimal reciprocal
-  (`× 0.5` for a two-value average) — division onto a decimal register is not offered.
+  (`× 0,5` for a two-value average) — division onto a decimal register is not offered.
+- An integer register armed for a command offers `+=`, `÷=` and `×=` and no `−=`; a decimal register in
+  the same block does offer `−=`. Neither is offered `set to ON` / `set to OFF` / `set to NOT`.
 
 ### Constraints
 
 - Verification method — **Test** the one-operation-per-line rule, the pairing matrix (offered vs
   absent pairings), and the truncation behaviour of decimal→integer conversion.
-- Decimals display with a point separator (`0.33`, `38.96`) per English locale.
+- Decimals display with a comma separator (`0,33`, `38,96`) — US-027's per-type rendering rules govern
+  every value shown in a row.
 
 **Readiness:** Ready.
 
@@ -524,7 +624,9 @@ generic same-class opcode and its mixed float↔int variant) and the commit-lega
 app offers ONLY the authorable cells per pin-type pair and never surfaces a dead popup entry (float+float
 `+`, int−int / int←float `−`, counter `−`, int×int `×` and float-target `÷` are withheld), plus the 1-op
 counter `± 1`. A numeric register is also no longer offered the **boolean** commands (`set to ON/OFF/NOT`) that
-belong to a flag; it has no assignment set of its own yet, because the opcodes for one are unrecorded.
+belong to a flag. 🟡 The numeric **assignment** commands (`= 0`, `= <pin>`) are still **not offered**: no
+reference project records their stored form, and the tool never authors an operation whose stored form it has
+not observed, so closing this needs a captured example rather than a guessed encoding.
 Division onto a decimal register is **not offered** (the ÷ row is final). Opcodes are
 byte-fidelity-pinned and every authorable cell round-trips through a save→reload.
 

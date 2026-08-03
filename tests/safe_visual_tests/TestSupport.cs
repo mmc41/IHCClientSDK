@@ -80,7 +80,12 @@ public sealed class FakeDialogService : IDialogService
     public Task<string?> PickSaveProjectAsync(string? initialDirectory, string suggestedFileName) => Task.FromResult(SavePath);
     public Task<string?> PickSaveFunctionBlockAsync(string suggestedFileName) => Task.FromResult(SaveBlockPath);
     public string? SaveReportPath { get; set; }
-    public Task<string?> PickSaveReportAsync(string suggestedFileName) => Task.FromResult(SaveReportPath);
+    public string? LastReportSuggestedName { get; private set; }
+    public Task<string?> PickSaveReportAsync(string suggestedFileName)
+    {
+        LastReportSuggestedName = suggestedFileName;
+        return Task.FromResult(SaveReportPath);
+    }
     public string? CatalogFilePath { get; set; }
     public string? CatalogFolderPath { get; set; }
     public Task<string?> PickCatalogFileAsync() => Task.FromResult(CatalogFilePath);

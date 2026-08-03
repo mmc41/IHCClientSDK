@@ -1,6 +1,8 @@
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Headless.NUnit;
+using ihc_openvisual.Services;
 using ihc_openvisual.ViewModels;
 using Ihc.Vis;
 
@@ -36,6 +38,9 @@ public class ReportPickerTests
                 $"{commandId} opens the shared picker dialog");
             Assert.That(harness.Dialogs.LastReportPickerViewModel!.SelectedKind.Kind, Is.EqualTo(expected),
                 $"{commandId} pre-selects its report in the type dropdown");
+            Assert.That(harness.Dialogs.LastReportPickerViewModel!.SelectedFormat.MimeType,
+                Is.EqualTo(ReportMimeTypes.Html),
+                $"{commandId} opens the picker with HTML pre-selected in the format dropdown");
         }
         Assert.That(harness.Dialogs.ShowReportPickerCalls, Is.EqualTo(MenuEntries.Length));
     }
@@ -67,27 +72,36 @@ public class ReportPickerTests
     }
 
     [AvaloniaTest]
-    public async Task SaveAs_WritesTheChosenFormat_WithTheFacadeBytes()
+    public async Task SaveAs_WritesTheFormatPickedInTheDropdown_WithTheFacadeBytes()
     {
         using var harness = ShellHarness.Create();
         MainWindowViewModel vm = harness.CreateViewModel();
         await vm.Registry.Commands["file.new"].ExecuteAsync(null);
-        await vm.Registry.Commands["reports.functions"].ExecuteAsync(null);
-        ReportPickerViewModel picker = harness.Dialogs.LastReportPickerViewModel!;
-        string target = harness.TempPath("t016-report.txt");
-        harness.Dialogs.SaveReportPath = target;
 
-        await picker.SaveAsCommand.ExecuteAsync(null);
-
-        using var expected = new MemoryStream();
-        await harness.ProjectService.GenerateReport(harness.Session.Current!, ReportKind.Functions,
-            ReportMode.Standard, ReportMimeTypes.PlainText, expected);
-        Assert.Multiple(() =>
+        foreach (string mimeType in new[] { ReportMimeTypes.Html, ReportMimeTypes.PlainText })
         {
-            Assert.That(File.Exists(target), Is.True, "[Gem som…] writes the chosen file");
-            Assert.That(File.ReadAllBytes(target), Is.EqualTo(expected.ToArray()),
-                "a .txt target selects text/plain and the bytes are exactly the facade's");
-        });
+            await vm.Registry.Commands["reports.functions"].ExecuteAsync(null);
+            ReportPickerViewModel picker = harness.Dialogs.LastReportPickerViewModel!;
+            picker.SelectedFormat = picker.Formats.Single(format => format.MimeType == mimeType);
+            string extension = mimeType == ReportMimeTypes.PlainText ? ".txt" : ".html";
+            string target = harness.TempPath("t016-report" + extension);
+            harness.Dialogs.SaveReportPath = target;
+
+            await picker.SaveAsCommand.ExecuteAsync(null);
+
+            using var expected = new MemoryStream();
+            await harness.ProjectService.GenerateReport(harness.Session.Current!, ReportKind.Functions,
+                ReportMode.Standard, mimeType, expected,
+                mimeType == ReportMimeTypes.Html ? new SvgReportIconProvider() : null);   // the app's icon mapping for HTML
+            Assert.Multiple(() =>
+            {
+                Assert.That(harness.Dialogs.LastReportSuggestedName, Does.EndWith(extension),
+                    $"the save dialog is suggested a {mimeType} file name");
+                Assert.That(File.Exists(target), Is.True, "[Gem som…] writes the chosen file");
+                Assert.That(File.ReadAllBytes(target), Is.EqualTo(expected.ToArray()),
+                    $"the picked {mimeType} format generates the facade's bytes for that format");
+            });
+        }
     }
 
     [AvaloniaTest]
@@ -126,6 +140,28 @@ public class ReportPickerTests
             Assert.That(File.ReadAllText(opened!),
                 Does.Contain("<h1>Installationsdokumentation</h1>").And.Contain("Fuld rapport"),
                 "the page is the facade-generated report for the picked kind and mode");
+        });
+    }
+
+    [AvaloniaTest]
+    public async Task ViewInBrowser_HonoursTheTxtFormat_AndOpensThePlainTextDocument()
+    {
+        using var harness = ShellHarness.Create();
+        MainWindowViewModel vm = harness.CreateViewModel();
+        await vm.Registry.Commands["file.new"].ExecuteAsync(null);
+        await vm.Registry.Commands["reports.installation"].ExecuteAsync(null);
+        ReportPickerViewModel picker = harness.Dialogs.LastReportPickerViewModel!;
+
+        picker.SelectedFormat = picker.Formats.Single(format => format.MimeType == ReportMimeTypes.PlainText);
+        await picker.ViewInBrowserCommand.ExecuteAsync(null);
+
+        string? opened = harness.Dialogs.LastOpenedUrl;
+        Assert.Multiple(() =>
+        {
+            Assert.That(opened, Does.EndWith(".txt"), "the picked TXT format hands the browser a text document");
+            Assert.That(File.ReadAllText(opened!),
+                Does.Contain("Installationsdokumentation").And.Not.Contains("<h1>"),
+                "the document is the facade-generated plain-text report, not the HTML page");
         });
     }
 }

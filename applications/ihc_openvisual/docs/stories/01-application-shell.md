@@ -61,8 +61,9 @@ per-menu command inventory beyond the top-level menu titles.
 
 ### Acceptance criteria (Checklist)
 
-- MUST: The window title bar shows `<document> - IHC OpenVisual`, where `<document>` is
-  `Untitled` before the first save and the file name (e.g. `project3.vis`) afterwards; the
+- MUST: The window title bar shows `<document> - IHC OpenVisual`, where `<document>` is the
+  application's own name for an unsaved document (`Uden navn`) before the first save and the file name
+  (e.g. `project3.vis`) afterwards; the
   IHC OpenVisual application icon appears as the window icon, with standard Minimize/Maximize/Close buttons at top-right.
 - MUST: The title bar carries a **dirty marker** while the open project has unsaved changes: a bullet (`•`)
   appended directly to the document name — `project3.vis• - IHC OpenVisual` — and nothing else in the title.
@@ -70,9 +71,22 @@ per-menu command inventory beyond the top-level menu titles.
   the project to its last saved state. A clean project (just created, opened, or saved) shows the plain
   title. The unsaved-changes guard (US-002) remains the authoritative protection; the marker is the
   at-a-glance cue.
-- MUST: A single menu bar shows exactly these **eight** titles, left to right: **File, Edit, View,
-  Insert, Library, Controller, Documentation, Help** — *Simulation* is out of scope (E8) and is
-  omitted.
+- MUST: A single menu bar shows exactly these **eight** titles, left to right: **Filer** (File),
+  **Rediger** (Edit), **Vis** (View), **Indsæt** (Insert), **Bibliotek** (Library), **Controller**,
+  **Dokumentation** (Documentation), **Hjælp** (Help) — *Simulation* is out of scope (E8) and is
+  omitted. The Danish word is the shipped label; the English gloss is how the rest of these stories name
+  a menu or a command for readability. **Naming a menu or command in English in a story is a reference to
+  it, never a specification of its label** — the label's language is governed by the next rule.
+- MUST: **The application's own chrome is written in one language — Danish.** Every caption the
+  application itself invents — menu titles and menu items, the default names it supplies for containers
+  it creates, the unsaved-document name, dialog labels and status-bar sentences — belongs to that one
+  language; the workspace must not mix two languages in text it authors. (The two pane headers are the
+  fixed words specified above and stand as written.)
+- MUST: **Text that comes from the project file or the component catalog is rendered verbatim.** The
+  application never restates a stored caption or a catalog name in another language — a container whose
+  stored name reads `Betingelser` is shown as `Betingelser`, not translated (US-018's stored-caption
+  rule; catalog names per US-010 and US-063). Where the application supplies a default for text the file
+  does not carry, that default is its own chrome and follows the previous rule.
 - MUST: The menu bar is a stable host for the whole application: all eight titles are present at
   all times; the shell populates *File*, *View* and *Help* itself, while *Edit* (E14–E15), *Insert*
   (E2–E7), *Library* (E5, E16), *Controller* (E10) and *Documentation* (E9) are
@@ -87,6 +101,12 @@ per-menu command inventory beyond the top-level menu titles.
   same localities.
 - MUST: A status bar spans the bottom; its left region shows the result/hint of the last action as
   a short sentence, and a locale indicator (Danish flag) sits at the far right.
+- MUST: A **controller-connection indicator** sits in the status bar, next to the locale indicator, and
+  shows whether a controller is currently reachable. It has two states — connected and not connected —
+  and they are told apart by **glyph shape**, never by colour alone (per the icon design guideline), with
+  the state also given in words as the indicator's tooltip and accessible name. The indicator is always
+  present: "not connected" is a state it displays, not a reason to hide it. (Sending and retrieving a
+  project are E10's; this is only the at-a-glance state.)
 - SHOULD: The vertical boundary between the two panes is a splitter the installer can drag to
   reallocate width between *Installation* and *Functions*.
 - SHOULD: The workspace renders in either a light or a dark theme; tree icon ink and node state
@@ -94,15 +114,16 @@ per-menu command inventory beyond the top-level menu titles.
 
 ### AC illustrations
 
-- Immediately after launch with no project: title bar reads `Untitled - IHC OpenVisual`; both panes
+- Immediately after launch with no project: title bar reads `Uden navn - IHC OpenVisual`; both panes
   list the ten default rooms; the status bar left region may show a residual hint such as
-  `Undoing insertion of <product>`.
+  `Undoing insertion of <product>`, and its right end shows the connection indicator in its
+  not-connected form beside the locale flag.
 - After saving as `project3.vis`: the title bar reads `project3.vis - IHC OpenVisual`; nothing else in
   the chrome changes.
 - Editing the saved project (e.g. inserting a locality) changes the title to `project3.vis• - IHC OpenVisual`;
   `Ctrl+Z` back to the saved state clears the bullet without saving; a new edit brings it back.
 - Layout reference: the target arrangement is a title bar ending in the application name, the
-  eight-title menu bar (**File, Edit, View, Insert, Library, Controller, Documentation, Help** — no
+  eight-title menu bar (**Filer, Rediger, Vis, Indsæt, Bibliotek, Controller, Dokumentation, Hjælp** — no
   *Simulation*), a toolbar of New / Open / Save · Help · controller send/retrieve · Cut / Copy / Paste,
   two blue-headed tree panes with a central splitter, and a status bar with
   a left hint (e.g. `For help, press F1`) and a locale flag at the far right.
@@ -115,7 +136,13 @@ per-menu command inventory beyond the top-level menu titles.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented.
+**Implementation status:** 🟡 Largely implemented — the window, the eight-title menu bar, the toolbar, the
+two headed panes and the status bar are all in place, and the status bar now carries the
+**controller-connection indicator** (two distinct glyphs plus the state in words; the app is offline today,
+so only the not-connected state is ever shown in practice). The **verbatim** rule holds — a stored caption is
+no longer restated in English. The **one-language** rule is only partly met: the eight menu-bar titles, the
+default names supplied for program containers and the unsaved-document name are Danish, while the individual
+menu items, the dialog labels and the status-bar sentences are still English.
 
 ---
 
@@ -131,7 +158,7 @@ Scenario: Start a new project from the menu
   Given IHC OpenVisual is running
   When I choose "File" > "New project" (or press Ctrl+N)
   Then the workspace shows the standard empty project: both panes rooted at "Lokaliteter"
-    with the ten default rooms, and the title bar shows "Untitled - IHC OpenVisual"
+    with the ten default rooms, and the title bar shows "Uden navn - IHC OpenVisual"
   And the project records the installer contact details held in application settings,
     and the signed-in user as its programmer
 
@@ -186,7 +213,7 @@ thereafter, **so that** my configuration is persisted under a meaningful name.
 
 ```gherkin
 Scenario: First save via Save As
-  Given a new, unnamed project ("Untitled")
+  Given a new, unnamed project ("Uden navn")
   When I choose "File" > "Save project as"
   Then a file save dialog opens
   And after I type a file name (e.g. "StandardHouse_1") and confirm with "Save"
@@ -225,7 +252,7 @@ Scenario: Recommended first step
 
 ### AC illustrations
 
-- Saving an untitled project as `project3.vis` changes the title bar from `Untitled - IHC OpenVisual`
+- Saving an untitled project as `project3.vis` changes the title bar from `Uden navn - IHC OpenVisual`
   to `project3.vis - IHC OpenVisual`; the two panes and their content are unchanged.
 - Opening a project and immediately saving it without editing produces a file that differs from the
   original in exactly two places — the modified timestamp and the save id.

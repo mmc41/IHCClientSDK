@@ -22,12 +22,13 @@ internal sealed class ProjectReportWorkflow(
     ProjectAppService service, IDialogService dialogs, ILogger logger, Func<Project?> getCurrent)
 {
     /// <summary>
-    /// T015 (R12): generates the picked report via the facade — HTML with the app's SVG icon provider —
-    /// to a temp file and opens it in the OS default browser (the US-063 view/print flow). Generation or
-    /// write failures surface through the standard message dialog; browser-open failures are handled by
+    /// T015 (R12): generates the picked report in the picked format via the facade — HTML with the app's SVG
+    /// icon provider, plain text with the SDK's default stand-ins — to a temp file and opens it in the OS
+    /// default browser (the US-063 view/print flow). Generation or write failures surface through the standard
+    /// message dialog; browser-open failures are handled by
     /// <see cref="IDialogService.OpenExternalUrlAsync"/> itself.
     /// </summary>
-    public async Task ViewInBrowserAsync(ReportKind kind, ReportMode mode)
+    public async Task ViewInBrowserAsync(ReportKind kind, ReportMode mode, string mimeType)
     {
         using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectReportWorkflow)}.{nameof(ViewInBrowserAsync)}");
         try
@@ -38,8 +39,8 @@ internal sealed class ProjectReportWorkflow(
             }
             string dir = Path.Combine(Path.GetTempPath(), "ihc-openvisual-reports");
             Directory.CreateDirectory(dir);
-            string path = Path.Combine(dir, $"{kind}-{mode}.html".ToLowerInvariant());
-            await service.GenerateReport(project, kind, mode, ReportMimeTypes.Html, path, new SvgReportIconProvider());
+            string path = Path.Combine(dir, FileName(kind, mode, mimeType));
+            await service.GenerateReport(project, kind, mode, mimeType, path, IconsFor(mimeType));
             await dialogs.OpenExternalUrlAsync(path);
         }
         catch (Exception ex)
@@ -51,11 +52,12 @@ internal sealed class ProjectReportWorkflow(
     }
 
     /// <summary>
-    /// T016 (R12): [Gem som…] — asks for a target path (.html/.txt), then generates the picked report via
-    /// the facade to that file: text/plain with the default unicode stand-ins for a .txt target, HTML with
-    /// the app's SVG icons otherwise. Generation and save failures surface through the message dialog.
+    /// T016 (R12): [Gem som…] — asks for a target path, suggested in the format the picker's format dropdown
+    /// chose, then generates the picked report via the facade to that file in that format: text/plain with the
+    /// default unicode stand-ins, HTML with the app's SVG icons. Generation and save failures surface through
+    /// the message dialog.
     /// </summary>
-    public async Task SaveAsAsync(ReportKind kind, ReportMode mode)
+    public async Task SaveAsAsync(ReportKind kind, ReportMode mode, string mimeType)
     {
         using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectReportWorkflow)}.{nameof(SaveAsAsync)}");
         try
@@ -64,16 +66,12 @@ internal sealed class ProjectReportWorkflow(
             {
                 return;   // no project open — the registry gate normally prevents this
             }
-            string? path = await dialogs.PickSaveReportAsync($"{kind}-{mode}.html".ToLowerInvariant());
+            string? path = await dialogs.PickSaveReportAsync(FileName(kind, mode, mimeType));
             if (path is null)
             {
                 return;   // cancelled
             }
-            bool asText = path.EndsWith(".txt", StringComparison.OrdinalIgnoreCase);
-            await service.GenerateReport(project, kind, mode,
-                asText ? ReportMimeTypes.PlainText : ReportMimeTypes.Html,
-                path,
-                asText ? null : new SvgReportIconProvider());
+            await service.GenerateReport(project, kind, mode, mimeType, path, IconsFor(mimeType));
         }
         catch (Exception ex)
         {
@@ -83,4 +81,12 @@ internal sealed class ProjectReportWorkflow(
         }
     }
 
+    /// <summary>The file name a generated report gets, carrying the extension of the picked format so the
+    /// temp page and the save dialog's suggestion both match what the facade writes.</summary>
+    private static string FileName(ReportKind kind, ReportMode mode, string mimeType) =>
+        $"{kind}-{mode}.{(mimeType == ReportMimeTypes.PlainText ? "txt" : "html")}".ToLowerInvariant();
+
+    /// <summary>The app's SVG icon mapping for HTML output; the SDK's default unicode stand-ins for text.</summary>
+    private static IReportIconProvider? IconsFor(string mimeType) =>
+        mimeType == ReportMimeTypes.PlainText ? null : new SvgReportIconProvider();
 }

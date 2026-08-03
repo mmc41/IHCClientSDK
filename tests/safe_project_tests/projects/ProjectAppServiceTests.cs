@@ -207,8 +207,40 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
+        public async Task SaveToPath_UnwritableTarget_LeavesNoTempResidue()
+        {
+            // The portable half of the atomic-save contract: the swap fails after the temp file is already
+            // written, so the cleanup path must run. A directory sitting on the target name makes the rename
+            // fail the same way on Windows and on POSIX.
+            var app = new ProjectAppService(Settings);
+            Project project = LoadProject1(app);
+
+            string dir = Path.Combine(Path.GetTempPath(), "ihc-projapp-" + Guid.NewGuid().ToString("N"));
+            string path = Path.Combine(dir, "occupied.vis");
+            Directory.CreateDirectory(path);
+            try
+            {
+                Assert.That(async () => await app.Save(project, path, ProjectSaveOptions.PreserveExistingMetadata),
+                    Throws.InstanceOf<IOException>());
+                Assert.That(Directory.GetFiles(dir), Is.Empty, "the failed save leaves no temp-file litter");
+            }
+            finally
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+        }
+
+        [Test]
         public async Task SaveToPath_LockedTarget_LeavesOriginalIntact_AndNoTempResidue()
         {
+            // Windows-only by nature: an open FileShare.None handle blocks the replace there, while POSIX
+            // rename(2) ignores open handles entirely, so there is no "locked file" to fail against.
+            // The platform-neutral cleanup invariant is covered by SaveToPath_UnwritableTarget_LeavesNoTempResidue.
+            if (!OperatingSystem.IsWindows())
+            {
+                Assert.Ignore("mandatory file locking is a Windows guarantee; POSIX renames over open files succeed");
+            }
+
             var app = new ProjectAppService(Settings);
             byte[] original = TestData.ReadBytes("projects/Project1-SimpelWired.vis");
             Project project = LoadProject1(app);

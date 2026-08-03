@@ -13,6 +13,11 @@
                 HorizontalAlignment="Stretch"/>
     </StackPanel>
     <StackPanel Spacing="4">
+      <TextBlock Text="Format"/>
+      <ComboBox ItemsSource="{Binding Formats}" SelectedItem="{Binding SelectedFormat}"
+                HorizontalAlignment="Stretch"/>
+    </StackPanel>
+    <StackPanel Spacing="4">
       <TextBlock Text="Tilstand"/>
       <StackPanel Orientation="Horizontal" Spacing="16">
         <RadioButton Content="Standard" GroupName="ReportMode" IsChecked="{Binding IsStandardMode, Mode=TwoWay}"/>

@@ -277,13 +277,15 @@ public sealed class ProjectWorkflow : IDisposable
     /// format's own placeholder rather than an English one.</summary>
     public const string NewLocalityName = "Lokalitet";
 
-    /// <summary>Generates the picked report (facade, SVG icons) to a temp HTML file and opens it in the
-    /// default browser (T015/R12) — delegates to the ProjectReportWorkflow collaborator.</summary>
-    public Task ViewReportInBrowserAsync(ReportKind kind, ReportMode mode) => _reports.ViewInBrowserAsync(kind, mode);
+    /// <summary>Generates the picked report in the picked format (facade; SVG icons for HTML) to a temp file
+    /// and opens it in the default browser (T015/R12) — delegates to the ProjectReportWorkflow collaborator.</summary>
+    public Task ViewReportInBrowserAsync(ReportKind kind, ReportMode mode, string mimeType) =>
+        _reports.ViewInBrowserAsync(kind, mode, mimeType);
 
-    /// <summary>[Gem som…] for the picked report (T016/R12): file dialog (.html/.txt) then facade
-    /// generation to the chosen file — delegates to the ProjectReportWorkflow collaborator.</summary>
-    public Task SaveReportAsAsync(ReportKind kind, ReportMode mode) => _reports.SaveAsAsync(kind, mode);
+    /// <summary>[Gem som…] for the picked report (T016/R12): file dialog then facade generation to the chosen
+    /// file in the picked format — delegates to the ProjectReportWorkflow collaborator.</summary>
+    public Task SaveReportAsAsync(ReportKind kind, ReportMode mode, string mimeType) =>
+        _reports.SaveAsAsync(kind, mode, mimeType);
 
     /// <summary>Reads the current project/customer/installer information (US-039) to prefill the dialog. Delegates
     /// to the SDK projection (<c>Ihc.Vis.ProjectProjections</c>) over <see cref="Current"/>.</summary>

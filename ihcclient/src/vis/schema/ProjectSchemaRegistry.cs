@@ -81,7 +81,10 @@ namespace Ihc.Vis.Schema
                 ?? throw new InvalidOperationException($"Embedded schema resource '{ResourceName}' not found.");
             // The blocks are pure ASCII; read as Latin-1 so the bytes are preserved exactly.
             using var reader = new StreamReader(stream, Encoding.Latin1);
-            return reader.ReadToEnd();
+            // The .vis wire format is CRLF and these blocks are emitted verbatim, but the resource file's own
+            // line endings follow the checkout (git stores it LF, Windows smudges it to CRLF) — so pin CRLF here
+            // rather than let the host platform decide what a saved project's inline DTD looks like.
+            return reader.ReadToEnd().ReplaceLineEndings("\r\n");
         }
 
         /// <summary>

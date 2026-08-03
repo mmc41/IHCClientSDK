@@ -186,8 +186,9 @@ optional bridge for downloading and uploading projects from and to a live contro
 - FR-2.1b: **The menu bar is deliberately NOT pane-gated.** It offers the whole vocabulary regardless of which pane has focus or what is selected. A context menu answers *"what can I do to this?"*, the menu bar *"what can this app do?"*.
 - FR-2.2: Every node renders a type icon from the flat-line set (per the icon-mapping doc) plus decorations for state (e.g. unconfigured/unlinked warning, locked block badge); variables show inline `name = value`.
 - FR-2.3: Every command is reachable three equivalent ways: menu bar, context menu on the target node, and (where assigned) a keyboard shortcut; a documented keymap covers navigation, editing, properties, link-jumping, and pane switching.
-- FR-2.4: A status bar confirms the result of the last action in a short sentence.
+- FR-2.4: A status bar confirms the result of the last action in a short sentence, and carries a controller-connection indicator whose connected and not-connected states differ in glyph shape (never colour alone) and are also stated in words.
 - FR-2.5: Light and dark themes; icon ink and state colours follow the theme tokens.
+- FR-2.6: **One language for the application's own text, verbatim for everyone else's.** Every caption the application invents is written in a single language (Danish); text that comes from the project file or the component catalog is rendered exactly as stored and is never translated.
 
 ### F3 — Locality management
 
@@ -301,7 +302,8 @@ taken on.
 
 Single main window with menu bar, toolbar, two tree panes — **Installation on the left** (products)
 and **Functions on the right** (function blocks), over one shared locality structure (F2) — and a
-status bar; modal dialogs for properties and confirmations. Keyboard-first: complete tasks are
+status bar carrying the last action's result, a controller-connection indicator and the project-locale
+indicator; modal dialogs for properties and confirmations. Keyboard-first: complete tasks are
 achievable without a mouse (three-route command activation, FR-2.3). Accessibility: icons are decorative
 and always accompanied by text labels; state is never signaled by color alone; both themes maintain
 readable contrast at tree-row icon size.
@@ -323,6 +325,7 @@ readable contrast at tree-row icon size.
 | Reliability | No data loss on crash (recoverable backup ≤ 10 min old); no partial/corrupt file ever written | Backup-lifecycle and atomic-save checks |
 | Performance | Open + render the largest reference project (~236 KB) in < 2 s; save < 1 s, on typical developer hardware | Timed assertions |
 | Usability | All authoring tasks completable via keyboard; icons legible at tree-row size; light + dark themes | UI checks + icon render checks |
+| Language consistency | The application's own captions are in one language (Danish); file- and catalog-derived text is rendered verbatim and never translated | UI string checks; a tree-label check that a stored caption is not restated in another language |
 | Portability | Same feature set on Windows/macOS/Linux | Cross-platform build + test |
 | Maintainability | Zero build warnings; view-model logic testable without a UI; engine untouched by UI concerns | Build gates; suite layering |
 

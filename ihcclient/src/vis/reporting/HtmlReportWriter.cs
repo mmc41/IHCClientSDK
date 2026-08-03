@@ -24,7 +24,9 @@ namespace Ihc.Vis.Reporting
 
         // The one shared stylesheet all reports embed (screen + @media print), byte-pinned by the 12 HTML
         // oracles — table/tree/icon rules included up front so every report kind renders from the same sheet.
-        private const string Stylesheet = """
+        // A raw string literal keeps its SOURCE FILE's line endings, so the trailing ReplaceLineEndings is what
+        // makes the emitted report LF-only (S06) whether this file is checked out with LF or CRLF.
+        private static readonly string Stylesheet = """
 
             body { font-family: sans-serif; font-size: 14px; line-height: 1.5; margin: 24px; }
             .banner { display: flex; align-items: center; gap: 10px; background: #2455a4; color: #fff; padding: 10px 16px; }
@@ -64,7 +66,7 @@ namespace Ihc.Vis.Reporting
               .table-scroll { overflow-x: visible; }
               .table-scroll table { min-width: 0; }
             }
-            """;
+            """.ReplaceLineEndings("\n");
 
         public static byte[] Write(ReportShapeDocument document, IReportIconProvider? iconProvider)
         {

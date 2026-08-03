@@ -96,15 +96,19 @@ public sealed class AvaloniaDialogService : IDialogService
     {
         if (Owner is null)
             return null;
+        // The picker's format dropdown already chose the format; the suggested name carries its extension,
+        // so the dialog offers exactly that format rather than letting a typed extension contradict the choice.
+        bool asText = suggestedFileName.EndsWith(".txt", StringComparison.OrdinalIgnoreCase);
         IStorageFile? file = await Owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Gem rapport",
             SuggestedFileName = suggestedFileName,
-            DefaultExtension = "html",
+            DefaultExtension = asText ? "txt" : "html",
             FileTypeChoices = new[]
             {
-                new FilePickerFileType("HTML report") { Patterns = new[] { "*.html" } },
-                new FilePickerFileType("Text report") { Patterns = new[] { "*.txt" } },
+                asText
+                    ? new FilePickerFileType("Text report") { Patterns = new[] { "*.txt" } }
+                    : new FilePickerFileType("HTML report") { Patterns = new[] { "*.html" } },
             }
         });
         return file?.TryGetLocalPath();
