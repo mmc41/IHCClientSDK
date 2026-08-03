@@ -22,7 +22,7 @@ public class ProjectWorkflowTests
         {
             Assert.That(harness.Session.Current, Is.Not.Null);
             Assert.That(harness.Session.Current!.Groups.Count, Is.EqualTo(10), "the standard empty project has ten default rooms");
-            Assert.That(harness.Session.DocumentName, Is.EqualTo("Untitled"));
+            Assert.That(harness.Session.DocumentName, Is.EqualTo("Uden navn"));
             Assert.That(harness.Session.IsDirty, Is.False);
         });
     }
@@ -116,7 +116,7 @@ public class ProjectWorkflowTests
         {
             Assert.That(result, Is.True);
             Assert.That(harness.Session.IsDirty, Is.False);
-            Assert.That(harness.Session.DocumentName, Is.EqualTo("Untitled"));
+            Assert.That(harness.Session.DocumentName, Is.EqualTo("Uden navn"));
             Assert.That(harness.Session.Current!.Groups.Count, Is.EqualTo(10));
         });
     }
@@ -132,7 +132,7 @@ public class ProjectWorkflowTests
         harness.Dialogs.SavePath = path;
         await harness.Session.SaveAsAsync();
         await harness.Session.NewAsync();
-        Assert.That(harness.Session.DocumentName, Is.EqualTo("Untitled"));
+        Assert.That(harness.Session.DocumentName, Is.EqualTo("Uden navn"));
 
         bool opened = await harness.Session.OpenAsync(path);
 
@@ -303,7 +303,7 @@ public class ProjectWorkflowTests
         {
             Assert.That(restarted.Dialogs.ConfirmCalls, Is.EqualTo(0), "the recovery dialog is never shown");
             Assert.That(restarted.Backup.HasRecovery(), Is.False, "the stale crash backup is discarded up front");
-            Assert.That(restarted.Session.DocumentName, Is.EqualTo("Untitled"), "a fresh empty project is opened");
+            Assert.That(restarted.Session.DocumentName, Is.EqualTo("Uden navn"), "a fresh empty project is opened");
             Assert.That(restarted.Session.Current!.Groups.Count, Is.EqualTo(10));
         });
     }
@@ -388,7 +388,7 @@ public class ProjectWorkflowTests
         Assert.Multiple(() =>
         {
             Assert.That(restart.Session.IsDirty, Is.False);
-            Assert.That(restart.Session.DocumentName, Is.EqualTo("Untitled"));
+            Assert.That(restart.Session.DocumentName, Is.EqualTo("Uden navn"));
             Assert.That(restart.Backup.HasRecovery(), Is.False, "declining recovery discards the backup");
         });
     }

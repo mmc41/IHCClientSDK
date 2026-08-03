@@ -311,6 +311,15 @@ public sealed class ProjectWorkflow : IDisposable
     public ModuleAddressMap GetModuleAddressMap() =>
         Current?.GetModuleAddressMap() ?? ModuleAddressMap.Empty;
 
+    /// <summary>
+    /// The variable types the engine accepts directly under <paramref name="containerId"/>, as SDK tags (US-027,
+    /// uxparity2 W1/D03). The variable palette labels these; it never decides membership itself, so the section→types
+    /// rule has exactly one home — <c>PlacementRules</c> — and cannot drift between engine and UI. Empty for a
+    /// container that holds no variables, and with no project open.
+    /// </summary>
+    public IReadOnlyList<string> GetInsertableVariableTypes(ElementId containerId) =>
+        Current is { } project ? _service.GetInsertableVariableTypes(project, containerId) : new List<string>();
+
     /// <summary>The catalog products as slim insert-menu items (<see cref="CatalogItem"/>) — what the insert menu binds to.</summary>
     public IReadOnlyList<CatalogItem> GetProductCatalogItems() => _service.GetProductCatalogItems();
 

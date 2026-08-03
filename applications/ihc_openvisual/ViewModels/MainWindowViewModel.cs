@@ -106,6 +106,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     public IAsyncRelayCommand FunctionsReportCommand => Registry.Commands["reports.functions"];
     public IAsyncRelayCommand InstallationReportCommand => Registry.Commands["reports.installation"];
     public IAsyncRelayCommand FunctionBlocksReportCommand => Registry.Commands["reports.functionBlocks"];
+    public IAsyncRelayCommand ManageEnumTypesCommand => Registry.Commands["library.manageEnumTypes"];
     public IAsyncRelayCommand ImportCatalogFileCommand => Registry.Commands["catalog.importFile"];
     public IAsyncRelayCommand ImportCatalogFolderCommand => Registry.Commands["catalog.importFolder"];
     public IAsyncRelayCommand AboutCommand => Registry.Commands["help.about"];
@@ -118,6 +119,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     public IAsyncRelayCommand InsertOutputCommand => Registry.Commands["program.insertOutput"];
     public IAsyncRelayCommand AddPowerEventCommand => Registry.Commands["program.addPowerEvent"];
     public IAsyncRelayCommand ToggleSaveValueCommand => Registry.Commands["program.toggleSaveValue"];
+    public IAsyncRelayCommand AddProgramCommand => Registry.Commands["program.addProgram"];
     public IAsyncRelayCommand AddSubProgramCommand => Registry.Commands["program.addSubProgram"];
     public IAsyncRelayCommand AddLogicGroupCommand => Registry.Commands["program.addLogicGroup"];
     public IAsyncRelayCommand SetConditionsOrCommand => Registry.Commands["program.setConditionsOr"];
@@ -132,6 +134,27 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty] private string _title = $"{Constants.UntitledDocument} - {Constants.AppName}";
     [ObservableProperty] private string _statusText = "For help, press F1";
+
+    /// <summary>
+    /// Whether the application currently has a controller connection (W9/F10) — surfaced as an indicator at the
+    /// right-hand end of the status bar, where the reference application puts its own. This build never contacts a
+    /// controller (E10 is an offline slice), so it stays false; the property exists so the indicator reflects BOTH
+    /// states rather than being a permanent decoration.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ControllerConnectionIcon))]
+    [NotifyPropertyChangedFor(nameof(ControllerConnectionText))]
+    private bool _isControllerConnected;
+
+    /// <summary>The indicator's glyph. The two states are two GLYPHS, not one glyph in two colours — a colour-only
+    /// signal fails `docs/icons_design.md` and is invisible to a colour-blind installer.</summary>
+    public string ControllerConnectionIcon =>
+        IsControllerConnected ? "avares://ihc_openvisual/Assets/controller-connected.svg"
+                              : "avares://ihc_openvisual/Assets/controller-disconnected.svg";
+
+    /// <summary>The indicator's tooltip and accessible name — the state in words, for the same reason.</summary>
+    public string ControllerConnectionText =>
+        IsControllerConnected ? "Forbundet til controller" : "Ikke forbundet til controller";
     [ObservableProperty] private string _installationPaneHeader = "Installation";
     [ObservableProperty] private string _functionsPaneHeader = "Functions";
 
@@ -279,9 +302,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         VariablePaletteMenu.Clear();
         if (value is not { IsBlockSection: true, ElementId: { } sectionId, SectionTag: { } sectionTag })
             return;
-        char kind = sectionTag switch { "inputs" => 'I', "outputs" => 'O', _ => 'V' };
+        // W1/D03: the section→types rule is the ENGINE's, asked once here. The view-model used to re-derive it from
+        // the section tag ('I'/'O'/'V'), which offered an Input section only its own signal type — the vendor offers
+        // the signal type PLUS all 19 value types (uxparity2 V3). PlacementRules already modelled that correctly, so
+        // the fix is to delete the GUI's second copy, not widen it. The door also filters resource_scene out: a scene
+        // is not a variable and reaches the project through US-024's own route.
         string sectionLabel = value.DisplayName;
-        foreach ((string label, string tag, char _) in VariablePalette.Entries.Where(t => t.Kind == kind))
+        foreach ((string label, string tag) in VariablePalette.LabelledTypes(
+                     _session.GetInsertableVariableTypes(sectionId)))
         {
             if (tag == "resource_enum")
             {
@@ -521,6 +549,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private Task ToggleSaveValue(TreeNodeViewModel? node) => _programAuthoring.ToggleSaveValueAsync(node);
 
     /// <summary>Inserts a conditional sub-program into a Commands group (US-029).</summary>
+    /// <summary>Adds a new program to a block's Programs group (US-026, W4) — a block may hold several.</summary>
+    private Task AddProgram(TreeNodeViewModel? node) => _programAuthoring.AddProgramAsync(node);
+
     private Task AddSubProgram(TreeNodeViewModel? node) => _programAuthoring.AddSubProgramAsync(node);
 
     /// <summary>Inserts a nested logic group inside a Conditions group (US-029).</summary>
@@ -1064,7 +1095,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 IsProgrammingMode = true;
                 Refresh();
                 NotifyProgrammingAuthoringGates();
-                StatusText = FindNode(FunctionNodes, id)?.IsLockedFunctionBlock == true
+                // Lockedness comes from the MODEL (IsProgrammingBlockLocked), never from a tree node: Refresh() has
+                // just re-projected FunctionNodes into the programming-mode tree, so a node lookup there found
+                // nothing carrying the flag and this message silently never appeared (uxparity2 T007/V4).
+                StatusText = IsProgrammingBlockLocked
                     ? "Programming mode (read-only — the block is locked). Press Esc to return."
                     : "Programming mode — press Esc to return to configuration.";
             });
@@ -1104,10 +1138,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         Registry.Register(new CommandSpec("edit.cut", "Ctrl+X",
             Surfaces.MenuBar | Surfaces.ContextMenu | Surfaces.Toolbar,
             Execute: Sync(ctx => Cut(ResolveNode(ctx))),
+            // No SurfacePolicy: bar and flyout agree. The bar used to grey a locked block here (S-28), a reading
+            // retired by D15 — V1 measured both surfaces on both fixtures and the reference application enables Cut
+            // on both. Lockedness is enforced where it belongs: the SDK refuses edits INSIDE a locked block, and
+            // cutting the block itself is legal from either surface.
             Gate: ctx => ctx.Node is { CanCut: true, Id: not null }
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Select a locality, product or function block to cut."),
-            SurfacePolicy: LockedBlockGreysOutsideContextMenu("A locked block cannot be cut from the menu bar.")));
+                : EditVerdict.Refuse("Select a locality, product or function block to cut.")));
 
         Registry.Register(new CommandSpec("edit.copy", "Ctrl+C",
             Surfaces.MenuBar | Surfaces.ContextMenu | Surfaces.Toolbar,
@@ -1139,10 +1176,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // uses) rather than the boolean CanDelete keeps the reason the engine already computed — "…is a
             // catalog-declared pin of its product", "…inside a locked function block" — so US-044's grey explains
             // itself precisely instead of restating a generic literal the SDK also owns (review F05).
+            // No SurfacePolicy, for the same reason as edit.cut (D15): the bar's locked-block grey was the retired
+            // S-28 reading. The SDK verdict above already refuses what genuinely cannot be deleted — a catalog pin,
+            // a locked block's INTERIOR — so the bar and the flyout can share one answer.
             Gate: ctx => ctx.Node?.Id is { } id && _session.Current is { } project
                 ? _session.CanApply(_session.Commands.DeleteNode(project, id, cascade: false))
-                : EditVerdict.Refuse("Select an element to delete."),
-            SurfacePolicy: LockedBlockGreysOutsideContextMenu("A locked block cannot be deleted from the menu bar.")));
+                : EditVerdict.Refuse("Select an element to delete.")));
 
         Registry.Register(new CommandSpec("view.showProgram", "F3",
             Surfaces.MenuBar | Surfaces.ContextMenu,
@@ -1152,13 +1191,18 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 && (node.Kind == TreeNodeKind.FunctionBlock ? node.Id : OwningFunctionBlockByAncestry(node.Id)) is not null
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse("Select a function block to show its program."),
-            // The BAR is stricter than the flyout twice over (S-28): only a direct, UNLOCKED block enables it.
+            // The BAR is stricter than the flyout in ONE way only: it needs a block selected DIRECTLY, where the
+            // flyout also accepts a pin and resolves the owning block (S-28).
+            //
+            // It is NOT stricter about locking. That reading (uxparity2 F13) was retired by D15: V1 measured both
+            // surfaces on both fixtures and the reference application enables Show program on the bar for a locked
+            // block too. The contradicting measurement reproduces on demand by reading the bar UNARMED, which is what
+            // it turned out to be. A locked block's program opens read-only from either surface — entry was never the
+            // thing being withheld; authoring is, and IsProgrammingBlockLocked withdraws that separately.
             SurfacePolicy: (ctx, surface) =>
-                surface == Surface.ContextMenu || ctx.Node is { Kind: TreeNodeKind.FunctionBlock, IsLockedBlock: false }
+                surface == Surface.ContextMenu || ctx.Node is { Kind: TreeNodeKind.FunctionBlock }
                     ? null
-                    : ctx.Node is { IsLockedBlock: true }
-                        ? Availability.Disabled("A locked block's program is opened from the block's own menu.")
-                        : Availability.Disabled("Select a function block in the tree.")));
+                    : Availability.Disabled("Select a function block in the tree.")));
     }
 
     // crudarch T013: the remaining node-scoped tree commands as rows — gates are the former IsVisible/CanExecute
@@ -1292,6 +1336,15 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse("Select an output.")));
 
+        // W4/F11: creating a PROGRAM, the fourth Insert ▸ Program elements entry. A block may hold several programs
+        // (project2-CustomBlock's AutoProof holds two), and the SDK command behind this is AddProgram (T018).
+        Registry.Register(new CommandSpec("program.addProgram", null,
+            Surfaces.MenuBar | Surfaces.ContextMenu,
+            Execute: ctx => AddProgram(ResolveNode(ctx)),
+            Gate: ctx => ctx.Node is { Kind: TreeNodeKind.Programs } && !ctx.ProgrammingBlockLocked
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Select the Programs group of an unlocked block.")));
+
         Registry.Register(new CommandSpec("program.addSubProgram", null,
             Surfaces.MenuBar | Surfaces.ContextMenu,
             Execute: ctx => AddSubProgram(ResolveNode(ctx)),
@@ -1354,6 +1407,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         RegisterAppRow("reports.functions", null, _ => OpenReportPicker(ReportKind.Functions), ProjectOpenGate);
         RegisterAppRow("reports.installation", null, _ => OpenReportPicker(ReportKind.Installation), ProjectOpenGate);
         RegisterAppRow("reports.functionBlocks", null, _ => OpenReportPicker(ReportKind.FunctionBlocks), ProjectOpenGate);
+        // W10/F12: the enumerator-type manager, on the Library menu where the reference application puts it.
+        RegisterAppRow("library.manageEnumTypes", null, _ => ManageEnumTypesAsync(), ProjectOpenGate);
         RegisterAppRow("catalog.importFile", null, _ => ImportCatalogFile(), AllowGate);
         RegisterAppRow("catalog.importFolder", null, _ => ImportCatalogFolder(), AllowGate);
         RegisterAppRow("help.about", null, _ => AboutAsync(), AllowGate,
@@ -1402,12 +1457,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 : EditVerdict.Refuse(delta < 0 ? "Already first among its siblings." : "Already last among its siblings.")
             : EditVerdict.Refuse("Select a locality, product or function block to move.");
 
-    // The shared S-28 bar rule for Cut/Delete: the menu bar greys a locked (library) block's structural
-    // commands while its own context menu still offers them — and they really run there (D13).
-    private static Func<ShellContext, Surface, Availability?> LockedBlockGreysOutsideContextMenu(string reason) =>
-        (ctx, surface) => surface != Surface.ContextMenu && ctx.Node is { IsLockedBlock: true }
-            ? Availability.Disabled(reason)
-            : null;
+    // (uxparity2 T017/T031) There is deliberately NO shared "the bar is stricter on a locked block" helper here any
+    // more. That rule — the bar greying a locked block's structural commands while its own flyout offers them — was
+    // retired by D15 after both surfaces were measured enabling them, on both fixtures. Cut and Delete now carry no
+    // SurfacePolicy at all, so the rule has no home to regrow in.
 
     // Resolves the context row back to its live tree node for the command bodies; the id-less Localities root
     // falls back to the selection (it IS the selected row whenever its context is active).
@@ -1583,6 +1636,22 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         if (_session.Current is { } project)
             await ApplyAsync(_session.Commands.AddStandaloneEnumType(project, result.TypeName, result.States),
                 $"Enumerator type '{result.TypeName}' was created");
+    });
+
+    /// <summary>
+    /// Library ▸ Rediger enumerator typer (US-030, W10/F12): shows the enumerator types the project defines, and
+    /// offers to create another. Creating one reuses the standalone-type route, so the naming and state rules stay in
+    /// exactly one place rather than being restated by a second dialog.
+    /// </summary>
+    private Task ManageEnumTypesAsync() => RunAsync(nameof(ManageEnumTypesAsync), async () =>
+    {
+        IReadOnlyList<string> types = _session.Current?.GetEnumeratorTypes() ?? System.Array.Empty<string>();
+        EnumTypeManagerResult? choice = await _dialogs.ManageEnumTypesAsync(
+            new EnumTypeManagerInput("Rediger enumerator typer", types));
+        if (choice is null)
+            return;   // closed without choosing
+        if (choice.SelectedType is null)
+            await AddStandaloneEnumTypeAsync();
     });
 
     // PG-4: inserts a variable of an EXISTING enumerator type — references its def-id, authoring NO new type (the "New…"

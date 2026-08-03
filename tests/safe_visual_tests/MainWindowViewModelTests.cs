@@ -10,6 +10,7 @@ using Ihc;
 using Ihc.Vis;
 using Ihc.Vis.Session;
 using Ihc.Vis.Catalog;
+using Ihc.Vis.Schema;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
@@ -207,7 +208,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         harness.Dialogs.ConfirmResult = false;   // decline the confirmation
 
-        var node = vm.InstallationNodes[0].Children.First(c => c.DisplayName == "Living room");
+        var node = vm.InstallationNodes[0].Children.First(c => TreeNodes.NameOf(c) == "Living room");
         await vm.DeleteCommand.ExecuteAsync(node);
 
         Assert.Multiple(() =>
@@ -225,7 +226,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         harness.Dialogs.ConfirmResult = true;   // accept the confirmation
 
-        var node = vm.InstallationNodes[0].Children.First(c => c.DisplayName == "Living room");
+        var node = vm.InstallationNodes[0].Children.First(c => TreeNodes.NameOf(c) == "Living room");
         await vm.DeleteCommand.ExecuteAsync(node);
 
         Assert.That(vm.InstallationNodes[0].Children.Any(c => c.DisplayName == "Living room"), Is.False);
@@ -1215,8 +1216,12 @@ public class MainWindowViewModelTests
                 "a time-carrying settings row renders its literal HH:MM:SS value");
             Assert.That(enumRow, Does.StartWith("Kort reguleringstryk tænder = "),
                 "a resource_enum settings row still renders its enum state (A-3 not regressed)");
-            Assert.That(flagRow, Is.EqualTo("1 - Aktiv Dato"), "a resource_flag settings row stays bare");
-            Assert.That(dateRow, Is.EqualTo("1 - Dato Start"), "an unmeasured resource_date settings row stays bare");
+            // uxparity2 T027 (D07): these two used to expect BARE rows, one of them explicitly marked "unmeasured".
+            // T011 measured all 21 types in all four sections and the reference application renders both — the raw
+            // dump shows `Flag = OFF` and `Dato = 01:01` in Indstillinger. Per-type rendering now applies everywhere,
+            // so the rows carry their values here too.
+            Assert.That(flagRow, Is.EqualTo("1 - Aktiv Dato = ON"), "a resource_flag row renders ON/OFF");
+            Assert.That(dateRow, Is.EqualTo("1 - Dato Start = 12:09"), "a resource_date row renders dd:MM");
         });
     }
 
@@ -1691,10 +1696,10 @@ public class MainWindowViewModelTests
         await harness.Session.OpenAsync(path);
 
         // Link twin A's first pin to the FB's first input pin, so the FB-side (TV2) link row names the product.
-        TreeNodeViewModel living = vm.InstallationNodes[0].Children.First(c => c.DisplayName == "Living room");
+        TreeNodeViewModel living = vm.InstallationNodes[0].Children.First(c => TreeNodes.NameOf(c) == "Living room");
         TreeNodeViewModel twinA = living.Children.First(c => c.DisplayName.Contains("(i loft)"));
         ElementId productPinId = twinA.Children.First(c => c.IsPin).ElementId!.Value;
-        TreeNodeViewModel fbNode = vm.FunctionNodes[0].Children.First(c => c.DisplayName == "Living room").Children[0];
+        TreeNodeViewModel fbNode = vm.FunctionNodes[0].Children.First(c => TreeNodes.NameOf(c) == "Living room").Children[0];
         ElementId fbInputPinId = fbNode.Children.First(s => s.NodeKind == "section:inputs")
             .Children.First(p => p.IsPin).ElementId!.Value;
         await harness.Session.LinkPinsAsync(productPinId, fbInputPinId);
@@ -2167,7 +2172,17 @@ public class MainWindowViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(inputPalette, Is.EqualTo(new[] { "Input" }), "the Input section offers only Input");
+            // INVERTED (uxparity2 D02, the single inversion D13 authorises). This asserted "the Input section offers
+            // only Input". The vendor was measured offering the section's signal type PLUS all 19 value types on both
+            // Input and Output (tmp/uxparity2/verify/V3/notes.md), US-027's narrower bullet was amended, and the
+            // palette now asks the engine (ProjectAppService.GetInsertableVariableTypes) instead of encoding its own
+            // section rule. PlacementRules already modelled exactly this — only the GUI's second copy was wrong.
+            Assert.That(inputPalette, Does.Contain("Input"), "the Input section still offers its own signal type");
+            Assert.That(inputPalette, Does.Contain("Flag").And.Contain("Enum").And.Contain("Power (kW)"),
+                "…and every value type as well — the vendor's Input flyout is signal type + 19");
+            Assert.That(inputPalette, Has.Count.EqualTo(1 + VariableTypeRegistry.ValueTypeTags.Length),
+                "exactly the signal type plus the 19 value types");
+            Assert.That(inputPalette, Does.Not.Contain("Output"), "…but not the OTHER signal type");
             Assert.That(internalPalette, Does.Contain("Flag").And.Not.Contain("Input"), "a value section offers value types, not pins");
             Assert.That(vm.StatusText, Is.EqualTo("Flag was inserted under Interne variable"));
             Assert.That(vm.InstallationNodes[0].Children[3].Children.Any(c => c.DisplayName.Contains("Flag")), Is.True);
@@ -2297,7 +2312,7 @@ public class MainWindowViewModelTests
         await harness.Session.AddVariableAsync(outputSectionId, "resource_output", "Out1");
         await harness.Session.AddVariableAsync(outputSectionId, "resource_output", "Out2");
 
-        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[1].Children.First(c => c.DisplayName == "Out1"));
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[1].Children.First(c => TreeNodes.NameOf(c) == "Out1"));
         var commandsNode = FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!;
         vm.SelectNode(commandsNode);
         var assignSubmenu = vm.ProgramCommandMenu.First(m => m.Header == "Out1 set to …");
@@ -2382,7 +2397,7 @@ public class MainWindowViewModelTests
         var internalId = vm.InstallationNodes[0].Children[3].ElementId!.Value;
         await harness.Session.AddVariableAsync(internalId, "resource_timer", "T");
         await harness.Session.AddVariableAsync(internalId, "resource_timer", "T2");   // the %S candidate for "= <pin>"
-        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[3].Children.First(c => c.DisplayName == "T"));
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[3].Children.First(c => TreeNodes.NameOf(c) == "T"));
 
         vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
         var commandTokens = AllOperatorTokens(vm.ProgramCommandMenu).ToArray();
@@ -2412,7 +2427,7 @@ public class MainWindowViewModelTests
         await harness.Session.AddVariableAsync(internalId, "resource_timer", "T2");   // %S for the two-operand comparisons
         await vm.AddSubProgramCommand.ExecuteAsync(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
 
-        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[3].Children.First(c => c.DisplayName == "T"));
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[3].Children.First(c => TreeNodes.NameOf(c) == "T"));
         vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsConditionsContainer)!);
         var conditionTokens = AllOperatorTokens(vm.ProgramConditionMenu).ToArray();
 
@@ -2465,7 +2480,7 @@ public class MainWindowViewModelTests
         await harness.Session.AddVariableAsync(settingsId, "resource_floating_point", "FltOp");
         await harness.Session.AddVariableAsync(settingsId, "resource_integer", "IntOp");
 
-        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => c.DisplayName == "FltTarget"));
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => TreeNodes.NameOf(c) == "FltTarget"));
         vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
         var add = vm.ProgramArithmeticMenu.FirstOrDefault(m => m.Header.StartsWith("FltTarget +"));
         var sub = vm.ProgramArithmeticMenu.FirstOrDefault(m => m.Header.StartsWith("FltTarget -"));
@@ -2542,19 +2557,19 @@ public class MainWindowViewModelTests
 
         await vm.AddSubProgramCommand.ExecuteAsync(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
 
-        var sub = FindByFlag(vm.FunctionNodes, n => n.DisplayName == "Sub-program");
+        var sub = FindByFlag(vm.FunctionNodes, n => n.DisplayName == "Under program");
         Assert.Multiple(() =>
         {
             Assert.That(sub, Is.Not.Null, "a Sub-program node is inserted");
             Assert.That(sub!.Children.Any(c => c.IsConditionsContainer), Is.True, "it has a Conditions group");
-            Assert.That(sub.Children.Any(c => c.DisplayName == "Commands when conditions true"), Is.True);
-            Assert.That(sub.Children.Any(c => c.DisplayName == "Commands when conditions false"), Is.True);
+            Assert.That(sub.Children.Any(c => c.DisplayName == "Kommandoer ved betingelser sande"), Is.True);
+            Assert.That(sub.Children.Any(c => c.DisplayName == "Kommandoer ved betingelser falske"), Is.True);
         });
     }
 
     // A-26 (F-075): a conditional command (program_sub, "Betinget kommando") renders its stored user name, not the
     // fixed "Sub-program". Catalog block 1.2.04 has many distinctly-named sub-programs plus one never-renamed sub
-    // (carrying the vendor default "Under program"), which falls back to the English default token "Sub-program".
+    // (carrying the vendor default "Under program"), which falls back to the app default token "Under program".
     [Test]
     public async Task SubProgram_RendersStoredName_NotFixedLabel()
     {
@@ -2582,7 +2597,7 @@ public class MainWindowViewModelTests
             Assert.That(subNames, Does.Contain("Scenarie op"), "a stored user name renders verbatim");
             Assert.That(subNames, Does.Contain("Scenarie ned"), "distinct stored names render distinctly");
             Assert.That(subNames.Distinct().Count(), Is.GreaterThan(1), "they are not all the fixed 'Sub-program' label");
-            Assert.That(subNames, Does.Contain("Sub-program"), "a never-renamed sub-program falls back to the default token");
+            Assert.That(subNames, Does.Contain("Under program"), "a never-renamed sub-program falls back to the app default token");
         });
     }
 
@@ -2601,7 +2616,7 @@ public class MainWindowViewModelTests
         await harness.Session.AddVariableAsync(settingsId, "resource_flag", "Home");
         await vm.AddSubProgramCommand.ExecuteAsync(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
 
-        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => c.DisplayName == "Away"));
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => TreeNodes.NameOf(c) == "Away"));
         var conditionsNode = FindByFlag(vm.FunctionNodes, n => n.IsConditionsContainer)!;
         vm.SelectNode(conditionsNode);
         var notSubmenu = vm.ProgramConditionMenu.First(m => m.Header == "Away differs from …");
@@ -2684,8 +2699,8 @@ public class MainWindowViewModelTests
         await vm.AddLogicGroupCommand.ExecuteAsync(FindByFlag(vm.FunctionNodes, n => n.IsConditionsContainer)!);
 
         var conditions = FindByFlag(vm.FunctionNodes, n => n.IsConditionsContainer)!;
-        Assert.That(conditions.Children.Any(c => c.IsConditionsContainer && c.DisplayName.StartsWith("Logic group")),
-            Is.True, "a nested logic group renders inside Conditions");
+        Assert.That(conditions.Children.Any(c => c.IsConditionsContainer && c.DisplayName.StartsWith("Logisk gruppe")),
+            Is.True, "a nested logic group renders inside Betingelser");
     }
 
     // US-030: creating an enum through the Settings palette authors a project-global type and a variable of it.
@@ -3073,7 +3088,7 @@ public class MainWindowViewModelTests
         harness.Dialogs.PropertiesResult = new PropertiesResult("100", string.Empty);
         await vm.NewCaseValueCommand.ExecuteAsync(FindByFlag(vm.FunctionNodes, n => n.IsCaseNode));
 
-        var valueBranch = FindByFlag(vm.FunctionNodes, n => n.IsCaseNode)!.Children.First(c => c.DisplayName == "100");
+        var valueBranch = FindByFlag(vm.FunctionNodes, n => n.IsCaseNode)!.Children.First(c => TreeNodes.NameOf(c) == "100");
         vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[1].Children[0]);   // arm the output
         vm.SelectNode(valueBranch);
         await ((IAsyncRelayCommand)vm.ProgramCommandMenu.First(m => m.Header == "Light set to ON").Command!).ExecuteAsync(null);
@@ -3114,7 +3129,7 @@ public class MainWindowViewModelTests
         await harness.Session.AddVariableAsync(settingsId, "resource_integer", "F1");   // int+int + → _0x5a (float+float + is a dead cell, F-109)
         await harness.Session.AddVariableAsync(settingsId, "resource_integer", "F2");
 
-        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => c.DisplayName == "F1"));
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => TreeNodes.NameOf(c) == "F1"));
         vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
         var addCategory = vm.ProgramArithmeticMenu.First(m => m.Header.StartsWith("F1 +"));
         await ((IAsyncRelayCommand)addCategory.Children.First(c => c.Header == "F2").Command!).ExecuteAsync(null);
@@ -3148,7 +3163,7 @@ public class MainWindowViewModelTests
         await harness.Session.AddVariableAsync(settingsId, "resource_floating_point", "F1");
         await harness.Session.AddVariableAsync(settingsId, "resource_floating_point", "F2");
 
-        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => c.DisplayName == "F1"));
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => TreeNodes.NameOf(c) == "F1"));
         vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
         var subCategory = vm.ProgramArithmeticMenu.First(m => m.Header.Contains("-"));
         await ((IAsyncRelayCommand)subCategory.Children.First(c => c.Header == "F2").Command!).ExecuteAsync(null);
@@ -3171,7 +3186,7 @@ public class MainWindowViewModelTests
         await harness.Session.AddVariableAsync(settingsId, "resource_integer", "Number");
         await harness.Session.AddVariableAsync(settingsId, "resource_floating_point", "F1");
 
-        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => c.DisplayName == "Number"));
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => TreeNodes.NameOf(c) == "Number"));
         vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
         var addCategory = vm.ProgramArithmeticMenu.First(m => m.Header.StartsWith("Number +"));
         await ((IAsyncRelayCommand)addCategory.Children.First(c => c.Header == "F1").Command!).ExecuteAsync(null);
@@ -3525,7 +3540,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
 
-        Assert.That(vm.Title, Is.EqualTo("Untitled - IHC OpenVisual"));
+        Assert.That(vm.Title, Is.EqualTo("Uden navn - IHC OpenVisual"));
 
         harness.Dialogs.SavePath = harness.TempPath("house.vis");
         await harness.Session.SaveAsAsync();
@@ -3735,7 +3750,7 @@ public class MainWindowViewModelTests
     {
         using ShellHarness harness = await BuildHarnessWithNonEmptyLivingRoomAsync();
         var vm = harness.CreateViewModel();
-        var block = vm.FunctionNodes[0].Children.First(c => c.DisplayName == "Living room").Children[0];
+        var block = vm.FunctionNodes[0].Children.First(c => TreeNodes.NameOf(c) == "Living room").Children[0];
 
         await vm.ActivateNodeCommand.ExecuteAsync(block);
 
@@ -3831,7 +3846,7 @@ public class MainWindowViewModelTests
         using ShellHarness harness = await BuildHarnessWithPositionedProductsAsync();
         var vm = harness.CreateViewModel();
 
-        var room = vm.InstallationNodes[0].Children.First(c => c.DisplayName == "Living room");
+        var room = vm.InstallationNodes[0].Children.First(c => TreeNodes.NameOf(c) == "Living room");
         string[] labels = room.Children.Select(c => c.DisplayName).ToArray();
 
         Assert.That(labels, Is.EqualTo(new[]

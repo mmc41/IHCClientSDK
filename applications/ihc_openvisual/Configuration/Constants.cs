@@ -12,5 +12,5 @@ public static class Constants
         "Open-source, cross-platform editor for IHC (Intelligent House Concept) .vis project files.";
 
     /// <summary>The document name shown before the project has ever been saved to a file.</summary>
-    public const string UntitledDocument = "Untitled";
+    public const string UntitledDocument = "Uden navn";
 }

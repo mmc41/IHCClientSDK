@@ -59,8 +59,8 @@ namespace Ihc.Vis
         /// <summary>Command to edit a resource variable's Name, Note, and typed initial value in ONE undoable step
         /// (US-027, T016), refused inside a locked block by T003. A <see cref="Session.ResourceValueKind.None"/> value
         /// leaves the initial value untouched.</summary>
-        public Session.SetVariableProperties SetVariableProperties(Project project, ElementId id, string name, string note, Session.ResourceInitialValue value) =>
-            new Session.SetVariableProperties(id, name, note, value);
+        public Session.SetVariableProperties SetVariableProperties(Project project, ElementId id, string name, string note, Session.ResourceInitialValue value, string helpNote = "") =>
+            new Session.SetVariableProperties(id, name, note, value, helpNote);
 
         /// <summary>Command to delete the locality <paramref name="id"/>, cascading through its contents (US-009).</summary>
         public Session.DeleteLocality DeleteLocality(Project project, ElementId id) =>
@@ -360,6 +360,11 @@ namespace Ihc.Vis
         /// <summary>Command to insert a conditional sub-program into a command container (US-029).</summary>
         public Session.AddSubProgram AddSubProgram(Project project, ElementId commandsId) =>
             new Session.AddSubProgram(commandsId);
+
+        /// <summary>Command to add a new program to a function block's <c>programs</c> container (US-026/W4). A block
+        /// may hold several programs; each is created empty, with its own events and commands containers.</summary>
+        public Session.AddProgram AddProgram(Project project, ElementId programsId, string name) =>
+            new Session.AddProgram(programsId, name);
 
         /// <summary>Command to add a condition to a conditions group (US-029).</summary>
         public Session.AddCondition AddCondition(Project project, ElementId conditionsId, ElementId variableId, string method, string name, string? note, ElementId? operandId = null) =>

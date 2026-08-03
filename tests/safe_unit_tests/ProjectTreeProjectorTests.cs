@@ -19,7 +19,7 @@ namespace safe_unit_tests;
 /// <item>PG-C1 — configuration mode hides empty FB sections AND the <c>Internal variables</c> section, while
 /// programming mode shows all four sections.</item>
 /// <item>PG-C3 — a sub-program's row label is its user-set name, falling back to the default token
-/// (<c>"Sub-program"</c>) only when the stored name is absent or the vendor default <c>"Under program"</c>.</item>
+/// (<c>"Under program"</c>) only when the stored name is absent.</item>
 /// </list>
 /// The custom-sub-program-name branch (PG-C3) is exercised against the <c>Project1-SimpelWired</c> oracle, which
 /// carries both user-named sub-programs (e.g. <c>"Start blokkering"</c>) and default ones — there is no public
@@ -127,7 +127,7 @@ public class ProjectTreeProjectorTests
             Assert.That(subProgramLabels, Is.Not.Empty, "the oracle FBs contain sub-programs");
             Assert.That(subProgramLabels, Has.Member("Start blokkering"),
                 "a sub-program with a user-set name renders that name verbatim");
-            Assert.That(subProgramLabels, Has.Member("Sub-program"),
+            Assert.That(subProgramLabels, Has.Member("Under program"),
                 "a default ('Under program') / unnamed sub-program falls back to the default token");
         });
     }

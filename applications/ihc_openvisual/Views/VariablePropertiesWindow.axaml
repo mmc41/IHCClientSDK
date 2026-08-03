@@ -19,6 +19,13 @@
                  Height="90" VerticalContentAlignment="Top"
                  a:AutomationProperties.LabeledBy="{Binding #NoteLabel}"/>
 
+        <!-- W5: the SECOND documentation field (note-2) — installer help text, distinct from the function
+             documentation above. A variable carries both; a locality deliberately keeps only Name + Note (D11). -->
+        <TextBlock Name="HelpNoteLabel" Text="Help text" FontWeight="SemiBold" Margin="0,6,0,0"/>
+        <TextBox Name="HelpNoteBox" AcceptsReturn="True" TextWrapping="Wrap"
+                 Height="90" VerticalContentAlignment="Top"
+                 a:AutomationProperties.LabeledBy="{Binding #HelpNoteLabel}"/>
+
         <!-- Bool initial value -->
         <CheckBox Name="BoolBox" Content="Initial value: On" Margin="0,6,0,0" IsVisible="False"/>
 

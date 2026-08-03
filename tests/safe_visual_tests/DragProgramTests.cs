@@ -34,7 +34,7 @@ public class DragProgramTests : AvaloniaTestBase
         vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
         var inputSectionId = vm.InstallationNodes[0].Children[0].ElementId!.Value;   // "Input"
         await harness.Session.AddVariableAsync(inputSectionId, "resource_input", "Doorbell");
-        var doorbell = TreeNodes.FindFirst(vm.InstallationNodes, n => n.IsPin && n.DisplayName == "Doorbell")!;
+        var doorbell = TreeNodes.FindPin(vm.InstallationNodes, "Doorbell")!;
         var events = TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsEventsContainer)!;
         return (harness, vm, doorbell.ElementId!.Value, events.ElementId!.Value);
     }
@@ -80,7 +80,7 @@ public class DragProgramTests : AvaloniaTestBase
         await harness.Session.AddVariableAsync(vm.InstallationNodes[0].Children[2].ElementId!.Value, "resource_flag", "Away");
         await vm.AddSubProgramCommand.ExecuteAsync(TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsCommandsContainer)!);
 
-        var pin = TreeNodes.FindFirst(vm.InstallationNodes, n => n.IsPin && n.DisplayName == "Away")!;
+        var pin = TreeNodes.FindPin(vm.InstallationNodes, "Away")!;
         var conditions = TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsConditionsContainer)!;
 
         DropVerdict verdict = vm.DragDrop.CanDropOn(pin.ElementId!.Value, conditions.ElementId!.Value);

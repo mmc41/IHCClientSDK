@@ -41,10 +41,81 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
     private static Availability At(MainWindowViewModel vm, string id, ShellContext ctx, Surface surface) =>
         CommandRegistry.For(Row(vm, id), ctx, surface);
 
-    // D13 core (uxparity S-28): a LOCKED library block — the context menu OFFERS Cut/Delete/Show program,
-    // the menu bar GREYS all three with a reason.
+    /// <summary>
+    /// uxparity2 T016 (D15) — on a LOCKED block, <c>view.showProgram</c> is ENABLED on the MENU BAR, not greyed.
+    /// <para>
+    /// V1 measured both surfaces in both applications on BOTH fixtures (`tmp/uxparity2/verify/V1/notes.md`, 8/8 rows):
+    /// the reference application enables Cut/Copy/Delete/Show program on the bar AND the flyout for a locked block.
+    /// The rule is neither fixture- nor surface-dependent, so the stricter bar reading this row used to encode does
+    /// not exist. The earlier contradicting measurement was reproduced on demand as an ARMING artifact — reading the
+    /// bar with nothing armed reports everything greyed — which is why it survived as long as it did.
+    /// </para>
+    /// </summary>
     [Test]
-    public async Task LockedBlock_ContextOffers_BarGreys_CutDeleteShowProgram()
+    public async Task LockedBlock_ShowProgram_IsEnabledOnTheMenuBar_NotOnlyInTheFlyout()
+    {
+        var (harness, vm, _, lockedFb) = await BuildAsync();
+        using var _1 = harness;
+        ShellContext ctx = vm.Context with
+        {
+            Node = Node(lockedFb, TreeNodeKind.FunctionBlock, isLockedBlock: true, canCut: true, canCopy: true),
+        };
+
+        Availability bar = At(vm, "view.showProgram", ctx, Surface.MenuBar);
+        Availability context = At(vm, "view.showProgram", ctx, Surface.ContextMenu);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(context.Visible && context.Enabled, Is.True, "the flyout already offered it — unchanged");
+            Assert.That(bar.Visible, Is.True, "the bar keeps the item visible");
+            Assert.That(bar.Enabled, Is.True, "D15: the bar ENABLES Show program on a locked block");
+            Assert.That(bar.Reason, Is.Null, "an enabled command carries no disabled-reason");
+        });
+    }
+
+    // An UNLOCKED block must stay enabled on both surfaces — otherwise the test above could pass by enabling the
+    // row unconditionally, which is a different bug with the same symptom on this one fixture.
+    [Test]
+    public async Task UnlockedBlock_ShowProgram_StaysEnabledOnBothSurfaces()
+    {
+        var (harness, vm, loc, _) = await BuildAsync();
+        using var _1 = harness;
+        ElementId openFb = (await harness.Session.AddEmptyFunctionBlockAsync(loc))!.Value;
+        ShellContext ctx = vm.Context with { Node = Node(openFb, TreeNodeKind.FunctionBlock, isLockedBlock: false) };
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(At(vm, "view.showProgram", ctx, Surface.MenuBar).Enabled, Is.True);
+            Assert.That(At(vm, "view.showProgram", ctx, Surface.ContextMenu).Enabled, Is.True);
+        });
+    }
+
+    // Selecting something that is not a block (and owns no block) must still grey the bar row — the lock state is
+    // not the only thing this gate decides, and relaxing it must not relax that.
+    [Test]
+    public async Task NonBlockSelection_ShowProgram_IsStillGreyedOnTheBar()
+    {
+        var (harness, vm, loc, _) = await BuildAsync();
+        using var _1 = harness;
+        ShellContext ctx = vm.Context with { Node = Node(loc, TreeNodeKind.Locality) };
+
+        Availability bar = At(vm, "view.showProgram", ctx, Surface.MenuBar);
+        Assert.Multiple(() =>
+        {
+            Assert.That(bar.Enabled, Is.False, "a locality has no program to show");
+            Assert.That(bar.Reason, Is.Not.Null, "…and the grey explains itself (QC-06)");
+        });
+    }
+
+    /// <summary>
+    /// uxparity2 T017 (D15) — REPLACES <c>LockedBlock_ContextOffers_BarGreys_CutDeleteShowProgram</c>, which asserted
+    /// the menu bar GREYS Cut/Delete/Show program on a locked block. That was the S-28 reading, retired by V1: the
+    /// reference application enables all four cells on the bar AND the flyout, on both fixtures (8/8 rows,
+    /// `tmp/uxparity2/verify/V1/notes.md`). `view.showProgram` moved to its own test under T016; Cut and Delete are
+    /// corrected here, so the bar and the flyout now agree for every locked-block structural command.
+    /// </summary>
+    [Test]
+    public async Task LockedBlock_BarAndFlyout_BothEnable_CutAndDelete()
     {
         var (harness, vm, _, lockedFb) = await BuildAsync();
         using var _1 = harness;
@@ -55,14 +126,58 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
 
         Assert.Multiple(() =>
         {
-            foreach (string id in new[] { "edit.cut", "edit.delete", "view.showProgram" })
+            foreach (string id in new[] { "edit.cut", "edit.delete" })
             {
                 Availability context = At(vm, id, ctx, Surface.ContextMenu);
                 Availability bar = At(vm, id, ctx, Surface.MenuBar);
-                Assert.That(context.Visible && context.Enabled, Is.True, $"{id}: the flyout offers it on a locked block");
+                Assert.That(context.Visible && context.Enabled, Is.True, $"{id}: the flyout offers it — unchanged");
                 Assert.That(bar.Visible, Is.True, $"{id}: the bar keeps the item visible");
-                Assert.That(bar.Enabled, Is.False, $"{id}: the bar greys it on a locked block (US-044)");
+                Assert.That(bar.Enabled, Is.True, $"{id}: D15 — the bar ENABLES it on a locked block too");
+                Assert.That(bar.Reason, Is.Null, $"{id}: an enabled command carries no disabled-reason");
+            }
+        });
+    }
+
+    // The guards T016 established: relaxing a gate must not become a blanket enable. Cut/Delete still depend on the
+    // node actually supporting them, so a selection that cannot be cut is still greyed WITH a reason.
+    [Test]
+    public async Task UncuttableSelection_CutAndDelete_AreStillGreyedOnTheBar()
+    {
+        var (harness, vm, _, _) = await BuildAsync();
+        using var _1 = harness;
+        // A node with no id and no CanCut — nothing the structural commands can act on.
+        ShellContext ctx = vm.Context with { Node = Node(null, TreeNodeKind.Locality) };
+
+        Assert.Multiple(() =>
+        {
+            foreach (string id in new[] { "edit.cut", "edit.delete" })
+            {
+                Availability bar = At(vm, id, ctx, Surface.MenuBar);
+                Assert.That(bar.Enabled, Is.False, $"{id}: nothing actionable is selected");
                 Assert.That(bar.Reason, Is.Not.Null, $"{id}: the grey explains itself (QC-06)");
+            }
+        });
+    }
+
+    // An UNLOCKED block stays enabled on both surfaces — the lock state is no longer consulted at all, and this
+    // pins that the change did not accidentally invert the condition.
+    [Test]
+    public async Task UnlockedBlock_CutAndDelete_StayEnabledOnBothSurfaces()
+    {
+        var (harness, vm, loc, _) = await BuildAsync();
+        using var _1 = harness;
+        ElementId openFb = (await harness.Session.AddEmptyFunctionBlockAsync(loc))!.Value;
+        ShellContext ctx = vm.Context with
+        {
+            Node = Node(openFb, TreeNodeKind.FunctionBlock, isLockedBlock: false, canCut: true, canCopy: true),
+        };
+
+        Assert.Multiple(() =>
+        {
+            foreach (string id in new[] { "edit.cut", "edit.delete" })
+            {
+                Assert.That(At(vm, id, ctx, Surface.MenuBar).Enabled, Is.True, $"{id}: bar");
+                Assert.That(At(vm, id, ctx, Surface.ContextMenu).Enabled, Is.True, $"{id}: flyout");
             }
         });
     }

@@ -112,11 +112,15 @@ internal sealed class PropertiesDialogCoordinator(
         if (session.Current is not { } project)
             return;
         ElementView view = project.View(variable);
+        // W5: a variable carries TWO documentation fields — the function documentation and the installer help text
+        // (note-2) — so both are pre-filled from the project and both are applied.
         VariablePropertiesResult? result = await dialogs.EditVariablePropertiesAsync(new VariablePropertiesInput(
-            $"Edit {view.Name} properties", view.Name ?? string.Empty, view.Note ?? string.Empty, ReadInitialValue(variable)));
+            $"Edit {view.Name} properties", view.Name ?? string.Empty, view.Note ?? string.Empty,
+            ReadInitialValue(variable), view.HelpNote ?? string.Empty));
         if (result is null)
             return;   // cancelled
-        await applyAndReport(session.Commands.SetVariableProperties(project, id, result.Name, result.Note, result.Value),
+        await applyAndReport(
+            session.Commands.SetVariableProperties(project, id, result.Name, result.Note, result.Value, result.HelpNote),
             $"'{result.Name}' updated.");
     }
 

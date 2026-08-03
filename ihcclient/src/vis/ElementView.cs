@@ -40,6 +40,14 @@ namespace Ihc.Vis
         /// <summary>The element's effective documentation <c>note</c> (US-047), or its DTD default.</summary>
         public string? Note => Effective("note");
 
+        /// <summary>
+        /// The element's effective SECOND documentation field, <c>note-2</c> (US-027/W5) — the installer-facing help
+        /// text, distinct from <see cref="Note"/>'s function documentation. The reference application's properties
+        /// dialog offers both (<i>Tekst til funktionsdokumentation</i> and <i>Noter for hjælpetekst</i>).
+        /// Its DTD default is the empty string, so a variable that never had one reads blank and writes nothing.
+        /// </summary>
+        public string? HelpNote => Effective("note-2");
+
         /// <summary>The element's effective <c>position</c> token, or its DTD default.</summary>
         public string? Position => Effective("position");
 

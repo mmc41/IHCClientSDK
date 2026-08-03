@@ -43,17 +43,25 @@ public static class VariablePalette
         ["Wh"] = "Energy (Wh)",
     };
 
-    /// <summary>The palette entries — (display label, resource tag, section kind 'I'nput / 'O'utput / 'V'alue) —
-    /// projected over the SDK registry in registry order.</summary>
-    public static readonly IReadOnlyList<(string Label, string Tag, char Kind)> Entries =
-        VariableTypeRegistry.All
-            .Select(t => (Labels[t.Tag], t.Tag, KindOf(t.Role)))
-            .ToList();
+    /// <summary>The palette entries — (display label, resource tag) — projected over the SDK registry in registry
+    /// order. The registry is the completeness contract: every tag here has a label, so a type the engine supports
+    /// cannot silently vanish from the UI.</summary>
+    public static readonly IReadOnlyList<(string Label, string Tag)> Entries =
+        VariableTypeRegistry.All.Select(t => (Labels[t.Tag], t.Tag)).ToList();
 
-    private static char KindOf(VariableRole role) => role switch
+    /// <summary>
+    /// Labels the <paramref name="tags"/> the engine reports insertable for a section
+    /// (<c>ProjectAppService.GetInsertableVariableTypes</c>), in registry order rather than the caller's order so the
+    /// palette reads identically wherever it is raised (uxparity2 W1/D03).
+    /// <para>
+    /// The app supplies labels only; WHICH types a section accepts is the engine's rule and is never re-derived here.
+    /// A tag with no label would be a registry type the UI forgot — the completeness test makes that impossible, so
+    /// an unlabelled tag is dropped rather than shown as a raw tag.
+    /// </para>
+    /// </summary>
+    public static IEnumerable<(string Label, string Tag)> LabelledTypes(IEnumerable<string> tags)
     {
-        VariableRole.Input => 'I',
-        VariableRole.Output => 'O',
-        _ => 'V',
-    };
+        var offered = new HashSet<string>(tags, StringComparer.Ordinal);
+        return Entries.Where(e => offered.Contains(e.Tag));
+    }
 }

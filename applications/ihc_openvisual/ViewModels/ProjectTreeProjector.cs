@@ -92,7 +92,9 @@ public sealed class ProjectTreeProjector(Project project)
         // default "Under program", shown here as the English default token "Sub-program" (R-1 — the default is
         // chrome, but a user name stays verbatim). "Under program" is FbGrammar.SubProgramName (internal).
         string stored = project.View(sub).Name ?? string.Empty;
-        string label = stored.Length == 0 || stored == "Under program" ? "Sub-program" : stored;
+        // W6/F8: the app's own label for an unnamed sub-program is Danish, like the rest of its chrome — and it is
+        // the same word the file itself stores, so the app no longer restates the project's language in English.
+        string label = stored.Length == 0 ? "Under program" : stored;
         var node = new TreeNodeViewModel(label, NodeIcons.For("program_sub", null),
             isExpanded: true, elementId: sub.Id) { Kind = TreeNodeKind.SubProgram };
         if (sub.FindChild("conditions") is { } conditions)
@@ -101,7 +103,7 @@ public sealed class ProjectTreeProjector(Project project)
         {
             bool isTrue = (project.View(branch).Effective("type") ?? "") == "_0x1";
             var branchNode = new TreeNodeViewModel(
-                isTrue ? "Commands when conditions true" : "Commands when conditions false",
+                isTrue ? "Kommandoer ved betingelser sande" : "Kommandoer ved betingelser falske",
                 NodeIcons.For("actions", null), isExpanded: true, elementId: branch.Id)
                 { Kind = isTrue ? TreeNodeKind.CommandsWhenTrue : TreeNodeKind.CommandsWhenFalse };
             RenderActionsInto(branchNode, branch);
@@ -115,7 +117,9 @@ public sealed class ProjectTreeProjector(Project project)
     private TreeNodeViewModel BuildConditionsNode(ProjectElement conditions, bool nested = false)
     {
         bool or = project.View(conditions).Effective("type") == "or";
-        string label = $"{(nested ? "Logic group" : "Conditions")} ({(or ? ">=1" : "&")})";
+        // "Betingelser" is measured (uxparity2 V6); "Logisk gruppe" for a NESTED group is the consistent Danish term
+        // — the nested case was not in the recorded dump, so it is translated for consistency, not from measurement.
+        string label = $"{(nested ? "Logisk gruppe" : "Betingelser")} ({(or ? ">=1" : "&")})";
         var node = new TreeNodeViewModel(label, NodeIcons.For(or ? "conditions-or" : "conditions", null),
             isExpanded: true, elementId: conditions.Id)
             { IsOrGroup = or, Kind = nested ? TreeNodeKind.LogicGroup : TreeNodeKind.Conditions };
@@ -322,7 +326,12 @@ public sealed class ProjectTreeProjector(Project project)
     public TreeNodeViewModel BuildFunctionBlockNode(ProjectElement fb, string name, bool programmingMode)
     {
         bool locked = project.View(fb).Locked;
-        var node = new TreeNodeViewModel(name, NodeIcons.FunctionBlock(locked), elementId: fb.Id, isLockedFunctionBlock: locked)
+        // W7/F6: in PROGRAMMING mode this node is the pane's root, and the installer is here to work on the block's
+        // data — so it opens with the root and every section expanded, matching the reference application. In
+        // CONFIGURATION mode it is one row among many and stays collapsed, or loading a project would explode every
+        // block open at once.
+        var node = new TreeNodeViewModel(name, NodeIcons.FunctionBlock(locked), isExpanded: programmingMode,
+            elementId: fb.Id, isLockedFunctionBlock: locked)
         {
             Tooltip = BuildTooltip(fb),
             Kind = TreeNodeKind.FunctionBlock,
@@ -338,7 +347,8 @@ public sealed class ProjectTreeProjector(Project project)
             // settings section "Indstillinger"); the table's label is the fallback for a container that leaves it
             // unset. Same rule as the locality root: a name in the file is data, not a caption the app owns.
             string sectionLabel = holder is not null ? project.NameOr(holder, label) : label;
-            var section = new TreeNodeViewModel(sectionLabel, NodeIcons.For(container, null), elementId: holder?.Id)
+            var section = new TreeNodeViewModel(sectionLabel, NodeIcons.For(container, null),
+                isExpanded: programmingMode, elementId: holder?.Id)
             {
                 KindDetail = container,
                 Kind = TreeNodeKind.Section,
@@ -346,7 +356,7 @@ public sealed class ProjectTreeProjector(Project project)
             if (holder is not null)
             {
                 foreach (ProjectElement pin in holder.ChildrenOrEmpty())
-                    section.Children.Add(BuildPinNode(pin, inFunctionBlockSettings: container == "settings"));
+                    section.Children.Add(BuildPinNode(pin, inFunctionBlockVariableSection: true));
             }
             node.Children.Add(section);
         }
@@ -374,17 +384,9 @@ public sealed class ProjectTreeProjector(Project project)
             ? state
             : null;
 
-    // A function block's Indstillinger rows carry a literal time value (A-21/F-062), scoped to the time-carrying kinds.
-    private string? SettingsTimeLiteral(ProjectElement resource)
-    {
-        if (!resource.IsTimeSetting)
-            return null;
-        int Part(string attr) => int.TryParse(project.View(resource).Effective(attr), out int v) ? v : 0;
-        // Milliseconds are part of the value and are shown: the element stores them, and a timer set to 1,5 s
-        // would otherwise read the same as one set to 1 s. The separator is a literal comma — it is the format
-        // this label is written in, not a culture-dependent decimal point.
-        return $"{Part("hour"):00}:{Part("minute"):00}:{Part("second"):00},{Part("millisecond"):000}";
-    }
+    // (uxparity2 T027/T031) The settings-only time literal that used to live here is GONE. It rendered a time value
+    // for the `settings` section alone, so the same variable read differently depending on which section it sat in.
+    // VariableValueFormat now renders every type identically in all four sections, which is what was measured.
 
     // A scene row shows its note after the name — "Scenarie Tænd (Fremkalder scen...)" — because a scene's note is
     // what says which fixtures it drives, and the row is otherwise indistinguishable from its siblings. A note
@@ -399,12 +401,18 @@ public sealed class ProjectTreeProjector(Project project)
         return note.Length > SceneNoteBudget ? note[..SceneNoteBudget] + "..." : note;
     }
 
-    private TreeNodeViewModel BuildPinNode(ProjectElement resource, bool inFunctionBlockSettings = false,
+    private TreeNodeViewModel BuildPinNode(ProjectElement resource, bool inFunctionBlockVariableSection = false,
         bool catalogDeclared = false)
     {
         string name = project.NameOr(resource, resource.Tag);
-        string? value = StateValue(resource)
-                     ?? (inFunctionBlockSettings ? SettingsTimeLiteral(resource) : null)
+        // W8/F7: a function-block VARIABLE renders its value per TYPE, in every one of the block's four sections.
+        // It used to be section-dependent — a time literal appeared only under `settings` — so the same variable read
+        // differently depending on where it sat, while the reference application renders it identically everywhere
+        // (uxparity2 V6/T011, all 21 types measured). The measurement covered a BLOCK's sections only, so a product's
+        // own terminal/setting rows keep the rendering they had.
+        string? value = (inFunctionBlockVariableSection
+                            ? VariableValueFormat.For(resource.Tag, project.View(resource).Effective, StateValue(resource))
+                            : StateValue(resource))
                      ?? project.View(resource).Value;
         bool isOutput = resource.IsOutputPin;
         bool saved = isOutput && project.View(resource).Backup;

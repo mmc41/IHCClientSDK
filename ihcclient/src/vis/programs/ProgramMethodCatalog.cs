@@ -28,6 +28,14 @@ namespace Ihc.Vis.Programs
         Analog,
         Weekday,
         Timer,
+
+        /// <summary>
+        /// A numeric register (integer / counter): it has a VALUE, not an ON/OFF state, so it offers none of the
+        /// boolean commands (uxparity2 F5 — these pins used to fall to <see cref="Bool"/>'s default list and were
+        /// offered <c>set to ON</c>/<c>OFF</c>). Its authoring surface is the arithmetic submenu, which is reached
+        /// through <see cref="ProgramMethodCatalog.NumericVariableTags"/> and is orthogonal to this family.
+        /// </summary>
+        Numeric,
     }
 
     /// <summary>
@@ -229,16 +237,24 @@ namespace Ihc.Vis.Programs
         public static ImmutableArray<ProgramMethod> CommandsFor(ProgramPinType type) => type switch
         {
             ProgramPinType.Timer => TimerCommands,
-            ProgramPinType.Analog or ProgramPinType.Weekday => ImmutableArray<ProgramMethod>.Empty,
+            // F5: a numeric register offers NO boolean command. It is deliberately empty rather than populated with
+            // an assignment set: the reference application's menu shows `Tal = 0` / `Tal =`, but no recorded oracle
+            // contains a numeric-target action, so the opcodes are unmeasured — and this catalog's standing rule is
+            // that a method is never offered without its vendor token. Adding them needs a token capture first.
+            ProgramPinType.Numeric or ProgramPinType.Analog or ProgramPinType.Weekday => ImmutableArray<ProgramMethod>.Empty,
             _ => Commands,
         };
 
         /// <summary>The condition operators a pin of <paramref name="type"/> offers on a Conditions group
         /// (US-028/PG-1b). Only bool (and, by default, enum/numeric) pins have condition operators here; the timer
         /// condition comparisons land in T039.</summary>
+        /// <remarks><see cref="ProgramPinType.Numeric"/> keeps the <see cref="Conditions"/> list it had while
+        /// integer/counter classified as <see cref="ProgramPinType.Bool"/>: F5 is about COMMANDS, and no measurement
+        /// of a numeric register's condition set exists yet, so splitting it here would be an unevidenced change
+        /// smuggled in beside an evidenced one. Same for <c>EventsFor</c>, which falls to the default list.</remarks>
         public static ImmutableArray<ProgramMethod> ConditionsFor(ProgramPinType type) => type switch
         {
-            ProgramPinType.Bool => Conditions,
+            ProgramPinType.Bool or ProgramPinType.Numeric => Conditions,
             ProgramPinType.Timer => TimerConditions,
             _ => ImmutableArray<ProgramMethod>.Empty,
         };
@@ -258,6 +274,8 @@ namespace Ihc.Vis.Programs
             "resource_timer" => ProgramPinType.Timer,
             "resource_weekday" => ProgramPinType.Weekday,
             _ when AnalogPinTags.Contains(tag) => ProgramPinType.Analog,
+            // F5: an integer/counter register is NOT a bool. (resource_floating_point is already Analog, above.)
+            "resource_integer" or "resource_counter" => ProgramPinType.Numeric,
             _ => ProgramPinType.Bool,
         };
 

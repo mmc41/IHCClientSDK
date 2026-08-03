@@ -60,17 +60,20 @@ public class DisabledReasonStatusBarTests
         vm.SelectNode(TreeNodes.FindById(vm.FunctionNodes, lockedFb)!);
         Dispatcher.UIThread.RunJobs();
 
-        // The D13 divergence this test rides on: gate allows (the flyout's Cut really runs), bar greys.
+        // uxparity2 T017 (D15): this test used to ride a divergence — gate allows, bar greys — and assert Ctrl+X
+        // REFUSED. V1 retired that: the bar enables Cut on a locked block on both surfaces and both fixtures. The
+        // D06 property under test is unchanged (the gesture consults BAR availability, not the raw gate); what
+        // changed is the bar's answer, so the gesture now ACTS. The refusal path keeps its own coverage in
+        // PressedDisabledGesture_WritesReasonToStatusBar above.
         Assert.That(vm.Registry.Commands["edit.cut"].CanExecute(null), Is.True, "precondition: the gate allows Cut");
-        Assert.That(vm.Registry.Bar["edit.cut"].Enabled, Is.False, "precondition: the bar greys Cut");
+        Assert.That(vm.Registry.Bar["edit.cut"].Enabled, Is.True, "precondition (D15): the bar ENABLES Cut on a locked block");
 
         window.KeyPressQwerty(PhysicalKey.X, RawInputModifiers.Control);
         Dispatcher.UIThread.RunJobs();
 
-        Assert.That(vm.Context.Clipboard, Is.Null, "Ctrl+X follows the bar: the locked block is not cut");
-        Assert.That(harness.Session.Current!.FindById(lockedFb), Is.Not.Null, "the block survives");
-        Assert.That(vm.StatusText, Is.EqualTo("A locked block cannot be cut from the menu bar."),
-            "the refused gesture explains itself in the status bar");
+        Assert.That(vm.Context.Clipboard, Is.Not.Null, "Ctrl+X follows the bar, and the bar now allows it");
+        Assert.That(harness.Session.Current!.FindById(lockedFb), Is.Not.Null,
+            "cut STAGES a move — the block is still in the project until it is pasted");
     }
 
     // D06 completeness: Delete/F2/F4 are NOT <Window.KeyBindings> — the trees' own KeyDown handler services them —
@@ -95,20 +98,18 @@ public class DisabledReasonStatusBarTests
         tree.GetVisualDescendants().OfType<TreeViewItem>().First().Focus();   // the tree's KeyDown handler services Delete
         Dispatcher.UIThread.RunJobs();
 
-        // The D13 divergence this test rides on: gate allows (the flyout's Delete really runs), bar greys.
+        // uxparity2 T017 (D15): as with Ctrl+X above, this rode the retired S-28 divergence and asserted the key
+        // REFUSED. The D06 property under test is unchanged — Delete is NOT a <Window.KeyBinding>, the tree's own
+        // KeyDown handler services it, and it must consult the same BAR availability the routed gestures do. What
+        // changed is the bar's answer on a locked block, so the key now acts.
         Assert.That(tree.SelectedItem, Is.SameAs(vm.SelectedFunctionsNode), "precondition: the tree carries the selection");
         Assert.That(vm.Registry.Commands["edit.delete"].CanExecute(null), Is.True, "precondition: the gate allows Delete");
-        Assert.That(vm.Registry.Bar["edit.delete"].Enabled, Is.False, "precondition: the bar greys Delete");
+        Assert.That(vm.Registry.Bar["edit.delete"].Enabled, Is.True, "precondition (D15): the bar ENABLES Delete on a locked block");
 
         window.KeyPress(Key.Delete, RawInputModifiers.None, PhysicalKey.Delete, null);
         Dispatcher.UIThread.RunJobs();
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(harness.Session.Current!.FindById(lockedFb), Is.Not.Null,
-                "Delete follows the bar: the locked block survives");
-            Assert.That(vm.StatusText, Is.EqualTo("A locked block cannot be deleted from the menu bar."),
-                "the refused key explains itself in the status bar");
-        });
+        Assert.That(harness.Session.Current!.FindById(lockedFb), Is.Null,
+            "Delete follows the bar, and the bar now allows it — the locked block is removed");
     }
 }

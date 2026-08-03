@@ -217,6 +217,9 @@ differently; `tag`: a mnemonic that only reads with the legend (§7.4).
 | `section-settings` | pencil (barrel + nib) | `✎` | `✏️` | exact |
 | `section-internal-vars` | wrench (ring + toothed shaft) | `⚙` | `🔧` | close (gear ≠ wrench) |
 | *(containers `programs`, `conditions`)* | — no asset | | | — |
+| **§1b Shell indicators** (no `.vis` element — application chrome) | | | | |
+| `controller-connected` | controller body + upward link + signal arc | `⇅` | | **tag** — direction of transfer stands for a live link |
+| `controller-disconnected` | same body, link broken by a slash | `⇅̸` | | **tag** — the slash is the state, per icons_design.md |
 | **§2 Programs & logic** | | | | |
 | `prog-program` | banner → stem → diamond node | `◆` | | **tag** |
 | `prog-subprogram` | same + elbow connector | `↳◆` | | **tag** |

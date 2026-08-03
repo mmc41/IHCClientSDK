@@ -631,6 +631,35 @@ namespace Ihc.Vis
                 return result;
             });
 
+        /// <summary>
+        /// The variable types that may be inserted directly under <paramref name="containerId"/>, as SDK tags — the
+        /// engine's answer to "what does this section accept", so a caller (a GUI variable palette) never keeps a
+        /// second copy of the placement rule (uxparity2 W1/RC1, D03). A function-block <c>inputs</c>/<c>outputs</c>
+        /// section yields its own signal type plus every <see cref="VariableTypeRegistry.ValueTypeTags"/> value type;
+        /// <c>settings</c>/<c>internalsettings</c> yield the value types alone. Anything else — a locality, a product,
+        /// an unknown id — yields an empty list, so the caller need not classify the container itself.
+        /// <para>
+        /// <b>Variable types only.</b> <see cref="PlacementRules.OptionsFor"/> also offers <c>resource_scene</c> under
+        /// <c>outputs</c>; a scene is not a variable and reaches the project through US-024's own route, so it is
+        /// filtered out here rather than in each caller. Returning tags (not the engine's <c>InsertOption</c>) also
+        /// keeps <c>Ihc.Vis.Editing</c> off this facade's signature, which the GUI is barred from referencing.
+        /// </para>
+        /// </summary>
+        public IReadOnlyList<string> GetInsertableVariableTypes(Project project, ElementId containerId) =>
+            RunTraced(nameof(GetInsertableVariableTypes), activity =>
+            {
+                // GetInsertableAt resolves the container's own tag AND its parent's (the grandparent context that
+                // separates a block section from a like-named product container), so the rule is asked once, here.
+                IReadOnlyList<string> result = project.FindById(containerId) is null
+                    ? Array.Empty<string>()
+                    : project.Edit().GetInsertableAt(containerId)
+                        .Select(o => o.ChildTag)
+                        .Where(VariableTypeRegistry.IsVariableType)
+                        .ToList();
+                activity?.SetReturnValue(result.Count);
+                return result;
+            });
+
         /// <summary>The available products projected to slim insert-menu items (<see cref="CatalogItem"/>: the
         /// insert identifier, display name and category path) — the narrow surface a menu needs, without exposing the
         /// full authoring <see cref="ProductDefinition"/>.</summary>

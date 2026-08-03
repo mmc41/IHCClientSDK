@@ -1,4 +1,6 @@
 #nullable enable
+using System;
+using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Linq;
 
@@ -66,5 +68,13 @@ namespace Ihc.Vis.Schema
         /// <see cref="PlacementRules"/> admits into any function-block value container (§6.3.1).</summary>
         public static ImmutableArray<string> ValueTypeTags { get; } =
             [.. All.Where(t => t.Role == VariableRole.Value).Select(t => t.Tag)];
+
+        private static readonly FrozenSet<string> AllTags =
+            All.Select(t => t.Tag).ToFrozenSet(StringComparer.Ordinal);
+
+        /// <summary>Whether <paramref name="tag"/> is an authorable variable type — any role, so both signal pins and
+        /// the value variables. The membership test callers use to keep non-variables (notably <c>resource_scene</c>,
+        /// which US-024 owns) out of a variable palette without hard-coding that exception themselves.</summary>
+        public static bool IsVariableType(string tag) => AllTags.Contains(tag);
     }
 }

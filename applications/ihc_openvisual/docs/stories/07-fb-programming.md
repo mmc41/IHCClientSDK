@@ -110,7 +110,10 @@ Scenario: Switch focus between the two panes
 **Implementation status:** ✅ Implemented — the mode transition works (including entry from a pin/section
 onto the owning block, and automatic entry on empty-block insert), `Internal variables` is correctly
 hidden in configuration mode, and the locked-block view-only gate is enforced both in the UI and by the
-central engine guard (see US-020's status for the guard's coverage).
+central engine guard (see US-020's status for the guard's coverage). The pane now opens with the block
+root and all four sections **expanded**; a locked block additionally **says** it is read-only in the
+status bar (the message existed but was previously unreachable); and a block's Programs group offers
+**adding a further program**, so a block can hold several.
 
 ---
 
@@ -127,16 +130,39 @@ their name/note/initial value/persistence, **so that** the program has the data 
   Two types sit **off** the flat variable bar: **`Input`** is inserted from the section's context menu or
   via **`Ctrl+I`**, and **`Enum`** from the section context menu's **`Enum` submenu** (then pick an
   enumerator type, US-030).
-- MUST: A section constrains which types it accepts:
-  - **Input** / **Output** — for a *function link*, no further variables may be added; otherwise the
-    block's input/output pins.
-  - **Settings** — all variables **except** inputs, outputs and function blocks (user-adjustable settings).
-  - **Internal variables** (Internal) — all variable types (hidden from block users).
+- MUST: A section constrains which types it accepts. Every section accepts **all value types** (Flag,
+  Integer, Decimal, Counter, Date, Time of day, Timer, Timer value, Weekday, Holiday, Enum, Light,
+  Light level, Temperature, Humidity, and the four power/energy types); what differs between sections
+  is only the **signal type**:
+  - **Input** — the `Input` signal type **plus every value type**. The `Output` signal type is not
+    offered here.
+  - **Output** — the `Output` signal type **plus every value type**. The `Input` signal type is not
+    offered here. (A *scene* may also be added to an Output section, but a scene is not a variable and
+    is added through its own route — see US-024.)
+  - **Settings** — every value type, and **no** signal type (these are the user-adjustable settings).
+  - **Internal variables** (Internal) — every value type, and **no** signal type (hidden from block users).
+  - For a *function link*, no further variables may be added to Input or Output.
+- MUST: The offered list is derived from the project engine's placement rules for the selected
+  section, so a variable type the engine accepts is always offered and one it rejects is never
+  offered. The set is not restated anywhere else.
 
 **Property rules (select variable, press `F2` or right-click > Properties):**
-- MUST: Set **Name**, **Note**, and an **initial value**.
+- MUST: Set **Name**, **two separate documentation fields**, and an **initial value**.
+- MUST: The two documentation fields are distinct and independently editable, and both are stored with the
+  variable:
+  - **Note** — the *function documentation*: what this variable means in the block's logic. This is the
+    field the documentation reports draw on.
+  - **Help text** — the *installer help text*: guidance for whoever wires and commissions the
+    installation. Typically the "(to be filled in by the installer)" style of note that ships with a
+    library block's pins.
+- MUST: Re-opening the dialog shows the stored value of **both** fields. Neither is write-only.
+- MUST: Leaving a documentation field blank stores nothing for it — a variable that never had help text is
+  indistinguishable, in the saved project, from one whose help text was entered and then cleared.
 - SHOULD: A checkbox **Save value on power loss** — leave unchecked unless needed, as enabling it weakens
   performance.
+
+> A **locality** deliberately keeps *exactly two* fields (Name + Note) — see US-007. The second
+> documentation field belongs to variables, not to localities, and US-007 is not widened by this rule.
 
 **Variable types (the resource palette):**
 
@@ -171,7 +197,9 @@ their name/note/initial value/persistence, **so that** the program has the data 
   `Flag = OFF`, `Counter = 0`, `Date = 01:01`, `Timer = 00:00:00.000`, `Decimal = 0.00`,
   `Humidity = 0.0% RH`, `Temperature = 0.0 °C` — each with its type icon and localized default; the
   status bar confirms each add, e.g. `Temperature was inserted under Internal variables`.
-- `Input` cannot be added to *Settings* (settings exclude input/output pins).
+- `Input` cannot be added to *Settings* (a settings section accepts no signal type).
+- An *Input* section offers `Input` **and** every value type — e.g. `Flag`, `Enum` and `Power (kW)`
+  are all addable there, not only the `Input` pin type.
 
 ### Constraints
 
@@ -179,11 +207,13 @@ their name/note/initial value/persistence, **so that** the program has the data 
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented — the section-aware variable palette offers **every** SDK variable type
-(the kW/kWh/W/Wh power/energy types included) and inserts each of its mapped resource type; adding an enum variable
-offers the existing types (or a new one); and a generic variable edits its **Name, Note, and typed initial value**
-via *Properties* (a bool checkbox, a number box, or an H/M/S(/ms) group per type) as one undoable, locked-block-
-refused step that round-trips byte-faithfully.
+**Implementation status:** ✅ Implemented — the variable palette asks the **project engine** which types the
+selected section accepts, so every section offers its signal type plus all 19 value types (the kW/kWh/W/Wh
+power/energy types included) and the rule has exactly one home; adding an enum variable offers the existing types
+(or a new one); a generic variable edits its **Name, both documentation fields, and typed initial value** via
+*Properties* (a bool checkbox, a number box, or an H/M/S(/ms) group per type) as one undoable, locked-block-refused
+step that round-trips byte-faithfully; and every typed row renders its **value per type in all four sections**
+(unit, decimal places and separator per type — a date shows day and month, a weekday and an enum show a name).
 
 ---
 
@@ -387,7 +417,9 @@ Scenario: Edit an existing enumerator type's states
 **Implementation status:** ✅ Implemented — creating a new enum type + typed variable, the two built-ins, an
 **enum-type picker** on insert (the existing enumerator types plus a "New…" that authors a new one — picking an
 existing type references its def-id and authors no new type), a distinct **"New standalone type…"** route that
-authors a 0-state, unreferenced project-global type (no variable), and editing an existing user type — a state's
+authors a 0-state, unreferenced project-global type (no variable), a **Library-menu type manager** that lists the
+project's enumerator types and creates another (so the types are reachable without opening a variable-insert
+flyout; selecting a listed type to edit it is not yet offered), and editing an existing user type — a state's
 label can be **relabeled** in place (id/index preserved) as well as appended, while built-in ("[read only]") types
 refuse edits — all work. (Reorder / remove / rename-type are deliberately out of scope.)
 
@@ -489,9 +521,11 @@ operation per command line, **so that** the block can derive values like average
 
 **Implementation status:** ✅ Implemented — the full arithmetic opcode grid (+/−/÷/×, each with its
 generic same-class opcode and its mixed float↔int variant) and the commit-legality matrix are wired: the
-app offers ONLY the authorable cells per pin-type pair and never surfaces a dead vendor popup entry (float+float
+app offers ONLY the authorable cells per pin-type pair and never surfaces a dead popup entry (float+float
 `+`, int−int / int←float `−`, counter `−`, int×int `×` and float-target `÷` are withheld), plus the 1-op
-counter `± 1`. Division onto a decimal register is **not offered** (the ÷ row is final). Opcodes are
+counter `± 1`. A numeric register is also no longer offered the **boolean** commands (`set to ON/OFF/NOT`) that
+belong to a flag; it has no assignment set of its own yet, because the opcodes for one are unrecorded.
+Division onto a decimal register is **not offered** (the ÷ row is final). Opcodes are
 byte-fidelity-pinned and every authorable cell round-trips through a save→reload.
 
 ---

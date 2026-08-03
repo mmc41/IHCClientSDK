@@ -1,0 +1,19 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:a="using:Avalonia.Automation"
+        x:Class="ihc_openvisual.Views.EnumTypeManagerWindow"
+        Width="380" Height="360"
+        WindowStartupLocation="CenterOwner"
+        Title="Rediger enumerator typer">
+    <StackPanel Margin="16" Spacing="8">
+        <TextBlock Name="TypesLabel" Text="Enumerator typer i projektet" FontWeight="SemiBold"/>
+        <ListBox Name="TypesList" Height="220"
+                 a:AutomationProperties.LabeledBy="{Binding #TypesLabel}"/>
+        <TextBlock Name="EmptyHint" Text="Projektet har ingen enumerator typer endnu."
+                   IsVisible="False" FontStyle="Italic"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Name="NewButton" Content="Ny type…" Click="OnNew"/>
+            <Button Name="CloseButton" Content="Luk" IsCancel="True" Click="OnClose"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

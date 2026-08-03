@@ -169,8 +169,14 @@ internal sealed class ProgramAuthoringCoordinator(
         ProgramConditionMenu.Clear();
         ProgramCaseMenu.Clear();
         ProgramArithmeticMenu.Clear();
-        if (PendingProgramVariable is not { ElementId: { } varId, DisplayName: { } varName })
+        if (PendingProgramVariable is not { ElementId: { } varId })
             return;
+        // The armed variable's NAME, not its tree label: since W8/T027 a variable row reads "Tal = 0", and a menu
+        // built from the label would offer "Tal = 0 += …". The name comes from the project, which is where it lives.
+        string varName = (session.Current?.FindById(varId) is { } armedElement
+                             ? session.Current.View(armedElement).Name
+                             : null)
+                         ?? PendingProgramVariable.DisplayName;
         // PG-1b: the dragged pin's TYPE picks the operator list per container, so a timer/analog/weekday pin no
         // longer inherits the bool operators (a tag outside those families stays on the bool default).
         ProgramPinType pinType = ProgramMethodCatalog.ClassifyPin(session.Current?.FindById(varId)?.Tag ?? string.Empty);
@@ -338,6 +344,17 @@ internal sealed class ProgramAuthoringCoordinator(
     });
 
     /// <summary>Inserts a conditional sub-program (Conditions + true/false command branches) into a Commands group (US-029).</summary>
+    /// <summary>Adds a new, empty program to a block's Programs group (US-026, uxparity2 W4). A block may hold more
+    /// than one program; each arrives with its own events and commands groups, ready to author.</summary>
+    public Task AddProgramAsync(TreeNodeViewModel? node) => runAsync("AddProgram", async () =>
+    {
+        if (node is { Kind: TreeNodeKind.Programs, ElementId: { } id } && session.Current is { } project)
+            await applyAndReport(session.Commands.AddProgram(project, id, ProgramDefaultName), "Program inserted.");
+    });
+
+    // The name a newly created program carries, matching the empty-block template's own program.
+    private const string ProgramDefaultName = "Program";
+
     public Task AddSubProgramAsync(TreeNodeViewModel? node) => runAsync("AddSubProgram", async () =>
     {
         if (node is { IsCommandsContainer: true, ElementId: { } id } && session.Current is { } project)

@@ -28,6 +28,7 @@ public partial class VariablePropertiesWindow : ResultDialog<VariablePropertiesR
         var window = new VariablePropertiesWindow { Title = input.Title };
         window.NameBox.Text = input.Name;
         window.NoteBox.Text = input.Note;
+        window.HelpNoteBox.Text = input.HelpNote;
         window.ApplyKind(input.Current);
         window.FocusOnOpen(window.NameBox);
         return window.ShowDialogForResult(owner);
@@ -57,7 +58,8 @@ public partial class VariablePropertiesWindow : ResultDialog<VariablePropertiesR
     }
 
     private void OnOk(object? sender, RoutedEventArgs e) =>
-        Accept(new VariablePropertiesResult(NameBox.Text ?? string.Empty, NoteBox.Text ?? string.Empty, ReadValue()));
+        Accept(new VariablePropertiesResult(NameBox.Text ?? string.Empty, NoteBox.Text ?? string.Empty, ReadValue(),
+            HelpNoteBox.Text ?? string.Empty));
 
     private ResourceInitialValue ReadValue() => _kind switch
     {

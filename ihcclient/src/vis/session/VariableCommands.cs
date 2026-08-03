@@ -77,10 +77,18 @@ namespace Ihc.Vis.Session
         internal override void Execute(ProjectEditor editor) => Value.WriteTo(editor.Resolve(Id, "variable"));
     }
 
-    /// <summary>Edits an ordinary FB resource variable's Name, Note, and typed initial value in ONE undoable step
-    /// (US-026/US-027, T016) — the whole Properties dialog applied atomically, refused inside a locked block by T003.
-    /// A <see cref="ResourceValueKind.None"/> value leaves the initial value untouched.</summary>
-    public sealed record SetVariableProperties(ElementId Id, string Name, string Note, ResourceInitialValue Value) : ProjectCommand
+    /// <summary>Edits an ordinary FB resource variable's Name, both documentation fields, and typed initial value in
+    /// ONE undoable step (US-026/US-027, T016) — the whole Properties dialog applied atomically, refused inside a
+    /// locked block by T003. A <see cref="ResourceValueKind.None"/> value leaves the initial value untouched.
+    /// <para>
+    /// <paramref name="HelpNote"/> is the SECOND documentation field, <c>note-2</c> (W5): the installer-facing help
+    /// text the reference application shows alongside the function documentation. It defaults to the empty string so
+    /// existing callers are unaffected, and because its DTD default is also empty an unset help note writes NO
+    /// attribute — a project that never had one stays byte-identical.
+    /// </para>
+    /// </summary>
+    public sealed record SetVariableProperties(
+        ElementId Id, string Name, string Note, ResourceInitialValue Value, string HelpNote = "") : ProjectCommand
     {
         internal override string Describe(Project project) => "Edit " + Name;
 
@@ -91,7 +99,7 @@ namespace Ihc.Vis.Session
         internal override void Execute(ProjectEditor editor)
         {
             ElementRef handle = editor.Resolve(Id, "variable");
-            handle.SetAttribute("name", Name).SetAttribute("note", Note);
+            handle.SetAttribute("name", Name).SetAttribute("note", Note).SetAttribute("note-2", HelpNote);
             Value.WriteTo(handle);
         }
     }

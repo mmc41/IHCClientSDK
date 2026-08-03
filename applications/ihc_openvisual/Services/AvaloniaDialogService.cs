@@ -209,6 +209,13 @@ public sealed class AvaloniaDialogService : IDialogService
         return await EnumDefinitionWindow.ShowAsync(Owner, input);
     }
 
+    public async Task<EnumTypeManagerResult?> ManageEnumTypesAsync(EnumTypeManagerInput input)
+    {
+        if (Owner is null)
+            return null;
+        return await EnumTypeManagerWindow.ShowAsync(Owner, input);
+    }
+
     public async Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current)
     {
         if (Owner is null)

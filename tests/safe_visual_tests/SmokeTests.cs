@@ -323,10 +323,10 @@ public class SmokeTests : AvaloniaTestBase
         var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
         Assert.Multiple(() =>
         {
-            Assert.That(labels, Does.Contain("Sub-program"), "the sub-program renders");
+            Assert.That(labels, Does.Contain("Under program"), "the sub-program renders");
             Assert.That(labels.Any(t => t?.StartsWith("Conditions") == true && t.Contains(">=1")), Is.True, "the OR-toggled Conditions group renders");
-            Assert.That(labels, Does.Contain("Commands when conditions true"));
-            Assert.That(labels, Does.Contain("Commands when conditions false"));
+            Assert.That(labels, Does.Contain("Kommandoer ved betingelser sande"));
+            Assert.That(labels, Does.Contain("Kommandoer ved betingelser falske"));
         });
     }
 
@@ -417,7 +417,7 @@ public class SmokeTests : AvaloniaTestBase
         var settingsId = vm.InstallationNodes[0].Children[2].ElementId!.Value;
         await harness.Session.AddVariableAsync(settingsId, "resource_integer", "F1");   // int+int + is authorable (float+float + is a dead cell, F-109)
         await harness.Session.AddVariableAsync(settingsId, "resource_integer", "F2");
-        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => c.DisplayName == "F1"));
+        vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => TreeNodes.NameOf(c) == "F1"));
         vm.SelectNode(FindFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
         var addCategory = vm.ProgramArithmeticMenu.First(m => m.Header.StartsWith("F1 +"));
         await ((IAsyncRelayCommand)addCategory.Children.First(c => c.Header == "F2").Command!).ExecuteAsync(null);

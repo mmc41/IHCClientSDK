@@ -94,6 +94,8 @@
             <MenuItem Header="Add _command" ItemsSource="{Binding ProgramCommandMenu}"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanAddCommand, FallbackValue=False}"/>
+            <MenuItem Header="_Program" Command="{Binding AddProgramCommand}"
+                      IsVisible="{Binding Registry.ContextMenu[program.addProgram].Visible, FallbackValue=False}"/>
             <MenuItem Header="_Sub-program" Command="{Binding AddSubProgramCommand}"
                       IsVisible="{Binding Registry.ContextMenu[program.addSubProgram].Visible, FallbackValue=False}"/>
             <!-- Case and Arithmetic bind their OWN gates: all three of these submenus hang off a Commands node, but
@@ -199,7 +201,7 @@
     <DockPanel>
         <!-- ============ Menu bar: the stable title hosts ============ -->
         <Menu DockPanel.Dock="Top">
-            <MenuItem Header="_File" a:AutomationProperties.AutomationId="MenuFile">
+            <MenuItem Header="_Filer" a:AutomationProperties.AutomationId="MenuFile">
                 <MenuItem Header="_New project" Command="{Binding NewCommand}" InputGesture="Ctrl+N"/>
                 <MenuItem Header="_Open project…" Command="{Binding OpenCommand}" InputGesture="Ctrl+O"/>
                 <Separator/>
@@ -236,7 +238,7 @@
             </MenuItem>
 
             <!-- Edit is owned by later epics (E14–E15); present as a stable host. -->
-            <MenuItem Header="_Edit" a:AutomationProperties.AutomationId="MenuEdit">
+            <MenuItem Header="_Rediger" a:AutomationProperties.AutomationId="MenuEdit">
                 <MenuItem Header="{Binding UndoMenuHeader}" Command="{Binding UndoCommand}" InputGesture="Ctrl+Z"
                           IsEnabled="{Binding Registry.Bar[edit.undo].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[edit.undo].Reason}"/>
@@ -263,7 +265,7 @@
                           ToolTip.Tip="{Binding Registry.Bar[node.properties].Reason}"/>
             </MenuItem>
 
-            <MenuItem Header="_View" a:AutomationProperties.AutomationId="MenuView">
+            <MenuItem Header="_Vis" a:AutomationProperties.AutomationId="MenuView">
                 <!-- The vendor's Vis leads with the three view/navigation commands (uxparity S-27):
                      Konfigurationsvisning (ESC), Vis program (F3), Hop til modsat link (F4). OpenVisual bound all
                      three as keys but surfaced none of them in the menu. -->
@@ -296,8 +298,11 @@
             <!-- Insert mirrors IHC Visual's Indsæt inventory AND order (uxparity S-27). These commands are also on
                  the node context menu, which is correct — the vendor offers them in both places, and only having
                  them on the context menu left the bar's Insert with a single item. -->
-            <MenuItem Header="_Insert" a:AutomationProperties.AutomationId="MenuInsert">
+            <MenuItem Header="_Indsæt" a:AutomationProperties.AutomationId="MenuInsert">
                 <MenuItem Header="Pro_gram elements">
+                    <MenuItem Header="_Program" Command="{Binding AddProgramCommand}"
+                              IsEnabled="{Binding Registry.Bar[program.addProgram].Enabled}"
+                              ToolTip.Tip="{Binding Registry.Bar[program.addProgram].Reason}"/>
                     <MenuItem Header="New case _value…" Command="{Binding NewCaseValueCommand}"
                               IsEnabled="{Binding Registry.Bar[program.newCaseValue].Enabled}"
                               ToolTip.Tip="{Binding Registry.Bar[program.newCaseValue].Reason}"/>
@@ -329,9 +334,12 @@
                 <MenuItem Header="_Variable" ItemsSource="{Binding VariablePaletteMenu}"
                           ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
             </MenuItem>
-            <MenuItem Header="_Library" a:AutomationProperties.AutomationId="MenuLibrary">
+            <MenuItem Header="_Bibliotek" a:AutomationProperties.AutomationId="MenuLibrary">
                 <MenuItem Header="Insert _function block" ItemsSource="{Binding FunctionBlocksMenu}"
                           ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
+                <MenuItem Header="_Rediger enumerator typer…" Command="{Binding ManageEnumTypesCommand}"
+                          IsEnabled="{Binding Registry.Bar[library.manageEnumTypes].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[library.manageEnumTypes].Reason}"/>
                 <Separator/>
                 <MenuItem Header="_Import catalog file…" Command="{Binding ImportCatalogFileCommand}"/>
                 <MenuItem Header="Import catalog f_older…" Command="{Binding ImportCatalogFolderCommand}"/>
@@ -342,7 +350,7 @@
                           ToolTip.Tip="{Binding Registry.Bar[controller.send].Reason}"/>
                 <MenuItem Header="_Retrieve project" Command="{Binding RetrieveProjectCommand}"/>
             </MenuItem>
-            <MenuItem Header="Doc_umentation" a:AutomationProperties.AutomationId="MenuDocumentation">
+            <MenuItem Header="Dok_umentation" a:AutomationProperties.AutomationId="MenuDocumentation">
                 <MenuItem Header="_Project info…" Command="{Binding ProjectInfoCommand}"
                           IsEnabled="{Binding Registry.Bar[project.info].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[project.info].Reason}"/>
@@ -364,7 +372,7 @@
                           ToolTip.Tip="{Binding Registry.Bar[reports.functionBlocks].Reason}"/>
             </MenuItem>
 
-            <MenuItem Header="_Help" a:AutomationProperties.AutomationId="MenuHelp">
+            <MenuItem Header="_Hjælp" a:AutomationProperties.AutomationId="MenuHelp">
                 <MenuItem Header="Help for _selection" Command="{Binding HelpCommand}" InputGesture="F1"/>
                 <Separator/>
                 <MenuItem Header="Show settings" Command="{Binding ShowSettingsCommand}"/>
@@ -469,15 +477,22 @@
         </Border>
 
         <!-- ============ Status bar ============ -->
-        <Border DockPanel.Dock="Bottom" IsVisible="{Binding IsStatusBarVisible}"
+        <Border Name="StatusBar" DockPanel.Dock="Bottom" IsVisible="{Binding IsStatusBarVisible}"
                 Background="{DynamicResource StatusBarBackgroundBrush}"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,1,0,0"
                 Padding="8,3">
-            <Grid ColumnDefinitions="*,Auto">
+            <Grid ColumnDefinitions="*,Auto,Auto">
                 <TextBlock Grid.Column="0" Text="{Binding StatusText}" VerticalAlignment="Center"
                            FontSize="{StaticResource CaptionFontSize}"/>
+                <!-- Controller-connection indicator (W9/F10): the reference application carries one at this end of
+                     the status bar. The two states are two GLYPHS, never one glyph recoloured. -->
+                <svg:Svg Name="ControllerConnectionIndicator" Grid.Column="1"
+                         Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center"
+                         Path="{Binding ControllerConnectionIcon}"
+                         ToolTip.Tip="{Binding ControllerConnectionText}"
+                         a:AutomationProperties.Name="{Binding ControllerConnectionText}"/>
                 <!-- Locale indicator: Danish flag -->
-                <Border Grid.Column="1" Width="20" Height="14" Background="#C8102E" ToolTip.Tip="Danish project locale"
+                <Border Grid.Column="2" Width="20" Height="14" Background="#C8102E" ToolTip.Tip="Danish project locale"
                         a:AutomationProperties.Name="Danish project locale">
                     <Canvas>
                         <Rectangle Canvas.Left="6" Canvas.Top="0" Width="2.5" Height="14" Fill="White"/>

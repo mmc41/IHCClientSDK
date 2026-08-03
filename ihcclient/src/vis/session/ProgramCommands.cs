@@ -44,6 +44,22 @@ namespace Ihc.Vis.Session
             editor.Branch(ContainerId).AddAction(Name, editor.Resource(VariableId), Method, note: Note);
     }
 
+    /// <summary>
+    /// Adds a new, empty program to a function block's <c>programs</c> container (US-026, uxparity2 W4/RC3). A block
+    /// may hold more than one program — <c>project2-CustomBlock.vis</c>'s `AutoProof` carries two — and creating one
+    /// was the missing SDK command behind "no route to create a Program"; the GUI menu entry alone could not have
+    /// worked. The program is created with the vendor's own decoration and its two mandatory containers, so a project
+    /// containing it is structurally indistinguishable from a vendor-authored one.
+    /// </summary>
+    public sealed record AddProgram(ElementId ProgramsId, string Name) : ProjectCommand
+    {
+        internal override string Describe(Project project) => $"Add program '{Name}'";
+        internal override EditVerdict Evaluate(EditContext context) =>
+            context.RequireTag(ProgramsId, "a programs container", "programs")
+                .And(context.RequireUnlockedTarget(ProgramsId, inclusive: true));
+        internal override void Execute(ProjectEditor editor) => ProgramGrammar.CreateProgram(editor, ProgramsId, Name);
+    }
+
     /// <summary>Inserts a conditional sub-program (US-029) into a command container.</summary>
     public sealed record AddSubProgram(ElementId CommandsId) : ProjectCommand
     {

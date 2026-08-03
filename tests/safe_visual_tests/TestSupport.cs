@@ -48,6 +48,8 @@ public sealed class FakeDialogService : IDialogService
     public SceneValueInput? LastSceneValueInput { get; private set; }
     public int EditSceneValueCalls { get; private set; }
     public EnumDefinitionResult? EnumDefinitionResult { get; set; }
+    public EnumTypeManagerResult? EnumTypeManagerResult { get; set; }
+    public EnumTypeManagerInput? LastEnumTypeManagerInput { get; private set; }
     public EnumDefinitionInput? LastEnumDefinitionInput { get; private set; }
     public int EditEnumDefinitionCalls { get; private set; }
     public Func<EnumDefinitionInput, EnumDefinitionResult?>? EnumDefinitionResponder { get; set; }
@@ -182,6 +184,12 @@ public sealed class FakeDialogService : IDialogService
         EditEnumDefinitionCalls++;
         LastEnumDefinitionInput = input;
         return Task.FromResult(EnumDefinitionResponder is not null ? EnumDefinitionResponder(input) : EnumDefinitionResult);
+    }
+
+    public Task<EnumTypeManagerResult?> ManageEnumTypesAsync(EnumTypeManagerInput input)
+    {
+        LastEnumTypeManagerInput = input;
+        return Task.FromResult(EnumTypeManagerResult);
     }
 
     public Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current)

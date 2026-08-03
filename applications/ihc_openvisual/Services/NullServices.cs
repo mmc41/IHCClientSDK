@@ -27,6 +27,7 @@ public sealed class NullDialogService : IDialogService
     public Task<AdvancedDimmerResult?> EditAdvancedDimmerAsync(AdvancedDimmerInput input) => Task.FromResult<AdvancedDimmerResult?>(null);
     public Task<SceneValueResult?> EditSceneValueAsync(SceneValueInput input) => Task.FromResult<SceneValueResult?>(null);
     public Task<EnumDefinitionResult?> EditEnumDefinitionAsync(EnumDefinitionInput input) => Task.FromResult<EnumDefinitionResult?>(null);
+    public Task<EnumTypeManagerResult?> ManageEnumTypesAsync(EnumTypeManagerInput input) => Task.FromResult<EnumTypeManagerResult?>(null);
     public Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current) => Task.FromResult<ProjectInfoData?>(null);
     public Task ShowDataTablesAsync(IDataTablesDialogViewModel viewModel) => Task.CompletedTask;
     public Task ShowReportPickerAsync(IReportPickerViewModel viewModel) => Task.CompletedTask;

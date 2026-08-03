@@ -166,6 +166,10 @@ internal static class SessionEditingTestExtensions
         this ProjectWorkflow s, ElementId commandsId, ElementId targetId, string method, ElementId operandId, string name) =>
         s.Committed(s.Commands.AddArithmeticCommand(s.Current!, commandsId, targetId, method, operandId, name));
 
+    public static Task<bool> AddStandaloneEnumTypeAsync(
+        this ProjectWorkflow s, string typeName, System.Collections.Generic.IReadOnlyList<string> states) =>
+        s.Committed(s.Commands.AddStandaloneEnumType(s.Current!, typeName, states));
+
     public static Task<bool> AddCaseAsync(this ProjectWorkflow s, ElementId commandsId, ElementId switchVariableId) =>
         s.Committed(s.Commands.AddCase(s.Current!, commandsId, switchVariableId));
 

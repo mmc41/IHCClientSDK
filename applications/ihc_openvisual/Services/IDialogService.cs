@@ -38,11 +38,16 @@ public sealed record LibraryOrigin(string Name, string Number, string Version, s
 /// <summary>The current values shown by the ordinary-variable Properties dialog (US-027, T016): name, note, and the
 /// typed initial value whose <see cref="ResourceInitialValue.Kind"/> selects the value control (a Bool checkbox, a
 /// Number box, a Time h/m/s(/ms) group, or nothing for <see cref="ResourceValueKind.None"/>).</summary>
-public sealed record VariablePropertiesInput(string Title, string Name, string Note, ResourceInitialValue Current);
+/// <summary><paramref name="HelpNote"/> is the SECOND documentation field (US-027/W5, the <c>note-2</c> attribute):
+/// the installer-facing help text shown alongside the function documentation. It defaults to blank so a caller that
+/// has none is unaffected.</summary>
+public sealed record VariablePropertiesInput(string Title, string Name, string Note, ResourceInitialValue Current,
+    string HelpNote = "");
 
 /// <summary>The edited values returned from the ordinary-variable Properties dialog (US-027, T016): the new name,
-/// note, and typed initial value.</summary>
-public sealed record VariablePropertiesResult(string Name, string Note, ResourceInitialValue Value);
+/// both documentation fields, and typed initial value. <paramref name="HelpNote"/> is the second field (W5).</summary>
+public sealed record VariablePropertiesResult(string Name, string Note, ResourceInitialValue Value,
+    string HelpNote = "");
 
 /// <summary>A locality option for the modem dialog's <i>Location</i> drop-down (US-013). The product dialog has no
 /// such field: re-parenting a PRODUCT is a tree operation, not a dialog field (A-13).</summary>
@@ -100,6 +105,14 @@ public sealed record EnumDefinitionInput(string Title, string TypeName, IReadOnl
 
 /// <summary>The edited enumerator returned from the dialog (US-030): the type name and the full ordered state list.</summary>
 public sealed record EnumDefinitionResult(string TypeName, IReadOnlyList<string> States);
+
+/// <summary>What the enumerator-type manager shows (US-030, uxparity2 W10): the project's existing enumerator types,
+/// so the installer can see what the project already defines before adding another.</summary>
+public sealed record EnumTypeManagerInput(string Title, IReadOnlyList<string> Types);
+
+/// <summary>The manager's outcome. <c>SelectedType</c> is null when the installer chose to create a NEW type — the
+/// definition dialog then supplies its name and states, so the two dialogs are not two copies of one editor.</summary>
+public sealed record EnumTypeManagerResult(string? SelectedType);
 
 /// <summary>The current values shown by the scene-value dialog (US-024/US-058). A dimmer scene asks a light level
 /// (%) + ramp time; a relay/socket scene an ON/OFF state.</summary>
@@ -204,6 +217,9 @@ public interface IDialogService
     /// <summary>Opens the modal enumerator dialog (US-030) to create or edit an enum type and its ordered states;
     /// returns the edited type, or null when the installer cancels.</summary>
     Task<EnumDefinitionResult?> EditEnumDefinitionAsync(EnumDefinitionInput input);
+
+    /// <summary>Shows the project's enumerator types and reports what the installer chose (US-030, W10).</summary>
+    Task<EnumTypeManagerResult?> ManageEnumTypesAsync(EnumTypeManagerInput input);
 
     /// <summary>Opens the modal project-information dialog (US-039) prefilled with <paramref name="current"/>;
     /// returns the edited project/customer/installer info, or null when the installer cancels.</summary>

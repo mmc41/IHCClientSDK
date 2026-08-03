@@ -44,16 +44,36 @@ public class VariablePaletteCompletenessTests
         });
     }
 
-    // The palette's 'I'/'O'/'V' section kind is derived from the SDK role, not independently re-hardcoded.
+    // uxparity2 T014 (W1/D03) — REPLACES Palette_DerivesSectionKind_FromRegistryRole, which pinned the 'I'/'O'/'V'
+    // section kind. That concept is gone: the palette no longer decides which types a section accepts, because the
+    // ENGINE does (ProjectAppService.GetInsertableVariableTypes over PlacementRules). The old test's intent — "the
+    // palette does not independently encode the section rule" — is now pinned more strongly, by showing the palette
+    // labels whatever it is given and applies no section rule of its own.
     [Test]
-    public void Palette_DerivesSectionKind_FromRegistryRole()
+    public void LabelledTypes_LabelsExactlyWhatTheEngineReports_AndAppliesNoSectionRuleOfItsOwn()
     {
-        char Kind(string tag) => VariablePalette.Entries.First(e => e.Tag == tag).Kind;
+        // A signal type and a value type together: the old 'I'/'V' split would have refused to show both at once.
+        var offered = VariablePalette.LabelledTypes(new[] { "resource_input", "resource_flag", "kW" }).ToList();
+
         Assert.Multiple(() =>
         {
-            Assert.That(Kind("resource_input"), Is.EqualTo('I'));
-            Assert.That(Kind("resource_output"), Is.EqualTo('O'));
-            Assert.That(Kind("resource_flag"), Is.EqualTo('V'));
+            Assert.That(offered.Select(e => e.Tag), Is.EquivalentTo(new[] { "resource_input", "resource_flag", "kW" }),
+                "every tag the engine reports is labelled — the palette filters nothing by section");
+            Assert.That(offered.Select(e => e.Label), Is.EqualTo(new[] { "Input", "Flag", "Power (kW)" }),
+                "…and comes back in REGISTRY order, not the caller's, so the menu reads the same wherever it is raised");
+            Assert.That(VariablePalette.LabelledTypes(System.Array.Empty<string>()), Is.Empty,
+                "a container that accepts no variables yields no palette");
         });
+    }
+
+    // The engine may legitimately report a tag that is not a variable type (resource_scene under an outputs section).
+    // The SDK door filters those, but the palette must not render one as a raw tag if one ever arrives.
+    [Test]
+    public void LabelledTypes_DropsATagWithNoLabel_RatherThanShowingTheRawTag()
+    {
+        var offered = VariablePalette.LabelledTypes(new[] { "resource_flag", "resource_scene" }).ToList();
+
+        Assert.That(offered.Select(e => e.Tag), Is.EqualTo(new[] { "resource_flag" }),
+            "resource_scene is not a variable type (US-024 owns it) and never reaches the palette");
     }
 }

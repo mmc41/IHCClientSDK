@@ -382,6 +382,20 @@ namespace Ihc.Vis.Editing
         public const string ActionsIcon = FbGrammar.ActionsIcon;
         public const string EnumOperandIcon = FbGrammar.EnumOperandIcon;
 
+        // The decoration a `.vis` program carries. Transcribed from the empty-block template
+        // (BuiltInCatalog.Templates.cs) and verified against the vendor-authored programs in
+        // project2-CustomBlock.vis. Deliberately NOT reused from FbGrammar: those constants decorate an authored
+        // `.ifb` function block and carry different note wording ("Hændelser der udløser programmet"), so sharing
+        // them would silently change what a project file says.
+        public const string ProgramSimpleIcon = FbGrammar.ProgramSimpleIcon;
+        public const string ProgramEventsName = "Hændelser";
+        public const string ProgramEventsIcon = FbGrammar.EventsIcon;
+        public const string ProgramEventsNote = "Hændelser som starter program";
+        public const string ProgramActionsName = "Kommandoer";
+        public const string ProgramActionsNote = "Gruppering af kommandoer som udføres når hændelse er indtruffet";
+        // A program's ROOT commands container is type _0x2, NOT the _0x1 a sub-program's true branch carries.
+        public const string ProgramActionsType = FbGrammar.RootActionsType;
+
         public const string SubProgramName = FbGrammar.SubProgramName;
         public const string ConditionsName = FbGrammar.ConditionsName;
         public const string ConditionsNote = "Gruppering af betingelser til logisk test";
@@ -423,6 +437,26 @@ namespace Ihc.Vis.Editing
             }
             attrs.Add(("method", method));
             return attrs.ToArray();
+        }
+
+        /// <summary>
+        /// Allocates a new empty <c>program_simple</c> under a block's <c>programs</c> container, together with the
+        /// two containers a program must own: <c>events</c> and the root <c>actions</c> (uxparity2 W4). The
+        /// decoration is the vendor's, transcribed from the empty-block template and cross-checked against the
+        /// two vendor-authored programs in <c>project2-CustomBlock.vis</c>, so an added program and an authored one
+        /// serialize alike. Returns the new program's id.
+        /// </summary>
+        public static ElementId CreateProgram(ProjectEditor editor, ElementId programsId, string name)
+        {
+            ArgumentNullException.ThrowIfNull(name);
+            ElementId programId = editor.AllocateChild(programsId, "program_simple",
+                ("name", name), ("icon", ProgramSimpleIcon));
+            editor.AllocateChild(programId, "events",
+                ("name", ProgramEventsName), ("icon", ProgramEventsIcon), ("note", ProgramEventsNote));
+            editor.AllocateChild(programId, "actions",
+                ("name", ProgramActionsName), ("icon", ActionsIcon), ("note", ProgramActionsNote),
+                ("type", ProgramActionsType));
+            return programId;
         }
 
         /// <summary>
