@@ -6,12 +6,13 @@ using Ihc.Vis.Schema;
 namespace ihc_openvisual.ViewModels;
 
 /// <summary>
-/// Projects the SDK-authoritative variable-type registry (<see cref="VariableTypeRegistry"/>, ADR-002/D07) into the
-/// "Insert variable" palette (US-027): the app supplies a display <see cref="Labels">label</see> and derives the
-/// section kind ('I'/'O'/'V') from each type's <see cref="VariableRole"/>, over the registry's tags. EVERY registry
-/// type is given a label here — a unit completeness test enforces that — so a variable type the engine supports can
-/// never silently vanish from the UI (the M3 drift that dropped six types). Avalonia-free, so the projection is
-/// unit-tested. The taxonomy is SDK data; the labels are app presentation (D07).
+/// Labels the SDK-authoritative variable types (<see cref="VariableTypeRegistry"/>, ADR-002/D07) for the "Insert
+/// variable" palette (US-027): the app supplies a display <see cref="Labels">label</see> per tag, over the registry's
+/// tags and in the registry's order. WHICH types a section accepts is the engine's rule
+/// (<c>ProjectAppService.GetInsertableVariableTypes</c>) and is never re-derived here. EVERY registry type is given a
+/// label — a unit completeness test enforces that — so a variable type the engine supports can never silently vanish
+/// from the UI (the M3 drift that dropped six types). Avalonia-free, so the projection is unit-tested. The taxonomy
+/// is SDK data; the labels are app presentation (D07).
 /// </summary>
 public static class VariablePalette
 {

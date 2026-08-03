@@ -55,6 +55,12 @@ namespace Ihc.Vis
 
         /// <summary>Plain text with the default 1–3 character unicode icon stand-ins.</summary>
         public const string PlainText = "text/plain";
+
+        /// <summary>The file extension (without the dot) a report of <paramref name="mimeType"/> is written as — the
+        /// one place the format↔extension mapping lives, so a caller naming a file and a caller configuring a save
+        /// dialog cannot drift apart. Anything other than <see cref="PlainText"/> is HTML, matching what
+        /// <c>GenerateReport</c> accepts.</summary>
+        public static string FileExtensionFor(string mimeType) => mimeType == PlainText ? "txt" : "html";
     }
 
     /// <summary>

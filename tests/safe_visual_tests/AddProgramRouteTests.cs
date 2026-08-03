@@ -19,11 +19,7 @@ public class AddProgramRouteTests : AvaloniaTestBase
     private static async Task<(ShellHarness harness, MainWindowViewModel vm, TreeNodeViewModel programs)> ProgrammingAsync()
     {
         var harness = ShellHarness.Create();
-        var vm = harness.CreateViewModel();
-        await vm.InitializeAsync();
-        ElementId loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        await harness.Session.AddEmptyFunctionBlockAsync(loc);
-        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        MainWindowViewModel vm = await harness.EnterProgrammingModeOnNewBlockAsync();
         TreeNodeViewModel programs = TreeNodes.FindFirst(vm.FunctionNodes, n => n.Kind == TreeNodeKind.Programs)!;
         return (harness, vm, programs);
     }

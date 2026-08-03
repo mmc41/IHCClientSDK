@@ -82,7 +82,7 @@ namespace Ihc.Vis.Tests
             byte[] after = await Bytes(session.Current!);
             Assert.Multiple(() =>
             {
-                Assert.That(after, Is.EqualTo(before),
+                TestData.AssertBytesIdentical(before, after,
                     "an empty help note elides note-2 — the file is byte-identical");
                 // NB: the .vis embeds its own DTD, which DECLARES `note-2 CDATA ""` on many elements. So the token
                 // appears in every oracle; what must not appear is an ELEMENT carrying `note-2="…"`.
@@ -110,7 +110,7 @@ namespace Ihc.Vis.Tests
             session.Apply(App.Commands.SetVariableProperties(session.Current!, id, name, note,
                 ResourceInitialValue.None, helpNote: string.Empty));
 
-            Assert.That(await Bytes(session.Current!), Is.EqualTo(pristine),
+            TestData.AssertBytesIdentical(pristine, await Bytes(session.Current!),
                 "clearing it returns the file to its original bytes");
         }
 
@@ -125,8 +125,7 @@ namespace Ihc.Vis.Tests
         public async Task EveryOracle_PreservesItsHelpNotesExactly()
         {
             var seen = 0;
-            foreach (string path in Directory.GetFiles(
-                Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", "projects"), "*.vis"))
+            foreach (string path in Directory.GetFiles(TestData.PathOf("projects"), "*.vis"))
             {
                 string original = System.Text.Encoding.Latin1.GetString(File.ReadAllBytes(path));
                 string written = System.Text.Encoding.Latin1.GetString(await Bytes(await App.Load(path)));

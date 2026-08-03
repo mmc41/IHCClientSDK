@@ -1,6 +1,6 @@
 ---
-version: 0.4.0
-last-updated: 2026-08-02
+version: 0.5.0
+last-updated: 2026-08-03
 status: draft
 ---
 
@@ -216,14 +216,15 @@ their name/note/initial value/persistence, **so that** the program has the data 
 - MUST: The value is formatted **per type** — the number of decimals, the unit and its spacing, and
   whether a value is shown at all are properties of the type, not one shared numeric rule:
   - **Decimal separator is a comma** wherever a fractional value is shown.
-  - **Decimals per type**: Decimal 2 · Temperature and Humidity 1 · kW/kWh 3 · W/Wh none.
+  - **Decimals per type**: Decimal 2 · Temperature and Humidity 1 · kW/kWh 3 · Integer, Counter, Light,
+    Light level, W and Wh none.
   - **Unit spacing per type**: a space before `Lux` and `°C`; none before `%`, `kW`, `kWh`, `W`, `Wh`;
     Humidity reads `% RH` — tight `%`, then a space, then `RH`.
   - **Date shows day and month only** (`dd:MM`), never the stored year.
   - **Time of day carries no milliseconds** (`HH:mm:ss`) while **Timer and Timer value do**
     (`HH:mm:ss,fff`) — the three are not one time format.
   - **Weekday and Enum render a name, not a number** — the weekday's name in the project's own language,
-    and the enum's state name.
+    and the enum's state name. A **Flag** likewise renders `ON` / `OFF`, not `1` / `0`.
   - **Three types render no value at all**: the `Input` and `Output` signal pins, and `Holiday`.
 - MUST: A type known to the project engine always has a rendering — adding a variable type must not leave
   its rows blank by omission.
@@ -503,7 +504,8 @@ Scenario: Reach the project's enumerator types from the Library menu
 existing type references its def-id and authors no new type), a distinct **"New standalone type…"** route that
 authors a 0-state, unreferenced project-global type (no variable), a **Library-menu type manager** that lists the
 project's enumerator types and creates another (so the types are reachable without opening a variable-insert
-flyout; selecting a listed type to edit it is not yet offered), and editing an existing user type — a state's
+flyout; 🟡 selecting a listed type in the manager to **edit** it is **not offered** — a listed row is inert, and
+the state editor is reached through a variable of that type instead), and editing an existing user type — a state's
 label can be **relabeled** in place (id/index preserved) as well as appended, while built-in ("[read only]") types
 refuse edits — all work. (Reorder / remove / rename-type are deliberately out of scope.)
 
@@ -607,8 +609,9 @@ operation per command line, **so that** the block can derive values like average
 - Converting `2,5` via an integer `Number` yields `Number = 2` (truncation); `−3,9` yields `−3`.
 - Deriving a decimal average: sum with decimal + integer lines, then multiply by a decimal reciprocal
   (`× 0,5` for a two-value average) — division onto a decimal register is not offered.
-- An integer register armed for a command offers `+=`, `÷=` and `×=` and no `−=`; a decimal register in
-  the same block does offer `−=`. Neither is offered `set to ON` / `set to OFF` / `set to NOT`.
+- An integer register armed for a command offers the `+`, `÷` and `×` operations and **no** `−`; a
+  decimal register in the same block **does** offer `−`. Neither is offered `set to ON` / `set to OFF` /
+  `set to NOT`, and neither is offered a direct `= 0` or `= <pin>` today.
 
 ### Constraints
 

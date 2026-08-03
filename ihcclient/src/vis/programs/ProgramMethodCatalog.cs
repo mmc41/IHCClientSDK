@@ -274,8 +274,9 @@ namespace Ihc.Vis.Programs
             "resource_timer" => ProgramPinType.Timer,
             "resource_weekday" => ProgramPinType.Weekday,
             _ when AnalogPinTags.Contains(tag) => ProgramPinType.Analog,
-            // F5: an integer/counter register is NOT a bool. (resource_floating_point is already Analog, above.)
-            "resource_integer" or "resource_counter" => ProgramPinType.Numeric,
+            // F5: an integer/counter register is NOT a bool. The numeric family is NumericVariableTags (below), so a
+            // type added there classifies here too; resource_floating_point is claimed by the Analog arm above.
+            _ when NumericVariableTags.Contains(tag) => ProgramPinType.Numeric,
             _ => ProgramPinType.Bool,
         };
 

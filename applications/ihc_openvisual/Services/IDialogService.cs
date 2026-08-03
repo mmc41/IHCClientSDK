@@ -233,10 +233,11 @@ public interface IDialogService
     /// entry, mode choice, and the view/save actions — bound through the <see cref="IReportPickerViewModel"/> seam.</summary>
     Task ShowReportPickerAsync(IReportPickerViewModel viewModel);
 
-    /// <summary>Opens the save dialog for a generated report in the format the picker chose — the suggested
-    /// name carries that format's extension (.html/.txt) — and returns the chosen path, or null when the
-    /// installer cancels.</summary>
-    Task<string?> PickSaveReportAsync(string suggestedFileName);
+    /// <summary>Opens the save dialog for a generated report in the format the picker chose, given as the
+    /// <paramref name="mimeType"/> the report is generated with (the suggested name carries that format's
+    /// extension too, but it is a display string, not the format's source). Returns the chosen path, or null
+    /// when the installer cancels.</summary>
+    Task<string?> PickSaveReportAsync(string suggestedFileName, string mimeType);
 
     /// <summary>Opens the read-only Wired module address map dialog (US-050).</summary>
     Task ShowModuleMapAsync(ModuleAddressMap map);

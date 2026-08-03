@@ -22,6 +22,14 @@ public static class NodeIcons
     /// <c>locked</c> attribute.</summary>
     public static string FunctionBlock(bool locked) => locked ? FunctionBlockLibrary : FunctionBlockEditable;
 
+    /// <summary>The two status-bar controller-connection glyphs (W9/F10). Two GLYPHS, not one in two colours — a
+    /// colour-only signal fails <c>docs/icons_design.md</c>.</summary>
+    public const string ControllerConnected = "/Assets/controller-connected.svg";
+    public const string ControllerDisconnected = "/Assets/controller-disconnected.svg";
+
+    /// <summary>The connection indicator's glyph, keyed by whether a controller is connected.</summary>
+    public static string ControllerConnection(bool connected) => connected ? ControllerConnected : ControllerDisconnected;
+
     public static string For(string tag, string? iconCode) => tag switch
     {
         "groups" or "group" => Locality,

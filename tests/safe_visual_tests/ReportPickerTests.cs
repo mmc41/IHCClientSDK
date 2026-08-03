@@ -11,8 +11,8 @@ namespace safe_visual_tests;
 /// <summary>
 /// T015 (R12/D4/D01, AC10): the three Documentation-menu report entries each open the ONE shared picker
 /// dialog with their report pre-selected in the type dropdown; the commands ride the registry's
-/// availability gate (disabled without an open project); and [Vis i browser] generates the report via the
-/// facade to a temp HTML file and hands it to the default browser.
+/// availability gate (disabled without an open project); and [Vis] generates the report via the facade in
+/// the picked format to a temp file and hands it to the OS default application.
 /// </summary>
 public class ReportPickerTests
 {

@@ -64,6 +64,9 @@ internal sealed class ProgramAuthoringCoordinator(
         }
     }
 
+    // The name a newly created program carries, matching the empty-block template's own program.
+    private const string ProgramDefaultName = "Program";
+
     // The GUI-side presentation verb for each program method (US-028/029), keyed by the SDK method's
     // (PinType, Category, Token) — NOT by a positional index parallel to the ProgramMethodCatalog lists, so a catalog
     // reorder or resize can never mis-label a menu item or throw IndexOutOfRange. A method absent from this map is
@@ -171,15 +174,17 @@ internal sealed class ProgramAuthoringCoordinator(
         ProgramArithmeticMenu.Clear();
         if (PendingProgramVariable is not { ElementId: { } varId })
             return;
+        // The armed variable is resolved ONCE — every fact the five menus need (name, tag, direction) comes off this
+        // one element. FindById is a whole-tree walk and this runs on every selection change while a variable is armed.
+        ProjectElement? armed = session.Current?.FindById(varId);
         // The armed variable's NAME, not its tree label: since W8/T027 a variable row reads "Tal = 0", and a menu
         // built from the label would offer "Tal = 0 += …". The name comes from the project, which is where it lives.
-        string varName = (session.Current?.FindById(varId) is { } armedElement
-                             ? session.Current.View(armedElement).Name
-                             : null)
+        string varName = (armed is not null ? session.Current!.View(armed).Name : null)
                          ?? PendingProgramVariable.DisplayName;
+        string armedTag = armed?.Tag ?? string.Empty;
         // PG-1b: the dragged pin's TYPE picks the operator list per container, so a timer/analog/weekday pin no
         // longer inherits the bool operators (a tag outside those families stays on the bool default).
-        ProgramPinType pinType = ProgramMethodCatalog.ClassifyPin(session.Current?.FindById(varId)?.Tag ?? string.Empty);
+        ProgramPinType pinType = ProgramMethodCatalog.ClassifyPin(armedTag);
         if (value is { IsEventsContainer: true, ElementId: { } eventsId })
         {
             foreach ((ProgramMethod m, string label) in MethodMenuItems(ProgramMethodCatalog.EventsFor(pinType), varName, pinType))
@@ -191,7 +196,7 @@ internal sealed class ProgramAuthoringCoordinator(
         {
             // PG-1c: Toggle (and any bool-output-only command) is offered only when the armed variable is a bool
             // OUTPUT pin — resolved from the SDK read model, not the VM flag, matching the case/arithmetic checks below.
-            bool boolOutput = session.Current?.FindById(varId) is { } armed && armed.IsOutputPin;
+            bool boolOutput = armed is { IsOutputPin: true };
             foreach ((ProgramMethod m, string label) in MethodMenuItems(ProgramMethodCatalog.CommandsFor(pinType), varName, pinType))
             {
                 if (ProgramMethodCatalog.BoolOutputOnlyCommandTokens.Contains(m.Token) && !boolOutput)
@@ -202,25 +207,25 @@ internal sealed class ProgramAuthoringCoordinator(
                     (two, opId) => AddArithmeticAsync(actionsId, varId, two.Token, opId, two.NameTemplate));
             }
             // A case can be built here when the armed variable is an eligible switch type (US-031).
-            if (session.Current?.FindById(varId)?.Tag is { } varTag && ProgramMethodCatalog.EligibleCaseVariableTags.Contains(varTag))
+            if (ProgramMethodCatalog.EligibleCaseVariableTags.Contains(armedTag))
                 ProgramCaseMenu.Add(new ProductMenuItemViewModel($"Case ({varName})", "case",
                     new AsyncRelayCommand(() => AddCaseAsync(actionsId, varId))));
             // Arithmetic (US-032, F-108/F-109): a numeric target register offers each operator as a second-operand
             // submenu, but ONLY the authorable cells — the opcode and legality per (op, target-type, operand-type)
             // come from the SDK grid; a dead cell is never offered. A counter target additionally gets the 1-op steps.
-            if (session.Current?.FindById(varId)?.Tag is { } targetTag && ProgramMethodCatalog.NumericVariableTags.Contains(targetTag))
+            if (ProgramMethodCatalog.NumericVariableTags.Contains(armedTag))
             {
                 foreach (ProgramMethod op in ProgramMethodCatalog.Arithmetic)
                 {
                     var opNode = new ProductMenuItemViewModel($"{varName} {op.OperatorSymbol}= …");   // category
                     foreach ((string opName, ElementId opId, string operandTag) in NumericOperandsInBlock())
-                        if (ProgramMethodCatalog.ArithmeticToken(op.OperatorSymbol!, targetTag, operandTag) is { } token)
+                        if (ProgramMethodCatalog.ArithmeticToken(op.OperatorSymbol!, armedTag, operandTag) is { } token)
                             opNode.Children.Add(new ProductMenuItemViewModel(opName, token,
                                 new AsyncRelayCommand(() => AddArithmeticAsync(actionsId, varId, token, opId, op.NameTemplate))));
                     if (opNode.Children.Count > 0)
                         ProgramArithmeticMenu.Add(opNode);
                 }
-                if (targetTag == "resource_counter")
+                if (armedTag == "resource_counter")
                     foreach (ProgramMethod step in ProgramMethodCatalog.CounterSteps)
                         ProgramArithmeticMenu.Add(new ProductMenuItemViewModel($"{varName} {step.OperatorSymbol} 1", step.Token,
                             new AsyncRelayCommand(() => AddProgramCommandAsync(actionsId, varId, step.Token, step.NameTemplate, step.Note))));
@@ -343,7 +348,6 @@ internal sealed class ProgramAuthoringCoordinator(
                 node.IsValueSaved ? "Output value no longer saved on power loss." : "Output value saved on power loss.");
     });
 
-    /// <summary>Inserts a conditional sub-program (Conditions + true/false command branches) into a Commands group (US-029).</summary>
     /// <summary>Adds a new, empty program to a block's Programs group (US-026, uxparity2 W4). A block may hold more
     /// than one program; each arrives with its own events and commands groups, ready to author.</summary>
     public Task AddProgramAsync(TreeNodeViewModel? node) => runAsync("AddProgram", async () =>
@@ -352,9 +356,7 @@ internal sealed class ProgramAuthoringCoordinator(
             await applyAndReport(session.Commands.AddProgram(project, id, ProgramDefaultName), "Program inserted.");
     });
 
-    // The name a newly created program carries, matching the empty-block template's own program.
-    private const string ProgramDefaultName = "Program";
-
+    /// <summary>Inserts a conditional sub-program (Conditions + true/false command branches) into a Commands group (US-029).</summary>
     public Task AddSubProgramAsync(TreeNodeViewModel? node) => runAsync("AddSubProgram", async () =>
     {
         if (node is { IsCommandsContainer: true, ElementId: { } id } && session.Current is { } project)

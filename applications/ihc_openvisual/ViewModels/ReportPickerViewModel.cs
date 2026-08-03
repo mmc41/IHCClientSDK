@@ -25,7 +25,8 @@ public sealed record ReportFormatOption(string MimeType, string Title)
 /// <summary>
 /// The shared report picker (R12/D4): report-type dropdown (pre-selected per the invoking menu entry),
 /// Standard/Fuld mode choice, output-format dropdown (HTML by default, TXT the alternative), and the
-/// [Vis i browser] action delegating to the workflow's facade-generate → temp file → browser flow.
+/// [Vis] action delegating to the workflow's facade-generate → temp file → default-application flow
+/// (which application opens the document depends on the format and the OS, hence the neutral label).
 /// Avalonia-free and project-free: it holds only the chosen kind/mode/format and the action delegates.
 /// </summary>
 public sealed partial class ReportPickerViewModel : ObservableObject, IReportPickerViewModel
@@ -74,7 +75,7 @@ public sealed partial class ReportPickerViewModel : ObservableObject, IReportPic
 
     partial void OnIsFullModeChanged(bool value) => OnPropertyChanged(nameof(IsStandardMode));
 
-    /// <summary>[Vis i browser]: generate the picked kind × mode × format and open it (US-063 flow).</summary>
+    /// <summary>[Vis]: generate the picked kind × mode × format and open it (US-063 flow).</summary>
     [RelayCommand]
     private Task ViewInBrowser() => _viewInBrowser(SelectedKind.Kind, Mode, SelectedFormat.MimeType);
 

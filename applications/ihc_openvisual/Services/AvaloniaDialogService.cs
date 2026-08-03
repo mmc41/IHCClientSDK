@@ -92,23 +92,23 @@ public sealed class AvaloniaDialogService : IDialogService
         return file?.TryGetLocalPath();
     }
 
-    public async Task<string?> PickSaveReportAsync(string suggestedFileName)
+    public async Task<string?> PickSaveReportAsync(string suggestedFileName, string mimeType)
     {
         if (Owner is null)
             return null;
-        // The picker's format dropdown already chose the format; the suggested name carries its extension,
-        // so the dialog offers exactly that format rather than letting a typed extension contradict the choice.
-        bool asText = suggestedFileName.EndsWith(".txt", StringComparison.OrdinalIgnoreCase);
+        // The picker's format dropdown already chose the format, so the dialog offers exactly that format rather
+        // than letting a typed extension contradict the choice. The format arrives as the mimetype the caller
+        // generates with — never re-derived from the suggested name, which is a display string.
+        bool asText = mimeType == ReportMimeTypes.PlainText;
+        string extension = ReportMimeTypes.FileExtensionFor(mimeType);
         IStorageFile? file = await Owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Gem rapport",
             SuggestedFileName = suggestedFileName,
-            DefaultExtension = asText ? "txt" : "html",
+            DefaultExtension = extension,
             FileTypeChoices = new[]
             {
-                asText
-                    ? new FilePickerFileType("Text report") { Patterns = new[] { "*.txt" } }
-                    : new FilePickerFileType("HTML report") { Patterns = new[] { "*.html" } },
+                new FilePickerFileType(asText ? "Text report" : "HTML report") { Patterns = new[] { "*." + extension } },
             }
         });
         return file?.TryGetLocalPath();

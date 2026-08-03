@@ -320,7 +320,7 @@ public sealed class ProjectWorkflow : IDisposable
     /// container that holds no variables, and with no project open.
     /// </summary>
     public IReadOnlyList<string> GetInsertableVariableTypes(ElementId containerId) =>
-        Current is { } project ? _service.GetInsertableVariableTypes(project, containerId) : new List<string>();
+        Current is { } project ? _service.GetInsertableVariableTypes(project, containerId) : [];
 
     /// <summary>The catalog products as slim insert-menu items (<see cref="CatalogItem"/>) — what the insert menu binds to.</summary>
     public IReadOnlyList<CatalogItem> GetProductCatalogItems() => _service.GetProductCatalogItems();

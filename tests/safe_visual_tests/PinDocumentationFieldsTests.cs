@@ -20,11 +20,7 @@ public class PinDocumentationFieldsTests : AvaloniaTestBase
     private static async Task<(ShellHarness harness, MainWindowViewModel vm, ElementId variable)> BlockWithVariableAsync()
     {
         var harness = ShellHarness.Create();
-        var vm = harness.CreateViewModel();
-        await vm.InitializeAsync();
-        ElementId loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        await harness.Session.AddEmptyFunctionBlockAsync(loc);
-        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        MainWindowViewModel vm = await harness.EnterProgrammingModeOnNewBlockAsync();
         ElementId inputs = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         await harness.Session.AddVariableAsync(inputs, "resource_input", "Doorbell");
         ElementId variable = TreeNodes.FindPin(vm.InstallationNodes, "Doorbell")!

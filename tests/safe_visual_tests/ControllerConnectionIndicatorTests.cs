@@ -1,5 +1,7 @@
+using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
@@ -55,11 +57,12 @@ public class ControllerConnectionIndicatorTests : AvaloniaTestBase
     {
         foreach (string name in new[] { "controller-connected.svg", "controller-disconnected.svg" })
         {
-            string path = Path.Combine(TestContext.CurrentContext.TestDirectory, "..", "..", "..", "..", "..",
-                "applications", "ihc_openvisual", "Assets", name);
-            Assert.That(File.Exists(path), Is.True, $"{name} exists");
+            // Read from the assets the app actually SHIPS (Assets\**\*.svg is embedded in ihc_openvisual, the same
+            // source SvgReportIconProvider serves) — an asset that only exists in the source checkout would not
+            // render at runtime, and the suite never walks up into the checkout.
+            string? svg = ShippedAsset(name);
+            Assert.That(svg, Is.Not.Null, $"{name} ships as an embedded asset");
 
-            string svg = File.ReadAllText(path);
             Assert.Multiple(() =>
             {
                 Assert.That(svg, Does.Contain("viewBox=\"0 0 24 24\""), $"{name}: the 24-unit grid");
@@ -67,6 +70,18 @@ public class ControllerConnectionIndicatorTests : AvaloniaTestBase
                 Assert.That(svg, Does.Not.Contain("#"), $"{name}: no baked hex colour");
             });
         }
+    }
+
+    // The shipped text of an Assets\*.svg, from the ihc_openvisual assembly's embedded resources.
+    private static string? ShippedAsset(string fileName)
+    {
+        Assembly app = typeof(NodeIcons).Assembly;
+        string? resource = app.GetManifestResourceNames()
+            .FirstOrDefault(n => n.EndsWith($".Assets.{fileName}", StringComparison.Ordinal));
+        if (resource is null)
+            return null;
+        using Stream stream = app.GetManifestResourceStream(resource)!;
+        return new StreamReader(stream).ReadToEnd();
     }
 
     // The indicator is in the BOTTOM BAR — the same place the reference application puts it — not tucked into a menu.
@@ -92,8 +107,8 @@ public class ControllerConnectionIndicatorTests : AvaloniaTestBase
     [Test]
     public void BothIcons_AreRegisteredInIconCodes_WithAStandIn()
     {
-        string doc = File.ReadAllText(Path.Combine(TestContext.CurrentContext.TestDirectory, "..", "..", "..", "..", "..",
-            "applications", "ihc_openvisual", "docs", "icon_codes.md"));
+        string doc = File.ReadAllText(
+            Path.Combine(TestContext.CurrentContext.TestDirectory, "appdocs", "icon_codes.md"));
 
         Assert.Multiple(() =>
         {

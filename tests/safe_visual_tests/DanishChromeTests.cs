@@ -59,11 +59,7 @@ public class DanishChromeTests : AvaloniaTestBase
     public async Task ProgramTreeContainerLabels_AreDanish()
     {
         using var harness = ShellHarness.Create();
-        var vm = harness.CreateViewModel();
-        await vm.InitializeAsync();
-        ElementId loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        await harness.Session.AddEmptyFunctionBlockAsync(loc);
-        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        MainWindowViewModel vm = await harness.EnterProgrammingModeOnNewBlockAsync();
         TreeNodeViewModel commands = TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsCommandsContainer)!;
         await vm.AddSubProgramCommand.ExecuteAsync(commands);
 

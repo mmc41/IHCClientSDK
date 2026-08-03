@@ -24,11 +24,7 @@ public class NumericTargetCommandTests : AvaloniaTestBase
         CommandMenuFor(string tag, string name)
     {
         var harness = ShellHarness.Create();
-        var vm = harness.CreateViewModel();
-        await vm.InitializeAsync();
-        ElementId loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        await harness.Session.AddEmptyFunctionBlockAsync(loc);
-        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        MainWindowViewModel vm = await harness.EnterProgrammingModeOnNewBlockAsync();
         ElementId section = vm.InstallationNodes[0].Children[3].ElementId!.Value;   // Internal variables
         await harness.Session.AddVariableAsync(section, tag, name);
 
@@ -78,12 +74,8 @@ public class NumericTargetCommandTests : AvaloniaTestBase
     {
         var harness = ShellHarness.Create();
         using var _ = harness;
-        var vm = harness.CreateViewModel();
-        await vm.InitializeAsync();
-        ElementId loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        await harness.Session.AddEmptyFunctionBlockAsync(loc);
-        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
-        ElementId section = vm.InstallationNodes[0].Children[3].ElementId!.Value;
+        MainWindowViewModel vm = await harness.EnterProgrammingModeOnNewBlockAsync();
+        ElementId section = vm.InstallationNodes[0].Children[3].ElementId!.Value;   // Internal variables
         await harness.Session.AddVariableAsync(section, "resource_integer", "Tal");
         await harness.Session.AddVariableAsync(section, "resource_floating_point", "Kommatal");
 

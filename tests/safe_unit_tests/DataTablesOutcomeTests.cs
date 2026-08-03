@@ -36,7 +36,7 @@ public class DataTablesOutcomeTests
         public Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note, LibraryOrigin? origin = null, string affirmative = "OK") => Task.FromResult<PropertiesResult?>(null);
         public Task<VariablePropertiesResult?> EditVariablePropertiesAsync(VariablePropertiesInput input) => Task.FromResult<VariablePropertiesResult?>(null);
         public Task ShowReportPickerAsync(IReportPickerViewModel viewModel) => Task.CompletedTask;
-        public Task<string?> PickSaveReportAsync(string suggestedFileName) => Task.FromResult<string?>(null);
+        public Task<string?> PickSaveReportAsync(string suggestedFileName, string mimeType) => Task.FromResult<string?>(null);
         public Task<ProductPropertiesResult?> EditProductPropertiesAsync(ProductPropertiesInput input) => Task.FromResult<ProductPropertiesResult?>(null);
         public Task<SceneContainerResult?> EditSceneContainerAsync(SceneContainerInput input) => Task.FromResult<SceneContainerResult?>(null);
         public Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input, System.Func<PinPropertiesResult, System.Threading.Tasks.Task>? onApply = null) => Task.FromResult<PinPropertiesResult?>(null);

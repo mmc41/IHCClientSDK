@@ -404,6 +404,8 @@ public sealed class ProjectTreeProjector(Project project)
     private TreeNodeViewModel BuildPinNode(ProjectElement resource, bool inFunctionBlockVariableSection = false,
         bool catalogDeclared = false)
     {
+        // One read view for the whole row — name, value, icon and the backup flag all come off it.
+        ElementView view = project.View(resource);
         string name = project.NameOr(resource, resource.Tag);
         // W8/F7: a function-block VARIABLE renders its value per TYPE, in every one of the block's four sections.
         // It used to be section-dependent — a time literal appeared only under `settings` — so the same variable read
@@ -411,16 +413,16 @@ public sealed class ProjectTreeProjector(Project project)
         // (uxparity2 V6/T011, all 21 types measured). The measurement covered a BLOCK's sections only, so a product's
         // own terminal/setting rows keep the rendering they had.
         string? value = (inFunctionBlockVariableSection
-                            ? VariableValueFormat.For(resource.Tag, project.View(resource).Effective, StateValue(resource))
+                            ? VariableValueFormat.For(resource.Tag, view.Effective, StateValue(resource))
                             : StateValue(resource))
-                     ?? project.View(resource).Value;
+                     ?? view.Value;
         bool isOutput = resource.IsOutputPin;
-        bool saved = isOutput && project.View(resource).Backup;
+        bool saved = isOutput && view.Backup;
         // The label carries the pin's name and, for a state row, its value; the save flag surfaces via IsValueSaved (F-019).
         string label = string.IsNullOrEmpty(value) ? name : $"{name} = {value}";
         if (SceneNoteSuffix(resource) is { } sceneNote)
             label += $" ({sceneNote})";
-        var node = new TreeNodeViewModel(label, NodeIcons.For(resource.Tag, project.View(resource).Icon),
+        var node = new TreeNodeViewModel(label, NodeIcons.For(resource.Tag, view.Icon),
             elementId: resource.Id)
             {
                 IsOutputPin = isOutput, IsValueSaved = saved, Tooltip = BuildTooltip(resource),

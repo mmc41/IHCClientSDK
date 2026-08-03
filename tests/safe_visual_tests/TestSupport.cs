@@ -5,6 +5,7 @@ using ihc_openvisual.Services;
 using ihc_openvisual.ViewModels;
 using Ihc;
 using Ihc.Vis;
+using Ihc.Vis.Model;
 using Ihc.Vis.Session;
 
 namespace safe_visual_tests;
@@ -81,9 +82,11 @@ public sealed class FakeDialogService : IDialogService
     public Task<string?> PickSaveFunctionBlockAsync(string suggestedFileName) => Task.FromResult(SaveBlockPath);
     public string? SaveReportPath { get; set; }
     public string? LastReportSuggestedName { get; private set; }
-    public Task<string?> PickSaveReportAsync(string suggestedFileName)
+    public string? LastReportMimeType { get; private set; }
+    public Task<string?> PickSaveReportAsync(string suggestedFileName, string mimeType)
     {
         LastReportSuggestedName = suggestedFileName;
+        LastReportMimeType = mimeType;
         return Task.FromResult(SaveReportPath);
     }
     public string? CatalogFilePath { get; set; }
@@ -283,6 +286,25 @@ public sealed class ShellHarness : IDisposable
 
     public MainWindowViewModel CreateViewModel() =>
         new(Session, Dialogs, Recent, new NullThemeService());
+
+    /// <summary>
+    /// The setup every programming-mode test shares: an initialized shell with an empty (unlocked) function block
+    /// inserted into the first locality, already switched into programming mode on that block. One home for the
+    /// <c>FunctionNodes[0].Children[0].Children[0]</c> tree path, so a tree-shape change is one edit rather than ten.
+    /// <para>
+    /// In programming mode the block's four variable sections are <c>vm.InstallationNodes[0].Children[…]</c>
+    /// (0 = Inputs, 3 = Internal variables) — the caller picks the one it needs.
+    /// </para>
+    /// </summary>
+    public async Task<MainWindowViewModel> EnterProgrammingModeOnNewBlockAsync()
+    {
+        MainWindowViewModel vm = CreateViewModel();
+        await vm.InitializeAsync();
+        ElementId locality = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        await Session.AddEmptyFunctionBlockAsync(locality);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        return vm;
+    }
 
     public void Dispose()
     {

@@ -148,9 +148,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>The indicator's glyph. The two states are two GLYPHS, not one glyph in two colours — a colour-only
     /// signal fails `docs/icons_design.md` and is invisible to a colour-blind installer.</summary>
-    public string ControllerConnectionIcon =>
-        IsControllerConnected ? "avares://ihc_openvisual/Assets/controller-connected.svg"
-                              : "avares://ihc_openvisual/Assets/controller-disconnected.svg";
+    public string ControllerConnectionIcon => NodeIcons.ControllerConnection(IsControllerConnected);
 
     /// <summary>The indicator's tooltip and accessible name — the state in words, for the same reason.</summary>
     public string ControllerConnectionText =>
@@ -529,8 +527,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     });
 
     /// <summary>Documentation ▸ the three report entries (T015, R12/D4/D01): each opens the ONE shared
-    /// picker dialog with its report pre-selected in the type dropdown; [Vis i browser] generates via the
-    /// facade (SVG icons) to a temp HTML page and opens the default browser (US-063).</summary>
+    /// picker dialog with its report pre-selected in the type dropdown; [Vis] generates via the facade
+    /// (SVG icons for HTML) to a temp file and opens it in the OS default application (US-063).</summary>
     private Task OpenReportPicker(ReportKind preselected) => RunAsync(nameof(OpenReportPicker), async () =>
     {
         var viewModel = new ReportPickerViewModel(preselected,
@@ -548,10 +546,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Toggles an output's <i>Save current value</i> power-loss persistence (US-033).</summary>
     private Task ToggleSaveValue(TreeNodeViewModel? node) => _programAuthoring.ToggleSaveValueAsync(node);
 
-    /// <summary>Inserts a conditional sub-program into a Commands group (US-029).</summary>
     /// <summary>Adds a new program to a block's Programs group (US-026, W4) — a block may hold several.</summary>
     private Task AddProgram(TreeNodeViewModel? node) => _programAuthoring.AddProgramAsync(node);
 
+    /// <summary>Inserts a conditional sub-program into a Commands group (US-029).</summary>
     private Task AddSubProgram(TreeNodeViewModel? node) => _programAuthoring.AddSubProgramAsync(node);
 
     /// <summary>Inserts a nested logic group inside a Conditions group (US-029).</summary>

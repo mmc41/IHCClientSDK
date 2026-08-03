@@ -147,19 +147,19 @@ Scenario: A report entry opens the shared picker pre-selected
   When I choose one of the three report entries
   Then the one shared report picker opens with that report pre-selected in its type dropdown
   And the picker offers a Standard/Fuld mode choice, an output-format dropdown listing HTML and TXT
-  And the actions "Vis i browser" and "Gem som…"
+  And the actions "Vis" and "Gem som…"
 
 Scenario: HTML is the default output format
   Given a project is open
   When I choose one of the three report entries
   Then the format dropdown is pre-selected on HTML
 
-Scenario: View and print in the browser
+Scenario: View and print the generated report
   Given the report picker is open
-  When I choose "Vis i browser"
+  When I choose "Vis"
   Then the picked report generates in the picked format — a self-contained HTML page, or a plain-text
-    document when TXT is picked — and opens in the default browser
-  And printing is the browser's own print function (US-063)
+    document when TXT is picked — and opens in the system's default application for that format
+  And printing is that application's own print function (US-063)
 
 Scenario: Save as a file in the picked format
   Given the report picker is open
@@ -199,6 +199,8 @@ Scenario: A generation or save failure is reported
 - MUST: The output format is the installer's explicit choice in the picker — HTML by default, TXT the
   alternative — and it governs both actions and the suggested save file name; the format is never inferred
   from a typed file name.
+- MUST: The view action's label names no specific viewer ("Vis", not "Vis i browser"): which application
+  opens the generated document depends on the picked format and on the system's file associations.
 
 ### AC illustrations
 

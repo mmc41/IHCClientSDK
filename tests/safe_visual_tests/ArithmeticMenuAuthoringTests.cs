@@ -23,11 +23,7 @@ public class ArithmeticMenuAuthoringTests : AvaloniaTestBase
     private static async Task<(ShellHarness harness, MainWindowViewModel vm, TreeNodeViewModel commands)> ArmedAsync()
     {
         var harness = ShellHarness.Create();
-        var vm = harness.CreateViewModel();
-        await vm.InitializeAsync();
-        ElementId loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        await harness.Session.AddEmptyFunctionBlockAsync(loc);
-        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        MainWindowViewModel vm = await harness.EnterProgrammingModeOnNewBlockAsync();
         ElementId settings = vm.InstallationNodes[0].Children[3].ElementId!.Value;   // Internal variables
         await harness.Session.AddVariableAsync(settings, "resource_integer", "Tal");
         await harness.Session.AddVariableAsync(settings, "resource_floating_point", "Kommatal");

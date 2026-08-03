@@ -1,6 +1,6 @@
 ---
-version: 0.6.0
-last-updated: 2026-08-02
+version: 0.7.0
+last-updated: 2026-08-03
 status: draft
 ---
 

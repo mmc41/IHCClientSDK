@@ -23,15 +23,11 @@ public class ArithmeticOperatorSetTests : AvaloniaTestBase
 {
     // Arms a variable of `targetTag` as the arithmetic target, with one variable of every numeric type available as
     // an operand, and returns the resulting arithmetic menu headers.
-    private static async Task<(ShellHarness harness, IReadOnlyList<string> operators, MainWindowViewModel vm)>
+    private static async Task<(ShellHarness harness, IReadOnlyList<string> operators)>
         ArithmeticMenuFor(string targetTag, string targetName)
     {
         var harness = ShellHarness.Create();
-        var vm = harness.CreateViewModel();
-        await vm.InitializeAsync();
-        ElementId loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        await harness.Session.AddEmptyFunctionBlockAsync(loc);
-        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        MainWindowViewModel vm = await harness.EnterProgrammingModeOnNewBlockAsync();
         ElementId section = vm.InstallationNodes[0].Children[3].ElementId!.Value;   // Internal variables
 
         // One operand of each numeric type, so every grid cell has a candidate to offer.
@@ -43,7 +39,7 @@ public class ArithmeticOperatorSetTests : AvaloniaTestBase
         vm.UseInProgramCommand.Execute(
             TreeNodes.FindPin(vm.InstallationNodes, targetName)!);
         vm.SelectNode(TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsCommandsContainer)!);
-        return (harness, vm.ProgramArithmeticMenu.Select(m => m.Header).ToList(), vm);
+        return (harness, vm.ProgramArithmeticMenu.Select(m => m.Header).ToList());
     }
 
     // The operator symbols the SDK grid says are authorable for this target against ANY numeric operand — the same
@@ -64,7 +60,7 @@ public class ArithmeticOperatorSetTests : AvaloniaTestBase
                      ("resource_counter", "Tæller"),
                  })
         {
-            var (harness, operators, _) = await ArithmeticMenuFor(tag, name);
+            var (harness, operators) = await ArithmeticMenuFor(tag, name);
             using var _1 = harness;
 
             string[] expected = LiveOperatorsFor(tag);
@@ -84,11 +80,11 @@ public class ArithmeticOperatorSetTests : AvaloniaTestBase
     [Test]
     public async Task Subtraction_IsOfferedOnAFloatTarget_AndNeverOnAnIntegerOrCounter()
     {
-        var (floatHarness, floatOps, _) = await ArithmeticMenuFor("resource_floating_point", "Kommatal");
+        var (floatHarness, floatOps) = await ArithmeticMenuFor("resource_floating_point", "Kommatal");
         using var _1 = floatHarness;
-        var (intHarness, intOps, _) = await ArithmeticMenuFor("resource_integer", "Tal");
+        var (intHarness, intOps) = await ArithmeticMenuFor("resource_integer", "Tal");
         using var _2 = intHarness;
-        var (cntHarness, cntOps, _) = await ArithmeticMenuFor("resource_counter", "Tæller");
+        var (cntHarness, cntOps) = await ArithmeticMenuFor("resource_counter", "Tæller");
         using var _3 = cntHarness;
 
         Assert.Multiple(() =>
@@ -113,7 +109,7 @@ public class ArithmeticOperatorSetTests : AvaloniaTestBase
                      ("resource_counter", "Tæller"),
                  })
         {
-            var (harness, operators, _) = await ArithmeticMenuFor(tag, name);
+            var (harness, operators) = await ArithmeticMenuFor(tag, name);
             using var _1 = harness;
 
             Assert.That(operators, Is.Not.Empty, $"{tag}: the menu is populated (otherwise this proves nothing)");

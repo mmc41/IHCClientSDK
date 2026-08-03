@@ -384,14 +384,15 @@ namespace Ihc.Vis.Editing
 
         // The decoration a `.vis` program carries. Transcribed from the empty-block template
         // (BuiltInCatalog.Templates.cs) and verified against the vendor-authored programs in
-        // project2-CustomBlock.vis. Deliberately NOT reused from FbGrammar: those constants decorate an authored
-        // `.ifb` function block and carry different note wording ("Hændelser der udløser programmet"), so sharing
-        // them would silently change what a project file says.
+        // project2-CustomBlock.vis. The container NAMES and icons are the same vendor words an authored `.ifb`
+        // block uses, so they alias FbGrammar; the NOTES are deliberately NOT reused — a `.vis` program words them
+        // differently ("Hændelser som starter program" vs the block's "Hændelser der udløser programmet"), and
+        // sharing them would silently change what a project file says.
         public const string ProgramSimpleIcon = FbGrammar.ProgramSimpleIcon;
-        public const string ProgramEventsName = "Hændelser";
+        public const string ProgramEventsName = FbGrammar.EventsName;
         public const string ProgramEventsIcon = FbGrammar.EventsIcon;
         public const string ProgramEventsNote = "Hændelser som starter program";
-        public const string ProgramActionsName = "Kommandoer";
+        public const string ProgramActionsName = FbGrammar.RootActionsName;
         public const string ProgramActionsNote = "Gruppering af kommandoer som udføres når hændelse er indtruffet";
         // A program's ROOT commands container is type _0x2, NOT the _0x1 a sub-program's true branch carries.
         public const string ProgramActionsType = FbGrammar.RootActionsType;

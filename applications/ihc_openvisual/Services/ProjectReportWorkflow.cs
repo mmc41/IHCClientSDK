@@ -24,8 +24,9 @@ internal sealed class ProjectReportWorkflow(
     /// <summary>
     /// T015 (R12): generates the picked report in the picked format via the facade — HTML with the app's SVG
     /// icon provider, plain text with the SDK's default stand-ins — to a temp file and opens it in the OS
-    /// default browser (the US-063 view/print flow). Generation or write failures surface through the standard
-    /// message dialog; browser-open failures are handled by
+    /// default application for that format (the US-063 view/print flow; a browser for HTML, whatever the system
+    /// associates with .txt otherwise — hence the picker's neutral [Vis] label). Generation or write failures
+    /// surface through the standard message dialog; open failures are handled by
     /// <see cref="IDialogService.OpenExternalUrlAsync"/> itself.
     /// </summary>
     public async Task ViewInBrowserAsync(ReportKind kind, ReportMode mode, string mimeType)
@@ -66,7 +67,7 @@ internal sealed class ProjectReportWorkflow(
             {
                 return;   // no project open — the registry gate normally prevents this
             }
-            string? path = await dialogs.PickSaveReportAsync(FileName(kind, mode, mimeType));
+            string? path = await dialogs.PickSaveReportAsync(FileName(kind, mode, mimeType), mimeType);
             if (path is null)
             {
                 return;   // cancelled
@@ -84,7 +85,7 @@ internal sealed class ProjectReportWorkflow(
     /// <summary>The file name a generated report gets, carrying the extension of the picked format so the
     /// temp page and the save dialog's suggestion both match what the facade writes.</summary>
     private static string FileName(ReportKind kind, ReportMode mode, string mimeType) =>
-        $"{kind}-{mode}.{(mimeType == ReportMimeTypes.PlainText ? "txt" : "html")}".ToLowerInvariant();
+        $"{kind}-{mode}.{ReportMimeTypes.FileExtensionFor(mimeType)}".ToLowerInvariant();
 
     /// <summary>The app's SVG icon mapping for HTML output; the SDK's default unicode stand-ins for text.</summary>
     private static IReportIconProvider? IconsFor(string mimeType) =>

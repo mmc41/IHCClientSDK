@@ -37,6 +37,9 @@
   <ItemGroup>
     <None Include="..\..\applications\ihc_openvisual\Views\MainWindow.axaml"
           Link="appxaml\MainWindow.axaml" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Same rule for the icon-mapping doc: the icon-registration tests read it as the SUBJECT under test. -->
+    <None Include="..\..\applications\ihc_openvisual\docs\icon_codes.md"
+          Link="appdocs\icon_codes.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

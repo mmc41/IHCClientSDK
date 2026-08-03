@@ -26,6 +26,10 @@ public static class VariableValueFormat
     private static readonly string[] Weekdays =
         ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"];
 
+    // The fixed-point format strings the table below asks for, indexed by decimal places, so a row does not build
+    // its own format string on every projection pass.
+    private static readonly string[] FixedFormats = ["F0", "F1", "F2", "F3"];
+
     /// <summary>
     /// The rendered value for a variable of <paramref name="tag"/>, or <c>null</c> when the type shows no value at
     /// all (the two signal pins and holiday). <paramref name="attribute"/> supplies the element's effective
@@ -38,7 +42,7 @@ public static class VariableValueFormat
             int.TryParse(attribute(attr), NumberStyles.Integer, CultureInfo.InvariantCulture, out int v) ? v : fallback;
         double Num() =>
             double.TryParse(attribute("inivalue"), NumberStyles.Float, CultureInfo.InvariantCulture, out double v) ? v : 0;
-        string Fixed(int decimals) => Num().ToString("F" + decimals.ToString(CultureInfo.InvariantCulture), Danish);
+        string Fixed(int decimals) => Num().ToString(FixedFormats[decimals], Danish);
         string Time(bool milliseconds) => milliseconds
             ? $"{Int("hour"):00}:{Int("minute"):00}:{Int("second"):00},{Int("millisecond"):000}"
             : $"{Int("hour"):00}:{Int("minute"):00}:{Int("second"):00}";
@@ -49,7 +53,7 @@ public static class VariableValueFormat
             "resource_input" or "resource_output" or "resource_holiday" => null,
 
             "resource_flag" => attribute("inivalue") == "on" ? "ON" : "OFF",
-            "resource_integer" or "resource_counter" => Num().ToString("F0", Danish),
+            "resource_integer" or "resource_counter" => Fixed(0),
             "resource_floating_point" => Fixed(2),
 
             // A date shows day and month only — the stored year is not rendered.
