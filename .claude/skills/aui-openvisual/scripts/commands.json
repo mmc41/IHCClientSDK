@@ -83,9 +83,9 @@
       "status": "confirmed",
       "mutating": "no",
       "mechanism": "menuBarDump",
-      "menu": "Bibliotek",
+      "menu": "Indsæt",
       "gates": [],
-      "description": "List FB templates by walking Library > Insert function block > … into data.titles[]. Raise --depth (default 2) to descend; the paths it reports are what fb.insertTemplate --menu-path consumes."
+      "description": "List FB templates by walking Indsæt > FunktionsBlokke > … into data.titles[]. Raise --depth (default 2) to descend; the paths it reports are what fb.insertTemplate --menu-path consumes. Repointed 2026-08-04 from Bibliotek, which used to carry a second copy of the same submenu; the vendor has it under Indsæt only."
     },
     {
       "id": "capture.window",
@@ -435,7 +435,7 @@
       "status": "partial",
       "mutating": "yes",
       "mechanism": "menu",
-      "menuPath": "Bibliotek/Indsæt Funktionsblok",
+      "menuPath": "Indsæt/FunktionsBlokke",
       "gates": [],
       "description": "Insert a library function-block template. Select the target locality first, then address the template with --menu-path, e.g. --menu-path \"<category>/<template>\". Use `aui catalog function-blocks` to discover the available paths.",
       "note": "The menu walk is verified; the per-template leaf paths depend on the loaded catalog."
@@ -575,6 +575,26 @@
       "gates": [],
       "description": "Wire an FB output pin to a product output pin.",
       "note": "Use link.startFromHere then link.toHere explicitly for now."
+    },
+    {
+      "id": "library.unlock",
+      "status": "partial",
+      "mutating": "yes",
+      "mechanism": "menu",
+      "menuPath": "Bibliotek/Oplås",
+      "gates": [],
+      "description": "Unlock the selected LOCKED library function block via the Bibliotek MENU BAR (the vendor's id 24766). The peer of fb.unlock, which drives the node's context flyout -- both run one command, but only this one exercises the bar item. Select the locked block first. IRREVERSIBLE: neither application offers a confirmation and the vendor's own Undo does not restore the lock.",
+      "note": "Bar route added 2026-08-04 alongside the vendor-parity work on Bibliotek."
+    },
+    {
+      "id": "library.manageEnumTypes",
+      "status": "partial",
+      "mutating": "noState",
+      "mechanism": "menu",
+      "menuPath": "Bibliotek/Rediger Enumerator typer",
+      "gates": [],
+      "description": "Open the two-pane enumerator types-and-values editor (Library > Rediger Enumerator typer). It leaves a MODAL open -- drive it with dialog.read / dialog.click and close it with the OK button; there is no Cancel, because each button applies as it is pressed.",
+      "note": "Shaped on the reference application's 'Enumerator typer og vaerdier' dialog, measured 2026-08-04."
     },
     {
       "id": "enum.listTypes",

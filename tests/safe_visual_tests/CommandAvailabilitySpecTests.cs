@@ -326,6 +326,13 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
             Assert.That(At(vm, "node.unlock", unlockedFb, Surface.ContextMenu), Is.EqualTo(Availability.Hidden));
             Assert.That(At(vm, "node.unlock", lockedFbCtx, Surface.ContextMenu), Is.EqualTo(Availability.Allow));
 
+            // …and both ride the Bibliotek BAR too, where the same gate GREYS instead of hiding (measured against
+            // the vendor 2026-08-04: Gem Funktionsblok is live on any block, Oplås only on a locked one).
+            Assert.That(At(vm, "node.saveBlock", unlockedFb, Surface.MenuBar).Enabled, Is.True);
+            Assert.That(At(vm, "node.saveBlock", root, Surface.MenuBar).Enabled, Is.False, "no block selected");
+            Assert.That(At(vm, "node.unlock", lockedFbCtx, Surface.MenuBar).Enabled, Is.True);
+            Assert.That(At(vm, "node.unlock", unlockedFb, Surface.MenuBar).Enabled, Is.False, "already unlocked");
+
             // Link row: jump-to-opposite offered; Properties DIVERGES — the flyout omits it on a link row while
             // the Edit menu stays enabled (measured; reproduced, not reconciled).
             Assert.That(At(vm, "link.jumpOpposite", linkRow, Surface.ContextMenu), Is.EqualTo(Availability.Allow));

@@ -29,7 +29,6 @@ public class DataTablesOutcomeTests
         public Task<SaveChangesResult> ConfirmSaveChangesAsync(string documentName) => Task.FromResult(SaveChangesResult.Discard);
         public Task<string?> PickOpenProjectAsync(string? initialDirectory) => Task.FromResult<string?>(null);
         public Task<string?> PickSaveProjectAsync(string? initialDirectory, string suggestedFileName) => Task.FromResult<string?>(null);
-        public Task<string?> PickSaveFunctionBlockAsync(string suggestedFileName) => Task.FromResult<string?>(null);
         public Task ShowAboutAsync() => Task.CompletedTask;
         public Task ShowSettingsAsync(string settingsText) => Task.CompletedTask;
         public Task OpenExternalUrlAsync(string url) => Task.CompletedTask;
@@ -44,7 +43,8 @@ public class DataTablesOutcomeTests
         public Task<AdvancedDimmerResult?> EditAdvancedDimmerAsync(AdvancedDimmerInput input) => Task.FromResult<AdvancedDimmerResult?>(null);
         public Task<SceneValueResult?> EditSceneValueAsync(SceneValueInput input) => Task.FromResult<SceneValueResult?>(null);
         public Task<EnumDefinitionResult?> EditEnumDefinitionAsync(EnumDefinitionInput input) => Task.FromResult<EnumDefinitionResult?>(null);
-        public Task<EnumTypeManagerResult?> ManageEnumTypesAsync(EnumTypeManagerInput input) => Task.FromResult<EnumTypeManagerResult?>(null);
+        public Task ManageEnumTypesAsync(EnumTypeManagerInput input) => Task.CompletedTask;
+        public Task<string?> PromptForNameAsync(NamePromptInput input) => Task.FromResult<string?>(null);
         public Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current) => Task.FromResult<ProjectInfoData?>(null);
         public Task ShowDataTablesAsync(IDataTablesDialogViewModel viewModel) => Task.CompletedTask;
         public Task ShowModuleMapAsync(DatalineModuleMap map) => Task.CompletedTask;

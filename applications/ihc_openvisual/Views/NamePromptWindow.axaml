@@ -1,0 +1,21 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:a="using:Avalonia.Automation"
+        x:Class="ihc_openvisual.Views.NamePromptWindow"
+        Title="Navn"
+        Width="360" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        ShowInTaskbar="False">
+    <StackPanel Margin="16" Spacing="12">
+        <!-- The vendor frames the single field in a "Navn" group box; the header doubles as the field's label. -->
+        <HeaderedContentControl Name="NameGroup" Header="Navn">
+            <TextBox Name="NameBox" Margin="8"
+                     a:AutomationProperties.Name="Navn"/>
+        </HeaderedContentControl>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Name="OkButton" Content="OK" MinWidth="84" IsDefault="True" Click="OnOk"/>
+            <Button Name="CancelButton" Content="Annuller" MinWidth="84" IsCancel="True" Click="OnCancel"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

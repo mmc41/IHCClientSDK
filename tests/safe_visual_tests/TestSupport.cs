@@ -51,8 +51,10 @@ public sealed class FakeDialogService : IDialogService
     public SceneValueInput? LastSceneValueInput { get; private set; }
     public int EditSceneValueCalls { get; private set; }
     public EnumDefinitionResult? EnumDefinitionResult { get; set; }
-    public EnumTypeManagerResult? EnumTypeManagerResult { get; set; }
+    public Func<EnumTypeManagerInput, Task>? EnumTypeManagerScript { get; set; }
     public EnumTypeManagerInput? LastEnumTypeManagerInput { get; private set; }
+    public string? NamePromptResult { get; set; }
+    public NamePromptInput? LastNamePromptInput { get; private set; }
     public EnumDefinitionInput? LastEnumDefinitionInput { get; private set; }
     public int EditEnumDefinitionCalls { get; private set; }
     public Func<EnumDefinitionInput, EnumDefinitionResult?>? EnumDefinitionResponder { get; set; }
@@ -85,10 +87,8 @@ public sealed class FakeDialogService : IDialogService
         return Task.FromResult(ConfirmResult);
     }
     public Task ShowMessageAsync(string title, string message) { LastMessage = message; return Task.CompletedTask; }
-    public string? SaveBlockPath { get; set; }
     public Task<string?> PickOpenProjectAsync(string? initialDirectory) => Task.FromResult(OpenPath);
     public Task<string?> PickSaveProjectAsync(string? initialDirectory, string suggestedFileName) => Task.FromResult(SavePath);
-    public Task<string?> PickSaveFunctionBlockAsync(string suggestedFileName) => Task.FromResult(SaveBlockPath);
     public string? SaveReportPath { get; set; }
     public string? LastReportSuggestedName { get; private set; }
     public string? LastReportMimeType { get; private set; }
@@ -203,10 +203,21 @@ public sealed class FakeDialogService : IDialogService
         return Task.FromResult(EnumDefinitionResponder is not null ? EnumDefinitionResponder(input) : EnumDefinitionResult);
     }
 
-    public Task<EnumTypeManagerResult?> ManageEnumTypesAsync(EnumTypeManagerInput input)
+    // The manager applies LIVE (there is nothing to return), so the fake plays the installer: it runs whatever
+    // script the test set against the same (Types, Apply) pair the real dialog is handed.
+    public async Task ManageEnumTypesAsync(EnumTypeManagerInput input)
     {
         LastEnumTypeManagerInput = input;
-        return Task.FromResult(EnumTypeManagerResult);
+        if (EnumTypeManagerScript is not null)
+        {
+            await EnumTypeManagerScript(input);
+        }
+    }
+
+    public Task<string?> PromptForNameAsync(NamePromptInput input)
+    {
+        LastNamePromptInput = input;
+        return Task.FromResult(NamePromptResult);
     }
 
     public Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current)
@@ -319,6 +330,10 @@ public sealed class ShellHarness : IDisposable
         new(dir, ownsDir: false, changeThreshold, null, null);
 
     public string TempPath(string fileName) => Path.Combine(TempDir, fileName);
+
+    /// <summary>The per-test LIBRARY folder — the same one the session was constructed with, so a test can assert
+    /// where "save to the library" put the block without reaching the real %APPDATA% catalog.</summary>
+    public string CatalogDir => Path.Combine(TempDir, "catalog");
 
     /// <summary>The shell view-model over this harness. Pass <paramref name="loggerFactory"/> (a
     /// <see cref="CapturingLoggerFactory"/>) when the test needs to prove a failure reached the logging pipeline,

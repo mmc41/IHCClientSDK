@@ -1946,6 +1946,16 @@ function Invoke-DialogButton {
     if (-not $Modal) { return $false }
     $btns = $Modal.FindAll($script:Desc,
         (New-PropCondition ([System.Windows.Automation.AutomationElement]::ControlTypeProperty) ([System.Windows.Automation.ControlType]::Button)))
+    # AutomationId FIRST, then UIA Name -- the same addressing rule dialog.setText already uses. A dialog can
+    # carry two buttons with the SAME label (the enumerator editor has a "Ny", a "Slet" and an "Omdoeb" per
+    # pane), and a name-only match silently took whichever came first in tree order, leaving one of each pair
+    # unreachable rather than saying so.
+    foreach ($b in $btns) {
+        if ($b.Current.AutomationId -eq $Name) {
+            $inv = Get-Pattern $b ([System.Windows.Automation.InvokePattern]::Pattern)
+            if ($inv) { $inv.Invoke(); return $true }
+        }
+    }
     foreach ($b in $btns) {
         if ($b.Current.Name -eq $Name) {
             $inv = Get-Pattern $b ([System.Windows.Automation.InvokePattern]::Pattern)

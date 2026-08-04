@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using ihc_openvisual.Configuration;
@@ -376,6 +377,42 @@ public sealed class ProjectWorkflow : IDisposable
         EditOutcome outcome = await ApplyAsync(
             Commands.SaveFunctionBlockToLibrary(project, functionBlockId, name, Environment.UserName, normalizedNote));
         return outcome.Status == EditStatus.Committed;
+    }
+
+    /// <summary>
+    /// Saves a placed block INTO THE LIBRARY (US-021, uxparity <i>Bibliotek ▸ Gem Funktionsblok...</i>). The
+    /// reference application asks a name and a note and nothing else — measured 2026-08-04, its dialog has no file
+    /// picker — because it writes into its own component folder. This does the same: <c>&lt;name&gt;.ifb</c> into the
+    /// app-data catalog folder, then registers it so the block appears under <i>Indsæt ▸ FunktionsBlokke</i>
+    /// immediately, which is the whole point of "saving to the library" and is exactly what a picked path elsewhere
+    /// on disk would NOT do.
+    /// </summary>
+    /// <returns>The file written, or null when the export or the library commit failed.</returns>
+    public async Task<string?> SaveFunctionBlockToLibraryAsync(ElementId functionBlockId, string name, string note)
+    {
+        Directory.CreateDirectory(_catalogDir);
+        string path = Path.Combine(_catalogDir, LibraryFileName(name));
+        if (!await SaveFunctionBlockAsync(functionBlockId, path, name, note))
+            return null;
+        // persist:false — the file is ALREADY in the catalog folder, so PersistFile would copy it onto itself.
+        // This call is for the registration half: it parses the block into the live catalog and fires
+        // CatalogChanged, which is what rebuilds the insertion menus.
+        await _catalog.ImportFileAsync(path, persist: false);
+        return path;
+    }
+
+    /// <summary>The block's name as a file name. A block name is free text and may hold characters no file system
+    /// accepts ("Kort / Langt tryk" is a real one in the vendor's own sample project), so every invalid character
+    /// becomes '_' rather than throwing at the installer.</summary>
+    internal static string LibraryFileName(string name)
+    {
+        var sanitized = new StringBuilder(name.Length);
+        foreach (char c in name)
+        {
+            sanitized.Append(Array.IndexOf(Path.GetInvalidFileNameChars(), c) >= 0 ? '_' : c);
+        }
+        string stem = sanitized.ToString().Trim();
+        return (stem.Length == 0 ? "block" : stem) + ".ifb";
     }
 
     // ---- Command factories (W2-14): resolve parent context into a ready-to-apply command (a query, no mutation).

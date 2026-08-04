@@ -1386,9 +1386,13 @@ public class MainWindowViewModelTests
         });
     }
 
-    // US-021: the Save block command prompts for name/note, writes the picked file, and confirms.
+    // US-021 (uxparity, measured 2026-08-04): the Save-block command asks for a name and a note and NOTHING ELSE,
+    // then writes into the LIBRARY folder. The reference application's "Gem Funktionsblok..." has no file picker —
+    // it saves into its own component folder, which is what makes the block reappear under Indsæt ▸ FunktionsBlokke.
+    // OpenVisual used to raise an OS save picker after the same form, so the block landed wherever the installer
+    // browsed to and the library never gained it.
     [Test]
-    public async Task SaveFunctionBlockCommand_PromptsThenWrites_AndConfirms()
+    public async Task SaveFunctionBlockCommand_AsksNameAndNoteOnly_AndWritesIntoTheLibrary()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
@@ -1397,17 +1401,37 @@ public class MainWindowViewModelTests
         await harness.Session.AddFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, block.MasterType);
         var fbNode = vm.FunctionNodes[0].Children[0].Children[0];
 
-        string path = harness.TempPath("saved.ifb");
         harness.Dialogs.PropertiesResult = new PropertiesResult("Reusable", "note");
-        harness.Dialogs.SaveBlockPath = path;
         await vm.SaveFunctionBlockCommand.ExecuteAsync(fbNode);
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Gem funktionsblok"));
-            Assert.That(File.Exists(path), Is.True);
-            Assert.That(vm.StatusText, Is.EqualTo("Gemte funktionsblokken 'Reusable'."));
+            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Gem Funktionsblok..."),
+                "the vendor's own dialog title");
+            Assert.That(harness.Dialogs.LastPropertiesAffirmative, Is.EqualTo("Gem"),
+                "…and its affirmative button is Gem, not OK");
+            Assert.That(File.Exists(Path.Combine(harness.CatalogDir, "Reusable.ifb")), Is.True,
+                "the block landed in the library folder, named after itself — no path was asked for");
+            Assert.That(vm.StatusText, Is.EqualTo("Gemte funktionsblokken 'Reusable' i biblioteket."));
         });
+    }
+
+    // A block name is free text; the vendor's own sample project has "Kort / Langt tryk: MV ved dør", whose slashes
+    // no file system accepts. Saving one must not throw at the installer.
+    [Test]
+    public async Task SaveFunctionBlockCommand_WithAnUnfilesystemableName_StillWritesIntoTheLibrary()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        var fbNode = vm.FunctionNodes[0].Children[0].Children[0];
+
+        harness.Dialogs.PropertiesResult = new PropertiesResult("Kort / Langt tryk: MV", "note");
+        await vm.SaveFunctionBlockCommand.ExecuteAsync(fbNode);
+
+        Assert.That(Directory.GetFiles(harness.CatalogDir, "*.ifb"), Has.Length.EqualTo(1),
+            "the invalid characters were replaced rather than thrown at the installer");
     }
 
     // T010 / US-021 / PG-3a: Save-to-library transforms the in-project block into a locked library instance (rename +
@@ -1423,7 +1447,6 @@ public class MainWindowViewModelTests
         var fbId = fbNode.ElementId!.Value;
 
         harness.Dialogs.PropertiesResult = new PropertiesResult("MyLib", "note");
-        harness.Dialogs.SaveBlockPath = harness.TempPath("mylib.ifb");
         await vm.SaveFunctionBlockCommand.ExecuteAsync(fbNode);
 
         ProjectElement after = harness.Session.Current!.FindById(fbId)!;
@@ -1433,7 +1456,7 @@ public class MainWindowViewModelTests
             Assert.That(after.GetAttribute("locked"), Is.EqualTo("yes"), "the in-project block is now a locked library instance");
             Assert.That(after.GetAttribute("name"), Is.EqualTo("MyLib"), "renamed to the saved name");
             Assert.That(reNode.IsLockedFunctionBlock, Is.True, "the tree shows it as a locked library block");
-            Assert.That(vm.StatusText, Is.EqualTo("Gemte funktionsblokken 'MyLib'."));
+            Assert.That(vm.StatusText, Is.EqualTo("Gemte funktionsblokken 'MyLib' i biblioteket."));
         });
     }
 

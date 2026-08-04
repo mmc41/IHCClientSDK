@@ -196,6 +196,135 @@ namespace Ihc.Vis.Session
         }
     }
 
+    /// <summary>Renames a project-global enumerator TYPE (IHC Visual's <i>Bibliotek ▸ Rediger Enumerator typer ▸
+    /// Omdøb</i>). References are by id, so every resource keeps pointing at it. The engine refuses a "[read only]"
+    /// built-in, matching the vendor's greyed <i>Omdøb</i>.</summary>
+    public sealed record RenameEnumType(string DefName, string NewName) : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Rename enumerator type";
+        internal override EditVerdict Evaluate(EditContext context) => EnumTypeTarget.RequireEditable(context, DefName);
+        internal override void Execute(ProjectEditor editor) =>
+            editor.RenameEnumDefinition(editor.EnumDefinition(DefName), NewName);
+    }
+
+    /// <summary>Deletes a project-global enumerator TYPE and its values (<i>Bibliotek ▸ … ▸ Slet</i>, types pane).
+    /// The engine refuses a "[read only]" built-in and one still referenced by a resource, so a delete can never
+    /// strand a <c>typedef</c>.</summary>
+    public sealed record DeleteEnumType(string DefName) : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Delete enumerator type";
+        internal override EditVerdict Evaluate(EditContext context) =>
+            EnumTypeTarget.RequireEditable(context, DefName)
+                .And(EnumTypeTarget.RequireUnreferenced(context, DefName));
+        internal override void Execute(ProjectEditor editor) =>
+            editor.RemoveEnumDefinition(editor.EnumDefinition(DefName));
+    }
+
+    /// <summary>Appends ONE value to an enumerator type (<i>Bibliotek ▸ … ▸ Ny</i>, values pane). The one-at-a-time
+    /// peer of <see cref="UpdateEnumStates"/>, which the vendor's values pane adds them as.</summary>
+    public sealed record AddEnumValue(string DefName, string ValueName) : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Add enumerator value";
+        internal override EditVerdict Evaluate(EditContext context) => EnumTypeTarget.RequireEditable(context, DefName);
+        internal override void Execute(ProjectEditor editor) =>
+            editor.AddEnumValues(editor.EnumDefinition(DefName), ValueName);
+    }
+
+    /// <summary>Renames ONE value of an enumerator type (<i>Bibliotek ▸ … ▸ Omdøb</i>, values pane), addressed by its
+    /// 0-based POSITION in the type's value list — what the dialog shows. Id and index are preserved.</summary>
+    public sealed record RenameEnumValue(string DefName, int ValueIndex, string NewName) : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Rename enumerator value";
+        internal override EditVerdict Evaluate(EditContext context) =>
+            EnumTypeTarget.RequireEditable(context, DefName)
+                .And(EnumTypeTarget.RequireValueAt(context, DefName, ValueIndex));
+        internal override void Execute(ProjectEditor editor)
+        {
+            EnumDefinitionRef def = editor.EnumDefinition(DefName);
+            editor.RelabelEnumValue(def, EnumValueAddressing.At(def, ValueIndex), NewName);
+        }
+    }
+
+    /// <summary>Deletes ONE value of an enumerator type (<i>Bibliotek ▸ … ▸ Slet</i>, values pane), addressed by its
+    /// 0-based POSITION. The engine refuses a value still in use as some resource's initial value.</summary>
+    public sealed record DeleteEnumValue(string DefName, int ValueIndex) : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Delete enumerator value";
+        internal override EditVerdict Evaluate(EditContext context) =>
+            EnumTypeTarget.RequireEditable(context, DefName)
+                .And(EnumTypeTarget.RequireValueAt(context, DefName, ValueIndex));
+        internal override void Execute(ProjectEditor editor)
+        {
+            EnumDefinitionRef def = editor.EnumDefinition(DefName);
+            editor.RemoveEnumValue(def, EnumValueAddressing.At(def, ValueIndex));
+        }
+    }
+
+    /// <summary>Turns the dialog's 0-based value POSITION into the value's id — the one place the positional
+    /// addressing the two value commands share becomes an id, so an out-of-range position refuses identically.</summary>
+    internal static class EnumValueAddressing
+    {
+        internal static ElementId At(EnumDefinitionRef definition, int index) =>
+            index >= 0 && index < definition.Values.Count
+                ? definition.Values[index].Id
+                : throw new EditRefusedException(
+                    $"Enumerator type '{definition.Typedef}' has no value at position {index}.");
+    }
+
+    /// <summary>
+    /// The LEGALITY gates the five enum-manager commands share, phrased as <see cref="EditVerdict"/>s so an illegal
+    /// edit comes back <c>Refused</c> with a sentence the dialog can show — not <c>Failed</c>, which is what a bare
+    /// engine <see cref="System.InvalidOperationException"/> would produce. The engine's own guards stay as the
+    /// backstop; these exist so the refusal is a verdict rather than a fault.
+    /// </summary>
+    internal static class EnumTypeTarget
+    {
+        /// <summary>The type must exist and must not be a <c>typeid</c>-bearing built-in — IHC Visual greys
+        /// <i>Slet</i>/<i>Omdøb</i> and all three value buttons on a "[read only]" one.</summary>
+        internal static EditVerdict RequireEditable(EditContext context, string defName) =>
+            Find(context.Project, defName) switch
+            {
+                null => EditVerdict.Refuse($"The project has no enumerator type named '{defName}'."),
+                { } def when (def.GetAttribute("typeid") ?? ElementId.NullToken) != ElementId.NullToken =>
+                    EditVerdict.Refuse($"Enumerator type '{defName}' is a built-in [read only] type and cannot be edited."),
+                _ => EditVerdict.Allow,
+            };
+
+        /// <summary>The type must not still be referenced by a resource's <c>typedef</c>: deleting it would leave that
+        /// resource pointing at nothing.</summary>
+        internal static EditVerdict RequireUnreferenced(EditContext context, string defName)
+        {
+            if (Find(context.Project, defName) is not { Id: { } defId })
+            {
+                return EditVerdict.Allow;   // RequireEditable already refused it; do not double-report
+            }
+            int users = context.Project.Root.DescendantsAndSelf().Count(e =>
+                e.GetAttribute("typedef") is { } token
+                && ElementId.TryParse(token, out ElementId referenced)
+                && referenced == defId);
+            return users == 0
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse($"Enumerator type '{defName}' is still used by {users} resource(s) and cannot be deleted.");
+        }
+
+        /// <summary>The 0-based value position must exist in the type — the dialog addresses values by position.</summary>
+        internal static EditVerdict RequireValueAt(EditContext context, string defName, int index)
+        {
+            if (Find(context.Project, defName) is not { } def)
+            {
+                return EditVerdict.Allow;   // RequireEditable already refused it
+            }
+            int count = def.ChildrenOrEmpty().Count(v => v.Tag == "enum_value");
+            return index >= 0 && index < count
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse($"Enumerator type '{defName}' has no value at position {index}.");
+        }
+
+        private static ProjectElement? Find(Project project, string defName) =>
+            project.Child("enum_definitions")?.ChildrenOrEmpty()
+                .FirstOrDefault(c => c.Tag == "enum_definition" && c.GetAttribute("name") == defName);
+    }
+
     /// <summary>Applies edited advanced wireless-dimmer settings (US-015): the six dimmer_setting values.</summary>
     public sealed record UpdateDimmerSettings(ElementId ProductId, AdvancedDimmerResult Result) : ProjectCommand
     {

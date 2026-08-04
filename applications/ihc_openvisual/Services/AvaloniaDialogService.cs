@@ -28,7 +28,6 @@ public sealed class AvaloniaDialogService : IDialogService
     public Window? Owner { get; set; }
 
     private static readonly FilePickerFileType VisFileType = new("IHC projekt (*.vis)") { Patterns = new[] { "*.vis" } };
-    private static readonly FilePickerFileType IfbFileType = new("IHC funktionsblok (*.ifb)") { Patterns = new[] { "*.ifb" } };
     private static readonly FilePickerFileType CatalogFileType =
         new("IHC katalogdefinition (*.def, *.ifb)") { Patterns = new[] { "*.def", "*.ifb" } };
 
@@ -74,20 +73,6 @@ public sealed class AvaloniaDialogService : IDialogService
             DefaultExtension = "vis",
             FileTypeChoices = new[] { VisFileType },
             SuggestedStartLocation = await GetFolderAsync(initialDirectory)
-        });
-        return file?.TryGetLocalPath();
-    }
-
-    public async Task<string?> PickSaveFunctionBlockAsync(string suggestedFileName)
-    {
-        if (Owner is null)
-            return null;
-        IStorageFile? file = await Owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-        {
-            Title = "Gem funktionsblok",
-            SuggestedFileName = suggestedFileName,
-            DefaultExtension = "ifb",
-            FileTypeChoices = new[] { IfbFileType }
         });
         return file?.TryGetLocalPath();
     }
@@ -213,11 +198,18 @@ public sealed class AvaloniaDialogService : IDialogService
         return await EnumDefinitionWindow.ShowAsync(Owner, input);
     }
 
-    public async Task<EnumTypeManagerResult?> ManageEnumTypesAsync(EnumTypeManagerInput input)
+    public async Task ManageEnumTypesAsync(EnumTypeManagerInput input)
+    {
+        if (Owner is null)
+            return;
+        await EnumTypeManagerWindow.ShowAsync(Owner, input);
+    }
+
+    public async Task<string?> PromptForNameAsync(NamePromptInput input)
     {
         if (Owner is null)
             return null;
-        return await EnumTypeManagerWindow.ShowAsync(Owner, input);
+        return await NamePromptWindow.ShowAsync(Owner, input);
     }
 
     public async Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current)

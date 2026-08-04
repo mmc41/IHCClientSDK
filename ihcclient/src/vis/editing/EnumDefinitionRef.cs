@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
@@ -27,6 +28,10 @@ namespace Ihc.Vis.Editing
 
         /// <summary>The token to assign to a <c>resource_enum</c>'s <c>typedef</c> attribute.</summary>
         public string Typedef => Id.ToToken();
+
+        /// <summary>The definition's values in document order, each with its id. The enum-manager commands address a
+        /// value POSITIONALLY (the dialog lists positions, not ids), so this is where a position becomes an id.</summary>
+        public IReadOnlyList<(string Name, ElementId Id)> Values => values;
 
         /// <summary>The <c>inivalue</c> token for this definition's first value (its default initial state), or null
         /// when the type has no values — used when inserting a variable of an EXISTING enum type (US-030, PG-4).</summary>

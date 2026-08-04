@@ -106,13 +106,51 @@ public sealed record EnumDefinitionInput(string Title, string TypeName, IReadOnl
 /// <summary>The edited enumerator returned from the dialog (US-030): the type name and the full ordered state list.</summary>
 public sealed record EnumDefinitionResult(string TypeName, IReadOnlyList<string> States);
 
-/// <summary>What the enumerator-type manager shows (US-030, uxparity2 W10): the project's existing enumerator types,
-/// so the installer can see what the project already defines before adding another.</summary>
-public sealed record EnumTypeManagerInput(string Title, IReadOnlyList<string> Types);
+/// <summary>
+/// What the enumerator-type manager works over (US-030, uxparity2 W10). Modelled on the reference application's
+/// <i>Bibliotek ▸ Rediger Enumerator typer</i>, measured 2026-08-04: <b>two</b> panes — types on the left, the
+/// selected type's values on the right — each with <c>Ny</c> / <c>Slet</c> / <c>Omdøb</c>, and one <c>OK</c> that
+/// just closes. There is no Cancel, because each button has ALREADY applied: the vendor edits live, and so do we.
+/// </summary>
+/// <param name="Types">Re-reads the project's types; called again after every applied operation, so the panes show
+/// what the document actually holds rather than a copy that could drift from it.</param>
+/// <param name="Apply">Applies one operation. Returns null on success, or the refusal sentence to show — an
+/// engine-level "[read only]" / "still used" refusal has to reach the installer, not vanish.</param>
+public sealed record EnumTypeManagerInput(
+    string Title,
+    Func<IReadOnlyList<EnumTypeView>> Types,
+    Func<EnumTypeManagerOperation, Task<string?>> Apply);
 
-/// <summary>The manager's outcome. <c>SelectedType</c> is null when the installer chose to create a NEW type — the
-/// definition dialog then supplies its name and states, so the two dialogs are not two copies of one editor.</summary>
-public sealed record EnumTypeManagerResult(string? SelectedType);
+/// <summary>One thing the enumerator-type manager can do — the six buttons of the vendor's two panes, as data. The
+/// dialog decides WHICH; the view-model owns what each one means, so naming and refusal rules stay in one place.</summary>
+public abstract record EnumTypeManagerOperation
+{
+    private EnumTypeManagerOperation() { }
+
+    /// <summary>Types pane, <c>Ny</c>: create an EMPTY type. The vendor's prompt is name-only — values are added
+    /// afterwards in the right-hand pane, one at a time.</summary>
+    public sealed record NewType(string Name) : EnumTypeManagerOperation;
+
+    /// <summary>Types pane, <c>Omdøb</c>.</summary>
+    public sealed record RenameType(string TypeName, string NewName) : EnumTypeManagerOperation;
+
+    /// <summary>Types pane, <c>Slet</c>.</summary>
+    public sealed record DeleteType(string TypeName) : EnumTypeManagerOperation;
+
+    /// <summary>Values pane, <c>Ny</c>: append one value to the selected type.</summary>
+    public sealed record NewValue(string TypeName, string Name) : EnumTypeManagerOperation;
+
+    /// <summary>Values pane, <c>Omdøb</c>, addressing the value by its 0-based position in the list.</summary>
+    public sealed record RenameValue(string TypeName, int ValueIndex, string NewName) : EnumTypeManagerOperation;
+
+    /// <summary>Values pane, <c>Slet</c>, addressing the value by its 0-based position in the list.</summary>
+    public sealed record DeleteValue(string TypeName, int ValueIndex) : EnumTypeManagerOperation;
+}
+
+/// <summary>What the one-field name prompt shows: its window title and the text the box starts with (selected, so
+/// typing replaces it). The reference application raises exactly this for all four of its Ny/Omdøb buttons —
+/// "Opret ny enumerator type", "Opret ny enumerator værdi", "Omdøb Enumerator type", "Omdøb Enumerator værdi".</summary>
+public sealed record NamePromptInput(string Title, string InitialName);
 
 /// <summary>The current values shown by the scene-value dialog (US-024/US-058). A dimmer scene asks a light level
 /// (%) + ramp time; a relay/socket scene an ON/OFF state.</summary>
@@ -157,9 +195,6 @@ public interface IDialogService
 
     /// <summary>Opens a save-as picker; returns the chosen path, or null if cancelled.</summary>
     Task<string?> PickSaveProjectAsync(string? initialDirectory, string suggestedFileName);
-
-    /// <summary>Opens a save-as picker for an <c>.ifb</c> function-block file (US-021); returns the path, or null.</summary>
-    Task<string?> PickSaveFunctionBlockAsync(string suggestedFileName);
 
     /// <summary>Opens a picker for a single catalog definition file (<c>.def</c>/<c>.ifb</c>) to import (US-059);
     /// returns the chosen path, or null if cancelled.</summary>
@@ -218,8 +253,13 @@ public interface IDialogService
     /// returns the edited type, or null when the installer cancels.</summary>
     Task<EnumDefinitionResult?> EditEnumDefinitionAsync(EnumDefinitionInput input);
 
-    /// <summary>Shows the project's enumerator types and reports what the installer chose (US-030, W10).</summary>
-    Task<EnumTypeManagerResult?> ManageEnumTypesAsync(EnumTypeManagerInput input);
+    /// <summary>Opens the two-pane enumerator types-and-values editor (US-030, W10) and returns when it is closed.
+    /// It has no result: every button applied as it was pressed, exactly as the reference application does.</summary>
+    Task ManageEnumTypesAsync(EnumTypeManagerInput input);
+
+    /// <summary>Asks for ONE name in a modal prompt (the vendor's "Opret ny …" / "Omdøb …"); returns the trimmed
+    /// name, or null when the installer cancels.</summary>
+    Task<string?> PromptForNameAsync(NamePromptInput input);
 
     /// <summary>Opens the modal project-information dialog (US-039) prefilled with <paramref name="current"/>;
     /// returns the edited project/customer/installer info, or null when the installer cancels.</summary>

@@ -2,18 +2,76 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:a="using:Avalonia.Automation"
         x:Class="ihc_openvisual.Views.EnumTypeManagerWindow"
-        Width="380" Height="360"
+        Width="720" Height="440" MinWidth="560" MinHeight="360"
         WindowStartupLocation="CenterOwner"
-        Title="Rediger enumerator typer">
-    <StackPanel Margin="16" Spacing="8">
-        <TextBlock Name="TypesLabel" Text="Enumerator typer i projektet" FontWeight="SemiBold"/>
-        <ListBox Name="TypesList" Height="220"
-                 a:AutomationProperties.LabeledBy="{Binding #TypesLabel}"/>
-        <TextBlock Name="EmptyHint" Text="Projektet har ingen enumerator typer endnu."
-                   IsVisible="False" FontStyle="Italic"/>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-            <Button Name="NewButton" Content="Ny type…" Click="OnNew"/>
-            <Button Name="CloseButton" Content="Luk" IsCancel="True" Click="OnClose"/>
+        Title="Enumerator typer og værdier">
+    <Window.Styles>
+        <!-- The vendor frames each pane in a group box whose caption sits on the frame. HeaderedContentControl
+             renders no chrome of its own, so the frame is supplied here — once, for both panes. -->
+        <Style Selector="HeaderedContentControl.group">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <DockPanel LastChildFill="True">
+                        <!-- Trimmed, not clipped: the values caption carries the selected type's name, which can be
+                             longer than the pane ("Enumerator værdier - Persienne tilstand [read only]"). -->
+                        <TextBlock DockPanel.Dock="Top" Text="{TemplateBinding Header}"
+                                   TextTrimming="CharacterEllipsis" Margin="4,0,4,4"
+                                   ToolTip.Tip="{TemplateBinding Header}"/>
+                        <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                                BorderThickness="1" CornerRadius="3">
+                            <ContentPresenter Content="{TemplateBinding Content}"/>
+                        </Border>
+                    </DockPanel>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+    </Window.Styles>
+
+    <DockPanel Margin="16" LastChildFill="True">
+
+        <!-- One OK, no Cancel — the vendor's dialog applies each button as it is pressed, so by the time you get
+             here there is nothing left to cancel. -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
+                    HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Name="OkButton" Content="OK" MinWidth="84" IsDefault="True" IsCancel="True" Click="OnClose"/>
         </StackPanel>
-    </StackPanel>
+
+        <Grid ColumnDefinitions="*,12,*">
+
+            <!-- Types pane -->
+            <HeaderedContentControl Grid.Column="0" Classes="group" Header="Enumerator type">
+                <DockPanel Margin="8" LastChildFill="True">
+                    <UniformGrid DockPanel.Dock="Bottom" Columns="3" Margin="0,8,0,0">
+                        <Button Name="NewTypeButton" Content="Ny" HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center" Margin="0,0,4,0" Click="OnNewType"/>
+                        <Button Name="DeleteTypeButton" Content="Slet" HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center" Margin="2,0,2,0" Click="OnDeleteType"/>
+                        <Button Name="RenameTypeButton" Content="Omdøb" HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center" Margin="4,0,0,0" Click="OnRenameType"/>
+                    </UniformGrid>
+                    <ListBox Name="TypesList"
+                             a:AutomationProperties.Name="Enumerator type"
+                             SelectionChanged="OnTypeSelectionChanged"/>
+                </DockPanel>
+            </HeaderedContentControl>
+
+            <!-- Values pane. Its caption carries the selected type's name, as the vendor's does
+                 ("Enumerator værdier - Dimmer status"). -->
+            <HeaderedContentControl Grid.Column="2" Classes="group" Name="ValuesGroup" Header="Enumerator værdier">
+                <DockPanel Margin="8" LastChildFill="True">
+                    <UniformGrid DockPanel.Dock="Bottom" Columns="3" Margin="0,8,0,0">
+                        <Button Name="NewValueButton" Content="Ny" HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center" Margin="0,0,4,0" Click="OnNewValue"/>
+                        <Button Name="DeleteValueButton" Content="Slet" HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center" Margin="2,0,2,0" Click="OnDeleteValue"/>
+                        <Button Name="RenameValueButton" Content="Omdøb" HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center" Margin="4,0,0,0" Click="OnRenameValue"/>
+                    </UniformGrid>
+                    <ListBox Name="ValuesList"
+                             a:AutomationProperties.Name="Enumerator værdier"
+                             SelectionChanged="OnValueSelectionChanged"/>
+                </DockPanel>
+            </HeaderedContentControl>
+        </Grid>
+    </DockPanel>
 </Window>

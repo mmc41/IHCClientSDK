@@ -274,11 +274,128 @@ namespace Ihc.Vis.Editing
             return ToEnumRef(FindById(root, definition.Id)!);
         }
 
-        /// <summary>Builds the wiring handle for an in-tree <c>enum_definition</c> element.</summary>
+        /// <summary>
+        /// Renames a USER enum TYPE in place (uxparity Bibliotek/"Omdøb Enumerator type"): changes the definition's
+        /// <c>name</c> and nothing else, so its id, its position in <c>enum_definitions</c> and every
+        /// <c>resource_enum</c> that references it by <c>typedef</c> stay valid — references are by id, never by name.
+        /// Refuses a built-in catalog type (<c>typeid</c>-bearing, "[read only]"), exactly as IHC Visual greys its
+        /// <i>Omdøb</i> for one. Returns the updated handle.
+        /// </summary>
+        public EnumDefinitionRef RenameEnumDefinition(EnumDefinitionRef definition, string newName)
+        {
+            ArgumentNullException.ThrowIfNull(definition);
+            ArgumentNullException.ThrowIfNull(newName);
+            ProjectElement def = RequireEditableEnum(definition, "renamed");
+            SetAttributeById(def.Id!.Value, "name", newName);
+            return ToEnumRef(FindById(root, definition.Id)!);
+        }
+
+        /// <summary>
+        /// Removes one value from a USER enum type (uxparity Bibliotek/"Slet" in the values pane) and renumbers the
+        /// survivors' <c>index</c> 0-based in document order — the invariant <see cref="AddEnumValues"/> relies on to
+        /// continue numbering, which a hole would break. Refuses a built-in catalog type and a value that is still
+        /// REFERENCED as some resource's <c>inivalue</c>: dropping it would leave a dangling reference, and this
+        /// editor does not silently rewrite a resource the caller did not ask about.
+        /// </summary>
+        public EnumDefinitionRef RemoveEnumValue(EnumDefinitionRef definition, ElementId valueId)
+        {
+            ArgumentNullException.ThrowIfNull(definition);
+            ProjectElement def = RequireEditableEnum(definition, "edited");
+            if (!def.ChildrenOrEmpty().Any(v => v.Tag == "enum_value" && v.Id == valueId))
+            {
+                throw new InvalidOperationException(
+                    $"Enum definition '{def.GetAttribute("name")}' has no value with id {valueId.ToToken()}.");
+            }
+            if (ReferenceCount("inivalue", valueId) > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Enum value '{FindById(root, valueId)?.GetAttribute("name")}' is still in use as a resource's " +
+                    "initial value, so it cannot be deleted.");
+            }
+
+            // Re-number in INDEX order, not document order. The file does not store values in index order (the
+            // vendor's own "Dimmer status" is written Reguléret(2), Sidste niveau(1), Slukket(0), …), so numbering
+            // by document position would silently PERMUTE the enum's meaning — every resource keeps pointing at the
+            // same value id while that value's ordinal moves. Document POSITIONS are left exactly as they were, so
+            // only the index attributes differ.
+            var survivors = def.ChildrenOrEmpty()
+                .Where(v => v.Tag == "enum_value" && v.Id != valueId && v.Id is not null)
+                .OrderBy(EnumValueIndex.Of)
+                .Select((v, i) => (Id: v.Id!.Value, NewIndex: i))
+                .ToDictionary(p => p.Id, p => p.NewIndex);
+
+            var kept = ImmutableArray.CreateBuilder<ProjectElement>();
+            foreach (ProjectElement child in def.ChildrenOrEmpty())
+            {
+                if (child.Tag == "enum_value" && child.Id == valueId)
+                    continue;
+                kept.Add(child.Tag == "enum_value" && child.Id is { } childId
+                        && survivors.TryGetValue(childId, out int newIndex)
+                    ? child.WithAttribute("index", DecToken.Format(newIndex))
+                    : child);
+            }
+            root = ReplaceById(root, definition.Id, _ => def with { Children = kept.ToImmutable() }, out _);
+            return ToEnumRef(FindById(root, definition.Id)!);
+        }
+
+        /// <summary>
+        /// Removes a whole USER enum TYPE and its values (uxparity Bibliotek/"Slet" in the types pane). Refuses a
+        /// built-in catalog type, and refuses one still REFERENCED by a <c>resource_enum</c>'s <c>typedef</c> —
+        /// deleting it would leave the resource pointing at nothing, which no reader can repair.
+        /// </summary>
+        public void RemoveEnumDefinition(EnumDefinitionRef definition)
+        {
+            ArgumentNullException.ThrowIfNull(definition);
+            ProjectElement def = RequireEditableEnum(definition, "deleted");
+            int users = ReferenceCount("typedef", definition.Id);
+            if (users > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Enum type '{def.GetAttribute("name")}' is still used by {users} resource(s), so it cannot be deleted.");
+            }
+            root = RemoveById(root, definition.Id);
+        }
+
+        /// <summary>Resolves the definition and refuses the built-in catalog ("[read only]") types the way every enum
+        /// mutation must — one home for the guard the four of them share.</summary>
+        private ProjectElement RequireEditableEnum(EnumDefinitionRef definition, string verb)
+        {
+            ProjectElement def = FindById(root, definition.Id)
+                ?? throw new InvalidOperationException(
+                    $"Enum definition '{definition.Typedef}' is no longer part of the project.");
+            if (def.GetAttribute("typeid") is { } typeid && typeid != ElementId.NullToken)
+            {
+                throw new InvalidOperationException(
+                    $"Enum definition '{def.GetAttribute("name")}' is a built-in catalog type — \"[read only]\" " +
+                    $"in IHC Visual — so it cannot be {verb}.");
+            }
+            return def;
+        }
+
+        /// <summary>Counts the elements whose <paramref name="attribute"/> resolves to <paramref name="id"/>. Compared
+        /// by PARSED id, not raw token text, so a foreign file's non-canonical spelling still counts as a reference.</summary>
+        private int ReferenceCount(string attribute, ElementId id) =>
+            root.DescendantsAndSelf().Count(e =>
+                e.GetAttribute(attribute) is { } token
+                && ElementId.TryParse(token, out ElementId referenced)
+                && referenced == id);
+
+        /// <summary>
+        /// Builds the wiring handle for an in-tree <c>enum_definition</c> element, values in <c>index</c> order.
+        /// <para>
+        /// INDEX order, not document order, because the file does not store the two the same way — IHC Visual's own
+        /// "Dimmer status" is written Reguléret(2), Sidste niveau(1), Slukket(0). The handle's value list is what
+        /// positional addressing resolves against (the enum-manager's rename/delete take the position the dialog
+        /// shows), and the dialog shows index order, so a document-ordered handle deletes the wrong value.
+        /// <c>FirstValue</c> likewise means "the state numbered 0", not "whichever was written first".
+        /// </para>
+        /// </summary>
         private static EnumDefinitionRef ToEnumRef(ProjectElement definition)
         {
             var values = ImmutableArray.CreateBuilder<(string, ElementId)>();
-            foreach (ProjectElement value in definition.ChildrenOrEmpty().Where(c => c.Tag == "enum_value"))
+            foreach (ProjectElement value in definition.ChildrenOrEmpty()
+                         .Where(c => c.Tag == "enum_value")
+                         .OrderBy(EnumValueIndex.Of))
             {
                 values.Add((value.GetAttribute("name") ?? "", value.Id!.Value));
             }

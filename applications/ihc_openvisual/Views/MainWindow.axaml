@@ -362,12 +362,29 @@
                 <MenuItem Header="_Variable" ItemsSource="{Binding VariablePaletteMenu}"
                           ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
             </MenuItem>
+            <!-- Bibliotek carries the vendor's THREE items, in the vendor's order (ids 24588 / 24765 / 24766,
+                 measured 2026-08-04), then OpenVisual's own catalog-import pair below a separator — the reference
+                 application has no counterpart for those two, so they are marked off rather than interleaved.
+                 There is deliberately NO "Indsæt Funktionsblok" here: it was a second copy of Indsæt ▸
+                 FunktionsBlokke, it is not on the vendor's Bibliotek, and it displaced the vendor's first item. -->
             <MenuItem Header="_Bibliotek" a:AutomationProperties.AutomationId="MenuLibrary">
-                <MenuItem Header="Indsæt _Funktionsblok" ItemsSource="{Binding FunctionBlocksMenu}"
-                          ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
-                <MenuItem Header="_Rediger enumerator typer…" Command="{Binding ManageEnumTypesCommand}"
+                <!-- "Rediger Enumerator typer": capital E and NO ellipsis, the vendor's own label (measured
+                     2026-08-04). It opens a dialog, but the reference application spells it without one. -->
+                <MenuItem Header="_Rediger Enumerator typer" Command="{Binding ManageEnumTypesCommand}"
                           IsEnabled="{Binding Registry.Bar[library.manageEnumTypes].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[library.manageEnumTypes].Reason}"/>
+                <!-- Vendor position 2 (id 24765, Ctrl+G): greyed until a function block is selected. Also on the
+                     node flyout — the reference application offers it in both places. -->
+                <MenuItem Header="_Gem Funktionsblok…" Command="{Binding SaveFunctionBlockCommand}"
+                          InputGesture="{OnPlatform 'Ctrl+G', macOS='Cmd+G'}"
+                          IsEnabled="{Binding Registry.Bar[node.saveBlock].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[node.saveBlock].Reason}"/>
+                <!-- Vendor position 3 (id 24766, no shortcut): greyed unless the selection is a LOCKED library
+                     block. "_Oplås" here — O is free on this menu; the node flyout keeps "Op_lås" because L is
+                     taken there by Flyt _op's neighbours. -->
+                <MenuItem Header="_Oplås" Command="{Binding UnlockCommand}"
+                          IsEnabled="{Binding Registry.Bar[node.unlock].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[node.unlock].Reason}"/>
                 <Separator/>
                 <MenuItem Header="_Importer katalogfil…" Command="{Binding ImportCatalogFileCommand}"/>
                 <MenuItem Header="Importer katalog_mappe…" Command="{Binding ImportCatalogFolderCommand}"/>

@@ -830,23 +830,29 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         SelectedInstallationNode = FindNode(InstallationNodes, id);
     });
 
-    /// <summary>Saves a placed function block to a reusable <c>.ifb</c> file (US-021). Invoked from the right-click
-    /// <i>Save block…</i> item and Ctrl+G.</summary>
+    /// <summary>
+    /// Bibliotek ▸ Gem Funktionsblok… (US-021, Ctrl+G): saves the selected block into the library as a reusable
+    /// <c>.ifb</c>. Also on the node's right-click flyout — the vendor offers it in both places.
+    /// <para>
+    /// ONE dialog, asking a Navn and a Note: that is the reference application's own <i>Gem Funktionsblok...</i>
+    /// form (measured 2026-08-04), and it asks for no path because it writes into its component folder. OpenVisual
+    /// used to raise a second, OS file picker after the same form — so a saved block landed wherever the installer
+    /// browsed to and never appeared under <i>Indsæt ▸ FunktionsBlokke</i>, which is the one thing saving it to the
+    /// library is for.
+    /// </para>
+    /// </summary>
     private Task SaveFunctionBlock(TreeNodeViewModel? node) => RunAsync(nameof(SaveFunctionBlock), async () =>
     {
         if (node?.ElementId is not { } id || _session.Current?.FindById(id) is not { } fb || fb.Kind != ElementKind.FunctionBlock)
             return;
         string currentName = _session.Current!.View(fb).Name ?? "block";
         string currentNote = _session.Current!.View(fb).Note ?? string.Empty;
-        PropertiesResult? meta = await _dialogs.EditPropertiesAsync("Gem funktionsblok", currentName, currentNote,
-            affirmative: "Gem");   // this dialog goes on to write a file (S-22)
+        PropertiesResult? meta = await _dialogs.EditPropertiesAsync("Gem Funktionsblok...", currentName, currentNote,
+            affirmative: "Gem");
         if (meta is null)
-            return;   // cancelled the name/note step
-        string? path = await _dialogs.PickSaveFunctionBlockAsync($"{meta.Name}.ifb");
-        if (path is null)
-            return;   // cancelled the file picker
-        if (await _session.SaveFunctionBlockAsync(id, path, meta.Name, meta.Note))
-            StatusText = $"Gemte funktionsblokken '{meta.Name}'.";
+            return;   // cancelled
+        if (await _session.SaveFunctionBlockToLibraryAsync(id, meta.Name, meta.Note) is not null)
+            StatusText = $"Gemte funktionsblokken '{meta.Name}' i biblioteket.";
     });
 
     /// <summary>Unlocks a locked library function block (US-020) so its internals become editable; the tree rebuild
@@ -1246,15 +1252,20 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse("Vælg en lokalitet i Funktioner-ruden.")));
 
+        // On the BAR as well as the flyout: the vendor carries it as Bibliotek's second item (id 24765, Ctrl+G),
+        // greyed until a function block is selected — measured 2026-08-04.
         Registry.Register(new CommandSpec("node.saveBlock", "Ctrl+G",
-            Surfaces.ContextMenu,
+            Surfaces.MenuBar | Surfaces.ContextMenu,
             Execute: ctx => SaveFunctionBlock(ResolveNode(ctx)),
             Gate: ctx => ctx.Node is { Kind: TreeNodeKind.FunctionBlock }
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse("Vælg en funktionsblok, der skal gemmes.")));
 
+        // On the BAR as well as the flyout: the vendor carries it as Bibliotek's third item (id 24766, no shortcut).
+        // Its gate is confirmed identical — measured 2026-08-04 across three blocks of the vendor's own project,
+        // Oplås was enabled on the locked ones and greyed on the unlocked one.
         Registry.Register(new CommandSpec("node.unlock", null,
-            Surfaces.ContextMenu,
+            Surfaces.MenuBar | Surfaces.ContextMenu,
             Execute: ctx => Unlock(ResolveNode(ctx)),
             Gate: ctx => ctx.Node is { IsLockedBlock: true }
                 ? EditVerdict.Allow
@@ -1661,20 +1672,55 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     });
 
     /// <summary>
-    /// Library ▸ Rediger enumerator typer (US-030, W10/F12): shows the enumerator types the project defines, and
-    /// offers to create another. Creating one reuses the standalone-type route, so the naming and state rules stay in
-    /// exactly one place rather than being restated by a second dialog.
+    /// Library ▸ Rediger Enumerator typer (US-030, W10/F12): the two-pane types-and-values editor, shaped on the
+    /// reference application's dialog of the same name (measured 2026-08-04). The dialog owns WHICH button was
+    /// pressed; this owns what each one means — so every enumerator edit goes through the same command gateway,
+    /// undo history and refusal reporting as the rest of the app.
+    /// <para>
+    /// It applies LIVE (the vendor's dialog has an OK and no Cancel), so the dialog re-reads
+    /// <see cref="ProjectProjections.GetEnumeratorTypeViews"/> after each operation rather than holding a copy.
+    /// </para>
     /// </summary>
-    private Task ManageEnumTypesAsync() => RunAsync(nameof(ManageEnumTypesAsync), async () =>
+    private Task ManageEnumTypesAsync() => RunAsync(nameof(ManageEnumTypesAsync), () =>
+        _dialogs.ManageEnumTypesAsync(new EnumTypeManagerInput(
+            "Enumerator typer og værdier",
+            () => _session.Current?.GetEnumeratorTypeViews() ?? System.Array.Empty<EnumTypeView>(),
+            ApplyEnumTypeOperationAsync)));
+
+    /// <summary>Turns one enumerator-manager button press into its command and applies it. Returns null when it
+    /// committed, otherwise the refusal sentence — the dialog cannot show a reason it is not handed.</summary>
+    private async Task<string?> ApplyEnumTypeOperationAsync(EnumTypeManagerOperation operation)
     {
-        IReadOnlyList<string> types = _session.Current?.GetEnumeratorTypes() ?? System.Array.Empty<string>();
-        EnumTypeManagerResult? choice = await _dialogs.ManageEnumTypesAsync(
-            new EnumTypeManagerInput("Rediger enumerator typer", types));
-        if (choice is null)
-            return;   // closed without choosing
-        if (choice.SelectedType is null)
-            await AddStandaloneEnumTypeAsync();
-    });
+        if (_session.Current is not { } project)
+            return "Intet projekt er åbent.";
+
+        (ProjectCommand command, string status) = operation switch
+        {
+            EnumTypeManagerOperation.NewType op =>
+                ((ProjectCommand)_session.Commands.AddStandaloneEnumType(project, op.Name, System.Array.Empty<string>()),
+                    $"Enumerator typen '{op.Name}' blev oprettet."),
+            EnumTypeManagerOperation.RenameType op =>
+                (_session.Commands.RenameEnumType(project, op.TypeName, op.NewName),
+                    $"Enumerator typen blev omdøbt til '{op.NewName}'."),
+            EnumTypeManagerOperation.DeleteType op =>
+                (_session.Commands.DeleteEnumType(project, op.TypeName),
+                    $"Enumerator typen '{op.TypeName}' blev slettet."),
+            EnumTypeManagerOperation.NewValue op =>
+                (_session.Commands.AddEnumValue(project, op.TypeName, op.Name),
+                    $"Værdien '{op.Name}' blev tilføjet '{op.TypeName}'."),
+            EnumTypeManagerOperation.RenameValue op =>
+                (_session.Commands.RenameEnumValue(project, op.TypeName, op.ValueIndex, op.NewName),
+                    $"Værdien blev omdøbt til '{op.NewName}'."),
+            EnumTypeManagerOperation.DeleteValue op =>
+                (_session.Commands.DeleteEnumValue(project, op.TypeName, op.ValueIndex),
+                    $"Værdien blev slettet fra '{op.TypeName}'."),
+            _ => throw new System.ArgumentOutOfRangeException(nameof(operation)),
+        };
+
+        EditOutcome outcome = await _session.ApplyAsync(command);
+        await ReportOutcomeAsync(outcome, status);
+        return outcome.Status == EditStatus.Committed ? null : outcome.Reason ?? "Handlingen blev afvist.";
+    }
 
     // PG-4: inserts a variable of an EXISTING enumerator type — references its def-id, authoring NO new type (the "Ny…"
     // option above authors a new one).

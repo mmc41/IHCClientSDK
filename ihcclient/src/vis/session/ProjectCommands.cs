@@ -121,6 +121,28 @@ namespace Ihc.Vis
         public Session.AddStandaloneEnumType AddStandaloneEnumType(Project project, string typeName, IReadOnlyList<string> states) =>
             new Session.AddStandaloneEnumType(typeName, states);
 
+        /// <summary>Commands behind the six buttons of IHC Visual's <i>Bibliotek ▸ Rediger Enumerator typer</i>
+        /// two-pane editor. Each takes the type by NAME and a value by its 0-based POSITION — what the dialog has —
+        /// and each refuses (rather than faults) on a "[read only]" built-in, matching the vendor's greyed buttons.</summary>
+        public Session.RenameEnumType RenameEnumType(Project project, string typeName, string newName) =>
+            new Session.RenameEnumType(typeName, newName);
+
+        /// <inheritdoc cref="RenameEnumType"/>
+        public Session.DeleteEnumType DeleteEnumType(Project project, string typeName) =>
+            new Session.DeleteEnumType(typeName);
+
+        /// <inheritdoc cref="RenameEnumType"/>
+        public Session.AddEnumValue AddEnumValue(Project project, string typeName, string valueName) =>
+            new Session.AddEnumValue(typeName, valueName);
+
+        /// <inheritdoc cref="RenameEnumType"/>
+        public Session.RenameEnumValue RenameEnumValue(Project project, string typeName, int valueIndex, string newName) =>
+            new Session.RenameEnumValue(typeName, valueIndex, newName);
+
+        /// <inheritdoc cref="RenameEnumType"/>
+        public Session.DeleteEnumValue DeleteEnumValue(Project project, string typeName, int valueIndex) =>
+            new Session.DeleteEnumValue(typeName, valueIndex);
+
         /// <summary>Command to apply edited product documentation (US-011), capturing the product's current locality
         /// so the command can re-parent it when the Location changed.</summary>
         public Session.UpdateProduct UpdateProduct(Project project, ElementId productId, Session.ProductPropertiesResult result) =>
