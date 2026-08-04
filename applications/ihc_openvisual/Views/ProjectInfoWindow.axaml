@@ -60,8 +60,9 @@
                              a:AutomationProperties.LabeledBy="{Binding #ProjProgrammerLabel}"/>
                     <TextBox Grid.Row="1" Grid.Column="3" Name="ProjDrawingBox"
                              a:AutomationProperties.LabeledBy="{Binding #ProjDrawingLabel}"/>
+                    <!-- No trailing colon: alone among this dialog's captions, the vendor's reads "Beskrivelse". -->
                     <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4" Name="ProjDescriptionLabel"
-                               Text="Beskrivelse:" Margin="0,8,0,2"/>
+                               Text="Beskrivelse" Margin="0,8,0,2"/>
                     <TextBox Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="4" Name="ProjDescriptionBox"
                              a:AutomationProperties.LabeledBy="{Binding #ProjDescriptionLabel}"/>
                 </Grid>
@@ -74,35 +75,43 @@
                 <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto">
                     <StackPanel Grid.Row="0" Grid.Column="0" Classes="field">
                         <TextBlock Name="InstNameLabel" Text="Navn:"/>
-                        <TextBox Name="InstNameBox" a:AutomationProperties.LabeledBy="{Binding #InstNameLabel}"/>
+                        <AutoCompleteBox Name="InstNameBox" MinimumPrefixLength="0" FilterMode="Contains"
+                                         a:AutomationProperties.LabeledBy="{Binding #InstNameLabel}"/>
                     </StackPanel>
                     <StackPanel Grid.Row="0" Grid.Column="1" Classes="field" Margin="0,0,0,8">
                         <TextBlock Name="InstAddressLabel" Text="Vej:"/>
-                        <TextBox Name="InstAddressBox" a:AutomationProperties.LabeledBy="{Binding #InstAddressLabel}"/>
+                        <AutoCompleteBox Name="InstAddressBox" MinimumPrefixLength="0" FilterMode="Contains"
+                                         a:AutomationProperties.LabeledBy="{Binding #InstAddressLabel}"/>
                     </StackPanel>
                     <StackPanel Grid.Row="1" Grid.Column="0" Classes="field">
                         <TextBlock Name="InstPhoneLabel" Text="Telefon:"/>
-                        <TextBox Name="InstPhoneBox" a:AutomationProperties.LabeledBy="{Binding #InstPhoneLabel}"/>
+                        <AutoCompleteBox Name="InstPhoneBox" MinimumPrefixLength="0" FilterMode="Contains"
+                                         a:AutomationProperties.LabeledBy="{Binding #InstPhoneLabel}"/>
                     </StackPanel>
                     <StackPanel Grid.Row="1" Grid.Column="1" Classes="field" Margin="0,0,0,8">
                         <TextBlock Name="InstZipLabel" Text="Postnummer:"/>
-                        <TextBox Name="InstZipBox" a:AutomationProperties.LabeledBy="{Binding #InstZipLabel}"/>
+                        <AutoCompleteBox Name="InstZipBox" MinimumPrefixLength="0" FilterMode="Contains"
+                                         a:AutomationProperties.LabeledBy="{Binding #InstZipLabel}"/>
                     </StackPanel>
                     <StackPanel Grid.Row="2" Grid.Column="0" Classes="field">
                         <TextBlock Name="InstMobileLabel" Text="Mobil telefon:"/>
-                        <TextBox Name="InstMobileBox" a:AutomationProperties.LabeledBy="{Binding #InstMobileLabel}"/>
+                        <AutoCompleteBox Name="InstMobileBox" MinimumPrefixLength="0" FilterMode="Contains"
+                                         a:AutomationProperties.LabeledBy="{Binding #InstMobileLabel}"/>
                     </StackPanel>
                     <StackPanel Grid.Row="2" Grid.Column="1" Classes="field" Margin="0,0,0,8">
                         <TextBlock Name="InstCityLabel" Text="By:"/>
-                        <TextBox Name="InstCityBox" a:AutomationProperties.LabeledBy="{Binding #InstCityLabel}"/>
+                        <AutoCompleteBox Name="InstCityBox" MinimumPrefixLength="0" FilterMode="Contains"
+                                         a:AutomationProperties.LabeledBy="{Binding #InstCityLabel}"/>
                     </StackPanel>
                     <StackPanel Grid.Row="3" Grid.Column="0" Classes="field" Margin="0,0,10,0">
                         <TextBlock Name="InstEmailLabel" Text="Email:"/>
-                        <TextBox Name="InstEmailBox" a:AutomationProperties.LabeledBy="{Binding #InstEmailLabel}"/>
+                        <AutoCompleteBox Name="InstEmailBox" MinimumPrefixLength="0" FilterMode="Contains"
+                                         a:AutomationProperties.LabeledBy="{Binding #InstEmailLabel}"/>
                     </StackPanel>
                     <StackPanel Grid.Row="3" Grid.Column="1" Classes="field" Margin="0">
                         <TextBlock Name="InstCountryLabel" Text="Land:"/>
-                        <TextBox Name="InstCountryBox" a:AutomationProperties.LabeledBy="{Binding #InstCountryLabel}"/>
+                        <AutoCompleteBox Name="InstCountryBox" MinimumPrefixLength="0" FilterMode="Contains"
+                                         a:AutomationProperties.LabeledBy="{Binding #InstCountryLabel}"/>
                     </StackPanel>
                 </Grid>
             </HeaderedContentControl>
@@ -112,35 +121,43 @@
                 <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto">
                     <StackPanel Grid.Row="0" Grid.Column="0" Classes="field">
                         <TextBlock Name="CustNameLabel" Text="Navn:"/>
-                        <TextBox Name="CustNameBox" a:AutomationProperties.LabeledBy="{Binding #CustNameLabel}"/>
+                        <AutoCompleteBox Name="CustNameBox" MinimumPrefixLength="0" FilterMode="Contains"
+                                         a:AutomationProperties.LabeledBy="{Binding #CustNameLabel}"/>
                     </StackPanel>
                     <StackPanel Grid.Row="0" Grid.Column="1" Classes="field" Margin="0,0,0,8">
                         <TextBlock Name="CustAddressLabel" Text="Vej:"/>
-                        <TextBox Name="CustAddressBox" a:AutomationProperties.LabeledBy="{Binding #CustAddressLabel}"/>
+                        <AutoCompleteBox Name="CustAddressBox" MinimumPrefixLength="0" FilterMode="Contains"
+                                         a:AutomationProperties.LabeledBy="{Binding #CustAddressLabel}"/>
                     </StackPanel>
                     <StackPanel Grid.Row="1" Grid.Column="0" Classes="field">
                         <TextBlock Name="CustPhoneLabel" Text="Telefon:"/>
-                        <TextBox Name="CustPhoneBox" a:AutomationProperties.LabeledBy="{Binding #CustPhoneLabel}"/>
+                        <AutoCompleteBox Name="CustPhoneBox" MinimumPrefixLength="0" FilterMode="Contains"
+                                         a:AutomationProperties.LabeledBy="{Binding #CustPhoneLabel}"/>
                     </StackPanel>
                     <StackPanel Grid.Row="1" Grid.Column="1" Classes="field" Margin="0,0,0,8">
                         <TextBlock Name="CustZipLabel" Text="Postnummer:"/>
-                        <TextBox Name="CustZipBox" a:AutomationProperties.LabeledBy="{Binding #CustZipLabel}"/>
+                        <AutoCompleteBox Name="CustZipBox" MinimumPrefixLength="0" FilterMode="Contains"
+                                         a:AutomationProperties.LabeledBy="{Binding #CustZipLabel}"/>
                     </StackPanel>
                     <StackPanel Grid.Row="2" Grid.Column="0" Classes="field">
                         <TextBlock Name="CustMobileLabel" Text="Mobil telefon:"/>
-                        <TextBox Name="CustMobileBox" a:AutomationProperties.LabeledBy="{Binding #CustMobileLabel}"/>
+                        <AutoCompleteBox Name="CustMobileBox" MinimumPrefixLength="0" FilterMode="Contains"
+                                         a:AutomationProperties.LabeledBy="{Binding #CustMobileLabel}"/>
                     </StackPanel>
                     <StackPanel Grid.Row="2" Grid.Column="1" Classes="field" Margin="0,0,0,8">
                         <TextBlock Name="CustCityLabel" Text="By:"/>
-                        <TextBox Name="CustCityBox" a:AutomationProperties.LabeledBy="{Binding #CustCityLabel}"/>
+                        <AutoCompleteBox Name="CustCityBox" MinimumPrefixLength="0" FilterMode="Contains"
+                                         a:AutomationProperties.LabeledBy="{Binding #CustCityLabel}"/>
                     </StackPanel>
                     <StackPanel Grid.Row="3" Grid.Column="0" Classes="field" Margin="0,0,10,0">
                         <TextBlock Name="CustEmailLabel" Text="Email:"/>
-                        <TextBox Name="CustEmailBox" a:AutomationProperties.LabeledBy="{Binding #CustEmailLabel}"/>
+                        <AutoCompleteBox Name="CustEmailBox" MinimumPrefixLength="0" FilterMode="Contains"
+                                         a:AutomationProperties.LabeledBy="{Binding #CustEmailLabel}"/>
                     </StackPanel>
                     <StackPanel Grid.Row="3" Grid.Column="1" Classes="field" Margin="0">
                         <TextBlock Name="CustCountryLabel" Text="Land:"/>
-                        <TextBox Name="CustCountryBox" a:AutomationProperties.LabeledBy="{Binding #CustCountryLabel}"/>
+                        <AutoCompleteBox Name="CustCountryBox" MinimumPrefixLength="0" FilterMode="Contains"
+                                         a:AutomationProperties.LabeledBy="{Binding #CustCountryLabel}"/>
                     </StackPanel>
                 </Grid>
             </HeaderedContentControl>

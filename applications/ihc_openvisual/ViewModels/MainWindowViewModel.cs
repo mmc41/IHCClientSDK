@@ -458,11 +458,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Opens the Project information dialog (US-039) prefilled from the project, and applies edits.</summary>
     private Task ProjectInfo() => RunAsync(nameof(ProjectInfo), async () =>
     {
-        ProjectInfoData? result = await _dialogs.EditProjectInfoAsync(_session.GetProjectInfo());
+        ProjectInfoData? result = await _dialogs.EditProjectInfoAsync(
+            _session.GetProjectInfo(), ProjectInfoSuggestions.From(_session.DataTables));
         if (result is null || _session.Current is not { } project)
             return;
         if (await ApplyAsync(_session.Commands.UpdateProjectInfo(project, result), "Projekt oplysninger opdateret."))
         {
+            // What was typed here joins the data tables, so the next project's dialog offers it — this is how the
+            // vendor's tables fill up (every one of its Kunder rows was typed into this dialog, not into the
+            // data-tables editor).
+            _session.DataTables.Commit(ProjectInfoSuggestions.Absorb(_session.DataTables, result));
             // The installer's OWN contact details are an application setting, not per-project data (US-002) — this
             // dialog is where they are entered, so this is where they are remembered, and every later File → New
             // stamps them into the new project. Until now the store had no writer anywhere in the app, so a new
@@ -485,11 +490,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         Email = contact.Email,
     };
 
-    /// <summary>Documentation ▸ Data tables (US-049): opens the data-tables dialog (read-only system tables +
-    /// editable user-defined texts).</summary>
+    /// <summary>Documentation ▸ Rediger data tabeller (US-049): opens the data-tables dialog — the eighteen
+    /// tables and the selected table's user-defined texts. The tables are application state, so the dialog is
+    /// driven by the store rather than by the open project.</summary>
     private Task DataTables() => RunAsync(nameof(DataTables), async () =>
     {
-        await _dialogs.ShowDataTablesAsync(new DataTablesViewModel(_session, _dialogs));
+        await _dialogs.ShowDataTablesAsync(new DataTablesViewModel(_session.DataTables, _dialogs));
     });
 
     /// <summary>Documentation ▸ Data line modules (US-050): opens the read-only input/output data-line module map.</summary>

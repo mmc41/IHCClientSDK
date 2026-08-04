@@ -7,8 +7,9 @@ using ihc_openvisual.ViewModels;
 namespace ihc_openvisual.Views;
 
 /// <summary>
-/// The Data tables dialog (US-049): a thin view over <see cref="DataTablesViewModel"/> — read-only system tables on
-/// the left, editable user-defined texts (Add/Edit/Delete) on the right.
+/// The <i>Rediger data tabeller</i> dialog (US-049): a thin view over <see cref="DataTablesViewModel"/> — the
+/// eighteen data tables on the left, the selected table's user-defined texts on the right, and OK / Annuller.
+/// The view-model edits a working copy; OK commits it, Annuller simply closes.
 /// </summary>
 public partial class DataTablesWindow : Window
 {
@@ -25,5 +26,12 @@ public partial class DataTablesWindow : Window
         await window.ShowDialog(owner);
     }
 
-    private void OnClose(object? sender, RoutedEventArgs e) => Close();
+    private void OnOk(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is DataTablesViewModel vm)
+            vm.Commit();
+        Close();
+    }
+
+    private void OnCancel(object? sender, RoutedEventArgs e) => Close();
 }

@@ -263,7 +263,7 @@ public interface IDialogService
 
     /// <summary>Opens the modal project-information dialog (US-039) prefilled with <paramref name="current"/>;
     /// returns the edited project/customer/installer info, or null when the installer cancels.</summary>
-    Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current);
+    Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current, ProjectInfoSuggestions suggestions);
 
     /// <summary>Opens the modal Data tables dialog (US-049) bound to the given view-model (T020: the
     /// <see cref="IDataTablesDialogViewModel"/> seam, not the concrete VM).</summary>

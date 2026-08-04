@@ -13,17 +13,21 @@
         CanResize="True"
         ShowInTaskbar="False">
     <Window.Styles>
-        <!-- The same captioned group box the project-info dialog uses; Avalonia has no GroupBox. -->
+        <!-- The captioned group box the project-info dialog uses; Avalonia has no GroupBox. A Grid, NOT a
+             StackPanel: a StackPanel measures its child with INFINITE height, so the output group's ScrollViewer
+             never overflowed — it reported nothing to scroll and the window clipped data lines 13-16 away
+             instead. The '*' row passes the group's own height constraint down to the list. -->
         <Style Selector="HeaderedContentControl.group">
             <Setter Property="Template">
                 <ControlTemplate>
-                    <StackPanel>
-                        <TextBlock Text="{TemplateBinding Header}" FontWeight="SemiBold" Margin="2,0,0,4"/>
-                        <Border BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                    <Grid RowDefinitions="Auto,*">
+                        <TextBlock Grid.Row="0" Text="{TemplateBinding Header}" FontWeight="SemiBold"
+                                   Margin="2,0,0,4"/>
+                        <Border Grid.Row="1" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                                 BorderThickness="1" CornerRadius="4" Padding="8">
                             <ContentPresenter Content="{TemplateBinding Content}"/>
                         </Border>
-                    </StackPanel>
+                    </Grid>
                 </ControlTemplate>
             </Setter>
         </Style>
@@ -57,7 +61,10 @@
                         <TextBlock Grid.Column="2" Classes="colhead" Text="Lokalitet"/>
                         <TextBlock Grid.Column="3" Classes="colhead" Text="Beskrivelse"/>
                     </Grid>
-                    <ScrollViewer Grid.Row="1" MaxHeight="212">
+                    <!-- A standing scrollbar, as the vendor's list controls carry: Avalonia's auto-hiding overlay
+                         renders a list that continues below the fold exactly like one that ends there. -->
+                    <ScrollViewer Grid.Row="1" MaxHeight="212" AllowAutoHide="False"
+                                  VerticalScrollBarVisibility="Auto">
                         <ItemsControl Name="InputModulesList" Classes="rows" ItemsSource="{Binding InputModules}"
                                       a:AutomationProperties.Name="Indgangsmoduler">
                             <ItemsControl.ItemTemplate>
@@ -87,7 +94,7 @@
                         <TextBlock Grid.Column="2" Classes="colhead" Text="Lokalitet"/>
                         <TextBlock Grid.Column="3" Classes="colhead" Text="Beskrivelse"/>
                     </Grid>
-                    <ScrollViewer Grid.Row="1">
+                    <ScrollViewer Grid.Row="1" AllowAutoHide="False" VerticalScrollBarVisibility="Auto">
                         <ItemsControl Name="OutputModulesList" Classes="rows" ItemsSource="{Binding OutputModules}"
                                       a:AutomationProperties.Name="Udgangsmoduler">
                             <ItemsControl.ItemTemplate>

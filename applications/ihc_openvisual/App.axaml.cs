@@ -34,7 +34,8 @@ public partial class App : Application
             var recent = RecentProjectsStore.CreateDefault();
             var dialogs = new AvaloniaDialogService(loggerFactory);
             var session = new ProjectWorkflow(projectService, backup, recent, dialogs, loggerFactory,
-                installerIdentity: InstallerIdentityStore.CreateDefault());
+                installerIdentity: InstallerIdentityStore.CreateDefault(),
+                dataTables: DataTableStore.CreateDefault());
             var themeService = new ThemeService();
             // Adopt the platform's high-contrast preference now and keep following it (US-001): Avalonia reports
             // the preference but ships no high-contrast theme, so the palette is ours to supply (BP-13).

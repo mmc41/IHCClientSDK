@@ -212,11 +212,11 @@ public sealed class AvaloniaDialogService : IDialogService
         return await NamePromptWindow.ShowAsync(Owner, input);
     }
 
-    public async Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current)
+    public async Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current, ProjectInfoSuggestions suggestions)
     {
         if (Owner is null)
             return null;
-        return await ProjectInfoWindow.ShowAsync(Owner, current);
+        return await ProjectInfoWindow.ShowAsync(Owner, current, suggestions);
     }
 
     public async Task ShowReportPickerAsync(IReportPickerViewModel viewModel)

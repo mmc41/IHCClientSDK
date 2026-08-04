@@ -1,9 +1,11 @@
 using System.Collections;
 using System.Linq;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless.NUnit;
 using Avalonia.LogicalTree;
+using Avalonia.Threading;
 using Ihc.Vis;
 using ihc_openvisual.Views;
 
@@ -76,6 +78,75 @@ public class ModuleMapDialogParityTests
     public void Dialog_RowsCarryNoSelectionAffordance()
     {
         Assert.That(Window().GetLogicalDescendants().OfType<ListBox>(), Is.Empty);
+    }
+
+    /// <summary>The output group is taller than the dialog — 16 lines do not fit — so it MUST scroll. Measured
+    /// live on <c>g10 4-10-2025</c> it did not: output lines 13–16 were clipped at the group's lower edge and no
+    /// gesture reached them, because the group-box template wrapped its content in a <c>StackPanel</c>, which
+    /// measures its child with infinite height. Given infinite height a ScrollViewer never overflows, so it
+    /// reported viewport == extent (nothing to scroll) and the window clipped the overflow instead. The vendor's
+    /// SysListView32 scrolls to line 16, and "every data line is listed" is only true if a reader can reach them.
+    /// <para>
+    /// Asserted on a laid-out window, not on markup: whether the list overflows is a measure-pass fact, and the
+    /// defect was invisible in the tree (all 16 rows were present as elements the whole time).
+    /// </para>
+    /// </summary>
+    [AvaloniaTest]
+    public void OutputGroup_ActuallyScrolls_SoLines13To16AreReachable()
+    {
+        Window window = ShowLaidOut();
+        try
+        {
+            ScrollViewer[] scrollers = window.GetLogicalDescendants().OfType<ScrollViewer>().ToArray();
+
+            Assert.That(scrollers, Has.Length.EqualTo(2), "one scroller per module group");
+            ScrollViewer outputs = scrollers[1];
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(outputs.Viewport.Height, Is.GreaterThan(0), "the output list was laid out");
+                Assert.That(outputs.Extent.Height, Is.GreaterThan(outputs.Viewport.Height),
+                    "16 output lines do not fit the dialog, so the list must overflow — an extent equal to the "
+                    + "viewport means the content was measured unconstrained and the rows past the fold are "
+                    + "clipped rather than scrollable");
+                Assert.That(outputs.Viewport.Height, Is.LessThanOrEqualTo(window.Height),
+                    "…and the viewport is bounded by the dialog, not by its own content");
+            });
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Standing scrollbars, as the vendor's list controls carry: Avalonia's default overlay scrollbar
+    /// appears only on hover, which renders a list that continues below the fold exactly like one that ends
+    /// there.</summary>
+    [AvaloniaTest]
+    public void Dialog_KeepsItsScrollbarsStanding_AsTheVendorsListsDo()
+    {
+        var scrollers = Window().GetLogicalDescendants().OfType<ScrollViewer>().ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(scrollers, Has.Length.EqualTo(2), "one scroller per module group");
+            Assert.That(scrollers.Select(s => s.AllowAutoHide), Is.All.False,
+                "the scrollbar stays visible rather than hiding until hovered");
+        });
+    }
+
+    /// <summary>A shown, measured, arranged window — the layout facts above are only true of a window that has
+    /// been through a real layout pass. The empty map is enough: it already lists all 8 + 16 data lines, which is
+    /// the whole point of the view (undocumented lines are listed too), so the overflow does not depend on any
+    /// project's contents.</summary>
+    private static Window ShowLaidOut()
+    {
+        Window window = Window();
+        window.Show();
+        window.Measure(new Size(window.Width, window.Height));
+        window.Arrange(new Rect(0, 0, window.Width, window.Height));
+        Dispatcher.UIThread.RunJobs(DispatcherPriority.Loaded);
+        return window;
     }
 
     /// <summary>The vendor's dialog commits nothing — it has a single OK button and no Cancel.</summary>

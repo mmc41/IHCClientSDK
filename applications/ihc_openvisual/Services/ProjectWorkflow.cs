@@ -59,7 +59,8 @@ public sealed class ProjectWorkflow : IDisposable
         int changeBackupThreshold = 10,
         string? catalogDir = null,
         TimeProvider? timeProvider = null,
-        InstallerIdentityStore? installerIdentity = null)
+        InstallerIdentityStore? installerIdentity = null,
+        DataTableStore? dataTables = null)
     {
         _service = service;
         _backup = backup;
@@ -69,6 +70,9 @@ public sealed class ProjectWorkflow : IDisposable
         // settings file, so tests and design-time instances start from an empty in-memory identity.
         InstallerIdentity = installerIdentity ?? new InstallerIdentityStore(
             Path.Combine(catalogDir ?? DefaultCatalogDir(), "installer.json"));
+        // Same rule: the data tables are application state, so an unconfigured session gets its own file.
+        DataTables = dataTables ?? new DataTableStore(
+            Path.Combine(catalogDir ?? DefaultCatalogDir(), "datatables.json"));
         _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<ProjectWorkflow>();
         _timeProvider = timeProvider ?? TimeProvider.System;   // D8: the auto-backup clock/timer, fakeable in tests
         _changeBackupThreshold = changeBackupThreshold < 1 ? 10 : changeBackupThreshold;
@@ -95,6 +99,10 @@ public sealed class ProjectWorkflow : IDisposable
 
     /// <summary>The installer contact details stamped into every new project (US-002).</summary>
     public InstallerIdentityStore InstallerIdentity { get; }
+
+    /// <summary>The installer's reusable documentation texts (US-049) — application state shared across projects,
+    /// exactly as IHC Visual keeps them.</summary>
+    public DataTableStore DataTables { get; }
 
     /// <summary>The SDK command-factory gateway (the single authoring door, D01): builds ready-to-apply
     /// <see cref="ProjectCommand"/>s the VM hands to <see cref="ApplyAsync(ProjectCommand,int?)"/>. Exposes the

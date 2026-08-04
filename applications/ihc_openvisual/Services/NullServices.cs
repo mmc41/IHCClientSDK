@@ -29,7 +29,7 @@ public sealed class NullDialogService : IDialogService
     public Task<EnumDefinitionResult?> EditEnumDefinitionAsync(EnumDefinitionInput input) => Task.FromResult<EnumDefinitionResult?>(null);
     public Task ManageEnumTypesAsync(EnumTypeManagerInput input) => Task.CompletedTask;
     public Task<string?> PromptForNameAsync(NamePromptInput input) => Task.FromResult<string?>(null);
-    public Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current) => Task.FromResult<ProjectInfoData?>(null);
+    public Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current, ProjectInfoSuggestions suggestions) => Task.FromResult<ProjectInfoData?>(null);
     public Task ShowDataTablesAsync(IDataTablesDialogViewModel viewModel) => Task.CompletedTask;
     public Task ShowReportPickerAsync(IReportPickerViewModel viewModel) => Task.CompletedTask;
     public Task<string?> PickSaveReportAsync(string suggestedFileName, string mimeType) => Task.FromResult<string?>(null);

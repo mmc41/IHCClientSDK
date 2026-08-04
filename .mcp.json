@@ -11,6 +11,10 @@
         "npx",
         "chrome-devtools-mcp@latest"
       ]
+    },
+    "avalonia-docs": {
+      "type": "http",
+      "url": "https://docs.avaloniaui.net/mcp"
     }
   }
 }

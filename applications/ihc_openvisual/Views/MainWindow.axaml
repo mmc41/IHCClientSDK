@@ -395,16 +395,19 @@
                           ToolTip.Tip="{Binding Registry.Bar[controller.send].Reason}"/>
                 <MenuItem Header="_Hent projekt…" Command="{Binding RetrieveProjectCommand}"/>
             </MenuItem>
-            <MenuItem Header="Dok_umentation" a:AutomationProperties.AutomationId="MenuDocumentation">
+            <!-- The vendor's three surviving items first, in the vendor's own order (&Datalinie moduler,
+                 &Projektinfo, &Rediger data tabeller); its Rapporter… is replaced by our three named report
+                 entries, kept below a separator as Bibliotek keeps its extensions. -->
+            <MenuItem Header="_Dokumentation" a:AutomationProperties.AutomationId="MenuDocumentation">
+                <MenuItem Header="_Datalinie moduler…" Command="{Binding ModuleMapCommand}"
+                          IsEnabled="{Binding Registry.Bar[project.moduleMap].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[project.moduleMap].Reason}"/>
                 <MenuItem Header="_Projektinfo…" Command="{Binding ProjectInfoCommand}"
                           IsEnabled="{Binding Registry.Bar[project.info].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[project.info].Reason}"/>
                 <MenuItem Header="_Rediger data tabeller…" Command="{Binding DataTablesCommand}"
                           IsEnabled="{Binding Registry.Bar[project.dataTables].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[project.dataTables].Reason}"/>
-                <MenuItem Header="_Datalinie moduler…" Command="{Binding ModuleMapCommand}"
-                          IsEnabled="{Binding Registry.Bar[project.moduleMap].Enabled}"
-                          ToolTip.Tip="{Binding Registry.Bar[project.moduleMap].Reason}"/>
                 <Separator/>
                 <MenuItem Header="_Funktionsdokumentation…" Command="{Binding FunctionsReportCommand}"
                           IsEnabled="{Binding Registry.Bar[reports.functions].Enabled}"

@@ -220,10 +220,13 @@ public sealed class FakeDialogService : IDialogService
         return Task.FromResult(NamePromptResult);
     }
 
-    public Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current)
+    public ProjectInfoSuggestions? LastProjectInfoSuggestions { get; private set; }
+
+    public Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current, ProjectInfoSuggestions suggestions)
     {
         EditProjectInfoCalls++;
         LastProjectInfoInput = current;
+        LastProjectInfoSuggestions = suggestions;
         return Task.FromResult(ProjectInfoResponder is not null ? ProjectInfoResponder(current) : ProjectInfoResult);
     }
 

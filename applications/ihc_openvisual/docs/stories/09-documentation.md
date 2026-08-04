@@ -6,8 +6,9 @@ status: draft
 
 # E9 — Documentation & reporting
 
-> **Scope:** Partly in scope. Entering project information (US-039), editing user-defined data-table
-> texts (US-049) and viewing the data-line modules (US-050) are project-metadata / read-only CRUD.
+> **Scope:** Partly in scope. Entering project information (US-039) and viewing the data-line modules
+> (US-050) are project-metadata / read-only CRUD; the data tables (US-049) are application state shared
+> across projects.
 > Report generation reads the project to produce a finished document: **three documentation reports** —
 > Funktionsdokumentation (end-user functions), Installationsdokumentation (installer) and Functionsblok
 > dokumentation (function-block logic) — each in a **Standard** or **Fuld** mode and as **HTML** or
@@ -46,8 +47,8 @@ function-block inputs (authored in E7), which *feed* these reports.
 - MUST: The **Funktionsdokumentation** report lists only products flagged for end-user documentation;
   the **Installationsdokumentation** report lists every product, with un-filled fields rendered as
   `--` placeholders in its masthead/per-locality blocks and as blank cells in its flat tables.
-- MUST: The installer can add, edit and delete user-defined data-table texts, while the built-in system
-  tables and the data-line modules are shown read-only.
+- MUST: The installer can add, edit and delete the user-defined texts of any of the eighteen data tables
+  (application state, shared across projects), while the data-line modules are shown read-only.
 - MUST: Report output carries no images apart from the icon glyphs: no product photos, no graphical
   module diagrams, no installer logo image, no external manual/help pictures — module addressing and
   wiring are tables.
@@ -87,6 +88,12 @@ Scenario: Project info feeds the reports
 - MUST: The dialog carries two **contact** groups — **Installer** and **Customer** — each with the
   same eight fields: *Name*, *Street*, *Phone*, *Postal code*, *Mobile*, *City*, *Email* and
   *Country*.
+- MUST: All sixteen contact fields are **editable drop-downs**, each offering its data table (US-049) —
+  *Firma* behind the installer's *Name*, *Kunder* behind the customer's, and one shared table behind
+  each of the other seven, which is why the vendor offers the same street/phone/postal-code/city/
+  country/email/mobile list on both sides. A value typed here joins that table.
+- MUST: The *Description* caption carries **no trailing colon**, alone among the dialog's captions —
+  mirrored from the vendor, whose own dialog is inconsistent here.
 - MUST: **Editing project info never erases stored project-information values.** Every
   project-information attribute the file carries survives an edit round-trip — including any the
   dialog does not show. (A field that is shown must be written back as edited; a value the file
@@ -493,67 +500,97 @@ headers, and wide-table print reflow. Pinned byte-for-byte by the twelve `.html`
 
 ---
 
-## US-049 — View and edit data tables (user-defined texts)
+## US-049 — View and edit the data tables (user-defined texts)
 
-**Scope:** In scope — editing user-defined texts is project-content CRUD; the system tables are read-only
-reference data.
+**Scope:** In scope — maintaining the installer's reusable documentation texts. These are **application**
+state, not project content: they are shared across every project the installer opens.
 
-**As an** IHC installer, **I want** to open the project's data tables and add, edit or delete my own
-user-defined texts, **so that** I can maintain the reusable text strings the installation refers to
-without leaving the app.
+**As an** IHC installer, **I want** to maintain my own reusable texts per data table, **so that** the
+documentation fields I fill in over and over offer what I typed last time instead of making me retype it.
 
-**Scope excludes:** editing the built-in system tables (they are read-only); how a user-defined text is
-*referenced* from elsewhere in the project.
+**Scope excludes:** how a text is *referenced* from elsewhere (the offering side is US-039's contact
+fields and the per-product documentation fields, US-011/US-012).
+
+### Business rules (the table set)
+
+- MUST: The dialog lists **eighteen** named tables, in this order — *Kunder, Firma, Mobil telefonnumre,
+  Telefon numre, email adresser, Vejnavne, By, Post numre, Land, Ledningsfarver, Kabelnummer, Kabeltyper,
+  Produkt position, Note tekster, Lysgrupper, Projekt typer, Datalinie modul lokationer, Produkt
+  identifikationskoder*. This is IHC Visual's own set and order, declared in its
+  `Data\userEditableTables.txttables` manifest as `|caption|backing-file|` rows.
+- MUST: The tables are **application state, shared across projects** — never written into the `.vis`.
+  Measured on the vendor: the values its dialog listed under *Kunder* appear nowhere in the open
+  project's file, and several were entered while entirely different projects were open.
+- MUST: A text typed into a documentation field joins that field's table, so the next project offers it.
+  This is how the tables fill up — the vendor's *Kunder* rows were all typed into *Projektinfo*, not into
+  this editor.
 
 ### Acceptance criteria (Given-When-Then)
 
 ```gherkin
 Scenario: Open the data tables dialog
   Given a project is open
-  When I choose "Documentation" > "Data tables"
-  Then a dialog opens listing the system tables and a separate list of user-defined texts
+  When I choose "Dokumentation" > "Rediger data tabeller…"
+  Then a dialog opens with the eighteen tables on the left and the first table selected
+  And the right list shows that table's user-defined texts
 
-Scenario: System tables are read-only
+Scenario: The texts follow the selected table
   Given the data tables dialog is open
-  When I select an entry in the system-tables list
-  Then its rows are shown for reference only and offer no Add / Edit / Delete action
+  When I select a different table
+  Then the right list shows that table's texts, not the previous table's
+
+Scenario: Edit and Delete need a selected text
+  Given a table is selected and no text row is picked
+  Then "Rediger" and "Slet" are unavailable, and "Tilføj" is available
 
 Scenario: Add a user-defined text
-  Given the data tables dialog is open with the user-defined-texts list selected
-  When I choose "Add", type the text in the edit dialog, and confirm with "OK"
-  Then the new text is appended to the user-defined-texts list
+  When I choose "Tilføj", type the text, and confirm with "OK"
+  Then the new text is appended to the selected table's list
 
 Scenario: Edit a user-defined text
-  Given a user-defined text is selected
-  When I choose "Edit", change the text, and confirm with "OK"
+  Given a text is selected
+  When I choose "Rediger", change it, and confirm with "OK"
   Then the list shows the updated text
 
 Scenario: Delete a user-defined text without a confirmation prompt
-  Given a user-defined text is selected
-  When I choose "Delete"
+  Given a text is selected
+  When I choose "Slet"
   Then the text is removed immediately with no confirmation dialog
-  And the removal cannot be undone from within the dialog
+
+Scenario: OK commits, Annuller discards
+  Given I have added, edited or deleted texts
+  When I choose "OK"
+  Then the changes are saved and are there the next time the app runs
+  But when I choose "Annuller" instead, none of them are kept
 ```
 
 ### AC illustrations
 
-- With the user-defined-texts list selected, *Add* → typing `By main door` → *OK* appends
-  `By main door`; selecting it and *Slet* removes it at once with no "are you sure?" prompt.
-- Selecting a system table shows its rows greyed for reference; *Add*/*Rediger*/*Slet* are
-  unavailable for it.
+- With *Kunder* selected, *Tilføj* → typing `Kunde Bo Bæk` → *OK* appends it; selecting *Vejnavne*
+  shows an empty list, and selecting *Kunder* again shows it still there.
+- After committing that text with *OK*, the customer *Navn* field in *Projektinfo* offers `Kunde Bo Bæk`
+  in its drop-down.
 
 ### Constraints
 
-- Verification method — **Demonstration** of the add/edit/delete flow on the user-defined-texts list
-  and **Inspection** that the system tables are read-only.
-- Because *Slet* deletes with no confirmation, IHC OpenVisual SHOULD guard the action (e.g. an
-  app-level confirm).
-- The read-only-system-tables vs editable-user-texts split and the no-confirm *Slet* are fixed
-  requirements; the exact set and contents of the system tables are not itemised here.
+- Verification method — **Demonstration** of the add/edit/delete flow against a selected table, and
+  **Inspection** that the committed texts outlive the dialog and the project.
+- *Slet* needs no confirmation prompt (the vendor asks for none) because the deletion lives in a working
+  copy until *OK* — *Annuller* is the undo.
+- The eighteen captions and their order are a fixed requirement; the texts in them are the installer's.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented.
+**Implementation status:** ✅ Implemented — `DataTableStore` (app-data JSON, beside the installer
+identity) behind a dialog matching the vendor's two-list shape, with the committed texts feeding the
+US-039 contact fields.
+
+> **Superseded model (2026-08-04).** This story previously described a *project*-scoped feature: the left
+> pane listed the open project's `enum_definition`s as read-only "system tables", and the right pane the
+> values of an enum named `User-defined texts`. Comparison against the vendor showed both halves were
+> wrong — its dialog does not show function-block enum types at all, and no `.vis` in the corpus contains
+> a `User-defined texts` enum, so that pane could never be anything but empty. The feature was
+> unreachable, not merely differently shaped.
 
 ---
 

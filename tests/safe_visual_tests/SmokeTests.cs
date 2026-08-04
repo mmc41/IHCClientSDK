@@ -579,16 +579,18 @@ public class SmokeTests : AvaloniaTestBase
         });
     }
 
-    // US-049: the data-tables dialog renders both lists (read-only system tables + editable user texts).
+    // US-049: the data-tables dialog renders the vendor's two captioned lists — Tabeller and the selected table's
+    // Bruger definerede tekster.
     [AvaloniaTest]
     [CaptureScreenshotOnFailure]
-    public async Task DataTablesWindow_ShowsSystemAndUserLists()
+    public async Task DataTablesWindow_ShowsTheTablesAndTheSelectedTablesTexts()
     {
-        using var harness = ShellHarness.Create();
-        var vm = harness.CreateViewModel();
-        await vm.InitializeAsync();
-        await harness.Session.AddUserTextAsync("By main door");
-        var dt = new DataTablesViewModel(harness.Session, harness.Dialogs);
+        var dialogs = new FakeDialogService();
+        var dt = new DataTablesViewModel(
+            new DataTableStore(Path.Combine(Path.GetTempPath(), Path.GetRandomFileName(), "datatables.json")),
+            dialogs);
+        dialogs.PropertiesResult = new PropertiesResult("By main door", string.Empty);
+        await dt.AddTextCommand.ExecuteAsync(null);
 
         var window = new DataTablesWindow { DataContext = dt };
         CurrentTestWindow = window;
@@ -599,9 +601,10 @@ public class SmokeTests : AvaloniaTestBase
         var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
         Assert.Multiple(() =>
         {
-            Assert.That(labels, Does.Contain("System tabeller (skrivebeskyttet)"));
-            Assert.That(labels, Does.Contain("Brugerdefinerede tekster"));
-            Assert.That(labels, Does.Contain("By main door"), "the user text renders in the editable list");
+            Assert.That(labels, Does.Contain("Tabeller"));
+            Assert.That(labels, Does.Contain("Bruger definerede tekster"));
+            Assert.That(labels, Does.Contain("Kunder"), "the table list renders its captions");
+            Assert.That(labels, Does.Contain("By main door"), "the selected table's text renders in the right list");
         });
     }
 
@@ -643,8 +646,8 @@ public class SmokeTests : AvaloniaTestBase
     public void ProjectInfoWindow_ShowsProjectCustomerInstallerFields()
     {
         var window = new ProjectInfoWindow();
-        var custName = window.FindControl<TextBox>("CustNameBox");
-        var instPhone = window.FindControl<TextBox>("InstPhoneBox");
+        var custName = window.FindControl<AutoCompleteBox>("CustNameBox");
+        var instPhone = window.FindControl<AutoCompleteBox>("InstPhoneBox");
         if (custName is not null) custName.Text = "Bob";
         if (instPhone is not null) instPhone.Text = "12345";
         CurrentTestWindow = window;

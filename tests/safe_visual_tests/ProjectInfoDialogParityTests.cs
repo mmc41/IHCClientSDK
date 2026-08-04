@@ -6,6 +6,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Headless.NUnit;
 using Avalonia.LogicalTree;
 using Ihc.Vis;
+using ihc_openvisual.Services;
 using ihc_openvisual.Views;
 
 namespace safe_visual_tests;
@@ -28,15 +29,21 @@ public class ProjectInfoDialogParityTests
 {
     // The logical tree, not the visual one: an unshown window has applied no templates, so a ScrollViewer's content
     // is not yet in its visual tree — enumerating that way would find zero boxes and the assertion would be vacuous.
-    private static string[] EditableFieldNames(Window window) =>
-        window.GetLogicalDescendants().OfType<TextBox>().Select(b => b.Name!).ToArray();
+    private static string[] EditableFieldNames(Window window) => FieldNames(window);
 
     // Depth-first in child order, so these read out in document order — which is what a reading-order assertion needs.
     private static HeaderedContentControl[] Groups(Window window) =>
         window.GetLogicalDescendants().OfType<HeaderedContentControl>().ToArray();
 
-    private static string[] FieldNamesIn(HeaderedContentControl group) =>
-        group.GetLogicalDescendants().OfType<TextBox>().Select(b => b.Name!).ToArray();
+    private static string[] FieldNamesIn(HeaderedContentControl group) => FieldNames(group);
+
+    // TextBox OR AutoCompleteBox: the sixteen CONTACT fields are the vendor's editable combos, so they are
+    // AutoCompleteBoxes, while the five project fields stay plain boxes. Both are "an editable field" here.
+    private static string[] FieldNames(Control root) =>
+        root.GetLogicalDescendants().OfType<Control>()
+            .Where(c => c is TextBox or AutoCompleteBox)
+            .Select(c => c.Name!)
+            .ToArray();
 
     private static string[] LabelTextsIn(HeaderedContentControl group) =>
         group.GetLogicalDescendants().OfType<TextBlock>().Select(t => t.Text!).ToArray();
@@ -131,7 +138,14 @@ public class ProjectInfoDialogParityTests
     }
 
     /// <summary>US-039 names the second project field <em>Projekt type</em>, as the vendor does; the dialog had
-    /// shortened it to "Type".</summary>
+    /// shortened it to "Type".
+    /// <para>
+    /// <c>Beskrivelse</c> carries NO trailing colon — alone among the dialog's twenty-one captions. Read off the
+    /// vendor's live dialog (<c>dialog.read</c> on <c>g10 4-10-2025</c>, 2026-08-04): every other Static ends in
+    /// ':' and this one does not. It is an inconsistency in the vendor's own dialog, and mirroring it is the
+    /// point — this suite pins what the vendor does, not what is tidy.
+    /// </para>
+    /// </summary>
     [AvaloniaTest]
     public void ProjectFieldLabels_UseTheVendorsWording()
     {
@@ -139,8 +153,58 @@ public class ProjectInfoDialogParityTests
 
         Assert.That(LabelTextsIn(groups[0]), Is.EqualTo(new[]
         {
-            "Projektnummer:", "Projekt type:", "Programmør:", "Tegning:", "Beskrivelse:",
+            "Projektnummer:", "Projekt type:", "Programmør:", "Tegning:", "Beskrivelse",
         }));
+    }
+
+    /// <summary>The sixteen contact fields are the vendor's editable COMBOS, each offering the matching data table
+    /// (US-049): <c>Firma</c> behind the installer's Navn, <c>Kunder</c> behind the customer's, and one shared list
+    /// behind each of the other seven — the vendor offered the same street/phone/zip/city/country/email/mobile
+    /// list on both sides. OpenVisual had plain boxes offering nothing.</summary>
+    [AvaloniaTest]
+    public void ContactFields_OfferTheirDataTable()
+    {
+        var window = new ProjectInfoWindow();
+        var suggestions = new ProjectInfoSuggestions(
+            InstallerNames: ["Firma A"], CustomerNames: ["Kunde B"], Streets: ["Virum gyde 2"],
+            Phones: ["23 44 52 16"], Zips: ["2830"], Mobiles: ["26 77 12 83"], Cities: ["Virum"],
+            Emails: ["kunde@example.dk"], Countries: ["Danmark"]);
+
+        window.Offer(suggestions);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(window.InstNameBox.ItemsSource, Is.EqualTo(new[] { "Firma A" }), "installer Navn ← Firma");
+            Assert.That(window.CustNameBox.ItemsSource, Is.EqualTo(new[] { "Kunde B" }), "customer Navn ← Kunder");
+            Assert.That(window.InstAddressBox.ItemsSource, Is.SameAs(window.CustAddressBox.ItemsSource),
+                "…and the other seven share one table per field, as the vendor's do");
+            Assert.That(window.CustCountryBox.ItemsSource, Is.EqualTo(new[] { "Danmark" }));
+        });
+    }
+
+    /// <summary>A value typed here joins the table it would have been offered from, which is how the vendor's
+    /// tables fill up — every one of its <c>Kunder</c> rows was typed into this dialog, not into the data-tables
+    /// editor. Committing project info therefore absorbs the contact values.</summary>
+    [Test]
+    public void CommittedContactValues_JoinTheDataTables()
+    {
+        var store = new DataTableStore(Path.Combine(Path.GetTempPath(), Path.GetRandomFileName(), "dt.json"));
+        var info = new ProjectInfoData("d", "n", "p", "Villa", "T-1",
+            Customer: new ContactInfo("Kunde Bo Bæk", "Virum gyde 2", "Virum", "2830", "Danmark", "", "", ""),
+            Installer: new ContactInfo("Firma A", "Virum gyde 2", "", "", "Danmark", "", "", ""));
+
+        store.Commit(ProjectInfoSuggestions.Absorb(store, info));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(store.TextsFor("customer"), Is.EqualTo(new[] { "Kunde Bo Bæk" }));
+            Assert.That(store.TextsFor("company"), Is.EqualTo(new[] { "Firma A" }));
+            Assert.That(store.TextsFor("street"), Is.EqualTo(new[] { "Virum gyde 2" }),
+                "the same street from both sides is stored once");
+            Assert.That(store.TextsFor("country"), Is.EqualTo(new[] { "Danmark" }));
+            Assert.That(store.TextsFor("projecttype"), Is.EqualTo(new[] { "Villa" }));
+            Assert.That(store.TextsFor("email"), Is.Empty, "a blank field adds nothing");
+        });
     }
 
     /// <summary>The two new fields must be wired both ways, not merely present: shown from the loaded project and
