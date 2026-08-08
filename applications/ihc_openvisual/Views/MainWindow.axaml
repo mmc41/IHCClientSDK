@@ -11,6 +11,7 @@
         mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="680"
         x:Class="ihc_openvisual.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
+        a:AutomationProperties.AutomationId="MainWindow"
         Icon="/Assets/openvisual.ico"
         Width="1000" Height="680"
         FontSize="{DynamicResource WorkspaceFontSize}"
@@ -53,6 +54,9 @@
             <Setter Property="Header" Value="{Binding Header}"/>
             <Setter Property="ItemsSource" Value="{Binding Children}"/>
             <Setter Property="Command" Value="{Binding Command}"/>
+            <!-- A generated item's id is its catalog identifier (see ProductMenuItemViewModel.AutomationId), so the
+                 whole product/function-block/program-command forest is addressable without display text. -->
+            <Setter Property="a:AutomationProperties.AutomationId" Value="{Binding AutomationId}"/>
             <Setter Property="ItemContainerTheme" Value="{DynamicResource ProductMenuItemTheme}"/>
         </ControlTheme>
 
@@ -61,102 +65,136 @@
              "Insert product" is the one pane-specific item (products belong to the Installation pane, gated on
              CanInsertProduct). -->
         <MenuFlyout x:Key="NodeContextMenu" x:DataType="vm:MainWindowViewModel">
-            <MenuItem Header="Indsæt _lokalitet" Command="{Binding InsertLocalityCommand}"
+            <controls:AccessibleMenuItem Header="Indsæt _lokalitet" Command="{Binding InsertLocalityCommand}"
+                      a:AutomationProperties.AutomationId="ctx.insert.locality"
                       IsVisible="{Binding Registry.ContextMenu[insert.locality].Visible, FallbackValue=False}"/>
             <!-- Product category folders are data-driven (H2/D08) — see CatalogMenu.BuildProductForest. -->
-            <MenuItem Header="Indsæt _produkt" ItemsSource="{Binding ProductsMenu}"
+            <controls:AccessibleMenuItem Header="Indsæt _produkt" ItemsSource="{Binding ProductsMenu}"
+                      a:AutomationProperties.AutomationId="ctx.menu.products"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanInsertProduct, FallbackValue=False}"/>
-            <MenuItem Header="Indsæt _Funktionsblok" ItemsSource="{Binding FunctionBlocksMenu}"
+            <controls:AccessibleMenuItem Header="Indsæt _Funktionsblok" ItemsSource="{Binding FunctionBlocksMenu}"
+                      a:AutomationProperties.AutomationId="ctx.menu.functionBlocks"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanInsertFunctionBlock, FallbackValue=False}"/>
-            <MenuItem Header="_Tom Funktionsblok" Command="{Binding InsertEmptyFunctionBlockCommand}"
+            <controls:AccessibleMenuItem Header="_Tom Funktionsblok" Command="{Binding InsertEmptyFunctionBlockCommand}"
                       InputGesture="{OnPlatform 'Ctrl+Shift+B', macOS='Cmd+Shift+B'}"
+                      a:AutomationProperties.AutomationId="ctx.insert.emptyFunctionBlock"
                       IsVisible="{Binding Registry.ContextMenu[insert.emptyFunctionBlock].Visible, FallbackValue=False}"/>
-            <MenuItem Header="Indsæt _variabel" ItemsSource="{Binding VariablePaletteMenu}"
+            <controls:AccessibleMenuItem Header="Indsæt _variabel" ItemsSource="{Binding VariablePaletteMenu}"
+                      a:AutomationProperties.AutomationId="ctx.menu.variables"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanInsertVariable, FallbackValue=False}"/>
-            <MenuItem Header="Link _fra her" Command="{Binding StartLinkCommand}"
+            <controls:AccessibleMenuItem Header="Link _fra her" Command="{Binding StartLinkCommand}"
+                      a:AutomationProperties.AutomationId="ctx.link.startFromHere"
                       IsVisible="{Binding Registry.ContextMenu[link.startFromHere].Visible, FallbackValue=False}"/>
-            <MenuItem Header="Link _til her" Command="{Binding LinkToHereCommand}"
+            <controls:AccessibleMenuItem Header="Link _til her" Command="{Binding LinkToHereCommand}"
+                      a:AutomationProperties.AutomationId="ctx.link.toHere"
                       IsVisible="{Binding Registry.ContextMenu[link.toHere].Visible, FallbackValue=False}"/>
-            <MenuItem Header="_Brug i program" Command="{Binding UseInProgramCommand}"
+            <controls:AccessibleMenuItem Header="_Brug i program" Command="{Binding UseInProgramCommand}"
+                      a:AutomationProperties.AutomationId="ctx.node.useInProgram"
                       IsVisible="{Binding Registry.ContextMenu[node.useInProgram].Visible, FallbackValue=False}"/>
-            <MenuItem Header="_Logmærke" Command="{Binding ToggleLogMarkCommand}"
+            <controls:AccessibleMenuItem Header="_Logmærke" Command="{Binding ToggleLogMarkCommand}"
+                      a:AutomationProperties.AutomationId="ctx.node.toggleLogMark"
                       IsVisible="{Binding Registry.ContextMenu[node.toggleLogMark].Visible, FallbackValue=False}"/>
-            <MenuItem Header="Gem aktuel _værdi" Command="{Binding ToggleSaveValueCommand}"
+            <controls:AccessibleMenuItem Header="Gem aktuel _værdi" Command="{Binding ToggleSaveValueCommand}"
+                      a:AutomationProperties.AutomationId="ctx.program.toggleSaveValue"
                       ToggleType="CheckBox" IsChecked="{Binding SelectedNode.IsValueSaved, Mode=OneWay, FallbackValue=False}"
                       IsVisible="{Binding Registry.ContextMenu[program.toggleSaveValue].Visible, FallbackValue=False}"/>
-            <MenuItem Header="Tilføj _hændelse" ItemsSource="{Binding ProgramEventMenu}"
+            <controls:AccessibleMenuItem Header="Tilføj _hændelse" ItemsSource="{Binding ProgramEventMenu}"
+                      a:AutomationProperties.AutomationId="ctx.menu.programEvents"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanAddEvent, FallbackValue=False}"/>
-            <MenuItem Header="_Powerup hændelse" Command="{Binding AddPowerEventCommand}"
+            <controls:AccessibleMenuItem Header="_Powerup hændelse" Command="{Binding AddPowerEventCommand}"
+                      a:AutomationProperties.AutomationId="ctx.program.addPowerEvent"
                       IsVisible="{Binding Registry.ContextMenu[program.addPowerEvent].Visible, FallbackValue=False}"/>
-            <MenuItem Header="Tilføj _kommando" ItemsSource="{Binding ProgramCommandMenu}"
+            <controls:AccessibleMenuItem Header="Tilføj _kommando" ItemsSource="{Binding ProgramCommandMenu}"
+                      a:AutomationProperties.AutomationId="ctx.menu.programCommands"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanAddCommand, FallbackValue=False}"/>
-            <MenuItem Header="_Program" Command="{Binding AddProgramCommand}"
+            <controls:AccessibleMenuItem Header="_Program" Command="{Binding AddProgramCommand}"
+                      a:AutomationProperties.AutomationId="ctx.program.addProgram"
                       IsVisible="{Binding Registry.ContextMenu[program.addProgram].Visible, FallbackValue=False}"/>
-            <MenuItem Header="_Under program" Command="{Binding AddSubProgramCommand}"
+            <controls:AccessibleMenuItem Header="_Under program" Command="{Binding AddSubProgramCommand}"
+                      a:AutomationProperties.AutomationId="ctx.program.addSubProgram"
                       IsVisible="{Binding Registry.ContextMenu[program.addSubProgram].Visible, FallbackValue=False}"/>
             <!-- Case and Arithmetic bind their OWN gates: all three of these submenus hang off a Commands node, but
                  each fills under different conditions (an eligible switch type / a numeric target register), so a
                  shared CanAddCommand offered two of them empty. -->
-            <MenuItem Header="C_ase" ItemsSource="{Binding ProgramCaseMenu}"
+            <controls:AccessibleMenuItem Header="C_ase" ItemsSource="{Binding ProgramCaseMenu}"
+                      a:AutomationProperties.AutomationId="ctx.menu.programCases"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanAddCase, FallbackValue=False}"/>
-            <MenuItem Header="Arit_metik" ItemsSource="{Binding ProgramArithmeticMenu}"
+            <controls:AccessibleMenuItem Header="Arit_metik" ItemsSource="{Binding ProgramArithmeticMenu}"
+                      a:AutomationProperties.AutomationId="ctx.menu.programArithmetic"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanAddArithmetic, FallbackValue=False}"/>
-            <MenuItem Header="_Ny case værdi som angiver tilstand…" Command="{Binding NewCaseValueCommand}"
+            <controls:AccessibleMenuItem Header="_Ny case værdi som angiver tilstand…" Command="{Binding NewCaseValueCommand}"
+                      a:AutomationProperties.AutomationId="ctx.program.newCaseValue"
                       IsVisible="{Binding Registry.ContextMenu[program.newCaseValue].Visible, FallbackValue=False}"/>
-            <MenuItem Header="Tilføj _betingelse" ItemsSource="{Binding ProgramConditionMenu}"
+            <controls:AccessibleMenuItem Header="Tilføj _betingelse" ItemsSource="{Binding ProgramConditionMenu}"
+                      a:AutomationProperties.AutomationId="ctx.menu.programConditions"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanAddCondition, FallbackValue=False}"/>
-            <MenuItem Header="_Logik gruppe" Command="{Binding AddLogicGroupCommand}"
+            <controls:AccessibleMenuItem Header="_Logik gruppe" Command="{Binding AddLogicGroupCommand}"
+                      a:AutomationProperties.AutomationId="ctx.program.addLogicGroup"
                       IsVisible="{Binding Registry.ContextMenu[program.addLogicGroup].Visible, FallbackValue=False}"/>
             <!-- The AND/OR pair is a fixed two-item menu, so each item is a registry ROW and takes its visibility
                  from that row — not from CanAddCondition, which speaks for the data-driven "Add condition" submenu
                  and is now empty until an operand is armed. The parent follows the same rows (they share one gate),
                  so the group never appears with nothing under it. -->
-            <MenuItem Header="Logisk betingelse"
+            <controls:AccessibleMenuItem Header="Logisk betingelse"
+                      a:AutomationProperties.AutomationId="ctx.menu.logicCondition"
                       IsVisible="{Binding Registry.ContextMenu[program.setConditionsAnd].Visible, FallbackValue=False}">
-                <MenuItem Header="AND (_&amp;)" Command="{Binding SetConditionsAndCommand}"
+                <controls:AccessibleMenuItem Header="AND (_&amp;)" Command="{Binding SetConditionsAndCommand}"
+                          a:AutomationProperties.AutomationId="ctx.program.setConditionsAnd"
                           IsVisible="{Binding Registry.ContextMenu[program.setConditionsAnd].Visible, FallbackValue=False}"/>
-                <MenuItem Header="OR (_&gt;=1)" Command="{Binding SetConditionsOrCommand}"
+                <controls:AccessibleMenuItem Header="OR (_&gt;=1)" Command="{Binding SetConditionsOrCommand}"
+                          a:AutomationProperties.AutomationId="ctx.program.setConditionsOr"
                           IsVisible="{Binding Registry.ContextMenu[program.setConditionsOr].Visible, FallbackValue=False}"/>
-            </MenuItem>
-            <MenuItem Header="_Gem Funktionsblok…" Command="{Binding SaveFunctionBlockCommand}"
+            </controls:AccessibleMenuItem>
+            <controls:AccessibleMenuItem Header="_Gem Funktionsblok…" Command="{Binding SaveFunctionBlockCommand}"
                       InputGesture="{OnPlatform 'Ctrl+G', macOS='Cmd+G'}"
+                      a:AutomationProperties.AutomationId="ctx.node.saveBlock"
                       IsVisible="{Binding Registry.ContextMenu[node.saveBlock].Visible, FallbackValue=False}"/>
-            <MenuItem Header="_Klip" Command="{Binding CutCommand}"
+            <controls:AccessibleMenuItem Header="_Klip" Command="{Binding CutCommand}"
                       InputGesture="{OnPlatform 'Ctrl+X', macOS='Cmd+X'}"
+                      a:AutomationProperties.AutomationId="ctx.edit.cut"
                       IsVisible="{Binding Registry.ContextMenu[edit.cut].Visible, FallbackValue=False}"/>
-            <MenuItem Header="_Kopier" Command="{Binding CopyCommand}"
+            <controls:AccessibleMenuItem Header="_Kopier" Command="{Binding CopyCommand}"
                       InputGesture="{OnPlatform 'Ctrl+C', macOS='Cmd+C'}"
+                      a:AutomationProperties.AutomationId="ctx.edit.copy"
                       IsVisible="{Binding Registry.ContextMenu[edit.copy].Visible, FallbackValue=False}"/>
             <!-- "Op_lås", not "_Oplås": a locked block is also reorderable, so Flyt _op is on this same flyout
                  beside it. L is free here — Indsæt lokalitet, Logmærke and Logik gruppe never show on a block. -->
-            <MenuItem Header="Op_lås" Command="{Binding UnlockCommand}"
+            <controls:AccessibleMenuItem Header="Op_lås" Command="{Binding UnlockCommand}"
+                      a:AutomationProperties.AutomationId="ctx.node.unlock"
                       IsVisible="{Binding Registry.ContextMenu[node.unlock].Visible, FallbackValue=False}"/>
-            <MenuItem Header="_Indsæt" Command="{Binding PasteCommand}"
+            <controls:AccessibleMenuItem Header="_Indsæt" Command="{Binding PasteCommand}"
                       InputGesture="{OnPlatform 'Ctrl+V', macOS='Cmd+V'}"
+                      a:AutomationProperties.AutomationId="ctx.edit.paste"
                       IsVisible="{Binding Registry.ContextMenu[edit.paste].Visible, FallbackValue=False}"/>
-            <MenuItem Header="_Hop til modsat link" Command="{Binding NavigateLinkOppositeCommand}"
+            <controls:AccessibleMenuItem Header="_Hop til modsat link" Command="{Binding NavigateLinkOppositeCommand}"
                       InputGesture="F4"
+                      a:AutomationProperties.AutomationId="ctx.link.jumpOpposite"
                       IsVisible="{Binding Registry.ContextMenu[link.jumpOpposite].Visible, FallbackValue=False}"/>
-            <MenuItem Header="Flyt _op" Command="{Binding MoveUpCommand}"
+            <controls:AccessibleMenuItem Header="Flyt _op" Command="{Binding MoveUpCommand}"
+                      a:AutomationProperties.AutomationId="ctx.edit.moveUp"
                       IsVisible="{Binding Registry.ContextMenu[edit.moveUp].Visible, FallbackValue=False}"/>
-            <MenuItem Header="Flyt _ned" Command="{Binding MoveDownCommand}"
+            <controls:AccessibleMenuItem Header="Flyt _ned" Command="{Binding MoveDownCommand}"
+                      a:AutomationProperties.AutomationId="ctx.edit.moveDown"
                       IsVisible="{Binding Registry.ContextMenu[edit.moveDown].Visible, FallbackValue=False}"/>
-            <MenuItem Header="_Slet" Command="{Binding DeleteCommand}"
+            <controls:AccessibleMenuItem Header="_Slet" Command="{Binding DeleteCommand}"
+                      a:AutomationProperties.AutomationId="ctx.edit.delete"
                       IsVisible="{Binding Registry.ContextMenu[edit.delete].Visible, FallbackValue=False}"/>
             <!-- Offered on a block AND on its pins: the vendor lets you jump from a pin to the program that uses
                  it (uxparity S-28). The registry row's gate resolves the owning block for either. -->
-            <MenuItem Header="_Vis program" Command="{Binding EnterProgrammingModeCommand}"
+            <controls:AccessibleMenuItem Header="_Vis program" Command="{Binding EnterProgrammingModeCommand}"
                       InputGesture="F3"
+                      a:AutomationProperties.AutomationId="ctx.view.showProgram"
                       IsVisible="{Binding Registry.ContextMenu[view.showProgram].Visible, FallbackValue=False}"/>
-            <MenuItem Header="_Egenskaber…" Command="{Binding PropertiesCommand}"
+            <controls:AccessibleMenuItem Header="_Egenskaber…" Command="{Binding PropertiesCommand}"
+                      a:AutomationProperties.AutomationId="ctx.node.properties"
                       IsVisible="{Binding Registry.ContextMenu[node.properties].Visible, FallbackValue=False}"/>
         </MenuFlyout>
 
@@ -172,11 +210,12 @@
             <!-- Publish the row's accessible name on the container itself so a UIA client reading TreeItem.Name gets
                  the label directly (not blank, with the name on an inner peer). -->
             <Setter Property="a:AutomationProperties.Name" Value="{Binding AccessibleName}"/>
-            <!-- Publish the row's KIND for automation. AutomationId is never rendered and is not announced as
-                 content, so this is invisible to a user — unlike HelpText, which is already the tooltip the user
-                 sees. It exists because a row's LABEL is user data and cannot identify it (see
-                 TreeNodeViewModel.NodeKind). -->
-            <Setter Property="a:AutomationProperties.AutomationId" Value="{Binding NodeKind}"/>
+            <!-- Publish the row's LOCATOR — "<kind>#<element id>" — for automation. AutomationId is never rendered
+                 and is not announced as content, so this is invisible to a user — unlike HelpText, which is already
+                 the tooltip the user sees. It exists because a row's LABEL is user data and cannot identify it; the
+                 element id is what makes it unique among its siblings, which the bare kind was not (see
+                 TreeNodeViewModel.AutomationId). -->
+            <Setter Property="a:AutomationProperties.AutomationId" Value="{Binding AutomationId}"/>
         </ControlTheme>
 
         <TreeDataTemplate x:Key="TreeNodeTemplate" x:DataType="vm:TreeNodeViewModel" ItemsSource="{Binding Children}">
@@ -203,29 +242,41 @@
 
     <DockPanel>
         <!-- ============ Menu bar: the stable title hosts ============ -->
-        <Menu DockPanel.Dock="Top">
-            <MenuItem Header="_Filer" a:AutomationProperties.AutomationId="MenuFile">
-                <MenuItem Header="_Nyt projekt" Command="{Binding NewCommand}" InputGesture="{OnPlatform 'Ctrl+N', macOS='Cmd+N'}"/>
-                <MenuItem Header="Å_bn projekt…" Command="{Binding OpenCommand}" InputGesture="{OnPlatform 'Ctrl+O', macOS='Cmd+O'}"/>
+        <!-- Every item carries an AutomationId, and for a command item that id IS its CommandRegistry row id
+             (file.new, edit.cut, …). Two reasons it is not a second, invented vocabulary: a driver that reads the
+             registry already knows what to type, and the ids stay stable while the headers — Danish, and carrying
+             access-key underscores such as "Gem projekt _som…" — do not. Items with no registry row (submenu hosts,
+             the Tema/Tekststørrelse radio items) take a coined menu./theme./textScale. id. The node context flyout
+             below offers many of the SAME commands and prefixes its copies with "ctx." so no id is ambiguous. -->
+        <controls:AccessibleMenu DockPanel.Dock="Top" a:AutomationProperties.AutomationId="MenuBar" a:AutomationProperties.Name="Menulinje">
+            <controls:AccessibleMenuItem Header="_Filer" a:AutomationProperties.AutomationId="MenuFile">
+                <controls:AccessibleMenuItem Header="_Nyt projekt" Command="{Binding NewCommand}" InputGesture="{OnPlatform 'Ctrl+N', macOS='Cmd+N'}"
+                          a:AutomationProperties.AutomationId="file.new"/>
+                <controls:AccessibleMenuItem Header="Å_bn projekt…" Command="{Binding OpenCommand}" InputGesture="{OnPlatform 'Ctrl+O', macOS='Cmd+O'}"
+                          a:AutomationProperties.AutomationId="file.open"/>
                 <Separator/>
-                <MenuItem Header="_Gem projekt" Command="{Binding SaveCommand}" InputGesture="{OnPlatform 'Ctrl+S', macOS='Cmd+S'}"/>
-                <MenuItem Header="Gem projekt _som…" Command="{Binding SaveAsCommand}"
+                <controls:AccessibleMenuItem Header="_Gem projekt" Command="{Binding SaveCommand}" InputGesture="{OnPlatform 'Ctrl+S', macOS='Cmd+S'}"
+                          a:AutomationProperties.AutomationId="file.save"/>
+                <controls:AccessibleMenuItem Header="Gem projekt _som…" Command="{Binding SaveAsCommand}"
+                          a:AutomationProperties.AutomationId="file.saveAs"
                           IsEnabled="{Binding Registry.Bar[file.saveAs].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[file.saveAs].Reason}"/>
                 <Separator/>
-                <MenuItem Header="_Luk projekt" Command="{Binding CloseCommand}"
+                <controls:AccessibleMenuItem Header="_Luk projekt" Command="{Binding CloseCommand}"
+                          a:AutomationProperties.AutomationId="file.close"
                           IsEnabled="{Binding Registry.Bar[file.close].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[file.close].Reason}"/>
                 <Separator/>
                 <!-- "_projekter", not "Se_neste": N is _Nyt projekt's access key, and two items in one menu sharing a
                      key cycle focus instead of invoking. (The vendor has no such submenu — its MRU is inline &1…&4.) -->
-                <MenuItem Name="RecentProjectsMenu" Header="Seneste _projekter" ItemsSource="{Binding RecentProjects}">
-                    <MenuItem.ItemTemplate>
+                <controls:AccessibleMenuItem Name="RecentProjectsMenu" Header="Seneste _projekter" ItemsSource="{Binding RecentProjects}"
+                          a:AutomationProperties.AutomationId="menu.recentProjects">
+                    <controls:AccessibleMenuItem.ItemTemplate>
                         <DataTemplate x:DataType="vm:RecentProjectViewModel">
                             <TextBlock Text="{Binding DisplayName}"/>
                         </DataTemplate>
-                    </MenuItem.ItemTemplate>
-                    <MenuItem.Styles>
+                    </controls:AccessibleMenuItem.ItemTemplate>
+                    <controls:AccessibleMenuItem.Styles>
                         <!-- Scoped to #RecentProjectsMenu's own children: an unscoped "MenuItem > MenuItem" also
                              matches this MenuItem itself (its real parent, the File menu, is a MenuItem too),
                              applying these setters against MainWindowViewModel instead of the per-item
@@ -234,202 +285,255 @@
                              (architecture review A-06): a renamed RecentProjectViewModel member now breaks the
                              build, where the ReflectionBinding these replaced would have silently bound nothing
                              and left the menu items inert. Same annotation as the ItemTemplate above. -->
-                        <Style Selector="MenuItem#RecentProjectsMenu > MenuItem" x:DataType="vm:RecentProjectViewModel">
+                        <Style Selector=":is(MenuItem)#RecentProjectsMenu > :is(MenuItem)" x:DataType="vm:RecentProjectViewModel">
                             <Setter Property="Command" Value="{Binding OpenCommand}"/>
                             <Setter Property="CommandParameter" Value="{Binding Path}"/>
+                            <!-- Generated items are exempt from the authored-markup id audit because their identity
+                                 is the bound datum — so the datum has to supply one. Without this the only handle on
+                                 a recent entry was its display text, a file name (UX review SPEC-01). -->
+                            <Setter Property="a:AutomationProperties.AutomationId" Value="{Binding AutomationId}"/>
                         </Style>
-                    </MenuItem.Styles>
-                </MenuItem>
+                    </controls:AccessibleMenuItem.Styles>
+                </controls:AccessibleMenuItem>
                 <Separator/>
                 <!-- No InputGesture: the vendor's Luk advertises none, and Alt+F4 is the window manager's gesture
                      rather than the command's (uxparity S-27). It still closes the window. -->
-                <MenuItem Header="_Afslut" Command="{Binding ExitCommand}"/>
-            </MenuItem>
+                <controls:AccessibleMenuItem Header="_Afslut" Command="{Binding ExitCommand}"
+                          a:AutomationProperties.AutomationId="app.exit"/>
+            </controls:AccessibleMenuItem>
 
             <!-- Edit is owned by later epics (E14–E15); present as a stable host. -->
-            <MenuItem Header="_Rediger" a:AutomationProperties.AutomationId="MenuEdit">
-                <MenuItem Header="{Binding UndoMenuHeader}" Command="{Binding UndoCommand}" InputGesture="{OnPlatform 'Ctrl+Z', macOS='Cmd+Z'}"
+            <controls:AccessibleMenuItem Header="_Rediger" a:AutomationProperties.AutomationId="MenuEdit">
+                <!-- Undo/Redo are the one pair whose HEADER is a binding ("Fortryd Slet lokalitet"), so header-text
+                     addressing does not merely localize badly here — it changes with the history. -->
+                <controls:AccessibleMenuItem Header="{Binding UndoMenuHeader}" Command="{Binding UndoCommand}" InputGesture="{OnPlatform 'Ctrl+Z', macOS='Cmd+Z'}"
+                          a:AutomationProperties.AutomationId="edit.undo"
                           IsEnabled="{Binding Registry.Bar[edit.undo].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[edit.undo].Reason}"/>
-                <MenuItem Header="{Binding RedoMenuHeader}" Command="{Binding RedoCommand}" InputGesture="{OnPlatform 'Ctrl+Y', macOS='Cmd+Y'}"
+                <controls:AccessibleMenuItem Header="{Binding RedoMenuHeader}" Command="{Binding RedoCommand}" InputGesture="{OnPlatform 'Ctrl+Y', macOS='Cmd+Y'}"
+                          a:AutomationProperties.AutomationId="edit.redo"
                           IsEnabled="{Binding Registry.Bar[edit.redo].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[edit.redo].Reason}"/>
                 <!-- No separator here: the vendor's Rediger runs Fortryd…Egenskaber ungrouped (uxparity S-27). -->
-                <MenuItem Header="_Klip" Command="{Binding CutCommand}" InputGesture="{OnPlatform 'Ctrl+X', macOS='Cmd+X'}"
+                <controls:AccessibleMenuItem Header="_Klip" Command="{Binding CutCommand}" InputGesture="{OnPlatform 'Ctrl+X', macOS='Cmd+X'}"
+                          a:AutomationProperties.AutomationId="edit.cut"
                           IsEnabled="{Binding Registry.Bar[edit.cut].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[edit.cut].Reason}"/>
-                <MenuItem Header="_Kopier" Command="{Binding CopyCommand}" InputGesture="{OnPlatform 'Ctrl+C', macOS='Cmd+C'}"
+                <controls:AccessibleMenuItem Header="_Kopier" Command="{Binding CopyCommand}" InputGesture="{OnPlatform 'Ctrl+C', macOS='Cmd+C'}"
+                          a:AutomationProperties.AutomationId="edit.copy"
                           IsEnabled="{Binding Registry.Bar[edit.copy].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[edit.copy].Reason}"/>
-                <MenuItem Header="_Indsæt" Command="{Binding PasteCommand}" InputGesture="{OnPlatform 'Ctrl+V', macOS='Cmd+V'}"
+                <controls:AccessibleMenuItem Header="_Indsæt" Command="{Binding PasteCommand}" InputGesture="{OnPlatform 'Ctrl+V', macOS='Cmd+V'}"
+                          a:AutomationProperties.AutomationId="edit.paste"
                           IsEnabled="{Binding Registry.Bar[edit.paste].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[edit.paste].Reason}"/>
-                <MenuItem Header="_Slet" Command="{Binding DeleteCommand}" InputGesture="Delete"
+                <controls:AccessibleMenuItem Header="_Slet" Command="{Binding DeleteCommand}" InputGesture="Delete"
+                          a:AutomationProperties.AutomationId="edit.delete"
                           IsEnabled="{Binding Registry.Bar[edit.delete].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[edit.delete].Reason}"/>
                 <!-- The vendor's Rediger ends with Egenskaber… F2 (uxparity S-27); OpenVisual bound F2 but only
                      surfaced Properties on the context menu. -->
-                <MenuItem Header="_Egenskaber…" Command="{Binding PropertiesCommand}" InputGesture="F2"
+                <controls:AccessibleMenuItem Header="_Egenskaber…" Command="{Binding PropertiesCommand}" InputGesture="F2"
+                          a:AutomationProperties.AutomationId="node.properties"
                           IsEnabled="{Binding Registry.Bar[node.properties].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[node.properties].Reason}"/>
-            </MenuItem>
+            </controls:AccessibleMenuItem>
 
-            <MenuItem Header="_Vis" a:AutomationProperties.AutomationId="MenuView">
+            <controls:AccessibleMenuItem Header="_Vis" a:AutomationProperties.AutomationId="MenuView">
                 <!-- The vendor's Vis leads with the three view/navigation commands (uxparity S-27):
                      Konfigurationsvisning (ESC), Vis program (F3), Hop til modsat link (F4). OpenVisual bound all
                      three as keys but surfaced none of them in the menu. -->
-                <MenuItem Header="_Konfigurationsvisning" Command="{Binding LeaveProgrammingModeCommand}" InputGesture="Escape"
+                <controls:AccessibleMenuItem Header="_Konfigurationsvisning" Command="{Binding LeaveProgrammingModeCommand}" InputGesture="Escape"
+                          a:AutomationProperties.AutomationId="program.leaveMode"
                           IsEnabled="{Binding Registry.Bar[program.leaveMode].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[program.leaveMode].Reason}"/>
-                <MenuItem Header="_Værktøjslinie" ToggleType="CheckBox"
+                <controls:AccessibleMenuItem Header="_Værktøjslinie" ToggleType="CheckBox"
+                          a:AutomationProperties.AutomationId="view.toggleToolbar"
                           IsChecked="{Binding IsToolbarVisible}" Command="{Binding ToggleToolbarCommand}"/>
-                <MenuItem Header="_Statuslinie" ToggleType="CheckBox"
+                <controls:AccessibleMenuItem Header="_Statuslinie" ToggleType="CheckBox"
+                          a:AutomationProperties.AutomationId="view.toggleStatusBar"
                           IsChecked="{Binding IsStatusBarVisible}" Command="{Binding ToggleStatusBarCommand}"/>
-                <MenuItem Header="_Vis program" Command="{Binding EnterProgrammingModeCommand}" InputGesture="F3"
+                <controls:AccessibleMenuItem Header="_Vis program" Command="{Binding EnterProgrammingModeCommand}" InputGesture="F3"
+                          a:AutomationProperties.AutomationId="view.showProgram"
                           IsEnabled="{Binding Registry.Bar[view.showProgram].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[view.showProgram].Reason}"/>
-                <MenuItem Header="_Hop til modsat link" Command="{Binding NavigateLinkOppositeCommand}" InputGesture="F4"
+                <controls:AccessibleMenuItem Header="_Hop til modsat link" Command="{Binding NavigateLinkOppositeCommand}" InputGesture="F4"
+                          a:AutomationProperties.AutomationId="link.jumpOpposite"
                           IsEnabled="{Binding Registry.Bar[link.jumpOpposite].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[link.jumpOpposite].Reason}"/>
-                <MenuItem Header="Tema">
-                    <MenuItem Header="System" ToggleType="Radio"
+                <controls:AccessibleMenuItem Header="Tema" a:AutomationProperties.AutomationId="menu.theme">
+                    <controls:AccessibleMenuItem Header="System" ToggleType="Radio"
+                              a:AutomationProperties.AutomationId="theme.system"
                               Command="{Binding SetThemeCommand}" CommandParameter="{x:Static svc:AppTheme.System}"
                               IsChecked="{Binding CurrentTheme, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter=System}"/>
-                    <MenuItem Header="Lys" ToggleType="Radio"
+                    <controls:AccessibleMenuItem Header="Lys" ToggleType="Radio"
+                              a:AutomationProperties.AutomationId="theme.light"
                               Command="{Binding SetThemeCommand}" CommandParameter="{x:Static svc:AppTheme.Light}"
                               IsChecked="{Binding CurrentTheme, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter=Light}"/>
-                    <MenuItem Header="Mørk" ToggleType="Radio"
+                    <controls:AccessibleMenuItem Header="Mørk" ToggleType="Radio"
+                              a:AutomationProperties.AutomationId="theme.dark"
                               Command="{Binding SetThemeCommand}" CommandParameter="{x:Static svc:AppTheme.Dark}"
                               IsChecked="{Binding CurrentTheme, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter=Dark}"/>
-                </MenuItem>
+                </controls:AccessibleMenuItem>
                 <!-- Tekststørrelse (US-001 SHOULD): the only route to OS-level text scaling, which Avalonia does
                      not honour (accessibility BP-12). Same shape as the Tema submenu above — a parameterized
                      item command, one of the narrow registry exemptions. -->
-                <MenuItem Header="Tekststørrelse">
-                    <MenuItem Header="Lille" ToggleType="Radio"
+                <controls:AccessibleMenuItem Header="Tekststørrelse" a:AutomationProperties.AutomationId="menu.textScale">
+                    <controls:AccessibleMenuItem Header="Lille" ToggleType="Radio"
+                              a:AutomationProperties.AutomationId="textScale.small"
                               Command="{Binding SetTextScaleCommand}" CommandParameter="{x:Static svc:TextScale.Small}"
                               IsChecked="{Binding CurrentTextScale, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter=Small}"/>
-                    <MenuItem Header="Normal" ToggleType="Radio"
+                    <controls:AccessibleMenuItem Header="Normal" ToggleType="Radio"
+                              a:AutomationProperties.AutomationId="textScale.normal"
                               Command="{Binding SetTextScaleCommand}" CommandParameter="{x:Static svc:TextScale.Normal}"
                               IsChecked="{Binding CurrentTextScale, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter=Normal}"/>
-                    <MenuItem Header="Stor" ToggleType="Radio"
+                    <controls:AccessibleMenuItem Header="Stor" ToggleType="Radio"
+                              a:AutomationProperties.AutomationId="textScale.large"
                               Command="{Binding SetTextScaleCommand}" CommandParameter="{x:Static svc:TextScale.Large}"
                               IsChecked="{Binding CurrentTextScale, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter=Large}"/>
-                    <MenuItem Header="Størst" ToggleType="Radio"
+                    <controls:AccessibleMenuItem Header="Størst" ToggleType="Radio"
+                              a:AutomationProperties.AutomationId="textScale.largest"
                               Command="{Binding SetTextScaleCommand}" CommandParameter="{x:Static svc:TextScale.Largest}"
                               IsChecked="{Binding CurrentTextScale, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter=Largest}"/>
-                </MenuItem>
-            </MenuItem>
+                </controls:AccessibleMenuItem>
+            </controls:AccessibleMenuItem>
 
             <!-- Insert mirrors IHC Visual's Indsæt inventory AND order (uxparity S-27). These commands are also on
                  the node context menu, which is correct — the vendor offers them in both places, and only having
                  them on the context menu left the bar's Insert with a single item. -->
-            <MenuItem Header="_Indsæt" a:AutomationProperties.AutomationId="MenuInsert">
-                <MenuItem Header="_Program elementer">
-                    <MenuItem Header="_Program" Command="{Binding AddProgramCommand}"
+            <controls:AccessibleMenuItem Header="_Indsæt" a:AutomationProperties.AutomationId="MenuInsert">
+                <controls:AccessibleMenuItem Header="_Program elementer" a:AutomationProperties.AutomationId="menu.programElements">
+                    <controls:AccessibleMenuItem Header="_Program" Command="{Binding AddProgramCommand}"
+                              a:AutomationProperties.AutomationId="program.addProgram"
                               IsEnabled="{Binding Registry.Bar[program.addProgram].Enabled}"
                               ToolTip.Tip="{Binding Registry.Bar[program.addProgram].Reason}"/>
-                    <MenuItem Header="_Ny case værdi som angiver tilstand…" Command="{Binding NewCaseValueCommand}"
+                    <controls:AccessibleMenuItem Header="_Ny case værdi som angiver tilstand…" Command="{Binding NewCaseValueCommand}"
+                              a:AutomationProperties.AutomationId="program.newCaseValue"
                               IsEnabled="{Binding Registry.Bar[program.newCaseValue].Enabled}"
                               ToolTip.Tip="{Binding Registry.Bar[program.newCaseValue].Reason}"/>
-                    <MenuItem Header="_Under program" Command="{Binding AddSubProgramCommand}"
+                    <controls:AccessibleMenuItem Header="_Under program" Command="{Binding AddSubProgramCommand}"
+                              a:AutomationProperties.AutomationId="program.addSubProgram"
                               IsEnabled="{Binding Registry.Bar[program.addSubProgram].Enabled}"
                               ToolTip.Tip="{Binding Registry.Bar[program.addSubProgram].Reason}"/>
-                    <MenuItem Header="_Logik gruppe" Command="{Binding AddLogicGroupCommand}"
+                    <controls:AccessibleMenuItem Header="_Logik gruppe" Command="{Binding AddLogicGroupCommand}"
+                              a:AutomationProperties.AutomationId="program.addLogicGroup"
                               IsEnabled="{Binding Registry.Bar[program.addLogicGroup].Enabled}"
                               ToolTip.Tip="{Binding Registry.Bar[program.addLogicGroup].Reason}"/>
-                </MenuItem>
-                <MenuItem Header="_FunktionsBlokke" ItemsSource="{Binding FunctionBlocksMenu}"
+                </controls:AccessibleMenuItem>
+                <controls:AccessibleMenuItem Header="_FunktionsBlokke" ItemsSource="{Binding FunctionBlocksMenu}"
+                          a:AutomationProperties.AutomationId="menu.functionBlocks"
                           ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
-                <MenuItem Header="_Tom Funktionsblok" Command="{Binding InsertEmptyFunctionBlockCommand}"
+                <controls:AccessibleMenuItem Header="_Tom Funktionsblok" Command="{Binding InsertEmptyFunctionBlockCommand}"
+                          a:AutomationProperties.AutomationId="insert.emptyFunctionBlock"
                           IsEnabled="{Binding Registry.Bar[insert.emptyFunctionBlock].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[insert.emptyFunctionBlock].Reason}"
                           InputGesture="{OnPlatform 'Ctrl+Shift+B', macOS='Cmd+Shift+B'}"/>
-                <MenuItem Header="_Lokalitet" Command="{Binding InsertLocalityCommand}"
+                <controls:AccessibleMenuItem Header="_Lokalitet" Command="{Binding InsertLocalityCommand}"
+                          a:AutomationProperties.AutomationId="insert.locality"
                           IsEnabled="{Binding Registry.Bar[insert.locality].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[insert.locality].Reason}"/>
                 <!-- No access key, as IHC Visual's own Specielle carries none: P is already _Program elementer's
                      and _Produkter's (the vendor collides on those two; adding a third is ours to avoid). -->
-                <MenuItem Header="Specielle">
-                    <MenuItem Header="_Powerup hændelse" Command="{Binding AddPowerEventCommand}"
+                <controls:AccessibleMenuItem Header="Specielle" a:AutomationProperties.AutomationId="menu.special">
+                    <controls:AccessibleMenuItem Header="_Powerup hændelse" Command="{Binding AddPowerEventCommand}"
+                              a:AutomationProperties.AutomationId="program.addPowerEvent"
                               IsEnabled="{Binding Registry.Bar[program.addPowerEvent].Enabled}"
                               ToolTip.Tip="{Binding Registry.Bar[program.addPowerEvent].Reason}"/>
-                </MenuItem>
+                </controls:AccessibleMenuItem>
                 <!-- The product category folders are data-driven (H2/D08): Wired / IHC Wireless / Bus / Special plus an
                      Imported/Uncategorized bucket, derived from the catalog's CategoryPath by CatalogMenu. -->
-                <MenuItem Header="_Produkter" ItemsSource="{Binding ProductsMenu}"
+                <controls:AccessibleMenuItem Header="_Produkter" ItemsSource="{Binding ProductsMenu}"
+                          a:AutomationProperties.AutomationId="menu.products"
                           ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
-                <MenuItem Header="_Variable" ItemsSource="{Binding VariablePaletteMenu}"
+                <controls:AccessibleMenuItem Header="_Variable" ItemsSource="{Binding VariablePaletteMenu}"
+                          a:AutomationProperties.AutomationId="menu.variables"
                           ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
-            </MenuItem>
+            </controls:AccessibleMenuItem>
             <!-- Bibliotek carries the vendor's THREE items, in the vendor's order (ids 24588 / 24765 / 24766,
                  measured 2026-08-04), then OpenVisual's own catalog-import pair below a separator — the reference
                  application has no counterpart for those two, so they are marked off rather than interleaved.
                  There is deliberately NO "Indsæt Funktionsblok" here: it was a second copy of Indsæt ▸
                  FunktionsBlokke, it is not on the vendor's Bibliotek, and it displaced the vendor's first item. -->
-            <MenuItem Header="_Bibliotek" a:AutomationProperties.AutomationId="MenuLibrary">
+            <controls:AccessibleMenuItem Header="_Bibliotek" a:AutomationProperties.AutomationId="MenuLibrary">
                 <!-- "Rediger Enumerator typer": capital E and NO ellipsis, the vendor's own label (measured
                      2026-08-04). It opens a dialog, but the reference application spells it without one. -->
-                <MenuItem Header="_Rediger Enumerator typer" Command="{Binding ManageEnumTypesCommand}"
+                <controls:AccessibleMenuItem Header="_Rediger Enumerator typer" Command="{Binding ManageEnumTypesCommand}"
+                          a:AutomationProperties.AutomationId="library.manageEnumTypes"
                           IsEnabled="{Binding Registry.Bar[library.manageEnumTypes].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[library.manageEnumTypes].Reason}"/>
                 <!-- Vendor position 2 (id 24765, Ctrl+G): greyed until a function block is selected. Also on the
                      node flyout — the reference application offers it in both places. -->
-                <MenuItem Header="_Gem Funktionsblok…" Command="{Binding SaveFunctionBlockCommand}"
+                <controls:AccessibleMenuItem Header="_Gem Funktionsblok…" Command="{Binding SaveFunctionBlockCommand}"
                           InputGesture="{OnPlatform 'Ctrl+G', macOS='Cmd+G'}"
+                          a:AutomationProperties.AutomationId="node.saveBlock"
                           IsEnabled="{Binding Registry.Bar[node.saveBlock].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[node.saveBlock].Reason}"/>
                 <!-- Vendor position 3 (id 24766, no shortcut): greyed unless the selection is a LOCKED library
                      block. "_Oplås" here — O is free on this menu; the node flyout keeps "Op_lås" because L is
                      taken there by Flyt _op's neighbours. -->
-                <MenuItem Header="_Oplås" Command="{Binding UnlockCommand}"
+                <controls:AccessibleMenuItem Header="_Oplås" Command="{Binding UnlockCommand}"
+                          a:AutomationProperties.AutomationId="node.unlock"
                           IsEnabled="{Binding Registry.Bar[node.unlock].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[node.unlock].Reason}"/>
                 <Separator/>
-                <MenuItem Header="_Importer katalogfil…" Command="{Binding ImportCatalogFileCommand}"/>
-                <MenuItem Header="Importer katalog_mappe…" Command="{Binding ImportCatalogFolderCommand}"/>
-            </MenuItem>
-            <MenuItem Header="_Controller" a:AutomationProperties.AutomationId="MenuController">
-                <MenuItem Header="_Send projekt…" Command="{Binding SendProjectCommand}" InputGesture="F5"
+                <controls:AccessibleMenuItem Header="_Importer katalogfil…" Command="{Binding ImportCatalogFileCommand}"
+                          a:AutomationProperties.AutomationId="catalog.importFile"/>
+                <controls:AccessibleMenuItem Header="Importer katalog_mappe…" Command="{Binding ImportCatalogFolderCommand}"
+                          a:AutomationProperties.AutomationId="catalog.importFolder"/>
+            </controls:AccessibleMenuItem>
+            <controls:AccessibleMenuItem Header="_Controller" a:AutomationProperties.AutomationId="MenuController">
+                <controls:AccessibleMenuItem Header="_Send projekt…" Command="{Binding SendProjectCommand}" InputGesture="F5"
+                          a:AutomationProperties.AutomationId="controller.send"
                           IsEnabled="{Binding Registry.Bar[controller.send].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[controller.send].Reason}"/>
-                <MenuItem Header="_Hent projekt…" Command="{Binding RetrieveProjectCommand}"/>
-            </MenuItem>
+                <controls:AccessibleMenuItem Header="_Hent projekt…" Command="{Binding RetrieveProjectCommand}"
+                          a:AutomationProperties.AutomationId="controller.retrieve"/>
+            </controls:AccessibleMenuItem>
             <!-- The vendor's three surviving items first, in the vendor's own order (&Datalinie moduler,
                  &Projektinfo, &Rediger data tabeller); its Rapporter… is replaced by our three named report
                  entries, kept below a separator as Bibliotek keeps its extensions. -->
-            <MenuItem Header="_Dokumentation" a:AutomationProperties.AutomationId="MenuDocumentation">
-                <MenuItem Header="_Datalinie moduler…" Command="{Binding ModuleMapCommand}"
+            <controls:AccessibleMenuItem Header="_Dokumentation" a:AutomationProperties.AutomationId="MenuDocumentation">
+                <controls:AccessibleMenuItem Header="_Datalinie moduler…" Command="{Binding ModuleMapCommand}"
+                          a:AutomationProperties.AutomationId="project.moduleMap"
                           IsEnabled="{Binding Registry.Bar[project.moduleMap].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[project.moduleMap].Reason}"/>
-                <MenuItem Header="_Projektinfo…" Command="{Binding ProjectInfoCommand}"
+                <controls:AccessibleMenuItem Header="_Projektinfo…" Command="{Binding ProjectInfoCommand}"
+                          a:AutomationProperties.AutomationId="project.info"
                           IsEnabled="{Binding Registry.Bar[project.info].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[project.info].Reason}"/>
-                <MenuItem Header="_Rediger data tabeller…" Command="{Binding DataTablesCommand}"
+                <controls:AccessibleMenuItem Header="_Rediger data tabeller…" Command="{Binding DataTablesCommand}"
+                          a:AutomationProperties.AutomationId="project.dataTables"
                           IsEnabled="{Binding Registry.Bar[project.dataTables].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[project.dataTables].Reason}"/>
                 <Separator/>
-                <MenuItem Header="_Funktionsdokumentation…" Command="{Binding FunctionsReportCommand}"
+                <controls:AccessibleMenuItem Header="_Funktionsdokumentation…" Command="{Binding FunctionsReportCommand}"
+                          a:AutomationProperties.AutomationId="reports.functions"
                           IsEnabled="{Binding Registry.Bar[reports.functions].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[reports.functions].Reason}"/>
-                <MenuItem Header="_Installationsdokumentation…" Command="{Binding InstallationReportCommand}"
+                <controls:AccessibleMenuItem Header="_Installationsdokumentation…" Command="{Binding InstallationReportCommand}"
+                          a:AutomationProperties.AutomationId="reports.installation"
                           IsEnabled="{Binding Registry.Bar[reports.installation].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[reports.installation].Reason}"/>
                 <!-- "_blok", not "_dokumentation": D is _Datalinie moduler…'s key in this same menu. -->
-                <MenuItem Header="Functions_blok dokumentation…" Command="{Binding FunctionBlocksReportCommand}"
+                <controls:AccessibleMenuItem Header="Functions_blok dokumentation…" Command="{Binding FunctionBlocksReportCommand}"
+                          a:AutomationProperties.AutomationId="reports.functionBlocks"
                           IsEnabled="{Binding Registry.Bar[reports.functionBlocks].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[reports.functionBlocks].Reason}"/>
-            </MenuItem>
+            </controls:AccessibleMenuItem>
 
-            <MenuItem Header="_Hjælp" a:AutomationProperties.AutomationId="MenuHelp">
-                <MenuItem Header="_Hjælpe emner" Command="{Binding HelpCommand}" InputGesture="F1"/>
+            <controls:AccessibleMenuItem Header="_Hjælp" a:AutomationProperties.AutomationId="MenuHelp">
+                <controls:AccessibleMenuItem Header="_Hjælpe emner" Command="{Binding HelpCommand}" InputGesture="F1"
+                          a:AutomationProperties.AutomationId="help.onNode"/>
                 <Separator/>
-                <MenuItem Header="Vis indstillinger" Command="{Binding ShowSettingsCommand}"/>
-                <MenuItem Header="Telemetridiagnostik" Command="{Binding TelemetryDiagnosticsCommand}"/>
+                <controls:AccessibleMenuItem Header="Vis indstillinger" Command="{Binding ShowSettingsCommand}"
+                          a:AutomationProperties.AutomationId="app.settings"/>
+                <controls:AccessibleMenuItem Header="Telemetridiagnostik" Command="{Binding TelemetryDiagnosticsCommand}"
+                          a:AutomationProperties.AutomationId="app.telemetryDiagnostics"/>
                 <Separator/>
-                <MenuItem Header="_Om IHC OpenVisual…" Command="{Binding AboutCommand}"/>
-            </MenuItem>
-        </Menu>
+                <controls:AccessibleMenuItem Header="_Om IHC OpenVisual…" Command="{Binding AboutCommand}"
+                          a:AutomationProperties.AutomationId="help.about"/>
+            </controls:AccessibleMenuItem>
+        </controls:AccessibleMenu>
 
         <!-- ============ Toolbar ============ -->
         <!-- Landmark: lets a screen-reader user jump straight to the command chrome instead of walking the tree.
@@ -579,14 +683,25 @@
                     <TextBlock Text="{Binding InstallationPaneHeader}" Foreground="{DynamicResource PaneHeaderForegroundBrush}"
                                FontWeight="SemiBold" FontSize="{DynamicResource BodyFontSize}"/>
                 </Border>
+                <!-- The id is explicit, not left to the x:Name fallback: the pane is the first thing a driver
+                     addresses, and x:Name is an internal detail a rename tool changes silently. -->
                 <controls:AccessibleTreeView x:Name="InstallationTree" ItemsSource="{Binding InstallationNodes}" KeyDown="OnTreeKeyDown"
+                          a:AutomationProperties.AutomationId="InstallationTree"
+                          a:AutomationProperties.Name="{Binding InstallationPaneHeader}"
                           SelectedItem="{Binding SelectedInstallationNode, Mode=TwoWay}"
                           ContextFlyout="{StaticResource NodeContextMenu}"
                           ItemContainerTheme="{StaticResource TreeNodeItemTheme}"
                           ItemTemplate="{StaticResource TreeNodeTemplate}"/>
             </DockPanel>
 
+            <!-- The splitter is the shell's one drag-operated control. Avalonia exposes no drag pattern to UI
+                 Automation on any platform, so a driver (and a screen-reader user) reaches it the only other way
+                 there is: focus it and use the arrow keys — which GridSplitter supports, and which needs the
+                 control to be findable and announced. -->
             <GridSplitter Grid.Column="1" Width="4" ResizeDirection="Columns"
+                          a:AutomationProperties.AutomationId="PaneSplitter"
+                          a:AutomationProperties.Name="Panelopdeler"
+                          a:AutomationProperties.HelpText="Brug venstre og højre piletast til at ændre panelernes bredde"
                           Background="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
 
             <DockPanel Grid.Column="2"
@@ -598,6 +713,8 @@
                                FontWeight="SemiBold" FontSize="{DynamicResource BodyFontSize}"/>
                 </Border>
                 <controls:AccessibleTreeView x:Name="FunctionsTree" ItemsSource="{Binding FunctionNodes}" KeyDown="OnTreeKeyDown"
+                          a:AutomationProperties.AutomationId="FunctionsTree"
+                          a:AutomationProperties.Name="{Binding FunctionsPaneHeader}"
                           SelectedItem="{Binding SelectedFunctionsNode, Mode=TwoWay}"
                           ContextFlyout="{StaticResource NodeContextMenu}"
                           ItemContainerTheme="{StaticResource TreeNodeItemTheme}"

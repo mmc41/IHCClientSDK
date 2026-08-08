@@ -5,6 +5,7 @@
         xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="520"
         x:Class="ihc_openvisual.Views.ProjectInfoWindow"
+        a:AutomationProperties.AutomationId="ProjectInfoWindow"
         Title="Rediger projekt oplysninger"
         Width="800" Height="520"
         WindowStartupLocation="CenterOwner"

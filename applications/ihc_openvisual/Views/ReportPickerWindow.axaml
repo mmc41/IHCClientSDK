@@ -1,33 +1,47 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:a="using:Avalonia.Automation"
         xmlns:vm="using:ihc_openvisual.ViewModels"
         x:Class="ihc_openvisual.Views.ReportPickerWindow"
         x:DataType="vm:ReportPickerViewModel"
+        a:AutomationProperties.AutomationId="ReportPickerWindow"
         Title="Rapporter"
         Width="400" SizeToContent="Height" CanResize="False"
         WindowStartupLocation="CenterOwner">
   <StackPanel Margin="16" Spacing="12">
+    <!-- Each choice is bound to its caption with LabeledBy rather than left to sit next to it: a bare ComboBox
+         announces only its selected value, so without this a screen reader gives no way to tell the report
+         picker's two drop-downs apart. -->
     <StackPanel Spacing="4">
-      <TextBlock Text="Rapport"/>
-      <ComboBox ItemsSource="{Binding Kinds}" SelectedItem="{Binding SelectedKind}"
+      <TextBlock Name="KindLabel" Text="Rapport"/>
+      <ComboBox Name="KindCombo" ItemsSource="{Binding Kinds}" SelectedItem="{Binding SelectedKind}"
+                a:AutomationProperties.AutomationId="ReportKindCombo"
+                a:AutomationProperties.LabeledBy="{Binding #KindLabel}"
                 HorizontalAlignment="Stretch"/>
     </StackPanel>
     <StackPanel Spacing="4">
-      <TextBlock Text="Format"/>
-      <ComboBox ItemsSource="{Binding Formats}" SelectedItem="{Binding SelectedFormat}"
+      <TextBlock Name="FormatLabel" Text="Format"/>
+      <ComboBox Name="FormatCombo" ItemsSource="{Binding Formats}" SelectedItem="{Binding SelectedFormat}"
+                a:AutomationProperties.AutomationId="ReportFormatCombo"
+                a:AutomationProperties.LabeledBy="{Binding #FormatLabel}"
                 HorizontalAlignment="Stretch"/>
     </StackPanel>
     <StackPanel Spacing="4">
       <TextBlock Text="Tilstand"/>
       <StackPanel Orientation="Horizontal" Spacing="16">
-        <RadioButton Content="Standard" GroupName="ReportMode" IsChecked="{Binding IsStandardMode, Mode=TwoWay}"/>
-        <RadioButton Content="Fuld" GroupName="ReportMode" IsChecked="{Binding IsFullMode, Mode=TwoWay}"/>
+        <RadioButton Content="Standard" GroupName="ReportMode" IsChecked="{Binding IsStandardMode, Mode=TwoWay}"
+                     a:AutomationProperties.AutomationId="ReportModeStandard"/>
+        <RadioButton Content="Fuld" GroupName="ReportMode" IsChecked="{Binding IsFullMode, Mode=TwoWay}"
+                     a:AutomationProperties.AutomationId="ReportModeFull"/>
       </StackPanel>
     </StackPanel>
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-      <Button Content="Vis" Command="{Binding ViewInBrowserCommand}"/>
-      <Button Content="Gem som…" Command="{Binding SaveAsCommand}"/>
-      <Button Content="Luk" Click="OnClose" IsCancel="True"/>
+      <Button Content="Vis" Command="{Binding ViewInBrowserCommand}"
+              a:AutomationProperties.AutomationId="ReportViewButton"/>
+      <Button Content="Gem som…" Command="{Binding SaveAsCommand}"
+              a:AutomationProperties.AutomationId="ReportSaveAsButton"/>
+      <Button Content="Luk" Click="OnClose" IsCancel="True"
+              a:AutomationProperties.AutomationId="ReportCloseButton"/>
     </StackPanel>
   </StackPanel>
 </Window>

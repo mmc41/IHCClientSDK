@@ -5,6 +5,7 @@
         xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="380" d:DesignHeight="320"
         x:Class="ihc_openvisual.Views.EnumDefinitionWindow"
+        a:AutomationProperties.AutomationId="EnumDefinitionWindow"
         Title="Enumerator"
         Width="380" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"

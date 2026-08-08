@@ -7,6 +7,13 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using ArchUnitNET.Domain;
 using ArchUnitNET.Loader;
+// The automation-surface rules anchor on the Avalonia control/peer types they are ABOUT (the stock menu and tree
+// controls, the peer base classes, the pattern-provider namespace). Avalonia reaches this test project through the
+// ihc_openvisual ProjectReference only — never the SDK, whose own no-Avalonia rule loads the SDK in isolation.
+using Avalonia.Automation.Peers;
+using Avalonia.Automation.Provider;
+using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using static Ihc.Tests.ArchRuleHelpers;
 // ArchUnitNET.Loader also exports a `Type`; the reflection helpers in this fixture mean System.Type throughout.
 using Type = System.Type;
@@ -255,10 +262,7 @@ namespace Ihc.Tests
         [Test]
         public void GuiScanScope_CoversEveryTypeTheAssemblyDeclares()
         {
-            var authored = typeof(global::ihc_openvisual.App).Assembly.GetTypes()
-                .Where(t => !IsSynthesised(t) && !IsGeneratedBuildOutput(t))
-                .Select(t => t.FullName!)
-                .ToList();
+            var authored = AuthoredGuiTypes().Select(t => t.FullName!).ToList();
             Assert.That(authored, Is.Not.Empty, "sanity: the GUI assembly declares authored types");
 
             var outsideTheScannedRoot = authored
@@ -883,6 +887,322 @@ namespace Ihc.Tests
                 Assert.That(synthesised.Where(IsViewModelStateOwner), Is.Empty,
                     "a synthesised closure/state machine is not a state owner — its <x>5__n members are hoisted locals of one operation");
             });
+
+        // ---- The automation surface's STRUCTURAL preconditions ----------------------------------------------------
+        //
+        // Avalonia keeps ONE tree: an AutomationPeer feeds the platform accessibility API (UIA, NSAccessibility,
+        // AT-SPI2) and every UI-automation driver alike. safe_visual_tests' AutomationCoverageTests walks that tree
+        // and asserts what it CONTAINS (a name, an id, an operable pattern per window it knows about). The four rules
+        // below are the complement it cannot express: the structural preconditions that make the peer tree possible at
+        // all, over every type the assembly declares — including markup, since the Avalonia XAML compiler emits
+        // `!XamlIlPopulate` ONTO the window type itself (ihc_openvisual.Views.MainWindow::!XamlIlPopulate), so a
+        // control authored in .axaml is a constructor-call edge of that window in this model exactly like a `new` in
+        // C# would be. StockControlBanScan_SeesMarkupAuthoredConstructions pins that premise.
+
+        /// <summary>The stock Avalonia menu/tree controls that cannot be operated through UI Automation at all:
+        /// <c>MenuItemAutomationPeer</c> offers only Toggle and <c>TreeViewItemAutomationPeer</c> only Scroll and
+        /// SelectionItem, so neither a driver nor a screen-reader user can invoke a command or open a submenu/node.
+        /// The app supplies <c>AccessibleMenu</c>/<c>AccessibleMenuItem</c>/<c>AccessibleTreeView</c>/
+        /// <c>AccessibleTreeViewItem</c> in their place. <see cref="Separator"/> is deliberately NOT here: a separator
+        /// must stay a stock Separator — wrapping one into a menu item is the opposite defect (a nameless, invokable
+        /// row a client counts as a command and a screen reader reads out).</summary>
+        private static IReadOnlyCollection<string> UnoperableStockControlTypeNames() => new HashSet<string>
+        {
+            typeof(Menu).FullName!,
+            typeof(MenuItem).FullName!,
+            typeof(TreeView).FullName!,
+            typeof(TreeViewItem).FullName!,
+        };
+
+        /// <summary>The sanctioned replacements for those stock controls — the one list, since all three automation
+        /// rules are about the same four types: the ctor ban exempts them as ORIGINS (each derives from the stock type
+        /// it replaces, and a base-constructor call is a constructor-call edge like any other), and the container-rule
+        /// and theme-key controls assert the rules stay quiet for them.</summary>
+        private static readonly IReadOnlyCollection<Type> AccessibleControlTypes = new[]
+        {
+            typeof(global::ihc_openvisual.Controls.AccessibleMenu),
+            typeof(global::ihc_openvisual.Controls.AccessibleMenuItem),
+            typeof(global::ihc_openvisual.Controls.AccessibleTreeView),
+            typeof(global::ihc_openvisual.Controls.AccessibleTreeViewItem),
+        };
+
+        private static readonly IReadOnlyCollection<string> AccessibleControlSubclasses =
+            AccessibleControlTypes.Select(type => type.FullName!).ToList();
+
+        /// <summary>
+        /// The menu bar, the node flyout and the two trees are this app's whole command surface, and every string on
+        /// them is Danish — so they must be reachable by a driver, not merely by a click at a screen coordinate. A
+        /// bare <c>&lt;MenuItem&gt;</c> authored in markup is therefore not a style preference but a hole in the
+        /// command surface, and it is invisible in a screenshot and in a passing behavioural test alike (the item
+        /// looks and clicks exactly right; only the peer is empty). CLAUDE.md states the convention — "never author a
+        /// bare <c>&lt;MenuItem&gt;</c> in this app" — and this makes it structural, over C# and XAML together, and
+        /// over every window including ones no test fixture's roster knows about yet.
+        /// </summary>
+        [Test]
+        public void Gui_DoesNotInstantiateUnoperableStockControls() =>
+            AssertDoesNotConstructTypeNames(Gui, GuiRoot, UnoperableStockControlTypeNames(),
+                "the stock Avalonia menu/tree controls",
+                "menus and trees must be authored as the Accessible* subclasses — Avalonia's stock peers expose no Invoke/ExpandCollapse, so a bare MenuItem or TreeView is unreachable by UI Automation and by assistive technology",
+                AccessibleControlSubclasses);
+
+        /// <summary>
+        /// The positive control for <see cref="Gui_DoesNotInstantiateUnoperableStockControls"/>, and the evidence for
+        /// the premise the whole rule rests on: that a control authored in XAML is visible to a constructor-call scan
+        /// at all. MainWindow's markup contains four <see cref="Separator"/>s, so that edge MUST be observable on the
+        /// <c>ihc_openvisual.Views.MainWindow</c> type. If Avalonia's XAML compiler ever moves populate code out of the
+        /// window type (into the <c>CompiledAvaloniaXaml</c> namespace, which is outside <see cref="GuiRoot"/> and
+        /// therefore unscanned), this fails — instead of the ban silently going blind to all markup while its four
+        /// forbidden types quietly reappear in the menus.
+        /// </summary>
+        [Test]
+        public void StockControlBanScan_SeesMarkupAuthoredConstructions()
+        {
+            var markupAuthored = ConstructorCallEdges(Gui, GuiRoot)
+                .Where(edge => edge.Target == typeof(Separator).FullName)
+                .Select(edge => edge.Origin)
+                .ToList();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(markupAuthored, Does.Contain(typeof(global::ihc_openvisual.Views.MainWindow).FullName),
+                    "MainWindow's markup authors Separators, so XAML-authored constructions must be attributed to the window type — otherwise this ban cannot see markup at all");
+
+                // And the ban REPORTS what it sees: the same scan with Separator forbidden must fail.
+                Assert.That(
+                    () => AssertDoesNotConstructTypeNames(Gui, GuiRoot,
+                        new HashSet<string> { typeof(Separator).FullName! }, "seeded probe", "seeded probe",
+                        AccessibleControlSubclasses),
+                    Throws.InstanceOf<AssertionException>(),
+                    "the scan must report a forbidden markup-authored construction, not merely observe it");
+
+                // And the allowlist is what makes the real rule green, not an empty result set: each Accessible*
+                // control calls its stock base's constructor, and ArchUnitNET models that as a constructor-call edge
+                // like any other. Dropping the exemption must therefore report all four — which simultaneously proves
+                // the scan sees construction edges onto the four genuinely forbidden types.
+                Assert.That(
+                    () => AssertDoesNotConstructTypeNames(Gui, GuiRoot, UnoperableStockControlTypeNames(),
+                        "allowlist probe", "allowlist probe", exemptOriginTypeFullNames: null),
+                    Throws.InstanceOf<AssertionException>(),
+                    "the four sanctioned subclasses must be visible to the scan — otherwise the ban is green because it detects nothing");
+            });
+        }
+
+        // The peer method the platform bridge actually asks, and the namespace holding the UIA pattern interfaces.
+        private const string GetProviderCoreName = "GetProviderCore";
+        private static readonly string ProviderNamespace = typeof(IInvokeProvider).Namespace!; // Avalonia.Automation.Provider
+
+        /// <summary>
+        /// A peer that implements a UIA pattern interface its base peer does not must ALSO override
+        /// <c>GetProviderCore</c> whenever some base peer overrides it — because that method, not the CLR interface
+        /// list, is what the platform bridge asks. A base override that answers only its own patterns swallows the
+        /// added one, so the peer advertises Invoke to C# and nothing to the driver: the exact defect that left every
+        /// menu item in this app reporting one pattern (ScrollItem) while <c>OperableMenuItemAutomationPeer</c>
+        /// appeared to implement two.
+        ///
+        /// The condition is deliberately narrow — required only when a base other than <c>AutomationPeer</c> declares
+        /// the method — because <c>AutomationPeer</c>'s own default resolves providers off the interface list, so a
+        /// peer over a non-overriding base (<c>ExpandCollapseTreeViewItemAutomationPeer</c> today) is correct without
+        /// one. That makes this primarily an AVALONIA-UPGRADE tripwire: in 12.1 only <c>MenuItemAutomationPeer</c>
+        /// overrides <c>GetProviderCore</c>, and the day a release adds the override to <c>TreeViewItemAutomationPeer</c>
+        /// the tree's ExpandCollapse would go dark with no source change and no behavioural test to catch it on the
+        /// old version. Armed by <see cref="ProviderSurfacingScan_IsArmed"/>.
+        /// </summary>
+        [Test]
+        public void AutomationPeers_SurfaceAddedProvidersThroughGetProviderCore()
+        {
+            var peers = AuthoredGuiTypes().Where(type => typeof(AutomationPeer).IsAssignableFrom(type)).ToList();
+            Assert.That(peers, Is.Not.Empty, "sanity: the GUI declares automation peers — otherwise this watches nothing");
+
+            Assert.That(PeersHidingAddedProviders(peers), Is.Empty,
+                $"a peer adding a UIA pattern must override {GetProviderCoreName} when a base peer overrides it — the bridge resolves providers through that method, so an interface the base does not answer for reaches no automation client");
+        }
+
+        /// <summary>Positive control for <see cref="AutomationPeers_SurfaceAddedProvidersThroughGetProviderCore"/>,
+        /// plus the two facts that give the rule its shape: <c>MenuItemAutomationPeer</c> DOES override
+        /// <c>GetProviderCore</c> (so the app's override is load-bearing, not decorative) and
+        /// <c>TreeViewItemAutomationPeer</c> does NOT (so the tree peer is legitimately exempt — and this assertion is
+        /// what turns a future Avalonia release adding it into a visible, explained failure).</summary>
+        [Test]
+        public void ProviderSurfacingScan_IsArmed() =>
+            Assert.Multiple(() =>
+            {
+                Assert.That(DeclaresGetProviderCore(typeof(MenuItemAutomationPeer)), Is.True,
+                    $"premise: Avalonia's menu-item peer overrides {GetProviderCoreName}, which is why a peer adding Invoke must too");
+                Assert.That(DeclaresGetProviderCore(typeof(TreeViewItemAutomationPeer)), Is.False,
+                    $"premise: Avalonia's tree-item peer does NOT override {GetProviderCoreName} — if a release adds it, ExpandCollapseTreeViewItemAutomationPeer starts being reported, which is the intended alarm, not a false positive");
+
+                Assert.That(PeersHidingAddedProviders(new[] { typeof(SeededSwallowedProviderPeer) }), Is.Not.Empty,
+                    "the scan must report a peer that adds Invoke over an overriding base without overriding itself");
+                Assert.That(
+                    PeersHidingAddedProviders(new[] { typeof(global::ihc_openvisual.Controls.OperableMenuItemAutomationPeer) }),
+                    Is.Empty,
+                    "and must NOT report the real menu peer, which does override it — otherwise the rule is indiscriminate");
+                Assert.That(
+                    PeersHidingAddedProviders(new[] { typeof(global::ihc_openvisual.Controls.ExpandCollapseTreeViewItemAutomationPeer) }),
+                    Is.Empty,
+                    "nor the tree peer, whose base leaves AutomationPeer's interface-based default in place");
+            });
+
+        // Seeded violator: adds Invoke over a base that overrides GetProviderCore, without overriding it — the exact
+        // shape that compiles, reads correctly, and reaches no automation client.
+        private sealed class SeededSwallowedProviderPeer : MenuItemAutomationPeer, IInvokeProvider
+        {
+            public SeededSwallowedProviderPeer(MenuItem owner) : base(owner)
+            {
+            }
+
+            public void Invoke()
+            {
+            }
+        }
+
+        // Peers whose added pattern interfaces are swallowed by an overriding base, reported as "Peer : Base adds …".
+        private static IReadOnlyList<string> PeersHidingAddedProviders(IEnumerable<Type> types) =>
+            types
+                .Where(type => typeof(AutomationPeer).IsAssignableFrom(type) && type.BaseType is not null)
+                .Select(type => (Type: type, Added: AddedProviderInterfaces(type), Swallower: OverridingBase(type.BaseType!)))
+                .Where(hit => hit.Added.Count > 0 && hit.Swallower is not null && !DeclaresGetProviderCore(hit.Type))
+                .Select(hit => $"{hit.Type.Name} : {hit.Swallower!.Name} adds {string.Join(", ", hit.Added.Select(i => i.Name))}")
+                .ToList();
+
+        // The UIA pattern interfaces a peer adds beyond what its base already implements.
+        private static IReadOnlyList<Type> AddedProviderInterfaces(Type peer) =>
+            peer.GetInterfaces()
+                .Except(peer.BaseType?.GetInterfaces() ?? Array.Empty<Type>())
+                .Where(contract => contract.Namespace == ProviderNamespace)
+                .ToList();
+
+        // The nearest base that overrides GetProviderCore itself. AutomationPeer's own declaration is the DEFAULT
+        // (it answers off the interface list), so the walk stops there rather than counting it.
+        private static Type? OverridingBase(Type baseType)
+        {
+            for (Type? type = baseType; type is not null && type != typeof(AutomationPeer); type = type.BaseType)
+                if (DeclaresGetProviderCore(type))
+                    return type;
+            return null;
+        }
+
+        private static bool DeclaresGetProviderCore(Type type) => Declares(type, GetProviderCoreName);
+
+        private const string CreateContainerOverrideName = "CreateContainerForItemOverride";
+        private const string NeedsContainerOverrideName = "NeedsContainerOverride";
+
+        /// <summary>
+        /// An items control that builds its own containers must also state which items NEED one. Avalonia's default
+        /// rule passes a <see cref="Separator"/> (and an already-authored <see cref="MenuItem"/>) through untouched;
+        /// a subclass that overrides only the factory generates a container for everything, so every separator in
+        /// every menu becomes a real, nameless, invokable row — an automation client counting the File menu finds
+        /// eleven commands instead of seven, four of which do nothing, and a screen reader reads the blanks out.
+        ///
+        /// Matched by member NAME rather than against <c>ItemsControl</c>: the pairing is what matters, the two
+        /// members are protected (so an interface-shaped check is unavailable), and a name match cannot go quietly
+        /// vacuous if Avalonia moves the overridable pair between base classes. Armed by
+        /// <see cref="ContainerRulePairingScan_IsArmed"/>.
+        /// </summary>
+        [Test]
+        public void ContainerFactories_AlsoStateWhichItemsNeedAContainer()
+        {
+            var factories = AuthoredGuiTypes().Where(type => Declares(type, CreateContainerOverrideName)).ToList();
+            Assert.That(factories, Is.Not.Empty,
+                $"sanity: some GUI control overrides {CreateContainerOverrideName} — otherwise this rule watches nothing");
+
+            Assert.That(ContainerFactoriesWithoutAContainerRule(factories), Is.Empty,
+                $"a control overriding {CreateContainerOverrideName} must also override {NeedsContainerOverrideName} — otherwise it wraps items that are already their own container (a wrapped Separator reaches automation as a nameless, invokable command)");
+        }
+
+        /// <summary>Positive control for <see cref="ContainerFactories_AlsoStateWhichItemsNeedAContainer"/>: the scan
+        /// must report a factory-only type and must not report the real accessible controls.</summary>
+        [Test]
+        public void ContainerRulePairingScan_IsArmed() =>
+            Assert.Multiple(() =>
+            {
+                Assert.That(ContainerFactoriesWithoutAContainerRule(new[] { typeof(SeededContainerFactory) }), Is.Not.Empty,
+                    "the scan must report a container factory that states no container rule");
+                Assert.That(ContainerFactoriesWithoutAContainerRule(AccessibleControlTypes), Is.Empty,
+                    "and must not report the real accessible controls, which override both");
+            });
+
+        // Seeded violator: overrides the container FACTORY but not the container RULE. Shaped by member name (the
+        // detector's actual criterion), so it needs no Avalonia base — and so cannot drift into testing inheritance.
+        private sealed class SeededContainerFactory
+        {
+            public object CreateContainerForItemOverride(object? item, int index, object? recycleKey) => new object();
+        }
+
+        private static IReadOnlyList<string> ContainerFactoriesWithoutAContainerRule(IEnumerable<Type> types) =>
+            types
+                .Where(type => Declares(type, CreateContainerOverrideName) && !Declares(type, NeedsContainerOverrideName))
+                .Select(type => $"{type.Name} builds containers but never says which items need one")
+                .ToList();
+
+        private const string StyleKeyOverrideName = "StyleKeyOverride";
+
+        /// <summary>
+        /// A custom control that extends a THEMED framework control must keep that control's theme: Avalonia resolves
+        /// a control theme by exact type, so a subclass without <c>StyleKeyOverride</c> finds none and renders as an
+        /// untemplated blank — the menu bar disappears rather than misbehaving. That is an automation regression as
+        /// much as a visual one (an unrealized template has no peer subtree to walk), and it is exactly the trap the
+        /// Accessible* controls exist inside: replacing a stock control is the ONLY reason to subclass one here.
+        ///
+        /// Scoped to the <c>Controls</c> namespace — Windows and UserControls are templated types too, and they are
+        /// designed to be subclassed without one. <c>AccessibleDataRow</c> needs no exemption: it extends
+        /// <see cref="Grid"/>, which is a panel and carries no control theme. Armed by <see cref="ThemeKeyScan_IsArmed"/>.
+        /// </summary>
+        [Test]
+        public void CustomControls_KeepTheThemeOfTheControlTheyReplace()
+        {
+            var customControls = AuthoredGuiTypes().Where(type => type.Namespace == Controls).ToList();
+            Assert.That(customControls, Is.Not.Empty, "sanity: the Controls layer declares types");
+
+            Assert.That(ThemelessControlSubclasses(customControls), Is.Empty,
+                $"a custom control extending a themed framework control must override {StyleKeyOverrideName} — Avalonia matches control themes by exact type, so without it the control loses its template entirely");
+        }
+
+        /// <summary>Positive control for <see cref="CustomControls_KeepTheThemeOfTheControlTheyReplace"/>: reports a
+        /// themed subclass without the override, and stays quiet for the real controls — including the Grid-derived
+        /// data row, whose exemption is a property of Grid rather than an allowlist entry.</summary>
+        [Test]
+        public void ThemeKeyScan_IsArmed() =>
+            Assert.Multiple(() =>
+            {
+                Assert.That(ThemelessControlSubclasses(new[] { typeof(SeededUnthemedControl) }), Is.Not.Empty,
+                    "the scan must report a themed-control subclass with no StyleKeyOverride");
+                Assert.That(ThemelessControlSubclasses(AccessibleControlTypes), Is.Empty,
+                    "and must not report the real accessible controls, which declare it");
+                Assert.That(ThemelessControlSubclasses(new[] { typeof(global::ihc_openvisual.Controls.AccessibleDataRow) }), Is.Empty,
+                    "nor the Grid-derived data row — a panel has no control theme to lose");
+            });
+
+        // Seeded violator: a themed framework control extended without restating its style key.
+        private sealed class SeededUnthemedControl : Menu
+        {
+        }
+
+        private static IReadOnlyList<string> ThemelessControlSubclasses(IEnumerable<Type> types) =>
+            types
+                .Where(type => typeof(TemplatedControl).IsAssignableFrom(type)
+                               && type.BaseType is { } theBase && theBase.Assembly != type.Assembly
+                               && !Declares(type, StyleKeyOverrideName))
+                .Select(type => $"{type.Name} : {type.BaseType!.Name} has no {StyleKeyOverrideName}")
+                .ToList();
+
+        // ---- Reflection helpers shared by the automation-surface rules ---------------------------------------------
+
+        /// <summary>The GUI's own authored types: everything the assembly declares except the compiler's and the XAML
+        /// compiler's emissions. The one definition of "authored", shared with
+        /// <see cref="GuiScanScope_CoversEveryTypeTheAssemblyDeclares"/> — which is what makes that test's claim (the
+        /// namespace-rooted scans span the whole assembly) hold for the reflection rules below too.</summary>
+        private static IEnumerable<Type> AuthoredGuiTypes() =>
+            typeof(global::ihc_openvisual.App).Assembly.GetTypes()
+                .Where(type => !IsSynthesised(type) && !IsGeneratedBuildOutput(type));
+
+        /// <summary>Whether <paramref name="type"/> declares a member of this name ITSELF rather than inheriting it —
+        /// the question every rule above asks, since an override is exactly what these contracts require. Built on
+        /// <see cref="DeclaredMembers"/>, so "declared here" means one thing across this fixture, and property
+        /// overrides (<c>StyleKeyOverride</c>) and method overrides (<c>GetProviderCore</c>) are asked the same
+        /// way.</summary>
+        private static bool Declares(Type type, string memberName) =>
+            DeclaredMembers(type).Any(member => member.Name == memberName);
 
         // ---- Forbidden-type name sets (reflected from the loaded assemblies) --------------------------------------
 

@@ -738,10 +738,31 @@ function Get-Context {
         # SAME KEY SET, SAME ORDER as the live snapshot below. This branch used to omit focusedPane and
         # selections entirely, so a caller that reads context.selections got a missing key exactly when
         # the app was not running -- the case it is most likely to be inspecting.
-        return [ordered]@{ appRunning = $false; windowTitle = $null
-            toolbarVisible = $null; statusBarVisible = $null; statusText = $null
-            openModal = $null; focusedPane = $null; selection = $null; selections = @() }
+        return New-GoneContext
     }
+    # A context snapshot is a READBACK, never the action -- so a window that has gone away while we were
+    # reading it is an ANSWER ("the app is not running any more"), not a failure of the command that was
+    # just performed. Without this, `menu invoke --id app.exit` closed the app exactly as asked and then
+    # died inspecting the corpse: every property read below throws ElementNotAvailable / IsEmpty on a
+    # destroyed element, the exception escaped to the top-level handler, and the run reported exit 1 /
+    # MutationFailed for a command that had SUCCEEDED. A caller (or CI) reading that verdict retries a
+    # non-idempotent action or fails a green run.
+    try {
+        return Get-ContextCore $Window
+    } catch {
+        return New-GoneContext
+    }
+}
+
+# The snapshot of "no app to look at". One definition, so the live and the gone shapes cannot drift apart.
+function New-GoneContext {
+    [ordered]@{ appRunning = $false; windowTitle = $null
+        toolbarVisible = $null; statusBarVisible = $null; statusText = $null
+        openModal = $null; focusedPane = $null; selection = $null; selections = @() }
+}
+
+function Get-ContextCore {
+    param($Window)
     # Toolbar/status-bar presence: detect by a child that only exists while the bar is shown.
     # The toolbar is easy — the Save button carries an AutomationId and vanishes with the bar.
     $toolbar = Find-ByAutomationId $Window 'ToolbarSave'
@@ -777,9 +798,16 @@ function Get-Context {
 
 function Get-OpenModal {
     param($Window)
-    # Title-only projection of the open modal (if any) for the context snapshot.
+    # Projection of the open modal (if any) for the context snapshot.
+    #
+    # `id` carries the dialog's AutomationId, which since 2026-08-08 every OpenVisual window declares
+    # (AboutWindow, PropertiesWindow, ReportPickerWindow, … and ConfirmDialog for the code-built message
+    # boxes). It is the LOCALE-INDEPENDENT handle on "which dialog is up": `title` is Danish and several
+    # dialogs retitle themselves from project data at runtime (the properties dialog takes the node's
+    # name), so a run that branches on the title is branching on user content. Empty for a window that
+    # declares none, so an empty id is "unlabelled", never "no dialog" -- that is what $null is for.
     $w = Get-OpenModalWindow
-    if ($w) { return [ordered]@{ title = $w.Current.Name } }
+    if ($w) { return [ordered]@{ title = $w.Current.Name; id = [string]$w.Current.AutomationId } }
     return $null
 }
 
@@ -1624,11 +1652,16 @@ function Invoke-Mechanism-ContextMenu {
     for ($s = 0; $s -lt $segments.Count; $s++) {
         $seg = $segments[$s]
         $hit = $null
+        # AutomationId first, then label -- the same rule the menu-bar walk uses. The flyout's ids are
+        # the app's CommandRegistry row ids under a "ctx." prefix (ctx.edit.cut, ctx.node.properties),
+        # so `--item ctx.edit.delete` survives a rewording that `--item Slet` does not.
         foreach ($i in @($level)) {
-            if ($i.Current.Name -eq $seg) { $hit = $i; break }
+            if (Test-MenuSegmentMatch $i $seg) { $hit = $i; break }
         }
         if (-not $hit) {
-            $avail = (@($level | ForEach-Object { $_.Current.Name }) -join ', ')
+            $avail = (@($level | ForEach-Object {
+                $n = $_.Current.Name; $a = $_.Current.AutomationId
+                if ($a) { "$n [$a]" } else { $n } }) -join ', ')
             Close-AllMenus $Window
             # The flyout DID open and this item is not in it -- a real, recordable fact about the app,
             # and a different outcome from "the gesture failed" above. Conflating the two is what made a
@@ -1664,6 +1697,12 @@ function Invoke-Mechanism-ContextMenu {
             $item = $hit
         }
     }
+
+    # This row reaches any flyout item, so it must honour the gates the pinned rows carry by name --
+    # node.delete is confirmDestructive whether it is reached as `node delete` or as
+    # `menu invoke-context --item ctx.edit.delete`. See Get-MenuTargetGate.
+    $gated = Test-MenuTargetGate $item $Opts $Window
+    if ($gated) { return $gated }
 
     $inv = Get-Pattern $item ([System.Windows.Automation.InvokePattern]::Pattern)
     if ($inv) { $inv.Invoke() } else { $null = Invoke-ElementClick $item }
@@ -1840,27 +1879,100 @@ function Resolve-MenuSegments {
     return @($base + $extra)
 }
 
+# Open a menu item's submenu. Prefers the ExpandCollapse PATTERN and falls back to a real click.
+#
+# The pattern route arrived on 2026-08-08, when OpenVisual gained AccessibleMenu/AccessibleMenuItem:
+# Avalonia's stock MenuItemAutomationPeer implements IToggleProvider and nothing else, so until then a
+# menu could only be opened by clicking it. The pattern is strictly better where it exists -- it needs
+# no foreground, no on-screen rectangle and no coordinates, so it cannot land on the wrong element and
+# cannot be stolen by another window mid-walk. The click fallback stays because it is what makes this
+# function honest about a menu that does NOT carry the pattern (an older build, a stock MenuItem someone
+# reintroduces), rather than failing in a way that reads as "the item is missing".
+function Open-MenuItemElement {
+    param($Item, [ref] $Route)
+    $ec = Get-Pattern $Item ([System.Windows.Automation.ExpandCollapsePattern]::Pattern)
+    if ($ec) {
+        try { $ec.Expand(); $Route.Value = 'pattern'; return $true } catch { }
+    }
+    if (Invoke-ElementClick $Item) { $Route.Value = 'click'; return $true }
+    return $false
+}
+
+# Activate a LEAF menu item: Invoke pattern first, click second. Same reasoning as Open-MenuItemElement.
+function Invoke-MenuItemElement {
+    param($Item, [ref] $Route)
+    $inv = Get-Pattern $Item ([System.Windows.Automation.InvokePattern]::Pattern)
+    if ($inv) {
+        try { $inv.Invoke(); $Route.Value = 'pattern'; return $true } catch { }
+    }
+    if (Invoke-ElementClick $Item) { $Route.Value = 'click'; return $true }
+    return $false
+}
+
+# The realized items one level below an OPEN menu item. Two sources, in order:
+#   1. the item's own UIA descendants -- correct and cheap once the submenu is open;
+#   2. the process's popup windows (Get-MenuPopupItems) -- the original route, kept because a popup that
+#      is not parented under its owning item in the UIA tree would otherwise read as an empty submenu.
+function Get-MenuChildItems {
+    param($Parent, $ProcId)
+    $kids = @()
+    try {
+        $kids = @($Parent.FindAll($script:Desc,
+            (New-PropCondition ([System.Windows.Automation.AutomationElement]::ControlTypeProperty) ([System.Windows.Automation.ControlType]::MenuItem))))
+    } catch { $kids = @() }
+    if ($kids.Count -gt 0) { return $kids }
+    return @(Get-MenuPopupItems $ProcId)
+}
+
+# Does this menu element answer to $Seg? By AutomationId FIRST, then by label.
+#
+# Id-first is the point of the 2026-08-08 change: every menu item now carries its CommandRegistry row id
+# ("file.new", "edit.cut"), and those do not move when the wording does. The labels are Danish and carry
+# both access-key underscores and a real ellipsis character ("Gem projekt _som…"), which is exactly the
+# kind of literal that goes stale silently -- report.generate shipped for months with a menuPath whose
+# every segment was wrong. Matching the id first means a caller can use either and the robust one wins.
+function Test-MenuSegmentMatch {
+    param($Element, [string] $Seg)
+    try {
+        if ($Element.Current.AutomationId -eq $Seg) { return $true }
+        if ($Element.Current.Name -eq $Seg) { return $true }
+    } catch { }
+    return $false
+}
+
 function Open-MenuPath {
-    param($Window, [string[]] $Segments)
+    param($Window, [string[]] $Segments, $Opts = @{})
     $proc = Get-AppProcess
     if (-not $proc) { return @{ ok = $false; code = 'AppNotRunning'; message = 'App not running.' } }
     $last = $Segments.Count
 
     $topName = $Segments[0]
+    # "Filer" -> MenuFiler is not a thing; the bar's ids are MenuFile/MenuEdit/... so the "Menu"+label
+    # convention is tried first for compatibility, then the id verbatim ("MenuFile"), then the label.
     $top = Find-ByAutomationId $Window "Menu$topName"
+    if (-not $top) { $top = Find-ByAutomationId $Window $topName }
     if (-not $top) { $top = Find-ByName $Window $topName ([System.Windows.Automation.ControlType]::MenuItem) }
     if (-not $top) { return @{ ok = $false; code = 'TargetNotFound'; message = "Menu bar has no '$topName'." } }
     if ($last -eq 0) { return @{ ok = $true; code = 'Ok'; message = "Resolved '$topName'."; element = $top } }
-    if (-not (Invoke-ElementClick $top)) { return @{ ok = $false; code = 'TargetNotFound'; message = "Menu '$topName' has no on-screen rectangle." } }
+
+    $routes = @()
+    $route = ''
+    if (-not (Open-MenuItemElement $top ([ref]$route))) {
+        return @{ ok = $false; code = 'TargetNotFound'; message = "Menu '$topName' could not be opened (no ExpandCollapse pattern and no on-screen rectangle)." }
+    }
+    $routes += $route
     Start-Sleep -Milliseconds 450
 
+    $parent = $top
     for ($k = 1; $k -lt $last; $k++) {
         $seg = $Segments[$k]
-        $items = @(Get-MenuPopupItems $proc.Id)
+        $items = @(Get-MenuChildItems $parent $proc.Id)
         $match = $null
-        foreach ($i in $items) { if ($i.Current.Name -eq $seg) { $match = $i; break } }
+        foreach ($i in $items) { if (Test-MenuSegmentMatch $i $seg) { $match = $i; break } }
         if (-not $match) {
-            $avail = (@($items | ForEach-Object { $_.Current.Name }) -join ', ')
+            $avail = (@($items | ForEach-Object {
+                $n = $_.Current.Name; $a = $_.Current.AutomationId
+                if ($a) { "$n [$a]" } else { $n } }) -join ', ')
             Close-AllMenus $Window
             return @{ ok = $false; code = 'TargetNotFound'
                 message = "Menu item '$seg' not found while walking '$($Segments -join '/')'. Realized at this level: [$avail]" }
@@ -1869,27 +1981,169 @@ function Open-MenuPath {
             Close-AllMenus $Window
             return @{ ok = $false; code = 'PreconditionMissing'; message = "Menu item '$seg' is present but disabled." }
         }
-        $null = Invoke-ElementClick $match
+        # The last segment is the command; everything before it is a container to open. Asking a leaf to
+        # Expand (or a container to Invoke) is how a walk half-runs and still reports success.
+        if ($k -eq ($last - 1)) {
+            $gated = Test-MenuTargetGate $match $Opts $Window
+            if ($gated) { return @{ ok = $false; code = 'ConfirmationRequired'; message = $gated.message; gated = $gated } }
+        }
+        $ok = if ($k -eq ($last - 1)) { Invoke-MenuItemElement $match ([ref]$route) }
+              else { Open-MenuItemElement $match ([ref]$route) }
+        if (-not $ok) {
+            Close-AllMenus $Window
+            return @{ ok = $false; code = 'MutationFailed'; message = "Menu item '$seg' could not be activated (no pattern and no on-screen rectangle)." }
+        }
+        $routes += $route
+        $parent = $match
         Start-Sleep -Milliseconds 500
     }
-    return @{ ok = $true; code = 'Ok'; message = "Walked '$($Segments -join '/')'." }
+    return @{ ok = $true; code = 'Ok'; message = "Walked '$($Segments -join '/')'."; routes = $routes }
+}
+
+# The gate a menu/flyout TARGET needs, judged by what it does rather than by which row asked for it.
+#
+# The generic invokers (menu.invoke, menu.invokeContext) can reach ANY item, including the two the
+# registry gates by name: node.delete/product.delete carry confirmDestructive and controller.send carries
+# confirmCaution. Without this a caller could run `menu invoke --id edit.delete` and walk straight past a
+# gate the skill advertises as a safety property -- the same side door that was closed on key.send when
+# {DELETE} turned out to be node.delete by another name. The gate is on the EFFECT, so it keys on the
+# resolved item (id first, label second) and not on the command that reached it.
+#
+# Returns the required flag name, or $null when the target is ungated.
+function Get-MenuTargetGate {
+    param([string] $Id, [string] $Label)
+    $bare = ($Id -replace '^ctx\.', '')
+    $clean = ($Label -replace '_', '')
+    if ($bare -eq 'edit.delete' -or $clean -in @('Slet', 'Delete')) { return 'confirm-destructive' }
+    if ($bare -eq 'controller.send' -or $clean -in @('Send projekt…', 'Send project…')) { return 'confirm-caution' }
+    return $null
+}
+
+# Refuse an unconfirmed gated target. $null when the call may proceed.
+function Test-MenuTargetGate {
+    param($Element, $Opts, $Window)
+    $id = ''; $label = ''
+    try { $id = [string]$Element.Current.AutomationId; $label = [string]$Element.Current.Name } catch { }
+    $gate = Get-MenuTargetGate $id $label
+    if (-not $gate) { return $null }
+    if ($Opts.ContainsKey($gate)) { return $null }
+    Close-AllMenus $Window
+    $what = if ($id) { $id } else { $label }
+    $why = if ($gate -eq 'confirm-destructive') {
+        "it performs an irreversible removal, which is exactly what node.delete is gated for"
+    } else {
+        "it writes the project to the controller, which is exactly what controller.send is gated for"
+    }
+    return (New-Result -Ok $false -Code 'ConfirmationRequired' `
+        -Message "Refusing to invoke '$what' without --$gate`: $why. The gate follows the EFFECT, so reaching the item generically does not remove it." `
+        -Context (Get-Context $Window))
+}
+
+# Resolve a menu-bar command by its AutomationId alone, with no path.
+#
+# The ids ARE the app's CommandRegistry row ids, so a caller that knows the command knows the id -- but
+# an id says nothing about WHERE the item lives, so this opens each top-level menu in turn and searches
+# it. That costs up to eight submenu expansions, which the pattern route makes cheap and side-effect-free
+# (nothing is invoked while searching; a menu that does not hold the id is closed again).
+function Find-MenuItemById {
+    param($Window, [string] $Id)
+    $proc = Get-AppProcess
+    $menuBar = $Window.FindFirst($script:Desc,
+        (New-PropCondition ([System.Windows.Automation.AutomationElement]::ControlTypeProperty) ([System.Windows.Automation.ControlType]::Menu)))
+    if (-not $menuBar) { return $null }
+    $tops = @($menuBar.FindAll($script:ChildScope,
+        (New-PropCondition ([System.Windows.Automation.AutomationElement]::ControlTypeProperty) ([System.Windows.Automation.ControlType]::MenuItem))))
+    foreach ($t in $tops) {
+        if ($t.Current.AutomationId -eq $Id) { return @{ element = $t; path = @($t.Current.Name) } }
+    }
+    foreach ($t in $tops) {
+        Close-AllMenus $Window
+        $route = ''
+        if (-not (Open-MenuItemElement $t ([ref]$route))) { continue }
+        Start-Sleep -Milliseconds 350
+        $hit = Search-MenuSubtreeById $t $Id $proc.Id @($t.Current.Name)
+        if ($hit) { return $hit }
+        Close-AllMenus $Window
+    }
+    return $null
+}
+
+# Depth-first search below an already-open menu item. Opens containers as it descends (never invokes).
+function Search-MenuSubtreeById {
+    param($Parent, [string] $Id, $ProcId, [string[]] $Path, [int] $Depth = 0)
+    if ($Depth -ge 4) { return $null }
+    foreach ($i in @(Get-MenuChildItems $Parent $ProcId)) {
+        $iid = ''
+        try { $iid = [string]$i.Current.AutomationId } catch { continue }
+        if ($iid -eq $Id) { return @{ element = $i; path = @($Path + $i.Current.Name) } }
+    }
+    # Not at this level -- descend into the containers (an item that carries ExpandCollapse).
+    foreach ($i in @(Get-MenuChildItems $Parent $ProcId)) {
+        $ec = Get-Pattern $i ([System.Windows.Automation.ExpandCollapsePattern]::Pattern)
+        if (-not $ec) { continue }
+        try { $ec.Expand() } catch { continue }
+        Start-Sleep -Milliseconds 250
+        $hit = Search-MenuSubtreeById $i $Id $ProcId @($Path + $i.Current.Name) ($Depth + 1)
+        if ($hit) { return $hit }
+        try { $ec.Collapse() } catch { }
+    }
+    return $null
 }
 
 function Invoke-Mechanism-Menu {
     param($Spec, $Opts, $Window)
     if (-not $Window) { return (New-Result -Ok $false -Code 'AppNotRunning' -Message 'App not running.') }
-    $guard = Assert-Foreground $Window
-    if ($guard) { return $guard }
+
+    # --id addresses a bar command by its AutomationId (= the app's CommandRegistry row id) with no path
+    # at all: `aui menu invoke --id file.saveAs`. Preferred over --menu-path wherever the id is known,
+    # because a path is a list of Danish labels and an id is not.
+    $byId = Get-OptValue $Opts @('id', 'menu-id') -NamedOnly
+    if ($byId -and $byId -isnot [bool]) {
+        $hit = Find-MenuItemById $Window ([string]$byId)
+        if (-not $hit) {
+            Close-AllMenus $Window
+            return (New-Result -Ok $false -Code 'TargetNotFound' `
+                -Message "No menu item with AutomationId '$byId'. Enumerate them with ``menu dump-bar --with-id --depth 3``." `
+                -Context (Get-Context $Window))
+        }
+        if (-not $hit.element.Current.IsEnabled) {
+            Close-AllMenus $Window
+            return (New-Result -Ok $false -Code 'PreconditionMissing' `
+                -Message "Menu item '$byId' is present but disabled." -Context (Get-Context $Window))
+        }
+        $gated = Test-MenuTargetGate $hit.element $Opts $Window
+        if ($gated) { return $gated }
+        $route = ''
+        if (-not (Invoke-MenuItemElement $hit.element ([ref]$route))) {
+            Close-AllMenus $Window
+            return (New-Result -Ok $false -Code 'MutationFailed' -Message "Menu item '$byId' could not be activated." -Context (Get-Context $Window))
+        }
+        Start-Sleep -Milliseconds 350
+        return (New-Result -Ok $true -Code 'Ok' -Message "Invoked menu item '$byId'." -Verified $false `
+            -Context (Get-Context $Window) -Data ([ordered]@{ automationId = [string]$byId; menuPath = ($hit.path -join '/'); route = $route }))
+    }
+
     $segs = @(Resolve-MenuSegments $Spec $Opts)
     if ($segs.Count -lt 2) {
         return (New-Result -Ok $false -Code 'InvalidInput' `
-            -Message "$($Spec.id) needs a menu path of at least 'TopMenu/Item' (registry menuPath and/or --menu-path)." -Context (Get-Context $Window))
+            -Message "$($Spec.id) needs a menu path of at least 'TopMenu/Item' (registry menuPath and/or --menu-path), or --id <AutomationId>." -Context (Get-Context $Window))
     }
-    $r = Open-MenuPath $Window $segs
-    if (-not $r.ok) { return (New-Result -Ok $false -Code $r.code -Message $r.message -Context (Get-Context $Window)) }
+    $r = Open-MenuPath $Window $segs $Opts
+    if (-not $r.ok) {
+        # A refusal is an answer, not a failure to reach the item: return it as-is rather than letting the
+        # foreground guard below relabel it.
+        if ($r.ContainsKey('gated')) { return $r.gated }
+        # A walk that fell back to clicking needs the foreground; one carried by patterns does not. The
+        # guard therefore runs HERE, on failure, where it can explain a click that went nowhere -- rather
+        # than up front, where it refused pattern-driven walks that never touch the pointer at all.
+        $guard = Assert-Foreground $Window
+        if ($guard -and $r.code -ne 'PreconditionMissing') { return $guard }
+        return (New-Result -Ok $false -Code $r.code -Message $r.message -Context (Get-Context $Window))
+    }
     Start-Sleep -Milliseconds 350
+    $routes = @(if ($r.ContainsKey('routes')) { $r.routes } else { @() })
     return (New-Result -Ok $true -Code 'Ok' -Message "Invoked menu '$($segs -join '/')'." -Verified $false `
-        -Context (Get-Context $Window) -Data ([ordered]@{ menuPath = ($segs -join '/') }))
+        -Context (Get-Context $Window) -Data ([ordered]@{ menuPath = ($segs -join '/'); routes = $routes }))
 }
 
 function Invoke-Mechanism-DialogCancel {
@@ -2485,9 +2739,14 @@ function ConvertTo-NodeDump {
         children = @($kids)
     }
     if ($script:DumpWithKind) {
+        # The row's AutomationId is "<kind>#<element id>" as of the SPEC-01 locator fix (it used to be the bare
+        # kind, which collided across every sibling of a type -- ten localities all read `locality`). Both halves
+        # are reported, and they are different questions: `kind` is what the CENSUS partitions by (and must stay
+        # the bare token, or every row becomes its own partition), `id` is what ADDRESSES one row.
         # 'unknown' when the app did not classify the row, so an empty string can never read as a kind.
-        $k = $El.Current.AutomationId
-        $node['kind'] = $(if ([string]::IsNullOrEmpty($k)) { 'unknown' } else { $k })
+        $k = [string]$El.Current.AutomationId
+        $node['kind'] = $(if ([string]::IsNullOrEmpty($k)) { 'unknown' } else { ($k -split '#', 2)[0] })
+        $node['id']   = $(if ([string]::IsNullOrEmpty($k)) { $null } else { $k })
     }
     return $node
 }
@@ -2680,6 +2939,7 @@ function Invoke-Mechanism-ContextMenuDump {
     }
     $script:MenuTruncated = $false
     $script:MenuMaxDepth = $depthOpt.value
+    $script:MenuWithId = [bool](Get-OptValue $Opts @('with-id') -NamedOnly)
     # Same walker the menu bar uses, so both surfaces emit the same row shape and diff mechanically.
     $rows = @(Get-MenuLevel $Window @($flyout.items) 1)
     Close-AllMenus $Window
@@ -2791,8 +3051,19 @@ function Get-MenuLevel {
                 }
             } else { $script:MenuTruncated = $true }
         }
-        $out += [ordered]@{ label = $label; accelerator = $accel; separator = $isSeparator;
-                            enabled = $enabled; children = @($kids) }
+        $row = [ordered]@{ label = $label; accelerator = $accel; separator = $isSeparator;
+                           enabled = $enabled; children = @($kids) }
+        # --with-id appends the item's AutomationId (the app's CommandRegistry row id -- "file.new",
+        # "ctx.edit.cut"). ADDITIVE and off by default, the same discipline tree.dump's --with-kind
+        # follows and for the same reason: the default shape is the one the vendor driver's menu dump
+        # emits, and tools that diff the two mechanically break on an extra key. Turn it on when the run
+        # is about THIS app -- an id survives a rewording, a Danish label does not.
+        if ($script:MenuWithId) {
+            $iid = ''
+            try { $iid = [string]$el.Current.AutomationId } catch { }
+            $row['id'] = $iid
+        }
+        $out += $row
     }
     return @($out)
 }
@@ -2807,6 +3078,7 @@ function Invoke-Mechanism-MenuBarDump {
     if (-not $depthOpt.ok) { return (New-Result -Ok $false -Code 'InvalidInput' -Message $depthOpt.message -Context (Get-Context $Window)) }
     if ($depthOpt.value -lt 1) { return (New-Result -Ok $false -Code 'InvalidInput' -Message '--depth must be 1 or more.' -Context (Get-Context $Window)) }
     $script:MenuMaxDepth = $depthOpt.value
+    $script:MenuWithId = [bool](Get-OptValue $Opts @('with-id') -NamedOnly)
 
     # Roots are the AutomationId-bearing menu-bar items, in bar order.
     $menuBar = $Window.FindFirst($script:Desc,
@@ -2833,7 +3105,9 @@ function Invoke-Mechanism-MenuBarDump {
             $kids = @(Get-MenuLevel $Window $lvl1 1)
         }
         Close-AllMenus $Window
-        $titles += [ordered]@{ label = $name; enabled = [bool]$t.Current.IsEnabled; children = @($kids) }
+        $title = [ordered]@{ label = $name; enabled = [bool]$t.Current.IsEnabled; children = @($kids) }
+        if ($script:MenuWithId) { $title['id'] = [string]$t.Current.AutomationId }
+        $titles += $title
     }
     $warn = @()
     if ($script:MenuTruncated) { $warn += "Walk stopped at depth $($script:MenuMaxDepth); deeper submenus were not enumerated (raise with --depth)." }

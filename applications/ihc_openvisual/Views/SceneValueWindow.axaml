@@ -5,6 +5,7 @@
         xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="380" d:DesignHeight="260"
         x:Class="ihc_openvisual.Views.SceneValueWindow"
+        a:AutomationProperties.AutomationId="SceneValueWindow"
         Title="Scenarie værdi"
         Width="380" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
@@ -39,8 +40,8 @@
             <TextBlock Name="StateLabel" Classes="label" Text="Tilstand"/>
             <ComboBox Name="StateCombo" HorizontalAlignment="Stretch"
                       a:AutomationProperties.LabeledBy="{Binding #StateLabel}">
-                <ComboBoxItem>OFF</ComboBoxItem>
-                <ComboBoxItem>ON</ComboBoxItem>
+                <ComboBoxItem a:AutomationProperties.AutomationId="SceneState.Off">OFF</ComboBoxItem>
+                <ComboBoxItem a:AutomationProperties.AutomationId="SceneState.On">ON</ComboBoxItem>
             </ComboBox>
         </StackPanel>
 

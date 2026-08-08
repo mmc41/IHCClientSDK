@@ -5,6 +5,7 @@
         xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="280"
         x:Class="ihc_openvisual.Views.AboutWindow"
+        a:AutomationProperties.AutomationId="AboutWindow"
         Title="Om IHC OpenVisual"
         Width="420" Height="290"
         WindowStartupLocation="CenterOwner"
@@ -61,6 +62,7 @@
         </StackPanel>
 
         <Button Content="Luk" MinWidth="84"
+                a:AutomationProperties.AutomationId="CloseButton"
                 HorizontalAlignment="Center" Margin="0,8,0,0"
                 IsCancel="True" IsDefault="True" Click="OnCloseClick"/>
     </StackPanel>

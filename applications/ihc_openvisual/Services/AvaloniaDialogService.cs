@@ -240,17 +240,21 @@ public sealed class AvaloniaDialogService : IDialogService
         await ModuleMapWindow.ShowAsync(Owner, map);
     }
 
-    public Task OpenExternalUrlAsync(string url)
+    public Task<bool> OpenExternalUrlAsync(string url)
     {
         try
         {
             Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
+            return Task.FromResult(true);
         }
         catch (Exception ex)
         {
+            // Reported, not just logged: handing the document to the shell is where the "view report" workflow
+            // ENDS, so swallowing the launch failure made a dead end look like a success — to the user and to any
+            // automation client watching for a final outcome (UX review CORE-03).
             _logger.LogError(ex, "Could not open URL {Url}", url);
+            return Task.FromResult(false);
         }
-        return Task.CompletedTask;
     }
 
     private async Task<IStorageFolder?> GetFolderAsync(string? directory)
@@ -259,6 +263,13 @@ public sealed class AvaloniaDialogService : IDialogService
             return null;
         return await Owner.StorageProvider.TryGetFolderFromPathAsync(directory);
     }
+
+    /// <summary>The AutomationId every code-built confirm/message dialog window carries.</summary>
+    public const string ConfirmDialogAutomationId = "ConfirmDialog";
+
+    /// <summary>The AutomationId of the <paramref name="index"/>-th choice button on a confirm dialog, counted in
+    /// the order the caller passed them; the LAST is the safe (negative) default.</summary>
+    public static string ConfirmChoiceAutomationId(int index) => $"ConfirmChoice{index}";
 
     private Task<T> ShowButtonsAsync<T>(string title, string message, params (string Label, T Value)[] buttons) =>
         ShowButtonsAsync(title, message, selectable: false, buttons);
@@ -292,12 +303,20 @@ public sealed class AvaloniaDialogService : IDialogService
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             ShowInTaskbar = false
         };
+        // Every dialog raised through here shares one shape, so it shares one id. The TITLE varies per call and is
+        // Danish; the id is how an automation client recognises "a confirm dialog is up" at all.
+        Avalonia.Automation.AutomationProperties.SetAutomationId(dialog, ConfirmDialogAutomationId);
 
         T defaultValue = buttons.Length > 0 ? buttons[^1].Value : default!;
         Button? safeButton = null;
-        foreach ((string label, T value) in buttons)
+        for (int index = 0; index < buttons.Length; index++)
         {
+            (string label, T value) = buttons[index];
             var button = new Button { Content = label, MinWidth = 84 };
+            // The labels are the caller's Danish strings ("Gem", "Kassér", "Annuller"), so the choices are
+            // addressed by POSITION, which the caller controls and localization does not touch. The last is
+            // always the safe/negative one — the same button Escape and the title-bar X resolve to.
+            Avalonia.Automation.AutomationProperties.SetAutomationId(button, ConfirmChoiceAutomationId(index));
             button.Click += (_, _) =>
             {
                 tcs.TrySetResult(value);

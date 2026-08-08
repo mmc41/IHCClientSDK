@@ -5,6 +5,7 @@
         xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="420"
         x:Class="ihc_openvisual.Views.AdvancedDimmerWindow"
+        a:AutomationProperties.AutomationId="AdvancedDimmerWindow"
         Title="Avancerede lysdæmper egenskaber"
         Width="420" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
@@ -41,9 +42,11 @@
         <TextBlock Name="LoadModeLabel" Classes="label" Text="Belastningstype"/>
         <ComboBox Name="LoadModeCombo" HorizontalAlignment="Stretch"
                   a:AutomationProperties.LabeledBy="{Binding #LoadModeLabel}">
-            <ComboBoxItem>Induktiv</ComboBoxItem>
-            <ComboBoxItem>Kapacitiv</ComboBoxItem>
-            <ComboBoxItem>Auto</ComboBoxItem>
+            <!-- The three load modes are a fixed enumeration, so each item carries the enum member as its id — a
+                 driver selects "Inductive" without knowing how the option is spelled in the running language. -->
+            <ComboBoxItem a:AutomationProperties.AutomationId="LoadMode.Inductive">Induktiv</ComboBoxItem>
+            <ComboBoxItem a:AutomationProperties.AutomationId="LoadMode.Capacitive">Kapacitiv</ComboBoxItem>
+            <ComboBoxItem a:AutomationProperties.AutomationId="LoadMode.Auto">Auto</ComboBoxItem>
         </ComboBox>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,14,0,0">

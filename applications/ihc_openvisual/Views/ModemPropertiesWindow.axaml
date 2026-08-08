@@ -6,6 +6,7 @@
         xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="460" d:DesignHeight="640"
         x:Class="ihc_openvisual.Views.ModemPropertiesWindow"
+        a:AutomationProperties.AutomationId="ModemPropertiesWindow"
         Title="SMS modem egenskaber"
         Width="460" MaxHeight="720" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"

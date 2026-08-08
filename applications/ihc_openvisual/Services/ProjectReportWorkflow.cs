@@ -42,7 +42,13 @@ internal sealed class ProjectReportWorkflow(
             Directory.CreateDirectory(dir);
             string path = Path.Combine(dir, FileName(kind, mode, mimeType));
             await service.GenerateReport(project, kind, mode, mimeType, path, IconsFor(mimeType));
-            await dialogs.OpenExternalUrlAsync(path);
+            // The handover to the OS is the last step of this workflow, so a handover that did not happen is a
+            // failure of it — not a silent no-op that leaves the installer waiting for a window (UX review CORE-03).
+            if (!await dialogs.OpenExternalUrlAsync(path))
+            {
+                await dialogs.ShowMessageAsync(ReportFailedTitle,
+                    $"Rapporten blev dannet, men kunne ikke åbnes i en fremviser.\nFilen ligger her:\n{path}");
+            }
         }
         catch (Exception ex)
         {

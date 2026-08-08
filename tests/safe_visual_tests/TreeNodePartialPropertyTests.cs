@@ -48,7 +48,7 @@ public class TreeNodePartialPropertyTests
         Assert.Multiple(() =>
         {
             Assert.That(node.IsUnlinked, Is.True);
-            Assert.That(node.AccessibleName, Does.Contain("not linked"));
+            Assert.That(node.AccessibleName, Does.Contain("ikke linket"));
             Assert.That(raised, Does.Contain(nameof(TreeNodeViewModel.IsUnlinked)));
             Assert.That(raised, Does.Contain(nameof(TreeNodeViewModel.AccessibleName)));
         });

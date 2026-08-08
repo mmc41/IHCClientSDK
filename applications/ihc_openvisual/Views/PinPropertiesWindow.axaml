@@ -5,6 +5,7 @@
         xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="420"
         x:Class="ihc_openvisual.Views.PinPropertiesWindow"
+        a:AutomationProperties.AutomationId="PinPropertiesWindow"
         Title="Klemme adressering"
         Width="420" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
@@ -32,8 +33,8 @@
             <TextBlock Name="InitialValueLabel" Classes="label" Text="Startværdi"/>
             <ComboBox Name="InitialValueCombo" HorizontalAlignment="Stretch"
                       a:AutomationProperties.LabeledBy="{Binding #InitialValueLabel}">
-                <ComboBoxItem>OFF — normalt åben (NO)</ComboBoxItem>
-                <ComboBoxItem>ON — normalt lukket (NC)</ComboBoxItem>
+                <ComboBoxItem a:AutomationProperties.AutomationId="InitialValue.Off">OFF — normalt åben (NO)</ComboBoxItem>
+                <ComboBoxItem a:AutomationProperties.AutomationId="InitialValue.On">ON — normalt lukket (NC)</ComboBoxItem>
             </ComboBox>
         </StackPanel>
 

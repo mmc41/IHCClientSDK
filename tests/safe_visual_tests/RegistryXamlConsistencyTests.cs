@@ -147,7 +147,7 @@ public class RegistryXamlConsistencyTests : AvaloniaTestBase
         return new Dictionary<Surface, string>
         {
             [Surface.ContextMenu] = Between("x:Key=\"NodeContextMenu\"", "</MenuFlyout>", "context-menu"),
-            [Surface.MenuBar] = Between("<Menu ", "</Menu>", "menu-bar"),
+            [Surface.MenuBar] = Between("<controls:AccessibleMenu ", "</controls:AccessibleMenu>", "menu-bar"),
             [Surface.Toolbar] = Between("============ Toolbar", "============ Status bar", "toolbar"),
         };
     }

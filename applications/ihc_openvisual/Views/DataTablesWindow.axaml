@@ -7,6 +7,7 @@
         xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="330"
         x:Class="ihc_openvisual.Views.DataTablesWindow"
+        a:AutomationProperties.AutomationId="DataTablesWindow"
         x:DataType="vm:DataTablesViewModel"
         Title="Rediger data tabeller"
         Width="600" Height="330"

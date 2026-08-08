@@ -206,14 +206,30 @@ public sealed partial class TreeNodeViewModel : ObservableObject
     /// <summary>The <see cref="NodeKind"/> of a row no construction site has classified.</summary>
     public const string UnknownKind = "unknown";
 
+    /// <summary>
+    /// The row's UI-Automation LOCATOR — <c>&lt;kind&gt;#&lt;element id&gt;</c>, e.g. <c>locality#4353</c>.
+    /// <para>A locator's contract is that it is unique among its siblings, and <see cref="NodeKind"/> alone is not:
+    /// ten localities under the same root all read <c>locality</c>, so a client asking for "the locality" got
+    /// whichever the search reached first, and a rename or reorder silently re-pointed it (UX review SPEC-01). The
+    /// kind stays the PREFIX, so a client that partitions rows by type still reads it straight off the id.</para>
+    /// <para>The element id is the project's own stable identity — not the label (user data) and not the position
+    /// (changes on every reorder). A row that stands for no element — the synthetic <c>Localities</c> root, a
+    /// function-block section whose container is absent — is identified by its kind alone, which is already unique
+    /// among its siblings (the sections differ by <see cref="KindDetail"/>).</para>
+    /// </summary>
+    public string AutomationId => ElementId is { } id ? $"{NodeKind}#{id.Value}" : NodeKind;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(AccessibleName))]
     public partial string DisplayName { get; set; }
 
     /// <summary>The name a screen reader announces for this row. It folds the visible label together with the
     /// unlinked state (which is otherwise conveyed only by the "!" glyph and tooltip), so assistive technology
-    /// hears the status too (accessibility — Avalonia <c>AutomationProperties.Name</c>).</summary>
-    public string AccessibleName => IsUnlinked ? $"{DisplayName}, not linked to the controller" : DisplayName;
+    /// hears the status too (accessibility — Avalonia <c>AutomationProperties.Name</c>).
+    /// <para>Danish, like the rest of the application's own chrome and like the "!" marker's own tooltip beside it:
+    /// this string is SPOKEN, so an English suffix inside a Danish tree is both a pronunciation and a terminology
+    /// break (UX review USE-02).</para></summary>
+    public string AccessibleName => IsUnlinked ? $"{DisplayName}, ikke linket til controlleren" : DisplayName;
 
     /// <summary>The stable id of the project element this node stands for (a locality's <c>group</c> id, later a
     /// product/FB id); null for the synthetic <c>Localities</c> root, which addresses no element.</summary>

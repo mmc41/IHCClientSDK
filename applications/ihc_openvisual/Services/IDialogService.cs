@@ -79,7 +79,16 @@ public sealed record ProductTerminal(
 /// first three columns are the opposite end of the membership's link (the function block's scene pin, the block, and
 /// the block's locality); the last two are the member's own stored value.</summary>
 public sealed record SceneContainerRow(
-    string SceneName, string FunctionBlock, string Locality, string Value, string RampTime);
+    string SceneName, string FunctionBlock, string Locality, string Value, string RampTime)
+{
+    /// <summary>The row read as ONE sentence, for the accessible name of its list item. The five columns are laid
+    /// out as loose <c>TextBlock</c>s under a header grid, and Avalonia's Windows bridge exposes no Grid/Table
+    /// pattern — so without this a client meets five unassociated text runs and no way to tell which header any of
+    /// them belongs to (UX review USE-01). The captions are spelled into the value for the same reason.</summary>
+    public string Summary =>
+        $"Scenarie navn {SceneName}, Funktionsblok {FunctionBlock}, Lokalitet {Locality}, "
+        + $"Scenarie værdi {Value}, Ramptid {RampTime}";
+}
 
 /// <summary>The scene container (<c>Scenarier</c>) dialog's contents (US-024): the container's read-only name, its
 /// editable note, and one row per scene membership. Returned as <see cref="SceneContainerResult"/>, or null when
@@ -207,8 +216,10 @@ public interface IDialogService
 
     Task ShowSettingsAsync(string settingsText);
 
-    /// <summary>Opens a URL in the OS default browser; failures are recorded to diagnostics, never fatal.</summary>
-    Task OpenExternalUrlAsync(string url);
+    /// <summary>Opens a URL (or a local document) in the OS default handler. Returns whether the handler was
+    /// actually launched — false means nothing opened, which the caller must report rather than treat as done.
+    /// Never fatal; the underlying failure is also recorded to diagnostics.</summary>
+    Task<bool> OpenExternalUrlAsync(string url);
 
     /// <summary>Opens the modal element Properties dialog (title, pre-filled name + note); returns the edited
     /// values, or null when the installer cancels. <paramref name="origin"/> adds the read-only library-provenance

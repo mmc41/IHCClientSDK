@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using ihc_openvisual.Services;
 
 namespace safe_visual_tests;
 
@@ -67,11 +68,12 @@ public class CatalogImportTests
         File.Copy(Path.Combine(TestDataRoot(), "products", "synthetic", "synthetic_9f02_output.def"), Path.Combine(folder, "sub", "b.def"));
         File.Copy(SampleFunctionBlockIfb(), Path.Combine(folder, "c.ifb"));
 
-        int count = await harness.Session.ImportCatalogFolderAsync(folder, persist: false);
+        CatalogImportOutcome outcome = await harness.Session.ImportCatalogFolderAsync(folder, persist: false);
 
         Assert.Multiple(() =>
         {
-            Assert.That(count, Is.EqualTo(3), "the folder import reports the number of definition files (incl. subfolders)");
+            Assert.That(outcome.Imported, Is.EqualTo(3), "the folder import reports the number of definition files (incl. subfolders)");
+            Assert.That(outcome.Completed, Is.True, "and reports that it read the whole folder");
             Assert.That(harness.ProjectService.GetAvailableProducts().Count, Is.EqualTo(productsBefore + 2));
             Assert.That(harness.ProjectService.GetAvailableFunctionBlocks().Count, Is.EqualTo(blocksBefore + 1));
         });
@@ -86,11 +88,15 @@ public class CatalogImportTests
         var empty = harness.TempPath("empty");
         Directory.CreateDirectory(empty);
 
+        CatalogImportOutcome emptyOutcome = await harness.Session.ImportCatalogFolderAsync(empty, false);
+        CatalogImportOutcome missing = await harness.Session.ImportCatalogFolderAsync(harness.TempPath("does-not-exist"), false);
+
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Session.ImportCatalogFolderAsync(empty, false).Result, Is.EqualTo(0), "an empty folder imports nothing");
-            Assert.That(harness.Session.ImportCatalogFolderAsync(harness.TempPath("does-not-exist"), false).Result, Is.EqualTo(-1),
-                "a missing folder is reported, not silently ignored");
+            Assert.That(emptyOutcome, Is.EqualTo(new CatalogImportOutcome(0, Stopped: false)),
+                "an empty folder imports nothing — but it WAS read to the end");
+            Assert.That(missing.FolderMissing, Is.True, "a missing folder is reported, not silently ignored");
+            Assert.That(missing.Completed, Is.False, "and is never announced as a finished import");
         });
     }
 
@@ -127,11 +133,12 @@ public class CatalogImportTests
         File.WriteAllText(Path.Combine(folder, "2_broken.def"), "garbage <<<");
         File.Copy(SampleFunctionBlockIfb(), Path.Combine(folder, "3_after.ifb"));
 
-        int count = await harness.Session.ImportCatalogFolderAsync(folder, persist: false);
+        CatalogImportOutcome outcome = await harness.Session.ImportCatalogFolderAsync(folder, persist: false);
 
         Assert.Multiple(() =>
         {
-            Assert.That(count, Is.EqualTo(1), "the import stops at the first unreadable file, keeping earlier ones");
+            Assert.That(outcome.Imported, Is.EqualTo(1), "the import stops at the first unreadable file, keeping earlier ones");
+            Assert.That(outcome.Completed, Is.False, "and says it stopped — 1 imported here means something else than 1 of 1");
             Assert.That(harness.Dialogs.LastMessage, Does.Contain("2_broken.def"), "the message names the offending file");
             Assert.That(harness.ProjectService.GetAvailableProducts().Count, Is.EqualTo(productsBefore + 1), "only the file before it imported");
         });

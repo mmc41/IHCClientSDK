@@ -79,10 +79,11 @@ internal sealed class PropertiesDialogCoordinator(
         ProjectElement? element = project.FindById(id);
         string currentNote = element is not null ? project.View(element).Note ?? string.Empty : string.Empty;
         PropertiesResult? result = await dialogs.EditPropertiesAsync(
-            $"Edit {currentName} properties", currentName, currentNote, OriginOf(project, element));
+            $"Rediger egenskaber for {currentName}", currentName, currentNote, OriginOf(project, element));
         if (result is null)
             return;   // cancelled — the locality keeps its original name and note
-        await applyAndReport(session.Commands.RenameLocality(project, id, result.Name, result.Note), $"Renamed to {result.Name}.");
+        await applyAndReport(session.Commands.RenameLocality(project, id, result.Name, result.Note),
+            $"Omdøbt til {result.Name}.");
     }
 
     /// <summary>
@@ -121,7 +122,7 @@ internal sealed class PropertiesDialogCoordinator(
             return;   // cancelled
         await applyAndReport(
             session.Commands.SetVariableProperties(project, id, result.Name, result.Note, result.Value, result.HelpNote),
-            $"'{result.Name}' updated.");
+            $"'{result.Name}' blev opdateret.");
     }
 
     // Maps a resource variable's tag + current attributes to its typed initial value (US-027, T016) — the inverse of
@@ -173,7 +174,8 @@ internal sealed class PropertiesDialogCoordinator(
             new SceneContainerInput(name, scenesView.Note ?? string.Empty, rows));
         if (result is null)
             return;
-        await applyAndReport(session.Commands.UpdateSceneContainer(session.Current!, scenesId, result.Note), $"'{name}' updated.");
+        await applyAndReport(session.Commands.UpdateSceneContainer(session.Current!, scenesId, result.Note),
+            $"'{name}' blev opdateret.");
     }
 
     public async Task OpenSceneValueAsync(ElementId memberId, ProjectElement member)
@@ -182,12 +184,13 @@ internal sealed class PropertiesDialogCoordinator(
             return;
         bool isDimmer = sv.Kind == SceneValueKind.Dimmer;
         int ms = (int)sv.RampTime.TotalMilliseconds;
-        var input = new SceneValueInput("Scene value", isDimmer, sv.On, sv.LevelPercent, ms / 60000, ms / 1000 % 60);
+        var input = new SceneValueInput("Scenarie værdi", isDimmer, sv.On, sv.LevelPercent, ms / 60000, ms / 1000 % 60);
 
         SceneValueResult? result = await dialogs.EditSceneValueAsync(input);
         if (result is null)
             return;
-        await applyAndReport(session.Commands.UpdateSceneValue(session.Current!, memberId, result), "Scene value updated.");
+        await applyAndReport(session.Commands.UpdateSceneValue(session.Current!, memberId, result),
+            "Scenarieværdien blev opdateret.");
     }
 
     public async Task OpenEnumAsync(ElementId enumVariableId)
@@ -195,11 +198,11 @@ internal sealed class PropertiesDialogCoordinator(
         if (ReadEnumInfo(enumVariableId) is not { } info)
             return;
         EnumDefinitionResult? result = await dialogs.EditEnumDefinitionAsync(
-            new EnumDefinitionInput($"Edit {info.Name}", info.Name, info.States, IsNew: false));
+            new EnumDefinitionInput($"Rediger {info.Name}", info.Name, info.States, IsNew: false));
         if (result is null)
             return;
         if (session.Commands.UpdateEnumStates(session.Current!, enumVariableId, result.States) is { } command)
-            await applyAndReport(command, $"Enumerator '{info.Name}' updated.");
+            await applyAndReport(command, $"Enumeratoren '{info.Name}' blev opdateret.");
     }
 
     // Reads an enum variable's type name and ordered state names for the Edit dialog (US-030); null if not an enum.
@@ -229,7 +232,7 @@ internal sealed class PropertiesDialogCoordinator(
             pin = string.Empty;   // the DTD default reads as blank in the dialog
 
         var input = new ModemPropertiesInput(
-            "SMS modem properties",
+            "Egenskaber for SMS-modem",
             view.Name ?? string.Empty,
             view.Note ?? string.Empty,
             view.DocumentationTag ?? string.Empty,
@@ -242,7 +245,7 @@ internal sealed class PropertiesDialogCoordinator(
         ModemPropertiesResult? result = await dialogs.EditModemPropertiesAsync(input);
         if (result is null)
             return false;
-        await applyAndReport(session.Commands.UpdateModem(project, modemId, result), $"Updated {result.Name}.");
+        await applyAndReport(session.Commands.UpdateModem(project, modemId, result), $"{result.Name} blev opdateret.");
         return true;
     }
 
@@ -269,8 +272,8 @@ internal sealed class PropertiesDialogCoordinator(
             // directly.
             EditOutcome outcome = await session.ApplyAsync(session.Commands.UpdatePin(session.Current!, pinId, r));
             setStatus(outcome.Status == EditStatus.Committed
-                ? $"Addressed {view.Name} to data line {r.DataLine}, terminal {r.Terminal}."
-                : $"Data line {r.DataLine}, terminal {r.Terminal} is not a valid address.");
+                ? $"{view.Name} blev adresseret til datalinie {r.DataLine}, klemme {r.Terminal}."
+                : $"Datalinie {r.DataLine}, klemme {r.Terminal} er ikke en gyldig adresse.");
         }
 
         PinPropertiesResult? result = await dialogs.EditPinPropertiesAsync(input, Commit);
@@ -327,11 +330,11 @@ internal sealed class PropertiesDialogCoordinator(
             // product is a tree operation), so the list was computed on every open and discarded. Only the current
             // locality is needed, and only to be carried through into the result.
             string currentLocalityId = project.FindParent(productId)?.Id?.ToToken() ?? string.Empty;
-            // The dialog is titled with the product TYPE (the catalog name), not the generic "Product properties" —
+            // The dialog is titled with the product TYPE (the catalog name), not a generic "Produktegenskaber" —
             // it is how the vendor tells two open product dialogs apart (A-8/F-015).
             string productType = session.GetProductCatalogItems()
                 .FirstOrDefault(p => p.Identifier == view.ProductIdentifier)?.DisplayName
-                ?? view.Name ?? "Product properties";
+                ?? view.Name ?? "Produktegenskaber";
             var input = new ProductPropertiesInput(
                 productType,
                 view.Name ?? string.Empty,
@@ -351,7 +354,8 @@ internal sealed class PropertiesDialogCoordinator(
             ProductPropertiesResult? result = await dialogs.EditProductPropertiesAsync(input);
             if (result is null)
                 return committed;   // cancelled — the product keeps its documentation
-            await applyAndReport(session.Commands.UpdateProduct(project, productId, result), $"Updated {result.Name}.");
+            await applyAndReport(session.Commands.UpdateProduct(project, productId, result),
+                $"{result.Name} blev opdateret.");
             committed = true;
             if (result.ConfigureTerminalPinId is { } pinToken && ElementId.TryParse(pinToken, out ElementId pinId)
                 && session.Current?.FindById(pinId) is { } pinEl && pinEl.Kind == ElementKind.DatalinePin)
@@ -404,6 +408,7 @@ internal sealed class PropertiesDialogCoordinator(
         AdvancedDimmerResult? result = await dialogs.EditAdvancedDimmerAsync(input);
         if (result is null)
             return;
-        await applyAndReport(session.Commands.UpdateDimmerSettings(project, productId, result), "Updated dimmer settings.");
+        await applyAndReport(session.Commands.UpdateDimmerSettings(project, productId, result),
+            "Lysdæmperindstillingerne blev opdateret.");
     }
 }

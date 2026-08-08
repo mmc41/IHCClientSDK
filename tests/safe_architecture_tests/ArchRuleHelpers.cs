@@ -142,9 +142,16 @@ namespace Ihc.Tests
         /// <see cref="AssertNoDependencyOnTypeNames"/>: the subtree may still depend on those types every other way
         /// (receive one from a factory, hold it, pass it on) — only calling their constructor is forbidden, so this
         /// enforces "obtain these from their factory, never <c>new</c> them" without false-positiving on the
-        /// legitimate factory-return dependency.</summary>
+        /// legitimate factory-return dependency.
+        ///
+        /// <paramref name="exemptOriginTypeFullNames"/> is the sanctioned-constructor allowlist, normalised to the
+        /// outermost authored type exactly as <see cref="AssertDoesNotCallMembers"/> does. It exists because a
+        /// SUBCLASS of a forbidden type calls that type's constructor as its own base call, and ArchUnitNET models
+        /// that as a constructor-call edge like any other — so a rule of the shape "nothing may instantiate the stock
+        /// control" must still let the sanctioned replacement derive from it.</summary>
         public static void AssertDoesNotConstructTypeNames(Architecture arch, string fromNamespaceRoot,
-            IReadOnlyCollection<string> forbiddenCtorFullNames, string forbiddenLabel, string because)
+            IReadOnlyCollection<string> forbiddenCtorFullNames, string forbiddenLabel, string because,
+            IReadOnlyCollection<string>? exemptOriginTypeFullNames = null)
         {
             Assert.That(forbiddenCtorFullNames, Is.Not.Empty,
                 $"{forbiddenLabel}: the forbidden name set is empty — this rule would pass vacuously; fix how the set is computed, not the assert");
@@ -158,7 +165,10 @@ namespace Ihc.Tests
             Assert.That(constructed, Is.Not.Empty,
                 $"{forbiddenLabel}: no constructor-call edges were seen at all — the newobj detection is not working, so this rule cannot be trusted");
 
-            var offending = constructed.Where(e => forbiddenCtorFullNames.Contains(e.Target)).ToList();
+            var offending = constructed
+                .Where(e => forbiddenCtorFullNames.Contains(e.Target)
+                            && exemptOriginTypeFullNames?.Contains(OutermostType(e.Origin)) != true)
+                .ToList();
             Assert.That(offending, Is.Empty, because + " — constructed directly: "
                 + string.Join("; ", offending.Select(e => $"{e.Origin} -> {e.Target}")));
         }

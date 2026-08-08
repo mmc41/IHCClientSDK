@@ -94,17 +94,18 @@ internal sealed class CatalogImportWorkflow(
     }
 
     /// <summary>Imports every <c>.def</c>/<c>.ifb</c> in a folder and its subfolders (US-060), optionally persisting
-    /// each (US-061). Returns the number imported; a missing folder returns -1. Stops at the first unreadable file,
-    /// naming it, keeping earlier ones (US-062). Fires <see cref="CatalogChanged"/>.</summary>
-    public async Task<int> ImportFolderAsync(string dir, bool persist)
+    /// each (US-061). Stops at the first unreadable file, naming it, keeping earlier ones (US-062). Fires
+    /// <see cref="CatalogChanged"/>.</summary>
+    public async Task<CatalogImportOutcome> ImportFolderAsync(string dir, bool persist)
     {
         using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(CatalogImportWorkflow)}.{nameof(ImportFolderAsync)}");
         if (!Directory.Exists(dir))
         {
             await dialogs.ShowMessageAsync(ImportFailedTitle, $"Mappen '{dir}' findes ikke.");
-            return -1;
+            return CatalogImportOutcome.NotFound;
         }
         int count = 0;
+        bool stopped = false;
         try
         {
             foreach (string file in EnumerateCatalogFiles(dir))   // already Ordinal-ordered by EnumerateCatalogFiles (M4)
@@ -122,6 +123,7 @@ internal sealed class CatalogImportWorkflow(
                     logger.LogError(ex, "Folder import stopped at {File}", file);
                     await dialogs.ShowMessageAsync("Import stoppet",
                         $"'{Path.GetFileName(file)}' kunne ikke importeres ({count} importeret før den):\n{ex.Message}");
+                    stopped = true;
                     break;   // stop at the first unreadable file (US-062)
                 }
             }
@@ -130,6 +132,24 @@ internal sealed class CatalogImportWorkflow(
         {
             CatalogChanged?.Invoke(this, EventArgs.Empty);
         }
-        return count;
+        return new CatalogImportOutcome(count, stopped);
     }
+}
+
+/// <summary>
+/// How a folder import ENDED, not merely how much of it succeeded (UX review CORE-03). A folder that stops at an
+/// unreadable file keeps the components imported before it, so the count alone is indistinguishable from a complete
+/// import of that many files — and the shell reported both as "Importerede N komponenter", telling the installer and
+/// any automation client that a half-finished import had finished.
+/// </summary>
+/// <param name="Imported">How many components were imported (0 or more; 0 when the folder was missing).</param>
+/// <param name="Stopped">Whether the run stopped early on an unreadable file, so more files were left unread.</param>
+/// <param name="FolderMissing">Whether the folder did not exist, so nothing was even attempted.</param>
+public readonly record struct CatalogImportOutcome(int Imported, bool Stopped, bool FolderMissing = false)
+{
+    /// <summary>The outcome of an import whose folder was not there.</summary>
+    public static CatalogImportOutcome NotFound { get; } = new(0, Stopped: false, FolderMissing: true);
+
+    /// <summary>Whether every file in the folder was read — the only outcome that may be announced as complete.</summary>
+    public bool Completed => !Stopped && !FolderMissing;
 }

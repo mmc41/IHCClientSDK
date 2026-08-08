@@ -37,6 +37,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly EventHandler _onSessionStateChanged;
     private readonly EventHandler _onSessionCatalogChanged;
     private readonly EventHandler _onRecentChanged;
+    private readonly EventHandler<string> _onBackupFailed;
 
     // The two-pane tree-sync engine (W3-6 / T031): owns the keyed reconcilers and drives the per-edit in-place
     // reconcile-or-rebuild + programming-mode pane build. Selection capture/restore stays here (view-state).
@@ -635,8 +636,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _onSessionStateChanged = (_, _) => Refresh();
         _onSessionCatalogChanged = (_, _) => RebuildCatalogMenus();
         _onRecentChanged = (_, _) => RefreshRecent();
+        // A failed crash backup is the one background event the user must hear about: it means unsaved work is NOT
+        // protected, and the status text is the shell's polite live region, so assistive technology announces it
+        // (UX review CORE-02).
+        _onBackupFailed = (_, message) => StatusText = message;
         _session.StateChanged += _onSessionStateChanged;
         _session.CatalogChanged += _onSessionCatalogChanged;
+        _session.BackupFailed += _onBackupFailed;
         _recent.Changed += _onRecentChanged;
         BuildProductMenu();
         RefreshRecent();
@@ -649,6 +655,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         _session.StateChanged -= _onSessionStateChanged;
         _session.CatalogChanged -= _onSessionCatalogChanged;
+        _session.BackupFailed -= _onBackupFailed;
         _recent.Changed -= _onRecentChanged;
     }
 
@@ -686,9 +693,15 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         if (await _dialogs.PickCatalogFolderAsync() is not { } dir)
             return;
-        int count = await _session.ImportCatalogFolderAsync(dir, persist: true);
-        if (count >= 0)
-            StatusText = $"Importerede {count} komponent{(count == 1 ? string.Empty : "er")} (gemt i katalogmappen).";
+        CatalogImportOutcome outcome = await _session.ImportCatalogFolderAsync(dir, persist: true);
+        if (outcome.FolderMissing)
+            return;   // already reported by the workflow, and nothing was imported to announce
+        string components = $"{outcome.Imported} komponent{(outcome.Imported == 1 ? string.Empty : "er")}";
+        // A run that stopped at an unreadable file must not read like a finished one: the same count means two
+        // different things, and only one of them is "the folder is imported" (UX review CORE-03).
+        StatusText = outcome.Completed
+            ? $"Importerede {components} (gemt i katalogmappen)."
+            : $"Import stoppet: {components} nåede at blive importeret (gemt i katalogmappen); resten blev ikke læst.";
     });
 
     /// <summary>Inserts an empty function block under the selected locality (US-019). Invoked from the right-click
@@ -1748,8 +1761,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         string? host = _config?.TelemetryConfig.Host;
         if (string.IsNullOrWhiteSpace(host))
             await _dialogs.ShowMessageAsync("Telemetridiagnostik", "Der er ikke konfigureret nogen telemetri-vært i ihcsettings.json.");
-        else
-            await _dialogs.OpenExternalUrlAsync(host);
+        else if (!await _dialogs.OpenExternalUrlAsync(host))
+            await _dialogs.ShowMessageAsync("Telemetridiagnostik", $"Kunne ikke åbne telemetri-værten:\n{host}");
     });
 
     private async Task RunAsync(string operation, Func<Task> action)

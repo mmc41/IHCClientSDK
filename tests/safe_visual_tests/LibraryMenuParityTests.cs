@@ -80,7 +80,7 @@ public class LibraryMenuParityTests
         int nextId = xaml.IndexOf($"AutomationId=\"{nextAutomationId}\"", StringComparison.Ordinal);
         Assert.That(start, Is.GreaterThanOrEqualTo(0), $"{automationId} not found in the markup");
         Assert.That(nextId, Is.GreaterThan(start), $"{nextAutomationId} must follow {automationId}");
-        int end = xaml.LastIndexOf("<MenuItem", nextId, StringComparison.Ordinal);
+        int end = xaml.LastIndexOf("<controls:AccessibleMenuItem", nextId, StringComparison.Ordinal);
         Assert.That(end, Is.GreaterThan(start), "the next menu's opening tag must follow this menu's id");
         return xaml[start..end];
     }

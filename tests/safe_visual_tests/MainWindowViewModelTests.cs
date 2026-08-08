@@ -85,7 +85,7 @@ public class MainWindowViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Edit Stue properties"));
+            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Rediger egenskaber for Stue"));
             Assert.That(harness.Dialogs.LastPropertiesName, Is.EqualTo("Stue"));
             Assert.That(vm.InstallationNodes[0].Children[0].DisplayName, Is.EqualTo(newName));
             Assert.That(vm.FunctionNodes[0].Children[0].DisplayName, Is.EqualTo(newName),
@@ -129,7 +129,7 @@ public class MainWindowViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Edit Kitchen properties"));
+            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Rediger egenskaber for Kitchen"));
             Assert.That(harness.Dialogs.LastPropertiesNote, Is.EqualTo("on the ground floor"));
         });
     }
@@ -1303,7 +1303,7 @@ public class MainWindowViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Edit Tom blok properties"));
+            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Rediger egenskaber for Tom blok"));
             Assert.That(vm.FunctionNodes[0].Children[0].Children[0].DisplayName, Is.EqualTo("Stair light logic"));
         });
     }
@@ -1944,7 +1944,7 @@ public class MainWindowViewModelTests
         {
             Assert.That(harness.Dialogs.EditSceneValueCalls, Is.EqualTo(1), "the scene-value dialog reopened");
             Assert.That(input.IsDimmer, Is.EqualTo(isDimmer));
-            Assert.That(vm.StatusText, Does.Contain("Scene value updated"));
+            Assert.That(vm.StatusText, Does.Contain("Scenarieværdien blev opdateret"));
             if (isDimmer)
             {
                 Assert.That(input.LevelPercent, Is.EqualTo(80), "prefilled with the initial level");
@@ -3735,7 +3735,7 @@ public class MainWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(harness.Dialogs.EditPropertiesCalls, Is.EqualTo(1));
-            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Edit Stue properties"));
+            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Rediger egenskaber for Stue"));
         });
     }
 

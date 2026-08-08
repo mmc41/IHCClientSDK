@@ -83,6 +83,7 @@ public sealed class ProjectWorkflow : IDisposable
         // stays in ApplyAsync's tail (it owns the change counter).
         _autoBackup = new AutoBackupScheduler(_backup, _service, _timeProvider, _logger,
             autoBackupInterval ?? TimeSpan.FromMinutes(10), CaptureBackupSnapshot);
+        _autoBackup.BackupFailed += (_, message) => BackupFailed?.Invoke(this, message);
         _catalog.LoadPersisted();   // persisted imports load on startup (US-061)
     }
 
@@ -146,6 +147,14 @@ public sealed class ProjectWorkflow : IDisposable
 
     /// <summary>Raised whenever the current project, file path or dirty flag changes.</summary>
     public event EventHandler? StateChanged;
+
+    /// <summary>Raised (on the UI thread) when a crash backup could NOT be written, carrying the user-facing reason.
+    /// The shell shows it, so an unprotected session stops looking like a protected one (UX review CORE-02).</summary>
+    public event EventHandler<string>? BackupFailed;
+
+    /// <summary>Whether the most recent auto-backup attempt failed — the readable health state behind
+    /// <see cref="BackupFailed"/>.</summary>
+    public bool AutoBackupFailed => _autoBackup.LastAttemptFailed;
 
     /// <summary>The structural change set of the most recent committed transition — the delta the GUI reconciler
     /// (W3-4) applies to the tree in place — INCLUDING undo/redo (crudarch G3: their outcomes carry the exact
@@ -442,7 +451,8 @@ public sealed class ProjectWorkflow : IDisposable
     public Task<bool> ImportCatalogFileAsync(string path, bool persist) => _catalog.ImportFileAsync(path, persist);
 
     /// <summary>Imports every definition in a folder (US-060/062) — delegates to the catalog collaborator.</summary>
-    public Task<int> ImportCatalogFolderAsync(string dir, bool persist) => _catalog.ImportFolderAsync(dir, persist);
+    public Task<CatalogImportOutcome> ImportCatalogFolderAsync(string dir, bool persist) =>
+        _catalog.ImportFolderAsync(dir, persist);
 
 
     // The single edit path (US-052): every project-mutating operation routes through the persistent

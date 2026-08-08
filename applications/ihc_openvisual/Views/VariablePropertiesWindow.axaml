@@ -5,6 +5,7 @@
         xmlns:a="using:Avalonia.Automation"
         mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="300"
         x:Class="ihc_openvisual.Views.VariablePropertiesWindow"
+        a:AutomationProperties.AutomationId="VariablePropertiesWindow"
         Title="Rediger variabel"
         Width="420" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
@@ -40,15 +41,18 @@
         <!-- Time / duration initial value -->
         <StackPanel Name="TimePanel" Margin="0,6,0,0" Spacing="4" IsVisible="False">
             <TextBlock Text="Startværdi" FontWeight="SemiBold"/>
+            <!-- The four boxes are labelled by single letters ("T M S ms") that only read as hours/minutes/seconds
+                 in a row, side by side. Spelling the unit out in the accessible name is the whole difference
+                 between four announced "edit" fields and four that say what they hold. -->
             <StackPanel Orientation="Horizontal" Spacing="6">
                 <TextBlock Text="T" VerticalAlignment="Center"/>
-                <TextBox Name="HourBox" Width="52"/>
+                <TextBox Name="HourBox" Width="52" a:AutomationProperties.Name="Timer"/>
                 <TextBlock Text="M" VerticalAlignment="Center"/>
-                <TextBox Name="MinuteBox" Width="52"/>
+                <TextBox Name="MinuteBox" Width="52" a:AutomationProperties.Name="Minutter"/>
                 <TextBlock Text="S" VerticalAlignment="Center"/>
-                <TextBox Name="SecondBox" Width="52"/>
+                <TextBox Name="SecondBox" Width="52" a:AutomationProperties.Name="Sekunder"/>
                 <TextBlock Name="MsLabel" Text="ms" VerticalAlignment="Center"/>
-                <TextBox Name="MsBox" Width="60"/>
+                <TextBox Name="MsBox" Width="60" a:AutomationProperties.Name="Millisekunder"/>
             </StackPanel>
         </StackPanel>
 

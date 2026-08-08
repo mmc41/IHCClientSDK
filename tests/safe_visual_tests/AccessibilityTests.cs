@@ -64,7 +64,8 @@ public class AccessibilityTests : AvaloniaTestBase
         {
             Assert.That(linked.AccessibleName, Is.EqualTo("PIR sensor"), "a linked node's name is just its label");
             Assert.That(unlinked.AccessibleName, Does.StartWith("PIR sensor"), "the label is preserved");
-            Assert.That(unlinked.AccessibleName, Does.Contain("not linked"), "and the unlinked state is announced");
+            Assert.That(unlinked.AccessibleName, Does.Contain("ikke linket"),
+                "and the unlinked state is announced — in the application's own language, since this is spoken");
         });
     }
 

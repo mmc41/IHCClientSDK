@@ -76,7 +76,7 @@ to print every id with its `status` and one-line description. Highlights:
 | View/mode | `view configuration`, `programming enter`, `view toolbar-toggle`, `view statusbar-toggle` |
 | Tree nav | `tree select`, `tree dump`, `node select`, `node expand`, `node collapse`, `node double-click`, `node right-click`, `node tooltip` |
 | Gestures | `key send --gesture` (raw keys; refuses `{F5}`, gates `{DELETE}`) |
-| Menus | `menu dump-context --path`, `menu dump-bar [--menu X] [--depth N]` |
+| Menus | `menu invoke --id <AutomationId>`, `menu dump-context --path`, `menu dump-bar [--menu X] [--depth N] [--with-id]` |
 | Edit | `node cut/copy/paste`, `node delete`, `node drag --from --to`, `edit undo/redo`, `edit move-up/move-down` |
 | Insert | `locality insert`, `product insert --menu-path`, `fb insert-template --menu-path`, `fb insert-empty`, `fb unlock`, `link start-from-here`, `link to-here` |
 | Catalog | `catalog products [--depth N]`, `catalog function-blocks [--depth N]` |
@@ -180,8 +180,11 @@ row to `commands.json`.** Mechanisms available:
 - `invoke` — invoke a control by `automationId` (toolbar buttons).
 - `key` — send a fixed keyboard `gesture` to the window (accelerators, e.g. `^s`, `{F3}`); `keySend`
   sends a caller-supplied `--gesture`.
-- `menu` — walk a `menuPath` (`"View/Toolbar"`) by clicking, invoking the leaf; `--menu-path` appends
-  for dynamic catalogs. (Alt access-key chords do **not** work here — see `references/extending.md`.)
+- `menu` — walk a `menuPath` (`"View/Toolbar"`), opening each container and invoking the leaf through
+  the **ExpandCollapse/Invoke patterns** (falling back to a click where a pattern is missing; `data.routes`
+  reports which carried each step). Each segment matches an **AutomationId or a label**, and `--id`
+  skips the path entirely. `--menu-path` appends for dynamic catalogs. (Alt access-key chords do **not**
+  work here — see `references/extending.md`.)
 - `menuBarDump` / `contextMenuDump` — enumerate the menu bar (hover-only) or a row's context flyout.
 - `contextMenu` — select `--path`, open the row's context flyout, invoke `item`.
 - `treeSelect` / `treeDump` / `expandCollapse` (with `action`) / `doubleClick` / `rightClick` /

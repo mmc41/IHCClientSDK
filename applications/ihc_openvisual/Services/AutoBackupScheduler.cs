@@ -29,8 +29,25 @@ internal sealed class AutoBackupScheduler(
 
     private readonly TimeSpan _disposeTimeout = disposeTimeout ?? DefaultDisposeTimeout;
     private readonly SemaphoreSlim _lock = new(1, 1);
+    // The context this scheduler was built on — the UI thread in the running app. The write itself deliberately runs
+    // off it (see WriteAsync), so the failure notification is posted back rather than raised from the pool thread:
+    // a handler that ends up setting a bound property would otherwise mutate the UI off-thread. Null in a plain unit
+    // test, where the event is raised inline. SynchronizationContext is BCL, so this stays Avalonia-free.
+    private readonly SynchronizationContext? _origin = SynchronizationContext.Current;
     private ITimer? _timer;
     private bool _disposed;
+
+    /// <summary>
+    /// Raised when a scheduled backup did NOT write a recovery copy, carrying the reason. Crash recovery is a
+    /// promise the application makes silently, so a failure has to be un-silent: logging alone left both the user
+    /// and any automation client believing unsaved work was protected when nothing had been written (UX review
+    /// CORE-02). The message is user-facing text.
+    /// </summary>
+    public event EventHandler<string>? BackupFailed;
+
+    /// <summary>Whether the most recent backup attempt failed — the health state a caller can read at any time,
+    /// rather than only at the instant the event fired. Cleared by the next successful write.</summary>
+    public bool LastAttemptFailed { get; private set; }
 
     /// <summary>Starts the periodic auto-backup timer (idempotent).</summary>
     public void Start() =>
@@ -55,15 +72,32 @@ internal sealed class AutoBackupScheduler(
             // reason: this whole path only READS the lock-serialized document (crudarch D04).
             await service.Save(snapshot, backup.RecoveryProjectPath).ConfigureAwait(false);
             backup.WriteMarker(origin, timeProvider.GetUtcNow());
+            LastAttemptFailed = false;
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Auto-backup failed");
+            LastAttemptFailed = true;
+            Report($"Automatisk sikkerhedskopi mislykkedes: {ex.Message}. Gem projektet for at sikre dit arbejde.");
         }
         finally
         {
             _lock.Release();
         }
+    }
+
+    // Raises BackupFailed on the thread this scheduler was created on (the UI thread in the app), so a handler may
+    // touch bound state. Posted ONLY when the failure surfaced somewhere else — a write that failed before leaving
+    // the origin context is reported inline, since posting it would queue a notification behind whatever pumps that
+    // context next (and in a non-pumping host it would never be delivered at all).
+    private void Report(string message)
+    {
+        if (BackupFailed is not { } handler)
+            return;
+        if (_origin is null || ReferenceEquals(SynchronizationContext.Current, _origin))
+            handler(this, message);
+        else
+            _origin.Post(_ => handler(this, message), null);
     }
 
     public void Dispose()

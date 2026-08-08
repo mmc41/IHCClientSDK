@@ -105,7 +105,10 @@ public sealed class FakeDialogService : IDialogService
     public Task ShowAboutAsync() => Task.CompletedTask;
     public Task ShowSettingsAsync(string settingsText) => Task.CompletedTask;
     public string? LastOpenedUrl { get; private set; }
-    public Task OpenExternalUrlAsync(string url) { LastOpenedUrl = url; return Task.CompletedTask; }
+    /// <summary>What the next external-open reports. False simulates a machine with no handler for the document —
+    /// the case that used to be swallowed as success (UX review CORE-03).</summary>
+    public bool OpenExternalUrlSucceeds { get; set; } = true;
+    public Task<bool> OpenExternalUrlAsync(string url) { LastOpenedUrl = url; return Task.FromResult(OpenExternalUrlSucceeds); }
 
     public LibraryOrigin? LastPropertiesOrigin { get; private set; }
     public string? LastPropertiesAffirmative { get; private set; }

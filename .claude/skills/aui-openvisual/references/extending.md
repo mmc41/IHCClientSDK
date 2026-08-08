@@ -13,7 +13,7 @@ Add an object to the `commands` array in `scripts/commands.json`. Required keys:
 | `invoke` | `automationId` | Invoke a control by AutomationId (toolbar buttons). |
 | `key` | `gesture` | Send a fixed SendKeys gesture to the window (`^s`, `^+b`, `{F3}`, `{ESC}`). |
 | `keySend` | — | Send a caller-supplied `--gesture`; optional `--path` selects a node first. |
-| `menu` | `menuPath` | Walk `Top/Item/Sub…` by clicking, invoking the leaf. `--menu-path` appends (dynamic catalogs). |
+| `menu` | `menuPath` | Walk `Top/Item/Sub…` via the ExpandCollapse/Invoke patterns (click fallback), invoking the leaf. Segments match an AutomationId **or** a label; `--id <AutomationId>` skips the path. `--menu-path` appends (dynamic catalogs). |
 | `menuBarDump` | `menu` (optional) | Enumerate the menu bar into `data.titles[]`; opens submenus by hover only. |
 | `contextMenu` | `item` | Select `--path`, open its context flyout, invoke `item`. |
 | `contextMenuDump` | — | Select `--path`, open its flyout, enumerate items + screenshot, close. |
@@ -63,12 +63,14 @@ Do not re-derive these; they shaped the mechanisms above.
 - **The file picker is an in-process `#32770`** whose control ids are *not* the classic ones (`1148`
   is a Pane with no Edit; `1`/`2` collide with file-list ListItems). It opens with focus already in
   the file-name field, so typing the path + Enter is the reliable route.
-- **Tree items carry their KIND as the AutomationId**, and their UIA `Name` is the visible label.
-  (This bullet used to read "Tree items carry no AutomationId". That WAS measured and is no longer
-  true: `MainWindow.axaml`'s `TreeNodeItemTheme` binds `AutomationProperties.AutomationId` to
-  `TreeNodeViewModel.NodeKind` — precisely *because* the property was empty and therefore free — which
-  is what `tree dump --with-kind` reads. The reading was right; the conclusion expired when the app
-  changed. Corrected 2026-08-02.)
+- **Tree items carry `<kind>#<element id>` as the AutomationId**, and their UIA `Name` is the visible
+  label. `tree dump --with-kind` reports both halves separately: `kind` (the bare token, what a census
+  partitions by) and `id` (the whole locator, what addresses ONE row).
+  (History: this bullet first read "Tree items carry no AutomationId" — measured, then expired when
+  `MainWindow.axaml`'s `TreeNodeItemTheme` started binding the id, corrected 2026-08-02. It then read
+  "carry their KIND", which was true but was a *collision*: ten sibling localities all answered to
+  `locality`, so no client could address one of them. The element id was appended 2026-08-08 —
+  `TreeNodeViewModel.AutomationId`.)
 - **Dialogs are separate top-level windows** (`Views\ResultDialog.cs` → `ShowDialog(owner)`), not
   in-window overlays, and one of them is captioned `About IHC OpenVisual` — so "is this the main
   window?" must be answered by window handle, never by matching the product name in the title.
