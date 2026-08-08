@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using ArchUnitNET.Domain;
-using ArchUnitNET.Loader;
 using Ihc.App;
 using Ihc.Vis;
 using Ihc.Vis.Catalog;
@@ -44,9 +43,7 @@ namespace Ihc.Tests
     public class IhcClientArchitectureTests
     {
         // The SDK read into ArchUnitNET's model once for the whole fixture.
-        private static readonly Architecture Sdk = new ArchLoader()
-            .LoadAssemblies(typeof(IhcSettings).Assembly)
-            .Build();
+        private static readonly Architecture Sdk = ArchitectureModels.Sdk;
 
         // Layer namespaces, anchored to public types so a rename fails the compile, not the check silently.
         private static readonly string AppLayer = typeof(AppServiceBase).Namespace!;      // Ihc.App
@@ -55,31 +52,55 @@ namespace Ihc.Tests
         private static readonly string Editing = typeof(ProjectEditor).Namespace!;        // Ihc.Vis.Editing
         private static readonly string Session = typeof(ProjectDocumentSession).Namespace!;// Ihc.Vis.Session (command runner)
         private static readonly string Io = typeof(ProjectSerializer).Namespace!;         // Ihc.Vis.Io
-        // T019 (reportdesign): the report pipeline is now INTERNAL-ONLY (its public contract lives in root
-        // Ihc.Vis), so no public typeof anchor exists. The string is kept honest by
-        // ReportingSubtree_SpansTheNewPipelineTypes (the subtree must contain the named pipeline types)
+        // The report pipeline is internal (its public contract lives in root Ihc.Vis), so no public typeof anchor
+        // exists. The string is kept honest by
+        // ReportingPipelineTypes_AreInternal (the subtree must be populated and internal-only)
         // plus every consuming rule's non-empty vacuity guard.
         private const string Reporting = "Ihc.Vis.Reporting";
+        private static readonly IReadOnlyCollection<string> ExpectedReportWriterTypeNames = new HashSet<string>
+        {
+            Reporting + ".HtmlReportWriter",
+            Reporting + ".TextReportWriter",
+        };
         private static readonly string Validation = typeof(ProjectValidationFinding).Namespace!; // Ihc.Vis.Validation
         private static readonly string Model = typeof(ProjectElement).Namespace!;         // Ihc.Vis.Model
         private static readonly string ProjectsNs = typeof(Project).Namespace!;           // Ihc.Vis.Projects
+
+        private readonly record struct LayerAnchor(string Actual, string Expected, string Description);
+
+        private static readonly IReadOnlyList<LayerAnchor> DefinitionLayerAnchors = new[]
+        {
+            new LayerAnchor(typeof(FunctionBlockDefinitionBuilder).Namespace!, "Ihc.Vis.FunctionBlocks", "function-block definitions"),
+            new LayerAnchor(typeof(ProductDefinitionBuilder).Namespace!, "Ihc.Vis.Products", "product definitions"),
+            new LayerAnchor(typeof(CatalogReader).Namespace!, "Ihc.Vis.Catalog", "catalog definitions"),
+            new LayerAnchor(typeof(ProgramMethodCatalog).Namespace!, "Ihc.Vis.Programs", "program definitions"),
+        };
+
+        private static readonly IReadOnlyList<LayerAnchor> LayerAnchors = new[]
+        {
+            new LayerAnchor(AppLayer, "Ihc.App", "application-service tier"),
+            new LayerAnchor(ApiRoot, "Ihc", "controller API-service tier"),
+            new LayerAnchor(VisRoot, "Ihc.Vis", "offline engine root"),
+            new LayerAnchor(Editing, "Ihc.Vis.Editing", "editing layer"),
+            new LayerAnchor(Session, "Ihc.Vis.Session", "session command layer"),
+            new LayerAnchor(Io, "Ihc.Vis.Io", "IO layer"),
+            new LayerAnchor(Validation, "Ihc.Vis.Validation", "validation layer"),
+            new LayerAnchor(Model, "Ihc.Vis.Model", "element model"),
+            new LayerAnchor(ProjectsNs, "Ihc.Vis.Projects", "project model"),
+            new LayerAnchor(SoapNs, "Ihc.Soap", "generated SOAP subtree"),
+        }.Concat(DefinitionLayerAnchors).ToList();
 
         /// <summary>
         /// The whole catalog definition layer — every code-authoring/catalog namespace, not just one of them.
         /// Anchored to a representative public type per namespace so this list tracks renames automatically.
         /// </summary>
-        private static IEnumerable<string> DefinitionLayerNamespaces()
-        {
-            yield return typeof(FunctionBlockDefinitionBuilder).Namespace!; // Ihc.Vis.FunctionBlocks
-            yield return typeof(ProductDefinitionBuilder).Namespace!;       // Ihc.Vis.Products
-            yield return typeof(CatalogReader).Namespace!;                  // Ihc.Vis.Catalog
-            yield return typeof(ProgramMethodCatalog).Namespace!;           // Ihc.Vis.Programs
-        }
+        private static IEnumerable<string> DefinitionLayerNamespaces() =>
+            DefinitionLayerAnchors.Select(anchor => anchor.Actual);
 
         /// <summary>
         /// The one-way rule between the definition layer and the editing layer. <c>Editing</c> composes catalog
         /// definitions; the definition layer must not reach back into live-session editing types. This rule is the
-        /// reason ProgramBuilder and FbProgramBuilder author the same graph twice (designfix R4) — the duplication
+        /// reason ProgramBuilder and FbProgramBuilder author the same graph twice — the duplication
         /// is the cost of keeping it, so the rule itself has to be real. It applies to the whole definition layer
         /// (products, function blocks, catalog, programs), not just one namespace.
         /// </summary>
@@ -89,7 +110,7 @@ namespace Ihc.Tests
                 "the definition layer composes catalog definitions but must not reach back into live-session editing types");
 
         /// <summary>
-        /// The mutating/IO layers the read-only reporting boundary forbids (D20, T034): the editing engine, the
+        /// The mutating/IO layers the read-only reporting boundary forbids: the editing engine, the
         /// session command runner, and the IO serializer. Anchored to a representative public type per namespace.
         /// </summary>
         private static IEnumerable<string> MutatingAndIoLayers()
@@ -100,10 +121,10 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// The read-only reporting boundary (D20, T034): <c>Ihc.Vis.Reporting</c> reads the project and never mutates
+        /// The read-only reporting boundary: <c>Ihc.Vis.Reporting</c> reads the project and never mutates
         /// it or does IO, so it must not depend on the editing, session (command runner) or IO layers. Currently true —
         /// the report builder uses only the read side (Addressing/Model/Products/Projects) — so this is a born-green
-        /// D08 characterization that pins the boundary before the report builder grows. The shared vacuity guard in
+        /// characterization that pins the boundary before the report builder grows. The shared vacuity guard in
         /// <see cref="ArchRuleHelpers.AssertNoDependency(Architecture,string,string,string)"/> keeps it armed: the
         /// <c>Ihc.Vis.Reporting</c> subtree must match at least one type, so the rule is seen to apply.
         /// </summary>
@@ -113,27 +134,25 @@ namespace Ihc.Tests
                 "reports read the project and never mutate it or do IO — Ihc.Vis.Reporting must stay independent of the editing, session and IO layers");
 
         /// <summary>
-        /// Proves <see cref="Reporting_DoesNotDependOn_MutatingOrIoLayers"/> demonstrably COVERS the new
-        /// report-generation pipeline (reportdesign T004/D07): its source set — the <c>Ihc.Vis.Reporting</c>
-        /// subtree — must contain the new pipeline's builder, writer, filter and orchestrator types. Without
-        /// this, moving the pipeline to a sibling namespace would leave that rule green while guarding nothing
-        /// of the new code.
+        /// The report pipeline is an SDK implementation detail. Its namespace must remain populated and every type
+        /// in it must stay non-public; public report contracts live in the root <c>Ihc.Vis</c> namespace instead.
         /// </summary>
         [Test]
-        public void ReportingSubtree_SpansTheNewPipelineTypes()
+        public void ReportingPipelineTypes_AreInternal()
         {
-            var reportingTypeNames = Sdk.Types
-                .Where(t => t.FullName.StartsWith(Reporting + ".", StringComparison.Ordinal))
-                .Select(t => t.Name)
+            var reportingTypes = typeof(ProjectAppService).Assembly.GetTypes()
+                .Where(type => type.Namespace is { } ns
+                               && (ns == Reporting || ns.StartsWith(Reporting + ".", StringComparison.Ordinal)))
                 .ToList();
-            Assert.That(reportingTypeNames,
-                Does.Contain("FunctionsReportBuilder").And.Contain("TextReportWriter")
-                    .And.Contain("ReportModeFilter").And.Contain("ReportGenerator"),
-                "the mutating/IO ban's source subtree must span the new pipeline types, or its green result covers nothing new");
+
+            Assert.That(reportingTypes, Is.Not.Empty,
+                "the reporting namespace must contain the internal pipeline guarded by the reporting rules");
+            Assert.That(reportingTypes.Where(type => type.IsPublic || type.IsNestedPublic), Is.Empty,
+                "report builders, shapes and format writers are implementation details; only the root Ihc.Vis report contracts are public");
         }
 
         /// <summary>
-        /// The D1 single-content-path guarantee (reportdesign T004): the generic FORMAT WRITERS render the
+        /// The single-content-path guarantee: the generic format writers render the
         /// shape document plus the icon contract and never read the project model — all content decisions
         /// live in the builders, so the two formats cannot drift by one writer reaching into the tree. The
         /// writer set is matched by the <c>*ReportWriter</c> naming convention (the writers are internal, so
@@ -144,20 +163,24 @@ namespace Ihc.Tests
         public void ReportFormatWriters_DoNotDependOn_ProjectModel()
         {
             List<string> writers = ReportWriterTypeNames();
-            Assert.That(writers, Does.Contain(Reporting + ".TextReportWriter"),
-                "the writer-name convention must match the real text writer — otherwise this rule guards an empty set");
+            Assert.That(writers, Is.EquivalentTo(ExpectedReportWriterTypeNames),
+                "the stable *ReportWriter convention must identify the complete expected format-writer roster");
 
             Assert.That(ForbiddenModelEdges(writers), Is.Empty,
-                "format writers render the shape document + icon contract only; project-model access belongs in the builders (D1)");
+                "format writers render the shape document + icon contract only; project-model access belongs in the builders");
         }
 
         /// <summary>Positive control for <see cref="ReportFormatWriters_DoNotDependOn_ProjectModel"/>: the same
         /// edge scan pointed at the functions BUILDER — which reads the project model by design — must report
         /// forbidden edges, proving the scan sees model dependencies rather than passing because it sees none.</summary>
         [Test]
-        public void WriterModelScan_IsArmed() =>
+        public void WriterModelScan_IsArmed()
+        {
             Assert.That(ForbiddenModelEdges(new List<string> { Reporting + ".FunctionsReportBuilder" }), Is.Not.Empty,
                 "the builder depends on the project model by design; the scan must report those edges or the writer rule cannot be trusted");
+            Assert.That(ReferencedTypeReachesProjectModel(typeof(ElementView).FullName!), Is.True,
+                "the scan must see through a non-generic value wrapper such as ElementView to its Project and ProjectElement fields");
+        }
 
         // The outermost authored types in Ihc.Vis.Reporting following the writer naming convention.
         private static List<string> ReportWriterTypeNames() =>
@@ -168,37 +191,39 @@ namespace Ihc.Tests
                 .Distinct()
                 .ToList();
 
-        // Every dependency edge from the given outermost types (compiler-generated nested types included)
-        // onto the project model namespaces (Ihc.Vis.Model / Ihc.Vis.Projects).
+        // Every dependency edge from the given outermost types onto a type whose recursive value/signature closure
+        // reaches the project model. This catches direct access and non-generic wrappers such as ElementView.
         private static List<string> ForbiddenModelEdges(List<string> outermostTypeNames) =>
             Sdk.Types
                 .Where(t => outermostTypeNames.Contains(OutermostTypeName(t.FullName)))
                 .SelectMany(t => t.Dependencies, (t, d) => (Origin: t.FullName, Target: d.Target.FullName))
-                .Where(e => e.Target.StartsWith(Model + ".", StringComparison.Ordinal)
-                            || e.Target.StartsWith(ProjectsNs + ".", StringComparison.Ordinal))
+                .Where(e => ReferencedTypeReachesProjectModel(e.Target))
                 .Select(e => $"{e.Origin} -> {e.Target}")
                 .Distinct()
                 .ToList();
 
-        // A nested/compiler-generated type's authored outer type ("Outer+<>c" -> "Outer").
-        private static string OutermostTypeName(string fullName)
-        {
-            int cut = fullName.IndexOfAny(new[] { '+', '/' });
-            return cut < 0 ? fullName : fullName.Substring(0, cut);
-        }
+        private static bool ReferencedTypeReachesProjectModel(string targetTypeFullName) =>
+            typeof(ProjectAppService).Assembly.GetType(targetTypeFullName) is { } target
+            && TypeAndArguments(target).Any(type =>
+                IsInNamespaceSubtree(type, Model) || IsInNamespaceSubtree(type, ProjectsNs));
 
+        private static bool IsInNamespaceSubtree(Type type, string namespaceRoot) =>
+            type.Namespace is { } ns
+            && (ns == namespaceRoot || ns.StartsWith(namespaceRoot + ".", StringComparison.Ordinal));
+
+        // A nested/compiler-generated type's authored outer type ("Outer+<>c" -> "Outer").
         /// <summary>
-        /// R10's independence direction (reportdesign T004): the verification API is reusable OUTSIDE
+        /// The verification API is reusable outside
         /// reporting — reporting consumes validation findings, never the reverse. A validation type reaching
         /// into <c>Ihc.Vis.Reporting</c> would invert that and couple the save-gate path to report code.
         /// </summary>
         [Test]
         public void Validation_DoesNotDependOn_Reporting() =>
             AssertNoDependency(Sdk, Subtree(Validation), Reporting,
-                "verification is independently reusable (R10): reporting consumes validation, never the reverse");
+                "verification is independently reusable: reporting consumes validation, never the reverse");
 
         /// <summary>
-        /// R13's placement convention (reportdesign T004): the public report contract types live in the root
+        /// Public report contract types live in the root
         /// <c>Ihc.Vis</c> namespace next to the facade — not inside the internal pipeline namespace. The
         /// <c>typeof</c> references make this self-arming: deleting or moving a contract type breaks the
         /// compile or this assertion, never silently.
@@ -214,9 +239,9 @@ namespace Ihc.Tests
             });
 
         /// <summary>
-        /// Port-surface purity (archtests T008, proposal §0.3): no type from <c>Ihc.Vis.Editing</c> or
-        /// <c>Ihc.Vis.Io</c> may appear anywhere in <see cref="IProjectDocument"/>'s signatures — return types,
-        /// parameters, generic arguments or event delegate payloads.
+        /// Port-surface purity: no <c>Ihc.Vis.Editing</c>/<c>Ihc.Vis.Io</c> type or concrete
+        /// <c>ProjectDocumentSession</c> may appear anywhere in <see cref="IProjectDocument"/>'s inherited public
+        /// signatures, including delegate payloads, generic arguments and constraints.
         ///
         /// The GUI is banned from depending on those two layers, and <see cref="IProjectDocument"/> is the one
         /// object it holds and drives everything through. So a single future member handing back (say) a
@@ -239,7 +264,7 @@ namespace Ihc.Tests
                 "the port-surface scan must see the port's real signature types — otherwise its purity verdict is meaningless");
 
             Assert.That(EngineTypesOn(typeof(IProjectDocument)), Is.Empty,
-                "IProjectDocument must not expose Ihc.Vis.Editing or Ihc.Vis.Io types — the GUI is banned from those layers and reaches everything through this port");
+                "IProjectDocument must not expose editing/IO types or its concrete ProjectDocumentSession implementation");
         }
 
         /// <summary>Positive control for <see cref="DocumentPort_ExposesNoEngineTypes"/>: the same checker, pointed at
@@ -247,40 +272,91 @@ namespace Ihc.Tests
         /// report both — proving the scan inspects returns AND parameters rather than passing because it looked at
         /// neither.</summary>
         [Test]
-        public void PortSurfaceScan_IsArmed() =>
-            Assert.That(EngineTypesOn(typeof(ISeededLeakyPort)), Has.Count.EqualTo(2),
-                "the port-surface scan must report both the leaked editing return type and the leaked IO parameter");
+        public void PortSurfaceScan_IsArmed()
+        {
+            Assert.That(EngineTypesOn(typeof(ISeededLeakyPort<>)),
+                Is.SupersetOf(new[]
+                {
+                    typeof(ProjectEditor).FullName!,
+                    typeof(ProjectSaveOptions).FullName!,
+                    typeof(ProjectDocumentSession).FullName!,
+                    typeof(global::Ihc.Vis.Editing.Seeded.INestedEngineContract).FullName!,
+                }),
+                "the port scan must traverse inherited interfaces, custom delegate signatures, generic constraints and nested engine namespaces");
+        }
 
         // Synthetic violator for the control: the two leak shapes a real port regression would take. (The IO leak
         // uses ProjectSaveOptions rather than the ProjectSerializer anchor — the latter is a static class, which C#
         // permits neither as a parameter nor as a return type, so it cannot express a leak at all.)
-        private interface ISeededLeakyPort
+        private delegate void SeededEngineEvent(ProjectEditor editor);
+
+        private interface ISeededLeakyPort<T> : ISeededLeakyBasePort
+            where T : global::Ihc.Vis.Editing.Seeded.INestedEngineContract
         {
-            ProjectEditor OpenEditor();
-            void WriteWith(ProjectSaveOptions options);
+            event SeededEngineEvent? Changed;
+            global::Ihc.Vis.Editing.Seeded.NestedEngineType Detail { get; }
         }
 
-        // Every type named anywhere in a port's public signatures: property types, method returns and parameters,
-        // and event delegate types — each expanded through Nullable/array/generic arguments.
+        private interface ISeededLeakyBasePort
+        {
+            ProjectSaveOptions Options { get; }
+            ProjectDocumentSession Session { get; }
+        }
+
+        // Every type named on the inherited public contract surface, recursively expanded by TypeAndArguments.
         private static IEnumerable<Type> PortSurfaceTypes(Type port) =>
-            port.GetMembers(BindingFlags.Public | BindingFlags.Instance)
-                .SelectMany(DeclaredSignatureTypes)
+            ContractHierarchy(port)
+                .SelectMany(DeclaredContractTypes)
                 .SelectMany(TypeAndArguments)
                 .Distinct();
 
+        private static IEnumerable<Type> ContractHierarchy(Type contract)
+        {
+            var seen = new HashSet<Type>();
+            for (Type? current = contract; current is not null && seen.Add(current); current = current.BaseType)
+                yield return current;
+            foreach (Type inherited in contract.GetInterfaces())
+                if (seen.Add(inherited))
+                    yield return inherited;
+        }
+
+        private static IEnumerable<Type> DeclaredContractTypes(Type contract) =>
+            contract.GetGenericArguments()
+                .Where(argument => argument.IsGenericParameter)
+                .SelectMany(argument => argument.GetGenericParameterConstraints())
+                .Concat(contract.GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static
+                                             | BindingFlags.DeclaredOnly)
+                    .SelectMany(DeclaredSignatureTypes))
+                .Concat(contract.GetConstructors(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static
+                                                 | BindingFlags.DeclaredOnly)
+                    .SelectMany(DeclaredSignatureTypes));
+
         private static IEnumerable<Type> DeclaredSignatureTypes(MemberInfo member) => member switch
         {
-            PropertyInfo property => new[] { property.PropertyType },
+            PropertyInfo property => property.GetIndexParameters().Select(parameter => parameter.ParameterType)
+                .Append(property.PropertyType),
             EventInfo declaredEvent => new[] { declaredEvent.EventHandlerType! },
-            MethodInfo method => method.GetParameters().Select(parameter => parameter.ParameterType)
-                .Append(method.ReturnType),
+            MethodInfo method => MethodSignatureTypes(method).Append(method.ReturnType),
+            ConstructorInfo constructor => MethodSignatureTypes(constructor),
+            FieldInfo field => new[] { field.FieldType },
             _ => Enumerable.Empty<Type>(),
         };
 
+        private static IEnumerable<Type> MethodSignatureTypes(MethodBase method) =>
+            method.GetParameters().Select(parameter => parameter.ParameterType)
+                .Concat((method is MethodInfo genericMethod
+                        ? genericMethod.GetGenericArguments()
+                        : Array.Empty<Type>())
+                    .Where(argument => argument.IsGenericParameter)
+                    .SelectMany(argument => argument.GetGenericParameterConstraints()));
+
         private static IReadOnlyList<string> EngineTypesOn(Type port) =>
             PortSurfaceTypes(port)
-                .Where(type => type.Namespace == Editing || type.Namespace == Io)
+                .Where(type => IsInNamespaceSubtree(type, Editing)
+                               || IsInNamespaceSubtree(type, Io)
+                               || type == typeof(ProjectDocumentSession))
                 .Select(type => type.FullName!)
+                .Distinct()
                 .ToList();
 
         /// <summary>
@@ -316,6 +392,47 @@ namespace Ihc.Tests
             AssertNoDependency(Sdk, Subtree(AppLayer), SoapNs,
                 "application services must reach the controller through Ihc API-service interfaces, not the generated SOAP types");
 
+        [Test]
+        public void ControllerApiPublicContracts_ExposeNoSoapTypes()
+        {
+            var apiServices = typeof(IIHCApiService).Assembly.GetTypes()
+                .Where(type => (type.IsPublic || type.IsNestedPublic)
+                               && typeof(IIHCApiService).IsAssignableFrom(type))
+                .ToList();
+            Assert.That(apiServices, Is.Not.Empty,
+                "the public-contract scan must find the high-level controller service interfaces and implementations");
+
+            var offences = apiServices
+                .SelectMany(service => SoapTypesOn(service)
+                    .Select(soapType => $"{service.FullName} exposes {soapType}"))
+                .Distinct()
+                .ToList();
+
+            Assert.That(offences, Is.Empty,
+                "high-level controller APIs expose SDK models; generated Ihc.Soap artifacts belong only inside private SoapImpl adapters");
+        }
+
+        [Test]
+        public void ControllerApiPublicContractScan_IsArmed() =>
+            Assert.That(SoapTypesOn(typeof(ISeededSoapLeakyContract<>)),
+                Does.Contain(typeof(global::Ihc.Soap.Authentication.AuthenticationService).FullName),
+                "the public-contract scan must traverse a custom delegate and a generic constraint to a generated SOAP contract");
+
+        private delegate void SeededSoapEvent(global::Ihc.Soap.Authentication.AuthenticationService service);
+
+        private interface ISeededSoapLeakyContract<T>
+            where T : global::Ihc.Soap.Authentication.AuthenticationService
+        {
+            event SeededSoapEvent? Changed;
+        }
+
+        private static IReadOnlyList<string> SoapTypesOn(Type contract) =>
+            PortSurfaceTypes(contract)
+                .Where(type => IsInNamespaceSubtree(type, SoapNs))
+                .Select(type => type.FullName!)
+                .Distinct()
+                .ToList();
+
         /// <summary>
         /// The controller API-service tier — the <b>exact</b> <c>Ihc</c> root namespace (<c>AuthenticationService</c>,
         /// <c>ControllerService</c>, … and <c>IhcSettings</c>) — sits <i>below</i> the application-service tier: an
@@ -338,13 +455,13 @@ namespace Ihc.Tests
                 "the SDK must stay free of any GUI framework so view-models can be tested headlessly");
 
         /// <summary>
-        /// Invariant 7: the SDK takes no logging dependency. Observability is tracing-only via the
-        /// <c>ActivitySource</c> in <c>src/config/Telemetry.cs</c>; the host application chooses its logging stack.
+        /// Mechanical part of invariant 7: the SDK takes no <c>Microsoft.Extensions.Logging</c> dependency.
+        /// Observability uses <c>ActivitySource</c>; package-reference policy covers other logging frameworks.
         /// </summary>
         [Test]
-        public void Sdk_DoesNotDependOn_Logging() =>
+        public void Sdk_DoesNotDependOn_MicrosoftExtensionsLogging() =>
             AssertAssemblyHasNoDependency(Sdk, LoggingNs,
-                "the SDK is logging-free (invariant 7); observability is tracing-only and the host owns logging");
+                "the SDK must not depend on Microsoft.Extensions.Logging; the host owns that logging stack");
 
         /// <summary>
         /// Pins the namespace topology the rules above are anchored to. Anchors read <c>typeof(T).Namespace</c>, so a
@@ -356,16 +473,9 @@ namespace Ihc.Tests
         public void LayerAnchors_ResolveToTheirDocumentedNamespaces() =>
             Assert.Multiple(() =>
             {
-                Assert.That(AppLayer, Is.EqualTo("Ihc.App"), $"{nameof(AppServiceBase)} anchors the application-service tier");
-                Assert.That(ApiRoot, Is.EqualTo("Ihc"), $"{nameof(AuthenticationService)} anchors the API-service tier");
-                Assert.That(VisRoot, Is.EqualTo("Ihc.Vis"), $"{nameof(ProjectAppService)} anchors the .vis engine root");
-                Assert.That(Editing, Is.EqualTo("Ihc.Vis.Editing"), $"{nameof(ProjectEditor)} anchors the editing layer");
-                Assert.That(Session, Is.EqualTo("Ihc.Vis.Session"), $"{nameof(ProjectDocumentSession)} anchors the session command layer");
-                Assert.That(Io, Is.EqualTo("Ihc.Vis.Io"), $"{nameof(ProjectSerializer)} anchors the IO layer");
-                Assert.That(Validation, Is.EqualTo("Ihc.Vis.Validation"), $"{nameof(ProjectValidationFinding)} anchors the validation layer");
-                Assert.That(Model, Is.EqualTo("Ihc.Vis.Model"), $"{nameof(ProjectElement)} anchors the element model");
-                Assert.That(ProjectsNs, Is.EqualTo("Ihc.Vis.Projects"), $"{nameof(Project)} anchors the project model");
-                Assert.That(SoapNs, Is.EqualTo("Ihc.Soap"), "the SOAP parent namespace spans the generated per-service namespaces");
+                foreach (LayerAnchor anchor in LayerAnchors)
+                    Assert.That(anchor.Actual, Is.EqualTo(anchor.Expected),
+                        $"{anchor.Description} must remain in its documented namespace");
             });
 
         /// <summary>
@@ -377,7 +487,7 @@ namespace Ihc.Tests
         /// is suspect.
         /// </summary>
         [Test]
-        public void Fixture_DetectsAKnownViolation() =>
+        public void SdkFixture_DetectsKnownDependencyViolation() =>
             AssertDependencyIsDetected(Sdk, typeof(ProjectAppService), AppLayer,
                 $"{nameof(ProjectAppService)} depends on {AppLayer} by design; a rule forbidding it must fail — otherwise the fitness function is not detecting violations");
     }

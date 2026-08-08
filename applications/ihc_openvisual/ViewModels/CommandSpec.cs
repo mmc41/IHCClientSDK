@@ -31,6 +31,7 @@ public static class SurfaceExtensions
 /// <summary>A row's availability on ONE surface (crudarch D10): hidden, allowed, or disabled with the reason
 /// the control's tooltip/status hint shows (QC-06 — a disabled item explains itself). Named <see cref="Allow"/>
 /// rather than "Enabled" to avoid the CS0102 clash with the positional property.</summary>
+[CommandContextValue]
 public sealed record Availability(bool Visible, bool Enabled, string? Reason)
 {
     /// <summary>Not rendered on this surface at all (unplaced, or omitted by the transient-surface default).</summary>
@@ -58,6 +59,7 @@ public sealed record Availability(bool Visible, bool Enabled, string? Reason)
 /// flyout offers "Indsæt _lokalitet" where the Insert menu says "_Lokalitet"; Undo/Redo show the action-decorated
 /// "_Fortryd Insert locality"), so the menu text belongs to the markup that renders it, and a row-level copy could
 /// only ever be a second, unread home for it (review F12).</remarks>
+[CommandContextValue]
 public sealed record CommandSpec(
     string Id,
     string? Gesture,

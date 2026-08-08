@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using ArchUnitNET.Domain;
 using ArchUnitNET.Domain.Dependencies;
@@ -144,14 +145,12 @@ namespace Ihc.Tests
         /// enforces "obtain these from their factory, never <c>new</c> them" without false-positiving on the
         /// legitimate factory-return dependency.
         ///
-        /// <paramref name="exemptOriginTypeFullNames"/> is the sanctioned-constructor allowlist, normalised to the
-        /// outermost authored type exactly as <see cref="AssertDoesNotCallMembers"/> does. It exists because a
-        /// SUBCLASS of a forbidden type calls that type's constructor as its own base call, and ArchUnitNET models
-        /// that as a constructor-call edge like any other — so a rule of the shape "nothing may instantiate the stock
-        /// control" must still let the sanctioned replacement derive from it.</summary>
+        /// <paramref name="exemptBaseConstructorEdges"/> contains exact sanctioned subclass-to-base-constructor
+        /// pairs. This permits a replacement control's required base call without exempting other forbidden
+        /// constructions written inside that replacement type.</summary>
         public static void AssertDoesNotConstructTypeNames(Architecture arch, string fromNamespaceRoot,
             IReadOnlyCollection<string> forbiddenCtorFullNames, string forbiddenLabel, string because,
-            IReadOnlyCollection<string>? exemptOriginTypeFullNames = null)
+            IReadOnlyCollection<ConstructorCallExemption>? exemptBaseConstructorEdges = null)
         {
             Assert.That(forbiddenCtorFullNames, Is.Not.Empty,
                 $"{forbiddenLabel}: the forbidden name set is empty — this rule would pass vacuously; fix how the set is computed, not the assert");
@@ -167,14 +166,15 @@ namespace Ihc.Tests
 
             var offending = constructed
                 .Where(e => forbiddenCtorFullNames.Contains(e.Target)
-                            && exemptOriginTypeFullNames?.Contains(OutermostType(e.Origin)) != true)
+                            && exemptBaseConstructorEdges?.Contains(
+                                new ConstructorCallExemption(OutermostTypeName(e.Origin), e.Target)) != true)
                 .ToList();
             Assert.That(offending, Is.Empty, because + " — constructed directly: "
                 + string.Join("; ", offending.Select(e => $"{e.Origin} -> {e.Target}")));
         }
 
         /// <summary>Asserts no type in the <paramref name="fromNamespaceRoot"/> subtree CALLS one of the named
-        /// members of <paramref name="targetTypeFullName"/> (crudarch T022). Distinct from the two scans above:
+        /// members of <paramref name="targetTypeFullName"/>. Distinct from the two scans above:
         /// the subtree may legitimately depend on the target type every other way — hold it, call its OTHER
         /// members — and only the named member calls are forbidden (the stateless one-shot facade methods, once
         /// interactive edits must go through the document port).
@@ -182,8 +182,8 @@ namespace Ihc.Tests
         /// Pass <paramref name="targetTypeFullName"/> as <c>null</c> to ban a member NAME on any declaring type —
         /// the shape a blanket ban needs (<c>ConfigureAwait</c> is declared on Task, Task&lt;T&gt;, ValueTask,
         /// ValueTask&lt;T&gt; and the async-enumerable extensions, so enumerating target types would leave holes).
-        /// <paramref name="exemptOriginTypeFullNames"/> is the sanctioned-caller allowlist; origins are normalised
-        /// to their outermost authored type so an exempt type's own async/lambda bodies stay exempt.
+        /// <paramref name="exemptCallSites"/> contains exact authored type-and-member call sites. Async state-machine
+        /// edges are mapped back to their authored method, so allowing one method does not exempt its whole type.
         ///
         /// Note the deliberate asymmetry with <see cref="AssertMembersCalledOnlyFrom"/>: that rule REQUIRES the
         /// members to be called (a chokepoint nobody routes through is not being enforced), whereas here zero calls
@@ -191,7 +191,7 @@ namespace Ihc.Tests
         /// </summary>
         public static void AssertDoesNotCallMembers(Architecture arch, string fromNamespaceRoot,
             string? targetTypeFullName, IReadOnlyCollection<string> forbiddenMemberNames, string forbiddenLabel, string because,
-            IReadOnlyCollection<string>? exemptOriginTypeFullNames = null)
+            IReadOnlyCollection<MethodCallExemption>? exemptCallSites = null)
         {
             Assert.That(forbiddenMemberNames, Is.Not.Empty,
                 $"{forbiddenLabel}: the forbidden member-name set is empty — this rule would pass vacuously; fix how the set is computed, not the assert");
@@ -207,30 +207,62 @@ namespace Ihc.Tests
             var offending = calls
                 .Where(e => (targetTypeFullName is null || e.TargetType == targetTypeFullName)
                             && forbiddenMemberNames.Contains(e.Member)
-                            && exemptOriginTypeFullNames?.Contains(OutermostType(e.Origin)) != true)
+                            && exemptCallSites?.Contains(
+                                new MethodCallExemption(OutermostTypeName(e.Origin), e.OriginMember)) != true)
                 .ToList();
 
             Assert.That(offending, Is.Empty,
-                because + " — offending calls: " + string.Join("; ", offending.Select(e => $"{e.Origin} -> {e.Member}")));
+                because + " — offending calls: "
+                + string.Join("; ", offending.Select(e =>
+                    $"{e.Origin}.{e.OriginMember} -> {e.TargetType}.{e.Member}")));
         }
 
-        /// <summary>A declared type and every type it REACHES — through <c>ref</c>/pointer, <c>Nullable&lt;T&gt;</c>,
-        /// array elements and generic arguments. Shared by both fixtures' reflection rules (the GUI's retained-state
-        /// and purity-zone detectors, the SDK's port-surface scan) so they cannot drift apart in what "the types this
-        /// member involves" means — a divergence that would silently narrow one rule while the other stayed strict.</summary>
+        /// <summary>A declared type and every type it reaches through indirection, arrays, generic arguments and
+        /// constraints, custom delegate signatures, or fields of a user-defined value wrapper. Shared by the GUI
+        /// retained-state/purity detectors and the SDK public-contract scans so their type closure cannot drift.</summary>
         public static IEnumerable<Type> TypeAndArguments(Type type)
         {
-            if (type.IsByRef || type.IsPointer)
-                type = type.GetElementType()!;
-            Type core = Nullable.GetUnderlyingType(type) ?? type;
-            yield return core;
-            if (core.IsArray && core.GetElementType() is { } element)
-                foreach (Type inner in TypeAndArguments(element))
-                    yield return inner;
-            if (core.IsGenericType)
-                foreach (Type argument in core.GetGenericArguments())
-                    foreach (Type inner in TypeAndArguments(argument))
-                        yield return inner;
+            var seen = new HashSet<Type>();
+            return Expand(type, seen);
+
+            static IEnumerable<Type> Expand(Type candidate, ISet<Type> visited)
+            {
+                if (candidate.IsByRef || candidate.IsPointer || candidate.IsArray)
+                    candidate = candidate.GetElementType()!;
+                candidate = Nullable.GetUnderlyingType(candidate) ?? candidate;
+                if (!visited.Add(candidate))
+                    yield break;
+
+                yield return candidate;
+
+                if (candidate.IsGenericParameter)
+                    foreach (Type constraint in candidate.GetGenericParameterConstraints())
+                        foreach (Type nested in Expand(constraint, visited))
+                            yield return nested;
+
+                if (candidate.IsGenericType)
+                    foreach (Type argument in candidate.GetGenericArguments())
+                        foreach (Type nested in Expand(argument, visited))
+                            yield return nested;
+
+                if (typeof(Delegate).IsAssignableFrom(candidate)
+                    && candidate.GetMethod("Invoke", BindingFlags.Public | BindingFlags.Instance) is { } invoke)
+                {
+                    foreach (Type signatureType in invoke.GetParameters().Select(parameter => parameter.ParameterType)
+                                 .Append(invoke.ReturnType))
+                        foreach (Type nested in Expand(signatureType, visited))
+                            yield return nested;
+                }
+
+                // User-defined value types are copied by value, so retaining one retains the values wrapped inside
+                // it. Follow their fields to catch non-generic handles such as ElementView(Project, ProjectElement).
+                if (candidate.IsValueType && !candidate.IsPrimitive && !candidate.IsEnum
+                    && candidate.Assembly != typeof(object).Assembly)
+                    foreach (FieldInfo field in candidate.GetFields(BindingFlags.Instance | BindingFlags.Public
+                                                                     | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+                        foreach (Type nested in Expand(field.FieldType, visited))
+                            yield return nested;
+            }
         }
 
         /// <summary>Asserts that inside the <paramref name="fromNamespaceRoot"/> subtree, the named members of
@@ -260,7 +292,7 @@ namespace Ihc.Tests
                 $"{forbiddenLabel}: no calls to these members were seen anywhere in '{fromNamespaceRoot}' — the rule is watching nothing, so its green result is meaningless");
 
             var offending = relevant
-                .Where(e => !chokepointTypeFullNames.Contains(OutermostType(e.Origin)))
+                .Where(e => !chokepointTypeFullNames.Contains(OutermostTypeName(e.Origin)))
                 .ToList();
 
             Assert.That(offending, Is.Empty, because + " — called from outside the chokepoint: "
@@ -270,7 +302,7 @@ namespace Ihc.Tests
         // The authored type a (possibly compiler-generated) origin belongs to: ArchUnitNET renders nested types as
         // "Outer+Inner", and a call written inside an async body or lambda is emitted on a nested state machine /
         // display class, so the raw origin of a ProjectWorkflow call can read "…ProjectWorkflow+<StartAsync>d__12".
-        private static string OutermostType(string fullName)
+        public static string OutermostTypeName(string fullName)
         {
             int cut = fullName.IndexOfAny(new[] { '+', '/' });
             return cut < 0 ? fullName : fullName.Substring(0, cut);
@@ -296,15 +328,32 @@ namespace Ihc.Tests
                 .Distinct()
                 .ToList();
 
-        public static IReadOnlyList<(string Origin, string TargetType, string Member)> MethodCallEdges(
+        public static IReadOnlyList<(string Origin, string OriginMember, string TargetType, string Member)> MethodCallEdges(
             Architecture arch, string fromNamespaceRoot) =>
             OwnTypes(arch, fromNamespaceRoot)
                 .SelectMany(t => t.Dependencies.OfType<MethodCallDependency>(),
-                    (t, call) => (Origin: t.FullName, Member: call.TargetMember))
-                .Select(edge => (edge.Origin, TargetType: edge.Member.DeclaringType.FullName,
-                    Member: BareMemberName(edge.Member.Name)))
+                    (t, call) => (Origin: t.FullName, OriginMember: call.OriginMember.Name,
+                        TargetMember: call.TargetMember))
+                .Select(edge => (edge.Origin,
+                    OriginMember: AuthoredMemberName(edge.Origin, edge.OriginMember),
+                    TargetType: edge.TargetMember.DeclaringType.FullName,
+                    Member: BareMemberName(edge.TargetMember.Name)))
                 .Distinct()
                 .ToList();
+
+        private static string AuthoredMemberName(string originTypeFullName, string emittedMemberName)
+        {
+            string nestedName = originTypeFullName.Substring(originTypeFullName.LastIndexOfAny(new[] { '+', '/' }) + 1);
+            if (nestedName.StartsWith("<", StringComparison.Ordinal))
+            {
+                int nameStart = nestedName.StartsWith("<<", StringComparison.Ordinal) ? 2 : 1;
+                int close = nestedName.IndexOf('>', nameStart);
+                if (close > nameStart)
+                    return nestedName.Substring(nameStart, close - nameStart);
+            }
+
+            return BareMemberName(emittedMemberName);
+        }
 
         private static string BareMemberName(string memberName)
         {
@@ -317,4 +366,8 @@ namespace Ihc.Tests
         private static IEnumerable<IType> OwnTypes(Architecture arch, string fromNamespaceRoot) =>
             arch.Types.Where(t => t.FullName.StartsWith(fromNamespaceRoot + ".", StringComparison.Ordinal));
     }
+
+    internal readonly record struct ConstructorCallExemption(string OriginTypeFullName, string TargetTypeFullName);
+
+    internal readonly record struct MethodCallExemption(string OriginTypeFullName, string OriginMemberName);
 }

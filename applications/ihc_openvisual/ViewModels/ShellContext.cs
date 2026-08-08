@@ -15,6 +15,7 @@ namespace ihc_openvisual.ViewModels;
 /// would be hauled on every rebuild while quietly weakening that claim). Dirty state and the undo/redo LABELS
 /// are read straight off the workflow by the title and the Edit-menu headers, never through a gate, so they
 /// are not snapshot; <c>CanUndo</c>/<c>CanRedo</c> stay because the undo/redo rows gate on them (review F10).</remarks>
+[CommandContextValue]
 public sealed record ShellContext(
     bool ProjectOpen,
     bool IsProgrammingMode, bool ProgrammingBlockLocked,
@@ -38,6 +39,7 @@ public sealed record ShellContext(
 /// <remarks>Same rule as <see cref="ShellContext"/>: only flags a gate reads. Which pane is active is the
 /// shell's <see cref="ShellContext.InstallationPaneActive"/>, not a per-node copy of it, and "can edit
 /// properties" is <see cref="Id"/> being non-null — which the properties gate reads directly (review F10).</remarks>
+[CommandContextValue]
 public sealed record NodeContext(
     ElementId? Id, TreeNodeKind Kind,
     bool IsPin, bool IsProductTerminal, bool IsLinkRow, bool IsLinkTarget, bool IsLogMarkPin,
@@ -48,4 +50,5 @@ public sealed record NodeContext(
 /// <summary>The structural-editing clipboard as a value (US-054/US-056): enough to MINT the paste —
 /// <see cref="SourceId"/> + <see cref="IsCut"/> decide MoveNode vs CopyNode, then CanApply probes the target
 /// (review F4: <c>ClipboardHasNode</c> alone could not).</summary>
+[CommandContextValue]
 public sealed record ClipboardContext(ElementId SourceId, bool IsCut);
