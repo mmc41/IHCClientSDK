@@ -127,7 +127,9 @@ public sealed class AvaloniaDialogService : IDialogService
     {
         if (Owner is null)
             return;
-        await new AboutWindow().ShowDialog(Owner);
+        // Passing this: the About window's repository link opens through OpenExternalUrlAsync below rather than
+        // launching for itself, so there is ONE external-open policy in the app.
+        await new AboutWindow(this).ShowDialog(Owner);
     }
 
     public Task ShowSettingsAsync(string settingsText) =>

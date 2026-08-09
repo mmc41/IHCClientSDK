@@ -1,5 +1,4 @@
 using System;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -170,15 +169,30 @@ public class ReportPickerTests
     /// <summary>
     /// The temp page's file NAME is deterministic (kind-mode.ext — it is what the viewer's tab shows), so a
     /// shared directory means two running instances viewing the same report write the same path: the second
-    /// overwrites the page the first is reading, or fails outright while that viewer holds the file open. The
-    /// directory is therefore scoped to the process — PIDs are unique among live processes, which is exactly and
-    /// only what is needed here.
-    /// <para>The isolation itself cannot be observed in-process: two harnesses in one test run share this
-    /// process's id and so, correctly, share its directory. What is asserted is the scheme — that the page lands
-    /// under a directory named for this process rather than directly in the shared root.</para>
+    /// overwrites the page the first is reading, or fails outright while that viewer holds the file open. Each
+    /// run therefore views inside a directory of its own, so the two never meet.
+    /// <para>Asserted as the PROPERTY rather than the naming scheme: two shells viewing the same report in the
+    /// same format must land on different paths, whatever the directories are called.</para>
     /// </summary>
     [AvaloniaTest]
-    public async Task ViewInBrowser_ScopesTheTempPageToThisProcess_SoASecondInstanceCannotOverwriteIt()
+    public async Task ViewInBrowser_ScopesTheTempPageToThisRun_SoASecondInstanceCannotOverwriteIt()
+    {
+        string first = await ViewInstallationReport();
+        string second = await ViewInstallationReport();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(Path.GetFileName(first), Is.EqualTo("installation-standard.html"),
+                "the file NAME stays deterministic — it is what the viewer shows the installer");
+            Assert.That(Path.GetFileName(second), Is.EqualTo(Path.GetFileName(first)),
+                "both runs name the page identically, which is exactly why the directories must differ");
+            Assert.That(Path.GetDirectoryName(second), Is.Not.EqualTo(Path.GetDirectoryName(first)),
+                "a second instance viewing the same report writes elsewhere, so neither overwrites the page the other is reading");
+        });
+    }
+
+    // One shell's complete view-in-browser flow, answering with the path it handed the OS.
+    private static async Task<string> ViewInstallationReport()
     {
         using var harness = ShellHarness.Create();
         MainWindowViewModel vm = harness.CreateViewModel();
@@ -188,17 +202,6 @@ public class ReportPickerTests
 
         await picker.ViewInBrowserCommand.ExecuteAsync(null);
 
-        string opened = harness.Dialogs.LastOpenedUrl!;
-        string? directory = Path.GetDirectoryName(opened);
-        Assert.Multiple(() =>
-        {
-            Assert.That(Path.GetFileName(directory),
-                Is.EqualTo(Environment.ProcessId.ToString(CultureInfo.InvariantCulture)),
-                "the page goes in a directory named for THIS process, so a second running instance viewing the same report writes elsewhere");
-            Assert.That(Path.GetFileName(Path.GetDirectoryName(directory)), Is.EqualTo("ihc-openvisual-reports"),
-                "the per-process directory stays under the app's one reports root");
-            Assert.That(Path.GetFileName(opened), Is.EqualTo("installation-standard.html"),
-                "the file NAME stays deterministic — it is what the viewer shows the installer");
-        });
+        return harness.Dialogs.LastOpenedUrl!;
     }
 }

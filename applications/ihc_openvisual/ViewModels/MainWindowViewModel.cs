@@ -725,12 +725,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             await ApplyAsync(command, $"Funktionsblokken '{blockName}' er indsat under {localityName}");
         });
 
-    // No parameterless "design-time" constructor: the one that used to be here had no caller anywhere (no view
-    // declares Design.DataContext), and it created two never-deleted temp files plus a whole ProjectAppService on
-    // every instantiation — heavy work in a view-model constructor is exactly what the previewer cannot afford
-    // (Avalonia architecture review AP-18/A-13). If design-time data is wanted, add a side-effect-free
-    // DesignMainWindowViewModel subclass and point Design.DataContext at it, rather than a second production
-    // constructor that drifts from this one. Pinned by OpenVisualDesignTimeTests.
+    // No parameterless "design-time" constructor: the one that used to be here created two never-deleted temp files
+    // plus a whole ProjectAppService on every instantiation, and heavy work in a view-model constructor is exactly
+    // what the previewer cannot afford (Avalonia architecture review AP-18/A-13). Design-time construction lives in
+    // the side-effect-free DesignTime/DesignMainWindowViewModel subclass that MainWindow.axaml points
+    // Design.DataContext at, so the real constructor cannot drift from the real composition root. Pinned by
+    // OpenVisualDesignTimeTests.
 
     /// <summary>Opens the start-up document: <paramref name="startupProjectPath"/> (the <c>.vis</c> the app was
     /// launched on), else the empty project.</summary>

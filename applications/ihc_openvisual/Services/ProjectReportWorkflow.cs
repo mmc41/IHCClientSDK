@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using Ihc;
@@ -22,17 +21,16 @@ namespace ihc_openvisual.Services;
 internal sealed class ProjectReportWorkflow(
     ProjectAppService service, IDialogService dialogs, ILogger logger, Func<Project?> getCurrent) : IDisposable
 {
-    /// <summary>Where <see cref="ViewInBrowserAsync"/> puts the page it hands to the OS — scoped to THIS process,
+    private string? _viewDirectory;
+
+    /// <summary>Where <see cref="ViewInBrowserAsync"/> puts the page it hands to the OS — a directory of its own,
     /// because the file name below is deterministic and the app is deliberately multi-instance: two instances
     /// viewing the same report would otherwise write one path, the second overwriting the page the first is
-    /// reading (or failing outright while that viewer holds the file). A process id is the right key precisely
-    /// because nothing here infers anything from it: it is only a name, and the OS guarantees live processes do
-    /// not share one. Nothing may treat "this file exists" as "I wrote it" — a recycled id can inherit a
-    /// force-killed run's leftovers, which the next generation overwrites and <see cref="Dispose"/> removes.
-    /// A future cleanup sweep must therefore go by directory AGE, never by asking whether a pid is still alive.</summary>
-    private readonly string _viewDirectory = Path.Combine(
-        Path.GetTempPath(), "ihc-openvisual-reports",
-        Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
+    /// reading (or failing outright while that viewer holds the file). Minted by the OS rather than keyed on
+    /// anything of ours, so uniqueness is guaranteed instead of argued; created on FIRST use, so merely
+    /// constructing this collaborator (the previewer does) writes nothing.</summary>
+    private string ViewDirectory =>
+        _viewDirectory ??= Directory.CreateTempSubdirectory("ihc-openvisual-reports-").FullName;
 
     /// <summary>
     /// T015 (R12): generates the picked report in the picked format via the facade — HTML with the app's SVG
@@ -51,8 +49,7 @@ internal sealed class ProjectReportWorkflow(
             {
                 return;   // no project open — the registry gate normally prevents this
             }
-            Directory.CreateDirectory(_viewDirectory);
-            string path = Path.Combine(_viewDirectory, FileName(kind, mode, mimeType));
+            string path = Path.Combine(ViewDirectory, FileName(kind, mode, mimeType));
             await service.GenerateReport(project, kind, mode, mimeType, path, IconsFor(mimeType));
             // The handover to the OS is the last step of this workflow, so a handover that did not happen is a
             // failure of it — not a silent no-op that leaves the installer waiting for a window (UX review CORE-03).
@@ -113,19 +110,20 @@ internal sealed class ProjectReportWorkflow(
     private static IReportIconProvider? IconsFor(string mimeType) =>
         mimeType == ReportMimeTypes.PlainText ? null : new SvgReportIconProvider();
 
-    /// <summary>Removes this process's viewing directory on shutdown, so the per-process scoping does not turn
-    /// into per-run litter. Best-effort by design: a viewer still holding a page just leaves the directory
-    /// behind for the id's next owner, which is no worse than the single shared directory it replaced.</summary>
+    /// <summary>Removes this run's viewing directory on shutdown, so the per-run scoping does not turn into
+    /// per-run litter. Nothing to do when no report was ever viewed — the directory is created on first use.
+    /// Best-effort by design: a viewer still holding a page just leaves the directory behind.</summary>
     public void Dispose()
     {
+        if (_viewDirectory is not { } dir)
+            return;
         try
         {
-            if (Directory.Exists(_viewDirectory))
-                Directory.Delete(_viewDirectory, recursive: true);
+            Directory.Delete(dir, recursive: true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            logger.LogDebug(ex, "Could not remove the report viewing directory {Path}", _viewDirectory);
+            logger.LogDebug(ex, "Could not remove the report viewing directory {Path}", dir);
         }
     }
 }

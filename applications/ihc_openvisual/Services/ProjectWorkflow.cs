@@ -394,25 +394,21 @@ public sealed class ProjectWorkflow : IDisposable
     /// matches <see cref="Version"/>, the document refuses the edit as stale (a dialog prepared against an older
     /// project).
     /// </summary>
-    public Task<EditOutcome> ApplyAsync(ProjectCommand command, int? baseVersion = null)
-    {
-        EditOutcome outcome = _document is { } document
-            ? document.Apply(command, baseVersion)
-            : NoDocument(command);
-        if (outcome.Status == EditStatus.Committed)
-            RaiseChanged(outcome.Changes);
-        return Task.FromResult(outcome);
-    }
+    public Task<EditOutcome> ApplyAsync(ProjectCommand command, int? baseVersion = null) =>
+        Task.FromResult(Publish(_document is { } document ? document.Apply(command, baseVersion) : NoDocument(command)));
 
     /// <summary>The value-producing overload of <see cref="ApplyAsync(ProjectCommand,int?)"/> (e.g. a new element's id).</summary>
-    public Task<EditOutcome<T>> ApplyAsync<T>(ProjectCommand<T> command, int? baseVersion = null)
+    public Task<EditOutcome<T>> ApplyAsync<T>(ProjectCommand<T> command, int? baseVersion = null) =>
+        Task.FromResult(Publish(_document is { } document ? document.Apply(command, baseVersion) : NoDocument(command)));
+
+    // The ONE publish-on-commit rule both Apply overloads obey, written once: an outcome the document COMMITTED is
+    // the only one that changed the project, so it is the only one whose delta reaches the reconciler. Generic over
+    // the outcome so the value-producing overload hands its own EditOutcome<T> straight back to its caller.
+    private TOutcome Publish<TOutcome>(TOutcome outcome) where TOutcome : EditOutcome
     {
-        EditOutcome<T> outcome = _document is { } document
-            ? document.Apply(command, baseVersion)
-            : NoDocument(command);
         if (outcome.Status == EditStatus.Committed)
             RaiseChanged(outcome.Changes);
-        return Task.FromResult(outcome);
+        return outcome;
     }
 
     /// <summary>The command's legality verdict against the open document (cheap — reuses the per-commit index, no

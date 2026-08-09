@@ -33,19 +33,25 @@ namespace ihc_openvisual.DesignTime;
 /// </summary>
 public sealed class DesignMainWindowViewModel : MainWindowViewModel
 {
-    public DesignMainWindowViewModel() : base(
-        DesignWorkflow(), new NullDialogService(), new RecentProjectsStore(DesignPath("recent.json")),
-        new NullThemeService())
+    public DesignMainWindowViewModel()
+        : this(new NullDialogService(), new RecentProjectsStore(DesignPath("recent.json")))
+    {
+    }
+
+    // Chained through a private constructor so the shell and the workflow it wraps share ONE dialog adapter and ONE
+    // recent-projects store, which is the shape of the composition root this mirrors (App.OnFrameworkInitialization-
+    // Completed threads a single instance of each into both). Building them twice gave the previewer two stores over
+    // the same path, so the shell's recent list and the workflow's were unrelated objects.
+    private DesignMainWindowViewModel(NullDialogService dialogs, RecentProjectsStore recent)
+        : base(DesignWorkflow(dialogs, recent), dialogs, recent, new NullThemeService())
     {
         StatusText = "Tryk F1 for hjælp";
     }
 
-    private static ProjectWorkflow DesignWorkflow()
+    private static ProjectWorkflow DesignWorkflow(IDialogService dialogs, RecentProjectsStore recent)
     {
         var service = new ProjectAppService(new IhcSettings());
-        var workflow = new ProjectWorkflow(
-            service, new RecentProjectsStore(DesignPath("recent.json")),
-            new NullDialogService(), catalogDir: DesignPath("catalog"));
+        var workflow = new ProjectWorkflow(service, recent, dialogs, catalogDir: DesignPath("catalog"));
         // The standard empty project, so the previewer shows the shell with its ten localities rather than two
         // blank panes. In memory only — no file is read or written — and synchronous in practice: nothing is dirty,
         // so the save prompt this would otherwise raise is never reached.

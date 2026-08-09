@@ -15,6 +15,33 @@
         WindowStartupLocation="CenterOwner"
         CanResize="True"
         ShowInTaskbar="False">
+    <Window.Resources>
+        <!-- ONE row template for both directions: the input and output tables differ only in the id prefix each
+             row publishes, which the per-list style below supplies. Written twice, the seven accessibility
+             attributes that make a row readable had to be kept in step by hand, and a miss shows up only as a
+             screen-reader/driver defect. -->
+        <DataTemplate x:Key="ModuleRow" x:DataType="vis:DatalineModule">
+            <!-- One ROW = one automation element (USE-01): the cells are Raw so a client reads the row's
+                 summarized name once instead of four loose text runs with no structure between them. -->
+            <controls:AccessibleDataRow ColumnDefinitions="70,*,170,*"
+                    a:AutomationProperties.Name="{Binding ., Converter={x:Static conv:DatalineModuleSummaryConverter.Instance}}">
+                <TextBlock Grid.Column="0" Classes="cell" Text="{Binding DataLine}"
+                           a:AutomationProperties.AccessibilityView="Raw"/>
+                <TextBlock Grid.Column="1" Classes="cell" Text="{Binding ModuleType}"
+                           IsVisible="{Binding InUse}"
+                           a:AutomationProperties.AccessibilityView="Raw"/>
+                <TextBlock Grid.Column="1" Classes="cell" Text="&lt;ikke i brug&gt;"
+                           IsVisible="{Binding !InUse}"
+                           a:AutomationProperties.AccessibilityView="Raw"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                <TextBlock Grid.Column="2" Classes="cell" Text="{Binding Location}"
+                           a:AutomationProperties.AccessibilityView="Raw"/>
+                <TextBlock Grid.Column="3" Classes="cell" Text="{Binding Description}"
+                           a:AutomationProperties.AccessibilityView="Raw"/>
+            </controls:AccessibleDataRow>
+        </DataTemplate>
+    </Window.Resources>
+
     <Window.Styles>
         <!-- The captioned group box the project-info dialog uses; Avalonia has no GroupBox. A Grid, NOT a
              StackPanel: a StackPanel measures its child with INFINITE height, so the output group's ScrollViewer
@@ -50,6 +77,16 @@
         <Style Selector="ItemsControl.rows :is(Grid)">
             <Setter Property="Margin" Value="0,2"/>
         </Style>
+        <!-- The one thing a row does NOT share between the two tables: which direction's data line it is. Kept
+             here rather than in the template so the template itself stays direction-agnostic. -->
+        <Style Selector="ItemsControl#InputModulesList controls|AccessibleDataRow" x:DataType="vis:DatalineModule">
+            <Setter Property="a:AutomationProperties.AutomationId"
+                    Value="{Binding DataLine, StringFormat=inputModule.{0}}"/>
+        </Style>
+        <Style Selector="ItemsControl#OutputModulesList controls|AccessibleDataRow" x:DataType="vis:DatalineModule">
+            <Setter Property="a:AutomationProperties.AutomationId"
+                    Value="{Binding DataLine, StringFormat=outputModule.{0}}"/>
+        </Style>
     </Window.Styles>
 
     <DockPanel Margin="12">
@@ -72,32 +109,8 @@
                     <ScrollViewer Grid.Row="1" MaxHeight="212" AllowAutoHide="False"
                                   VerticalScrollBarVisibility="Auto">
                         <ItemsControl Name="InputModulesList" Classes="rows" ItemsSource="{Binding InputModules}"
-                                      a:AutomationProperties.Name="Indgangsmoduler">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vis:DatalineModule">
-                                    <!-- One ROW = one automation element (USE-01): the cells are Raw so a client
-                                         reads the row's summarized name once instead of four loose text runs with
-                                         no structure between them. -->
-                                    <controls:AccessibleDataRow ColumnDefinitions="70,*,170,*"
-                                            a:AutomationProperties.Name="{Binding ., Converter={x:Static conv:DatalineModuleSummaryConverter.Instance}}"
-                                            a:AutomationProperties.AutomationId="{Binding DataLine, StringFormat=inputModule.{0}}">
-                                        <TextBlock Grid.Column="0" Classes="cell" Text="{Binding DataLine}"
-                                                   a:AutomationProperties.AccessibilityView="Raw"/>
-                                        <TextBlock Grid.Column="1" Classes="cell" Text="{Binding ModuleType}"
-                                                   IsVisible="{Binding InUse}"
-                                                   a:AutomationProperties.AccessibilityView="Raw"/>
-                                        <TextBlock Grid.Column="1" Classes="cell" Text="&lt;ikke i brug&gt;"
-                                                   IsVisible="{Binding !InUse}"
-                                                   a:AutomationProperties.AccessibilityView="Raw"
-                                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                                        <TextBlock Grid.Column="2" Classes="cell" Text="{Binding Location}"
-                                                   a:AutomationProperties.AccessibilityView="Raw"/>
-                                        <TextBlock Grid.Column="3" Classes="cell" Text="{Binding Description}"
-                                                   a:AutomationProperties.AccessibilityView="Raw"/>
-                                    </controls:AccessibleDataRow>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                                      ItemTemplate="{StaticResource ModuleRow}"
+                                      a:AutomationProperties.Name="Indgangsmoduler"/>
                     </ScrollViewer>
                 </Grid>
             </HeaderedContentControl>
@@ -112,29 +125,8 @@
                     </Grid>
                     <ScrollViewer Grid.Row="1" AllowAutoHide="False" VerticalScrollBarVisibility="Auto">
                         <ItemsControl Name="OutputModulesList" Classes="rows" ItemsSource="{Binding OutputModules}"
-                                      a:AutomationProperties.Name="Udgangsmoduler">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vis:DatalineModule">
-                                    <controls:AccessibleDataRow ColumnDefinitions="70,*,170,*"
-                                            a:AutomationProperties.Name="{Binding ., Converter={x:Static conv:DatalineModuleSummaryConverter.Instance}}"
-                                            a:AutomationProperties.AutomationId="{Binding DataLine, StringFormat=outputModule.{0}}">
-                                        <TextBlock Grid.Column="0" Classes="cell" Text="{Binding DataLine}"
-                                                   a:AutomationProperties.AccessibilityView="Raw"/>
-                                        <TextBlock Grid.Column="1" Classes="cell" Text="{Binding ModuleType}"
-                                                   IsVisible="{Binding InUse}"
-                                                   a:AutomationProperties.AccessibilityView="Raw"/>
-                                        <TextBlock Grid.Column="1" Classes="cell" Text="&lt;ikke i brug&gt;"
-                                                   IsVisible="{Binding !InUse}"
-                                                   a:AutomationProperties.AccessibilityView="Raw"
-                                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                                        <TextBlock Grid.Column="2" Classes="cell" Text="{Binding Location}"
-                                                   a:AutomationProperties.AccessibilityView="Raw"/>
-                                        <TextBlock Grid.Column="3" Classes="cell" Text="{Binding Description}"
-                                                   a:AutomationProperties.AccessibilityView="Raw"/>
-                                    </controls:AccessibleDataRow>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                                      ItemTemplate="{StaticResource ModuleRow}"
+                                      a:AutomationProperties.Name="Udgangsmoduler"/>
                     </ScrollViewer>
                 </Grid>
             </HeaderedContentControl>

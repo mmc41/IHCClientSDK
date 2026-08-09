@@ -73,6 +73,7 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
 - No simulation mode.
 - No auto backup.
 - Editing rapport data tables
+- Product help.
 
 ## What This Product Is Not
 
