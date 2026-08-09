@@ -37,6 +37,15 @@ A derived comparison plan must cover every applicable acceptance criterion in th
 map to the Differences register or to the Non-checklist below — an omission with no such mapping is
 a gap in the plan, not a passed comparison.
 
+**Set-valued dimensions require member-level completeness.** Where a dimension ranges over a set of
+instances — the dialogs, each node type's menus and actions, the report types),
+the product families / variable types / themes / text scales — the plan is complete for that
+dimension only when **each member is individually resolved** (matched, or mapped to a registered
+difference or the Non-checklist). A result generalized from a sample is not completeness; an
+un-addressed member is **unresolved** (see Verdict), whatever the members that *were* checked
+showed. Which members exist, and how they are discovered and driven, is the plan's to determine —
+this file only sets the bar.
+
 ## Checklist (goal)
 
 Each line names the evidence that decides it. A *dump* is a driver's structured read of that
@@ -85,7 +94,8 @@ project fresh in both applications). Nothing else may be masked without an owner
 
 Missing evidence is not a pass. A dimension that was not exercised, whose evidence was not
 recorded, or whose driver reported itself blind, is **unresolved**, and an unresolved dimension
-fails the comparison just as a mismatch does.
+fails the comparison just as a mismatch does — including a set-valued dimension with any member
+unaddressed.
 
 Anything else is a **divergence**, resolved in exactly one of three ways:
 
