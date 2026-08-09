@@ -1,10 +1,9 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# Agent instuctions
 
 ## Development Commands
 
 ### Building
+
 ```bash
 # Build entire solution (run from repository root)
 dotnet build IHCClientSDK.sln
@@ -15,6 +14,7 @@ dotnet build tests/safe_integration_tests/safe_integration_tests.csproj
 ```
 
 ### Testing
+
 ```bash
 # Run SDK integration tests (safe to run against active controllers)
 dotnet test tests/safe_integration_tests/safe_integration_tests.csproj
@@ -42,6 +42,7 @@ dotnet test tests/safe_integration_tests/safe_integration_tests.csproj --filter 
 ```
 
 ### Running Examples
+
 ```bash
 # Run example programs (requires ihcsettings.json configuration at repo root)
 dotnet run --project examples/ihcclient_example1/example1.csproj
@@ -49,6 +50,7 @@ dotnet run --project examples/ihcclient_example2/example2.csproj
 ```
 
 ### Running Utilities
+
 ```bash
 # Run IHC project IO extractor utility
 dotnet run --project utilities/ihc_project_io_extractor/ihc_projectextractor.csproj
@@ -64,6 +66,7 @@ dotnet run --project utilities/ihc_lab/ihc_lab.csproj
 ```
 
 ### Running Applications
+
 ```bash
 # Run IHC OpenVisual desktop application (Avalonia, .NET 10; GUI over ProjectAppService)
 dotnet run --project applications/ihc_openvisual/ihc_openvisual.csproj
@@ -99,9 +102,11 @@ Two Claude Code skills are set up for working in this repo:
 > For a whole-repo overview of layers, invariants, and boundaries, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ### Core Structure
+
 This is a .NET 10 mono-repository containing an unofficial SDK for IHC (Intelligent House Concept) controllers from LK/Schneider Electric. All projects target `net10.0` and the solution builds under the .NET 10 SDK.
 
 **Main Projects:**
+
 - `ihcclient/` - Core SDK library with high-level API wrapper around SOAP services
 - `tests/safe_integration_tests/` - NUnit test suite for SDK integration tests (safe to run against active controllers)
 - `tests/safe_lab_tests/` - NUnit test suite for IHC Lab GUI tests (headless Avalonia UI tests with diagnostic features)
@@ -122,9 +127,11 @@ This is a .NET 10 mono-repository containing an unofficial SDK for IHC (Intellig
 - `utilities/ihc_catalog_codegen/` - Developer-time generator that decompiles a vendor IHC Visual catalog into the SDK's built-in catalog C# sources (only needed when regenerating the catalog)
 
 ### SDK Architecture
+
 The `ihcclient` project follows a layered architecture:
 
 **High-Level Services** (`ihcclient/src/api/services/`):
+
 - Service classes: `AuthenticationService`, `ResourceInteractionService`, `ConfigurationService`, `ControllerService`, `MessagecontrollogService`, `ModuleService`, `NotificationManagerService`, `TimeManagerService`, `UserManagerService`, `OpenAPIService`, `AirlinkManagementService`, `SmsModemService`, `InternalTestService`, `LedDimmerManagementService`, `ProductionTestService`
 - Each service wraps a corresponding SOAP implementation (SoapImpl classes)
 - Uses custom data models in `src/models/` instead of exposing SOAP artifacts
@@ -136,6 +143,7 @@ The `ihcclient` project follows a layered architecture:
 - `ProductionTestService` - LK/Schneider production-test service. INTERNAL / potentially dangerous (manufacturing use). The controller WSDL currently defines no operations, so this is an empty placeholder wrapper; future operations should be gated on `allowDangerousInternTestCalls` like `InternalTestService`.
 
 **Application Services** (`ihcclient/src/app/services/`, namespace: `Ihc.App`):
+
 - Higher-level, tech-agnostic backend services intended for GUI or console applications
 - Build on top of SDK services to provide specialized functionality for specific application use cases
 - All application services inherit from `AppServiceBase` and support auto-authentication
@@ -148,19 +156,23 @@ The `ihcclient` project follows a layered architecture:
 - Designed to be framework-agnostic, suitable for WPF, Avalonia, console apps, or web backends
 
 **Generated SOAP Layer** (`ihcclient/generatedsrc/`):
+
 - Auto-generated from WSDL files using dotnet-svcutil (authentication.cs, configuration.cs, controller.cs, resourceinteraction.cs, openapi.cs, airlinkmanagment.cs, etc.)
 - Low-level SOAP implementations in `Ihc.Soap.*.*` namespaces
 - Should not be used directly - access through high-level services
 - Regeneration requires macOS with `download_wsdl.sh` and `generate.sh` scripts located in `ihcclient/`
 
 **Supporting Infrastructure** (`ihcclient/src/api/util/` and `ihcclient/src/util/`):
+
 - HTTP client utilities and cookie handling for maintaining IHC controller sessions (`src/api/util/`)
 - Serialization helpers, encoding/copy utilities (`src/util/`); settings live in `src/config/`
 
 **Extensions** (`ihcclient/src/extensions/`):
+
 - Extension methods for various types
 
 ### Key Design Patterns
+
 - Services are constructed from an `IhcSettings` (`AuthenticationService`/`OpenAPIService`) or an `IAuthenticationService` (all others) — not a logger + endpoint
 - The SDK core emits OpenTelemetry traces via `ActivitySource` and has no logging dependency; only setup/utility/app code uses `ILogger`
 - Authentication required before using most services (except OpenAPIService)
@@ -190,13 +202,14 @@ The `ihcclient` project follows a layered architecture:
 **Documentation** lives in `applications/ihc_openvisual/docs/` — read the relevant doc before implementing an app feature.
 
 **`product.md` and `stories/*.md` specify WHAT the app must do — not HOW, and not WHEN.** They are the product **specification** (requirements, intended behaviour, acceptance criteria) and are the source of truth for *what* is correct. They are **not**:
+
 - **HOW (implementation)** — class/method/file design, patterns, tech choices, code structure. That belongs in the code and in `ARCHITECTURE.md`, never in these docs.
 - **WHEN (plans)** — milestones, roadmaps, sequencing, task backlogs, or progress tracking. Keep planning artefacts out of these docs (use `tmp/` backlogs, issues, etc.).
 
 So when editing them, describe behaviour, not implementation or schedule. (The one allowed exception is the short per-story *Readiness* / *Implementation status* line — a status annotation that is a natural part of a user story, not a plan.)
 
 | Doc | Purpose |
-|-----|---------|
+| ----- | --------- |
 | `product.md` | The product spec (WHAT): vision, features F1–F11, quality attributes, data requirements, test information, glossary |
 | `stories/*.md` | The behavioural spec (WHAT): epics **E1–E16** and their user stories (`US-NNN`) with Given-When-Then acceptance criteria — start here for any feature |
 | `icons_design.md` | Flat-line SVG icon design guidelines (24-unit grid, `currentColor`, legible at 16 px; state via glyph + colour, never colour alone) |
@@ -205,9 +218,11 @@ So when editing them, describe behaviour, not implementation or schedule. (The o
 ## Configuration Requirements
 
 ### ihcsettings.json
+
 All tests, examples, and utilities require an `ihcsettings.json` file in the repository root (not tracked in git). Use `ihcsettings_template.json` or `ihcsettings_example.json` as reference.
 
 Required for development:
+
 - IHC controller endpoint and credentials
 - Test resource IDs for boolean inputs/outputs
 - Logging configuration
@@ -227,9 +242,11 @@ var resourceService = new ResourceInteractionService(authService);
 `logSensitiveData` is a field on `IhcSettings` (`"logSensitiveData"` in `ihcsettings.json`), not a constructor parameter. Keep it `false` unless debugging — when `true`, credentials are visible in traces.
 
 ### IHC Controller Setup
+
 Before running any code that connects to an IHC controller:
+
 1. Enable network access in IHC administrator interface
-2. Enable "thirdparty access" 
+2. Enable "thirdparty access"
 
 ## Important Notes
 
@@ -248,6 +265,7 @@ Before running any code that connects to an IHC controller:
 ## Test Infrastructure
 
 ### Test Suites
+
 - **safe_integration_tests** - SDK integration tests (safe to run against active controllers)
 - **safe_lab_tests** - Headless Avalonia UI tests for IHC Lab application with advanced diagnostic capabilities (using fake sevices instead of active controller)
 - **safe_unit_tests** - Controller-free unit tests for SDK and Lab business logic (no Avalonia headless app; mocks IHC services with FakeItEasy). UI control-construction tests belong in safe_lab_tests instead.
@@ -258,6 +276,7 @@ Before running any code that connects to an IHC controller:
 ### Test Data (Oracle Fixtures)
 
 Oracle fixtures live in `tests/testdata/` and are shared by `safe_project_tests`, `safe_unit_tests` and `safe_visual_tests`:
+
 - `projects/` — `.vis` project oracles (byte-fidelity round-trip targets, editing/mutation replay baselines)
 - `products/` — product catalog `.def` oracles
 - `functionblocks/` — function-block `.ifb` oracles
@@ -270,11 +289,14 @@ Each consuming suite imports `tests/TestData.props`, which copies them to `$(Out
 The `safe_lab_tests` project includes comprehensive diagnostic capabilities to help troubleshoot test failures:
 
 #### Trace Logging
+
 All tests output detailed trace-level logs visible in test results:
+
 - **Application logs**: MainWindow, ViewModel, and app service operations (Trace level)
 - **Avalonia UI logs**: Framework internal logs (Warning level by default)
 
 Log levels configured in `tests/safe_lab_tests/Setup.cs`:
+
 ```csharp
 // Application code logs (line 196)
 builder.SetMinimumLevel(LogLevel.Trace);  // Change to Information or Warning to reduce verbosity
@@ -284,21 +306,25 @@ builder.SetMinimumLevel(LogLevel.Trace);  // Change to Information or Warning to
 ```
 
 #### Automatic Screenshot Capture on Failure
+
 Tests automatically capture screenshots when they fail using the `[CaptureScreenshotOnFailure]` attribute:
 
 **Implementation Details:**
+
 - Uses `IWrapSetUpTearDown` NUnit interface to hook into test execution pipeline
 - Works alongside `[AvaloniaTest]` attribute (both attributes required on each test method)
 - Executes screenshot capture through Avalonia's headless session dispatcher
 - Must be applied to **each test method individually** (NUnit framework limitation - cannot be applied at class level)
 
 **Screenshot Location:**
+
 - Saved to: `tests/safe_lab_tests/bin/Debug/{DotNetVersion}/TestFailureScreenshots/`
 - Format: `{TestName}_{Timestamp}.png` (e.g., `MyTest_20251106_094227.png`)
 - Automatically attached to test results via `TestContext.AddTestAttachment()`
 - Requires Skia renderer (already configured in TestAppBuilder)
 
 **Features:**
+
 - Captures exact visual state at failure
 - 1024x768 resolution headless rendering
 - Timestamped to prevent overwrites
@@ -306,6 +332,7 @@ Tests automatically capture screenshots when they fail using the `[CaptureScreen
 - Fully automatic - no try-finally blocks or manual calls required
 
 ### Test Guidelines
+
 - All tests must be safe from potential harmful side effects on IHC controller, including changing state on controller.
 - Only safe_integration_tests may use real IHC Api services. All other tests should use mocks of IHC services using FakeItEasy framework.
 - When generating tests, only generate valuable tests for functional aspects.
@@ -318,6 +345,7 @@ Tests automatically capture screenshots when they fail using the `[CaptureScreen
 The `safe_lab_tests` project uses mocked IHC services configured in `utilities/ihc_lab/App/IhcSetup.cs` via the `IhcFakeSetup` class.
 
 **How Mocking Works:**
+
 - When endpoint starts with `SpecialEndpoints.MockedPrefix`, `IhcSetup` creates mocked services instead of real ones
 - Each service has a `Setup*Service` method in `IhcFakeSetup` that configures mock behavior using FakeItEasy
 - Tests automatically use mocked services through the normal application flow
@@ -345,6 +373,7 @@ public static IAuthenticationService SetupAuthenticationService(IhcSettings sett
 ```
 
 **Example: If tests need a specific operation:**
+
 1. Identify which service the operation belongs to (e.g., `IAuthenticationService`)
 2. Update `IhcFakeSetup.SetupAuthenticationService()` to configure the operation
 3. Use `A.CallTo()` to define the mock behavior
