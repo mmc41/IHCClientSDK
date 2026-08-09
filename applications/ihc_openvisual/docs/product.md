@@ -157,6 +157,7 @@ optional bridge for downloading and uploading projects from and to a live contro
 - FR-1.3: Save and Save-As. Saving an unchanged loaded project in preserve mode is byte-identical; a normal save re-stamps metadata exactly as the format requires. Writes are atomic — a failed save never corrupts the target file.
 - FR-1.4: A recent-projects list (at least the four most recent) is available for one-click reopening.
 - FR-1.5: Automatic crash-recovery backup: written periodically and after bursts of changes, offered for recovery on restart after abnormal termination, and discarded on a clean close.
+- FR-1.6: A project file named at launch — the file the desktop hands the application when the installer opens a `.vis` with it — is the document opened, in place of the empty starting project. Crash recovery still takes precedence over it (unsaved work is the scarcer thing), and a file that cannot be opened is reported like any other failed open, leaving the application on the empty project rather than failing to start.
 
 ### F2 — Two-pane authoring workspace
 

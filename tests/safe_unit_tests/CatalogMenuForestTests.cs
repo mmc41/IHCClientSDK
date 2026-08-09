@@ -65,6 +65,41 @@ public class CatalogMenuForestTests
         });
     }
 
+    /// <summary>
+    /// The insertion menu is ordered for a DANISH reader (QC-09): Æ/Ø/Å come after Z, not wherever their code
+    /// points fall. Imported <c>.def</c>/<c>.ifb</c> names are where this shows — no built-in catalog name starts
+    /// with a Danish letter, so ordinal and Danish order agree across all 167 of them and the defect stays latent
+    /// until an installer imports a definition of their own.
+    /// </summary>
+    [Test]
+    public void BuildFunctionBlocks_OrdersDanishLettersAfterZ_NotByCodePoint()
+    {
+        // One folder, four leaves. Ordinal puts Å (U+00C5) before Æ (U+00C6) and both after every ASCII letter,
+        // and would put lower-case "ægte" in a third place again; Danish collation gives Z, Æ, Ø, Å.
+        var blocks = new[] { "Ø-blok", "Zoneblok", "Ægte blok", "Åben blok" }
+            .Select((name, i) => new CatalogItem($"fb{i}", name, "01. Test"))
+            .ToList();
+
+        var menu = CatalogMenu.BuildFunctionBlocks(blocks, Cmd);
+
+        Assert.That(Leaves(menu).Select(l => l.Header),
+            Is.EqualTo(new[] { "Zoneblok", "Ægte blok", "Ø-blok", "Åben blok" }));
+    }
+
+    /// <summary>The numeric folder prefixes still order by number — Danish collation must not undo the padding
+    /// that puts "02." before "10.".</summary>
+    [Test]
+    public void BuildFunctionBlocks_OrdersNumberedFoldersByNumber()
+    {
+        var blocks = new[] { "10. Sidst", "2. Anden", "1. Først" }
+            .Select((folder, i) => new CatalogItem($"fb{i}", $"Blok {i}", folder))
+            .ToList();
+
+        var menu = CatalogMenu.BuildFunctionBlocks(blocks, Cmd);
+
+        Assert.That(menu.Select(f => f.Header), Is.EqualTo(new[] { "1. Først", "2. Anden", "10. Sidst" }));
+    }
+
     private static IEnumerable<ProductMenuItemViewModel> Leaves(IEnumerable<ProductMenuItemViewModel> nodes)
     {
         foreach (var node in nodes)

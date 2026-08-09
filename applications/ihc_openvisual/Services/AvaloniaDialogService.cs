@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using Avalonia.Controls;
@@ -240,12 +239,34 @@ public sealed class AvaloniaDialogService : IDialogService
         await ModuleMapWindow.ShowAsync(Owner, map);
     }
 
-    public Task<bool> OpenExternalUrlAsync(string url)
+    /// <summary>Hands a generated report file, or a configured URL, to whatever the desktop associates with it.
+    /// <para>Through Avalonia's <see cref="ILauncher"/>, not <c>Process.Start(UseShellExecute: true)</c>: shell
+    /// execute is a Windows concept that the .NET runtime emulates elsewhere by shelling out to <c>xdg-open</c> /
+    /// <c>open</c>, which is exactly the per-platform guessing the framework already does properly — and it also
+    /// tells file from URL, which the shell verb cannot.</para></summary>
+    public async Task<bool> OpenExternalUrlAsync(string url)
     {
+        bool launched = false;
         try
         {
-            Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
-            return Task.FromResult(true);
+            if (Owner?.Launcher is not { } launcher)
+            {
+                _logger.LogError("Cannot open {Url}: there is no window to launch it from", url);
+            }
+            else if (File.Exists(url))
+            {
+                // A generated report: launched as a FILE, so the desktop opens it with the handler for its type
+                // rather than having to re-parse a path as a URI (where a space or a '#' would break it).
+                launched = await launcher.LaunchFileInfoAsync(new FileInfo(url));
+            }
+            else if (Uri.TryCreate(url, UriKind.Absolute, out Uri? uri))
+            {
+                launched = await launcher.LaunchUriAsync(uri);
+            }
+            else
+            {
+                _logger.LogError("Cannot open {Url}: it is neither an existing file nor an absolute URI", url);
+            }
         }
         catch (Exception ex)
         {
@@ -253,8 +274,8 @@ public sealed class AvaloniaDialogService : IDialogService
             // ENDS, so swallowing the launch failure made a dead end look like a success — to the user and to any
             // automation client watching for a final outcome (UX review CORE-03).
             _logger.LogError(ex, "Could not open URL {Url}", url);
-            return Task.FromResult(false);
         }
+        return launched;
     }
 
     private async Task<IStorageFolder?> GetFolderAsync(string? directory)

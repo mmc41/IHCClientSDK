@@ -307,6 +307,25 @@ Scenario: Opening replaces the current project
   Given a project with unsaved changes is open
   When I open another project
   Then the application first prompts to save the open project (single-project constraint, US-002)
+
+Scenario: Open a project by handing it to the application
+  Given IHC OpenVisual is not running
+  When the desktop starts it on a ".vis" file — because I opened that file with it
+  Then that project is what the application opens, instead of the empty starting project
+  And it is opened exactly as browsing to it would open it: same refresh, no unsaved-changes state,
+      and it joins the recent list
+
+Scenario: The handed-over file cannot be read
+  Given the desktop starts IHC OpenVisual on a ".vis" file that is missing or unreadable
+  When the application starts
+  Then it says so, naming the file, exactly as a failed "Open project" would
+  And it comes up on the empty starting project rather than failing to start
+
+Scenario: Unsaved work outranks the handed-over file
+  Given a crash backup from a previous session exists
+  When the desktop starts IHC OpenVisual on a ".vis" file
+  Then the recovery offer (US-005) comes first
+  And accepting it opens the recovered work; declining it opens the handed-over file
 ```
 
 ### Business rules (what opening does to the document)

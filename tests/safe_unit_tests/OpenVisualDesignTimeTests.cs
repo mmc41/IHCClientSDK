@@ -1,5 +1,7 @@
+using System.IO;
 using System.Linq;
 using System.Reflection;
+using ihc_openvisual.DesignTime;
 using ihc_openvisual.ViewModels;
 using NUnit.Framework;
 
@@ -28,5 +30,46 @@ public class OpenVisualDesignTimeTests
         Assert.That(constructors.Where(c => c.GetParameters().Length == 0), Is.Empty,
             "no parameterless constructor: it would only be reachable from the previewer, and the one that "
             + "existed created temp files on every instantiation");
+    }
+
+    /// <summary>The preferred shape, now built: a separate design-time subclass the previewer can construct, so
+    /// the designer shows the real shell instead of an empty frame.</summary>
+    [Test]
+    public void DesignMainWindowViewModel_IsConstructableAndShowsAProject()
+    {
+        var vm = new DesignMainWindowViewModel();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm, Is.InstanceOf<MainWindowViewModel>(), "so it satisfies the window's x:DataType");
+            Assert.That(vm.InstallationNodes, Is.Not.Empty, "the previewer has a populated tree to lay out");
+            Assert.That(vm.Title, Is.Not.Empty);
+        });
+    }
+
+    /// <summary>
+    /// The whole reason design-time data gets its own type: the previewer re-runs this constructor on every markup
+    /// change, so it must not touch the installer's real state. The predecessor did — two <c>GetTempFileName()</c>
+    /// calls, each leaving a file behind, on every instantiation.
+    /// </summary>
+    [Test]
+    public void DesignMainWindowViewModel_WritesNothingToDisk()
+    {
+        string designDir = Path.Combine(Path.GetTempPath(), "ihc-openvisual-design");
+        if (Directory.Exists(designDir))
+            Directory.Delete(designDir, recursive: true);
+        string[] tempBefore = Directory.GetFiles(Path.GetTempPath());
+
+        // Several times over, as the previewer would.
+        for (int i = 0; i < 3; i++)
+            _ = new DesignMainWindowViewModel();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(Directory.Exists(designDir), Is.False,
+                "the design-time stores read through missing paths; nothing is created");
+            Assert.That(Directory.GetFiles(Path.GetTempPath()), Is.EquivalentTo(tempBefore),
+                "and no stray temp files are left behind");
+        });
     }
 }

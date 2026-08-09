@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Logging;
+using Avalonia.Media;
 using Avalonia.Threading;
 using ihc_openvisual.Configuration;
 using Ihc.Bootstrap;
@@ -25,6 +27,21 @@ internal sealed class Program
     /// in <see cref="Main"/>.</summary>
     public static bool SkipRecovery { get; private set; }
 
+    /// <summary>The project file named on the command line — what "Open with…" / a double-clicked <c>.vis</c> /
+    /// <c>ihc_openvisual foo.vis</c> hands the app — or null when it was launched with no file. Set once in
+    /// <see cref="Main"/>; the shell opens it instead of the empty starter project (BP-11a).</summary>
+    public static string? StartupProjectPath { get; private set; }
+
+    /// <summary>The one file argument out of <paramref name="args"/>: the first argument that is not a switch.
+    /// <para>argv is the ONLY route on Windows and Linux — Avalonia's <c>ActivationKind.File</c> is macOS/iOS/
+    /// Android-only — so a desktop file association ultimately lands here. Nothing is validated at this point: an
+    /// unreadable or non-project path is reported by the normal open-failure dialog, which is where every other
+    /// bad path is reported too.</para>
+    /// <para>A switch is one starting with <c>-</c>, and only that: <c>/foo.vis</c> is an ordinary absolute path on
+    /// Linux and macOS, so the DOS-style <c>/flag</c> spelling cannot be recognised here.</para></summary>
+    internal static string? ParseStartupProjectPath(string[] args) =>
+        args.FirstOrDefault(a => a.Length > 0 && !a.StartsWith('-'));
+
     // Initialization code. Don't use any Avalonia, third-party APIs or any SynchronizationContext-reliant
     // code before AppMain is called: things aren't initialized yet and stuff might break.
     [STAThread]
@@ -37,6 +54,7 @@ internal sealed class Program
             SkipRecovery = args.Any(a =>
                 string.Equals(a, "--skip-recovery", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(a, "--no-recover", StringComparison.OrdinalIgnoreCase));
+            StartupProjectPath = ParseStartupProjectPath(args);
             Config = new AppConfiguration();
             LoggerFactory = AppTelemetryBootstrap.SetupTelemetryAndLogging(
                 Telemetry.AppServiceName, Telemetry.AppServiceNamespace, Telemetry.ActivitySourceName,
@@ -101,6 +119,38 @@ internal sealed class Program
         };
     }
 
+    /// <summary>The application's own font, embedded in the executable: <c>Avalonia.Fonts.Inter</c> registers its
+    /// collection under the <c>fonts:Inter</c> key, and <c>#Inter</c> names the family inside it.</summary>
+    internal const string AppFontFamily = "fonts:Inter#Inter";
+
+    /// <summary>
+    /// Registers the embedded Inter font AND makes it the default family. Both halves are needed and only the first
+    /// is obvious: <c>WithInterFont()</c> alone merely makes the collection resolvable — the package declares no
+    /// default family name — so every control that states no <c>FontFamily</c> would still render in whatever the
+    /// platform picked (Segoe UI Variable / SF / a fontconfig guess), which is the portability defect this closes:
+    /// identical metrics and identical æ/ø/å on all three desktops, from the font the app ships rather than one it
+    /// hopes to find.
+    /// <para>Set as the MANAGER default rather than as <c>FontFamily</c> on the shell window, because the app's
+    /// code-built dialogs and every popup are their own top levels and inherit nothing from that window.</para>
+    /// <para>The fallbacks cover what Inter does not: the symbol/emoji codepoints. They are per-platform because a
+    /// fallback naming a family the machine does not have buys nothing.</para>
+    /// </summary>
+    internal static AppBuilder WithAppFonts(AppBuilder builder) =>
+        builder.WithInterFont().With(new FontManagerOptions
+        {
+            DefaultFamilyName = AppFontFamily,
+            FontFallbacks = SymbolFontFallbacks(),
+        });
+
+    private static IReadOnlyList<FontFallback> SymbolFontFallbacks()
+    {
+        string[] families =
+            OperatingSystem.IsWindows() ? ["Segoe UI Emoji", "Segoe UI Symbol"]
+            : OperatingSystem.IsMacOS() ? ["Apple Color Emoji", "Apple Symbols"]
+            : ["Noto Color Emoji", "DejaVu Sans"];
+        return families.Select(f => new FontFallback { FontFamily = new FontFamily(f) }).ToArray();
+    }
+
     // Avalonia configuration, don't remove; also used by the visual designer.
     public static AppBuilder BuildAvaloniaApp()
     {
@@ -115,7 +165,8 @@ internal sealed class Program
                     options.AddMicrosoftLoggerObservable(factory, LogLevel.Debug);
             })
 #endif
-            .WithInterFont();
+            ;
+        builder = WithAppFonts(builder);
 
         if (LoggerFactory is { } loggerFactory && Config is { } config)
         {

@@ -38,6 +38,17 @@
       <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
+    <!-- .axaml hot reload for the inner development loop: edit markup and see it in the RUNNING window instead
+         of paying a restart per tweak. Development-only by construction — PrivateAssets="All" keeps it out of
+         anything that consumes this project, and the plugin disables itself outside a Debug configuration, so no
+         part of it reaches a Release build. Avalonia.Markup.Xaml.Loader is its runtime XAML parser, referenced
+         here only to pin it to the Avalonia version this app actually uses (the plugin's own copy targets 11.x). -->
+    <PackageReference Include="HotAvalonia" PrivateAssets="All" />
+    <PackageReference Include="Avalonia.Markup.Xaml.Loader" PrivateAssets="All">
+      <!-- HotAvalonia takes itself out of a Release build; this one does not, and would otherwise ship a runtime
+           XAML parser no released build ever calls (same shape as AvaloniaUI.DiagnosticsSupport above). -->
+      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="OpenTelemetry" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />

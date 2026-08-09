@@ -35,9 +35,15 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
         dotnet-quality: 'ga'
 
+    - name: Install native render/font dependencies (Linux)
+      # What Skia needs to rasterize text off-screen on a bare runner. Without these the headless Avalonia
+      # suite cannot start at all, which is why it used to be skipped here.
+      if: matrix.os == 'ubuntu-latest'
+      run: sudo apt-get update && sudo apt-get install -y libfontconfig1 libice6 libsm6
+
     - name: Install dependencies
       run: dotnet restore
-      
+
     - name: Build
       run: dotnet build --no-restore
 
@@ -63,6 +69,9 @@ jobs:
       run: dotnet test tests/safe_lab_tests/safe_lab_tests.csproj --no-build
 
     - name: Test (headless Visual UI tests)
-      # ihc_openvisual's headless Avalonia tests, scoped to Windows for the same native-render reason.
-      if: matrix.os == 'windows-latest'
+      # ihc_openvisual is a CROSS-PLATFORM desktop app, so its GUI suite runs on the Linux runner too — that
+      # leg is the only thing that can catch the portability defects which are invisible on Windows (a font
+      # resolved from the platform instead of the embedded one, a path or accelerator assumption). macOS stays
+      # out: no runner-specific need has surfaced, and the two legs already cover both native backends.
+      if: matrix.os != 'macOS-latest'
       run: dotnet test tests/safe_visual_tests/safe_visual_tests.csproj --no-build

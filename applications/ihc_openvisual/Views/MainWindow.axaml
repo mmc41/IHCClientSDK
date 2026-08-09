@@ -3,6 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:ihc_openvisual.ViewModels"
+        xmlns:design="using:ihc_openvisual.DesignTime"
         xmlns:svc="using:ihc_openvisual.Services"
         xmlns:conv="using:ihc_openvisual.Converters"
         xmlns:controls="using:ihc_openvisual.Controls"
@@ -16,6 +17,13 @@
         Width="1000" Height="680"
         FontSize="{DynamicResource WorkspaceFontSize}"
         Title="{Binding Title}">
+
+    <!-- What the XAML PREVIEWER binds to (A-13). Every pane and label in this window is bound, so without a
+         design-time context the designer renders an empty frame and the markup can only be judged by running the
+         app. Compiled away for the running application: the loader populates this only in design mode. -->
+    <Design.DataContext>
+        <design:DesignMainWindowViewModel/>
+    </Design.DataContext>
 
     <!-- D06 (owner ruling 2026-08-02): a shortcut follows the MENU BAR's availability, not the row's bare gate —
          so Ctrl+X refuses on a locked block, whose Cut the bar greys while the context flyout still offers it

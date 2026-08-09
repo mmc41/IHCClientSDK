@@ -14,6 +14,14 @@
             <TextBox Name="NameBox" Margin="8"
                      a:AutomationProperties.Name="Navn"/>
         </HeaderedContentControl>
+        <!-- Why OK refused. Hidden until it happens, and announced when it appears: a polite live region is the
+             only way a screen-reader user learns of a refusal that changes nothing on screen but this line. -->
+        <TextBlock Name="NameError" IsVisible="False"
+                   Text="Indtast et navn."
+                   TextWrapping="Wrap"
+                   Foreground="{DynamicResource ErrorBrush}"
+                   a:AutomationProperties.AutomationId="NamePromptError"
+                   a:AutomationProperties.LiveSetting="Polite"/>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
             <Button Name="OkButton" Content="OK" MinWidth="84" IsDefault="True" Click="OnOk"/>
             <Button Name="CancelButton" Content="Annuller" MinWidth="84" IsCancel="True" Click="OnCancel"/>

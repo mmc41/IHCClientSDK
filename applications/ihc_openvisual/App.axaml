@@ -25,6 +25,10 @@
                     <!-- Warning ink (e.g. the "!" unlinked marker). A dark amber that clears WCAG 4.5:1 on the
                          light window background, unlike the former inline #E0A800 which did not. -->
                     <SolidColorBrush x:Key="WarningBrush" Color="#FFB45309"/>
+                    <!-- Refusal ink (a dialog that will not accept what was typed). Red, but a dark enough red to
+                         clear WCAG 4.5:1 on the light window background — and never the ONLY carrier of the
+                         message: the text says what is wrong. -->
+                    <SolidColorBrush x:Key="ErrorBrush" Color="#FFB91C1C"/>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <Color x:Key="IconColor">#FFE0E0E0</Color>
@@ -33,6 +37,8 @@
                     <SolidColorBrush x:Key="SecondaryTextBrush" Color="#FFAAAAAA"/>
                     <!-- Brighter amber for the dark background — high contrast on the dark surfaces. -->
                     <SolidColorBrush x:Key="WarningBrush" Color="#FFFBBF24"/>
+                    <!-- Lighter red for the dark surfaces, same 4.5:1 requirement. -->
+                    <SolidColorBrush x:Key="ErrorBrush" Color="#FFF87171"/>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 

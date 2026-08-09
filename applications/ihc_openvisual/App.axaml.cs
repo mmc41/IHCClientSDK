@@ -51,9 +51,11 @@ public partial class App : Application
                 session.Dispose();
             };
 
-            // Open the standard empty project (or offer crash recovery) once the window is shown, so any
-            // recovery prompt has a visible owner.
-            window.Opened += async (_, _) => await viewModel.InitializeAsync(Program.SkipRecovery);
+            // Open the start-up document — the file named on the command line ("Open with…" / a double-clicked
+            // .vis), or the standard empty project — once the window is shown, so any recovery prompt or
+            // open-failure dialog has a visible owner.
+            window.Opened += async (_, _) =>
+                await viewModel.InitializeAsync(Program.SkipRecovery, Program.StartupProjectPath);
         }
 
         base.OnFrameworkInitializationCompleted();

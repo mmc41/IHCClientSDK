@@ -16,11 +16,14 @@ namespace safe_visual_tests;
 /// (not the no-op headless drawing) so <c>Window.CaptureRenderedFrame()</c> works and
 /// <see cref="CaptureScreenshotOnFailureAttribute"/> can attach failure screenshots — same setup as
 /// tests/safe_lab_tests.
+/// <para>Fonts come from <c>Program.WithAppFonts</c>, the same call the shipped executable makes, so text here is
+/// laid out in the font the app actually renders in rather than the runner's platform default — which is what makes
+/// <see cref="AppFontTests"/> a test of the application's configuration and not of this file.</para>
 /// </summary>
 public sealed class TestAppBuilder
 {
     public static AppBuilder BuildAvaloniaApp() =>
-        AppBuilder.Configure<ihc_openvisual.App>()
+        ihc_openvisual.Program.WithAppFonts(AppBuilder.Configure<ihc_openvisual.App>())
             .UseSkia()
             .UseHeadless(new AvaloniaHeadlessPlatformOptions
             {

@@ -275,11 +275,26 @@ namespace Ihc.Tests
         // XAML compiler's resource/loader plumbing, which uses unspeakable '!' names under CompiledAvaloniaXaml.
         // Note this excludes generated TYPES only: the [ObservableProperty]/[RelayCommand] generators emit MEMBERS
         // into the authored partial view-models, which therefore stay fully in scope.
+        //
+        // The third source is IL WEAVING rather than code generation: the HotAvalonia hot-reload plugin injects its
+        // own attribute/extension types and a Fody marker into the assembly it processes. They exist only in a
+        // Debug build (the plugin removes itself from Release entirely, so this fixture's own Release run never
+        // sees them), are authored by nobody here, and cannot be moved under the GUI root. They are named exactly
+        // rather than excluded by a broad rule: an unexpected injected type should still fail this scan.
         private static bool IsGeneratedBuildOutput(Type type) =>
             type.IsDefined(typeof(GeneratedCodeAttribute), inherit: false)
             || (type.FullName is { } name
                 && (name.StartsWith("CompiledAvaloniaXaml", StringComparison.Ordinal)
-                    || name.Contains('!', StringComparison.Ordinal)));
+                    || name.Contains('!', StringComparison.Ordinal)
+                    || WeavedInTypeNames.Contains(name)));
+
+        // Injected by the Debug-only HotAvalonia weaver; see IsGeneratedBuildOutput.
+        private static readonly IReadOnlyCollection<string> WeavedInTypeNames = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "HotAvalonia.AvaloniaHotReloadAttribute",
+            "HotAvalonia.AvaloniaHotReloadExtensions",
+            "ihc_openvisual_ProcessedByFody",
+        };
 
         // The document-lifecycle members exactly one GUI type may call. Query and edit
         // members (Current/CanApply/Apply/Undo/Redo/…) are deliberately NOT here: the drag-over probe and the

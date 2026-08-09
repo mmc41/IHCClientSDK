@@ -97,7 +97,7 @@ public static class CatalogMenu
         foreach (string category in TopCategories)
             if (present.Contains(category))
                 yield return category;
-        foreach (string? other in present.Where(c => c is not null && !IsKnownTopCategory(c)).OrderBy(c => c, StringComparer.Ordinal))
+        foreach (string? other in present.Where(c => c is not null && !IsKnownTopCategory(c)).OrderBy(c => c, DisplayOrder.Danish))
             yield return other;
         if (present.Contains(null))
             yield return null;
@@ -168,20 +168,22 @@ public static class CatalogMenu
             Func<string, string> folderLabel)
         {
             var items = new List<ProductMenuItemViewModel>();
-            foreach (Node child in Ordered.OrderBy(c => SortKey(c.RawSegment), StringComparer.Ordinal))
+            foreach (Node child in Ordered.OrderBy(c => SortKey(c.RawSegment), DisplayOrder.Danish))
             {
                 var folder = new ProductMenuItemViewModel(folderLabel(child.RawSegment));
                 foreach (ProductMenuItemViewModel sub in child.ToMenu(displayName, leafCommand, key, folderLabel))
                     folder.Children.Add(sub);
                 items.Add(folder);
             }
-            foreach (T leaf in Leaves.Cast<T>().OrderBy(displayName, StringComparer.OrdinalIgnoreCase))
+            foreach (T leaf in Leaves.Cast<T>().OrderBy(displayName, DisplayOrder.Danish))
                 items.Add(new ProductMenuItemViewModel(displayName(leaf), key(leaf), leafCommand(leaf)));
             return items;
         }
     }
 
-    // Zero-pads a leading numeric prefix so ordinal sort orders "01#/02#/10#" and "01./02." correctly.
+    // Zero-pads a leading numeric prefix so "01#/02#/10#" and "01./02." order by NUMBER rather than by digit
+    // sequence ("10" before "2"). Padding, not parsing, because the prefix is only part of the segment: what
+    // follows it still decides ties, and it is ordered by DisplayOrder.Danish like everything else on screen.
     private static string SortKey(string segment)
     {
         int i = 0;

@@ -748,7 +748,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     // DesignMainWindowViewModel subclass and point Design.DataContext at it, rather than a second production
     // constructor that drifts from this one. Pinned by OpenVisualDesignTimeTests.
 
-    public Task InitializeAsync(bool skipRecovery = false) => _session.StartAsync(skipRecovery);
+    /// <summary>Opens the start-up document: the crash backup if one is offered and accepted, else
+    /// <paramref name="startupProjectPath"/> (the <c>.vis</c> the app was launched on), else the empty project.</summary>
+    public Task InitializeAsync(bool skipRecovery = false, string? startupProjectPath = null) =>
+        _session.StartAsync(skipRecovery, startupProjectPath);
 
     /// <summary>Runs the window-close save prompt (US-064); returns false to cancel the quit.
     /// <para>Routed through <see cref="RunAsync"/> — the view-model's one error boundary — because the caller is

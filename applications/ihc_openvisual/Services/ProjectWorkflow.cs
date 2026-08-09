@@ -163,12 +163,17 @@ public sealed class ProjectWorkflow : IDisposable
     /// event triggers reads the change that caused it.</summary>
     public ProjectChangeSet? LastChange { get; private set; }
 
-    /// <summary>Start-up entry point: offer to recover a crash backup if one exists (US-005), otherwise open a
-    /// fresh empty project (US-002); then begin the auto-backup timer.
+    /// <summary>Start-up entry point: offer to recover a crash backup if one exists (US-005), otherwise open the
+    /// project named on the command line, otherwise a fresh empty project (US-002); then begin the auto-backup timer.
     /// <para>When <paramref name="skipRecovery"/> is set (the <c>--skip-recovery</c> launch flag), the recovery
     /// prompt is bypassed entirely and any stale crash backup is discarded, so an unattended UI-automation
-    /// session always opens a deterministic fresh project instead of blocking on a modal dialog.</para></summary>
-    public async Task StartAsync(bool skipRecovery = false)
+    /// session always opens a deterministic fresh project instead of blocking on a modal dialog.</para>
+    /// <para><paramref name="startupProjectPath"/> is the file the app was launched on — a double-clicked
+    /// <c>.vis</c> or an explicit path argument. Crash recovery still comes FIRST: unsaved work from the previous
+    /// session is the scarcer thing, and the named file is one Open away afterwards, whereas a discarded backup is
+    /// gone. A path that cannot be opened reports itself through the ordinary open-failure dialog and leaves the
+    /// empty starter project, so a bad association never blocks the launch.</para></summary>
+    public async Task StartAsync(bool skipRecovery = false, string? startupProjectPath = null)
     {
         if (skipRecovery)
         {
@@ -203,6 +208,15 @@ public sealed class ProjectWorkflow : IDisposable
                 }
             }
             _backup.Delete();
+        }
+
+        // The launch file (BP-11a). OpenAsync is the same door File ▸ Open uses, so the load, the normalization,
+        // the recent-list entry and the failure dialog are all the established ones; a failure just falls through
+        // to the empty project below.
+        if (!string.IsNullOrWhiteSpace(startupProjectPath) && await OpenAsync(startupProjectPath))
+        {
+            _autoBackup.Start();
+            return;
         }
 
         NewInternal();

@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using Avalonia.Platform.Storage;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using ihc_openvisual.Configuration;
@@ -25,12 +26,16 @@ public partial class AboutWindow : Window
         SdkVersionText.Text = $"SDK version: {Ihc.VersionInfo.GetSdkVersionStr()}";
     }
 
-    private void OnRepoLinkClick(object? sender, RoutedEventArgs e)
+    // async void, deliberately: this is a view-layer event handler, and its whole body is inside the try/catch —
+    // a Window handler runs off the message loop where no global exception handler can see a fault (AP-06/WS-11).
+    private async void OnRepoLinkClick(object? sender, RoutedEventArgs e)
     {
         using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(AboutWindow)}.{nameof(OnRepoLinkClick)}", ActivityKind.Internal);
         try
         {
-            Process.Start(new ProcessStartInfo { FileName = Constants.SdkRepoLink, UseShellExecute = true });
+            // Avalonia's own launcher, not Process.Start(UseShellExecute: true): the shell verb is a Windows
+            // concept, and this window opens the same link on all three desktops.
+            await Launcher.LaunchUriAsync(new Uri(Constants.SdkRepoLink));
         }
         catch (Exception ex)
         {
