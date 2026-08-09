@@ -99,7 +99,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     public IAsyncRelayCommand ToggleToolbarCommand => Registry.Commands["view.toggleToolbar"];
     public IAsyncRelayCommand ToggleStatusBarCommand => Registry.Commands["view.toggleStatusBar"];
     public IAsyncRelayCommand ProjectInfoCommand => Registry.Commands["project.info"];
-    public IAsyncRelayCommand DataTablesCommand => Registry.Commands["project.dataTables"];
     public IAsyncRelayCommand ModuleMapCommand => Registry.Commands["project.moduleMap"];
     public IAsyncRelayCommand SendProjectCommand => Registry.Commands["controller.send"];
     public IAsyncRelayCommand RetrieveProjectCommand => Registry.Commands["controller.retrieve"];
@@ -489,14 +488,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         MobilePhone = contact.Mobile,
         Email = contact.Email,
     };
-
-    /// <summary>Documentation ▸ Rediger data tabeller (US-049): opens the data-tables dialog — the eighteen
-    /// tables and the selected table's user-defined texts. The tables are application state, so the dialog is
-    /// driven by the store rather than by the open project.</summary>
-    private Task DataTables() => RunAsync(nameof(DataTables), async () =>
-    {
-        await _dialogs.ShowDataTablesAsync(new DataTablesViewModel(_session.DataTables, _dialogs));
-    });
 
     /// <summary>Documentation ▸ Data line modules (US-050): opens the read-only input/output data-line module map.</summary>
     private Task ModuleMap() => RunAsync(nameof(ModuleMap), async () =>
@@ -1444,7 +1435,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         RegisterAppRow("view.toggleToolbar", null, Sync(_ => ToggleToolbar()), AllowGate);
         RegisterAppRow("view.toggleStatusBar", null, Sync(_ => ToggleStatusBar()), AllowGate);
         RegisterAppRow("project.info", null, _ => ProjectInfo(), ProjectOpenGate);
-        RegisterAppRow("project.dataTables", null, _ => DataTables(), ProjectOpenGate);
         RegisterAppRow("project.moduleMap", null, _ => ModuleMap(), ProjectOpenGate);
         RegisterAppRow("controller.send", "F5", _ => SendProject(), ProjectOpenGate,
             Surfaces.MenuBar | Surfaces.Toolbar);   // T020: a real toolbar button (persistent surface)

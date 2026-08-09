@@ -6,12 +6,6 @@ using Ihc.Vis.Session;
 
 namespace ihc_openvisual.Services;
 
-/// <summary>The seam the Data tables dialog is shown through (T020): a marker for the view-model the dialog binds
-/// to (implemented app-side by the Data tables VM), so <see cref="IDialogService"/> — a Services-layer abstraction —
-/// is not coupled to a concrete ViewModels type. The dialog service passes the instance to the window as its
-/// DataContext; the window's compiled bindings resolve against the concrete VM at runtime.</summary>
-public interface IDataTablesDialogViewModel;
-
 /// <summary>The seam the shared report picker is shown through (R12/D4): a marker for the picker view-model,
 /// keeping <see cref="IDialogService"/> uncoupled from the concrete ViewModels type. The dialog service passes
 /// the instance to the picker window as its DataContext.</summary>
@@ -275,10 +269,6 @@ public interface IDialogService
     /// <summary>Opens the modal project-information dialog (US-039) prefilled with <paramref name="current"/>;
     /// returns the edited project/customer/installer info, or null when the installer cancels.</summary>
     Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current, ProjectInfoSuggestions suggestions);
-
-    /// <summary>Opens the modal Data tables dialog (US-049) bound to the given view-model (T020: the
-    /// <see cref="IDataTablesDialogViewModel"/> seam, not the concrete VM).</summary>
-    Task ShowDataTablesAsync(IDataTablesDialogViewModel viewModel);
 
     /// <summary>Shows the shared report picker (R12/D4) — report type pre-selected per the invoking menu
     /// entry, mode choice, and the view/save actions — bound through the <see cref="IReportPickerViewModel"/> seam.</summary>

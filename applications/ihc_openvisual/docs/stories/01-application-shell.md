@@ -497,7 +497,7 @@ Scenario: Cancel the quit
 version, source repository and author, **so that** I can confirm exactly which build I am running and
 reach the project's source when I need support or want to report a problem.
 
-**Scope excludes:** context-sensitive topic help (US-049) and the *Hjælp* menu's diagnostics/settings
+**Scope excludes:** context-sensitive topic help and the *Hjælp* menu's diagnostics/settings
 entry (US-063); this story covers only the About dialog and the *Hjælp* menu command that opens it.
 
 ### Acceptance criteria (Checklist)

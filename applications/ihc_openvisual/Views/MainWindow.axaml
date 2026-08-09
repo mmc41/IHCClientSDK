@@ -497,9 +497,10 @@
                 <controls:AccessibleMenuItem Header="_Hent projekt…" Command="{Binding RetrieveProjectCommand}"
                           a:AutomationProperties.AutomationId="controller.retrieve"/>
             </controls:AccessibleMenuItem>
-            <!-- The vendor's three surviving items first, in the vendor's own order (&Datalinie moduler,
-                 &Projektinfo, &Rediger data tabeller); its Rapporter… is replaced by our three named report
-                 entries, kept below a separator as Bibliotek keeps its extensions. -->
+            <!-- The vendor's two surviving items first, in the vendor's own order (&Datalinie moduler,
+                 &Projektinfo); its &Rediger data tabeller is out of scope (product.md exclusion), and its
+                 Rapporter… is replaced by our three named report entries, kept below a separator as
+                 Bibliotek keeps its extensions. -->
             <controls:AccessibleMenuItem Header="_Dokumentation" a:AutomationProperties.AutomationId="MenuDocumentation">
                 <controls:AccessibleMenuItem Header="_Datalinie moduler…" Command="{Binding ModuleMapCommand}"
                           a:AutomationProperties.AutomationId="project.moduleMap"
@@ -509,10 +510,6 @@
                           a:AutomationProperties.AutomationId="project.info"
                           IsEnabled="{Binding Registry.Bar[project.info].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[project.info].Reason}"/>
-                <controls:AccessibleMenuItem Header="_Rediger data tabeller…" Command="{Binding DataTablesCommand}"
-                          a:AutomationProperties.AutomationId="project.dataTables"
-                          IsEnabled="{Binding Registry.Bar[project.dataTables].Enabled}"
-                          ToolTip.Tip="{Binding Registry.Bar[project.dataTables].Reason}"/>
                 <Separator/>
                 <controls:AccessibleMenuItem Header="_Funktionsdokumentation…" Command="{Binding FunctionsReportCommand}"
                           a:AutomationProperties.AutomationId="reports.functions"

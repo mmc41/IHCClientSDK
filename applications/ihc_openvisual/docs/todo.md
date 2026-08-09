@@ -1,1 +1,1 @@
-* single-instance enforcement as per-user state is shared unguarded - two instances may overwrite each other's recent-projects list, persisted catalog imports, installer identity and data tables.
+* Removing multi-istance issues - Two instances editing the same `.vis` — loses SAVED work,  Settings stores silently lose each other's updates, Shared catalog import directory

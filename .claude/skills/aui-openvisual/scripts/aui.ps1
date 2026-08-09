@@ -2307,8 +2307,8 @@ function Invoke-Mechanism-DialogButton {
 #
 # Until this, an OpenVisual dialog was WRITE-ONLY to automation: the only enumeration in the driver was
 # the button-label list inside dialog.click's FAILURE path (labels only, no enabled, no visible, and
-# unreachable on success). That is why five rows sit at "partial" with "reading fields back is not yet
-# wired" -- node.getProperties, node.rename, projectInfo.get, modules.list, dataTables.list.
+# unreachable on success). That is why four rows sit at "partial" with "reading fields back is not yet
+# wired" -- node.getProperties, node.rename, projectInfo.get, modules.list.
 #
 # Shape mirrors the vendor's dialog.read {dialog:{title}, controlCount, controls:[{id, class, text,
 # enabled, visible, ...}]} so the two sides' dialogs compare like-for-like (compare3 C1.2c compares the

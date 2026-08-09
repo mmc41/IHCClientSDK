@@ -225,13 +225,6 @@ public sealed class AvaloniaDialogService : IDialogService
         await ReportPickerWindow.ShowAsync(Owner, viewModel);
     }
 
-    public async Task ShowDataTablesAsync(IDataTablesDialogViewModel viewModel)
-    {
-        if (Owner is null)
-            return;
-        await DataTablesWindow.ShowAsync(Owner, viewModel);
-    }
-
     public async Task ShowModuleMapAsync(DatalineModuleMap map)
     {
         if (Owner is null)

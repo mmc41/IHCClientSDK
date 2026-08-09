@@ -42,7 +42,7 @@ public class AutomationCoverageTests : AvaloniaTestBase
     /// the static <c>ShowAsync</c>), so the whole set is walkable without a controller or a loaded project.</summary>
     private static readonly Type[] DialogWindows =
     {
-        typeof(AboutWindow), typeof(AdvancedDimmerWindow), typeof(DataTablesWindow),
+        typeof(AboutWindow), typeof(AdvancedDimmerWindow),
         typeof(EnumDefinitionWindow), typeof(EnumTypeManagerWindow), typeof(ModemPropertiesWindow),
         typeof(ModuleMapWindow), typeof(NamePromptWindow), typeof(PinPropertiesWindow),
         typeof(ProductPropertiesWindow), typeof(ProjectInfoWindow), typeof(PropertiesWindow),

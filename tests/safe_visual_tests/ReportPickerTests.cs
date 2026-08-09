@@ -1,3 +1,5 @@
+using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -162,6 +164,41 @@ public class ReportPickerTests
             Assert.That(File.ReadAllText(opened!),
                 Does.Contain("Installationsdokumentation").And.Not.Contains("<h1>"),
                 "the document is the facade-generated plain-text report, not the HTML page");
+        });
+    }
+
+    /// <summary>
+    /// The temp page's file NAME is deterministic (kind-mode.ext — it is what the viewer's tab shows), so a
+    /// shared directory means two running instances viewing the same report write the same path: the second
+    /// overwrites the page the first is reading, or fails outright while that viewer holds the file open. The
+    /// directory is therefore scoped to the process — PIDs are unique among live processes, which is exactly and
+    /// only what is needed here.
+    /// <para>The isolation itself cannot be observed in-process: two harnesses in one test run share this
+    /// process's id and so, correctly, share its directory. What is asserted is the scheme — that the page lands
+    /// under a directory named for this process rather than directly in the shared root.</para>
+    /// </summary>
+    [AvaloniaTest]
+    public async Task ViewInBrowser_ScopesTheTempPageToThisProcess_SoASecondInstanceCannotOverwriteIt()
+    {
+        using var harness = ShellHarness.Create();
+        MainWindowViewModel vm = harness.CreateViewModel();
+        await vm.Registry.Commands["file.new"].ExecuteAsync(null);
+        await vm.Registry.Commands["reports.installation"].ExecuteAsync(null);
+        ReportPickerViewModel picker = harness.Dialogs.LastReportPickerViewModel!;
+
+        await picker.ViewInBrowserCommand.ExecuteAsync(null);
+
+        string opened = harness.Dialogs.LastOpenedUrl!;
+        string? directory = Path.GetDirectoryName(opened);
+        Assert.Multiple(() =>
+        {
+            Assert.That(Path.GetFileName(directory),
+                Is.EqualTo(Environment.ProcessId.ToString(CultureInfo.InvariantCulture)),
+                "the page goes in a directory named for THIS process, so a second running instance viewing the same report writes elsewhere");
+            Assert.That(Path.GetFileName(Path.GetDirectoryName(directory)), Is.EqualTo("ihc-openvisual-reports"),
+                "the per-process directory stays under the app's one reports root");
+            Assert.That(Path.GetFileName(opened), Is.EqualTo("installation-standard.html"),
+                "the file NAME stays deterministic — it is what the viewer shows the installer");
         });
     }
 }

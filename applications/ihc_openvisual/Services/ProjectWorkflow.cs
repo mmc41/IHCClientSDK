@@ -235,13 +235,6 @@ public sealed class ProjectWorkflow : IDisposable
     public ProjectInfoData GetProjectInfo() => Current?.GetProjectInfo() ?? ProjectInfoData.Empty;
 
     /// <summary>
-    /// Reads the project's data tables (US-049): the read-only system tables (the built-in <c>typeid</c>-bearing enum
-    /// definitions) and the editable user-defined texts (the values of the <see cref="ProjectProjections.UserTextsTableName"/> enum).
-    /// Delegates to the SDK projection over <see cref="Current"/>.
-    /// </summary>
-    public DataTablesModel GetDataTables() => Current?.GetDataTables() ?? DataTablesModel.Empty;
-
-    /// <summary>
     /// Names the wireless products in the project not yet linked to the controller (US-042 pre-flight): the offline
     /// half of the "warn about unlinked wireless products before sending" check. Delegates to the SDK projection.
     /// </summary>
@@ -567,6 +560,7 @@ public sealed class ProjectWorkflow : IDisposable
         if (_disposed)
             return;   // idempotent
         _disposed = true;
+        _reports.Dispose();   // drops this process's report viewing directory
         // Close the document too — this workflow is the only type permitted to (arch-enforced), so nobody else can,
         // and a disposed workflow holding an open document's snapshot + full undo history is state nothing can reach.
         _document?.Close();

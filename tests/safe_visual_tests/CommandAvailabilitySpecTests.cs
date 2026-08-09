@@ -419,7 +419,7 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
         using var _1 = harness;
         ShellContext open = vm.Context;
         ShellContext closed = vm.Context with { ProjectOpen = false };
-        string[] projectGated = { "file.saveAs", "file.close", "project.info", "project.dataTables",
+        string[] projectGated = { "file.saveAs", "file.close", "project.info",
                                   "project.moduleMap", "controller.send",
                                   "reports.functions", "reports.installation", "reports.functionBlocks" };
         string[] alwaysOn = { "file.new", "file.open", "file.save", "app.exit", "view.toggleToolbar",

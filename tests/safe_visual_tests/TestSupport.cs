@@ -233,15 +233,6 @@ public sealed class FakeDialogService : IDialogService
         return Task.FromResult(ProjectInfoResponder is not null ? ProjectInfoResponder(current) : ProjectInfoResult);
     }
 
-    public ihc_openvisual.ViewModels.DataTablesViewModel? LastDataTablesViewModel { get; private set; }
-    public int ShowDataTablesCalls { get; private set; }
-    public Task ShowDataTablesAsync(IDataTablesDialogViewModel viewModel)
-    {
-        ShowDataTablesCalls++;
-        LastDataTablesViewModel = viewModel as ihc_openvisual.ViewModels.DataTablesViewModel;   // tests use the concrete VM (T020 seam)
-        return Task.CompletedTask;
-    }
-
     public ihc_openvisual.ViewModels.ReportPickerViewModel? LastReportPickerViewModel { get; private set; }
     public int ShowReportPickerCalls { get; private set; }
     public Task ShowReportPickerAsync(IReportPickerViewModel viewModel)

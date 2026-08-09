@@ -41,7 +41,7 @@
       "mechanism": "dialogRead",
       "gates": [],
       "description": "Enumerate the OPEN modal's controls into data as {dialog:{title}, controlCount, controls:[{id, name, class, enabled, visible, rect, text, items[], selectedIndex, toggleState}]}. READ-ONLY: opens nothing, changes nothing, closes nothing -- open the dialog first (node.doubleClick / node.properties) and close it with dialog.cancel. `enabled` and `visible` are INDEPENDENT: visible:false = not rendered; visible:true + enabled:false = greyed. `id` is the control's AutomationId -- a XAML dialog's fields address as NameBox/NoteBox/OkButton/CancelButton, and since 2026-08-08 the CODE-BUILT message boxes (AvaloniaDialogService.ShowButtonsAsync) carry ids too: the window is \"ConfirmDialog\" and its choices are \"ConfirmChoice0\", \"ConfirmChoice1\", … in the order the caller declared them, the LAST being the safe/negative default that Esc and the title-bar X resolve to. They used to set no Name at all and were addressable only by `name` (the Danish button text). DialogNotFound when no modal is open; zero controls on a resolved modal is a WALK FAILURE, not a fact about the dialog -- capture.modal before recording it.",
-      "note": "The counterpart to the vendor's dialog.read, and deliberately the same shape so compare3 C1.2c can compare the two variable dialogs. It SUPPLIES the readback the five dialog-opening rows lack (node.getProperties, node.rename, projectInfo.get, modules.list, dataTables.list) -- but it does not change what those rows do: each still opens its dialog and stops, so they stay partial and the readback is THIS command, run next. (Corrected 2026-08-02: the note used to say it 'unblocks' them, which read as though their status had changed.)"
+      "note": "The counterpart to the vendor's dialog.read, and deliberately the same shape so compare3 C1.2c can compare the two variable dialogs. It SUPPLIES the readback the four dialog-opening rows lack (node.getProperties, node.rename, projectInfo.get, modules.list) -- but it does not change what those rows do: each still opens its dialog and stops, so they stay partial and the readback is THIS command, run next. (Corrected 2026-08-02: the note used to say it 'unblocks' them, which read as though their status had changed.)"
     },
     {
       "id": "dialog.setText",
@@ -654,16 +654,6 @@
       "gates": [],
       "description": "Open the data-line module map (Dokumentation > Datalinie moduler…).",
       "note": "Opens the dialog and stops there; read the map with dialog.read and dismiss with dialog.cancel. Partial because the row itself returns no map data."
-    },
-    {
-      "id": "dataTables.list",
-      "status": "partial",
-      "mutating": "no",
-      "mechanism": "menu",
-      "menuPath": "Dokumentation/Rediger data tabeller…",
-      "gates": [],
-      "description": "Open the data tables dialog (Dokumentation > Rediger data tabeller…).",
-      "note": "Opens the dialog and stops there; read the tables with dialog.read and dismiss with dialog.cancel. Partial because the row itself returns no table data."
     },
     {
       "id": "report.generate",

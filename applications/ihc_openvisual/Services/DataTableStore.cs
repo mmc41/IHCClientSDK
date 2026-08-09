@@ -14,23 +14,22 @@ namespace ihc_openvisual.Services;
 public sealed record DataTableDefinition(string Name, string Key);
 
 /// <summary>
-/// The installer's own data tables — the reusable texts IHC Visual offers wherever a documentation field is filled
-/// in (customer and installer contact details, wire colours, cable types, notes, …).
+/// The installer's own data tables — the reusable texts offered wherever a documentation field is filled in
+/// (customer and installer contact details, wire colours, cable types, notes, …).
 ///
 /// <para>
-/// <b>These are APPLICATION state, not project state.</b> Measured on the vendor 2026-08-04: the values its
-/// <i>Rediger data tabeller</i> dialog listed under <c>Kunder</c> appear nowhere in the open project's <c>.vis</c> —
-/// several of them were entered while entirely different projects were open. IHC Visual declares the table set in
-/// <c>…\IHC Visual\Data\userEditableTables.txttables</c>, an eighteen-row manifest of
-/// <c>|caption|backing-file|</c>, and that manifest's order is the order its dialog lists them in. This store keeps
-/// the same eighteen tables, keyed by the same file stems, persisted as JSON in the user's app-data directory
-/// beside <see cref="InstallerIdentityStore"/>.
+/// <b>These are APPLICATION state, not project state</b>: they are shared across every project the installer opens
+/// and are never written into a <c>.vis</c>. The table set and its keys follow IHC Visual's own eighteen-row
+/// manifest (<c>…\IHC Visual\Data\userEditableTables.txttables</c>, rows of <c>|caption|backing-file|</c>), so a
+/// future import of an installation's <c>Data\*.txt</c> needs no second mapping. Persisted as JSON in the user's
+/// app-data directory beside <see cref="InstallerIdentityStore"/>.
 /// </para>
 /// <para>
-/// What OpenVisual had instead was a different feature wearing the same name: the left pane listed the open
-/// project's <c>enum_definition</c>s (function-block types such as <i>Persienne tilstand</i>, which the vendor's
-/// dialog does not show at all) and the right pane the values of an enum named <c>User-defined texts</c> — a name
-/// that occurs in no <c>.vis</c> in the corpus, so that pane could never be anything but empty.
+/// <b>There is no editor for these tables</b> — maintaining them by hand is a declared product exclusion. They fill
+/// up the way the vendor's own do: a value typed into a documentation field joins that field's table, so the next
+/// project offers it. Today the only writer and only reader is <see cref="ProjectInfoSuggestions"/>, behind the
+/// project-info dialog's contact drop-downs; the tables no field feeds yet stay empty rather than being dropped,
+/// since they are the keys the remaining documentation fields will feed.
 /// </para>
 /// </summary>
 public sealed class DataTableStore

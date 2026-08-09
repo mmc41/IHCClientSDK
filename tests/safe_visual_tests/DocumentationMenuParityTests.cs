@@ -17,9 +17,14 @@ namespace safe_visual_tests;
 ///   &amp;Rediger data tabeller...      id 30506
 /// </code>
 /// <para>
-/// Two deviations this catches. First, OpenVisual listed the vendor's three surviving items in its own order
-/// (Projektinfo, Rediger data tabeller, Datalinie moduler) rather than the vendor's — an installer who knows the
-/// vendor menu reaches for the wrong row. Second, the bar title carried the mnemonic <c>Dok_umentation</c> while
+/// <b>Rediger data tabeller is out of scope</b> — editing the data tables is a declared product exclusion, so the
+/// vendor's fourth item has no counterpart here. Its removal leaves the vendor's remaining two, still in the
+/// vendor's own order.
+/// </para>
+/// <para>
+/// Two deviations this catches. First, OpenVisual listed the vendor's surviving items in its own order
+/// (Projektinfo before Datalinie moduler) rather than the vendor's — an installer who knows the vendor menu
+/// reaches for the wrong row. Second, the bar title carried the mnemonic <c>Dok_umentation</c> while
 /// the vendor's is <c>&amp;Dokumentation</c>; <c>D</c> is unclaimed by every other bar title, so the vendor's
 /// access key was given away for nothing.
 /// </para>
@@ -27,18 +32,17 @@ namespace safe_visual_tests;
 /// <b>Rapporter is deliberately different</b> and is the one item NOT held to vendor parity: OpenVisual replaces
 /// the vendor's single report dialog with three named report entries (US-040). Following the Bibliotek precedent
 /// (<see cref="LibraryMenuParityTests"/>), what the vendor does not have lives BELOW a separator rather than
-/// interleaved with the vendor's block — so the vendor's three keep their own contiguous, vendor-ordered region
+/// interleaved with the vendor's block — so the vendor's own items keep their contiguous, vendor-ordered region
 /// and a future extension drifting up into it fails here.
 /// </para>
 /// </summary>
 public class DocumentationMenuParityTests
 {
-    // Items in document order; "---" stands for a Separator. The vendor's three come first, in the vendor's order.
+    // Items in document order; "---" stands for a Separator. The vendor's two come first, in the vendor's order.
     private static readonly string[] Expected =
     [
         "_Datalinie moduler…",
         "_Projektinfo…",
-        "_Rediger data tabeller…",
         "---",
         "_Funktionsdokumentation…",
         "_Installationsdokumentation…",
@@ -46,7 +50,7 @@ public class DocumentationMenuParityTests
     ];
 
     [Test]
-    public void DokumentationMenu_CarriesTheVendorsThreeItemsInVendorOrder_ThenTheReportsBelowASeparator()
+    public void DokumentationMenu_CarriesTheVendorsItemsInVendorOrder_ThenTheReportsBelowASeparator()
     {
         Assert.That(ReadMenuItems("MenuDocumentation", "MenuHelp"), Is.EqualTo(Expected));
     }

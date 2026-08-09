@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using Ihc;
@@ -19,8 +20,20 @@ namespace ihc_openvisual.Services;
 /// just delegates its report methods here.
 /// </summary>
 internal sealed class ProjectReportWorkflow(
-    ProjectAppService service, IDialogService dialogs, ILogger logger, Func<Project?> getCurrent)
+    ProjectAppService service, IDialogService dialogs, ILogger logger, Func<Project?> getCurrent) : IDisposable
 {
+    /// <summary>Where <see cref="ViewInBrowserAsync"/> puts the page it hands to the OS — scoped to THIS process,
+    /// because the file name below is deterministic and the app is deliberately multi-instance: two instances
+    /// viewing the same report would otherwise write one path, the second overwriting the page the first is
+    /// reading (or failing outright while that viewer holds the file). A process id is the right key precisely
+    /// because nothing here infers anything from it: it is only a name, and the OS guarantees live processes do
+    /// not share one. Nothing may treat "this file exists" as "I wrote it" — a recycled id can inherit a
+    /// force-killed run's leftovers, which the next generation overwrites and <see cref="Dispose"/> removes.
+    /// A future cleanup sweep must therefore go by directory AGE, never by asking whether a pid is still alive.</summary>
+    private readonly string _viewDirectory = Path.Combine(
+        Path.GetTempPath(), "ihc-openvisual-reports",
+        Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
+
     /// <summary>
     /// T015 (R12): generates the picked report in the picked format via the facade — HTML with the app's SVG
     /// icon provider, plain text with the SDK's default stand-ins — to a temp file and opens it in the OS
@@ -38,9 +51,8 @@ internal sealed class ProjectReportWorkflow(
             {
                 return;   // no project open — the registry gate normally prevents this
             }
-            string dir = Path.Combine(Path.GetTempPath(), "ihc-openvisual-reports");
-            Directory.CreateDirectory(dir);
-            string path = Path.Combine(dir, FileName(kind, mode, mimeType));
+            Directory.CreateDirectory(_viewDirectory);
+            string path = Path.Combine(_viewDirectory, FileName(kind, mode, mimeType));
             await service.GenerateReport(project, kind, mode, mimeType, path, IconsFor(mimeType));
             // The handover to the OS is the last step of this workflow, so a handover that did not happen is a
             // failure of it — not a silent no-op that leaves the installer waiting for a window (UX review CORE-03).
@@ -100,4 +112,20 @@ internal sealed class ProjectReportWorkflow(
     /// <summary>The app's SVG icon mapping for HTML output; the SDK's default unicode stand-ins for text.</summary>
     private static IReportIconProvider? IconsFor(string mimeType) =>
         mimeType == ReportMimeTypes.PlainText ? null : new SvgReportIconProvider();
+
+    /// <summary>Removes this process's viewing directory on shutdown, so the per-process scoping does not turn
+    /// into per-run litter. Best-effort by design: a viewer still holding a page just leaves the directory
+    /// behind for the id's next owner, which is no worse than the single shared directory it replaced.</summary>
+    public void Dispose()
+    {
+        try
+        {
+            if (Directory.Exists(_viewDirectory))
+                Directory.Delete(_viewDirectory, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            logger.LogDebug(ex, "Could not remove the report viewing directory {Path}", _viewDirectory);
+        }
+    }
 }

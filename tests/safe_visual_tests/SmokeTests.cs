@@ -579,35 +579,6 @@ public class SmokeTests : AvaloniaTestBase
         });
     }
 
-    // US-049: the data-tables dialog renders the vendor's two captioned lists — Tabeller and the selected table's
-    // Bruger definerede tekster.
-    [AvaloniaTest]
-    [CaptureScreenshotOnFailure]
-    public async Task DataTablesWindow_ShowsTheTablesAndTheSelectedTablesTexts()
-    {
-        var dialogs = new FakeDialogService();
-        var dt = new DataTablesViewModel(
-            new DataTableStore(Path.Combine(Path.GetTempPath(), Path.GetRandomFileName(), "datatables.json")),
-            dialogs);
-        dialogs.PropertiesResult = new PropertiesResult("By main door", string.Empty);
-        await dt.AddTextCommand.ExecuteAsync(null);
-
-        var window = new DataTablesWindow { DataContext = dt };
-        CurrentTestWindow = window;
-        window.Show();
-        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-        window.CaptureRenderedFrame();
-
-        var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
-        Assert.Multiple(() =>
-        {
-            Assert.That(labels, Does.Contain("Tabeller"));
-            Assert.That(labels, Does.Contain("Bruger definerede tekster"));
-            Assert.That(labels, Does.Contain("Kunder"), "the table list renders its captions");
-            Assert.That(labels, Does.Contain("By main door"), "the selected table's text renders in the right list");
-        });
-    }
-
     // US-050: the read-only data-line module map renders both groups, the vendor's four column headers, a
     // documented module's row, and the not-in-use marker on a line carrying nothing.
     [AvaloniaTest]

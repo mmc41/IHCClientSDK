@@ -79,7 +79,7 @@ to print every id with its `status` and one-line description. Highlights:
 | Edit | `node cut/copy/paste`, `node delete`, `node drag --from --to`, `edit undo/redo`, `edit move-up/move-down` |
 | Insert | `locality insert`, `product insert --menu-path`, `fb insert-template --menu-path`, `fb insert-empty`, `fb unlock`, `link start-from-here`, `link to-here` |
 | Catalog | `catalog products [--depth N]`, `catalog function-blocks [--depth N]` |
-| Docs | `projectInfo get`, `modules list`, `data-tables list`, `report generate --menu-path "<report>"` |
+| Docs | `projectInfo get`, `modules list`, `report generate --menu-path "<report>"` |
 | Help | `help about`, `help for-selection`, `help settings`, `help telemetry` |
 
 **Dialogs block the queue, so read and close them.** Every OpenVisual dialog is a separate top-level
