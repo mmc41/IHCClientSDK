@@ -37,7 +37,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly EventHandler _onSessionStateChanged;
     private readonly EventHandler _onSessionCatalogChanged;
     private readonly EventHandler _onRecentChanged;
-    private readonly EventHandler<string> _onBackupFailed;
 
     // The two-pane tree-sync engine (W3-6 / T031): owns the keyed reconcilers and drives the per-edit in-place
     // reconcile-or-rebuild + programming-mode pane build. Selection capture/restore stays here (view-state).
@@ -636,13 +635,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _onSessionStateChanged = (_, _) => Refresh();
         _onSessionCatalogChanged = (_, _) => RebuildCatalogMenus();
         _onRecentChanged = (_, _) => RefreshRecent();
-        // A failed crash backup is the one background event the user must hear about: it means unsaved work is NOT
-        // protected, and the status text is the shell's polite live region, so assistive technology announces it
-        // (UX review CORE-02).
-        _onBackupFailed = (_, message) => StatusText = message;
         _session.StateChanged += _onSessionStateChanged;
         _session.CatalogChanged += _onSessionCatalogChanged;
-        _session.BackupFailed += _onBackupFailed;
         _recent.Changed += _onRecentChanged;
         BuildProductMenu();
         RefreshRecent();
@@ -655,7 +649,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         _session.StateChanged -= _onSessionStateChanged;
         _session.CatalogChanged -= _onSessionCatalogChanged;
-        _session.BackupFailed -= _onBackupFailed;
         _recent.Changed -= _onRecentChanged;
     }
 
@@ -748,10 +741,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     // DesignMainWindowViewModel subclass and point Design.DataContext at it, rather than a second production
     // constructor that drifts from this one. Pinned by OpenVisualDesignTimeTests.
 
-    /// <summary>Opens the start-up document: the crash backup if one is offered and accepted, else
-    /// <paramref name="startupProjectPath"/> (the <c>.vis</c> the app was launched on), else the empty project.</summary>
-    public Task InitializeAsync(bool skipRecovery = false, string? startupProjectPath = null) =>
-        _session.StartAsync(skipRecovery, startupProjectPath);
+    /// <summary>Opens the start-up document: <paramref name="startupProjectPath"/> (the <c>.vis</c> the app was
+    /// launched on), else the empty project.</summary>
+    public Task InitializeAsync(string? startupProjectPath = null) => _session.StartAsync(startupProjectPath);
 
     /// <summary>Runs the window-close save prompt (US-064); returns false to cancel the quit.
     /// <para>Routed through <see cref="RunAsync"/> — the view-model's one error boundary — because the caller is

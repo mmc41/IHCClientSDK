@@ -23,9 +23,9 @@ public class StartupProjectPathTests
         Assert.Multiple(() =>
         {
             Assert.That(Program.ParseStartupProjectPath([]), Is.Null, "launched with no arguments");
-            Assert.That(Program.ParseStartupProjectPath(["--skip-recovery"]), Is.Null, "switches are not files");
+            Assert.That(Program.ParseStartupProjectPath(["--verbose"]), Is.Null, "switches are not files");
             Assert.That(Program.ParseStartupProjectPath([@"C:\projects\Hus.vis"]), Is.EqualTo(@"C:\projects\Hus.vis"));
-            Assert.That(Program.ParseStartupProjectPath(["--skip-recovery", "/home/mmc/Hus.vis"]),
+            Assert.That(Program.ParseStartupProjectPath(["--verbose", "/home/mmc/Hus.vis"]),
                 Is.EqualTo("/home/mmc/Hus.vis"),
                 "a leading slash is an absolute POSIX path, not a switch");
         });
@@ -37,7 +37,7 @@ public class StartupProjectPathTests
         using var harness = ShellHarness.Create();
         string path = SampleProject();
 
-        await harness.Session.StartAsync(skipRecovery: true, startupProjectPath: path);
+        await harness.Session.StartAsync(startupProjectPath: path);
 
         Assert.Multiple(() =>
         {
@@ -54,7 +54,7 @@ public class StartupProjectPathTests
     {
         using var harness = ShellHarness.Create();
 
-        await harness.Session.StartAsync(skipRecovery: true);
+        await harness.Session.StartAsync();
 
         Assert.Multiple(() =>
         {
@@ -71,7 +71,7 @@ public class StartupProjectPathTests
         using var harness = ShellHarness.Create();
         string missing = harness.TempPath("does-not-exist.vis");
 
-        await harness.Session.StartAsync(skipRecovery: true, startupProjectPath: missing);
+        await harness.Session.StartAsync(startupProjectPath: missing);
 
         Assert.Multiple(() =>
         {
@@ -79,51 +79,5 @@ public class StartupProjectPathTests
             Assert.That(harness.Session.Current, Is.Not.Null, "the app still opened on the empty project");
             Assert.That(harness.Session.FilePath, Is.Null);
         });
-    }
-
-    /// <summary>Crash recovery outranks the launch file: unsaved work from the previous session is the scarcer
-    /// thing, and the named file is one Open away, whereas a discarded backup is gone.</summary>
-    [Test]
-    public async Task Start_WithBothARecoveryBackupAndALaunchFile_RecoversFirst()
-    {
-        // Simulate a crash while editing a named project: save it, change it, back it up, abandon the session.
-        using var harness = ShellHarness.Create();
-        harness.Dialogs.SavePath = harness.TempPath("crashed.vis");
-        await harness.Session.StartAsync(skipRecovery: true);
-        await harness.Session.SaveAsAsync();
-        await harness.Session.AddLocalityAsync();
-        await harness.Session.AutoBackupAsync();
-        harness.Session.Dispose();
-
-        using var restarted = ShellHarness.Restart(harness.TempDir);
-        restarted.Dialogs.ConfirmResult = true;   // the installer accepts the recovery offer
-
-        await restarted.Session.StartAsync(startupProjectPath: SampleProject());
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(restarted.Dialogs.ConfirmCalls, Is.EqualTo(1), "the recovery prompt still ran");
-            Assert.That(restarted.Session.FilePath, Is.EqualTo(harness.TempPath("crashed.vis")),
-                "the recovered document won, not the launch file");
-            Assert.That(restarted.Session.IsDirty, Is.True, "recovered work is unsaved work");
-        });
-    }
-
-    /// <summary>Declining recovery does not cost the launch file: the empty project is the fallback for having no
-    /// file to open, not the answer to "no thanks".</summary>
-    [Test]
-    public async Task Start_WhenRecoveryIsDeclined_OpensTheLaunchFile()
-    {
-        using var harness = ShellHarness.Create();
-        await harness.Session.StartAsync(skipRecovery: true);
-        await harness.Session.AutoBackupAsync();
-        harness.Session.Dispose();
-
-        using var restarted = ShellHarness.Restart(harness.TempDir);
-        restarted.Dialogs.ConfirmResult = false;
-
-        await restarted.Session.StartAsync(startupProjectPath: SampleProject());
-
-        Assert.That(restarted.Session.FilePath, Is.EqualTo(SampleProject()));
     }
 }

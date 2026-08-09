@@ -243,7 +243,5 @@ Destructive/irreversible commands refuse unless explicitly confirmed:
 
 ## Deterministic launch
 
-The driver launches the app with `--skip-recovery` so a leftover crash-recovery backup cannot pop a
-"Recover project?" modal that would block an unattended run. If you launch the app yourself for
-automation, pass `--skip-recovery` (alias `--no-recover`) too. A stray modal from any source can be
-cleared with `aui dialog cancel`.
+The app comes up on the standard empty project with no start-up prompt of its own, so a launch is
+already deterministic. A stray modal from any source can be cleared with `aui dialog cancel`.

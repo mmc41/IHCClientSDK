@@ -21,49 +21,38 @@ namespace ihc_openvisual.Services;
 /// <summary>
 /// The single open-document workflow for the window: holds the one <see cref="IProjectDocument"/> (obtained
 /// from <see cref="ProjectAppService.OpenDocument"/>, crudarch D01 — the document owns the snapshot, undo/redo
-/// history, dirty flag and version), plus the file path and change counter, and orchestrates the whole project
-/// lifecycle (new/open/save/save-as/close/quit). Enforces the single-project constraint, drives the save-prompt
-/// through <see cref="IDialogService"/>, and runs the crash-recovery auto-backup (10-minute timer + every 10th
-/// change). Deliberately Avalonia-free so it is testable headlessly.
+/// history, dirty flag and version), plus the file path, and orchestrates the whole project lifecycle
+/// (new/open/save/save-as/close/quit). Enforces the single-project constraint and drives the save-prompt
+/// through <see cref="IDialogService"/>. Deliberately Avalonia-free so it is testable headlessly.
 /// </summary>
 public sealed class ProjectWorkflow : IDisposable
 {
     private readonly ProjectAppService _service;
-    private readonly BackupService _backup;
     private readonly RecentProjectsStore _recent;
     private readonly IDialogService _dialogs;
     private readonly ILogger<ProjectWorkflow> _logger;
-    private readonly int _changeBackupThreshold;
-    private readonly TimeProvider _timeProvider;
 
     // The persistent document (crudarch D01): created via the service door on the first load and re-opened per
-    // load/create/recover after. Null only before StartAsync. All mutations happen on the UI thread (D04 contract);
-    // the backup worker only READS document.Current, which the lock-serialized session makes legal.
+    // load/create after. Null only before StartAsync. All mutations happen on the UI thread (D04 contract).
     private IProjectDocument? _document;
 
-    // T019: the non-lifecycle concerns split into their own collaborators — reporting, catalog imports/persist, and
-    // the auto-backup writer (timer + write lock). ProjectWorkflow retains the document lifecycle + editing/history.
+    // T019: the non-lifecycle concerns split into their own collaborators — reporting and catalog imports/persist.
+    // ProjectWorkflow retains the document lifecycle + editing/history.
     private readonly ProjectReportWorkflow _reports;
     private readonly CatalogImportWorkflow _catalog;
-    private readonly AutoBackupScheduler _autoBackup;
 
     private readonly string _catalogDir;
 
     public ProjectWorkflow(
         ProjectAppService service,
-        BackupService backup,
         RecentProjectsStore recent,
         IDialogService dialogs,
         ILoggerFactory? loggerFactory = null,
-        TimeSpan? autoBackupInterval = null,
-        int changeBackupThreshold = 10,
         string? catalogDir = null,
-        TimeProvider? timeProvider = null,
         InstallerIdentityStore? installerIdentity = null,
         DataTableStore? dataTables = null)
     {
         _service = service;
-        _backup = backup;
         _recent = recent;
         _dialogs = dialogs;
         // Not defaulted to CreateDefault(): an unconfigured session must not read (or write) the real user's
@@ -74,23 +63,11 @@ public sealed class ProjectWorkflow : IDisposable
         DataTables = dataTables ?? new DataTableStore(
             Path.Combine(catalogDir ?? DefaultCatalogDir(), "datatables.json"));
         _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<ProjectWorkflow>();
-        _timeProvider = timeProvider ?? TimeProvider.System;   // D8: the auto-backup clock/timer, fakeable in tests
-        _changeBackupThreshold = changeBackupThreshold < 1 ? 10 : changeBackupThreshold;
         _catalogDir = catalogDir ?? DefaultCatalogDir();
         _reports = new ProjectReportWorkflow(_service, _dialogs, _logger, () => Current);
         _catalog = new CatalogImportWorkflow(_service, _dialogs, _logger, _catalogDir);
-        // The auto-backup writer captures the snapshot + origin through the delegate; the change-threshold trigger
-        // stays in ApplyAsync's tail (it owns the change counter).
-        _autoBackup = new AutoBackupScheduler(_backup, _service, _timeProvider, _logger,
-            autoBackupInterval ?? TimeSpan.FromMinutes(10), CaptureBackupSnapshot);
-        _autoBackup.BackupFailed += (_, message) => BackupFailed?.Invoke(this, message);
         _catalog.LoadPersisted();   // persisted imports load on startup (US-061)
     }
-
-    // Captures the current project snapshot + origin path for the auto-backup writer. Runs on the backup worker
-    // thread: document.Current is a legal off-thread READ (the session is lock-serialized, crudarch D04), and
-    // FilePath is only written on the UI thread.
-    private (Project? Snapshot, string? Origin) CaptureBackupSnapshot() => (Current, FilePath);
 
     /// <summary>The app-data folder persisted catalog imports are copied into and loaded from on startup (US-061).</summary>
     private static string DefaultCatalogDir() => Path.Combine(
@@ -116,8 +93,6 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>Whether the document differs from its last written save point — owned by the document (computed
     /// by reference against the saved snapshot, so undoing back to the saved state reads clean).</summary>
     public bool IsDirty => _document?.IsDirty ?? false;
-
-    public int ChangeCount { get; private set; }
 
     /// <summary>A monotone counter bumped on every state transition (commit / undo / redo / load) — the document's
     /// version. A caller that prepares an edit against a dialog can capture it and pass it back to
@@ -148,14 +123,6 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>Raised whenever the current project, file path or dirty flag changes.</summary>
     public event EventHandler? StateChanged;
 
-    /// <summary>Raised (on the UI thread) when a crash backup could NOT be written, carrying the user-facing reason.
-    /// The shell shows it, so an unprotected session stops looking like a protected one (UX review CORE-02).</summary>
-    public event EventHandler<string>? BackupFailed;
-
-    /// <summary>Whether the most recent auto-backup attempt failed — the readable health state behind
-    /// <see cref="BackupFailed"/>.</summary>
-    public bool AutoBackupFailed => _autoBackup.LastAttemptFailed;
-
     /// <summary>The structural change set of the most recent committed transition — the delta the GUI reconciler
     /// (W3-4) applies to the tree in place — INCLUDING undo/redo (crudarch G3: their outcomes carry the exact
     /// delta with Origin "undo"/"redo"); null when the last transition was a load, save or close, which the GUI
@@ -163,64 +130,21 @@ public sealed class ProjectWorkflow : IDisposable
     /// event triggers reads the change that caused it.</summary>
     public ProjectChangeSet? LastChange { get; private set; }
 
-    /// <summary>Start-up entry point: offer to recover a crash backup if one exists (US-005), otherwise open the
-    /// project named on the command line, otherwise a fresh empty project (US-002); then begin the auto-backup timer.
-    /// <para>When <paramref name="skipRecovery"/> is set (the <c>--skip-recovery</c> launch flag), the recovery
-    /// prompt is bypassed entirely and any stale crash backup is discarded, so an unattended UI-automation
-    /// session always opens a deterministic fresh project instead of blocking on a modal dialog.</para>
+    /// <summary>Start-up entry point: open the project named on the command line, otherwise a fresh empty project
+    /// (US-002).
     /// <para><paramref name="startupProjectPath"/> is the file the app was launched on — a double-clicked
-    /// <c>.vis</c> or an explicit path argument. Crash recovery still comes FIRST: unsaved work from the previous
-    /// session is the scarcer thing, and the named file is one Open away afterwards, whereas a discarded backup is
-    /// gone. A path that cannot be opened reports itself through the ordinary open-failure dialog and leaves the
-    /// empty starter project, so a bad association never blocks the launch.</para></summary>
-    public async Task StartAsync(bool skipRecovery = false, string? startupProjectPath = null)
+    /// <c>.vis</c> or an explicit path argument. A path that cannot be opened reports itself through the ordinary
+    /// open-failure dialog and leaves the empty starter project, so a bad association never blocks the
+    /// launch.</para></summary>
+    public async Task StartAsync(string? startupProjectPath = null)
     {
-        if (skipRecovery)
-        {
-            _backup.Delete();
-        }
-        else if (_backup.HasRecovery())
-        {
-            RecoveryInfo? info = _backup.ReadMarker();
-            string when = info is { } i ? $" fra {i.SavedAtUtc.ToLocalTime():g}" : string.Empty;
-            bool recover = await _dialogs.ConfirmAsync(
-                "Gendan projekt",
-                $"IHC OpenVisual blev ikke lukket normalt sidste gang. Gendan ikke-gemt arbejde{when}?");
-            if (recover)
-            {
-                try
-                {
-                    Project recovered = await _service.Load(_backup.RecoveryProjectPath);
-                    SetProject(recovered, info?.OriginPath, dirty: true);
-                    ResetChangeCount();
-                    _autoBackup.Start();
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    // A corrupt recovery file must not crash the launch — this runs under App's async-void
-                    // window.Opened handler, so an unhandled throw is unobserved and fatal. Route it through the
-                    // same error path as OpenAsync: report it, discard the unusable backup below, and fall through
-                    // to a fresh project (review Low "startup async void").
-                    _logger.LogError(ex, "Failed to recover crash backup {Path}", _backup.RecoveryProjectPath);
-                    await _dialogs.ShowMessageAsync("Gendannelse mislykkedes",
-                        $"Det gendannede projekt kunne ikke indlæses og blev kasseret:\n{ex.Message}");
-                }
-            }
-            _backup.Delete();
-        }
-
         // The launch file (BP-11a). OpenAsync is the same door File ▸ Open uses, so the load, the normalization,
         // the recent-list entry and the failure dialog are all the established ones; a failure just falls through
         // to the empty project below.
         if (!string.IsNullOrWhiteSpace(startupProjectPath) && await OpenAsync(startupProjectPath))
-        {
-            _autoBackup.Start();
             return;
-        }
 
         NewInternal();
-        _autoBackup.Start();
     }
 
     /// <summary>File → New (US-002): prompt to save the open project, then open the standard empty project.</summary>
@@ -229,8 +153,6 @@ public sealed class ProjectWorkflow : IDisposable
         if (!await ConfirmSaveIfDirtyAsync())
             return false;
         NewInternal();
-        _backup.Delete();
-        ResetChangeCount();
         return true;
     }
 
@@ -247,8 +169,6 @@ public sealed class ProjectWorkflow : IDisposable
             Project loaded = _service.NormalizeOnOpen(await _service.Load(path));
             SetProject(loaded, path, dirty: false);
             _recent.Add(path);
-            _backup.Delete();
-            ResetChangeCount();
             return true;
         }
         catch (Exception ex)
@@ -283,26 +203,17 @@ public sealed class ProjectWorkflow : IDisposable
         return path is not null && await SaveToAsync(path);
     }
 
-    /// <summary>File → Close (US-005): prompt to save, discard the crash backup, and return to a fresh empty project.</summary>
+    /// <summary>File → Close: prompt to save, then return to a fresh empty project.</summary>
     public async Task<bool> CloseAsync()
     {
         if (!await ConfirmSaveIfDirtyAsync())
             return false;
-        _backup.Delete();
         NewInternal();
-        ResetChangeCount();
         return true;
     }
 
-    /// <summary>Quit gate (US-064): prompt to save; on a clean, acknowledged exit discard the crash backup.
-    /// Returns false to cancel the quit.</summary>
-    public async Task<bool> CanQuitAsync()
-    {
-        if (!await ConfirmSaveIfDirtyAsync())
-            return false;
-        _backup.Delete();
-        return true;
-    }
+    /// <summary>Quit gate (US-064): prompt to save. Returns false to cancel the quit.</summary>
+    public Task<bool> CanQuitAsync() => ConfirmSaveIfDirtyAsync();
 
     /// <summary>The placeholder name a freshly inserted locality carries until the installer renames it (US-008).
     /// It is written into the file as <c>&lt;group name="…"&gt;</c> — project data, not UI text — so it is the
@@ -472,45 +383,43 @@ public sealed class ProjectWorkflow : IDisposable
     // The single edit path (US-052): every project-mutating operation routes through the persistent
     // IProjectDocument (ProjectAppService.OpenDocument, crudarch D01) — the document owns snapshots, undo/redo,
     // labels, dirty-by-reference and the version guard; this workflow adds file lifecycle (path, prompts, recent
-    // list), the change counter and the crash backup.
+    // list).
     //
     // DESIGN NOTE (supersedes the 2026-07-20 rejection of a persistent GUI session): that rejection was taken
     // under the old D12 thread-affinity contract, where a persistent session would have forced every
-    // session-touching test onto [AvaloniaTest] and the backup timer's worker-thread snapshot read would throw.
-    // crudarch D04 switched ProjectDocumentSession to LOCK-SERIALIZATION (a private monitor; Changed/StateChanged
-    // raised outside the lock on the mutating thread), which dissolves both objections: headless tests drive the
-    // document from any thread, and AutoBackupScheduler legally reads document.Current off-thread. The contract
-    // this GUI upholds in exchange (D04 a–c): ALL document mutations happen on the UI thread (workers only read),
-    // and ConfigureAwait(false) stays confined to paths that never mutate the document or handle its events
-    // (today only the backup writer's read-only path).
+    // session-touching test onto [AvaloniaTest]. crudarch D04 switched ProjectDocumentSession to
+    // LOCK-SERIALIZATION (a private monitor; Changed/StateChanged raised outside the lock on the mutating thread),
+    // which dissolves that objection: headless tests drive the document from any thread. The contract this GUI
+    // upholds in exchange (D04 a–c): ALL document mutations happen on the UI thread, and no continuation is
+    // allowed to leave it — hence the assembly-wide ConfigureAwait ban.
     /// <summary>
     /// Applies a command to the open document and commits it on success (W2-14): the single edit entry the VM
     /// drives. Runs the command through the persistent <see cref="IProjectDocument"/> (evaluate → execute →
-    /// commit + undo history, labelled by the command), then publishes the change (LastChange + StateChanged +
-    /// backup counter). Returns the raw <see cref="EditOutcome"/>; the caller maps it to status text / dialogs
+    /// commit + undo history, labelled by the command), then publishes the change (LastChange + StateChanged).
+    /// Returns the raw <see cref="EditOutcome"/>; the caller maps it to status text / dialogs
     /// (the single outcome→status/dialog rule). When <paramref name="baseVersion"/> is supplied and no longer
     /// matches <see cref="Version"/>, the document refuses the edit as stale (a dialog prepared against an older
     /// project).
     /// </summary>
-    public async Task<EditOutcome> ApplyAsync(ProjectCommand command, int? baseVersion = null)
+    public Task<EditOutcome> ApplyAsync(ProjectCommand command, int? baseVersion = null)
     {
         EditOutcome outcome = _document is { } document
             ? document.Apply(command, baseVersion)
             : NoDocument(command);
         if (outcome.Status == EditStatus.Committed)
-            await NotifyChangedAsync(outcome.Changes);
-        return outcome;
+            RaiseChanged(outcome.Changes);
+        return Task.FromResult(outcome);
     }
 
     /// <summary>The value-producing overload of <see cref="ApplyAsync(ProjectCommand,int?)"/> (e.g. a new element's id).</summary>
-    public async Task<EditOutcome<T>> ApplyAsync<T>(ProjectCommand<T> command, int? baseVersion = null)
+    public Task<EditOutcome<T>> ApplyAsync<T>(ProjectCommand<T> command, int? baseVersion = null)
     {
         EditOutcome<T> outcome = _document is { } document
             ? document.Apply(command, baseVersion)
             : NoDocument(command);
         if (outcome.Status == EditStatus.Committed)
-            await NotifyChangedAsync(outcome.Changes);
-        return outcome;
+            RaiseChanged(outcome.Changes);
+        return Task.FromResult(outcome);
     }
 
     /// <summary>The command's legality verdict against the open document (cheap — reuses the per-commit index, no
@@ -561,42 +470,25 @@ public sealed class ProjectWorkflow : IDisposable
     /// (e.g. a non-empty locality delete) reverses as one step because it was committed as a single snapshot.
     /// A no-op (returns false) when there is nothing to undo.
     /// </summary>
-    public async Task<bool> UndoAsync()
+    public Task<bool> UndoAsync()
     {
         using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(UndoAsync)}");
         if (_document?.Undo() is not { Status: EditStatus.Committed } outcome)
-            return false;
-        await NotifyChangedAsync(outcome.Changes);
-        return true;
+            return Task.FromResult(false);
+        RaiseChanged(outcome.Changes);
+        return Task.FromResult(true);
     }
 
     /// <summary>Re-applies the last undone edit (US-052): the mirror of <see cref="UndoAsync"/>. No-op (false) when the
     /// redo history is empty.</summary>
-    public async Task<bool> RedoAsync()
+    public Task<bool> RedoAsync()
     {
         using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(RedoAsync)}");
         if (_document?.Redo() is not { Status: EditStatus.Committed } outcome)
-            return false;
-        await NotifyChangedAsync(outcome.Changes);
-        return true;
+            return Task.FromResult(false);
+        RaiseChanged(outcome.Changes);
+        return Task.FromResult(true);
     }
-
-    /// <summary>
-    /// The shared tail of every committed document mutation: publish the change set (LastChange + StateChanged —
-    /// undo/redo included, so the reconciler works in place, crudarch G3), advance the change counter, and take a
-    /// crash backup every Nth change. Dirty and version live on the document.
-    /// </summary>
-    private async Task NotifyChangedAsync(ProjectChangeSet? change)
-    {
-        ChangeCount++;
-        RaiseChanged(change);
-        if (ChangeCount % _changeBackupThreshold == 0)
-            await _autoBackup.WriteAsync();
-    }
-
-    /// <summary>Writes the current project to the recovery location — the change-counter (here) and timer paths
-    /// delegate to the AutoBackupScheduler collaborator (T019); exposed internally so tests can drive it.</summary>
-    internal Task AutoBackupAsync() => _autoBackup.WriteAsync();
 
     private async Task<bool> SaveToAsync(string path)
     {
@@ -612,10 +504,6 @@ public sealed class ProjectWorkflow : IDisposable
             _document!.MarkSaved(snapshot);
             FilePath = path;
             _recent.Add(path);
-            // The work is now safely persisted, so the crash backup is stale and the change counter starts
-            // over — matching the New/Open/Close transitions.
-            _backup.Delete();
-            ResetChangeCount();
             RaiseChanged();
             return true;
         }
@@ -652,10 +540,10 @@ public sealed class ProjectWorkflow : IDisposable
     private void SetProject(Project project, string? path, bool dirty)
     {
         // One persistent document for the workflow's lifetime (crudarch D01): created via the service door on the
-        // first load, re-opened per load/create/recover after. Each Open resets history and version (US-052). A
-        // project loaded clean can be returned to (save point = the opened snapshot); a recovered one (dirty) has
-        // no clean state to return to (startClean: false) — which the FACTORY carries too, so the first load opens
-        // once instead of building the index twice and briefly reporting a recovered project clean (review F04).
+        // first load, re-opened per load/create after. Each Open resets history and version (US-052). A project
+        // loaded clean can be returned to (save point = the opened snapshot); an already-dirty one has no clean
+        // state to return to (startClean: false) — which the FACTORY carries too, so the first load opens once
+        // instead of building the index twice (review F04).
         if (_document is { } document)
             document.Open(project, startClean: !dirty);
         else
@@ -663,10 +551,6 @@ public sealed class ProjectWorkflow : IDisposable
         FilePath = path;
         RaiseChanged();
     }
-
-    private void ResetChangeCount() => ChangeCount = 0;
-
-    // StartTimer / the auto-backup timer + write lock moved to the AutoBackupScheduler collaborator (T019).
 
     // Publishes the current state to the GUI. `change` is the incremental edit's change set (reconcile in place) or
     // null (full-rebuild fallback); it is set on LastChange before the event so the triggered refresh reads it.
@@ -683,7 +567,6 @@ public sealed class ProjectWorkflow : IDisposable
         if (_disposed)
             return;   // idempotent
         _disposed = true;
-        _autoBackup.Dispose();   // stops the timer and waits for any in-flight backup (T019)
         // Close the document too — this workflow is the only type permitted to (arch-enforced), so nobody else can,
         // and a disposed workflow holding an open document's snapshot + full undo history is state nothing can reach.
         _document?.Close();

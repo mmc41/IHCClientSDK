@@ -48,9 +48,8 @@ pwsh aui.ps1 project save                     # invoke the Save toolbar command
 pwsh aui.ps1 capture window                   # screenshot the window to a PNG
 ```
 
-**Always start a session with `doctor --launch`.** It launches the app **with `--skip-recovery`** so
-no crash-recovery modal can block an unattended run, then confirms the window is usable.  Pass
-`--launch` on any command to auto-start the app if it isn't running.
+**Always start a session with `doctor --launch`.** It launches the app and confirms the window is
+usable.  Pass `--launch` on any command to auto-start the app if it isn't running.
 
 > **`doctor` gates readiness on a real DESCENDANT read, so trust it.** It reports
 > `ready:false` + `Code=PreconditionMissing` when the main window resolves but its descendants do not

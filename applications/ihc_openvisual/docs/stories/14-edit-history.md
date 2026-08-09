@@ -17,7 +17,7 @@ project metadata) can be recovered without rebuilding the work by hand.
 **Scope:** the *Rediger* menu's *Undo* and *Redo* actions and their `Ctrl+Z` /
 `Ctrl+Y` shortcuts; the requirement that every mutating operation across E2–E9 enters the history; the
 status-bar confirmation of what was undone/redone; redo invalidation on a new edit; and the
-empty-history behaviour (greyed menu items, inert shortcuts). **Scope excludes:** the automatic crash/power-loss backup (E1, US-005); the
+empty-history behaviour (greyed menu items, inert shortcuts). **Scope excludes:** the
 per-command semantics of the edits themselves (their own epics); and non-mutating actions (view/mode
 switches, chrome toggles, simulation) which do not enter the history.
 
@@ -45,8 +45,8 @@ bounded only by process memory). See US-052.
 **As an** IHC installer, **I want** every change I make to the project to be reversible with undo, and
 re-applicable with redo, **so that** I can recover from any mistake without rebuilding work by hand.
 
-**Scope excludes:** the automatic crash/power-loss backup (US-005); non-mutating actions (view/mode
-switches, toolbar/status-bar toggles, simulation) which do not enter the edit history.
+**Scope excludes:** non-mutating actions (view/mode switches, toolbar/status-bar toggles, simulation)
+which do not enter the edit history.
 
 ### Acceptance criteria (Checklist)
 

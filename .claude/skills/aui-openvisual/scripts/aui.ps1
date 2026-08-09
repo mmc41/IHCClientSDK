@@ -593,8 +593,8 @@ function Start-App {
         $script:LaunchProblem = 'Could not find ihc_openvisual.exe: nothing under applications/ihc_openvisual/bin and nothing on PATH. Build it first: dotnet build applications/ihc_openvisual/ihc_openvisual.csproj'
         return $null
     }
-    # --skip-recovery keeps an automated launch deterministic: no crash-recovery modal can block start-up.
-    Start-Process -FilePath $exe -ArgumentList '--skip-recovery' | Out-Null
+    # No launch arguments: the app comes up on the standard empty project with no start-up prompt.
+    Start-Process -FilePath $exe | Out-Null
     $win = Wait-MainWindow -TimeoutSec $TimeoutSec
     if (-not $win) {
         $script:LaunchProblem = "Started '$exe' but no main window appeared within $TimeoutSec s."
@@ -2503,8 +2503,8 @@ function Invoke-Mechanism-Capture {
 }
 
 # ── OS file picker ───────────────────────────────────────────────────────────
-# The app takes no file-path launch argument (Program.cs parses only --skip-recovery/--no-recover),
-# and changing the app is out of scope for the comparison, so the picker must be driven. It is a
+# The driver launches the app with no arguments (a startup path would bypass the picker this exists
+# to exercise), and changing the app is out of scope for the comparison, so the picker must be driven. It is a
 # modern IFileDialog hosted IN THE APP'S OWN PROCESS (class #32770), not a separate one. Its control
 # ids are NOT the classic Win32 ones -- "1148" resolves to a Pane with no Edit child, and ids "1"/"2"
 # collide with file-list ListItems -- so control-based entry is unreliable. What is reliable: the

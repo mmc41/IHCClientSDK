@@ -19,7 +19,7 @@ namespace safe_visual_tests;
 public class UnhandledExceptionTests
 {
     // CapturingLogger (a real ILogger recording its output — never a mock) now lives in TestSupport.cs, shared with
-    // GlobalExceptionHandlerTests and the AutoBackupScheduler drain test.
+    // GlobalExceptionHandlerTests.
 
     [Test]
     public async Task UnhandledException_LoggedAndNoPartialVis()

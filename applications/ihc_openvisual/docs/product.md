@@ -12,7 +12,7 @@ maintaining them for the long term — on any modern desktop OS, in Danish, usin
 ## Key Features
 
 | Feature | Benefit |
-|---------|---------|
+| --------- | --------- |
 | Binary-compatible open/save of `.vis` projects | Existing project files open and re-save with zero risk of corruption — byte-identical round-trips of the `.vis` format. |
 | Full project editing: localities, products, function blocks, links | The complete authoring workflow — model rooms, place wired/wireless devices, add logic blocks, wire inputs to outputs — in one two-pane workspace: **what is installed on the left, what it does on the right**, linked across the middle. |
 | Function-block programming | Author control logic (typed variables, events, conditions, commands, enums, case structures) so installations do exactly what the household needs. |
@@ -36,7 +36,7 @@ format fidelity, enabling installers and homeowners to maintain their installati
 desktop OS.
 
 | Differentiator | What It Delivers |
-|---------------|----------------|
+| --------------- | ---------------- |
 | Binary compatibility | Generic XML editors break the format; IHC OpenVisual reproduces unchanged `.vis` files byte-for-byte and stamps save metadata exactly as the format requires. |
 | Cross-platform | Runs natively on Windows, macOS, and Linux. |
 | Self-contained catalog | The stock product and function-block catalog is embedded; no separate catalog installation is required. |
@@ -58,6 +58,7 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
 - Embedded stock catalog.
 - Documentation reports render as self-contained static HTML that works in any modern browser, with optional enhanced variants and no dependency on a legacy browser component.
 - Menu commands that do nothing in the original are omitted rather than reproduced.
+- Support multiple instances.
 
 **Presentation**
 
@@ -70,6 +71,8 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
 **Exclusions**
 
 - No simulation mode.
+- No auto backup.
+- Editing rapport data tables
 
 ## What This Product Is Not
 
@@ -83,7 +86,7 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
 ## Success Metrics
 
 | Metric | Target |
-|--------|--------|
+| -------- | -------- |
 | Round-trip fidelity | 100% byte-identical preserve-mode save across the reference project corpus, at app level. |
 | Format conformance | Projects created or edited in IHC OpenVisual remain valid `.vis` files that load cleanly on IHC controllers. |
 | Cross-platform health | Build and the headless UI test suite green on Windows, macOS, and Linux. |
@@ -104,7 +107,7 @@ optional bridge for downloading and uploading projects from and to a live contro
 ## User Classes and Characteristics
 
 | User Class | Characteristics | Frequency of Use | Technical Proficiency |
-|-----------|-----------------|-------------------|---------------------|
+| ----------- | ----------------- | ------------------- | --------------------- |
 | Professional installer | Knows the IHC domain deeply (products, wiring, logic blocks); may be new to this app but already fluent in IHC project concepts | Weekly on customer projects | Domain: high · Software: medium |
 | Technical homeowner | Knows software well; learns the IHC domain as they go; benefits most from clear UI, help, and validation feedback | Bursts (renovations, tweaks) | Domain: low-medium · Software: high |
 | Contributor / developer | Extends the app or engine; needs strict layering so UI logic is testable without a running UI and the engine stays free of UI concerns | Ongoing | High |
@@ -113,7 +116,7 @@ optional bridge for downloading and uploading projects from and to a live contro
 
 - **Runtime**: a modern desktop application.
 - **Client platforms**: Windows 10/11, modern macOS, mainstream Linux desktop distributions.
-- **Storage**: local file system only — `.vis` project files plus an automatic backup file; no database.
+- **Storage**: local file system only — `.vis` project files; no database.
 - **Network**: none required for authoring; optional HTTP(S)/USB access to an IHC v3.0 controller for project transfer.
 - **Display**: standard desktop resolutions; light and dark themes.
 
@@ -148,7 +151,7 @@ optional bridge for downloading and uploading projects from and to a live contro
 
 ### F1 — Project lifecycle
 
-**Description**: Create, open, save, and recover `.vis` projects safely.
+**Description**: Create, open, and save `.vis` projects safely.
 
 **Functional Requirements**:
 
@@ -156,8 +159,7 @@ optional bridge for downloading and uploading projects from and to a live contro
 - FR-1.2: Open an existing `.vis` file; exactly one project is open at a time; switching or closing prompts to save unsaved changes.
 - FR-1.3: Save and Save-As. Saving an unchanged loaded project in preserve mode is byte-identical; a normal save re-stamps metadata exactly as the format requires. Writes are atomic — a failed save never corrupts the target file.
 - FR-1.4: A recent-projects list (at least the four most recent) is available for one-click reopening.
-- FR-1.5: Automatic crash-recovery backup: written periodically and after bursts of changes, offered for recovery on restart after abnormal termination, and discarded on a clean close.
-- FR-1.6: A project file named at launch — the file the desktop hands the application when the installer opens a `.vis` with it — is the document opened, in place of the empty starting project. Crash recovery still takes precedence over it (unsaved work is the scarcer thing), and a file that cannot be opened is reported like any other failed open, leaving the application on the empty project rather than failing to start.
+- FR-1.5: A project file named at launch — the file the desktop hands the application when the installer opens a `.vis` with it — is the document opened, in place of the empty starting project. A file that cannot be opened is reported like any other failed open, leaving the application on the empty project rather than failing to start.
 
 ### F2 — Two-pane authoring workspace
 
@@ -169,7 +171,7 @@ optional bridge for downloading and uploading projects from and to a live contro
 > command belongs:
 >
 > | | **LEFT pane — Installation** | **RIGHT pane — Functions** |
-> |---|---|---|
+> | --- | --- | --- |
 > | Shows | localities → **products** → pins | localities → **function blocks** → pins |
 > | Owns the insert of | **products** (wired, wireless, special) | **function blocks** (library and empty) |
 > | Answers | *what is physically installed, and where* | *what the installation does* |
@@ -312,7 +314,7 @@ readable contrast at tree-row icon size.
 ### Software Interfaces
 
 | System | Interface Type | Purpose | Data Format |
-|--------|---------------|---------|-------------|
+| -------- | --------------- | --------- | ------------- |
 | Shared project engine (load/edit/validate/save, catalog, validator) | In-process API | All load/edit/validate/save/catalog operations | Immutable element model |
 | `.vis` project files | File I/O (via the engine only) | Persistence; the byte-exact `.vis` format contract | XML with inline DTD and the format's encoding conventions |
 | `.def` / `.ifb` catalog files | File I/O (via the engine only) | Optional import of external/custom component definitions | `.def` / `.ifb` catalog formats |
@@ -321,9 +323,9 @@ readable contrast at tree-row icon size.
 ## Quality Attributes
 
 | Attribute | Target | Measurement |
-|-----------|--------|-------------|
+| ----------- | -------- | ------------- |
 | Compatibility | 100% byte-identical preserve-mode round-trip over the reference corpus; authored files remain valid `.vis` files accepted by IHC controllers | Byte-comparison against the corpus; controller-acceptance check |
-| Reliability | No data loss on crash (recoverable backup ≤ 10 min old); no partial/corrupt file ever written | Backup-lifecycle and atomic-save checks |
+| Reliability | Unsaved changes are never lost silently — every path that would discard them prompts first; no partial/corrupt file is ever written | Save-prompt and atomic-save checks |
 | Performance | Open + render the largest reference project (~236 KB) in < 2 s; save < 1 s, on typical developer hardware | Timed assertions |
 | Usability | All authoring tasks completable via keyboard; icons legible at tree-row size; light + dark themes | UI checks + icon render checks |
 | Language consistency | The application's own captions are in one language (Danish); file- and catalog-derived text is rendered verbatim and never translated | UI string checks; a tree-label check that a stored caption is not restated in another language |
@@ -337,19 +339,19 @@ readable contrast at tree-row icon size.
 The only persistent artifact is the `.vis` project file: an XML document with an inline DTD
 holding the full installation (localities, products, function blocks, links, programs, project
 metadata) as one element tree with stable hexadecimal ids. In memory it is an immutable tree; edits
-happen in editor sessions that produce new snapshots (enabling undo). A sibling backup file exists
-between crashes and clean closes. The embedded catalog is read-only compiled-in data.
+happen in editor sessions that produce new snapshots (enabling undo). The embedded catalog is
+read-only compiled-in data.
 
 ### Data Integrity and Retention
 
 - **Integrity**: atomic saves; validator gate before save/transfer; ids never reused.
-- **Retention**: project files belong to the user on their file system; the app keeps no hidden copies beyond the crash backup, which is deleted on clean close.
+- **Retention**: project files belong to the user on their file system; the app keeps no hidden copies of them.
 - **Privacy**: project info may contain customer names/addresses. The app sends no file content anywhere; optional telemetry must not include project data. Controller credentials are handled by settings encryption, never stored in project files.
 
 ## Glossary
 
 | Term | Definition |
-|------|-----------|
+| ------ | ----------- |
 | IHC controller | The physical unit running a home installation; executes the deployed project. |
 | `.vis` file | The XML project file (with inline DTD) holding a controller's complete configuration. |
 | Locality | A room/place node organizing products and function blocks. Localities are the **shared spine of both panes** — the same locality appears in each, holding its products on the left and its blocks on the right. |
@@ -374,7 +376,7 @@ between crashes and clean closes. The embedded catalog is read-only compiled-in 
 Correctness is judged against fixed oracles rather than opinion:
 
 | Oracle Type | Application | Example |
-|------------|-------------|---------|
+| ------------ | ------------- | --------- |
 | Committed reference files (byte comparison) | Round-trip and authoring fidelity | Loading a reference `.vis` and preserve-saving reproduces the file byte-for-byte; scripted edit sequences reproduce the committed result files exactly. |
 | IHC controller acceptance | Interop | An IHC controller loads and runs projects IHC OpenVisual wrote. |
 | Invariant checking | Editing semantics | Id allocation is monotonic and never reuses freed ids; links are always reciprocal; validator findings for known-bad inputs. |
@@ -399,7 +401,7 @@ personal data.
 ## Companion Specifications
 
 | Document | Location |
-|----------|----------|
+| ---------- | ---------- |
 | Epics & user stories (E1–E16, US-NNN) — the detailed spec; **start here for any feature** | `applications/ihc_openvisual/docs/stories/` |
 | Icon design guidelines (flat-line SVG family) | `applications/ihc_openvisual/docs/icons_design.md` |
 | Icon selection reference (`.vis` element → SVG) | `applications/ihc_openvisual/docs/icon_codes.md` |

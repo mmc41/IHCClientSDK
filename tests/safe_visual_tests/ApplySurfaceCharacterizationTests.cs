@@ -11,7 +11,7 @@ namespace safe_visual_tests;
 /// committing edit, a stale-version refusal, and — via <c>Groups.Count</c> — that <c>CanApply</c>/<c>Preview</c>
 /// do not commit; these cover the GAPS (an <c>ApplyAsync</c> that makes no change, and <c>ApplyAsync&lt;T&gt;</c>
 /// surfacing the produced value) and STRENGTHEN the non-mutation guarantee to reference identity of
-/// <c>Current</c> plus <c>Version</c>/<c>IsDirty</c>/<c>ChangeCount</c>/<c>CanUndo</c>.
+/// <c>Current</c> plus <c>Version</c>/<c>IsDirty</c>/<c>CanUndo</c>.
 /// </summary>
 public class ApplySurfaceCharacterizationTests
 {
@@ -71,7 +71,6 @@ public class ApplySurfaceCharacterizationTests
         var currentBefore = harness.Session.Current;
         int versionBefore = harness.Session.Version;
         bool dirtyBefore = harness.Session.IsDirty;
-        int changeCountBefore = harness.Session.ChangeCount;
         bool canUndoBefore = harness.Session.CanUndo;
 
         EditVerdict verdict = harness.Session.CanApply(new AddLocality("Probe"));
@@ -84,7 +83,6 @@ public class ApplySurfaceCharacterizationTests
             Assert.That(harness.Session.Current, Is.SameAs(currentBefore), "neither probe swaps Current");
             Assert.That(harness.Session.Version, Is.EqualTo(versionBefore), "neither probe bumps the version");
             Assert.That(harness.Session.IsDirty, Is.EqualTo(dirtyBefore), "neither probe touches the dirty flag");
-            Assert.That(harness.Session.ChangeCount, Is.EqualTo(changeCountBefore), "neither probe advances the change counter");
             Assert.That(harness.Session.CanUndo, Is.EqualTo(canUndoBefore), "neither probe touches the undo history");
         });
     }

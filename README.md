@@ -286,7 +286,7 @@ pwsh .claude/skills/aui-openvisual/scripts/aui.ps1 node expand "Localities"
 pwsh .claude/skills/aui-openvisual/scripts/aui.ps1 capture window
 ```
 
-`doctor --launch` starts the app with `--skip-recovery` so no crash-recovery prompt can block an unattended run. See `.claude/skills/aui-openvisual/SKILL.md` and its `references/` for the full command list, node addressing, result/exit-code contract, and how to extend the vocabulary.
+`doctor --launch` starts the app and waits for its window to become usable. See `.claude/skills/aui-openvisual/SKILL.md` and its `references/` for the full command list, node addressing, result/exit-code contract, and how to extend the vocabulary.
 
 ## FAQ
 

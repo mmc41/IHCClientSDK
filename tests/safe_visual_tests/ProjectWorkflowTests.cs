@@ -6,8 +6,8 @@ using ihc_openvisual.Services;
 namespace safe_visual_tests;
 
 /// <summary>
-/// Lifecycle behaviour of <see cref="ProjectWorkflow"/> (US-002/003/004/005/064): new/open/save, the dirty flag,
-/// the single-project constraint, the save prompt, and the crash-recovery backup — all headless and file-only.
+/// Lifecycle behaviour of <see cref="ProjectWorkflow"/> (US-002/003/004/064): new/open/save/close, the dirty flag,
+/// the single-project constraint and the save prompt — all headless and file-only.
 /// </summary>
 public class ProjectWorkflowTests
 {
@@ -269,77 +269,34 @@ public class ProjectWorkflowTests
     }
 
     [Test]
-    public async Task AutoBackup_OnEveryNthChange_WritesRecoveryFile()
-    {
-        using var harness = ShellHarness.Create(changeThreshold: 3);
-        await harness.Session.StartAsync();
-
-        await harness.Session.AddLocalityAsync();
-        await harness.Session.AddLocalityAsync();
-        Assert.That(harness.Backup.HasRecovery(), Is.False, "no backup before the threshold is reached");
-
-        await harness.Session.AddLocalityAsync();
-        Assert.That(harness.Backup.HasRecovery(), Is.True, "the 3rd change triggers a recovery backup");
-    }
-
-    // Automation needs a deterministic launch: the --skip-recovery flag must open a fresh project and discard
-    // any stale crash backup WITHOUT ever showing the "Recover project?" dialog that would otherwise block an
-    // unattended (UI-automation) session.
-    [Test]
-    public async Task StartAsync_SkipRecovery_DiscardsBackup_WithoutPrompting()
+    public async Task Close_ReturnsToAFreshEmptyProject()
     {
         using var harness = ShellHarness.Create();
         await harness.Session.StartAsync();
-        await harness.Session.AutoBackupAsync();
-        Assert.That(harness.Backup.HasRecovery(), Is.True, "precondition: a crash backup exists");
+        harness.Dialogs.SavePath = harness.TempPath("closed.vis");
+        await harness.Session.SaveAsAsync();
 
-        // A fresh session over the same backup directory (as if the app relaunched), started with recovery skipped.
-        using var restarted = ShellHarness.Restart(harness.TempDir);
-        restarted.Dialogs.ConfirmResult = true;   // it would recover if it were ever asked
-
-        await restarted.Session.StartAsync(skipRecovery: true);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(restarted.Dialogs.ConfirmCalls, Is.EqualTo(0), "the recovery dialog is never shown");
-            Assert.That(restarted.Backup.HasRecovery(), Is.False, "the stale crash backup is discarded up front");
-            Assert.That(restarted.Session.DocumentName, Is.EqualTo("Uden navn"), "a fresh empty project is opened");
-            Assert.That(restarted.Session.Current!.Groups.Count, Is.EqualTo(10));
-        });
-    }
-
-    [Test]
-    public async Task Close_DeletesRecoveryBackup()
-    {
-        using var harness = ShellHarness.Create();
-        await harness.Session.StartAsync();
-        await harness.Session.AutoBackupAsync();
-        Assert.That(harness.Backup.HasRecovery(), Is.True);
-
-        // Not dirty, so no save prompt; a clean close discards the crash backup.
+        // Not dirty, so no save prompt.
         bool closed = await harness.Session.CloseAsync();
 
         Assert.Multiple(() =>
         {
             Assert.That(closed, Is.True);
-            Assert.That(harness.Backup.HasRecovery(), Is.False);
+            Assert.That(harness.Session.FilePath, Is.Null, "a close leaves no file behind");
+            Assert.That(harness.Session.DocumentName, Is.EqualTo("Uden navn"));
+            Assert.That(harness.Session.Current!.Groups.Count, Is.EqualTo(10), "the standard empty project is opened");
         });
     }
 
     [Test]
-    public async Task Save_ClearsChangeCountAndDeletesRecoveryBackup()
+    public async Task Save_MarksTheDocumentClean()
     {
         using var harness = ShellHarness.Create();
         await harness.Session.StartAsync();
         harness.Dialogs.SavePath = harness.TempPath("saved.vis");
 
-        // Accumulate changes and a crash backup, then save: the save persists the work, so the stale
-        // recovery backup must be discarded and the change counter reset (matching New/Open/Close).
         await harness.Session.AddLocalityAsync();
-        await harness.Session.AddLocalityAsync();
-        await harness.Session.AutoBackupAsync();
-        Assert.That(harness.Backup.HasRecovery(), Is.True, "precondition: a crash backup exists");
-        Assert.That(harness.Session.ChangeCount, Is.GreaterThan(0), "precondition: changes were recorded");
+        Assert.That(harness.Session.IsDirty, Is.True, "precondition: changes were recorded");
 
         bool saved = await harness.Session.SaveAsAsync();
 
@@ -347,49 +304,7 @@ public class ProjectWorkflowTests
         {
             Assert.That(saved, Is.True);
             Assert.That(harness.Session.IsDirty, Is.False);
-            Assert.That(harness.Session.ChangeCount, Is.EqualTo(0), "a save resets the change counter");
-            Assert.That(harness.Backup.HasRecovery(), Is.False, "a save discards the now-stale crash backup");
-        });
-    }
-
-    [Test]
-    public async Task Start_WithExistingBackup_Confirmed_RecoversAsDirty()
-    {
-        using var harness = ShellHarness.Create();
-        // Simulate a crash: write a recovery backup, then abandon the session without a clean close.
-        await harness.Session.StartAsync();
-        await harness.Session.AutoBackupAsync();
-        harness.Session.Dispose();
-
-        using var restart = ShellHarness.Restart(harness.TempDir);
-        restart.Dialogs.ConfirmResult = true;
-        await restart.Session.StartAsync();
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(restart.Session.Current, Is.Not.Null);
-            Assert.That(restart.Session.Current!.Groups.Count, Is.EqualTo(10));
-            Assert.That(restart.Session.IsDirty, Is.True, "a recovered project starts dirty so the user can re-save it");
-        });
-    }
-
-    [Test]
-    public async Task Start_WithExistingBackup_Declined_DiscardsBackupAndStartsEmpty()
-    {
-        using var harness = ShellHarness.Create();
-        await harness.Session.StartAsync();
-        await harness.Session.AutoBackupAsync();
-        harness.Session.Dispose();
-
-        using var restart = ShellHarness.Restart(harness.TempDir);
-        restart.Dialogs.ConfirmResult = false;
-        await restart.Session.StartAsync();
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(restart.Session.IsDirty, Is.False);
-            Assert.That(restart.Session.DocumentName, Is.EqualTo("Uden navn"));
-            Assert.That(restart.Backup.HasRecovery(), Is.False, "declining recovery discards the backup");
+            Assert.That(harness.Session.FilePath, Is.EqualTo(harness.TempPath("saved.vis")));
         });
     }
 }

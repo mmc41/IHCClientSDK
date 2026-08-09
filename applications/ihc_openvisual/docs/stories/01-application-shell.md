@@ -12,7 +12,7 @@ status: draft
 
 **Goal:** Give IHC OpenVisual a stable foundation — a reliably starting main window (its menu-bar
 host, toolbar, two side-by-side tree panes and status bar), its configuration/logging/telemetry
-bootstrap, and the project-file lifecycle (create, name, save, reopen, recover, quit) — so that every
+bootstrap, and the project-file lifecycle (create, name, save, reopen, quit) — so that every
 later capability area (E2–E16) has a predictable home to plug into.
 
 **Scope:** application start-up and shutdown (loading configuration, establishing the
@@ -20,7 +20,7 @@ logging/telemetry and project-service composition root, capturing unhandled erro
 an unsaved-changes prompt); the main window and its chrome (title bar, the eight-title menu bar
 *as the extensible host for every epic's commands*, toolbar, the two tree panes, status bar);
 light/dark theme; showing/hiding the toolbar and status bar from *Vis*; and the *Filer* project
-operations: new, open, save, save-as, close (with its save prompt), recent projects, auto-backup, and
+operations: new, open, save, save-as, close (with its save prompt), recent projects, and
 the single-project constraint. **Scope excludes:** the *command inventory* inside
 *Edit/Insert/Library/Controller/Documentation* (owned by E2–E7, E9–E10, E14–E16),
 locality/product/function-block content (E2–E7), controller send/retrieve (E10), the detailed
@@ -39,8 +39,7 @@ simulation Start/Stop pair.
   remaining titles are always present and populated by their owning epics.
 - MUST: A project can be created, named and saved to a `.vis` file, and exactly one project is open at
   a time.
-- SHOULD: The four most recent projects are reachable from the *Filer* menu, and an automatic backup
-  protects against crash/power loss.
+- SHOULD: The four most recent projects are reachable from the *Filer* menu.
 - SHOULD: The installer can show or hide the toolbar and the status bar from the *Vis* menu, and the
   menu reflects each element's current visibility.
 - SHOULD: The workspace renders in either a light or a dark theme.
@@ -254,8 +253,8 @@ Scenario: Recommended first step
   preserves the file's previous version next to it, under the same name with the extension replaced by
   `.BAK`. A later overwrite replaces the `.BAK` with the newly displaced version.
 - MUST: Saving to a file name that does not yet exist creates no `.BAK` file.
-- MUST: This overwrite backup is distinct from the automatic crash backup (US-005) and is **not**
-  deleted on a clean close — it stays on disk as the previous version of the file.
+- MUST: The `.BAK` file is **not** deleted on a clean close — it stays on disk as the previous version
+  of the file.
 - MUST: A save is refused when the project contains text that cannot be stored in the project file's
   character repertoire (ISO-8859-1): the refusal message names the offending element, attribute and
   character, nothing is written to disk (the existing file and its `.BAK` are untouched), and the edit
@@ -320,12 +319,6 @@ Scenario: The handed-over file cannot be read
   When the application starts
   Then it says so, naming the file, exactly as a failed "Open project" would
   And it comes up on the empty starting project rather than failing to start
-
-Scenario: Unsaved work outranks the handed-over file
-  Given a crash backup from a previous session exists
-  When the desktop starts IHC OpenVisual on a ".vis" file
-  Then the recovery offer (US-005) comes first
-  And accepting it opens the recovered work; declining it opens the handed-over file
 ```
 
 ### Business rules (what opening does to the document)
@@ -350,47 +343,6 @@ Scenario: Unsaved work outranks the handed-over file
 **Readiness:** Ready.
 
 **Implementation status:** ✅ Implemented.
-
----
-
-## US-005 — Automatic backup and recovery
-
-**As an** IHC installer, **I want** the application to back up my project automatically, **so that** a
-crash or power loss does not cost me my recent work.
-
-### Acceptance criteria (Business Rules)
-
-**Trigger rules:**
-- MUST: A backup is taken automatically every **10 minutes**, and additionally after every **10th**
-  change (event) to the project.
-- MUST: The backup is usable for recovery after an application crash, a PC crash, or a power
-  interruption.
-
-**Lifecycle rules:**
-- MUST: When the installer closes the project deliberately via *File > Close* and answers the
-  save prompt (Yes or No), the application **deletes** the backup file — the backup is only a
-  crash/power-loss safety net, not a post-close undo.
-
-**Output:**
-- A backup copy of the project that survives an abnormal termination and is discarded on a clean,
-  acknowledged close.
-
-### AC illustrations
-
-- Working continuously for 25 minutes with no manual save produces at least two automatic backups
-  (at ~10 and ~20 minutes); making 10 edits within one minute also triggers a backup regardless of the
-  timer.
-- Choosing *File > Close* and clicking *No* (don't save) removes the backup — the just-closed edits
-  are not recoverable from backup.
-
-### Constraints
-
-- Verification method — **Test** by simulating abnormal termination and confirming a recoverable
-  backup exists; and by confirming the backup is absent after a clean close.
-
-**Readiness:** Ready.
-
-**Implementation status:** 🟡 Partly implemented.
 
 ---
 
@@ -445,9 +397,8 @@ Scenario: Hide and show the status bar
 record its own diagnostics safely, **so that** I can begin work immediately and get support when
 something goes wrong without exposing my project data.
 
-**Scope excludes:** the on-screen content and chrome of the workspace (US-001) and the crash-recovery
-backup mechanics (US-005); this story covers the start-up path and the diagnostics/telemetry
-foundation only.
+**Scope excludes:** the on-screen content and chrome of the workspace (US-001); this story covers the
+start-up path and the diagnostics/telemetry foundation only.
 
 ### Acceptance criteria (Checklist)
 
@@ -510,7 +461,6 @@ Scenario: Quit with no unsaved changes
   Given the open project has no unsaved changes
   When I choose "File" > "Exit" (or press Alt+F4, or use the window close button)
   Then the application closes
-  And the project's automatic backup is deleted (US-005)
 
 Scenario: Quit with unsaved changes prompts to save
   Given the open project has unsaved changes
@@ -526,8 +476,8 @@ Scenario: Cancel the quit
 
 ### AC illustrations
 
-- Pressing `Alt+F4` on a freshly opened, unmodified project closes the app immediately and removes the
-  backup file; pressing it after an edit first raises the save prompt.
+- Pressing `Alt+F4` on a freshly opened, unmodified project closes the app immediately; pressing it
+  after an edit first raises the save prompt.
 
 ### Constraints
 

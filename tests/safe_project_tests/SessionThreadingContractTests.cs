@@ -10,8 +10,8 @@ namespace Ihc.Vis.Tests
     /// <summary>
     /// crudarch D04: the <see cref="ProjectDocumentSession"/> threading contract after the switch from
     /// thread-affinity to lock-serialization. These are the two cross-thread tests the redesign explicitly
-    /// requires (its deliverable, not incidental multithreading coverage): (1) the backup-timer shape — a worker
-    /// thread reads <c>Current</c>/state while the owner thread edits, with no throw and no torn read; (2) the
+    /// requires (its deliverable, not incidental multithreading coverage): (1) the off-thread-reader shape — a
+    /// worker thread reads <c>Current</c>/state while the owner thread edits, with no throw and no torn read; (2) the
     /// D04(a) event contract — <c>Changed</c>/<c>StateChanged</c> are raised synchronously on the thread that
     /// performed the state change, never marshalled or deferred.
     /// </summary>
@@ -30,7 +30,7 @@ namespace Ihc.Vis.Tests
             session.Open(project);
             int baseCount = session.Current!.Groups.Count;
 
-            // The AutoBackupScheduler shape: a worker samples Current + state while the owner thread applies
+            // The off-thread reader shape: a worker samples Current + state while the owner thread applies
             // edits. Every sample must be a committed snapshot — group counts only grow here, so a decreasing
             // observation would be a torn read.
             using var stop = new CancellationTokenSource();

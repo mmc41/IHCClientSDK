@@ -28,8 +28,7 @@ namespace ihc_openvisual.DesignTime;
 /// Side-effect free, and that is a REQUIREMENT, not a nicety: the previewer re-runs this constructor on every
 /// markup change, so it must not touch the installer's real state. Every store is pointed at a path under the temp
 /// directory that is only ever read (each store treats a missing file as empty), the project is built in memory
-/// from the SDK template, and nothing is ever written. No backup timer is started — that needs
-/// <c>StartAsync</c>, which design time never calls.
+/// from the SDK template, and nothing is ever written.
 /// </para>
 /// </summary>
 public sealed class DesignMainWindowViewModel : MainWindowViewModel
@@ -45,7 +44,7 @@ public sealed class DesignMainWindowViewModel : MainWindowViewModel
     {
         var service = new ProjectAppService(new IhcSettings());
         var workflow = new ProjectWorkflow(
-            service, new BackupService(DesignPath("recovery")), new RecentProjectsStore(DesignPath("recent.json")),
+            service, new RecentProjectsStore(DesignPath("recent.json")),
             new NullDialogService(), catalogDir: DesignPath("catalog"));
         // The standard empty project, so the previewer shows the shell with its ten localities rather than two
         // blank panes. In memory only — no file is read or written — and synchronous in practice: nothing is dirty,

@@ -30,10 +30,9 @@ public partial class App : Application
             Ihc.IhcSettings settings = config?.IhcSettings ?? new Ihc.IhcSettings();
 
             var projectService = new ProjectAppService(settings);
-            var backup = BackupService.CreateDefault();
             var recent = RecentProjectsStore.CreateDefault();
             var dialogs = new AvaloniaDialogService(loggerFactory);
-            var session = new ProjectWorkflow(projectService, backup, recent, dialogs, loggerFactory,
+            var session = new ProjectWorkflow(projectService, recent, dialogs, loggerFactory,
                 installerIdentity: InstallerIdentityStore.CreateDefault(),
                 dataTables: DataTableStore.CreateDefault());
             var themeService = new ThemeService();
@@ -52,10 +51,9 @@ public partial class App : Application
             };
 
             // Open the start-up document — the file named on the command line ("Open with…" / a double-clicked
-            // .vis), or the standard empty project — once the window is shown, so any recovery prompt or
-            // open-failure dialog has a visible owner.
-            window.Opened += async (_, _) =>
-                await viewModel.InitializeAsync(Program.SkipRecovery, Program.StartupProjectPath);
+            // .vis), or the standard empty project — once the window is shown, so an open-failure dialog has a
+            // visible owner.
+            window.Opened += async (_, _) => await viewModel.InitializeAsync(Program.StartupProjectPath);
         }
 
         base.OnFrameworkInitializationCompleted();

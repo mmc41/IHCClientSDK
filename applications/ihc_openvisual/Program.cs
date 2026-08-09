@@ -22,11 +22,6 @@ internal sealed class Program
     /// <summary>The shared logger factory (OpenTelemetry-wired); set once in <see cref="Main"/>.</summary>
     public static ILoggerFactory? LoggerFactory { get; private set; }
 
-    /// <summary>True when launched with <c>--skip-recovery</c> (alias <c>--no-recover</c>): the crash-recovery
-    /// prompt is bypassed so an unattended UI-automation session opens a deterministic fresh project. Set once
-    /// in <see cref="Main"/>.</summary>
-    public static bool SkipRecovery { get; private set; }
-
     /// <summary>The project file named on the command line — what "Open with…" / a double-clicked <c>.vis</c> /
     /// <c>ihc_openvisual foo.vis</c> hands the app — or null when it was launched with no file. Set once in
     /// <see cref="Main"/>; the shell opens it instead of the empty starter project (BP-11a).</summary>
@@ -51,9 +46,6 @@ internal sealed class Program
         {
             // Order matters: config and the telemetry pipeline first, then hook the ILogger-backed unhandled-error
             // handler (A-25). Startup exceptions before this point are caught by Main's catch below.
-            SkipRecovery = args.Any(a =>
-                string.Equals(a, "--skip-recovery", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(a, "--no-recover", StringComparison.OrdinalIgnoreCase));
             StartupProjectPath = ParseStartupProjectPath(args);
             Config = new AppConfiguration();
             LoggerFactory = AppTelemetryBootstrap.SetupTelemetryAndLogging(

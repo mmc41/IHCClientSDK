@@ -295,7 +295,6 @@ public sealed class ShellHarness : IDisposable
 {
     public string TempDir { get; }
     public FakeDialogService Dialogs { get; } = new();
-    public BackupService Backup { get; }
     public RecentProjectsStore Recent { get; }
     public ProjectWorkflow Session { get; }
 
@@ -306,34 +305,28 @@ public sealed class ShellHarness : IDisposable
 
     private readonly bool _ownsDir;
 
-    private ShellHarness(string dir, bool ownsDir, int changeThreshold,
-        System.TimeProvider? timeProvider, TimeSpan? autoBackupInterval)
+    private ShellHarness(string dir, bool ownsDir, System.TimeProvider? timeProvider)
     {
         TempDir = dir;
         _ownsDir = ownsDir;
         Directory.CreateDirectory(TempDir);
-        Backup = new BackupService(Path.Combine(TempDir, "recovery"));
         Recent = new RecentProjectsStore(Path.Combine(TempDir, "recent.json"));
         // When a clock is injected (a FakeTimeProvider), the facade uses it too — so report generation timestamps
         // (T022) are deterministic; otherwise the default file-only service on the system clock (kept lazy).
         ProjectService = timeProvider is null
             ? new ProjectAppService(new IhcSettings())
             : new ProjectAppService(new IhcSettings(), new Ihc.Vis.Catalog.BuiltInCatalog(), timeProvider);
-        // By default a one-hour timer never fires during a test; a FakeTimeProvider (passed in) drives it
-        // deterministically. The catalog dir is a subfolder of TempDir so Restart(dir) reuses it (US-061).
-        Session = new ProjectWorkflow(ProjectService, Backup, Recent, Dialogs, null,
-            autoBackupInterval ?? TimeSpan.FromHours(1), changeThreshold, Path.Combine(TempDir, "catalog"), timeProvider);
+        // The catalog dir is a subfolder of TempDir so Restart(dir) reuses it (US-061).
+        Session = new ProjectWorkflow(ProjectService, Recent, Dialogs, null, Path.Combine(TempDir, "catalog"));
     }
 
-    public static ShellHarness Create(int changeThreshold = 10,
-        System.TimeProvider? timeProvider = null, TimeSpan? autoBackupInterval = null) =>
+    public static ShellHarness Create(System.TimeProvider? timeProvider = null) =>
         new(Path.Combine(Path.GetTempPath(), "ihc_ov_tests", Guid.NewGuid().ToString("N")), ownsDir: true,
-            changeThreshold, timeProvider, autoBackupInterval);
+            timeProvider);
 
-    /// <summary>A second session over an existing directory — simulates restarting the app after a crash so the
-    /// recovery backup left in <paramref name="dir"/> is discovered.</summary>
-    public static ShellHarness Restart(string dir, int changeThreshold = 10) =>
-        new(dir, ownsDir: false, changeThreshold, null, null);
+    /// <summary>A second session over an existing directory — simulates restarting the app, so the per-user state
+    /// left in <paramref name="dir"/> (e.g. persisted catalog imports) is picked up again.</summary>
+    public static ShellHarness Restart(string dir) => new(dir, ownsDir: false, null);
 
     public string TempPath(string fileName) => Path.Combine(TempDir, fileName);
 
