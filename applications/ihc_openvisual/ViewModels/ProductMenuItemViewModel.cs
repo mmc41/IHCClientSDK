@@ -24,6 +24,11 @@ public sealed class ProductMenuItemViewModel
 
     public string Header { get; }
 
+    /// <summary>A DISPLAY-ONLY shortcut hint shown right-aligned on the menu item (e.g. "Ctrl+I"), or null for the
+    /// items that carry none. The gesture is registered as a window KeyBinding elsewhere — this only advertises it,
+    /// so the vendor's Variable-menu Ctrl+I/Ctrl+U hints on Indgang/Udgang are reproduced (alignment F-25).</summary>
+    public string? InputGesture { get; init; }
+
     /// <summary>The catalog product this leaf inserts, or null for a category node.</summary>
     public string? ProductIdentifier { get; }
 

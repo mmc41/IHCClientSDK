@@ -46,7 +46,7 @@ public class DocumentationMenuParityTests
         "---",
         "_Funktionsdokumentation…",
         "_Installationsdokumentation…",
-        "Functions_blok dokumentation…",
+        "Funktions_blok dokumentation…",
     ];
 
     [Test]
@@ -69,7 +69,7 @@ public class DocumentationMenuParityTests
         });
     }
 
-    /// <summary>Within the popup, every access key is distinct — Functionsblok takes <c>b</c> precisely because
+    /// <summary>Within the popup, every access key is distinct — Funktionsblok takes <c>b</c> precisely because
     /// Datalinie moduler holds the vendor's <c>D</c>.</summary>
     [Test]
     public void DokumentationItems_CarryDistinctAccessKeys()

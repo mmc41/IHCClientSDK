@@ -22,7 +22,7 @@ public class ProjectWorkflowTests
         {
             Assert.That(harness.Session.Current, Is.Not.Null);
             Assert.That(harness.Session.Current!.Groups.Count, Is.EqualTo(10), "the standard empty project has ten default rooms");
-            Assert.That(harness.Session.DocumentName, Is.EqualTo("Uden navn"));
+            Assert.That(harness.Session.DocumentName, Is.EqualTo("unavngivet"));
             Assert.That(harness.Session.IsDirty, Is.False);
         });
     }
@@ -116,7 +116,7 @@ public class ProjectWorkflowTests
         {
             Assert.That(result, Is.True);
             Assert.That(harness.Session.IsDirty, Is.False);
-            Assert.That(harness.Session.DocumentName, Is.EqualTo("Uden navn"));
+            Assert.That(harness.Session.DocumentName, Is.EqualTo("unavngivet"));
             Assert.That(harness.Session.Current!.Groups.Count, Is.EqualTo(10));
         });
     }
@@ -132,7 +132,7 @@ public class ProjectWorkflowTests
         harness.Dialogs.SavePath = path;
         await harness.Session.SaveAsAsync();
         await harness.Session.NewAsync();
-        Assert.That(harness.Session.DocumentName, Is.EqualTo("Uden navn"));
+        Assert.That(harness.Session.DocumentName, Is.EqualTo("unavngivet"));
 
         bool opened = await harness.Session.OpenAsync(path);
 
@@ -283,7 +283,7 @@ public class ProjectWorkflowTests
         {
             Assert.That(closed, Is.True);
             Assert.That(harness.Session.FilePath, Is.Null, "a close leaves no file behind");
-            Assert.That(harness.Session.DocumentName, Is.EqualTo("Uden navn"));
+            Assert.That(harness.Session.DocumentName, Is.EqualTo("unavngivet"));
             Assert.That(harness.Session.Current!.Groups.Count, Is.EqualTo(10), "the standard empty project is opened");
         });
     }

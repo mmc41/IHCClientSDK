@@ -8,7 +8,7 @@ namespace Ihc.Vis.Session
     /// <summary>Inserts a new locality (US-008) named <paramref name="Name"/>, producing its allocated id.</summary>
     public sealed record AddLocality(string Name) : ProjectCommand<ElementId>
     {
-        internal override string Describe(Project project) => "Insert locality";
+        internal override string Describe(Project project) => "Indsæt lokalitet";
 
         internal override EditVerdict Evaluate(EditContext context) => EditVerdict.Allow;
 
@@ -22,7 +22,7 @@ namespace Ihc.Vis.Session
     public sealed record RenameLocality(ElementId Id, string Name, string Note) : ProjectCommand
     {
         internal override string Describe(Project project) =>
-            "Rename " + ((project.FindById(Id) is { } element ? project.View(element).Name : null) ?? "element");
+            "Omdøb " + ((project.FindById(Id) is { } element ? project.View(element).Name : null) ?? "element");
 
         internal override EditVerdict Evaluate(EditContext context) =>
             context.RequireExists(Id, "element")
@@ -41,7 +41,7 @@ namespace Ihc.Vis.Session
     public sealed record DeleteLocality(ElementId Id) : ProjectCommand
     {
         internal override string Describe(Project project) =>
-            "Delete " + ((project.FindById(Id) is { } element ? project.View(element).Name : null) ?? "locality");
+            "Slet " + ((project.FindById(Id) is { } element ? project.View(element).Name : null) ?? "lokalitet");
 
         internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(Id, "locality");
 

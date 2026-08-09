@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
@@ -187,8 +188,18 @@ public partial class MainWindow : Window
             && (e.Source as Control)?.FindAncestorOfType<TreeViewItem>(includeSelf: true)?.DataContext is TreeNodeViewModel node)
         {
             tree.SelectedItem = node;
+            ApplyContextFlyout(tree, node);
         }
     }
+
+    // F-13b: a block SECTION shows the flat, data-driven SectionContextMenu; every other node the shared
+    // NodeContextMenu. Swapping the TREE's ContextFlyout (not the row's) keeps the flyout's DataContext the
+    // tree's MainWindowViewModel, so both flyouts' VM bindings resolve. Called wherever the flyout is about to
+    // open — right-click (here) and Shift+F10 (OnTreeKeyDown).
+    private void ApplyContextFlyout(TreeView tree, TreeNodeViewModel node) =>
+        tree.ContextFlyout = node.IsBlockSection
+            ? this.FindResource("SectionContextMenu") as FlyoutBase
+            : this.FindResource("NodeContextMenu") as FlyoutBase;
 
     // Double-click activates the node under the pointer (US-044) — bound on the item template's root in XAML.
     // Marking it handled for EVERY node type (including the ones that open nothing) is what stops the expansion
@@ -288,6 +299,7 @@ public partial class MainWindow : Window
             // realized, so the menu opens next to the caret exactly as a right-click would.
             Control anchor = tree.GetVisualDescendants().OfType<TreeViewItem>()
                 .FirstOrDefault(i => ReferenceEquals(i.DataContext, node)) ?? (Control)tree;
+            ApplyContextFlyout(tree, node);   // F-13b: section rows get the flat flyout via keyboard too
             tree.ContextFlyout?.ShowAt(anchor);
             e.Handled = true;
         }

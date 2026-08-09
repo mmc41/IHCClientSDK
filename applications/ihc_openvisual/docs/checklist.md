@@ -45,7 +45,7 @@ surface, normalized the same way on both sides before it is compared.
 | # | Dimension | Evidence |
 | --- | --- | --- |
 | 1 | Are saved IHC Visual files identical (binary the same) for same content (critical importance - applies to all features) | `.vis` / `.ifb` pair |
-| 2 | Feature and workflow coverage — every in-scope capability is present and can be carried out to completion | driver transcript |
+| 2 | Feature and workflow coverage — every in-scope capability is present, completes, and takes the same user-visible route: which action triggers which response (dialog, mode change, selection), and the order of steps in multi-step flows | driver transcript |
 | 3 | Model correctness — operation results, side effects, rejected operations, invariants, and the state after save and reopen | `.vis` pair + reopened tree dump |
 | 4 | Two pane tree layout | screenshot, window title |
 | 5 | Configuration and programming modes | pane-root probe, status text |

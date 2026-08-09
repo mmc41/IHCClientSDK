@@ -162,6 +162,9 @@ Scenario: Insertion targets the current selection
   showing `Lokalitet was inserted under Lokaliteter`.
 - *Indsæt lokalitet* is offered only where a locality can go: a locality's own context menu does not
   carry it, because a locality is not a container for other localities.
+- With **nothing selected** (e.g. a freshly opened project), the menu bar's *Indsæt ▸ Lokalitet* is
+  **enabled** and inserts at the root exactly as if the root were selected — measured vendor
+  behaviour, 2026-08-09. Only a non-root *selection* greys it (with the status-bar reason).
 
 **Readiness:** Ready.
 

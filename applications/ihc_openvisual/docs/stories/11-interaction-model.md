@@ -312,7 +312,10 @@ toolbar for a command the menu omits.
   supplement to drag reorder (US-055) and are kept — but only on reorderable nodes.
 
 **Target inventories** (the user stories are the authoritative spec; a label's exact *wording* is an allowed
-difference, its *inventory* is not).
+difference, its *inventory* is not). The rows below are the **vendor-parity core**: the *Flyt op*/*Flyt ned*
+supplement (the SHOULD above) additionally appears on reorderable node types and is not repeated in the
+counts. *(Clarified 2026-08-09, alignment F-19 — the app also follows the vendor's flyout wording, bare nouns
+"Lokalitet"/"Produkter"/"FunktionsBlokke", per the product.md wording rule; measured 2026-08-09.)*
 
 **A locality's menu depends on which pane it is in. Every other node type's does not.**
 

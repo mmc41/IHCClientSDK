@@ -54,11 +54,33 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
   character — where the original writes an unparsable file.
 - Every drag-and-drop operation is also reachable from the menus and the keyboard, so linking, moving, and reordering never require a mouse.
 - Unavailable commands explain themselves: pressing the keyboard shortcut of a greyed menu command shows the reason in the status bar.
+- The *Rediger* ▸ *Fortryd* / *Gentag* items name the action they would reverse or re-apply
+  (e.g. "Fortryd Indsæt lokalitet"), where the original shows a bare "Fortryd" / "Gentag". A screen
+  reader thus announces *what* will be undone, and the reader sees it before choosing — an
+  accessibility/usability enhancement (E14/US-052; the status bar names the action too). (Alignment
+  F-8b, 2026-08-09.)
 - Enhanced support for assistive technology and automation.
 - Embedded stock catalog.
 - Documentation reports render as self-contained static HTML that works in any modern browser, with optional enhanced variants and no dependency on a legacy browser component.
 - Menu commands that do nothing in the original are omitted rather than reproduced.
 - Support multiple instances.
+- The *Indsæt ▸ Variable* menu does **not** list **Scenarie**, where the original carries it (greyed
+  outside a scene context). A scene is **not a variable** — it is added through its own route
+  (US-024, on a scene-capable Output) — so it does not belong on the variable menu. This is the
+  "commands that do nothing are omitted" rule applied to a would-be-greyed item. (Alignment
+  Scenarie/F-13, 2026-08-09; story 07/US-027 line: "a scene is not a variable and is added through
+  its own route.")
+- The block-section variable popup sorts its types in **correct Danish collation** (æ/ø/å after z,
+  so *Tal* precedes *Tæller*), where the original collates æ as "ae" (putting *Tæller* before *Tal*).
+  A clear improvement over a vendor collation quirk. (Alignment F-26, 2026-08-09.)
+- The block-section variable popup lists its types and *Egenskaber* without the thin separator the
+  original draws before *Egenskaber*. The popup is otherwise the same flat, alphabetical type list
+  with the *Enum* submenu; the missing rule is cosmetic only. (Alignment F-27, 2026-08-09.)
+- Deleting a locality (or other node) that still **contains** elements asks for explicit
+  confirmation before the cascading delete, where the original deletes silently. This is the US-009
+  MUST safety guard (the message names the node and what the delete also removes); the delete is
+  itself undoable, so the guard warns without trapping. (Alignment F-22, 2026-08-09 — the vendor's
+  silent cascade delete is the divergence; OpenVisual follows its Ready story.)
 
 **Presentation**
 
@@ -67,6 +89,20 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
 - Tree-node tooltips always include the node's IHC resource ID, without holding a modifier key.
 - Modern flat-line SVG icon set, themeable, and never signalling state by colour alone.
 - A light/dark theme switcher.
+- The undo/redo **status-bar** confirmation names the action in OpenVisual's own phrasing
+  ("Fortrød: <handling>" / "Gentog: <handling>"), which satisfies the US-052 requirement to name the
+  action reversed or re-applied. It reads differently from the original's present-tense nominal form
+  ("Fortryder indsætning af …"); reproducing that exactly would need a hand-written nominal phrase
+  per command, which is out of proportion to a status-line detail whose requirement is already met.
+  (Alignment F-15, 2026-08-09 — acceptable presentation difference.)
+- The recent-projects list is a **"Seneste projekter" submenu** rather than the original's inline
+  `&1…&4` entries under *Filer*. The mechanism is the same (one-click reopen of the most recent
+  projects, at least four); only the machine-local *contents* differ, which the comparison scope
+  treats as non-comparable. (Alignment F-2, 2026-08-09.)
+- *Filer* separates **"Luk projekt"** (close the open project, keep the application running) from
+  **"Afslut"** (exit the application), where the original carries a single *Luk*. This follows from
+  the multiple-instances / one-project-per-window model above: closing a project and closing a
+  window are distinct actions here. (Alignment F-3, 2026-08-09.)
 
 **Exclusions**
 
@@ -296,7 +332,7 @@ taken on.
 
 - FR-11.1: Context-sensitive Danish help: one action (e.g. `F1`) opens the topic for the selected element/view; all-new, originally authored content.
 - FR-11.2: Edit project-level information (project, customer, installer identity) stored in the file.
-- FR-11.3: Generate the **three documentation reports** — end-user functions (Funktionsdokumentation), installation (Installationsdokumentation) and function-block logic (Functionsblok dokumentation) — each in **Standard** or **Fuld** mode and as **HTML** or **plain text**; each report has its own Documentation-menu entry opening the one shared picker pre-selected, with view-in-browser (printing is the browser's) and save-as actions. There are no report options beyond type × mode × format, and the output carries no navigation apparatus.
+- FR-11.3: Generate the **three documentation reports** — end-user functions (Funktionsdokumentation), installation (Installationsdokumentation) and function-block logic (Funktionsblok dokumentation) — each in **Standard** or **Fuld** mode and as **HTML** or **plain text**; each report has its own Documentation-menu entry opening the one shared picker pre-selected, with view-in-browser (printing is the browser's) and save-as actions. There are no report options beyond type × mode × format, and the output carries no navigation apparatus.
 - FR-11.4: **Fuld** mode is Standard plus additions only: the generation timestamp + programmer line, the Projekt identity block, inline `(ID …)` element ids at definition sites, the installation-only terminal-connections table, and a final **"Fejl i dokumentation"** section fed by the project verification checks — per locality → product → terminal, covering at least: unlinked terminal, missing identification code / light group / cable type / cable number / wire colour / placement / data-line address.
 - FR-11.5: Report output carries **no images apart from the app's icon language** — product identity, module addressing and wire colours are conveyed as text and tables (no product photos, module diagrams, installer logo image, or external manual pictures); the function-block report renders its logic tree with the app's icon set (inline vector glyphs in HTML, unicode stand-ins in text).
 

@@ -432,7 +432,7 @@ namespace Ihc.Vis
                     ? new Session.AddCaseValue(caseId, criterion, switchVar.Tag, typeName) : null;
         }
 
-        /// <summary>Command to set an output's "Save current value" power-loss persistence (US-033).</summary>
+        /// <summary>Command to set an output's "Gem aktuel værdi" power-loss persistence (US-033).</summary>
         public Session.SetOutputBackup SetOutputBackup(Project project, ElementId outputId, bool save) =>
             new Session.SetOutputBackup(outputId, save);
 

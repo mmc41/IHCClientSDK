@@ -84,6 +84,14 @@ namespace Ihc.Vis
         /// set (<c>Changes.Origin</c> = "redo").</summary>
         EditOutcome Redo();
 
+        /// <summary>Discards the most recent committed edit as if it never happened — the cancel arm of an
+        /// apply → dialog → cancel gesture (e.g. a cancelled product insert). Unlike <see cref="Undo"/> it
+        /// restores the previous snapshot VERBATIM — including <c>last_unique_id</c>, because a cancelled
+        /// gesture burns no ids (vendor-measured, uxparity S-12) while a real undo keeps the raised allocator
+        /// (alignment F-10) — and it pushes nothing onto the redo stack: a gesture that never completed is not
+        /// redoable. A committed outcome carries the change set with <c>Changes.Origin</c> = "rollback".</summary>
+        EditOutcome Rollback();
+
         /// <summary>Opens a project as the current snapshot, resetting history and version. When
         /// <paramref name="startClean"/> the opened snapshot is also the save point (dirty = false).</summary>
         void Open(Project project, bool startClean = true);

@@ -313,7 +313,7 @@ public class AutomationCoverageTests : AvaloniaTestBase
     /// therefore leaves the menu standing open over the app — and every automation client treats "the menu is
     /// still realized" as "the invoke did not take", so a command that genuinely ran reports as failed. The
     /// aui-openvisual driver did exactly that: `locality insert` returned MutationFailed while the locality had
-    /// in fact been inserted (the next undo announced "Fortrød: Insert locality").</para>
+    /// in fact been inserted (the next undo announced "Fortrød: Indsæt lokalitet").</para>
     /// </summary>
     [AvaloniaTest]
     [CaptureScreenshotOnFailure]

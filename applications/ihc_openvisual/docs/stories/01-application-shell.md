@@ -61,7 +61,7 @@ per-menu command inventory beyond the top-level menu titles.
 ### Acceptance criteria (Checklist)
 
 - MUST: The window title bar shows `<document> - IHC OpenVisual`, where `<document>` is the
-  application's own name for an unsaved document (`Uden navn`) before the first save and the file name
+  application's own name for an unsaved document (`unavngivet` — the vendor's own token, lowercase as the vendor shows it; amended 2026-08-09, alignment F-14) before the first save and the file name
   (e.g. `project3.vis`) afterwards; the
   IHC OpenVisual application icon appears as the window icon, with standard Minimize/Maximize/Close buttons at top-right.
 - MUST: The title bar carries a **dirty marker** while the open project has unsaved changes: a bullet (`•`)
@@ -120,7 +120,7 @@ per-menu command inventory beyond the top-level menu titles.
 
 ### AC illustrations
 
-- Immediately after launch with no project: title bar reads `Uden navn - IHC OpenVisual`; both panes
+- Immediately after launch with no project: title bar reads `unavngivet - IHC OpenVisual`; both panes
   list the ten default rooms; the status bar left region may show a residual hint such as
   `Undoing insertion of <product>`, and its right end shows the connection indicator in its
   not-connected form beside the locale flag.
@@ -168,7 +168,7 @@ Scenario: Start a new project from the menu
   Given IHC OpenVisual is running
   When I choose "File" > "New project" (or press Ctrl+N)
   Then the workspace shows the standard empty project: both panes rooted at "Lokaliteter"
-    with the ten default rooms, and the title bar shows "Uden navn - IHC OpenVisual"
+    with the ten default rooms, and the title bar shows "unavngivet - IHC OpenVisual"
   And the project records the installer contact details held in application settings,
     and the signed-in user as its programmer
 
@@ -223,7 +223,7 @@ thereafter, **so that** my configuration is persisted under a meaningful name.
 
 ```gherkin
 Scenario: First save via Save As
-  Given a new, unnamed project ("Uden navn")
+  Given a new, unnamed project ("unavngivet")
   When I choose "File" > "Save project as"
   Then a file save dialog opens
   And after I type a file name (e.g. "StandardHouse_1") and confirm with "Save"
@@ -262,7 +262,7 @@ Scenario: Recommended first step
 
 ### AC illustrations
 
-- Saving an untitled project as `project3.vis` changes the title bar from `Uden navn - IHC OpenVisual`
+- Saving an untitled project as `project3.vis` changes the title bar from `unavngivet - IHC OpenVisual`
   to `project3.vis - IHC OpenVisual`; the two panes and their content are unchanged.
 - Opening a project and immediately saving it without editing produces a file that differs from the
   original in exactly two places — the modified timestamp and the save id.

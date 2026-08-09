@@ -31,7 +31,7 @@ namespace Ihc.Vis.Session
     /// at-most-one-modem guard and its dialog stay GUI-side (before Apply).</summary>
     public sealed record AddProduct(ElementId LocalityId, ProductDefinition Definition) : ProjectCommand<ElementId>
     {
-        internal override string Describe(Project project) => "Insert product";
+        internal override string Describe(Project project) => "Indsæt produkt";
         internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(LocalityId, "locality");
         internal override ElementId ExecuteCore(ProjectEditor editor) =>
             editor.Group(LocalityId).AddProduct(Definition).Id;
@@ -41,7 +41,7 @@ namespace Ihc.Vis.Session
     public sealed record AddFunctionBlock(ElementId LocalityId, FunctionBlockDefinition Definition)
         : ProjectCommand<ElementId>
     {
-        internal override string Describe(Project project) => "Insert function block";
+        internal override string Describe(Project project) => "Indsæt funktionsblok";
         internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(LocalityId, "locality");
         internal override ElementId ExecuteCore(ProjectEditor editor) =>
             editor.Group(LocalityId).AddFunctionBlock(Definition).Id;
@@ -52,7 +52,7 @@ namespace Ihc.Vis.Session
         ElementId LocalityId, FunctionBlockDefinition Template, DateOnly Created, string Name)
         : ProjectCommand<ElementId>
     {
-        internal override string Describe(Project project) => "Insert function block";
+        internal override string Describe(Project project) => "Indsæt funktionsblok";
         internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(LocalityId, "locality");
         internal override ElementId ExecuteCore(ProjectEditor editor) =>
             editor.Group(LocalityId).AddEmptyFunctionBlock(Template, Created, Name).Id;
@@ -61,7 +61,7 @@ namespace Ihc.Vis.Session
     /// <summary>Unlocks a library function block for editing (US-020): clears its <c>locked</c> flag.</summary>
     public sealed record UnlockFunctionBlock(ElementId Id, string Programmer, DateOnly Unlocked) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Unlock function block";
+        internal override string Describe(Project project) => "Oplås funktionsblok";
         // A5: RequireTag (not the weaker RequireExists) so a wrong-tag id is a clean Refuse, not the engine throw
         // Execute would raise — matching the sibling SaveFunctionBlockToLibrary, whose Execute is the same FunctionBlock(Id).
         internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(Id, "a function block", "functionblock");
@@ -75,7 +75,7 @@ namespace Ihc.Vis.Session
     public sealed record SaveFunctionBlockToLibrary(ElementId Id, string Name, string Programmer, DateOnly Date, string? Note)
         : ProjectCommand
     {
-        internal override string Describe(Project project) => "Save function block to library";
+        internal override string Describe(Project project) => "Gem funktionsblok i biblioteket";
         internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(Id, "a function block", "functionblock");
         internal override void Execute(ProjectEditor editor) =>
             editor.FunctionBlock(Id).SaveAsLibraryInstance(Name, Programmer, Date, Note);
@@ -85,7 +85,7 @@ namespace Ihc.Vis.Session
     /// value. Refuses an out-of-range terminal rather than clearing the address.</summary>
     public sealed record UpdatePin(ElementId Id, PinPropertiesResult Result) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Address pin";
+        internal override string Describe(Project project) => "Adresser klemme";
         internal override EditVerdict Evaluate(EditContext context)
         {
             if (context.Index.FindById(Id) is not { } pin)
@@ -126,7 +126,7 @@ namespace Ihc.Vis.Session
     public sealed record UpdateProduct(ElementId Id, ProductPropertiesResult Result, ElementId? CurrentLocalityId)
         : ProjectCommand
     {
-        internal override string Describe(Project project) => "Edit product";
+        internal override string Describe(Project project) => "Rediger produkt";
         internal override EditVerdict Evaluate(EditContext context)
         {
             EditVerdict exists = context.RequireExists(Id, "product");

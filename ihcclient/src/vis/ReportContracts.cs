@@ -12,7 +12,7 @@ namespace Ihc.Vis
         /// <summary>"Installationsdokumentation" — module tables, per-locality component/wiring tables, cross-references.</summary>
         Installation,
 
-        /// <summary>"Functionsblok dokumentation" — per function block: description, variables with values, program tree.</summary>
+        /// <summary>"Funktionsblok dokumentation" — per function block: description, variables with values, program tree.</summary>
         FunctionBlocks,
     }
 
@@ -42,7 +42,7 @@ namespace Ihc.Vis
         {
             ReportKind.Functions => "Funktionsdokumentation",
             ReportKind.Installation => "Installationsdokumentation",
-            ReportKind.FunctionBlocks => "Functionsblok dokumentation",
+            ReportKind.FunctionBlocks => "Funktionsblok dokumentation",
             _ => throw new System.ArgumentOutOfRangeException(nameof(kind), kind, "Unknown report kind."),
         };
     }

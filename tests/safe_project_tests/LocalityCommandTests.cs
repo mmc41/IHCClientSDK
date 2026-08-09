@@ -59,7 +59,7 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed));
-                Assert.That(outcome.Label, Is.EqualTo("Rename " + oldName), "the label used the pre-edit name (D10)");
+                Assert.That(outcome.Label, Is.EqualTo("Omdøb " + oldName), "the label used the pre-edit name (D10)");
                 Assert.That(session.Current!.FindById(id)!.GetAttribute("name"), Is.EqualTo("Renamed"));
                 Assert.That(session.Current!.FindById(id)!.GetAttribute("note"), Is.EqualTo("a note"));
             });
@@ -80,7 +80,7 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed));
-                Assert.That(outcome.Label, Is.EqualTo("Delete " + name),
+                Assert.That(outcome.Label, Is.EqualTo("Slet " + name),
                     "the label reads the name via the shared ElementView.Name surface");
             });
         }

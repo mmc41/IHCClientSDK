@@ -37,7 +37,13 @@ namespace Ihc.Vis.Tests
                 Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed));
                 Assert.That(couldUndoOnce, Is.True, "the committed gesture pushed a history entry");
                 Assert.That(session.CanUndo, Is.False, "the two parts collapsed into a single undo step");
-                Assert.That(session.Current!.Equals(before), Is.True, "one undo reverses the whole gesture");
+                // Content-equal, not snapshot-equal: undo deliberately keeps the raised last_unique_id
+                // (alignment F-10 — the allocator is monotonic across history, vendor-measured 2026-08-09).
+                Assert.That(session.Current!.Groups.Count, Is.EqualTo(before.Groups.Count),
+                    "one undo reverses the whole gesture — both localities gone");
+                Assert.That(session.Current!.Root.WithAttribute("last_unique_id", "_0x0")
+                        .Equals(before.Root.WithAttribute("last_unique_id", "_0x0")),
+                    Is.True, "one undo reverses the whole gesture (modulo the kept allocator high-water)");
             });
         }
 

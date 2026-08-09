@@ -17,13 +17,13 @@ public class TitleDirtyMarkerTests : AvaloniaTestBase
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        Assert.That(vm.Title, Is.EqualTo("Uden navn - IHC OpenVisual"), "a clean open shows no bullet");
+        Assert.That(vm.Title, Is.EqualTo("unavngivet - IHC OpenVisual"), "a clean open shows no bullet");
 
         await harness.Session.AddLocalityAsync();
-        Assert.That(vm.Title, Is.EqualTo("Uden navn• - IHC OpenVisual"), "an edit sets the bullet (D07)");
+        Assert.That(vm.Title, Is.EqualTo("unavngivet• - IHC OpenVisual"), "an edit sets the bullet (D07)");
 
         await harness.Session.UndoAsync();
-        Assert.That(vm.Title, Is.EqualTo("Uden navn - IHC OpenVisual"),
+        Assert.That(vm.Title, Is.EqualTo("unavngivet - IHC OpenVisual"),
             "undoing back to the save point clears the bullet without saving");
 
         await harness.Session.RedoAsync();

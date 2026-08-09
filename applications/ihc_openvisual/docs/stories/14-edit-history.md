@@ -79,11 +79,16 @@ which do not enter the edit history.
   (unlocking a library block, once thought irreversible, is an ordinary undoable edit — US-020).
 - SHOULD: Non-mutating actions (entering/leaving programming mode, US-026; toolbar/status-bar
   toggles, US-051) do **not** appear on the undo history.
-- MUST: **Id allocation is stable across the history.** Undo restores the id counter along with the
-  content (a cancelled or undone insert burns no ids), redo re-creates an element under the **same**
+- MUST: **Id allocation is stable across the history.** Redo re-creates an element under the **same**
   id it first had, and an element restored by a later undo keeps that id — an insert → undo → redo →
   delete → undo cycle leaves both the surviving element's id and the project's next-id counter exactly
-  where a single plain insert would have left them.
+  where a single plain insert would have left them. The id **counter itself is monotonic across the
+  history**: undo restores the content but never lowers `last_unique_id`, so an edit made after an
+  undo allocates a fresh counter rather than re-minting the undone element's (FR-8.3). A **cancelled**
+  gesture (e.g. a cancelled product insert) is different — it was never committed, so it burns no ids
+  and leaves nothing to redo. *(Amended 2026-08-09, alignment F-10: the vendor was measured to keep —
+  and persist to disk — the raised counter after an undo; the previous wording "an undone insert burns
+  no ids" was principle, not measurement, and contradicted FR-8.3 and the dimension-1 byte contract.)*
 
 ### AC illustrations
 

@@ -1,6 +1,6 @@
 IHC OpenVisual
 
-Functionsblok dokumentation
+Funktionsblok dokumentation
 ===========================
 Fuld rapport — Genereret: 2026-07-30 12:00 — Programmør: Morten Christensen
 

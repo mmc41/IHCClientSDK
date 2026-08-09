@@ -325,10 +325,11 @@
       "id": "locality.insert",
       "status": "confirmed",
       "mutating": "yes",
-      "mechanism": "contextMenu",
-      "item": "ctx.insert.locality",
+      "mechanism": "menu",
+      "menuPath": "Indsæt/Lokalitet",
       "gates": [],
-      "description": "Insert a new locality (room) under the selected node (flyout \"Indsæt lokalitet\", id ctx.insert.locality). Pass a path to select first, e.g. --path Lokaliteter."
+      "description": "Insert a new locality (room) at the root via the menu bar. Works with NO selection (the bar item is enabled and inserts last under the root — vendor parity, F-1); a non-root selection greys the item, so select the root first (tree select \"Lokaliteter\") if a room is selected.",
+      "note": "Re-routed 2026-08-09 (alignment F-7): was contextMenu (ctx.insert.locality), which required a selected node and returned TargetNotFound on the vendor's no-selection route. Menu walk + effect re-verified live 2026-08-09."
     },
     {
       "id": "node.delete",
@@ -662,7 +663,7 @@
       "mechanism": "menu",
       "menuPath": "Dokumentation",
       "gates": [],
-      "description": "Open one of the three documentation reports. Pass --menu-path with the EXACT menu label -- \"Funktionsdokumentation…\", \"Installationsdokumentation…\" or \"Functionsblok dokumentation…\" -- which sit flat in the Documentation menu below the separator, or (better, since those labels carry a real ellipsis character) address them by id with `menu invoke --id reports.functions|reports.installation|reports.functionBlocks`. Each opens the SHARED report picker dialog (AutomationId \"ReportPickerWindow\", title \"Rapporter\") with that report type pre-selected. Since 2026-08-08 every control in that picker carries an id, so the whole choice IS drivable from here: ReportKindCombo, ReportFormatCombo, ReportModeStandard / ReportModeFull, then dialog.click --button ReportViewButton | ReportSaveAsButton | ReportCloseButton. There is no deeper menu path to walk.",
+      "description": "Open one of the three documentation reports. Pass --menu-path with the EXACT menu label -- \"Funktionsdokumentation…\", \"Installationsdokumentation…\" or \"Funktionsblok dokumentation…\" -- which sit flat in the Documentation menu below the separator, or (better, since those labels carry a real ellipsis character) address them by id with `menu invoke --id reports.functions|reports.installation|reports.functionBlocks`. Each opens the SHARED report picker dialog (AutomationId \"ReportPickerWindow\", title \"Rapporter\") with that report type pre-selected. Since 2026-08-08 every control in that picker carries an id, so the whole choice IS drivable from here: ReportKindCombo, ReportFormatCombo, ReportModeStandard / ReportModeFull, then dialog.click --button ReportViewButton | ReportSaveAsButton | ReportCloseButton. There is no deeper menu path to walk.",
       "note": "CORRECTED 2026-08-02: this row declared menuPath \"Documentation/Reports\" and suggested --menu-path \"Installation documentation\". Neither exists -- MainWindow.axaml has no Reports submenu and no leaf by that name -- so every call failed TargetNotFound on the first segment, i.e. the row had never worked since the reporting rework landed. Still partial: what the picker does with the choice, and where the rendered output lands, is not driven from here."
     },
     {

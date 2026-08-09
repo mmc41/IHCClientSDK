@@ -285,6 +285,31 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
         });
     }
 
+    /// <summary>
+    /// Alignment F-1 (tmp/align-campaign-2026-08-09.md) — Indsæt ▸ Lokalitet must be ENABLED with NO selection.
+    /// Measured against the vendor 2026-08-09 on a fresh unnamed project: the bar item is enabled before anything
+    /// is clicked, and invoking it inserts a locality named "Lokalitet" as the LAST child of the root (verified
+    /// live, then undone). The execute path here is already selection-independent (InsertLocality inserts under
+    /// the groups root), so only the gate withheld it. A room selection stays refused-with-reason: the vendor
+    /// silently no-ops there (measured Code=NoEffect), and the registered "unavailable commands explain
+    /// themselves" enhancement prefers an explained grey over a silent nothing.
+    /// </summary>
+    [Test]
+    public async Task NoSelection_InsertLocality_IsEnabledOnTheBar()
+    {
+        var (harness, vm, _, _) = await BuildAsync();
+        using var _1 = harness;
+        ShellContext noSelection = vm.Context with { Node = null };
+
+        Availability bar = At(vm, "insert.locality", noSelection, Surface.MenuBar);
+        Assert.Multiple(() =>
+        {
+            Assert.That(bar.Visible, Is.True, "the bar always carries Indsæt ▸ Lokalitet");
+            Assert.That(bar.Enabled, Is.True, "vendor: enabled with no selection — inserts at the root");
+            Assert.That(bar.Reason, Is.Null, "an enabled command carries no disabled-reason");
+        });
+    }
+
     // crudarch T013: the remaining node-scoped rows — US-068 inventory per node kind, evaluated through the
     // same fabricated-context harness. Pin rows, block rows, root rows and the Properties divergence
     // (bar enabled on a link row, flyout omits it) in one sweep.

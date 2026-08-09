@@ -42,6 +42,54 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        /// <summary>
+        /// Alignment F-10 (tmp/align-campaign-2026-08-09.md): the id allocator survives undo. Measured against the
+        /// vendor 2026-08-09: insert→undo→insert allocates the NEXT counter (0x52 after 0x51), and a save straight
+        /// after the undo still writes the RAISED last_unique_id (0x51 with no 0x51 element present — a permanent
+        /// hole). Rolling the allocator back with the snapshot re-mints the undone element's counter for a
+        /// different element, which is exactly the reuse FR-8.3 and the Part-3 invariant oracle forbid.
+        /// </summary>
+        [Test]
+        public async Task Undo_DoesNotRollBackTheIdAllocator()
+        {
+            ProjectDocumentSession session = Session(await Load("project3-KompleksWired.vis"));
+            EditOutcome<ElementId> first = session.Apply(new AddLocality("Alpha"));
+            string? raisedLuid = session.Current!.LastUniqueId;
+
+            session.Undo();
+            Assert.That(session.Current!.LastUniqueId, Is.EqualTo(raisedLuid),
+                "undo keeps the raised last_unique_id — the vendor persists it to disk even with the element gone");
+
+            EditOutcome<ElementId> second = session.Apply(new AddLocality("Beta"));
+            Assert.That(second.Value.Counter, Is.GreaterThan(first.Value.Counter),
+                "an edit after undo allocates a fresh counter, never re-minting the undone element's");
+        }
+
+        /// <summary>
+        /// The cancel arm of apply → dialog → cancel: <see cref="ProjectDocumentSession.Rollback"/> is NOT an undo.
+        /// It restores the snapshot verbatim — a cancelled insert burns no ids (vendor-measured, uxparity S-12),
+        /// where a real undo keeps the raised allocator (F-10, the test above) — and leaves the cancelled gesture
+        /// unredoable.
+        /// </summary>
+        [Test]
+        public async Task Rollback_RestoresTheAllocatorVerbatim_AndIsNotRedoable()
+        {
+            ProjectDocumentSession session = Session(await Load("project3-KompleksWired.vis"));
+            string? luidBefore = session.Current!.LastUniqueId;
+
+            session.Apply(new AddLocality("Alpha"));
+            EditOutcome rolledBack = session.Rollback();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(rolledBack.Status, Is.EqualTo(EditStatus.Committed));
+                Assert.That(session.Current!.LastUniqueId, Is.EqualTo(luidBefore),
+                    "a cancelled gesture burns no ids — the snapshot comes back verbatim");
+                Assert.That(session.CanRedo, Is.False, "a gesture that never completed is not redoable");
+                Assert.That(session.CanUndo, Is.False, "the rolled-back entry left the history entirely");
+            });
+        }
+
         [Test]   // from EditHistoryTests.NewEdit_AfterUndo_ClearsRedo
         public async Task NewEdit_AfterUndo_ClearsRedo()
         {

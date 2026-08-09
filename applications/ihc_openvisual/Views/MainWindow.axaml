@@ -62,6 +62,10 @@
             <Setter Property="Header" Value="{Binding Header}"/>
             <Setter Property="ItemsSource" Value="{Binding Children}"/>
             <Setter Property="Command" Value="{Binding Command}"/>
+            <!-- Display-only shortcut hint (F-25): null for almost every generated item; the bar Variable
+                 Indgang/Udgang carry Ctrl+I/Ctrl+U to match the vendor's Variable menu. A runtime binding does
+                 not run XAML's parse-time string→KeyGesture converter, so GestureConverter bridges it. -->
+            <Setter Property="InputGesture" Value="{Binding InputGesture, Converter={x:Static conv:GestureConverter.Instance}}"/>
             <!-- A generated item's id is its catalog identifier (see ProductMenuItemViewModel.AutomationId), so the
                  whole product/function-block/program-command forest is addressable without display text. -->
             <Setter Property="a:AutomationProperties.AutomationId" Value="{Binding AutomationId}"/>
@@ -73,22 +77,20 @@
              "Insert product" is the one pane-specific item (products belong to the Installation pane, gated on
              CanInsertProduct). -->
         <MenuFlyout x:Key="NodeContextMenu" x:DataType="vm:MainWindowViewModel">
-            <controls:AccessibleMenuItem Header="Indsæt _lokalitet" Command="{Binding InsertLocalityCommand}"
+            <!-- Flyout insert labels are the vendor's own bare nouns — the vendor uses the SAME word on the bar and
+                 the flyout ("Lokalitet", "Produkter", "FunktionsBlokke"; measured 2026-08-09, alignment F-18). -->
+            <controls:AccessibleMenuItem Header="_Lokalitet" Command="{Binding InsertLocalityCommand}"
                       a:AutomationProperties.AutomationId="ctx.insert.locality"
                       IsVisible="{Binding Registry.ContextMenu[insert.locality].Visible, FallbackValue=False}"/>
             <!-- Product category folders are data-driven (H2/D08) — see CatalogMenu.BuildProductForest. -->
-            <controls:AccessibleMenuItem Header="Indsæt _produkt" ItemsSource="{Binding ProductsMenu}"
+            <controls:AccessibleMenuItem Header="_Produkter" ItemsSource="{Binding ProductsMenu}"
                       a:AutomationProperties.AutomationId="ctx.menu.products"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanInsertProduct, FallbackValue=False}"/>
-            <controls:AccessibleMenuItem Header="Indsæt _Funktionsblok" ItemsSource="{Binding FunctionBlocksMenu}"
+            <controls:AccessibleMenuItem Header="_FunktionsBlokke" ItemsSource="{Binding FunctionBlocksMenu}"
                       a:AutomationProperties.AutomationId="ctx.menu.functionBlocks"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanInsertFunctionBlock, FallbackValue=False}"/>
-            <controls:AccessibleMenuItem Header="_Tom Funktionsblok" Command="{Binding InsertEmptyFunctionBlockCommand}"
-                      InputGesture="{OnPlatform 'Ctrl+Shift+B', macOS='Cmd+Shift+B'}"
-                      a:AutomationProperties.AutomationId="ctx.insert.emptyFunctionBlock"
-                      IsVisible="{Binding Registry.ContextMenu[insert.emptyFunctionBlock].Visible, FallbackValue=False}"/>
             <controls:AccessibleMenuItem Header="Indsæt _variabel" ItemsSource="{Binding VariablePaletteMenu}"
                       a:AutomationProperties.AutomationId="ctx.menu.variables"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
@@ -137,7 +139,7 @@
                       a:AutomationProperties.AutomationId="ctx.menu.programArithmetic"
                       ItemContainerTheme="{StaticResource ProductMenuItemTheme}"
                       IsVisible="{Binding CanAddArithmetic, FallbackValue=False}"/>
-            <controls:AccessibleMenuItem Header="_Ny case værdi som angiver tilstand…" Command="{Binding NewCaseValueCommand}"
+            <controls:AccessibleMenuItem Header="_Ny case værdi som angiver tilstand" Command="{Binding NewCaseValueCommand}"
                       a:AutomationProperties.AutomationId="ctx.program.newCaseValue"
                       IsVisible="{Binding Registry.ContextMenu[program.newCaseValue].Visible, FallbackValue=False}"/>
             <controls:AccessibleMenuItem Header="Tilføj _betingelse" ItemsSource="{Binding ProgramConditionMenu}"
@@ -195,16 +197,35 @@
             <controls:AccessibleMenuItem Header="_Slet" Command="{Binding DeleteCommand}"
                       a:AutomationProperties.AutomationId="ctx.edit.delete"
                       IsVisible="{Binding Registry.ContextMenu[edit.delete].Visible, FallbackValue=False}"/>
+            <!-- After Slet, not beside the FunktionsBlokke submenu: the vendor's Funktioner-locality flyout runs
+                 FunktionsBlokke, Klip, Kopier, Slet, TOM FUNKTIONSBLOK, separator, Egenskaber (measured 2026-08-09,
+                 alignment F-21 — story 11's table always had this position). -->
+            <controls:AccessibleMenuItem Header="_Tom Funktionsblok" Command="{Binding InsertEmptyFunctionBlockCommand}"
+                      InputGesture="{OnPlatform 'Ctrl+Shift+B', macOS='Cmd+Shift+B'}"
+                      a:AutomationProperties.AutomationId="ctx.insert.emptyFunctionBlock"
+                      IsVisible="{Binding Registry.ContextMenu[insert.emptyFunctionBlock].Visible, FallbackValue=False}"/>
             <!-- Offered on a block AND on its pins: the vendor lets you jump from a pin to the program that uses
                  it (uxparity S-28). The registry row's gate resolves the owning block for either. -->
             <controls:AccessibleMenuItem Header="_Vis program" Command="{Binding EnterProgrammingModeCommand}"
                       InputGesture="F3"
                       a:AutomationProperties.AutomationId="ctx.view.showProgram"
                       IsVisible="{Binding Registry.ContextMenu[view.showProgram].Visible, FallbackValue=False}"/>
+            <!-- The vendor closes every node flyout with a separator before Egenskaber (measured 2026-08-09,
+                 alignment F-20; story 11's inventory table shows the same). It follows Egenskaber's own gate so
+                 the root flyout — which has no Egenskaber — does not end in a dangling rule. -->
+            <Separator IsVisible="{Binding Registry.ContextMenu[node.properties].Visible, FallbackValue=False}"/>
             <controls:AccessibleMenuItem Header="_Egenskaber…" Command="{Binding PropertiesCommand}"
                       a:AutomationProperties.AutomationId="ctx.node.properties"
                       IsVisible="{Binding Registry.ContextMenu[node.properties].Visible, FallbackValue=False}"/>
         </MenuFlyout>
+
+        <!-- F-13b: a block SECTION carries a DISTINCT, data-driven flyout — the accepted variable types flat and
+             alphabetical, Enum a submenu among them, Egenskaber last (US-027 "pick the type from the popup") — not
+             the shared node flyout's nested "Indsæt variabel". A section row swaps to this in code-behind
+             (OnTreePointerPressed / Shift+F10), so it still inherits the tree's MainWindowViewModel DataContext. -->
+        <MenuFlyout x:Key="SectionContextMenu" x:DataType="vm:MainWindowViewModel"
+                    ItemsSource="{Binding SectionFlyoutItems}"
+                    ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
 
         <!-- The tree-row container theme + row template, shared by both panes (they were byte-identical). The
              theme carries the container behaviour (TwoWay IsExpanded so an expander click reaches the VM for the
@@ -410,15 +431,18 @@
                  the node context menu, which is correct — the vendor offers them in both places, and only having
                  them on the context menu left the bar's Insert with a single item. -->
             <controls:AccessibleMenuItem Header="_Indsæt" a:AutomationProperties.AutomationId="MenuInsert">
+                <!-- Item order and the ellipsis-free case-value label follow the vendor's Indsæt ▸ Program
+                     elementer, measured 2026-08-09 (alignment F-12b): Ny case værdi first, then Program,
+                     Under program, Logik gruppe. -->
                 <controls:AccessibleMenuItem Header="_Program elementer" a:AutomationProperties.AutomationId="menu.programElements">
+                    <controls:AccessibleMenuItem Header="_Ny case værdi som angiver tilstand" Command="{Binding NewCaseValueCommand}"
+                              a:AutomationProperties.AutomationId="program.newCaseValue"
+                              IsEnabled="{Binding Registry.Bar[program.newCaseValue].Enabled}"
+                              ToolTip.Tip="{Binding Registry.Bar[program.newCaseValue].Reason}"/>
                     <controls:AccessibleMenuItem Header="_Program" Command="{Binding AddProgramCommand}"
                               a:AutomationProperties.AutomationId="program.addProgram"
                               IsEnabled="{Binding Registry.Bar[program.addProgram].Enabled}"
                               ToolTip.Tip="{Binding Registry.Bar[program.addProgram].Reason}"/>
-                    <controls:AccessibleMenuItem Header="_Ny case værdi som angiver tilstand…" Command="{Binding NewCaseValueCommand}"
-                              a:AutomationProperties.AutomationId="program.newCaseValue"
-                              IsEnabled="{Binding Registry.Bar[program.newCaseValue].Enabled}"
-                              ToolTip.Tip="{Binding Registry.Bar[program.newCaseValue].Reason}"/>
                     <controls:AccessibleMenuItem Header="_Under program" Command="{Binding AddSubProgramCommand}"
                               a:AutomationProperties.AutomationId="program.addSubProgram"
                               IsEnabled="{Binding Registry.Bar[program.addSubProgram].Enabled}"
@@ -453,7 +477,9 @@
                 <controls:AccessibleMenuItem Header="_Produkter" ItemsSource="{Binding ProductsMenu}"
                           a:AutomationProperties.AutomationId="menu.products"
                           ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
-                <controls:AccessibleMenuItem Header="_Variable" ItemsSource="{Binding VariablePaletteMenu}"
+                <!-- The BAR list is the vendor's fixed vocabulary with per-section enablement (F-12/F-13a) —
+                     distinct from the section flyout's accepted-only palette (VariablePaletteMenu). -->
+                <controls:AccessibleMenuItem Header="_Variable" ItemsSource="{Binding VariableBarMenu}"
                           a:AutomationProperties.AutomationId="menu.variables"
                           ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
             </controls:AccessibleMenuItem>
@@ -520,7 +546,7 @@
                           IsEnabled="{Binding Registry.Bar[reports.installation].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[reports.installation].Reason}"/>
                 <!-- "_blok", not "_dokumentation": D is _Datalinie moduler…'s key in this same menu. -->
-                <controls:AccessibleMenuItem Header="Functions_blok dokumentation…" Command="{Binding FunctionBlocksReportCommand}"
+                <controls:AccessibleMenuItem Header="Funktions_blok dokumentation…" Command="{Binding FunctionBlocksReportCommand}"
                           a:AutomationProperties.AutomationId="reports.functionBlocks"
                           IsEnabled="{Binding Registry.Bar[reports.functionBlocks].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[reports.functionBlocks].Reason}"/>

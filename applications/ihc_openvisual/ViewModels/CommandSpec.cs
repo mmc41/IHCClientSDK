@@ -55,10 +55,11 @@ public sealed record Availability(bool Visible, bool Enabled, string? Reason)
 /// per-surface spec divergences), never widen. The registry materializes the IRelayCommand from
 /// <paramref name="Gate"/> — a row author never builds a command, so two authorities cannot disagree.
 /// </summary>
-/// <remarks>A row carries no CAPTION: the same command is legitimately worded differently per surface (the node
-/// flyout offers "Indsæt _lokalitet" where the Insert menu says "_Lokalitet"; Undo/Redo show the action-decorated
-/// "_Fortryd Insert locality"), so the menu text belongs to the markup that renders it, and a row-level copy could
-/// only ever be a second, unread home for it (review F12).</remarks>
+/// <remarks>A row carries no CAPTION: a command's text can legitimately differ per surface (Undo/Redo show the
+/// action-decorated "_Fortryd Indsæt lokalitet" where the flyout has no such row), so the menu text belongs to the
+/// markup that renders it, and a row-level copy could only ever be a second, unread home for it (review F12).
+/// (The flyout insert labels themselves now match the bar's bare nouns — the vendor uses the same word on both
+/// surfaces; measured 2026-08-09, alignment F-18.)</remarks>
 [CommandContextValue]
 public sealed record CommandSpec(
     string Id,

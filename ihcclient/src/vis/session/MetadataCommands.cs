@@ -21,7 +21,7 @@ namespace Ihc.Vis.Session
     /// <summary>Applies edited project/customer/installer information (US-039); exercises the id-less metadata path.</summary>
     public sealed record UpdateProjectInfo(ProjectInfoData Data) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Edit project information";
+        internal override string Describe(Project project) => "Rediger projektinfo";
         internal override EditVerdict Evaluate(EditContext context) => EditVerdict.Allow;
         internal override void Execute(ProjectEditor editor)
         {
@@ -41,7 +41,7 @@ namespace Ihc.Vis.Session
     /// whether the table already exists.</summary>
     public sealed record AddUserText(string Text, bool TableExists) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Add text";
+        internal override string Describe(Project project) => "Tilføj tekst";
         internal override EditVerdict Evaluate(EditContext context) => EditVerdict.Allow;
         internal override void Execute(ProjectEditor editor)
         {
@@ -55,7 +55,7 @@ namespace Ihc.Vis.Session
     /// <summary>Renames a user-defined text by id (US-049 Edit).</summary>
     public sealed record UpdateUserText(ElementId TextId, string Text) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Edit text";
+        internal override string Describe(Project project) => "Rediger tekst";
         internal override EditVerdict Evaluate(EditContext context) =>
             context.RequireExists(TextId, "text");
         internal override void Execute(ProjectEditor editor) =>
@@ -65,7 +65,7 @@ namespace Ihc.Vis.Session
     /// <summary>Deletes a user-defined text by id (US-049 Delete).</summary>
     public sealed record DeleteUserText(ElementId TextId) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Delete text";
+        internal override string Describe(Project project) => "Slet tekst";
         internal override EditVerdict Evaluate(EditContext context) =>
             context.RequireExists(TextId, "text");
         internal override void Execute(ProjectEditor editor) =>
@@ -77,7 +77,7 @@ namespace Ihc.Vis.Session
     public sealed record AddVariable(ElementId BlockId, string SectionTag, string ResourceTag, string Name)
         : ProjectCommand<ElementId>
     {
-        internal override string Describe(Project project) => "Add variable";
+        internal override string Describe(Project project) => "Indsæt variabel";
         internal override EditVerdict Evaluate(EditContext context) =>
             context.RequireTag(BlockId, "a function block", "functionblock")
                 .And(context.RequireUnlockedTarget(BlockId, inclusive: true));   // T003
@@ -102,7 +102,7 @@ namespace Ihc.Vis.Session
         ElementId BlockId, string SectionTag, string VariableName, string TypeName, IReadOnlyList<string> States)
         : ProjectCommand<ElementId>
     {
-        internal override string Describe(Project project) => "Add enumerator";
+        internal override string Describe(Project project) => "Tilføj enumerator";
         internal override EditVerdict Evaluate(EditContext context) =>
             context.RequireTag(BlockId, "a function block", "functionblock")
                 .And(context.RequireUnlockedTarget(BlockId, inclusive: true));   // T003
@@ -134,7 +134,7 @@ namespace Ihc.Vis.Session
     public sealed record AddEnumVariableOfExistingType(ElementId BlockId, string SectionTag, string VariableName, string TypeName)
         : ProjectCommand<ElementId>
     {
-        internal override string Describe(Project project) => "Add enumerator";
+        internal override string Describe(Project project) => "Tilføj enumerator";
         internal override EditVerdict Evaluate(EditContext context) =>
             context.RequireTag(BlockId, "a function block", "functionblock")
                 .And(context.RequireUnlockedTarget(BlockId, inclusive: true));   // T003
@@ -165,7 +165,7 @@ namespace Ihc.Vis.Session
     /// "New…" which also inserts a resource_enum. The type lands in the project-global <c>enum_definitions</c> container.</summary>
     public sealed record AddStandaloneEnumType(string TypeName, IReadOnlyList<string> States) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Add enumerator type";
+        internal override string Describe(Project project) => "Tilføj enumerator type";
         internal override EditVerdict Evaluate(EditContext context) => EditVerdict.Allow;   // project-global — no block target
         internal override void Execute(ProjectEditor editor) => editor.AddEnumDefinition(TypeName, States.ToArray());
     }
@@ -180,7 +180,7 @@ namespace Ihc.Vis.Session
         /// label. Defaults to none, so the append-only construction stays valid.</summary>
         public IReadOnlyList<(ElementId ValueId, string NewName)> Relabels { get; init; } = [];
 
-        internal override string Describe(Project project) => "Edit enumerator";
+        internal override string Describe(Project project) => "Rediger enumerator";
         internal override EditVerdict Evaluate(EditContext context) => EditVerdict.Allow;
         internal override void Execute(ProjectEditor editor)
         {
@@ -201,7 +201,7 @@ namespace Ihc.Vis.Session
     /// built-in, matching the vendor's greyed <i>Omdøb</i>.</summary>
     public sealed record RenameEnumType(string DefName, string NewName) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Rename enumerator type";
+        internal override string Describe(Project project) => "Omdøb enumerator type";
         internal override EditVerdict Evaluate(EditContext context) => EnumTypeTarget.RequireEditable(context, DefName);
         internal override void Execute(ProjectEditor editor) =>
             editor.RenameEnumDefinition(editor.EnumDefinition(DefName), NewName);
@@ -212,7 +212,7 @@ namespace Ihc.Vis.Session
     /// strand a <c>typedef</c>.</summary>
     public sealed record DeleteEnumType(string DefName) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Delete enumerator type";
+        internal override string Describe(Project project) => "Slet enumerator type";
         internal override EditVerdict Evaluate(EditContext context) =>
             EnumTypeTarget.RequireEditable(context, DefName)
                 .And(EnumTypeTarget.RequireUnreferenced(context, DefName));
@@ -224,7 +224,7 @@ namespace Ihc.Vis.Session
     /// peer of <see cref="UpdateEnumStates"/>, which the vendor's values pane adds them as.</summary>
     public sealed record AddEnumValue(string DefName, string ValueName) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Add enumerator value";
+        internal override string Describe(Project project) => "Tilføj enumerator værdi";
         internal override EditVerdict Evaluate(EditContext context) => EnumTypeTarget.RequireEditable(context, DefName);
         internal override void Execute(ProjectEditor editor) =>
             editor.AddEnumValues(editor.EnumDefinition(DefName), ValueName);
@@ -234,7 +234,7 @@ namespace Ihc.Vis.Session
     /// 0-based POSITION in the type's value list — what the dialog shows. Id and index are preserved.</summary>
     public sealed record RenameEnumValue(string DefName, int ValueIndex, string NewName) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Rename enumerator value";
+        internal override string Describe(Project project) => "Omdøb enumerator værdi";
         internal override EditVerdict Evaluate(EditContext context) =>
             EnumTypeTarget.RequireEditable(context, DefName)
                 .And(EnumTypeTarget.RequireValueAt(context, DefName, ValueIndex));
@@ -249,7 +249,7 @@ namespace Ihc.Vis.Session
     /// 0-based POSITION. The engine refuses a value still in use as some resource's initial value.</summary>
     public sealed record DeleteEnumValue(string DefName, int ValueIndex) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Delete enumerator value";
+        internal override string Describe(Project project) => "Slet enumerator værdi";
         internal override EditVerdict Evaluate(EditContext context) =>
             EnumTypeTarget.RequireEditable(context, DefName)
                 .And(EnumTypeTarget.RequireValueAt(context, DefName, ValueIndex));
@@ -328,7 +328,7 @@ namespace Ihc.Vis.Session
     /// <summary>Applies edited advanced wireless-dimmer settings (US-015): the six dimmer_setting values.</summary>
     public sealed record UpdateDimmerSettings(ElementId ProductId, AdvancedDimmerResult Result) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Edit dimmer settings";
+        internal override string Describe(Project project) => "Rediger dæmperindstillinger";
         internal override EditVerdict Evaluate(EditContext context) =>
             context.RequireExists(ProductId, "product");
         internal override void Execute(ProjectEditor editor)
@@ -351,7 +351,7 @@ namespace Ihc.Vis.Session
     public sealed record UpdateModem(ElementId ModemId, ModemPropertiesResult Result, ElementId? CurrentLocalityId)
         : ProjectCommand
     {
-        internal override string Describe(Project project) => "Edit modem";
+        internal override string Describe(Project project) => "Rediger modem";
         internal override EditVerdict Evaluate(EditContext context)
         {
             EditVerdict exists = context.RequireExists(ModemId, "modem");

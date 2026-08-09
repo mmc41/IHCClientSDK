@@ -11,7 +11,7 @@ status: draft
 > exclusion): the reusable texts a documentation field offers are remembered from what was typed into that
 > field, and there is no dialog for maintaining them.
 > Report generation reads the project to produce a finished document: **three documentation reports** —
-> Funktionsdokumentation (end-user functions), Installationsdokumentation (installer) and Functionsblok
+> Funktionsdokumentation (end-user functions), Installationsdokumentation (installer) and Funktionsblok
 > dokumentation (function-block logic) — each in a **Standard** or **Fuld** mode and as **HTML** or
 > **plain text** (US-040), with the installation content specified in US-073, the function-block content
 > in US-041, and the Fuld-mode "Fejl i dokumentation" section fed by the project verification checks
@@ -148,7 +148,7 @@ apparatus in the output (no table of contents, anchors or back-to-top in either 
 Scenario: The Documentation menu lists the three reports
   Given a project is open
   When I open the "Documentation" menu
-  Then it lists Funktionsdokumentation, Installationsdokumentation and Functionsblok dokumentation as separate entries
+  Then it lists Funktionsdokumentation, Installationsdokumentation and Funktionsblok dokumentation as separate entries
 
 Scenario: A report entry opens the shared picker pre-selected
   Given a project is open
@@ -236,9 +236,9 @@ byte-identically in the test suites.
 
 ---
 
-## US-041 — The function-block report content (Functionsblok dokumentation)
+## US-041 — The function-block report content (Funktionsblok dokumentation)
 
-**Scope:** In scope — the content specification of the **Functionsblok dokumentation** report type
+**Scope:** In scope — the content specification of the **Funktionsblok dokumentation** report type
 generated via US-040: a deep, per-block logic listing.
 
 **As an** IHC installer, **I want** the function-block report to document each block in full — its

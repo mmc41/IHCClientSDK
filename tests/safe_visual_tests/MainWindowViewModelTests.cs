@@ -85,7 +85,7 @@ public class MainWindowViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Rediger egenskaber for Stue"));
+            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Rediger Stue egenskaber"));
             Assert.That(harness.Dialogs.LastPropertiesName, Is.EqualTo("Stue"));
             Assert.That(vm.InstallationNodes[0].Children[0].DisplayName, Is.EqualTo(newName));
             Assert.That(vm.FunctionNodes[0].Children[0].DisplayName, Is.EqualTo(newName),
@@ -129,7 +129,7 @@ public class MainWindowViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Rediger egenskaber for Kitchen"));
+            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Rediger Kitchen egenskaber"));
             Assert.That(harness.Dialogs.LastPropertiesNote, Is.EqualTo("on the ground floor"));
         });
     }
@@ -1303,7 +1303,7 @@ public class MainWindowViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Rediger egenskaber for Tom blok"));
+            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Rediger Tom blok egenskaber"));
             Assert.That(vm.FunctionNodes[0].Children[0].Children[0].DisplayName, Is.EqualTo("Stair light logic"));
         });
     }
@@ -2174,6 +2174,141 @@ public class MainWindowViewModelTests
         var result = await harness.Session.AddVariableAsync(settingsId, "resource_input", "Bad");
 
         Assert.That(result, Is.Null, "a pin type cannot go into the settings section");
+    }
+
+    /// <summary>
+    /// Alignment F-12 + F-13a (tmp/align-campaign-2026-08-09.md): the BAR's Indsæt ▸ Variable submenu is the
+    /// vendor's FIXED list — every palette type except Enum (the vendor bar never carries an Enum item; the
+    /// section flyout owns the enum type picker), always present, with only ENABLEMENT varying. With no block
+    /// section selected (configuration view) every item is greyed — the vendor shows its whole list disabled
+    /// there (measured 2026-08-09, armed bar dumps in both modes).
+    /// </summary>
+    [Test]
+    public async Task VariableBarMenu_WithNoSectionSelected_ListsTheFixedPaletteGreyed()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();   // fresh configuration view, nothing selected
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.VariableBarMenu, Has.Count.EqualTo(VariablePalette.Entries.Count - 1),
+                "the bar lists the whole palette except Enum (vendor bar carries no Enum item)");
+            Assert.That(vm.VariableBarMenu.Any(m => m.Header == "Enum"), Is.False, "no Enum on the bar — ever");
+            Assert.That(vm.VariableBarMenu.All(m => m.Command is { } c && !c.CanExecute(null)), Is.True,
+                "every item is greyed — there is no section to insert into");
+        });
+    }
+
+    /// <summary>
+    /// Alignment F-13b (tmp/align-campaign-2026-08-09.md): a block section's context flyout (SectionFlyoutItems)
+    /// lists the accepted types FLAT and alphabetically (da-DK), with Enum as a submenu among them and Egenskaber
+    /// last — the vendor/US-027 shape ("pick the type from the popup"), not nested under an "Indsæt variabel" parent.
+    /// </summary>
+    [Test]
+    public async Task SectionFlyout_ListsTypesFlatAlphabetically_EnumSubmenu_EgenskaberLast()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        await harness.Session.AddEmptyFunctionBlockAsync(loc);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        vm.SelectNode(vm.InstallationNodes[0].Children[3]);   // "Interne variable" (a value section)
+
+        var labels = vm.SectionFlyoutItems.Select(m => m.Header).ToList();
+        Assert.Multiple(() =>
+        {
+            Assert.That(labels, Is.Not.Empty, "the section flyout is populated");
+            Assert.That(labels[^1], Is.EqualTo("Egenskaber…"), "Egenskaber is last");
+            var types = labels.Take(labels.Count - 1).ToList();   // everything before Egenskaber
+            Assert.That(types, Is.EqualTo(types.OrderBy(x => x, ihc_openvisual.ViewModels.DisplayOrder.Danish).ToList()),
+                "the types are alphabetical (da-DK)");
+            Assert.That(types, Does.Contain("Enum"), "Enum sits flat among the types");
+            var enumItem = vm.SectionFlyoutItems.First(m => m.Header == "Enum");
+            Assert.That(enumItem.Children, Is.Not.Empty, "Enum is a submenu (type picker), not a leaf");
+            Assert.That(types, Does.Not.Contain("Indsæt variabel"), "no 'Insert variable' parent nesting");
+        });
+    }
+
+    /// <summary>
+    /// Alignment F-13c (tmp/align-campaign-2026-08-09.md): a block SECTION node's context flyout has NO
+    /// "Vis program" — the vendor omits it (measured 2026-08-09: the Indstillinger flyout is the type list +
+    /// Enum + separator + Egenskaber, nothing else), and it is redundant on a section because reaching a section
+    /// means you are already viewing the program. It stays on a block and on a pin (the S-28 jump-from-pin route).
+    /// </summary>
+    [Test]
+    public async Task ShowProgram_IsOmitted_FromASectionFlyout()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        await harness.Session.AddEmptyFunctionBlockAsync(loc);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        var section = vm.InstallationNodes[0].Children[3];   // "Interne variable" — a block section
+
+        vm.SelectNode(section);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(section.IsBlockSection, Is.True, "precondition: the node is a block section");
+            Assert.That(vm.Registry.ContextMenu["view.showProgram"].Visible, Is.False,
+                "the section flyout omits Vis program (vendor parity, F-13c)");
+        });
+    }
+
+    /// <summary>
+    /// Alignment F-25 (tmp/align-campaign-2026-08-09.md): the bar Indsæt ▸ Variable items Indgang/Udgang advertise
+    /// their Ctrl+I/Ctrl+U shortcuts (the vendor's Variable menu shows them; the gestures are wired as window
+    /// keybindings program.insertInput/insertOutput). Every other bar variable item carries no gesture hint.
+    /// </summary>
+    [Test]
+    public async Task VariableBarMenu_IndgangUdgang_AdvertiseCtrlIandCtrlU()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.VariableBarMenu.First(m => m.Header == "Indgang").InputGesture, Is.EqualTo("Ctrl+I"));
+            Assert.That(vm.VariableBarMenu.First(m => m.Header == "Udgang").InputGesture, Is.EqualTo("Ctrl+U"));
+            Assert.That(vm.VariableBarMenu.First(m => m.Header == "Flag").InputGesture, Is.Null,
+                "a value type carries no shortcut hint (vendor parity)");
+        });
+    }
+
+    /// <summary>
+    /// Alignment F-13a: with a SECTION selected the bar list stays the same fixed list — only enablement varies
+    /// (vendor, Indstillinger selected: value types enabled, Indgang/Udgang disabled; measured 2026-08-09).
+    /// Inserting through an enabled bar item works.
+    /// </summary>
+    [Test]
+    public async Task VariableBarMenu_WithValueSectionSelected_EnablesValuesAndGreysPins()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        await harness.Session.AddEmptyFunctionBlockAsync(loc);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        vm.SelectNode(vm.InstallationNodes[0].Children[3]);   // "Interne variable" (a value section)
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.VariableBarMenu, Has.Count.EqualTo(VariablePalette.Entries.Count - 1),
+                "same fixed list — only enablement varies with the section");
+            Assert.That(vm.VariableBarMenu.First(m => m.Header == "Flag").Command!.CanExecute(null), Is.True,
+                "a value type is enabled on a value section");
+            Assert.That(vm.VariableBarMenu.First(m => m.Header == "Indgang").Command!.CanExecute(null), Is.False,
+                "a pin type stays greyed on a value section (vendor parity)");
+        });
+
+        await ((CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)vm.VariableBarMenu.First(m => m.Header == "Flag").Command!)
+            .ExecuteAsync(null);
+        Assert.That(vm.InstallationNodes[0].Children[3].Children.Any(c => c.DisplayName.Contains("Flag")), Is.True,
+            "inserting from the enabled bar item lands in the selected section");
     }
 
     // US-027: the variable palette is section-aware, and inserting from it confirms with the vendor status string.
@@ -3572,7 +3707,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
 
-        Assert.That(vm.Title, Is.EqualTo("Uden navn - IHC OpenVisual"));
+        Assert.That(vm.Title, Is.EqualTo("unavngivet - IHC OpenVisual"));
 
         harness.Dialogs.SavePath = harness.TempPath("house.vis");
         await harness.Session.SaveAsAsync();
@@ -3735,7 +3870,7 @@ public class MainWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(harness.Dialogs.EditPropertiesCalls, Is.EqualTo(1));
-            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Rediger egenskaber for Stue"));
+            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Rediger Stue egenskaber"));
         });
     }
 

@@ -1,6 +1,6 @@
 IHC OpenVisual
 
-Functionsblok dokumentation
+Funktionsblok dokumentation
 ===========================
 
 ------------------------------------------------------------------------------

@@ -25,7 +25,7 @@ public class SessionApplyTests
             Assert.That(harness.Session.Version, Is.GreaterThan(before), "a commit bumps the version");
             Assert.That(harness.Session.Current!.Groups.Count, Is.EqualTo(groups + 1));
             Assert.That(harness.Session.CanUndo, Is.True);
-            Assert.That(harness.Session.UndoLabel, Is.EqualTo("Insert locality"));
+            Assert.That(harness.Session.UndoLabel, Is.EqualTo("Indsæt lokalitet"));
         });
     }
 

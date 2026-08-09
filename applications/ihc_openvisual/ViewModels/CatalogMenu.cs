@@ -79,14 +79,16 @@ public static class CatalogMenu
     public const string SpecialProductsCategory = "Specielle produkter";
 
     /// <summary>The vendor top-level product categories in MENU ORDER (D08: the taxonomy is catalog data, the order
-    /// is app presentation). Their names are already in the UI language, so they are displayed verbatim — this list
-    /// carries only the order. A product whose top category is none of these — an imported <c>.def</c> with an empty
-    /// <c>CategoryPath</c> — falls into <see cref="ImportedCategoryLabel"/>, appended last.</summary>
+    /// is app presentation). The order is the vendor's own Indsæt ▸ Produkter order — Bus, Datalinie, Wireless,
+    /// Specielle — measured 2026-08-09 (alignment F-12a, armed bar dump). Their names are already in the UI
+    /// language, so they are displayed verbatim — this list carries only the order. A product whose top category is
+    /// none of these — an imported <c>.def</c> with an empty <c>CategoryPath</c> — falls into
+    /// <see cref="ImportedCategoryLabel"/>, appended last.</summary>
     public static readonly IReadOnlyList<string> TopCategories =
     [
+        BusProductsCategory,
         WiredProductsCategory,
         WirelessProductsCategory,
-        BusProductsCategory,
         SpecialProductsCategory,
     ];
 

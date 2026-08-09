@@ -290,6 +290,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// selection changes so it only offers the types that section accepts.</summary>
     public ObservableCollection<ProductMenuItemViewModel> VariablePaletteMenu { get; } = new();
 
+    /// <summary>The SECTION node's context flyout (F-13b): the accepted variable types FLAT and alphabetically,
+    /// Enum as a submenu among them, and Egenskaber last — the vendor/US-027 shape. Bound by SectionContextMenu,
+    /// which a section row selects in place of the shared node flyout.</summary>
+    public ObservableCollection<ProductMenuItemViewModel> SectionFlyoutItems { get; } = new();
+
     // The variable palette (label, resource tag, section kind) is projected over the SDK variable-type registry by
     // VariablePalette (US-027, ADR-002/D07) — so the types the engine accepts and the types the UI offers cannot
     // drift, and a dropped type is a deliberate, tested suppression rather than a silent omission.
@@ -299,39 +304,84 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         RebuildContext();   // T010: selection is a context trigger (first, so the early return below cannot skip it)
         _programAuthoring.Rebuild(value);
         VariablePaletteMenu.Clear();
+        RebuildVariableBarMenu(value);   // F-12/F-13a: the bar list is always present; only enablement varies
         if (value is not { IsBlockSection: true, ElementId: { } sectionId, SectionTag: { } sectionTag })
+        {
+            SectionFlyoutItems.Clear();   // F-13b: only a section carries this flyout
             return;
+        }
         // W1/D03: the section→types rule is the ENGINE's, asked once here. The view-model used to re-derive it from
         // the section tag ('I'/'O'/'V'), which offered an Input section only its own signal type — the vendor offers
         // the signal type PLUS all 19 value types (uxparity2 V3). PlacementRules already modelled that correctly, so
         // the fix is to delete the GUI's second copy, not widen it. The door also filters resource_scene out: a scene
         // is not a variable and reaches the project through US-024's own route.
         string sectionLabel = value.DisplayName;
-        foreach ((string label, string tag) in VariablePalette.LabelledTypes(
-                     _session.GetInsertableVariableTypes(sectionId)))
+        var accepted = VariablePalette.LabelledTypes(_session.GetInsertableVariableTypes(sectionId)).ToList();
+        foreach ((string label, string tag) in accepted)
+            VariablePaletteMenu.Add(CreateVariableMenuItem(sectionId, label, tag, sectionLabel));
+
+        // F-13b: the SECTION context flyout lists the accepted types FLAT and ALPHABETICALLY (da-DK), with Enum as
+        // a submenu among them and Egenskaber last — the shape the vendor shows and US-027 mandates ("pick the type
+        // from the popup"), NOT nested under an "Insert variable" parent. Fresh item instances (a menu item cannot
+        // sit in two flyouts) built off the same engine-accepted set.
+        SectionFlyoutItems.Clear();
+        foreach ((string label, string tag) in accepted.OrderBy(t => t.Label, DisplayOrder.Danish))
+            SectionFlyoutItems.Add(CreateVariableMenuItem(sectionId, label, tag, sectionLabel));
+        SectionFlyoutItems.Add(new ProductMenuItemViewModel("Egenskaber…", "ctx.node.properties", PropertiesCommand));
+    }
+
+    // Builds one variable-insert menu item — a plain leaf, or (for resource_enum) the PG-4 type-picker submenu:
+    // the existing enumerator types (pick one → reference its def-id), "Ny…" (author a new type via the enumerator
+    // dialog), and "Ny selvstændig type…" (PG-7/D02, a standalone 0-state type — no variable). A fresh instance
+    // each call, so the same type can appear in both VariablePaletteMenu and the section flyout without a menu item
+    // being parented twice.
+    private ProductMenuItemViewModel CreateVariableMenuItem(ElementId sectionId, string label, string tag, string sectionLabel)
+    {
+        if (tag != "resource_enum")
+            return new ProductMenuItemViewModel(label, tag,
+                new AsyncRelayCommand(() => InsertVariableAsync(sectionId, tag, label, sectionLabel)));
+        var enumNode = new ProductMenuItemViewModel(label);
+        foreach (string typeName in _session.Current?.GetEnumeratorTypes() ?? System.Array.Empty<string>())
+            enumNode.Children.Add(new ProductMenuItemViewModel(typeName, "enum-type",
+                new AsyncRelayCommand(() => InsertEnumOfExistingTypeAsync(sectionId, typeName, sectionLabel))));
+        enumNode.Children.Add(new ProductMenuItemViewModel("Ny…", "enum-new",
+            new AsyncRelayCommand(() => InsertEnumAsync(sectionId, sectionLabel))));
+        enumNode.Children.Add(new ProductMenuItemViewModel("Ny selvstændig type…", "enum-standalone",
+            new AsyncRelayCommand(AddStandaloneEnumTypeAsync)));
+        return enumNode;
+    }
+
+    // One shared always-disabled command greys the F-12/F-13a bar items; a fresh instance per item would only
+    // re-answer the same CanExecute=false per row.
+    private static readonly RelayCommand s_variableInsertUnavailable = new(() => { }, () => false);
+
+    /// <summary>The BAR's Indsæt ▸ Variable list (F-12/F-13a): the vendor's fixed vocabulary — every palette type
+    /// except Enum (the vendor bar never carries an Enum item; the section flyout owns the enum type picker) —
+    /// always present, with only enablement varying by the selected section (armed vendor dumps, 2026-08-09).
+    /// Distinct from <see cref="VariablePaletteMenu"/>, which is the section flyout's accepted-only list.</summary>
+    public ObservableCollection<ProductMenuItemViewModel> VariableBarMenu { get; } = new();
+
+    private void RebuildVariableBarMenu(TreeNodeViewModel? value)
+    {
+        VariableBarMenu.Clear();
+        HashSet<string>? accepted = value is { IsBlockSection: true, ElementId: { } sid }
+            ? new HashSet<string>(_session.GetInsertableVariableTypes(sid), StringComparer.Ordinal)
+            : null;
+        ElementId? sectionId = value?.ElementId;
+        string sectionLabel = value?.DisplayName ?? string.Empty;
+        foreach ((string label, string tag) in VariablePalette.Entries)
         {
             if (tag == "resource_enum")
-            {
-                // PG-4: an enum insertion offers a TYPE PICKER — the existing enumerator types (pick one → reference
-                // its def-id, no new type) plus a "Ny…" that authors a new type through the enumerator dialog.
-                var enumNode = new ProductMenuItemViewModel(label);
-                foreach (string typeName in _session.Current?.GetEnumeratorTypes() ?? System.Array.Empty<string>())
-                {
-                    enumNode.Children.Add(new ProductMenuItemViewModel(typeName, "enum-type",
-                        new AsyncRelayCommand(() => InsertEnumOfExistingTypeAsync(sectionId, typeName, sectionLabel))));
-                }
-                enumNode.Children.Add(new ProductMenuItemViewModel("Ny…", "enum-new",
-                    new AsyncRelayCommand(() => InsertEnumAsync(sectionId, sectionLabel))));
-                // PG-7/D02: a DISTINCT route that authors a standalone (0-state, unreferenced) type — NO variable.
-                enumNode.Children.Add(new ProductMenuItemViewModel("Ny selvstændig type…", "enum-standalone",
-                    new AsyncRelayCommand(AddStandaloneEnumTypeAsync)));
-                VariablePaletteMenu.Add(enumNode);
-            }
-            else
-            {
-                VariablePaletteMenu.Add(new ProductMenuItemViewModel(label, tag,
-                    new AsyncRelayCommand(() => InsertVariableAsync(sectionId, tag, label, sectionLabel))));
-            }
+                continue;   // vendor bar carries no Enum — the flyout's type picker is the enum route (F-13a)
+            string itemTag = tag;
+            string itemLabel = label;
+            // F-25: the vendor's Variable menu shows Ctrl+I on Indgang and Ctrl+U on Udgang (the pin-insert
+            // shortcuts, wired here as window KeyBindings program.insertInput/insertOutput). Advertise them.
+            string? gesture = tag switch { "resource_input" => "Ctrl+I", "resource_output" => "Ctrl+U", _ => null };
+            VariableBarMenu.Add(new ProductMenuItemViewModel(label, tag,
+                accepted is not null && accepted.Contains(tag) && sectionId is { } sec
+                    ? new AsyncRelayCommand(() => InsertVariableAsync(sec, itemTag, itemLabel, sectionLabel))
+                    : s_variableInsertUnavailable) { InputGesture = gesture });
         }
     }
 
@@ -632,6 +682,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         BuildProductMenu();
         RefreshRecent();
         Refresh();
+        RebuildVariableBarMenu(null);   // F-12/F-13a: nothing is selected at startup, and the bar list is never empty
     }
 
     /// <summary>Detaches the session/recent-store event handlers so this view-model does not leak through those
@@ -1091,9 +1142,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 return;
             if (!await _properties.OpenForInsertAsync(newId))
             {
-                // Cancelled: undo the insert. Undo restores the whole project snapshot, so the id counter goes back
-                // too — the vendor burns no ids on a cancelled insert either.
-                await _session.UndoAsync();
+                // Cancelled: roll the insert back — NOT Undo. Rollback restores the snapshot verbatim (the vendor
+                // burns no ids on Annuller — S-12) and leaves no redo entry, where Undo deliberately keeps the
+                // raised id counter (alignment F-10) and would leave the cancelled insert redoable.
+                await _session.RollbackAsync();
                 StatusText = $"Indsætning af '{productName}' annulleret.";
                 return;
             }
@@ -1233,9 +1285,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // it turned out to be. A locked block's program opens read-only from either surface — entry was never the
             // thing being withheld; authoring is, and IsProgrammingBlockLocked withdraws that separately.
             SurfacePolicy: (ctx, surface) =>
-                surface == Surface.ContextMenu || ctx.Node is { Kind: TreeNodeKind.FunctionBlock }
-                    ? null
-                    : Availability.Disabled("Vælg en funktionsblok i træet.")));
+                surface == Surface.ContextMenu
+                    // F-13c: a block SECTION's flyout omits Vis program — reaching a section means you are already
+                    // in the program, and the vendor's section flyout carries only the type list + Enum + Egenskaber
+                    // (measured 2026-08-09). The block and pin routes (S-28) are unaffected.
+                    ? (ctx.Node is { Kind: TreeNodeKind.Section } ? Availability.Hidden : null)
+                    : ctx.Node is { Kind: TreeNodeKind.FunctionBlock }
+                        ? null
+                        : Availability.Disabled("Vælg en funktionsblok i træet.")));
     }
 
     // crudarch T013: the remaining node-scoped tree commands as rows — gates are the former IsVisible/CanExecute
@@ -1246,7 +1303,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         Registry.Register(new CommandSpec("insert.locality", null,
             Surfaces.MenuBar | Surfaces.ContextMenu,
             Execute: _ => InsertLocality(),
-            Gate: ctx => ctx.Node is { Kind: TreeNodeKind.LocalitiesRoot }
+            // Alignment F-1 (tmp/align-campaign-2026-08-09.md): NO selection allows it — the vendor's bar item is
+            // enabled on a fresh project and inserts at the root, and InsertLocality never reads the selection. A
+            // non-root selection stays refused-with-reason: the vendor silently no-ops there (measured
+            // Code=NoEffect 2026-08-09), and the explained grey is the registered enhancement over that.
+            Gate: ctx => ctx.Node is null or { Kind: TreeNodeKind.LocalitiesRoot }
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse("Vælg Lokaliteter-roden for at indsætte en lokalitet.")));
 

@@ -468,6 +468,20 @@ public sealed class ProjectWorkflow : IDisposable
         return Task.FromResult(true);
     }
 
+    /// <summary>Discards the last committed edit as if it never happened — the cancel arm of an
+    /// apply → dialog → cancel gesture (a cancelled product insert). Unlike <see cref="UndoAsync"/> the document
+    /// restores the snapshot verbatim (a cancelled gesture burns no ids — vendor-measured, uxparity S-12) and
+    /// leaves nothing on the redo stack (a gesture that never completed is not redoable). No-op (false) when
+    /// there is nothing to roll back.</summary>
+    public Task<bool> RollbackAsync()
+    {
+        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(RollbackAsync)}");
+        if (_document?.Rollback() is not { Status: EditStatus.Committed } outcome)
+            return Task.FromResult(false);
+        RaiseChanged(outcome.Changes);
+        return Task.FromResult(true);
+    }
+
     /// <summary>Re-applies the last undone edit (US-052): the mirror of <see cref="UndoAsync"/>. No-op (false) when the
     /// redo history is empty.</summary>
     public Task<bool> RedoAsync()

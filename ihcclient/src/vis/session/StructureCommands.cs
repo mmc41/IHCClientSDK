@@ -12,7 +12,7 @@ namespace Ihc.Vis.Session
     /// target (the engine move-contract, <see cref="ProjectEditor.CanMoveSubtree"/>).</summary>
     public sealed record MoveNode(ElementId SourceId, ElementId TargetParentId) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Move";
+        internal override string Describe(Project project) => "Flyt";
         internal override EditVerdict Evaluate(EditContext context) =>
             (context.Index.FindById(SourceId) is { } source
             && context.Index.FindById(TargetParentId) is { } target
@@ -30,7 +30,7 @@ namespace Ihc.Vis.Session
     /// caller computes the same-tag index (from a delta or a drop target).</summary>
     public sealed record ReorderNode(ElementId Id, int SameTagIndex) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Reorder";
+        internal override string Describe(Project project) => "Omarranger";
         internal override EditVerdict Evaluate(EditContext context) =>
             context.RequireExists(Id, "node")
                 .And(context.RequireUnlockedTarget(Id, inclusive: false));   // T003: no reorder INSIDE a locked block
@@ -41,7 +41,7 @@ namespace Ihc.Vis.Session
     /// external link halves dropped. Returns the new node's id.</summary>
     public sealed record CopyNode(ElementId SourceId, ElementId TargetParentId) : ProjectCommand<ElementId>
     {
-        internal override string Describe(Project project) => "Paste";
+        internal override string Describe(Project project) => "Indsæt";
         internal override EditVerdict Evaluate(EditContext context) =>
             (context.Index.FindById(SourceId) is { } source
             && context.Index.FindById(TargetParentId) is { } target
@@ -63,7 +63,7 @@ namespace Ihc.Vis.Session
     /// container the gate hides (events/sections/enum definitions/...) can never be committed by Apply (G7).</summary>
     public sealed record DeleteNode(ElementId Id, bool Cascade) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Delete";
+        internal override string Describe(Project project) => "Slet";
         // The classifier resolves the element as well as the kind precisely so a caller needs no second lookup —
         // so read BOTH halves: deletable → allow; not deletable because it is gone → the shared "no longer exists"
         // guard; otherwise the engine's precise reason (review F06).

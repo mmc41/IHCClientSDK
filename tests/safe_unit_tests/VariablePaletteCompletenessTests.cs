@@ -44,6 +44,24 @@ public class VariablePaletteCompletenessTests
         });
     }
 
+    /// <summary>
+    /// Alignment F-12 (tmp/align-campaign-2026-08-09.md): the palette lists in the VENDOR's Indsæt ▸ Variable menu
+    /// order, measured 2026-08-09 (armed bar dump, configuration mode). The vendor's first item, Scenarie, is not a
+    /// variable (US-024 owns scenes and it never reaches this palette); Enum is OpenVisual's own extra route (the
+    /// vendor menu has no Enum item) and is appended last. Everything between is the vendor's order verbatim.
+    /// </summary>
+    [Test]
+    public void Entries_FollowTheVendorsInsertVariableMenuOrder()
+    {
+        var expected = new[]
+        {
+            "Ugedag", "Flag", "Tal", "Tæller", "Tidspunkt", "Dato", "Timer", "Indgang", "Udgang",
+            "Timertid", "kW", "kWh", "W", "Wh", "Helligdag", "Kommatal", "Fugtighed", "Lys",
+            "Lysniveau", "Temperatur", "Enum",
+        };
+        Assert.That(VariablePalette.Entries.Select(e => e.Label), Is.EqualTo(expected));
+    }
+
     // uxparity2 T014 (W1/D03) — REPLACES Palette_DerivesSectionKind_FromRegistryRole, which pinned the 'I'/'O'/'V'
     // section kind. That concept is gone: the palette no longer decides which types a section accepts, because the
     // ENGINE does (ProjectAppService.GetInsertableVariableTypes over PlacementRules). The old test's intent — "the
@@ -59,8 +77,8 @@ public class VariablePaletteCompletenessTests
         {
             Assert.That(offered.Select(e => e.Tag), Is.EquivalentTo(new[] { "resource_input", "resource_flag", "kW" }),
                 "every tag the engine reports is labelled — the palette filters nothing by section");
-            Assert.That(offered.Select(e => e.Label), Is.EqualTo(new[] { "Indgang", "Flag", "kW" }),
-                "…and comes back in REGISTRY order, not the caller's, so the menu reads the same wherever it is raised");
+            Assert.That(offered.Select(e => e.Label), Is.EqualTo(new[] { "Flag", "Indgang", "kW" }),
+                "…and comes back in PALETTE (vendor-menu) order, not the caller's, so the menu reads the same wherever it is raised");
             Assert.That(VariablePalette.LabelledTypes(System.Array.Empty<string>()), Is.Empty,
                 "a container that accepts no variables yields no palette");
         });

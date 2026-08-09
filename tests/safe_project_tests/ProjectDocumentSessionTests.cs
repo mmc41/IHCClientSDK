@@ -30,7 +30,7 @@ namespace Ihc.Vis.Tests
         private sealed record RenameLocality(ElementId Id, string NewName) : ProjectCommand
         {
             internal override string Describe(Project project) =>
-                "Rename " + (project.FindById(Id)?.GetAttribute("name") ?? "?");
+                "Omdøb " + (project.FindById(Id)?.GetAttribute("name") ?? "?");
             internal override EditVerdict Evaluate(EditContext context) =>
                 context.Index.FindById(Id) is not null ? EditVerdict.Allow : EditVerdict.Refuse("no such element");
             internal override void Execute(ProjectEditor editor)
@@ -128,14 +128,14 @@ namespace Ihc.Vis.Tests
             (ProjectDocumentSession session, ElementId loc, string oldName) = await OpenWithLocality();
             session.Apply(new RenameLocality(loc, "New Name"));
 
-            Assert.That(session.UndoLabel, Is.EqualTo("Rename " + oldName), "the label used the pre-edit name (D10)");
+            Assert.That(session.UndoLabel, Is.EqualTo("Omdøb " + oldName), "the label used the pre-edit name (D10)");
 
             session.Undo();
             Assert.Multiple(() =>
             {
                 Assert.That(session.Current!.FindById(loc)!.GetAttribute("name"), Is.EqualTo(oldName), "undo restores the old name");
                 Assert.That(session.CanRedo, Is.True);
-                Assert.That(session.RedoLabel, Is.EqualTo("Rename " + oldName));
+                Assert.That(session.RedoLabel, Is.EqualTo("Omdøb " + oldName));
             });
 
             session.Redo();

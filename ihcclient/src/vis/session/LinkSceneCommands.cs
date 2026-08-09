@@ -27,7 +27,7 @@ namespace Ihc.Vis.Session
     /// <summary>Removes a link by one of its rows (US-057), cascading the reciprocal half.</summary>
     public sealed record RemoveLink(ElementId LinkRowId) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Remove link";
+        internal override string Describe(Project project) => "Fjern link";
         internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(LinkRowId, "link");
         internal override void Execute(ProjectEditor editor) => editor.DeleteById(LinkRowId);
     }
@@ -37,7 +37,7 @@ namespace Ihc.Vis.Session
     public sealed record LinkScene(ElementId SceneOutputId, ElementId ScenesId, SceneValueResult Result, bool IsDimmer)
         : ProjectCommand
     {
-        internal override string Describe(Project project) => "Link scenario";
+        internal override string Describe(Project project) => "Link scenarie";
         internal override EditVerdict Evaluate(EditContext context)
         {
             if (context.Index.FindById(SceneOutputId) is null || context.Index.FindById(ScenesId) is not { } scenes)
@@ -67,7 +67,7 @@ namespace Ihc.Vis.Session
     /// row's tag so id/name/link/note are preserved.</summary>
     public sealed record UpdateSceneValue(ElementId MemberId, SceneValueResult Result) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Edit scene value";
+        internal override string Describe(Project project) => "Rediger scene værdi";
         internal override EditVerdict Evaluate(EditContext context) =>
             context.RequireTag(MemberId, "a relay or dimmer scene member", "scene_dimmer", "scene_relay");
         internal override void Execute(ProjectEditor editor)
@@ -80,7 +80,7 @@ namespace Ihc.Vis.Session
     /// <summary>Edits a scenes container's note (US-024).</summary>
     public sealed record UpdateSceneContainer(ElementId ScenesId, string Note) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Edit scenario container";
+        internal override string Describe(Project project) => "Rediger scenarie container";
         internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(ScenesId, "scenes container");
         internal override void Execute(ProjectEditor editor) =>
             editor.Resolve(ScenesId, "scenes container").SetAttribute("note", Note);

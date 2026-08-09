@@ -13,7 +13,7 @@ using Ihc.Vis.Projects;
 namespace Ihc.Vis.Reporting
 {
     /// <summary>
-    /// Builds the "Functionsblok dokumentation" report as a shape document (spec R4/§14): every function
+    /// Builds the "Funktionsblok dokumentation" report as a shape document (spec R4/§14): every function
     /// block per flattened locality in document order (U5), each as one <see cref="FbBlockShape"/> — the B7
     /// heading (block <c>@name</c>) and paragraph rules, the four variable sections filtered to the
     /// vendor-scope types, pins with notes and never a value while settings/internal variables carry

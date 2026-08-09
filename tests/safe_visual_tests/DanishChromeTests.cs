@@ -30,7 +30,7 @@ public class DanishChromeTests : AvaloniaTestBase
     [Test]
     public void UntitledDocument_IsDanish()
     {
-        Assert.That(Constants.UntitledDocument, Is.EqualTo("Uden navn"),
+        Assert.That(Constants.UntitledDocument, Is.EqualTo("unavngivet"),
             "a new, unsaved project is named in the application's own language");
     }
 

@@ -45,11 +45,23 @@ public static class VariablePalette
         ["Wh"] = "Wh",
     };
 
-    /// <summary>The palette entries — (display label, resource tag) — projected over the SDK registry in registry
-    /// order. The registry is the completeness contract: every tag here has a label, so a type the engine supports
-    /// cannot silently vanish from the UI.</summary>
+    // Alignment F-12: the VENDOR's Indsæt ▸ Variable menu order, measured 2026-08-09 (armed bar dump). The vendor's
+    // first item, Scenarie, is not a variable (US-024 owns scenes); Enum is OpenVisual's own extra route (the vendor
+    // menu carries no Enum item) and goes last. The completeness test pins this list to exactly the registry's tags,
+    // so a registry type can neither vanish from nor sneak past the vendor ordering.
+    private static readonly string[] MenuOrder =
+    [
+        "resource_weekday", "resource_flag", "resource_integer", "resource_counter", "resource_time",
+        "resource_date", "resource_timer", "resource_input", "resource_output", "resource_timertime",
+        "kW", "kWh", "W", "Wh", "resource_holiday", "resource_floating_point", "resource_humidity_level",
+        "resource_light", "resource_light_level", "resource_temperature", "resource_enum",
+    ];
+
+    /// <summary>The palette entries — (display label, resource tag) — every SDK registry type, in the vendor's
+    /// Indsæt ▸ Variable menu order (F-12). The registry stays the completeness contract: every tag here has a
+    /// label, so a type the engine supports cannot silently vanish from the UI.</summary>
     public static readonly IReadOnlyList<(string Label, string Tag)> Entries =
-        VariableTypeRegistry.All.Select(t => (Labels[t.Tag], t.Tag)).ToList();
+        MenuOrder.Select(tag => (Labels[tag], tag)).ToList();
 
     /// <summary>The label the palette gives <paramref name="tag"/> — the read side of <see cref="Labels"/>, for
     /// callers that need to FIND a palette entry by its SDK type rather than assert its wording. Addressing a menu

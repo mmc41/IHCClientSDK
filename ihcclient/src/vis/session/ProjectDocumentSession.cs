@@ -44,6 +44,7 @@ namespace Ihc.Vis.Session
         private const string OriginApply = "apply";
         private const string OriginUndo = "undo";
         private const string OriginRedo = "redo";
+        private const string OriginRollback = "rollback";
         private const string OriginPreview = "preview";
 
         /// <summary>Creates a session with the given history policy. The default is <see cref="HistoryPolicy.Unlimited"/>
@@ -67,9 +68,11 @@ namespace Ihc.Vis.Session
         /// compares against it to refuse a stale dialog commit.</summary>
         public int Version { get { lock (_sync) { return _version; } } }
 
-        /// <summary>Whether the current snapshot differs from the last written save point — computed by reference,
-        /// never stored, so undoing back to the saved snapshot reads clean.</summary>
-        public bool IsDirty { get { lock (_sync) { return !ReferenceEquals(_current, _savePoint); } } }
+        /// <summary>Whether the current snapshot differs from the last written save point — computed, never stored,
+        /// so undoing back to the saved snapshot reads clean (US-052). Compared modulo <c>last_unique_id</c>: undo
+        /// keeps the raised allocator high-water (see <see cref="WithMonotonicAllocator"/>), and that bookkeeping
+        /// alone is not an unsaved change the installer should be prompted about.</summary>
+        public bool IsDirty { get { lock (_sync) { return _current is { } current && !IsAtSavePoint(current, _savePoint); } } }
 
         /// <summary>Whether there is an edit to undo.</summary>
         public bool CanUndo { get { lock (_sync) { return _undo.Count > 0; } } }
@@ -233,7 +236,7 @@ namespace Ihc.Vis.Session
                     _undo.RemoveLast();
                     _redo.Push(new HistoryEntry(current, entry.Label));
                     outcome = new EditOutcome(EditStatus.Committed, entry.Label, null,
-                        Transition(current, entry.Snapshot, entry.Label, OriginUndo));
+                        Transition(current, WithMonotonicAllocator(current, entry.Snapshot), entry.Label, OriginUndo));
                 }
             }
             NotifyChanged(outcome.Changes);
@@ -256,7 +259,32 @@ namespace Ihc.Vis.Session
                     _undo.AddLast(new HistoryEntry(current, entry.Label));
                     TrimUndo();
                     outcome = new EditOutcome(EditStatus.Committed, entry.Label, null,
-                        Transition(current, entry.Snapshot, entry.Label, OriginRedo));
+                        Transition(current, WithMonotonicAllocator(current, entry.Snapshot), entry.Label, OriginRedo));
+                }
+            }
+            NotifyChanged(outcome.Changes);
+            return outcome;
+        }
+
+        /// <summary>Discards the most recent committed edit as if it never happened — see
+        /// <see cref="IProjectDocument.Rollback"/>. The verbatim restore (no <see cref="WithMonotonicAllocator"/>)
+        /// and the absent redo push are the two deliberate differences from <see cref="Undo"/>: a cancelled
+        /// gesture burns no ids (vendor-measured, uxparity S-12) and cannot be redone.</summary>
+        public EditOutcome Rollback()
+        {
+            EditOutcome outcome;
+            lock (_sync)
+            {
+                if (_undo.Count == 0 || _current is not { } current)
+                {
+                    outcome = new EditOutcome(EditStatus.NoChange, "Rollback", null, null);
+                }
+                else
+                {
+                    HistoryEntry entry = _undo.Last!.Value;
+                    _undo.RemoveLast();
+                    outcome = new EditOutcome(EditStatus.Committed, entry.Label, null,
+                        Transition(current, entry.Snapshot, entry.Label, OriginRollback));
                 }
             }
             NotifyChanged(outcome.Changes);
@@ -407,6 +435,44 @@ namespace Ihc.Vis.Session
                 Changed?.Invoke(this, new ProjectChangedEventArgs(changes));
             }
         }
+
+        /// <summary>
+        /// Alignment F-10 (tmp/align-campaign-2026-08-09.md): the id allocator is monotonic ACROSS history
+        /// navigation. Measured against the vendor 2026-08-09: insert→undo→insert allocates the NEXT counter
+        /// (0x52 after 0x51), and a save straight after the undo still writes the RAISED <c>last_unique_id</c>
+        /// (0x51 with no 0x51 element present — a permanent hole). So undo/redo restore the CONTENT, never the
+        /// allocator: a restored snapshot keeps the highest <c>last_unique_id</c> the session has reached, and the
+        /// next edit's <see cref="Ihc.Vis.Io.IdAllocator"/> seeds off it — re-minting an undone element's counter
+        /// for a different element is exactly the reuse FR-8.3 and the Part-3 invariant oracle forbid.
+        /// </summary>
+        private static Project WithMonotonicAllocator(Project current, Project restored)
+        {
+            long currentLuid = HexToken.ParseValueOrDefault(current.LastUniqueId);
+            return HexToken.ParseValueOrDefault(restored.LastUniqueId) >= currentLuid
+                ? restored
+                : restored with { Root = restored.Root.WithAttribute("last_unique_id", HexToken.Format(currentLuid)) };
+        }
+
+        // The save-point comparison behind IsDirty: reference-equal is clean (the common case — Transition restored
+        // the very snapshot MarkSaved holds); otherwise value-equal modulo the allocator attribute, because
+        // WithMonotonicAllocator patches a restored snapshot's last_unique_id and bookkeeping alone must not read
+        // as an unsaved change. The normalization rewrites one root attribute; the child arrays keep their shared
+        // references, so the deep Equals short-circuits on them.
+        private static bool IsAtSavePoint(Project current, Project? savePoint)
+        {
+            if (ReferenceEquals(current, savePoint))
+            {
+                return true;
+            }
+            if (savePoint is null)
+            {
+                return false;
+            }
+            return NormalizeAllocator(current.Root).Equals(NormalizeAllocator(savePoint.Root));
+        }
+
+        private static ProjectElement NormalizeAllocator(ProjectElement root) =>
+            root.GetAttribute("last_unique_id") is null ? root : root.WithAttribute("last_unique_id", "_0x0");
 
         private void TrimUndo()
         {

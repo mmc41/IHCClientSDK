@@ -68,7 +68,7 @@ namespace Ihc.Vis.Session
     /// block by the T003 central predicate. Serialization lives in <see cref="ResourceInitialValue.WriteTo"/>.</summary>
     public sealed record SetResourceInitialValue(ElementId Id, ResourceInitialValue Value) : ProjectCommand
     {
-        internal override string Describe(Project project) => "Set initial value";
+        internal override string Describe(Project project) => "Sæt startværdi";
 
         internal override EditVerdict Evaluate(EditContext context) =>
             context.RequireExists(Id, "variable")
@@ -90,7 +90,7 @@ namespace Ihc.Vis.Session
     public sealed record SetVariableProperties(
         ElementId Id, string Name, string Note, ResourceInitialValue Value, string HelpNote = "") : ProjectCommand
     {
-        internal override string Describe(Project project) => "Edit " + Name;
+        internal override string Describe(Project project) => "Rediger " + Name;
 
         internal override EditVerdict Evaluate(EditContext context) =>
             context.RequireExists(Id, "variable")

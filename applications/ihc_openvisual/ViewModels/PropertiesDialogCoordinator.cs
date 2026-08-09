@@ -78,8 +78,10 @@ internal sealed class PropertiesDialogCoordinator(
             return;
         ProjectElement? element = project.FindById(id);
         string currentNote = element is not null ? project.View(element).Note ?? string.Empty : string.Empty;
+        // Title format follows the vendor's own dialog: "Rediger <navn> egenskaber" (measured on a locality
+        // 2026-08-09, alignment F-16) — not "Rediger egenskaber for <navn>".
         PropertiesResult? result = await dialogs.EditPropertiesAsync(
-            $"Rediger egenskaber for {currentName}", currentName, currentNote, OriginOf(project, element));
+            $"Rediger {currentName} egenskaber", currentName, currentNote, OriginOf(project, element));
         if (result is null)
             return;   // cancelled — the locality keeps its original name and note
         await applyAndReport(session.Commands.RenameLocality(project, id, result.Name, result.Note),
@@ -116,7 +118,7 @@ internal sealed class PropertiesDialogCoordinator(
         // W5: a variable carries TWO documentation fields — the function documentation and the installer help text
         // (note-2) — so both are pre-filled from the project and both are applied.
         VariablePropertiesResult? result = await dialogs.EditVariablePropertiesAsync(new VariablePropertiesInput(
-            $"Rediger egenskaber for {view.Name}", view.Name ?? string.Empty, view.Note ?? string.Empty,
+            $"Rediger {view.Name} egenskaber", view.Name ?? string.Empty, view.Note ?? string.Empty,
             ReadInitialValue(variable), view.HelpNote ?? string.Empty));
         if (result is null)
             return;   // cancelled
