@@ -46,6 +46,7 @@ pwsh aui.ps1 tree select "Localities/Kitchen" # select a node by label path
 pwsh aui.ps1 node expand "Localities"         # expand via the ExpandCollapse pattern
 pwsh aui.ps1 project save                     # invoke the Save toolbar command
 pwsh aui.ps1 capture window                   # screenshot the window to a PNG
+pwsh aui.ps1 capture control --id Toolbar     # screenshot one exact UIA control
 ```
 
 **Always start a session with `doctor --launch`.** It launches the app and confirms the window is
@@ -70,7 +71,7 @@ to print every id with its `status` and one-line description. Highlights:
 |------|----------|
 | Session/inspect | `doctor`, `session status`, `session probe`, `catalog commands` |
 | Dialogs | `dialog read`, `dialog set-text --field --text`, `dialog click --button`, `dialog cancel` |
-| Capture | `capture window`, `capture modal`, `capture client` |
+| Capture | `capture window`, `capture modal`, `capture control --id <AutomationId>`, `capture client` |
 | Project | `project new`, `project open --path`, `project save`, `project save-as --path [--overwrite]`, `project recent list` |
 | View/mode | `view configuration`, `programming enter`, `view toolbar-toggle`, `view statusbar-toggle` |
 | Tree nav | `tree select`, `tree dump`, `node select`, `node expand`, `node collapse`, `node double-click`, `node right-click`, `node tooltip` |
@@ -192,7 +193,8 @@ row to `commands.json`.** Mechanisms available:
 - `readProperty` (with `property`) — read a UIA property (e.g. tooltip via `helpText`).
 - `fileDialog` (with `dialogKind`) — raise the OS picker, type `--path`, commit, verify by effect.
 - `dialogRead` / `dialogSetText` / `dialogButton` / `dialogCancel` — drive the open modal.
-- `capture` (with `scope`) — screenshot. `passive`/`static`/`notImplemented` — inspection / stub.
+- `capture` (with `scope`) — screenshot a window/modal, or the exact control addressed by `--id`.
+  `passive`/`static`/`notImplemented` — inspection / stub.
 
 Example new command (a toolbar button that already has an AutomationId):
 

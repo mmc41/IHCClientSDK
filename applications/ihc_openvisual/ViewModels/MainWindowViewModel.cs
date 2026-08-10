@@ -316,7 +316,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // the fix is to delete the GUI's second copy, not widen it. The door also filters resource_scene out: a scene
         // is not a variable and reaches the project through US-024's own route.
         string sectionLabel = value.DisplayName;
-        var accepted = VariablePalette.LabelledTypes(_session.GetInsertableVariableTypes(sectionId)).ToList();
+        // A locked block remains navigable, but its section flyout must not mint executable authoring items. The
+        // engine still guards direct calls; this projection matches the vendor's view-only flyout (Properties only).
+        List<(string Label, string Tag)> accepted = IsProgrammingBlockLocked
+            ? []
+            : VariablePalette.LabelledTypes(_session.GetInsertableVariableTypes(sectionId)).ToList();
         foreach ((string label, string tag) in accepted)
             VariablePaletteMenu.Add(CreateVariableMenuItem(sectionId, label, tag, sectionLabel));
 
@@ -1227,22 +1231,22 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         Registry.Register(new CommandSpec("edit.cut", "Ctrl+X",
             Surfaces.MenuBar | Surfaces.ContextMenu | Surfaces.Toolbar,
             Execute: Sync(ctx => Cut(ResolveNode(ctx))),
-            // No SurfacePolicy: bar and flyout agree. The bar used to grey a locked block here (S-28), a reading
-            // retired by D15 — V1 measured both surfaces on both fixtures and the reference application enables Cut
-            // on both. Lockedness is enforced where it belongs: the SDK refuses edits INSIDE a locked block, and
-            // cutting the block itself is legal from either surface.
-            Gate: ctx => ctx.Node is { CanCut: true, Id: not null }
+            // Configuration-tree blocks are structural items; the active programming root is not. Function-block
+            // variables allow Cut only in an unlocked programming view.
+            Gate: ctx => ctx.Node is { CanCut: true, Id: not null } node && CutOrDeleteAllowed(ctx, node)
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse("Vælg en lokalitet, et produkt eller en funktionsblok, der skal klippes.")));
 
         Registry.Register(new CommandSpec("edit.copy", "Ctrl+C",
             Surfaces.MenuBar | Surfaces.ContextMenu | Surfaces.Toolbar,
             Execute: Sync(ctx => Copy(ResolveNode(ctx))),
-            // Bar semantics (D13): ANY pin copies from Rediger — measured on `Tryk (venstre)`.
+            // Product terminals retain configuration-mode Copy. Function-block variables copy only from programming
+            // views, including a locked block's read-only view.
             Gate: ctx => ctx.Node is { Id: not null } node && (node.CanCopy || node.IsPin)
+                && CopyAllowed(ctx, node)
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse("Vælg en node, der skal kopieres."),
-            // The flyout is NARROWER: Kopier on a product terminal, none on an FB pin (uxparity S-28).
+            // Product terminals are the copy-only exception when the node's general CanCopy classification is false.
             SurfacePolicy: (ctx, surface) =>
                 surface == Surface.ContextMenu && ctx.Node is { } node && !(node.CanCopy || node.IsProductTerminal)
                     ? Availability.Hidden
@@ -1260,16 +1264,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         Registry.Register(new CommandSpec("edit.delete", "Delete",
             Surfaces.MenuBar | Surfaces.ContextMenu,
             Execute: ctx => Delete(ResolveNode(ctx)),
-            // The SDK deletion verdict drives every route — context menu, Edit ▸ Delete AND the Delete key — so a
-            // catalog pin or a locked block's interior can never slip through. Asking the COMMAND (the shape MoveGate
-            // uses) rather than the boolean CanDelete keeps the reason the engine already computed — "…is a
-            // catalog-declared pin of its product", "…inside a locked function block" — so US-044's grey explains
-            // itself precisely instead of restating a generic literal the SDK also owns (review F05).
-            // No SurfacePolicy, for the same reason as edit.cut (D15): the bar's locked-block grey was the retired
-            // S-28 reading. The SDK verdict above already refuses what genuinely cannot be deleted — a catalog pin,
-            // a locked block's INTERIOR — so the bar and the flyout can share one answer.
-            Gate: ctx => ctx.Node?.Id is { } id && _session.Current is { } project
-                ? _session.CanApply(_session.Commands.DeleteNode(project, id, cascade: false))
+            // CanDelete ignores cascade so deletable containers remain offered; when classification refuses, ask the
+            // command for the SDK's specific protected-element reason.
+            Gate: ctx => ctx.Node is { } node && CutOrDeleteAllowed(ctx, node)
+                && node.Id is { } id && _session.Current is { } project
+                ? _session.Commands.CanDelete(project, id)
+                    ? EditVerdict.Allow
+                    : _session.CanApply(_session.Commands.DeleteNode(project, id, cascade: false))
                 : EditVerdict.Refuse("Vælg et element, der skal slettes.")));
 
         Registry.Register(new CommandSpec("view.showProgram", "F3",
@@ -1302,6 +1303,19 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     // crudarch T013: the remaining node-scoped tree commands as rows — gates are the former IsVisible/CanExecute
     // conditions verbatim; the one divergence (Properties: Edit-menu enabled on a link row the flyout omits) is
     // SurfacePolicy data. Bodies stay the existing private methods, resolved via ResolveNode.
+    private static bool CutOrDeleteAllowed(ShellContext context, NodeContext node) =>
+        node.Kind == TreeNodeKind.ProgramBlockRoot
+            ? false
+            : node.Kind == TreeNodeKind.FunctionBlock
+            ? !context.IsProgrammingMode
+            : !(node.IsPin && node.CanCut && !node.IsProductTerminal)
+                || context.IsProgrammingMode && !context.ProgrammingBlockLocked;
+
+    private static bool CopyAllowed(ShellContext context, NodeContext node) =>
+        node.Kind == TreeNodeKind.FunctionBlock
+            ? !context.IsProgrammingMode
+            : !(node.IsPin && node.CanCut && !node.IsProductTerminal) || context.IsProgrammingMode;
+
     private void RegisterNodeRows()
     {
         Registry.Register(new CommandSpec("insert.locality", null,
@@ -1327,14 +1341,17 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         Registry.Register(new CommandSpec("node.saveBlock", "Ctrl+G",
             Surfaces.MenuBar | Surfaces.ContextMenu,
             Execute: ctx => SaveFunctionBlock(ResolveNode(ctx)),
-            Gate: ctx => ctx.Node is { Kind: TreeNodeKind.FunctionBlock }
+            Gate: ctx => ctx.Node is { Kind: TreeNodeKind.FunctionBlock or TreeNodeKind.ProgramBlockRoot }
                          || ctx.IsProgrammingMode && !ctx.ProgrammingBlockLocked
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse("Vælg en ulåst funktionsblok, der skal gemmes."),
             SurfacePolicy: (ctx, surface) =>
-                surface == Surface.ContextMenu && ctx.Node is not { Kind: TreeNodeKind.FunctionBlock }
+                surface == Surface.ContextMenu
+                    && ctx.Node is not { Kind: TreeNodeKind.FunctionBlock or TreeNodeKind.ProgramBlockRoot }
                     ? Availability.Hidden
-                    : null));
+                    : surface == Surface.MenuBar && ctx.IsProgrammingMode && ctx.ProgrammingBlockLocked
+                        ? Availability.Disabled("En låst funktionsblok kan ikke gemmes i biblioteket.")
+                        : null));
 
         // On the BAR as well as the flyout: the vendor carries it as Bibliotek's third item (id 24766, no shortcut).
         // Its gate is confirmed identical — measured 2026-08-04 across three blocks of the vendor's own project,
@@ -1552,13 +1569,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             ? EditVerdict.Allow
             : EditVerdict.Refuse("Vælg en betingelsesgruppe i en ulåst blok.");
 
-    // Move up/down (US-055/US-068 D07, crudarch T018/G6): a reorderable structural node, an unlocked
-    // programming block (F-087), AND actual reorderability in the asked direction — the document's index-backed
-    // CanReorder probe applies the same boundary rule the ReorderNode factory does plus the command's own verdict,
+    // Reordering applies only to unlocked structural tree items, never the function-block projection used as the
+    // active programming root; the session supplies directional boundary verdicts. Its index-backed CanReorder probe
+    // applies the same boundary rule the ReorderNode factory does plus the command's own verdict,
     // so the keybindings stop firing no-ops, the flyout omits an impossible move, and this gate (re-run on every
     // selection change, twice) costs dictionary lookups instead of tree walks and mints nothing (review F02).
     private EditVerdict MoveGate(ShellContext ctx, int delta) =>
-        ctx.Node is { CanReorder: true, Id: { } id } && !ctx.ProgrammingBlockLocked
+        ctx.Node is { CanReorder: true, Id: { } id } node && !ctx.ProgrammingBlockLocked
+            && !(ctx.IsProgrammingMode && node.Kind == TreeNodeKind.FunctionBlock)
             ? _session.CanReorder(id, delta)
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse(delta < 0 ? "Allerede først blandt sine søskende." : "Allerede sidst blandt sine søskende.")

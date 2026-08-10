@@ -61,10 +61,8 @@ public sealed partial class TreeNodeViewModel : ObservableObject
     /// <summary>Whether this node is a resource pin — a drag source/target for linking (US-022).</summary>
     public bool IsPin => Kind is TreeNodeKind.Pin;
 
-    /// <summary>Whether this pin is a product's data-line TERMINAL: the vendor offers <i>Copy</i> on it, unlike a
-    /// function-block pin (uxparity S-28). Set at projection time from the SDK's own classification
-    /// (<c>ElementKind.DatalinePin</c>) rather than re-derived here from the tag spelling — which family a tag
-    /// belongs to is the engine's answer, not the shell's (ARCHITECTURE invariant 7, review F15).</summary>
+    /// <summary>Whether this is a copy-only product data-line terminal; editable function-block variables also offer Cut.
+    /// Projection uses SDK <c>ElementKind.DatalinePin</c>, not GUI tag parsing (ARCHITECTURE invariant 7).</summary>
     public bool IsProductTerminal { get; init; }
 
     /// <summary>Whether this node is a product's <c>scenes</c> container — the target of a scenario link (US-024).</summary>
@@ -134,19 +132,18 @@ public sealed partial class TreeNodeViewModel : ObservableObject
     /// toggle (A-22/&amp;Logmærke, US-068).</summary>
     public bool IsLogMarkPin { get; init; }
 
-    /// <summary>Context-menu gate: <i>Cut</i> is offered on the structural components — a locality, a product or a
-    /// function block (A-5b/F-009). Not on the Localities root, link rows, pins, sections, a scene container or the
-    /// program-tree nodes.</summary>
-    public bool CanCut => Kind is TreeNodeKind.Locality or TreeNodeKind.Product or TreeNodeKind.FunctionBlock;
+    /// <summary>Context-menu gate: <i>Cut</i> is offered on structural components and editable function-block
+    /// variables. Catalog-declared/product terminals remain protected even though both families project as pins.</summary>
+    public bool CanCut => Kind is TreeNodeKind.Locality or TreeNodeKind.Product or TreeNodeKind.FunctionBlock
+        || Kind is TreeNodeKind.Pin && !IsCatalogPin && !IsProductTerminal;
 
     /// <summary>Context-menu gate: <i>Copy</i> is offered on every <see cref="CanCut">cuttable</see> node PLUS a
     /// scene container (US-068: a scene container's menu is <i>Copy</i>/Properties, no Cut).</summary>
     public bool CanCopy => CanCut || Kind is TreeNodeKind.Scenes;
 
-    /// <summary>Context-menu gate: <i>Move up</i>/<i>Move down</i> stay on the reorderable structural nodes — the same
-    /// locality/product/function-block set as <see cref="CanCut"/> (US-068, D07). Absent from link rows, pins,
-    /// sections, scene containers and program-tree nodes.</summary>
-    public bool CanReorder => CanCut;
+    /// <summary>Context-menu gate: <i>Move up</i>/<i>Move down</i> stay on reorderable structural nodes. Editable
+    /// variable pins may be cut/copied but are not reordered through these structural commands.</summary>
+    public bool CanReorder => Kind is TreeNodeKind.Locality or TreeNodeKind.Product or TreeNodeKind.FunctionBlock;
 
     /// <summary>Whether this row is an addressable node that is not a link row — a link row's only items are
     /// <i>Jump to opposite</i> and <i>Delete</i> (A-5b). Intentional test-only seam (D02): the live gates are the

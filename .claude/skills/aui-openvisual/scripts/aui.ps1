@@ -1055,6 +1055,16 @@ function Get-TreeItemChildren {
     return @($kids)
 }
 
+# UIA does not realize child rows for collapsed TreeItems, so expand before taking child-count snapshots.
+function Get-ExpandedTreeItemChildNames {
+    param($El)
+    $ecp = Get-Pattern $El ([System.Windows.Automation.ExpandCollapsePattern]::Pattern)
+    if ($ecp -and $ecp.Current.ExpandCollapseState -eq [System.Windows.Automation.ExpandCollapseState]::Collapsed) {
+        try { $ecp.Expand(); Start-Sleep -Milliseconds 150 } catch { }
+    }
+    return @(Get-TreeItemChildren $El | ForEach-Object { [string]$_.Current.Name })
+}
+
 # Split a label path into its segments. A literal '/' inside a node label is written '\/'.
 #
 # Without an escape a whole node KIND is unaddressable by label: the app labels every link row with the
@@ -1376,8 +1386,8 @@ function Invoke-Mechanism-DoubleClick {
 # Synthesized as press → threshold nudge → interpolated moves → release, rather than one jump to the target:
 # a drag only STARTS after the pointer travels past the toolkit's drag threshold while held, and a drop only
 # registers where the pointer last moved, so a single SetCursorPos between down and up produces a click, not
-# a drag. Same-pane drags verify row-order changes; cross-pane program-authoring drops require
-# changed status naming both endpoint rows.
+# a drag. Same-pane drags verify row-order changes. Cross-pane program drops arm a chooser and name both
+# endpoints; link drops instead increase both endpoint child counts and report only generic "Linket."
 function Invoke-Mechanism-NodeDrag {
     param($Spec, $Opts, $Window)
     if (-not $Window) { return (New-Result -Ok $false -Code 'AppNotRunning' -Message 'App not running.') }
@@ -1400,6 +1410,14 @@ function Invoke-Mechanism-NodeDrag {
     if (-not $dst.ok) { return (New-Result -Ok $false -Code $dst.code -Message $dst.message -Context (Get-Context $Window)) }
     Show-TreeItem $dst.element
 
+    $crossPane = $fromTreeId -ne $toTreeId
+    $sourceChildrenBefore = @()
+    $targetChildrenBefore = @()
+    if ($crossPane) {
+        $sourceChildrenBefore = @(Get-ExpandedTreeItemChildNames $src.element)
+        $targetChildrenBefore = @(Get-ExpandedTreeItemChildNames $dst.element)
+    }
+
     $guard = Assert-Foreground $Window
     if ($guard) { return $guard }
 
@@ -1412,7 +1430,6 @@ function Invoke-Mechanism-NodeDrag {
             -Context (Get-Context $Window))
     }
 
-    $crossPane = $fromTreeId -ne $toTreeId
     $sourceOrderBefore = (Get-PaneRowOrder $Window $fromTreeId) -join '|'
     $targetOrderBefore = if ($crossPane) { (Get-PaneRowOrder $Window $toTreeId) -join '|' } else { $sourceOrderBefore }
     $before = Get-Context $Window
@@ -1421,9 +1438,8 @@ function Invoke-Mechanism-NodeDrag {
     [Aui.Win32]::Drag([int]$a.X, [int]$a.Y, [int]$b.X, [int]$b.Y)
     Start-Sleep -Milliseconds 350
 
-    # A same-pane drag must change row order. A cross-pane pin -> program-group drop does not add a row yet: it
-    # arms the method chooser and names both endpoints in the status. Realized-row churn from scrolling is not
-    # a cross-pane effect; accepting it would turn a plain source selection into a false success.
+    # Realized-row churn from scrolling is not a cross-pane effect. Accept cross-pane success only when
+    # changed status names both endpoints or both endpoint child counts increase.
     $after = Get-Context $Window
     $sourceOrderAfter = (Get-PaneRowOrder $Window $fromTreeId) -join '|'
     $targetOrderAfter = if ($crossPane) { (Get-PaneRowOrder $Window $toTreeId) -join '|' } else { $sourceOrderAfter }
@@ -1434,7 +1450,17 @@ function Invoke-Mechanism-NodeDrag {
     $statusNamesEndpoints = $statusChanged -and $after.statusText -and
         $after.statusText.IndexOf($sourceName, [System.StringComparison]::OrdinalIgnoreCase) -ge 0 -and
         $after.statusText.IndexOf($targetName, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
-    $effectObserved = if ($crossPane) { $statusNamesEndpoints } else { $structureChanged }
+    $sourceChildrenAfter = @()
+    $targetChildrenAfter = @()
+    if ($crossPane) {
+        $sourceAfterResolution = Resolve-TreePath $Window $fromTreeId $from
+        $targetAfterResolution = Resolve-TreePath $Window $toTreeId $to
+        if ($sourceAfterResolution.ok) { $sourceChildrenAfter = @(Get-ExpandedTreeItemChildNames $sourceAfterResolution.element) }
+        if ($targetAfterResolution.ok) { $targetChildrenAfter = @(Get-ExpandedTreeItemChildNames $targetAfterResolution.element) }
+    }
+    $endpointChildCountsIncreased = $sourceChildrenAfter.Count -gt $sourceChildrenBefore.Count -and
+        $targetChildrenAfter.Count -gt $targetChildrenBefore.Count
+    $effectObserved = if ($crossPane) { $statusNamesEndpoints -or $endpointChildCountsIncreased } else { $structureChanged }
     for ($i = 0; $i -lt 6; $i++) {
         $targetSelected = @($after.selections | Where-Object {
             $_ -and $_.tree -eq $toTreeId -and $_.name -eq $targetName }).Count -gt 0
@@ -1448,7 +1474,15 @@ function Invoke-Mechanism-NodeDrag {
         $statusNamesEndpoints = $statusChanged -and $after.statusText -and
             $after.statusText.IndexOf($sourceName, [System.StringComparison]::OrdinalIgnoreCase) -ge 0 -and
             $after.statusText.IndexOf($targetName, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
-        $effectObserved = if ($crossPane) { $statusNamesEndpoints } else { $structureChanged }
+        if ($crossPane) {
+            $sourceAfterResolution = Resolve-TreePath $Window $fromTreeId $from
+            $targetAfterResolution = Resolve-TreePath $Window $toTreeId $to
+            if ($sourceAfterResolution.ok) { $sourceChildrenAfter = @(Get-ExpandedTreeItemChildNames $sourceAfterResolution.element) }
+            if ($targetAfterResolution.ok) { $targetChildrenAfter = @(Get-ExpandedTreeItemChildNames $targetAfterResolution.element) }
+        }
+        $endpointChildCountsIncreased = $sourceChildrenAfter.Count -gt $sourceChildrenBefore.Count -and
+            $targetChildrenAfter.Count -gt $targetChildrenBefore.Count
+        $effectObserved = if ($crossPane) { $statusNamesEndpoints -or $endpointChildCountsIncreased } else { $structureChanged }
     }
 
     $moved = (-not $crossPane) -and $structureChanged
@@ -1457,7 +1491,9 @@ function Invoke-Mechanism-NodeDrag {
         fromTree = $fromTreeId; toTree = $toTreeId; crossPane = $crossPane
         moved = $moved; effectObserved = $effectObserved
         targetSelected = $targetSelected; statusChanged = $statusChanged
-        statusNamesEndpoints = $statusNamesEndpoints
+        statusNamesEndpoints = $statusNamesEndpoints; endpointChildCountsIncreased = $endpointChildCountsIncreased
+        sourceChildCountBefore = $sourceChildrenBefore.Count; sourceChildCountAfter = $sourceChildrenAfter.Count
+        targetChildCountBefore = $targetChildrenBefore.Count; targetChildCountAfter = $targetChildrenAfter.Count
     }
     $route = if ($crossPane) { "$fromTreeId -> $toTreeId" } else { $fromTreeId }
     return (New-Result -Ok $effectObserved -Code $(if ($effectObserved) { 'Ok' } else { 'NoEffect' }) `
@@ -2570,14 +2606,28 @@ function Invoke-Mechanism-Capture {
     if (-not $Window) { return (New-Result -Ok $false -Code 'AppNotRunning' -Message 'App not running.') }
     $scope = $Spec.scope
     $target = $Window
+    # A UIA control may have no native window handle; foreground its owning window while capturing its bounding rectangle.
+    $foregroundTarget = $Window
+    $captureData = $null
     if ($scope -eq 'modal') {
         $target = Get-OpenModalWindow
         if (-not $target) { return (New-Result -Ok $false -Code 'DialogNotFound' -Message 'No modal open to capture.' -Context (Get-Context $Window)) }
+        $foregroundTarget = $target
+    } elseif ($scope -eq 'control') {
+        $id = Get-OptValue $Opts @('id') -NamedOnly
+        if (-not $id -or $id -is [bool] -or [string]::IsNullOrWhiteSpace([string]$id)) {
+            return (New-Result -Ok $false -Code 'InvalidInput' -Message 'capture control requires --id <AutomationId>.' -Context (Get-Context $Window))
+        }
+        $target = Find-ByAutomationId $Window ([string]$id)
+        if (-not $target) {
+            return (New-Result -Ok $false -Code 'TargetNotFound' -Message "No control with AutomationId '$id'." -Context (Get-Context $Window))
+        }
+        $captureData = [ordered]@{ automationId = [string]$id; name = [string]$target.Current.Name }
     }
     # Capture scrapes the screen, so a target that is not in front yields another app's pixels.
     # Failing to foreground is not fatal here (the rect may still be unoccluded) but it must be
     # surfaced rather than silently producing a misleading image.
-    $fgOk = Set-Foreground $target
+    $fgOk = Set-Foreground $foregroundTarget
     $capWarn = @()
     if (-not $fgOk) { $capWarn += 'Could not foreground the capture target; the image may be occluded by another window.' }
     Start-Sleep -Milliseconds 200
@@ -2602,7 +2652,7 @@ function Invoke-Mechanism-Capture {
     return (New-Result -Ok $fgOk -Code ($(if ($fgOk) { 'Ok' } else { 'CaptureOccluded' })) `
         -Message ($(if ($fgOk) { "Captured $scope to $outPath." } else { "Captured $scope to $outPath, but the target could not be brought to the front, so the image may show another window." })) `
         -Verified $fgOk -Warnings $capWarn `
-        -Context (Get-Context $Window) -Screenshot $shot)
+        -Context (Get-Context $Window) -Screenshot $shot -Data $captureData)
 }
 
 # ── OS file picker ───────────────────────────────────────────────────────────
@@ -2746,21 +2796,32 @@ function Invoke-Mechanism-FileDialog {
 
     # Verify by effect: the title bar must name the file we asked for.
     $leaf = Split-Path -Leaf $path
-    $title = ''
+    $title = $Window.Current.Name
+    $data = [ordered]@{ path = $path; dialogTitle = $dlgTitle; windowTitle = $title; verifiedBy = 'titleBaseName' }
+    # A leftover modal is a stronger, explicit oracle than the title. In particular, the dirty-document
+    # guard appears after the picker closes and otherwise gets misreported as a generic unchanged-title failure.
+    $stuck = Get-OpenModalWindow
+    if ($stuck) {
+        $data['blockingModal'] = $stuck.Current.Name
+        return (New-Result -Ok $false -Code 'DialogBlocked' `
+            -Message ("$($Spec.id) did not complete: '" + $stuck.Current.Name + "' is still open (answer it, then retry). " +
+                      "The title bar reads '$title', but cannot verify a flow blocked by that modal.") `
+            -Context (Get-Context $Window) -Data $data)
+    }
     for ($i = 0; $i -lt 40; $i++) {
         Start-Sleep -Milliseconds 500
         $title = $Window.Current.Name
         if (Test-TitleNamesFile $title $leaf) { break }
     }
     $landed = (Test-TitleNamesFile $title $leaf)
-    $data = [ordered]@{ path = $path; dialogTitle = $dlgTitle; windowTitle = $title; verifiedBy = 'titleBaseName' }
+    $data['windowTitle'] = $title
     if (-not $landed) {
         return (New-Result -Ok $false -Code 'NoEffect' `
             -Message "The picker closed but the title bar still reads '$title' rather than '$leaf'; the project did not load/save." `
             -Context (Get-Context $Window) -Data $data)
     }
     # The caption carries the BASE NAME only, so on its own it cannot tell "written where I asked" from "a
-    # file of that name was already open" (the same blind spot the leftover-modal check below covers for
+    # file of that name was already open" (the same blind spot the earlier leftover-modal check covers for
     # open). For a save the full path is checkable, so check it and stop relying on the weaker signal.
     # Only when ROOTED: the picker resolves a relative path against ITS working directory, not this
     # session's, so a Test-Path miss there would mean "looked in the wrong place", not "did not save".
@@ -2771,19 +2832,6 @@ function Invoke-Mechanism-FileDialog {
                 -Message "The title bar reads '$title', but no file exists at '$path'; the save did not land where it was asked to." `
                 -Context (Get-Context $Window) -Data $data)
         }
-    }
-    # A leftover modal means the flow did NOT complete, whatever the caption says. Opening a dirty document
-    # raises the unsaved-changes guard BEFORE the picker; that guard is an Avalonia window, not a #32770, so
-    # the picker wait does not see it -- and if the caption already named the target file (re-opening the file
-    # that is open, the commonest case) the title check passes on the PRE-EXISTING state and reports a
-    # verified success for a command that did nothing. Live-caught 2026-08-01 in uxparity S-05.
-    $stuck = Get-OpenModalWindow
-    if ($stuck) {
-        $data['blockingModal'] = $stuck.Current.Name
-        return (New-Result -Ok $false -Code 'DialogBlocked' `
-            -Message ("$($Spec.id) did not complete: '" + $stuck.Current.Name + "' is still open (answer it, then retry). " +
-                      "The title bar reads '$title', but it read that before the command too, so it proves nothing here.") `
-            -Context (Get-Context $Window) -Data $data)
     }
     return (New-Result -Ok $true -Code 'Ok' -Message "$($Spec.id): '$leaf' -- title bar now '$title'." -Verified $true `
         -Warnings $overwriteWarn -Context (Get-Context $Window) -Data $data)

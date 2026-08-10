@@ -4,13 +4,14 @@ using Ihc.Vis.Session;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// T004 — extends the T003 central locked-ancestor authorization to the IN-PLACE mutations (PG-2, finding #2):
-    /// the AND/OR condition-logic toggle, save-current-value, log-mark, enum-state edit and the function-block rename
-    /// are each refused when their target lies at/within a <c>locked="yes"</c> block, so no attribute edit reaches a
-    /// locked block's internals either. The session commands surface a clean refusal via <c>Evaluate</c>; the
+    /// T004 — extends the T003 central locked-ancestor authorization to in-place mutations:
+    /// the AND/OR condition-logic toggle, save-current-value, log-mark and enum-state edit are each refused when their
+    /// target lies inside a <c>locked="yes"</c> block, so no attribute edit reaches a locked block's internals. The
+    /// block's own user-facing Name/Note metadata remains editable, matching the vendor properties dialog. Session
+    /// commands surface a clean refusal via <c>Evaluate</c>; the
     /// enum-state edit is withdrawn at its gateway (its entry-point variable is the locked-block element — the enum
-    /// TYPE it would edit is project-global). Oracles: the locked <c>AutoProof</c> block (project2) for the output
-    /// rename/backup cases, and project3's locked library blocks (which carry real condition groups and enum
+    /// TYPE it would edit is project-global). Oracles: the locked <c>AutoProof</c> block (project2) for the instance
+    /// Name/Note and output-backup cases, and project3's locked library blocks (which carry real condition groups and enum
     /// variables) for the logic-toggle and enum-state cases.
     /// </summary>
     public class LockedBlockInPlaceGuardTests
@@ -36,7 +37,7 @@ namespace Ihc.Vis.Tests
             return session;
         }
 
-        // ---- each in-place command refused when its target is inside a locked block ----
+        // ---- locked-block in-place rules: internals refused; instance Name/Note allowed ----
 
         [Test]
         public async Task SetConditionsLogic_OnLockedBlockConditions_IsRefused()
@@ -68,15 +69,23 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
-        public async Task RenameLocality_OnLockedFunctionBlock_IsRefused()
+        public async Task RenameLocality_OnLockedFunctionBlock_UpdatesInstanceNameAndNote()
         {
             Project project = await Load("project2-CustomBlock.vis");
             ElementId lockedBlock = Fb(project, "AutoProof").Id!.Value;
             ProjectDocumentSession session = Session(project);
 
-            EditOutcome outcome = session.Apply(new RenameLocality(lockedBlock, "Renamed", string.Empty));
+            EditOutcome outcome = session.Apply(new RenameLocality(lockedBlock, "Renamed instance", "Installer note"));
 
-            Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused));
+            ProjectElement saved = session.Current!.FindById(lockedBlock)!;
+            Assert.Multiple(() =>
+            {
+                Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed));
+                Assert.That(saved.GetAttribute("name"), Is.EqualTo("Renamed instance"));
+                Assert.That(saved.GetAttribute("note"), Is.EqualTo("Installer note"));
+                Assert.That(saved.GetAttribute("locked"), Is.EqualTo("yes"),
+                    "editing instance metadata does not unlock or alter the protected block internals");
+            });
         }
 
         [Test]

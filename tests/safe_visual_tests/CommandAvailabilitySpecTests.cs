@@ -182,14 +182,18 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
         });
     }
 
-    // D13: Copy is bar-enabled on ANY pin, but the flyout offers it only on a PRODUCT terminal (an FB pin's
-    // context menu has no Copy) — measured vendor behaviour, encoded as SurfacePolicy data.
+    // uxparity2 S2-18: a function-block variable row offers Cut and Copy in the vendor flyout. Product terminals
+    // remain copy-only, while neither pin family becomes reorderable.
     [Test]
-    public async Task Pins_CopyBarEnabledOnAnyPin_ContextOnlyOnProductTerminal()
+    public async Task FunctionBlockVariablePin_FlyoutEnablesCutAndCopy_ButNotReorder()
     {
         var (harness, vm, loc, _) = await BuildAsync();
         using var _1 = harness;
-        ShellContext fbPin = vm.Context with { Node = Node(loc, TreeNodeKind.Pin, isPin: true) };
+        ShellContext fbPin = vm.Context with
+        {
+            IsProgrammingMode = true,
+            Node = Node(loc, TreeNodeKind.Pin, isPin: true, canCut: true, canCopy: true),
+        };
         ShellContext productTerminal = vm.Context with
         {
             Node = Node(loc, TreeNodeKind.Pin, isPin: true, isProductTerminal: true),
@@ -199,20 +203,108 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
         {
             Assert.That(At(vm, "edit.copy", fbPin, Surface.MenuBar), Is.EqualTo(Availability.Allow),
                 "an FB pin copies from the bar");
-            Assert.That(At(vm, "edit.copy", fbPin, Surface.ContextMenu), Is.EqualTo(Availability.Hidden),
-                "an FB pin's flyout has no Copy");
+            Assert.That(At(vm, "edit.copy", fbPin, Surface.ContextMenu), Is.EqualTo(Availability.Allow),
+                "S2-18: an FB variable pin's flyout offers Copy");
+            Assert.That(At(vm, "edit.cut", fbPin, Surface.ContextMenu), Is.EqualTo(Availability.Allow),
+                "S2-18: an FB variable pin's flyout offers Cut");
             Assert.That(At(vm, "edit.copy", productTerminal, Surface.ContextMenu), Is.EqualTo(Availability.Allow),
                 "a product terminal's flyout offers Copy");
-            Assert.That(At(vm, "edit.cut", fbPin, Surface.ContextMenu), Is.EqualTo(Availability.Hidden),
-                "a pin is never cuttable — the flyout omits");
-            Assert.That(At(vm, "edit.cut", fbPin, Surface.MenuBar).Enabled, Is.False,
-                "…and the bar greys Cut with a reason");
+            Assert.That(At(vm, "edit.moveUp", fbPin, Surface.ContextMenu), Is.EqualTo(Availability.Hidden),
+                "a variable pin is editable but not structurally reorderable");
         });
     }
 
-    // review F05: the Delete gate asks the SDK's delete COMMAND, not a boolean — so a US-044 grey carries the
-    // reason the engine already computed (which pin, which rule) instead of a generic literal the GUI would have
-    // to keep in step with the SDK by hand. Two non-deletable shapes, two DIFFERENT reasons.
+    [Test]
+    public async Task FunctionBlockVariablePin_StructuralEditing_IsProgrammingModeOnly()
+    {
+        var (harness, vm, loc, _) = await BuildAsync();
+        using var _1 = harness;
+        NodeContext pin = Node(loc, TreeNodeKind.Pin, isPin: true, canCut: true, canCopy: true);
+        ShellContext configuration = vm.Context with { IsProgrammingMode = false, Node = pin };
+        ShellContext programming = configuration with { IsProgrammingMode = true };
+        ShellContext lockedProgramming = programming with { ProgrammingBlockLocked = true };
+
+        Assert.Multiple(() =>
+        {
+            foreach (string id in new[] { "edit.cut", "edit.copy", "edit.delete" })
+            {
+                Assert.That(At(vm, id, configuration, Surface.MenuBar).Enabled, Is.False,
+                    $"{id}: the vendor greys structural pin editing in configuration mode");
+                Assert.That(At(vm, id, configuration, Surface.ContextMenu), Is.EqualTo(Availability.Hidden),
+                    $"{id}: the vendor omits structural pin editing from the configuration flyout");
+            }
+
+            Assert.That(At(vm, "edit.cut", configuration, Surface.Toolbar).Enabled, Is.False);
+            Assert.That(At(vm, "edit.copy", configuration, Surface.Toolbar).Enabled, Is.False);
+            Assert.That(At(vm, "edit.cut", programming, Surface.ContextMenu), Is.EqualTo(Availability.Allow));
+            Assert.That(At(vm, "edit.copy", programming, Surface.ContextMenu), Is.EqualTo(Availability.Allow));
+            Assert.That(At(vm, "edit.delete", programming, Surface.ContextMenu), Is.EqualTo(Availability.Allow));
+            Assert.That(At(vm, "edit.cut", lockedProgramming, Surface.ContextMenu), Is.EqualTo(Availability.Hidden));
+            Assert.That(At(vm, "edit.copy", lockedProgramming, Surface.ContextMenu), Is.EqualTo(Availability.Allow),
+                "the vendor keeps Copy available in a locked block's read-only programming view");
+            Assert.That(At(vm, "edit.delete", lockedProgramming, Surface.ContextMenu), Is.EqualTo(Availability.Hidden));
+        });
+    }
+
+    [Test]
+    public async Task ActiveProgrammingRoot_StructuralEditing_IsConfigurationModeOnly()
+    {
+        var (harness, vm, loc, _) = await BuildAsync();
+        using var _1 = harness;
+        NodeContext block = Node(loc, TreeNodeKind.FunctionBlock, isLockedBlock: true, canCut: true, canCopy: true);
+        ShellContext configuration = vm.Context with { IsProgrammingMode = false, Node = block };
+        ShellContext programming = configuration with { IsProgrammingMode = true, ProgrammingBlockLocked = true };
+        ShellContext unlockedProgramming = programming with { ProgrammingBlockLocked = false };
+
+        Assert.Multiple(() =>
+        {
+            foreach (string id in new[] { "edit.cut", "edit.copy", "edit.delete" })
+            {
+                Assert.That(At(vm, id, configuration, Surface.ContextMenu), Is.EqualTo(Availability.Allow),
+                    $"{id}: the block itself is structurally editable in configuration mode");
+                Assert.That(At(vm, id, programming, Surface.MenuBar).Enabled, Is.False,
+                    $"{id}: the active programming root is not a structural tree item");
+                Assert.That(At(vm, id, programming, Surface.ContextMenu), Is.EqualTo(Availability.Hidden));
+            }
+            Assert.That(At(vm, "edit.moveDown", configuration, Surface.ContextMenu), Is.EqualTo(Availability.Allow));
+            Assert.That(At(vm, "edit.moveDown", unlockedProgramming, Surface.ContextMenu), Is.EqualTo(Availability.Hidden),
+                "the active programming root is a projection, not a reorderable structural item");
+        });
+    }
+
+    [Test]
+    public async Task ProgramTreeRoot_OffersBlockCommands_ButNotStructuralDeletion()
+    {
+        var (harness, vm, loc, _) = await BuildAsync();
+        using var _1 = harness;
+        NodeContext root = Node(loc, TreeNodeKind.ProgramBlockRoot, isLockedBlock: true);
+        ShellContext locked = vm.Context with
+        {
+            IsProgrammingMode = true,
+            ProgrammingBlockLocked = true,
+            Node = root,
+        };
+        ShellContext unlocked = locked with
+        {
+            ProgrammingBlockLocked = false,
+            Node = root with { IsLockedBlock = false },
+        };
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(At(vm, "node.saveBlock", locked, Surface.ContextMenu), Is.EqualTo(Availability.Allow));
+            Assert.That(At(vm, "node.saveBlock", locked, Surface.MenuBar).Enabled, Is.False,
+                "the locked root flyout is measurable, but saving the active locked block stays disabled on the bar");
+            Assert.That(At(vm, "node.unlock", locked, Surface.ContextMenu), Is.EqualTo(Availability.Allow));
+            Assert.That(At(vm, "edit.delete", locked, Surface.ContextMenu), Is.EqualTo(Availability.Hidden));
+            Assert.That(At(vm, "node.saveBlock", unlocked, Surface.ContextMenu), Is.EqualTo(Availability.Allow));
+            Assert.That(At(vm, "node.unlock", unlocked, Surface.ContextMenu), Is.EqualTo(Availability.Hidden));
+            Assert.That(At(vm, "edit.delete", unlocked, Surface.ContextMenu), Is.EqualTo(Availability.Hidden));
+        });
+    }
+
+    // The Delete gate uses the cheap SDK classifier first, then asks the command on refusal so a US-044 grey carries
+    // the engine's specific reason instead of a generic GUI literal. Two non-deletable shapes, two DIFFERENT reasons.
     [Test]
     public async Task Delete_BarGrey_CarriesTheSdkRefusalReason_PerRefusalKind()
     {
@@ -379,6 +471,25 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
     // crudarch T014: the programming-mode rows — authoring commands appear on their container kinds and are
     // WITHDRAWN wholesale on a locked block (A-27/F-076: missing, not greyed, in the flyout; greyed in the bar);
     // Leave-programming-mode and the Ctrl+I/U pin inserts gate on the mode itself.
+    [Test]
+    public async Task ProgramRow_OffersDelete_WhenSdkClassifiesTopLevelProgramAsDeletable()
+    {
+        var (harness, vm, loc, _) = await BuildAsync();
+        using var _1 = harness;
+        ElementId block = (await harness.Session.AddEmptyFunctionBlockAsync(loc))!.Value;
+        ElementId program = harness.Session.Current!.FindById(block)!.Descendants()
+            .Single(e => e.Tag == "program_simple").Id!.Value;
+        ShellContext context = vm.Context with
+        {
+            IsProgrammingMode = true,
+            ProgrammingBlockLocked = false,
+            Node = Node(program, TreeNodeKind.Program),
+        };
+
+        Assert.That(At(vm, "edit.delete", context, Surface.ContextMenu), Is.EqualTo(Availability.Allow),
+            "the vendor Program-row flyout offers enabled Delete for the top-level program_simple node");
+    }
+
     [Test]
     public async Task ProgrammingModeRows_ContainerKinds_And_LockedWithdrawal()
     {

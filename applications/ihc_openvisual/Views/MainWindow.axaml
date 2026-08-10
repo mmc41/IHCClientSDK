@@ -163,16 +163,14 @@
                           a:AutomationProperties.AutomationId="ctx.program.setConditionsOr"
                           IsVisible="{Binding Registry.ContextMenu[program.setConditionsOr].Visible, FallbackValue=False}"/>
             </controls:AccessibleMenuItem>
+            <!-- Vendor node flyouts omit shortcut captions; keyboard bindings and menu-bar captions remain. -->
             <controls:AccessibleMenuItem Header="_Gem Funktionsblok…" Command="{Binding SaveFunctionBlockCommand}"
-                      InputGesture="{OnPlatform 'Ctrl+G', macOS='Cmd+G'}"
                       a:AutomationProperties.AutomationId="ctx.node.saveBlock"
                       IsVisible="{Binding Registry.ContextMenu[node.saveBlock].Visible, FallbackValue=False}"/>
             <controls:AccessibleMenuItem Header="_Klip" Command="{Binding CutCommand}"
-                      InputGesture="{OnPlatform 'Ctrl+X', macOS='Cmd+X'}"
                       a:AutomationProperties.AutomationId="ctx.edit.cut"
                       IsVisible="{Binding Registry.ContextMenu[edit.cut].Visible, FallbackValue=False}"/>
             <controls:AccessibleMenuItem Header="_Kopier" Command="{Binding CopyCommand}"
-                      InputGesture="{OnPlatform 'Ctrl+C', macOS='Cmd+C'}"
                       a:AutomationProperties.AutomationId="ctx.edit.copy"
                       IsVisible="{Binding Registry.ContextMenu[edit.copy].Visible, FallbackValue=False}"/>
             <!-- "Op_lås", not "_Oplås": a locked block is also reorderable, so Flyt _op is on this same flyout
@@ -181,11 +179,9 @@
                       a:AutomationProperties.AutomationId="ctx.node.unlock"
                       IsVisible="{Binding Registry.ContextMenu[node.unlock].Visible, FallbackValue=False}"/>
             <controls:AccessibleMenuItem Header="_Indsæt" Command="{Binding PasteCommand}"
-                      InputGesture="{OnPlatform 'Ctrl+V', macOS='Cmd+V'}"
                       a:AutomationProperties.AutomationId="ctx.edit.paste"
                       IsVisible="{Binding Registry.ContextMenu[edit.paste].Visible, FallbackValue=False}"/>
             <controls:AccessibleMenuItem Header="_Hop til modsat link" Command="{Binding NavigateLinkOppositeCommand}"
-                      InputGesture="F4"
                       a:AutomationProperties.AutomationId="ctx.link.jumpOpposite"
                       IsVisible="{Binding Registry.ContextMenu[link.jumpOpposite].Visible, FallbackValue=False}"/>
             <controls:AccessibleMenuItem Header="Flyt _op" Command="{Binding MoveUpCommand}"
@@ -201,13 +197,11 @@
                  FunktionsBlokke, Klip, Kopier, Slet, TOM FUNKTIONSBLOK, separator, Egenskaber (measured 2026-08-09,
                  alignment F-21 — story 11's table always had this position). -->
             <controls:AccessibleMenuItem Header="_Tom Funktionsblok" Command="{Binding InsertEmptyFunctionBlockCommand}"
-                      InputGesture="{OnPlatform 'Ctrl+Shift+B', macOS='Cmd+Shift+B'}"
                       a:AutomationProperties.AutomationId="ctx.insert.emptyFunctionBlock"
                       IsVisible="{Binding Registry.ContextMenu[insert.emptyFunctionBlock].Visible, FallbackValue=False}"/>
             <!-- Offered on a block AND on its pins: the vendor lets you jump from a pin to the program that uses
                  it (uxparity S-28). The registry row's gate resolves the owning block for either. -->
             <controls:AccessibleMenuItem Header="_Vis program" Command="{Binding EnterProgrammingModeCommand}"
-                      InputGesture="F3"
                       a:AutomationProperties.AutomationId="ctx.view.showProgram"
                       IsVisible="{Binding Registry.ContextMenu[view.showProgram].Visible, FallbackValue=False}"/>
             <!-- The vendor closes every node flyout with a separator before Egenskaber (measured 2026-08-09,
@@ -579,6 +573,7 @@
                 a:AutomationProperties.LandmarkType="Banner"
                 a:AutomationProperties.AccessibilityView="Control"
                 a:AutomationProperties.Name="Toolbar"
+                a:AutomationProperties.AutomationId="Toolbar"
                 Background="{DynamicResource ToolbarBackgroundBrush}"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,0,1"
                 Padding="6,4">
@@ -694,6 +689,8 @@
                          Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center"
                          Path="{Binding ControllerConnectionIcon}"
                          ToolTip.Tip="{Binding ControllerConnectionText}"
+                         a:AutomationProperties.AutomationId="ControllerConnectionIndicator"
+                         a:AutomationProperties.AccessibilityView="Control"
                          a:AutomationProperties.Name="{Binding ControllerConnectionText}"/>
                 <!-- Locale indicator: Danish flag -->
                 <Border Grid.Column="2" Width="20" Height="14" Background="#C8102E" ToolTip.Tip="Dansk projektsprog"

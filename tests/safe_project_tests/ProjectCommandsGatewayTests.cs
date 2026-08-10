@@ -272,6 +272,27 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        [Test]
+        public async Task PreviewDelete_ClassifiesTopLevelProgramAsGeneral()
+        {
+            ProjectAppService app = App;
+            Project project = await Load("project2-CustomBlock.vis");
+            ProjectElement unlockedBlock = project.Root.DescendantsAndSelf()
+                .Single(e => e.Tag == "functionblock" && e.GetAttribute("name") == "Custom blok");
+            ElementId program = unlockedBlock.Descendants()
+                .First(e => e.Tag == "program_simple").Id!.Value;
+
+            DeleteImpact impact = app.Commands.PreviewDelete(project, program);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(app.Commands.CanDelete(project, program), Is.True,
+                    "the vendor offers Delete on the top-level Program row");
+                Assert.That(impact.Deletable, Is.True);
+                Assert.That(impact.Kind, Is.EqualTo(DeleteKind.General));
+            });
+        }
+
         // ---- Link/Scene family (T006) ----
 
         [Test]

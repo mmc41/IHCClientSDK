@@ -28,7 +28,7 @@ Add an object to the `commands` array in `scripts/commands.json`. Required keys:
 | `dialogRead` | — | Enumerate the OPEN modal's controls (read-only). |
 | `dialogSetText` | — | Set `--field` to `--text` in the open modal via ValuePattern, with readback. |
 | `dialogButton` | — | Invoke `--button` in the open modal. |
-| `capture` | `scope` (`window`/`modal`) | Screenshot to PNG. |
+| `capture` | `scope` (`window`/`modal`/`control`) | Screenshot to PNG; control scope resolves `--id <AutomationId>`. |
 | `passive` / `static` / `dialogCancel` / `notImplemented` | — | Inspection / self-describe / dismiss modal / stub. |
 
 Keep this table in step with the `switch` in `Invoke-Command-Spec`: a mechanism that exists in the

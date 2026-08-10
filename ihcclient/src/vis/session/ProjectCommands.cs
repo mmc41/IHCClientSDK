@@ -522,7 +522,8 @@ namespace Ihc.Vis
             || tag.StartsWith("resource_", StringComparison.Ordinal)
             || tag.StartsWith("dataline_", StringComparison.Ordinal)
             || tag.StartsWith("airlink_", StringComparison.Ordinal)
-            || tag is "event" or "event_power" or "action" or "condition" or "program_sub" or "program_case" or "case_action";
+            || tag is "program_simple" or "event" or "event_power" or "action" or "condition"
+                or "program_sub" or "program_case" or "case_action";
 
         private static bool HasLinkHalves(ProjectElement element) =>
             element.DescendantsAndSelf().Any(d => d.IsLinkHalf);

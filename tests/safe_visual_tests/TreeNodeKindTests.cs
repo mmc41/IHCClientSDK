@@ -94,7 +94,12 @@ public class TreeNodeKindTests
             Assert.That(Node(TreeNodeKind.SceneMember).IsLinkRow, Is.True);
             Assert.That(Node(TreeNodeKind.LocalitiesRoot).IsLocalitiesRoot, Is.True);
             Assert.That(Node(TreeNodeKind.Locality).CanCut, Is.True);
-            Assert.That(Node(TreeNodeKind.Pin, "x").CanCut, Is.False, "a pin is not cut/copyable");
+            Assert.That(Node(TreeNodeKind.Pin, "x").CanCut, Is.True, "an editable function-block variable is cut/copyable");
+            Assert.That(new TreeNodeViewModel("catalog", "/Assets/x.svg")
+            {
+                Kind = TreeNodeKind.Pin,
+                IsCatalogPin = true,
+            }.CanCut, Is.False, "a catalog pin remains protected");
         });
     }
 

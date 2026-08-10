@@ -117,12 +117,12 @@
     },
     {
       "id": "capture.control",
-      "status": "planned",
+      "status": "partial",
       "mutating": "no",
-      "mechanism": "notImplemented",
+      "mechanism": "capture",
+      "scope": "control",
       "gates": [],
-      "description": "Capture a single child control (e.g. a tree pane) to a PNG.",
-      "note": "Per-control rect capture not yet wired."
+      "description": "Capture the child control addressed by --id <AutomationId> to a PNG."
     },
     {
       "id": "project.new",
@@ -691,7 +691,7 @@
       "mutating": "yes",
       "mechanism": "nodeDrag",
       "gates": [],
-      "description": "Move a node onto another by a REAL mouse drag: --from <path> --to <path> [--from-tree TV1|TV2] [--to-tree TV1|TV2]. Legacy --tree selects both endpoints for same-pane calls. The gesture the menu supplements (edit.moveUp/moveDown, link start-from-here/to-here) stand in for, so a 3WAY scenario can prove supplement and drag agree -- without it the OpenVisual drag path itself is never measured. Synthesized as press, threshold nudge, interpolated moves, release: a drag only STARTS once the pointer travels past the toolkit's drag threshold while held, and it drops where the pointer last moved, so a single jump between down and up is delivered as a plain CLICK on the source row. Steals the foreground for the whole gesture and refuses rather than dragging blind. Same-pane effects require a changed row order; cross-pane program-authoring effects require a changed status that names both addressed endpoints. Code=NoEffect when the applicable oracle sees nothing.",
+      "description": "Move a node onto another by a REAL mouse drag: --from <path> --to <path> [--from-tree TV1|TV2] [--to-tree TV1|TV2]. Legacy --tree selects both endpoints for same-pane calls. The gesture the menu supplements (edit.moveUp/moveDown, link start-from-here/to-here) stand in for, so a 3WAY scenario can prove supplement and drag agree -- without it the OpenVisual drag path itself is never measured. Synthesized as press, threshold nudge, interpolated moves, release: a drag only STARTS once the pointer travels past the toolkit's drag threshold while held, and it drops where the pointer last moved, so a single jump between down and up is delivered as a plain CLICK on the source row. Steals the foreground for the whole gesture and refuses rather than dragging blind. Same-pane effects require a changed row order. Cross-pane program-authoring effects require a changed status that names both addressed endpoints; cross-pane link effects require both endpoint child counts to increase. Code=NoEffect when the applicable oracle sees nothing.",
       "note": "Added 2026-08-01 (uxparity S-11). Counterpart to the vendor driver's node.drag."
     },
     {

@@ -38,18 +38,36 @@ public class ContextMenuGateTests
         });
     }
 
-    // Fix 2: a pin and a section are neither cut/copy nor reorderable — no Move up/down on them (D07).
+    // Catalog/product pins and sections are neither cut/copy nor reorderable — no Move up/down on them (D07).
     [Test]
-    public void ContextMenu_PinAndSection_NoCutCopyOrReorder()
+    public void ContextMenu_CatalogPinAndSection_NoCutCopyOrReorder()
     {
+        var catalogPin = new TreeNodeViewModel("n", "icon")
+        {
+            Kind = TreeNodeKind.Pin,
+            IsCatalogPin = true,
+        };
         Assert.Multiple(() =>
         {
-            foreach (TreeNodeKind kind in new[] { TreeNodeKind.Pin, TreeNodeKind.Section })
+            foreach (TreeNodeViewModel node in new[] { catalogPin, Node(TreeNodeKind.Section) })
             {
-                Assert.That(Node(kind).CanCut, Is.False, $"{kind} is not cuttable");
-                Assert.That(Node(kind).CanCopy, Is.False, $"{kind} is not copyable");
-                Assert.That(Node(kind).CanReorder, Is.False, $"{kind} is not reorderable — no Move up/down");
+                Assert.That(node.CanCut, Is.False, $"{node.Kind} is not cuttable");
+                Assert.That(node.CanCopy, Is.False, $"{node.Kind} is not copyable");
+                Assert.That(node.CanReorder, Is.False, $"{node.Kind} is not reorderable — no Move up/down");
             }
+        });
+    }
+
+    [Test]
+    public void ContextMenu_FunctionBlockVariablePin_CanCutAndCopyButCannotReorder()
+    {
+        TreeNodeViewModel variable = Node(TreeNodeKind.Pin);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(variable.CanCut, Is.True, "S2-18: the vendor variable-row flyout offers Cut");
+            Assert.That(variable.CanCopy, Is.True, "S2-18: the vendor variable-row flyout offers Copy");
+            Assert.That(variable.CanReorder, Is.False, "the vendor variable-row flyout has no Move commands");
         });
     }
 

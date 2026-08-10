@@ -83,4 +83,18 @@ public class LockedBlockProgrammingStatusTests : AvaloniaTestBase
         Assert.That(lockedVm.StatusText, Is.Not.EqualTo(openVm.StatusText),
             "the locked and unlocked programming-mode messages must not be the same string");
     }
+
+    [Test]
+    public async Task LockedBlock_InputSectionFlyout_WithdrawsVariableTypesAndKeepsProperties()
+    {
+        var (harness, vm) = await ProgrammingModeOnAsync(locked: true);
+        using var _ = harness;
+        var input = vm.InstallationNodes[0].Children.Single(n => n.NodeKind == "section:inputs");
+
+        vm.SelectNode(input);
+
+        Assert.That(vm.SectionFlyoutItems.Select(item => item.Header),
+            Is.EqualTo(new[] { "Egenskaber…" }),
+            "the vendor's locked Input flyout contains only its separator and Properties; OpenVisual does not model separators as data items");
+    }
 }

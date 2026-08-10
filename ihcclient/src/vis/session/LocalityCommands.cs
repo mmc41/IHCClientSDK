@@ -26,7 +26,7 @@ namespace Ihc.Vis.Session
 
         internal override EditVerdict Evaluate(EditContext context) =>
             context.RequireExists(Id, "element")
-                .And(context.RequireUnlockedTarget(Id, inclusive: true));   // T004: no rename of a locked function block
+                .And(context.RequireUnlockedTarget(Id, inclusive: false));  // A locked block's instance Name/Note remain editable; only its descendants are protected.
 
         internal override void Execute(ProjectEditor editor)
         {

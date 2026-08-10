@@ -251,12 +251,13 @@ Scenario: Locked blocks resist internal edits
 **Readiness:** Ready.
 
 **Implementation status:** ✅ Implemented — the unlock is silent and undoable, undo re-locks the block with the
-app still running, and the view-only **UI** gate withdraws the insert/delete/move commands on a locked block.
+app still running, and the view-only **UI** gate withdraws insert/delete/move commands and variable-type entries
+from a locked section flyout while retaining Properties for inspection.
 A single central **engine-level** guard now refuses **every** mutation targeting a locked block's subtree,
 whoever drives the editor: the **structural** edits (insert variable/enum/program-row/pin, reorder, and move/copy
 whose target parent is inside the locked subtree) and the **in-place** edits (AND/OR condition toggle,
-save-current-value, log-mark, enum-state edit, and the function-block rename). A direct engine call throws; a
-session command surfaces a clean refusal.
+save-current-value, log-mark, and enum-state edit). The block's own instance Name/Note remain editable; they are
+metadata outside the protected internals. A direct engine call throws; a session command surfaces a clean refusal.
 
 ---
 

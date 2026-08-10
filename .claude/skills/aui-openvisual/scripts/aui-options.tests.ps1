@@ -535,21 +535,107 @@ function Test-NodeDragCrossPaneOracle {
         if ($rhs -notmatch '\$statusChanged' -or $rhs -notmatch 'IndexOf\(\$sourceName' -or
             $rhs -notmatch 'IndexOf\(\$targetName') { return 'status assignment does not prove both endpoints' }
     }
-    if ($text -notmatch '\$effectObserved\s*=\s*if\s*\(\$crossPane\)\s*\{\s*\$statusNamesEndpoints\s*\}\s*else\s*\{\s*\$structureChanged\s*\}') {
+    $countAssignments = @($fn.FindAll({
+        $args[0] -is [System.Management.Automation.Language.AssignmentStatementAst] -and
+        $args[0].Left.Extent.Text -eq '$endpointChildCountsIncreased'
+    }, $true))
+    if ($countAssignments.Count -eq 0) { return 'missing endpoint-child-count oracle' }
+    foreach ($assignment in $countAssignments) {
+        $rhs = $assignment.Right.Extent.Text
+        if ($rhs -notmatch '\$sourceChildrenAfter\.Count\s+-gt\s+\$sourceChildrenBefore\.Count' -or
+            $rhs -notmatch '\$targetChildrenAfter\.Count\s+-gt\s+\$targetChildrenBefore\.Count') {
+            return 'count assignment does not compare both endpoint child counts'
+        }
+    }
+    if ($text -notmatch '\$effectObserved\s*=\s*if\s*\(\$crossPane\)\s*\{\s*\$statusNamesEndpoints\s+-or\s+\$endpointChildCountsIncreased\s*\}\s*else\s*\{\s*\$structureChanged\s*\}') {
         return 'cross-pane effect is not isolated from realized-row churn'
     }
     if ($text -notmatch '\$moved\s*=\s*\(-not\s+\$crossPane\)\s+-and\s+\$structureChanged') {
         return 'cross-pane drag can report moved'
     }
-    return 'cross-pane status isolated from row churn'
+    return 'cross-pane count/status oracles isolated from row churn'
 }
-Test-Case 'm5 cross-pane drag accepts a changed status only when it names both endpoints' `
-    'cross-pane status isolated from row churn' (Test-NodeDragCrossPaneOracle $ast)
+Test-Case 'm5 cross-pane drag distinguishes endpoint growth from endpoint-named status' `
+    'cross-pane count/status oracles isolated from row churn' (Test-NodeDragCrossPaneOracle $ast)
 $decoy11 = [System.Management.Automation.Language.Parser]::ParseInput(
     'function Invoke-Mechanism-NodeDrag { $statusChanged = $before.statusText -ne $after.statusText; $effectObserved = $crossPane -and $statusChanged }',
     [ref]$null, [ref]$decoyErrors)
 Test-Case 'm6 the m5 status-oracle check is armed' 'missing endpoint-named status oracle' `
     (Test-NodeDragCrossPaneOracle $decoy11)
+$decoy11b = [System.Management.Automation.Language.Parser]::ParseInput(
+    'function Invoke-Mechanism-NodeDrag { $statusNamesEndpoints = $statusChanged -and $after.statusText.IndexOf($sourceName) -ge 0 -and $after.statusText.IndexOf($targetName) -ge 0; $effectObserved = if ($crossPane) { $statusNamesEndpoints } else { $structureChanged }; $moved = (-not $crossPane) -and $structureChanged }',
+    [ref]$null, [ref]$decoyErrors)
+Test-Case 'm7 the m5 endpoint-growth check is armed' 'missing endpoint-child-count oracle' `
+    (Test-NodeDragCrossPaneOracle $decoy11b)
+$decoy11c = [System.Management.Automation.Language.Parser]::ParseInput(
+    'function Invoke-Mechanism-NodeDrag { $endpointChildCountsIncreased = $sourceChildrenAfter.Count -gt $sourceChildrenBefore.Count -and $targetChildrenAfter.Count -gt $targetChildrenBefore.Count; $effectObserved = if ($crossPane) { $endpointChildCountsIncreased } else { $structureChanged }; $moved = (-not $crossPane) -and $structureChanged }',
+    [ref]$null, [ref]$decoyErrors)
+Test-Case 'm8 the m5 endpoint-status check is independently armed' 'missing endpoint-named status oracle' `
+    (Test-NodeDragCrossPaneOracle $decoy11c)
+
+# ---------------------------------------------------------------------------
+# (n) capture.control is an exact UIA-element capture, not a caller-side crop
+#
+#     S2-17 compares the toolbar as a control. A window screenshot plus crop bakes display scaling and
+#     shell geometry into the evidence, so the driver must resolve the requested AutomationId itself.
+# ---------------------------------------------------------------------------
+$registry = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'commands.json') -Raw | ConvertFrom-Json
+$captureControl = @($registry.commands | Where-Object { $_.id -eq 'capture.control' })[0]
+Test-Case 'n1 capture.control uses the capture mechanism' 'capture' (Get-PropertyValue $captureControl 'mechanism')
+Test-Case 'n2 capture.control declares control scope' 'control' (Get-PropertyValue $captureControl 'scope')
+Test-Case 'n3 a newly wired capture.control starts partial' 'partial' (Get-PropertyValue $captureControl 'status')
+
+function Test-ControlCaptureContract {
+    param($Tree)
+    $fn = Get-FunctionAst $Tree 'Invoke-Mechanism-Capture'
+    if (-not $fn) { return 'no capture mechanism' }
+    $text = $fn.Extent.Text
+    if ($text -notmatch "Get-OptValue\s+\`$Opts\s+@\('id'\)\s+-NamedOnly") { return 'missing named-only id' }
+    if ($text -notmatch "\`$scope\s+-eq\s+'control'") { return 'missing control scope' }
+    if ($text -notmatch 'Find-ByAutomationId\s+\$Window') { return 'missing AutomationId lookup' }
+    if ($text -notmatch "-Code\s+'InvalidInput'") { return 'missing InvalidInput' }
+    if ($text -notmatch "-Code\s+'TargetNotFound'") { return 'missing TargetNotFound' }
+    return 'exact control capture'
+}
+Test-Case 'n4 capture resolves a named UIA control with clean failures' 'exact control capture' `
+    (Test-ControlCaptureContract $ast)
+$decoy12 = [System.Management.Automation.Language.Parser]::ParseInput(
+    "function Invoke-Mechanism-Capture { `$id = Get-OptValue `$Opts @('id'); Find-ByAutomationId `$Window `$id }",
+    [ref]$null, [ref]$decoyErrors)
+Test-Case 'n5 the n4 named-only check is armed' 'missing named-only id' `
+    (Test-ControlCaptureContract $decoy12)
+
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot '../../../..')
+$mainWindowPath = Join-Path $repoRoot 'applications/ihc_openvisual/Views/MainWindow.axaml'
+$mainWindowXaml = Get-Content -LiteralPath $mainWindowPath -Raw
+$toolbarHasId = $mainWindowXaml -match '(?s)<Border\s+DockPanel\.Dock="Top"\s+IsVisible="\{Binding IsToolbarVisible\}".*?AutomationProperties\.AutomationId="Toolbar"'
+Test-Case 'n6 the toolbar exposes the control AutomationId' 'True' ([string]$toolbarHasId)
+
+# ---------------------------------------------------------------------------
+# (o) a blocking Avalonia modal outranks an unchanged title after project.open
+#
+#     A dirty-project guard appears after the OS picker closes. Reporting the unchanged title first
+#     misclassifies that explicit blocker as a generic NoEffect and contradicts the driver's result contract.
+# ---------------------------------------------------------------------------
+function Test-FileDialogBlockingModalOrder {
+    param($Tree)
+    $fn = Get-FunctionAst $Tree 'Invoke-Mechanism-FileDialog'
+    if (-not $fn) { return 'no fileDialog mechanism' }
+    $text = $fn.Extent.Text
+    $blocked = $text.IndexOf('$stuck = Get-OpenModalWindow', [StringComparison]::Ordinal)
+    $titleFailure = $text.IndexOf('if (-not $landed)', [StringComparison]::Ordinal)
+    if ($blocked -lt 0) { return 'missing blocking-modal check' }
+    if ($titleFailure -lt 0) { return 'missing title-failure check' }
+    if ($blocked -gt $titleFailure) { return 'title failure masks blocking modal' }
+    return 'blocking modal classified first'
+}
+Test-Case 'o1 project.open classifies a leftover save guard before an unchanged title' `
+    'blocking modal classified first' (Test-FileDialogBlockingModalOrder $ast)
+$decoy13 = [System.Management.Automation.Language.Parser]::ParseInput(
+    'function Invoke-Mechanism-FileDialog { if (-not $landed) { return } $stuck = Get-OpenModalWindow }',
+    [ref]$null, [ref]$decoyErrors)
+Test-Case 'o2 the o1 ordering check is armed' 'title failure masks blocking modal' `
+    (Test-FileDialogBlockingModalOrder $decoy13)
 
 Write-Host ''
 if ($script:Failed -gt 0) {

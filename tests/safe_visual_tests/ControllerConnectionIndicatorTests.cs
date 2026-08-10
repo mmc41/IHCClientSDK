@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using Avalonia.VisualTree;
@@ -104,6 +105,29 @@ public class ControllerConnectionIndicatorTests : AvaloniaTestBase
     }
 
     // docs/icon_codes.md §7 must map both assets to a 1–3 character stand-in, so a text-only surface can render them.
+    [AvaloniaTest]
+    public async Task TheIndicator_ExposesStableAutomationIdentityAndStateName()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var window = new MainWindow { DataContext = vm };
+        window.Show();
+
+        var indicator = window.GetVisualDescendants().OfType<Control>()
+            .Single(c => c.Name == "ControllerConnectionIndicator");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(AutomationProperties.GetAccessibilityView(indicator), Is.EqualTo(AccessibilityView.Control),
+                "the rendered state indicator must be present in the UI Automation control view");
+            Assert.That(AutomationProperties.GetAutomationId(indicator), Is.EqualTo("ControllerConnectionIndicator"),
+                "automation must be able to address the indicator independently of localized text");
+            Assert.That(AutomationProperties.GetName(indicator), Is.EqualTo(vm.ControllerConnectionText),
+                "the accessible name states the disconnected condition in words");
+        });
+    }
+
     [Test]
     public void BothIcons_AreRegisteredInIconCodes_WithAStandIn()
     {
