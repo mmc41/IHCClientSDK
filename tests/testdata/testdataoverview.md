@@ -529,6 +529,44 @@ authoring record — per-element design rationale, the C-id → witness coverage
 impossibilities, the seven open questions answered while authoring, and the maintenance rules. Read it
 before touching the fixture.
 
+### Project6-Errors.vis (77.3 KB, 1,206 lines) — finding-catalogue oracle
+
+Authentic IHC Visual (03.04.72.03) output authored **from scratch** on 2026-08-09 by driving the vendor app
+through the `IHCVisualAutomation` CLI (`app.exe`, the `ihcvisual` MCP's console sibling) — no byte
+hand-edited, no SDK write path involved. Its purpose is to carry a **deliberate instance of every non-fatal
+condition** in `applications/ihc_openvisual/docs/error-list.md` that IHC Visual will actually let a user
+author, plus that catalogue's **deliberate non-findings**, plus an **issue-free control product**.
+
+Shape: 410 ids, 81 distinct element types, `last_unique_id="_0x216"`; **5 localities** (one empty and
+untouched, one holding blocks but no products), **14 products across 8 families** (`product_dataline` ×7
+including a name-cleared user-defined one, `product_airlink` ×3, `product_rs485_led_dimmer`,
+`product_rs485_sms_modem`, `s0_device`), **5 function blocks** (a pin-less orphan with its default program
+deleted, two wiring blocks — one deliberately program-less, one a pass-through — a variable zoo, and a
+library block renamed and re-timed *while still locked* so its `master_*` identity survives), **7
+follow-link pairs** covering fan-out, cross-locality wiring and a multi-driven output, **21 programs**
+(12 of them in the zoo, covering the program/variable/case shapes plus a `event_power` Powerup program),
+**5 scene resources with 5 member rows**, and **6 enum definitions** (2 catalogue, 4 authored).
+
+⚠ **Do not "tidy" this file.** Its gaps are the point: five blank documentation fields on `LK FUGA Tryk 4
+tast 2 dioder`, an unaddressed terminal, a colourless terminal, an unlinked terminal, an inverted dimmer
+range, a zero dimmer maximum, a zero shutter travel time, duplicate id-codes and cable numbers, a
+light-group that differs from another only by case, empty programs, an empty scene, a valueless enum,
+and blank project information. Two of the gaps are a **contrast pair** and only work together: exactly
+one variable (`Gemt tilstand`) is marked *Gem aktuel værdi*, which is what makes every other state
+variable's unmarked state a deliberate choice; and `Startværdi` is re-assigned its own initial value by
+a Powerup program. Equally, **`Lampeudtag` must stay issue-free** — it is the over-reporting control,
+and a check that fires on it fails the suite.
+
+Registered in `ProjectByteFidelityTests` (both batteries) and `ErrorsFixtureFindingsTests`, which pins two
+properties: **no structural finding** (every condition here is user-sourced and non-fatal by construction)
+and the eight implemented documentation checks firing exactly where authored. Its companion
+**`Project6-Errors.md`** is the authoring record — the per-element row mapping, the **eleven** rows the
+exercise **falsified** against the live application (IHC Visual refuses to author them, so they are
+file-sourced, not user-sourced), the eight that stay unreachable (offline-only, by an unfound route, or
+— for `doc-no-enduser-products` — because the catalogue makes it mutually exclusive with the shutter row
+this fixture already witnesses), and the four authoring mechanics that cost the most time. Read it
+before touching the fixture.
+
 ## Authentic oracles (`projects/LiveAuthored/`)
 
 Minimal single-purpose projects captured live in IHC Visual during experiment B3, each isolating
