@@ -21,9 +21,17 @@ to the campaign that runs the comparison, not to this file.
 
 ## Which behaviour is the reference (oracle)
 
-Stories marked `Readiness: Ready` and registered deliberate differences define the expected
-OpenVisual behaviour. Where neither speaks, observed vendor behaviour is the reference. The vendor
-is **not** assumed correct where a story or a registered difference says otherwise.
+Stories, including those marked `Readiness: Ready`, are the current requirements, not independent
+proof that the requirements are complete or correct. They are hypotheses to verify against the
+union of user-visible behaviour discovered in both applications. A conflict between a story and
+verified vendor behaviour is **unresolved**: neither source wins automatically, and the comparison
+must not pass until evidence supports one of the divergence resolutions under Verdict. A faulty or
+incomplete story is corrected; an intentional OpenVisual difference requires owner acknowledgement
+and registration in both `product.md` and the affected story.
+
+Registered deliberate differences define expected OpenVisual behaviour. Where no registered
+difference applies, observed vendor behaviour is the reference unless evidence establishes a clear
+vendor defect. Story wording alone is not such evidence.
 
 The `.vis` project oracles in [`tests/testdata/projects/`](../../../tests/testdata/projects/) can
 serve as ready-made vendor-side references for equivalent OpenVisual edits — but that folder holds
@@ -36,6 +44,11 @@ A derived comparison plan must cover every applicable acceptance criterion in th
 **and** the union of user-visible behaviour discovered in both applications. Anything omitted must
 map to the Differences register or to the Non-checklist below — an omission with no such mapping is
 a gap in the plan, not a passed comparison.
+
+**Every discovered interactive member must be exercised.** This includes buttons, links, selectable
+or activatable rows, context actions, and implicit gestures such as single-click, double-click,
+right-click and keyboard activation, even when the surface has no visible edit button or affordance.
+A screenshot or control inventory proves presentation only; it does not prove interaction behaviour.
 
 **Set-valued dimensions require member-level completeness.** Where a dimension ranges over a set of
 instances — the dialogs, each node type's menus and actions, the report types),
@@ -65,13 +78,18 @@ surface, normalized the same way on both sides before it is compared.
 | 10 | Mouse/pointer behavior, including activation, navigation and scrolling, with and without modifiers | gesture transcript |
 | 11 | Keyboard behavior, including shortcuts, navigation, focus, menus and dialogs (Windows only — different on Mac/Linux) | gesture transcript |
 | 12 | Overall layout/shape of dialogs so they are recognizable for a user | screenshot |
-| 13 | All dialog functionality (buttons, clickable elements) | dialog dump |
+| 13 | All dialog functionality (buttons, links, clickable/activatable rows and resulting subdialogs) | dialog dump + gesture transcript + resulting dialog dump |
 | 14 | Validation, errors, warnings, confirmations, recovery and the resulting state | dialog dump, status text, resulting state |
 | 15 | Tooltips and in-place help text | tooltip dump |
 | 16 | Generated output: documentation reports and validation results | report / validation text |
 | 17 | Undo/redo history: what is undoable, how steps are grouped and labelled, when undo/redo is available, and the saved/dirty-state behaviour | menubar dump + `.vis` pair + dirty marker |
 | 18 | Visual/UI semantics: text, icons, decorations, focus, and enabled/disabled/read-only states — holding in every OpenVisual theme and text scale, without requiring pixel equality | screenshot + control-state dump |
 | 19 | UX and accessibility: feedback, continuity, safe cancellation and recovery, keyboard-only use, and accessible roles/names/states | driver transcript + accessibility tree |
+
+**Read-only describes mutation, not navigability.** A read-only table may still select or activate a
+row, navigate to details, or open another dialog. Do not infer that a surface is non-interactive from
+the absence of inline editing, an edit button, selection styling or an obvious pointer affordance;
+exercise every discovered activation route and compare its resulting state.
 
 ## Non-checklist (not a goal)
 
@@ -97,12 +115,16 @@ recorded, or whose driver reported itself blind, is **unresolved**, and an unres
 fails the comparison just as a mismatch does — including a set-valued dimension with any member
 unaddressed.
 
+A contradiction between a story and verified user-visible behaviour is also unresolved. Recording
+the contradiction in notes does not close it, and calling a discovered gesture hidden, implicit or
+undocumented does not remove it from scope.
+
 Anything else is a **divergence**, resolved in exactly one of three ways:
 
-1. **OpenVisual is wrong** → reproduce with a failing test first, then fix, then re-run the
-   comparison from a fresh copy.
+1. **OpenVisual or its story is wrong** → correct the story when necessary, reproduce the required
+   behaviour with a failing test first, then fix and re-run the comparison from a fresh copy.
 2. **The difference is intentional** → record it in the Differences register and in the affected
-   story. Never record it here.
+   story, and obtain owner acknowledgement. Until then it remains unresolved. Never record it here.
 3. **The vendor is wrong, or a driver misread** → record the ruling with its evidence; a driver
    defect is fixed in the driver, not worked around in the comparison.
 

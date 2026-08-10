@@ -1,13 +1,13 @@
 ---
-version: 0.4.0
-last-updated: 2026-08-02
+version: 0.4.1
+last-updated: 2026-08-10
 status: draft
 ---
 
 # E9 — Documentation & reporting
 
-> **Scope:** Partly in scope. Entering project information (US-039) and viewing the data-line modules
-> (US-050) are project-metadata / read-only CRUD. **Editing the data tables is out of scope** (a product
+> **Scope:** Partly in scope. Entering project information (US-039) and viewing or editing data-line
+> module metadata (US-050) are project-metadata CRUD. **Editing the data tables is out of scope** (a product
 > exclusion): the reusable texts a documentation field offers are remembered from what was typed into that
 > field, and there is no dialog for maintaining them.
 > Report generation reads the project to produce a finished document: **three documentation reports** —
@@ -24,8 +24,8 @@ project reports — end-user functions, installation, and function-block logic �
 installation is fully and consistently documented for each reader.
 
 **Scope:** entering project information (*Documentation ▸ Project info*); viewing the input/output
-data-line modules (*Dokumentation*); and generating the three documentation reports from the
-*Dokumentation* menu through one shared picker
+data-line modules and editing their module metadata (*Dokumentation*); and generating the three
+documentation reports from the *Dokumentation* menu through one shared picker
 (US-040) — the report content per type in US-073 (installation) and US-041 (function blocks), and the
 Fuld-mode documentation-issues section in US-072. **Scope excludes:** any report option beyond
 type × mode × format (the former section/detail switches and purpose presets are retired — US-071); any
@@ -47,7 +47,8 @@ function-block inputs (authored in E7), which *feed* these reports.
 - MUST: The **Funktionsdokumentation** report lists only products flagged for end-user documentation;
   the **Installationsdokumentation** report lists every product, with un-filled fields rendered as
   `--` placeholders in its masthead/per-locality blocks and as blank cells in its flat tables.
-- MUST: The data-line modules are shown read-only.
+- MUST: The data-line modules are shown in a consolidated, non-inline-editable map whose rows open
+  the corresponding module-metadata editor.
 - MUST: Report output carries no images apart from the icon glyphs: no product photos, no graphical
   module diagrams, no installer logo image, no external manual/help pictures — module addressing and
   wiring are tables.
@@ -431,7 +432,7 @@ every wire and every occupied module terminal in one printable document.
   conventions and Fuld additions byte-for-byte over the reference projects.
 - This is the **report's** addressing cross-reference; the interactive, in-app module-map **view** is
   US-050 — the two present the same addressing, one as a printable report section, the other as a live
-  read-only view.
+  map with a row-activated module editor.
 
 **Readiness:** Ready.
 
@@ -507,8 +508,9 @@ headers, and wide-table print reflow. Pinned byte-for-byte by the twelve `.html`
 the module documented on each, **so that** I can review which modules the installation has, where they
 sit and which data lines are still free, in one place instead of opening each product.
 
-**Scope excludes:** *assigning* a terminal address (that is per-product, US-012); wireless products
-(they carry no module addressing).
+**Scope excludes:** *assigning* a product terminal address (that is per-product, US-012); wireless
+products (they carry no module addressing). Editing a data-line module's type, locality and
+description is in scope here and is distinct from terminal-address assignment.
 
 ### Acceptance criteria (Checklist)
 
@@ -522,9 +524,14 @@ sit and which data lines are still free, in one place instead of opening each pr
   installation report's module tables use (US-073), so view and report agree.
 - MUST: A data line carrying no documented module is shown as **not in use**, rather than as a blank
   row or omitted.
-- MUST: The view is **read-only** — it presents what the project records and offers no editing action.
-- SHOULD: The view closes back to the workspace without changing the project, dismissed by a single
-  acknowledging button.
+- MUST: The table itself has no inline cell editing. Double-clicking any input or output row opens
+  that data line's module editor.
+- MUST: The module editor exposes *module type*, *locality* and *description/note*, initialized from
+  the selected row, with actions to accept or cancel the edit.
+- MUST: Accepting a module edit updates the corresponding row and project; cancelling returns to the
+  map without changing that row.
+- SHOULD: Dismissing the map without accepting a module edit closes back to the workspace without
+  changing the project, through a single acknowledging button.
 
 ### AC illustrations
 
@@ -533,12 +540,17 @@ sit and which data lines are still free, in one place instead of opening each pr
   documented on it, is still listed and reads *not in use*.
 - Modules recorded in the file in creation order 2, 1, 8 appear on lines 1, 2 and 8 — the view is
   ordered by data line, not by the order the modules were entered.
+- Double-clicking unused input line 3 opens its input-module editor. Choosing `Input 24`, entering a
+  locality and description, and accepting shows those values on input line 3; cancelling instead
+  leaves the line as *not in use*.
 
 ### Constraints
 
-- Verification method — **Inspection** that the view lists both directions' data lines with their
-  documented modules and mutates nothing.
+- Verification method — **Demonstration** that the view lists both directions, double-clicking an
+  input and an output row opens the correctly initialized module editor, accepting updates only the
+  addressed row, and cancelling leaves it unchanged.
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented.
+**Implementation status:** ⚠️ Partially implemented — the consolidated map is present, but its rows
+do not yet open the module editor.
