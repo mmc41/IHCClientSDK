@@ -27,9 +27,9 @@ namespace Ihc.Vis.Session
         internal override EditVerdict Evaluate(EditContext context) =>
             context.RequireTag(ProgramId, "a program", "program_simple")
                 .And(context.RequireUnlockedTarget(ProgramId, inclusive: true));   // T003
+        // The note is serialized into .vis; keep the vendor literal rather than a user-facing explanation.
         internal override void Execute(ProjectEditor editor) =>
-            editor.Program(ProgramId).AddPowerEvent("Powerup",
-                "Runs the program on controller power-up (also on project transfer and software restart).");
+            editor.Program(ProgramId).AddPowerEvent("Powerup", "Start program ved Powerup");
     }
 
     /// <summary>Authors a program action command (US-028) into a command container.</summary>
@@ -115,7 +115,13 @@ namespace Ihc.Vis.Session
     }
 
     /// <summary>Authors one arithmetic command line (US-032) into a command container.</summary>
-    public sealed record AddArithmeticCommand(ElementId CommandsId, ElementId TargetId, string Method, ElementId OperandId, string Name)
+    public sealed record AddArithmeticCommand(
+        ElementId CommandsId,
+        ElementId TargetId,
+        string Method,
+        ElementId OperandId,
+        string Name,
+        string Note)
         : ProjectCommand
     {
         internal override string Describe(Project project) => "Tilføj aritmetik";
@@ -123,7 +129,7 @@ namespace Ihc.Vis.Session
             Programs.RequireCommandContainer(context, CommandsId)
                 .And(context.RequireUnlockedTarget(CommandsId, inclusive: true));   // T003
         internal override void Execute(ProjectEditor editor) =>
-            editor.Branch(CommandsId).AddAction(Name, editor.Resource(TargetId), Method, editor.Resource(OperandId));
+            editor.Branch(CommandsId).AddAction(Name, editor.Resource(TargetId), Method, editor.Resource(OperandId), Note);
     }
 
     /// <summary>Inserts a case structure (US-031) keyed on an eligible switch variable.</summary>
@@ -137,7 +143,10 @@ namespace Ihc.Vis.Session
                 : EditVerdict.Refuse("Not an eligible case switch on a command container."))
             .And(context.RequireUnlockedTarget(CommandsId, inclusive: true));   // T003
         internal override void Execute(ProjectEditor editor) =>
-            editor.Branch(CommandsId).AddCase("Case", editor.Resource(SwitchVariableId));
+            editor.Branch(CommandsId).AddCase(
+                ProgramMethodCatalog.CaseNameTemplate,
+                editor.Resource(SwitchVariableId),
+                ProgramMethodCatalog.CaseNote);
     }
 
     /// <summary>Adds a case-value branch (US-031). For a literal switch the <paramref name="Criterion"/> is embedded as

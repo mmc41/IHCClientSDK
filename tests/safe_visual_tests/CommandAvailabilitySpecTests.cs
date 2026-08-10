@@ -386,6 +386,7 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
         using var _1 = harness;
         ShellContext prog = vm.Context with { IsProgrammingMode = true, ProgrammingBlockLocked = false };
         ShellContext lockedProg = prog with { ProgrammingBlockLocked = true };
+        ShellContext programs = prog with { Node = Node(loc, TreeNodeKind.Programs) };
         ShellContext events = prog with { Node = Node(loc, TreeNodeKind.Events, isEventsContainer: true) };
         ShellContext commands = prog with { Node = Node(loc, TreeNodeKind.Commands, isCommandsContainer: true) };
         ShellContext conditions = prog with { Node = Node(loc, TreeNodeKind.Conditions, isConditionsContainer: true) };
@@ -401,6 +402,13 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
             Assert.That(At(vm, "program.setConditionsOr", conditions, Surface.ContextMenu), Is.EqualTo(Availability.Allow));
             Assert.That(At(vm, "program.newCaseValue", caseNode, Surface.ContextMenu), Is.EqualTo(Availability.Allow));
             Assert.That(At(vm, "program.toggleSaveValue", outputPin, Surface.ContextMenu), Is.EqualTo(Availability.Allow));
+
+            // S2-16: the bar and Ctrl+G save the active programming block even when one of its child rows is
+            // selected; the transient flyout remains row-specific and therefore does not add Save block here.
+            Assert.That(At(vm, "node.saveBlock", programs, Surface.MenuBar), Is.EqualTo(Availability.Allow));
+            Assert.That(At(vm, "node.saveBlock", programs, Surface.ContextMenu), Is.EqualTo(Availability.Hidden));
+            Assert.That(At(vm, "node.saveBlock", lockedProg with { Node = programs.Node }, Surface.MenuBar).Enabled,
+                Is.False, "a locked active block cannot be saved back to the library");
 
             // The wrong container refuses (flyout omits, bar greys).
             Assert.That(At(vm, "program.addPowerEvent", commands, Surface.ContextMenu), Is.EqualTo(Availability.Hidden));

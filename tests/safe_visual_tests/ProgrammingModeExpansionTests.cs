@@ -42,6 +42,34 @@ public class ProgrammingModeExpansionTests : AvaloniaTestBase
         });
     }
 
+    [Test]
+    public async Task EnterProgrammingMode_WithAuthoredProgram_CollapsesProgramRowsBelowOpenContainers()
+    {
+        var (harness, vm) = await ProgrammingModeAsync();
+        using var _ = harness;
+        TreeNodeViewModel programs = TreeNodes.FindFirst(vm.FunctionNodes, n => n.Kind == TreeNodeKind.Programs)!;
+        vm.SelectNode(programs);
+        await vm.AddProgramCommand.ExecuteAsync(null);
+        TreeNodeViewModel commands = TreeNodes.FindFirst(vm.FunctionNodes, n => n.Kind == TreeNodeKind.Commands)!;
+        await harness.Session.AddSubProgramAsync(commands.ElementId!.Value);
+        vm.LeaveProgrammingModeCommand.Execute(null);
+        TreeNodeViewModel block = TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsFunctionBlock)!;
+
+        vm.EnterProgrammingModeCommand.Execute(block);
+
+        TreeNodeViewModel programRoot = vm.FunctionNodes[0];
+        TreeNodeViewModel programList = TreeNodes.FindFirst(vm.FunctionNodes, n => n.Kind == TreeNodeKind.Programs)!;
+        TreeNodeViewModel program = TreeNodes.FindFirst(vm.FunctionNodes, n => n.Kind == TreeNodeKind.Program)!;
+        TreeNodeViewModel subProgram = TreeNodes.FindFirst(vm.FunctionNodes, n => n.Kind == TreeNodeKind.SubProgram)!;
+        Assert.Multiple(() =>
+        {
+            Assert.That(programRoot.IsExpanded, Is.True, "the block root opens expanded");
+            Assert.That(programList.IsExpanded, Is.True, "the Programmer container opens expanded");
+            Assert.That(program.IsExpanded, Is.False, "an authored Program starts collapsed");
+            Assert.That(subProgram.IsExpanded, Is.False, "an authored Under program starts collapsed");
+        });
+    }
+
     // The variables inside a section are visible without further expanding — the point of the change is that the
     // installer sees the block's data, not just four section headers.
     [Test]

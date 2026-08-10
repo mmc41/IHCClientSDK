@@ -44,6 +44,9 @@ a **second** positional: `node drag <from> <to>` and `dialog set-text <field> <t
 option is **named-only** and can never absorb a positional — `--depth` (`tree dump`, `menu dump-bar`),
 `--after` (`tree dump`), `--x-offset` (`node double-click`), and `key send`'s optional `--path`.
 
+`node drag` may address its endpoints in different panes with `--from-tree TV1 --to-tree TV2`.
+If either endpoint selector is omitted it inherits legacy `--tree`; without any selector both use TV1.
+
 `--x-offset N` clicks N px right of the row's **label** instead of on it (census C16). The
 hit-test-back guard still applies, so an offset that leaves the row or the viewport is refused rather
 than clamped, and `data.hitArea` echoes which point ran.

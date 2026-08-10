@@ -887,8 +887,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     });
 
     /// <summary>
-    /// Bibliotek ▸ Gem Funktionsblok… (US-021, Ctrl+G): saves the selected block into the library as a reusable
-    /// <c>.ifb</c>. Also on the node's right-click flyout — the vendor offers it in both places.
+    /// Bibliotek ▸ Gem Funktionsblok… (US-021, Ctrl+G): saves the selected block, or the active programming
+    /// block when one of its child rows is selected, into the library as a reusable <c>.ifb</c>. Also on the
+    /// block node's right-click flyout — the vendor offers it in both places.
     /// <para>
     /// ONE dialog, asking a Navn and a Note: that is the reference application's own <i>Gem Funktionsblok...</i>
     /// form (measured 2026-08-04), and it asks for no path because it writes into its component folder. OpenVisual
@@ -899,7 +900,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// </summary>
     private Task SaveFunctionBlock(TreeNodeViewModel? node) => RunAsync(nameof(SaveFunctionBlock), async () =>
     {
-        if (node?.ElementId is not { } id || _session.Current?.FindById(id) is not { } fb || fb.Kind != ElementKind.FunctionBlock)
+        ElementId? id = node?.Kind == TreeNodeKind.FunctionBlock ? node.ElementId
+            : IsProgrammingMode ? _programmingBlockId
+            : null;
+        if (id is not { } blockId || _session.Current?.FindById(blockId) is not { } fb || fb.Kind != ElementKind.FunctionBlock)
             return;
         string currentName = _session.Current!.View(fb).Name ?? "block";
         string currentNote = _session.Current!.View(fb).Note ?? string.Empty;
@@ -907,7 +911,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             affirmative: "Gem");
         if (meta is null)
             return;   // cancelled
-        if (await _session.SaveFunctionBlockToLibraryAsync(id, meta.Name, meta.Note) is not null)
+        if (await _session.SaveFunctionBlockToLibraryAsync(blockId, meta.Name, meta.Note) is not null)
             StatusText = $"Gemte funktionsblokken '{meta.Name}' i biblioteket.";
     });
 
@@ -1318,14 +1322,19 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse("Vælg en lokalitet i Funktioner-ruden.")));
 
-        // On the BAR as well as the flyout: the vendor carries it as Bibliotek's second item (id 24765, Ctrl+G),
-        // greyed until a function block is selected — measured 2026-08-04.
+        // The bar and Ctrl+G follow the active unlocked programming block even when a program child is selected;
+        // the context flyout remains block-row-specific (S2-16, measured against the vendor's Programmer row).
         Registry.Register(new CommandSpec("node.saveBlock", "Ctrl+G",
             Surfaces.MenuBar | Surfaces.ContextMenu,
             Execute: ctx => SaveFunctionBlock(ResolveNode(ctx)),
             Gate: ctx => ctx.Node is { Kind: TreeNodeKind.FunctionBlock }
+                         || ctx.IsProgrammingMode && !ctx.ProgrammingBlockLocked
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Vælg en funktionsblok, der skal gemmes.")));
+                : EditVerdict.Refuse("Vælg en ulåst funktionsblok, der skal gemmes."),
+            SurfacePolicy: (ctx, surface) =>
+                surface == Surface.ContextMenu && ctx.Node is not { Kind: TreeNodeKind.FunctionBlock }
+                    ? Availability.Hidden
+                    : null));
 
         // On the BAR as well as the flyout: the vendor carries it as Bibliotek's third item (id 24766, no shortcut).
         // Its gate is confirmed identical — measured 2026-08-04 across three blocks of the vendor's own project,

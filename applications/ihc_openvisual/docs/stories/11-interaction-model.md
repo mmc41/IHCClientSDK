@@ -448,10 +448,18 @@ Scenario: A node revealing its first child still opens (US-006 kept)
   When I insert the first product into it
   Then the locality opens to reveal the new product — its reveal default wins, it had no state to keep
 
-Scenario: A mode switch opens fresh
+Scenario: Entering programming mode opens fresh
   Given I am in configuration mode
-  When I enter a block's programming mode (or leave it)
-  Then that view opens at its own defaults (the program fully expanded), not carried over from the other mode
+  When I enter a block's programming mode
+  Then both pane roots, all four data sections, and the `Programmer` container open
+  And authored `Program` and `Under program` rows start collapsed
+  And no configuration-mode expansion state is carried into programming mode
+
+Scenario: Leaving programming mode opens fresh
+  Given I am in a block's programming mode
+  When I leave programming mode
+  Then both panes re-root to `Lokaliteter`
+  And no programming-mode expansion state is carried into configuration mode
 ```
 
 ### Business rules

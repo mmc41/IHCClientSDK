@@ -138,10 +138,10 @@ public class TreeExpansionTests : AvaloniaTestBase
             "adding the first product opens the locality to reveal it, not inherits its empty collapsed state");
     }
 
-    // A MODE switch is not an in-place edit: entering a block's programming mode opens its program fresh, rather
-    // than carrying over the block's collapsed state from configuration mode.
+    // A MODE switch is not an in-place edit: entering a block's programming mode applies that view's fresh defaults
+    // rather than carrying over the block root's collapsed state from configuration mode.
     [Test]
-    public async Task EnteringProgrammingMode_StartsExpanded_IgnoringConfigState()
+    public async Task EnteringProgrammingMode_UsesFreshRootExpansion_IgnoringConfigState()
     {
         var (harness, vm, _, _, fbId, _) = await ProductAndBlockAsync();
         using var _ = harness;
@@ -154,7 +154,7 @@ public class TreeExpansionTests : AvaloniaTestBase
         {
             Assert.That(vm.IsProgrammingMode, Is.True, "the command entered programming mode");
             Assert.That(IsExpanded(vm.FunctionNodes, fbId), Is.True,
-                "programming mode opens the block's program expanded, not carried over from configuration mode");
+                "programming mode opens the block root, not carried over from configuration mode");
         });
     }
 

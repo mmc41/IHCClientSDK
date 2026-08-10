@@ -401,8 +401,15 @@ namespace Ihc.Vis
             new Session.AddLogicGroup(conditionsId);
 
         /// <summary>Command to author one arithmetic command line into a command container (US-032).</summary>
-        public Session.AddArithmeticCommand AddArithmeticCommand(Project project, ElementId commandsId, ElementId targetId, string method, ElementId operandId, string name) =>
-            new Session.AddArithmeticCommand(commandsId, targetId, method, operandId, name);
+        public Session.AddArithmeticCommand AddArithmeticCommand(
+            Project project,
+            ElementId commandsId,
+            ElementId targetId,
+            string method,
+            ElementId operandId,
+            string name,
+            string note) =>
+            new Session.AddArithmeticCommand(commandsId, targetId, method, operandId, name, note);
 
         /// <summary>Command to insert a case structure keyed on a switch variable (US-031).</summary>
         public Session.AddCase AddCase(Project project, ElementId commandsId, ElementId switchVariableId) =>

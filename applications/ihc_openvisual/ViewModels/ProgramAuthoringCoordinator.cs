@@ -92,6 +92,14 @@ internal sealed class ProgramAuthoringCoordinator(
             [(ProgramPinType.Bool, ProgramMethodCategory.Condition, "_0x14")] = "er OFF",
             [(ProgramPinType.Bool, ProgramMethodCategory.Condition, "_0x1e")] = "er lig med",           // 2-operand
             [(ProgramPinType.Bool, ProgramMethodCategory.Condition, "_0x28")] = "er forskellig fra",     // 2-operand (was unary "is NOT ON")
+            // Enumerator (S2-13): live vendor popup labels are symbolic and its binary operators accept only another
+            // variable of the same enum definition. The catalog excludes all Boolean ON/OFF/NOT rows for this family.
+            [(ProgramPinType.Enum, ProgramMethodCategory.Event, "_0x1e")] = "->",
+            [(ProgramPinType.Enum, ProgramMethodCategory.Event, "_0x96")] = "skifter tilstand",
+            [(ProgramPinType.Enum, ProgramMethodCategory.Event, "_0x9b")] = "bliver tilskrevet",
+            [(ProgramPinType.Enum, ProgramMethodCategory.Command, "_0x1e")] = "=",
+            [(ProgramPinType.Enum, ProgramMethodCategory.Condition, "_0x1e")] = "=",
+            [(ProgramPinType.Enum, ProgramMethodCategory.Condition, "_0x28")] = "<>",
             // Weekday (PG-1b): the System-weekday assignment reads pin-first in the menu though it stores "System ugedag -> %P".
             [(ProgramPinType.Weekday, ProgramMethodCategory.Event, "_0x5")] = "= system ugedag",
             // Timer (D21/D22, the full nine) — a shared token (_0xa) means something different than the bool verb.
@@ -182,8 +190,8 @@ internal sealed class ProgramAuthoringCoordinator(
         string varName = (armed is not null ? session.Current!.View(armed).Name : null)
                          ?? PendingProgramVariable.DisplayName;
         string armedTag = armed?.Tag ?? string.Empty;
-        // PG-1b: the dragged pin's TYPE picks the operator list per container, so a timer/analog/weekday pin no
-        // longer inherits the bool operators (a tag outside those families stays on the bool default).
+        // PG-1b/S2-13: the dragged pin's type selects the per-container operator family. Typed timer, analog,
+        // weekday, and enum pins never inherit unrelated Boolean operators.
         ProgramPinType pinType = ProgramMethodCatalog.ClassifyPin(armedTag);
         if (value is { IsEventsContainer: true, ElementId: { } eventsId })
         {
@@ -204,7 +212,7 @@ internal sealed class ProgramAuthoringCoordinator(
                 // A two-operand command (%P = %S / %P <> %S) reuses the arithmetic-shape command (link1 target, link2 operand).
                 AddOperator(ProgramCommandMenu, m, label, pinType, varId,
                     one => AddProgramCommandAsync(actionsId, varId, one.Token, one.NameTemplate, one.Note),
-                    (two, opId) => AddArithmeticAsync(actionsId, varId, two.Token, opId, two.NameTemplate));
+                    (two, opId) => AddArithmeticAsync(actionsId, varId, two.Token, opId, two.NameTemplate, two.Note));
             }
             // A case can be built here when the armed variable is an eligible switch type (US-031).
             if (ProgramMethodCatalog.EligibleCaseVariableTags.Contains(armedTag))
@@ -221,7 +229,8 @@ internal sealed class ProgramAuthoringCoordinator(
                     foreach ((string opName, ElementId opId, string operandTag) in NumericOperandsInBlock())
                         if (ProgramMethodCatalog.ArithmeticToken(op.OperatorSymbol!, armedTag, operandTag) is { } token)
                             opNode.Children.Add(new ProductMenuItemViewModel(opName, token,
-                                new AsyncRelayCommand(() => AddArithmeticAsync(actionsId, varId, token, opId, op.NameTemplate))));
+                                new AsyncRelayCommand(() => AddArithmeticAsync(actionsId, varId, token, opId, op.NameTemplate,
+                                    ProgramMethodCatalog.ArithmeticNote(op.OperatorSymbol!, armedTag, operandTag)!))));
                     if (opNode.Children.Count > 0)
                         ProgramArithmeticMenu.Add(opNode);
                 }
@@ -264,9 +273,15 @@ internal sealed class ProgramAuthoringCoordinator(
         runAsync(nameof(AddCaseAsync), () =>
             applyAndReport(session.Commands.AddCase(session.Current!, commandsId, switchVariableId), "Case struktur indsat."));
 
-    private Task AddArithmeticAsync(ElementId commandsId, ElementId targetId, string method, ElementId operandId, string name) =>
+    private Task AddArithmeticAsync(
+        ElementId commandsId,
+        ElementId targetId,
+        string method,
+        ElementId operandId,
+        string name,
+        string note) =>
         runAsync(nameof(AddArithmeticAsync), () =>
-            applyAndReport(session.Commands.AddArithmeticCommand(session.Current!, commandsId, targetId, method, operandId, name), "Aritmetisk kommando tilføjet."));
+            applyAndReport(session.Commands.AddArithmeticCommand(session.Current!, commandsId, targetId, method, operandId, name, note), "Aritmetisk kommando tilføjet."));
 
     // T008: the two-operand event / condition authors — the arithmetic peer for the Events/Conditions families
     // (%P <op> %S with the author-chosen operand %S), through the extended AddProgramEvent/AddCondition (link2).
@@ -310,29 +325,39 @@ internal sealed class ProgramAuthoringCoordinator(
             target.Add(new ProductMenuItemViewModel(label, m.Token, new AsyncRelayCommand(() => authorOne(m))));
             return;
         }
-        var node = new ProductMenuItemViewModel($"{label} …");
+        // The vendor's enumerator popup presents the operator verbatim ("Mode =" / "Mode ->") with submenu chrome;
+        // its text does not carry the ellipsis used by OpenVisual's other second-operand families.
+        var node = new ProductMenuItemViewModel(pinType == ProgramPinType.Enum ? label : $"{label} …");
         foreach ((string opName, ElementId opId) in SecondOperandCandidates(pinType, varId))
             node.Children.Add(new ProductMenuItemViewModel(opName, m.Token, new AsyncRelayCommand(() => authorTwo(m, opId))));
         if (node.Children.Count > 0)
             target.Add(node);
     }
 
-    // T008: the block's pins of the same type family as the armed pin (the same ClassifyPin the popup keys on),
-    // excluding the armed pin itself — the %S candidates a two-operand row lets the author pick.
+    // T008: candidates share the armed pin's family; enum operands additionally share its typedef. The armed pin
+    // itself is excluded.
     private IEnumerable<(string Name, ElementId Id)> SecondOperandCandidates(ProgramPinType type, ElementId exclude)
     {
         if (session.Current is not { } project || getProgrammingBlockId() is not { } blockId
             || project.FindById(blockId) is not { } block)
             yield break;
+        ProjectElement? armed = project.FindById(exclude);
         foreach ((string container, string _) in FunctionBlockSections.All)
         {
             if (block.FindChild(container) is not { } section)
                 continue;
             foreach (ProjectElement pin in section.ChildrenOrEmpty())
-                if (pin.Id is { } pid && pid != exclude && ProgramMethodCatalog.ClassifyPin(pin.Tag) == type)
+                if (pin.Id is { } pid && pid != exclude && ProgramMethodCatalog.ClassifyPin(pin.Tag) == type
+                    && (type != ProgramPinType.Enum || HasSameEnumDefinition(armed, pin)))
                     yield return (project.NameOr(pin, pin.Tag), pid);
         }
     }
+
+    private static bool HasSameEnumDefinition(ProjectElement? armed, ProjectElement candidate) =>
+        armed?.Tag == "resource_enum"
+        && candidate.Tag == "resource_enum"
+        && armed.GetAttribute("typedef") is { Length: > 0 } typedef
+        && candidate.GetAttribute("typedef") == typedef;
 
     // ---- T018: the stray program-authoring handlers consolidated here (US-029/031/033); the view-model keeps the
     // thin [RelayCommand] entry points, delegating their bodies to these. ----

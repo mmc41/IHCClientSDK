@@ -1,3 +1,5 @@
+using Ihc.Vis.Session;
+
 namespace Ihc.Vis.Tests
 {
     /// <summary>
@@ -130,6 +132,38 @@ namespace Ihc.Vis.Tests
                 Assert.That(recheck.Children[0].Children[0].Tag, Is.EqualTo("resource_counter"), "operand-first");
                 Assert.That(recheck.Children[0].Children[1].Tag, Is.EqualTo("action"), "actions follow the operand");
                 Assert.That(recheck.Children[1].Children[1].GetAttribute("method"), Is.EqualTo("_0x14"));
+            });
+        }
+
+        [TestCase("Tæller")]
+        [TestCase("NyTypeForThisProject")]
+        public async Task AddCase_CommandPersistsVendorTemplateAndNote(string switchName)
+        {
+            var app = new ProjectAppService(Settings);
+            Project project = await ReplayOracle.LoadProject(Original);
+            ProjectElement custom = project.Root.Descendants()
+                .Single(e => e.Tag == "functionblock" && project.View(e).Name == "Custom blok");
+            ElementId commandsId = custom.Descendants().First(e => e.Tag == "actions").Id!.Value;
+            ElementId switchId = custom.Descendants()
+                .First(e => project.View(e).Name == switchName).Id!.Value;
+            var session = new ProjectDocumentSession();
+            session.Open(project);
+
+            EditOutcome outcome = session.Apply(app.Commands.AddCase(session.Current!, commandsId, switchId));
+
+            using var stream = new System.IO.MemoryStream();
+            await app.Save(session.Current!, stream);
+            Project reloaded = ProjectReader.Read(stream.ToArray());
+            ProjectElement authoredCase = reloaded.Root.Descendants()
+                .Single(e => e.Tag == "program_case" && e.GetAttribute("link") == switchId.ToToken());
+            Assert.Multiple(() =>
+            {
+                Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed));
+                Assert.That(authoredCase.GetAttribute("name"), Is.EqualTo("Case (%LT)"),
+                    "the vendor template remains live so a switch rename re-renders the row");
+                Assert.That(authoredCase.GetAttribute("note"),
+                    Is.EqualTo("Udfører case når %P er lig case værdien"),
+                    "the vendor note is part of the persisted program_case payload");
             });
         }
 

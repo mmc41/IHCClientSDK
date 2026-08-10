@@ -37,8 +37,10 @@ public sealed class ProjectTreeProjector(Project project)
         {
             foreach (ProjectElement program in programs.ChildrenOrEmpty().Where(p => p.IsProgram))
             {
+                // IHC Visual opens the block and Programs containers on entry but leaves each authored Program closed.
+                // This is only the fresh-view default; same-view rebuilds restore the user's expansion state.
                 var programNode = new TreeNodeViewModel(project.NameOr(program, "Program"),
-                    NodeIcons.For("program_simple", null), isExpanded: true, elementId: program.Id)
+                    NodeIcons.For("program_simple", null), isExpanded: false, elementId: program.Id)
                     { Kind = TreeNodeKind.Program };
                 if (program.FindChild("events") is { } events)
                 {
@@ -88,15 +90,14 @@ public sealed class ProjectTreeProjector(Project project)
     {
         // NodeKind "subProgram", NOT the icon: NodeIcons maps program_sub and program_case to the SAME
         // glyph, so an icon-derived kind would merge these with case switches.
-        // The label is the user's stored name (A-26/F-075); a never-renamed sub-program carries the vendor
-        // default "Under program", shown here as the English default token "Sub-program" (R-1 — the default is
-        // chrome, but a user name stays verbatim). "Under program" is FbGrammar.SubProgramName (internal).
+        // Preserve stored user names (A-26/F-075); only a missing name falls back to
+        // the Danish "Under program" default established by W6/F8.
         string stored = project.View(sub).Name ?? string.Empty;
-        // W6/F8: the app's own label for an unnamed sub-program is Danish, like the rest of its chrome — and it is
-        // the same word the file itself stores, so the app no longer restates the project's language in English.
         string label = stored.Length == 0 ? "Under program" : stored;
+        // IHC Visual also leaves conditional sub-programs closed on fresh entry;
+        // same-view rebuilds restore their expansion state.
         var node = new TreeNodeViewModel(label, NodeIcons.For("program_sub", null),
-            isExpanded: true, elementId: sub.Id) { Kind = TreeNodeKind.SubProgram };
+            isExpanded: false, elementId: sub.Id) { Kind = TreeNodeKind.SubProgram };
         if (sub.FindChild("conditions") is { } conditions)
             node.Children.Add(BuildConditionsNode(conditions));
         foreach (ProjectElement branch in sub.ChildrenOrEmpty().Where(a => a.IsActionsContainer))
@@ -112,15 +113,11 @@ public sealed class ProjectTreeProjector(Project project)
         return node;
     }
 
-    // Renders a conditions group (US-029): its condition rows and nested logic groups; the AND/OR combination shows in
-    // the icon (& vs >=1) and a label suffix.
     private TreeNodeViewModel BuildConditionsNode(ProjectElement conditions, bool nested = false)
     {
         bool or = project.View(conditions).Effective("type") == "or";
-        // "Betingelser" is measured (uxparity2 V6); "Logisk gruppe" for a NESTED group is the consistent Danish term
-        // — the nested case was not in the recorded dump, so it is translated for consistency, not from measurement.
-        string label = $"{(nested ? "Logisk gruppe" : "Betingelser")} ({(or ? ">=1" : "&")})";
-        var node = new TreeNodeViewModel(label, NodeIcons.For(or ? "conditions-or" : "conditions", null),
+        // IHC Visual names every conditions container "Betingelser"; nesting and the operator stay in structure/icon.
+        var node = new TreeNodeViewModel("Betingelser", NodeIcons.For(or ? "conditions-or" : "conditions", null),
             isExpanded: true, elementId: conditions.Id)
             { IsOrGroup = or, Kind = nested ? TreeNodeKind.LogicGroup : TreeNodeKind.Conditions };
         foreach (ProjectElement child in conditions.ChildrenOrEmpty())

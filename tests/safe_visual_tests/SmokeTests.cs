@@ -289,7 +289,7 @@ public class SmokeTests : AvaloniaTestBase
         Assert.Multiple(() =>
         {
             Assert.That(labels, Does.Contain("Doorbell -> ON"), "the authored event renders under Events");
-            Assert.That(labels, Does.Contain("Toggle Chime"), "the authored command renders under Commands");
+            Assert.That(labels, Does.Contain("Kip Chime"), "the vendor command renders under Commands");
         });
     }
 

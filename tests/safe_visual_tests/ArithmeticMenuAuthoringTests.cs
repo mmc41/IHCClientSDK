@@ -47,8 +47,14 @@ public class ArithmeticMenuAuthoringTests : AvaloniaTestBase
 
         await ((IAsyncRelayCommand)operand.Command!).ExecuteAsync(null);
 
-        Assert.That(harness.Session.Current!.Root.Descendants().Count(e => e.Tag == "action"),
-            Is.EqualTo(before + 1), "invoking the operand leaf authors exactly one action row");
+        ProjectElement action = harness.Session.Current!.Root.Descendants().Last(e => e.Tag == "action");
+        Assert.Multiple(() =>
+        {
+            Assert.That(harness.Session.Current!.Root.Descendants().Count(e => e.Tag == "action"),
+                Is.EqualTo(before + 1), "invoking the operand leaf authors exactly one action row");
+            Assert.That(action.GetAttribute("note"), Is.EqualTo("Sætter %P til sin egen værdi plus %S"),
+                "the menu path carries the vendor note through the coordinator");
+        });
     }
 
     // F3's explanation, pinned: the category header has NO command, so it cannot author and cannot report failure.

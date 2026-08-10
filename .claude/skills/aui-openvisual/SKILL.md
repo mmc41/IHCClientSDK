@@ -115,7 +115,8 @@ slash-separated node names, e.g. `"Localities/Kitchen"`, or 0-based **index** se
 rather than silently taking the first — address that one by index. `--tree TV1` is the installation pane
 (default); `--tree TV2` is the functions pane. The driver expands ancestors as needed and verifies the
 caret landed (`Code=TargetNotFound` if not). Two commands take a **second** positional —
-`node drag <from> <to>` and `dialog set-text <field> <text>`. Everything else (`--depth`, `--x-offset`,
+`node drag <from> <to>` and `dialog set-text <field> <text>`. A drag can address different panes with
+`--from-tree TV1 --to-tree TV2`; legacy `--tree` applies to both endpoints. Everything else (`--depth`, `--x-offset`,
 `--after`, `key send`'s `--path`) is a **named flag only**, so a positional path can never be read as
 one. See `references/addressing.md`.
 

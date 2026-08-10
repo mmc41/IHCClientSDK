@@ -83,9 +83,13 @@ public sealed class TreeDragDropController(
     /// <summary>Performs a drop, routing purely on the <see cref="DropVerdict.Route"/> that <see cref="CanDropOn"/>
     /// already resolved (no re-evaluation): a pin link, a program-build arm, a reorder, or a re-parent. A refused
     /// drop surfaces its reason and mutates nothing.</summary>
-    public Task PerformDropAsync(ElementId dragged, ElementId target) => runAsync(nameof(PerformDropAsync), async () =>
+    public Task PerformDropAsync(ElementId dragged, ElementId target) =>
+        PerformDropAsync(dragged, target, CanDropOn(dragged, target));
+
+    /// <summary>Performs a drop using a verdict the view already obtained while routing the gesture. This overload
+    /// lets the UI present route-specific feedback without asking the SDK's legality probes a second time.</summary>
+    public Task PerformDropAsync(ElementId dragged, ElementId target, DropVerdict verdict) => runAsync(nameof(PerformDropAsync), async () =>
     {
-        DropVerdict verdict = CanDropOn(dragged, target);   // the single evaluation
         if (!verdict.Ok)
         {
             if (verdict.Reason is { } reason)

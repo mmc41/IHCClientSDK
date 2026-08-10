@@ -227,6 +227,12 @@
                     ItemsSource="{Binding SectionFlyoutItems}"
                     ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
 
+        <!-- US-028 / uxparity2 S2-10: separate flyouts let each cross-pane drop open its methods directly at the
+             target; code-behind supplies the already-built event/command/condition collection. -->
+        <MenuFlyout x:Key="ProgramEventDropMenu" ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
+        <MenuFlyout x:Key="ProgramCommandDropMenu" ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
+        <MenuFlyout x:Key="ProgramConditionDropMenu" ItemContainerTheme="{StaticResource ProductMenuItemTheme}"/>
+
         <!-- The tree-row container theme + row template, shared by both panes (they were byte-identical). The
              theme carries the container behaviour (TwoWay IsExpanded so an expander click reaches the VM for the
              US-070 snapshot/restore) and the UIA name/kind; the template renders icon + label + the US-014
@@ -283,7 +289,6 @@
                           a:AutomationProperties.AutomationId="file.new"/>
                 <controls:AccessibleMenuItem Header="Å_bn projekt…" Command="{Binding OpenCommand}" InputGesture="{OnPlatform 'Ctrl+O', macOS='Cmd+O'}"
                           a:AutomationProperties.AutomationId="file.open"/>
-                <Separator/>
                 <controls:AccessibleMenuItem Header="_Gem projekt" Command="{Binding SaveCommand}" InputGesture="{OnPlatform 'Ctrl+S', macOS='Cmd+S'}"
                           a:AutomationProperties.AutomationId="file.save"/>
                 <controls:AccessibleMenuItem Header="Gem projekt _som…" Command="{Binding SaveAsCommand}"

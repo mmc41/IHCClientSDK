@@ -242,7 +242,7 @@ public class AutomationCoverageTests : AvaloniaTestBase
 
     /// <summary>A menu separator must stay a separator. It is not a menu item and must never be wrapped into one:
     /// a wrapped separator reaches an automation client as a nameless, invokable row, so a driver enumerating the
-    /// File menu sees eleven "commands" of which three do nothing — and a screen reader reads the blanks out.
+    /// File menu sees ten "commands" of which three do nothing — and a screen reader reads the blanks out.
     /// (Avalonia's own container rule treats a Separator as its own container; a subclass that generates containers
     /// has to keep that, which is exactly what this caught.)</summary>
     [AvaloniaTest]
@@ -274,8 +274,8 @@ public class AutomationCoverageTests : AvaloniaTestBase
         Assert.That(wrapped, Is.Empty,
             $"a menu separator must not be realized as a menu item ({wrapped.Count} nameless, invokable rows would "
             + "reach an automation client and be read out by a screen reader)");
-        Assert.That(file.GetRealizedContainers().OfType<Separator>().Count(), Is.EqualTo(4),
-            "the File menu's four separators are realized as Separator controls");
+        Assert.That(file.GetRealizedContainers().OfType<Separator>().Count(), Is.EqualTo(3),
+            "the File menu's three separators are realized as Separator controls");
     }
 
     /// <summary>The pattern has to actually work, not merely be advertised: invoking a leaf must run its command.

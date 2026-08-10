@@ -2459,7 +2459,7 @@ public class MainWindowViewModelTests
             .ChildrenOrEmpty().First(a => a.Tag == "action");
         Assert.Multiple(() =>
         {
-            Assert.That(commandsAfter.Children.Any(c => c.DisplayName == "Toggle Chime"), Is.True, "the command renders under Commands");
+            Assert.That(commandsAfter.Children.Any(c => c.DisplayName == "Kip Chime"), Is.True, "the vendor command renders under Commands");
             Assert.That(authored.GetAttribute("method"), Is.EqualTo("_0x23"), "toggle uses the vendor token _0x23");
             Assert.That(vm.StatusText, Is.EqualTo("Kommando tilføjet til programmet."));
         });
@@ -2497,7 +2497,7 @@ public class MainWindowViewModelTests
         });
     }
 
-    // PG-1c / US-028: the Toggle command "Sets %P to the opposite value" is offered only for a bool OUTPUT pin
+    // PG-1c / US-028: the toggle command is offered only for a bool OUTPUT pin
     // (resource_output / dataline_output / airlink_relay); it is meaningless for an input or a non-bool variable and
     // must be withdrawn there — while the other Commands (= ON / = OFF) stay (T005 restricts Toggle only).
     [Test]
@@ -2617,6 +2617,49 @@ public class MainWindowViewModelTests
         {
             Assert.That(eventTokens, Is.EqualTo(new[] { "_0x96", "_0x9b" }), "analog Events = is changed / skrives");
             Assert.That(commandTokens, Is.Empty, "an analog no longer inherits the bool command list");
+        });
+    }
+
+    [Test]
+    public async Task ProgramPopup_EnumPin_OffersExactlyVendorFamilies_AndOnlySameTypeOperands()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        var settingsId = vm.InstallationNodes[0].Children[2].ElementId!.Value;
+        var internalsId = vm.InstallationNodes[0].Children[3].ElementId!.Value;
+        ElementId modeId = (await harness.Session.AddEnumVariableAsync(
+            settingsId, "Mode", "Mode", new[] { "Direct", "Delayed" }))!.Value;
+        var peerOutcome = await harness.Session.ApplyAsync(harness.Session.Commands.AddEnumVariableOfType(
+            harness.Session.Current!, internalsId, "Mode peer", "Mode")!);
+        Assert.That(peerOutcome.Status, Is.EqualTo(EditStatus.Committed), "the same-type operand is part of test setup");
+        await harness.Session.AddEnumVariableAsync(
+            internalsId, "Other enum", "Other enum", new[] { "Alpha", "Beta" });
+        await vm.AddSubProgramCommand.ExecuteAsync(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+        vm.UseInProgramCommand.Execute(FindNodeById(vm.InstallationNodes, modeId));
+
+        vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsEventsContainer)!);
+        string[] eventHeaders = vm.ProgramEventMenu.Select(m => m.Header).ToArray();
+        string[] eventOperands = vm.ProgramEventMenu.First().Children.Select(c => c.Header).ToArray();
+        vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+        string[] commandHeaders = vm.ProgramCommandMenu.Select(m => m.Header).ToArray();
+        string[] commandOperands = vm.ProgramCommandMenu.Single().Children.Select(c => c.Header).ToArray();
+        string[] caseHeaders = vm.ProgramCaseMenu.Select(m => m.Header).ToArray();
+        vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsConditionsContainer)!);
+        string[] conditionHeaders = vm.ProgramConditionMenu.Select(m => m.Header).ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(eventHeaders, Is.EqualTo(new[] { "Mode ->", "Mode skifter tilstand", "Mode bliver tilskrevet" }));
+            Assert.That(commandHeaders, Is.EqualTo(new[] { "Mode =" }));
+            Assert.That(conditionHeaders, Is.EqualTo(new[] { "Mode =", "Mode <>" }));
+            Assert.That(caseHeaders, Is.EqualTo(new[] { "Case (Mode)" }));
+            Assert.That(eventOperands, Is.EqualTo(new[] { "Mode peer" }),
+                "the transition submenu contains only variables sharing the armed enum's typedef");
+            Assert.That(commandOperands, Is.EqualTo(new[] { "Mode peer" }),
+                "the assignment submenu contains only variables sharing the armed enum's typedef");
         });
     }
 
@@ -2804,9 +2847,8 @@ public class MainWindowViewModelTests
         });
     }
 
-    // US-029: a Conditions group toggles from the default AND (&) to OR (>=1).
     [Test]
-    public async Task ToggleConditions_ToOr_ShowsOrCombination()
+    public async Task ToggleConditions_ToOr_PreservesVendorLabelAndShowsOperatorInIcon()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
@@ -2821,7 +2863,10 @@ public class MainWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(after.IsOrGroup, Is.True);
-            Assert.That(after.DisplayName, Does.Contain(">=1"));
+            Assert.That(after.DisplayName, Is.EqualTo("Betingelser"),
+                "the AND/OR operator does not become part of the vendor tree label");
+            Assert.That(after.IconAsset, Is.EqualTo(NodeIcons.For("conditions-or", null)),
+                "the OR operator remains visible through the >=1 icon");
             Assert.That(harness.Session.Current!.FindById(after.ElementId!.Value)!.GetAttribute("type"), Is.EqualTo("or"));
         });
     }
@@ -2852,9 +2897,8 @@ public class MainWindowViewModelTests
         });
     }
 
-    // US-029: a nested logic group is inserted inside the Conditions group for a compound expression.
     [Test]
-    public async Task AddLogicGroup_NestsAConditionsGroup()
+    public async Task AddLogicGroup_NestedGroup_UsesVendorConditionsLabel()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
@@ -2866,8 +2910,9 @@ public class MainWindowViewModelTests
         await vm.AddLogicGroupCommand.ExecuteAsync(FindByFlag(vm.FunctionNodes, n => n.IsConditionsContainer)!);
 
         var conditions = FindByFlag(vm.FunctionNodes, n => n.IsConditionsContainer)!;
-        Assert.That(conditions.Children.Any(c => c.IsConditionsContainer && c.DisplayName.StartsWith("Logisk gruppe")),
-            Is.True, "a nested logic group renders inside Betingelser");
+        TreeNodeViewModel nested = conditions.Children.Single(c => c.Kind == TreeNodeKind.LogicGroup);
+        Assert.That(nested.DisplayName, Is.EqualTo("Betingelser"),
+            "IHC Visual renders a logic group as another nested Betingelser node");
     }
 
     // US-030: creating an enum through the Settings palette authors a project-global type and a variable of it.
@@ -3379,10 +3424,12 @@ public class MainWindowViewModelTests
         await vm.AddPowerEventCommand.ExecuteAsync(eventsNode);
 
         var eventsEl = harness.Session.Current!.FindById(eventsNode.ElementId!.Value)!;
+        var power = eventsEl.ChildrenOrEmpty().Single(e => e.Tag == "event_power");
         var after = FindByFlag(vm.FunctionNodes, n => n.IsEventsContainer)!;
         Assert.Multiple(() =>
         {
-            Assert.That(eventsEl.ChildrenOrEmpty().Any(e => e.Tag == "event_power"), Is.True, "a Powerup (event_power) is stored");
+            Assert.That(power.GetAttribute("name"), Is.EqualTo("Powerup"), "the vendor event name is stored");
+            Assert.That(power.GetAttribute("note"), Is.EqualTo("Start program ved Powerup"), "the vendor event note is stored");
             Assert.That(after.Children.Any(c => c.DisplayName == "Powerup"), Is.True, "the Powerup event renders");
         });
     }

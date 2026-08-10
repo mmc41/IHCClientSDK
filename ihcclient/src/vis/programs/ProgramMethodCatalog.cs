@@ -18,8 +18,8 @@ namespace Ihc.Vis.Programs
     /// The program-authoring pin-type families the operator popup keys on (US-028, PG-1b): the dragged pin's type
     /// decides which operators the Events/Commands/Conditions popup offers, independent of the container category. A
     /// pin's SDK tag maps to exactly one family via <see cref="ProgramMethodCatalog.ClassifyPin"/>. <see cref="Bool"/>
-    /// is the default (its lists also serve enum/numeric/date pins until those are typed separately — out of PG-1b
-    /// scope); a numeric pin additionally reaches the arithmetic submenu via
+    /// is the default for unclassified binary-style tags; enumerators have a measured family of their own. A numeric
+    /// pin additionally reaches the arithmetic submenu via
     /// <see cref="ProgramMethodCatalog.NumericVariableTags"/>, which is orthogonal to this family.
     /// </summary>
     public enum ProgramPinType
@@ -28,6 +28,7 @@ namespace Ihc.Vis.Programs
         Analog,
         Weekday,
         Timer,
+        Enum,
 
         /// <summary>
         /// A numeric register (integer / counter): it has a VALUE, not an ON/OFF state, so it offers none of the
@@ -42,8 +43,9 @@ namespace Ihc.Vis.Programs
     /// One vendor program method (US-028/029/032): the <c>_0x</c> <see cref="Token"/> persisted on the event/action/
     /// condition row, the vendor <see cref="NameTemplate"/> and <see cref="Note"/> stored verbatim (the <c>%P</c>/
     /// <c>%S</c> placeholders stay live so the row re-renders when its operands are renamed), and the semantics the
-    /// GUI can no longer infer from a token: <see cref="OperandCount"/> (1 for event/command/condition, 2 for
-    /// arithmetic's <c>%P … %S</c>) and <see cref="OperatorSymbol"/> (<c>+</c>/<c>-</c> for arithmetic, else null;
+    /// GUI can no longer infer from a token: <see cref="OperandCount"/> (1 for unary methods, 2 when <c>%S</c> is
+    /// required) and <see cref="OperatorSymbol"/> (the operator for arithmetic and counter-step rows when applicable,
+    /// else null;
     /// ASCII hyphen-minus, not U+2212 — the .vis format is ISO-8859-1 and cannot encode a MINUS SIGN).
     /// The same token can appear under more than one category (e.g. <c>_0xa</c> is Event, Command and Condition), so
     /// within one pin-type family a method is identified by the <c>(Category, Token)</c> pair, never the token alone.
@@ -52,11 +54,8 @@ namespace Ihc.Vis.Programs
     /// catalog is <c>(PinType, Category, Token)</c>; a consumer keys on <c>(Category, Token)</c> only after it has
     /// picked one pin-type family via <see cref="ProgramMethodCatalog.EventsFor"/>/<c>CommandsFor</c>/<c>ConditionsFor</c>.
     /// </summary>
-    /// <remarks>Intentional test-only seam (D02): <see cref="OperandCount"/> is currently asserted only by the
-    /// ProgramMethodCatalog tests (1 for event/command/condition, 2 for arithmetic); it is kept as the method-arity
-    /// fact a future GUI operand picker would consult. (<see cref="Category"/> is NOT a test-only member — the
-    /// OpenVisual program menu keys its verbs by the full <c>(PinType, Category, Token)</c> triple, so it is
-    /// production-used.)</remarks>
+    /// <remarks>OpenVisual uses <see cref="Category"/> in the menu identity and <see cref="OperandCount"/> to choose
+    /// flat versus second-operand authoring.</remarks>
     public sealed record ProgramMethod(
         ProgramMethodCategory Category,
         string Token,
@@ -74,26 +73,34 @@ namespace Ihc.Vis.Programs
     /// </summary>
     public static class ProgramMethodCatalog
     {
+        // These are persisted .vis payloads, not UI labels; %LT stays live so renderers resolve the linked
+        // switch's current name after renames.
+        public const string CaseNameTemplate = "Case (%LT)";
+        public const string CaseNote = "Udfører case når %P er lig case værdien";
+
         /// <summary>The event triggers a bool variable can raise on a program's Events node (US-028): the two direct
         /// transitions <c>-&gt; ON</c>/<c>-&gt; OFF</c>, the two-operand <c>-&gt; %S</c> / <c>NOT -&gt; %S</c>
         /// (the target value is a second pin the author picks, T008), and the state-change/assignment triggers.</summary>
+        // GUI menu labels are composed separately. These Danish name/note literals are the vendor .vis payload and
+        // must remain verbatim.
         public static readonly ImmutableArray<ProgramMethod> Events = ImmutableArray.Create(
-            new ProgramMethod(ProgramMethodCategory.Event, "_0xa", "%P -> ON", "Start program when %P changes to ON", 1, null),
-            new ProgramMethod(ProgramMethodCategory.Event, "_0x14", "%P -> OFF", "Start program when %P changes to OFF", 1, null),
-            new ProgramMethod(ProgramMethodCategory.Event, "_0x1e", "%P -> %S", "Start program when %P changes to %S", 2, null),
-            new ProgramMethod(ProgramMethodCategory.Event, "_0x28", "%P NOT -> %S", "Start program when %P changes to a value other than %S", 2, null),
-            new ProgramMethod(ProgramMethodCategory.Event, "_0x96", "%P changes state", "Start program when %P changes state", 1, null),
-            new ProgramMethod(ProgramMethodCategory.Event, "_0x9b", "%P is assigned", "Start program when %P is assigned", 1, null));
+            new ProgramMethod(ProgramMethodCategory.Event, "_0xa", "%P -> ON", "Start program når %P skifter til ON", 1, null),
+            new ProgramMethod(ProgramMethodCategory.Event, "_0x14", "%P -> OFF", "Start program når %P skifter til OFF", 1, null),
+            new ProgramMethod(ProgramMethodCategory.Event, "_0x1e", "%P -> %S", "Start program når %P skifter til %S", 2, null),
+            new ProgramMethod(ProgramMethodCategory.Event, "_0x28", "%P NOT -> %S", "Start program når %P skifter til NOT %S", 2, null),
+            new ProgramMethod(ProgramMethodCategory.Event, "_0x96", "%P bliver ændret", "Start program når %P skifter værdi", 1, null),
+            new ProgramMethod(ProgramMethodCategory.Event, "_0x9b", "%P bliver tilskrevet", "Start program når %P bliver tilskrevet", 1, null));
 
         /// <summary>The commands a bool variable can be driven by on a program's Commands node (US-028): the direct
         /// <c>= ON</c>/<c>= OFF</c>, the two-operand assign <c>= %S</c> and <c>= NOT</c> (<c>%P &lt;&gt; %S</c>, the
-        /// second pin picked by the author, T008), and <c>Toggle</c> (bool-output only, PG-1c).</summary>
+        /// second pin picked by the author, T008), and the toggle command (persisted as <c>Kip %P</c>; bool-output
+        /// only, PG-1c).</summary>
         public static readonly ImmutableArray<ProgramMethod> Commands = ImmutableArray.Create(
             new ProgramMethod(ProgramMethodCategory.Command, "_0xa", "%P = ON", "Sets %P to ON", 1, null),
             new ProgramMethod(ProgramMethodCategory.Command, "_0x14", "%P = OFF", "Sets %P to OFF", 1, null),
             new ProgramMethod(ProgramMethodCategory.Command, "_0x1e", "%P = %S", "Sets %P to %S", 2, null),
             new ProgramMethod(ProgramMethodCategory.Command, "_0x28", "%P <> %S", "Sets %P to differ from %S", 2, null),
-            new ProgramMethod(ProgramMethodCategory.Command, "_0x23", "Toggle %P", "Sets %P to the opposite value", 1, null));
+            new ProgramMethod(ProgramMethodCategory.Command, "_0x23", "Kip %P", "Sætter %P til modsat værdi af aktuel værdi", 1, null));
 
         /// <summary>The <see cref="Commands"/> method tokens offered ONLY when the armed variable is a bool-OUTPUT
         /// pin (PG-1c/US-028): Toggle (<c>_0x23</c>) sets an output to its opposite value, which is meaningless for an
@@ -106,27 +113,28 @@ namespace Ihc.Vis.Programs
         /// <summary>The conditions a variable can be tested by on a sub-program's Conditions node, incl. the NOT
         /// variant (US-029).</summary>
         public static readonly ImmutableArray<ProgramMethod> Conditions = ImmutableArray.Create(
-            new ProgramMethod(ProgramMethodCategory.Condition, "_0xa", "%P = ON", "Condition that %P is ON", 1, null),
-            new ProgramMethod(ProgramMethodCategory.Condition, "_0x14", "%P = OFF", "Condition that %P is OFF", 1, null),
-            new ProgramMethod(ProgramMethodCategory.Condition, "_0x1e", "%P = %S", "Condition that %P equals %S", 2, null),
-            new ProgramMethod(ProgramMethodCategory.Condition, "_0x28", "%P <> %S", "Condition that %P differs from %S", 2, null));
+            new ProgramMethod(ProgramMethodCategory.Condition, "_0xa", "%P = ON", "Betingelse at %P er ON", 1, null),
+            new ProgramMethod(ProgramMethodCategory.Condition, "_0x14", "%P = OFF", "Betingelse at %P er OFF", 1, null),
+            new ProgramMethod(ProgramMethodCategory.Condition, "_0x1e", "%P = %S", "Betingelse at %P er samme som %S", 2, null),
+            new ProgramMethod(ProgramMethodCategory.Condition, "_0x28", "%P <> %S", "Betingelse at %P er forskelling fra %S", 2, null));
 
         /// <summary>The four binary arithmetic operators on a numeric register (US-032, F-108): add / subtract /
         /// divide / multiply. Each entry's <see cref="ProgramMethod.Token"/> is the <b>generic-column</b> opcode; the
         /// actual opcode for a concrete <c>(target, operand)</c> pair — and whether that cell is authorable at all —
         /// comes from <see cref="ArithmeticToken"/> (a dead cell returns null and is never offered). The
-        /// <see cref="ProgramMethod.NameTemplate"/> is token-independent (only the token varies by pair).</summary>
+        /// <see cref="ProgramMethod.NameTemplate"/> is pair-independent; use <see cref="ArithmeticNote"/> for the persisted
+        /// note because multiplication wording depends on target direction.</summary>
         public static readonly ImmutableArray<ProgramMethod> Arithmetic = ImmutableArray.Create(
-            new ProgramMethod(ProgramMethodCategory.Arithmetic, "_0x5a", "%P = %P + %S", "Adds %S to %P", 2, "+"),
-            new ProgramMethod(ProgramMethodCategory.Arithmetic, "_0x64", "%P = %P - %S", "Subtracts %S from %P", 2, "-"),
-            new ProgramMethod(ProgramMethodCategory.Arithmetic, "_0x6e", "%P = %P / %S", "Divides %P by %S", 2, "/"),
-            new ProgramMethod(ProgramMethodCategory.Arithmetic, "_0x78", "%P = %P * %S", "Multiplies %P by %S", 2, "*"));
+            new ProgramMethod(ProgramMethodCategory.Arithmetic, "_0x5a", "%P = %P + %S", "Sætter %P til sin egen værdi plus %S", 2, "+"),
+            new ProgramMethod(ProgramMethodCategory.Arithmetic, "_0x64", "%P = %P - %S", "Sætter %P til sin egen værdi minus %S", 2, "-"),
+            new ProgramMethod(ProgramMethodCategory.Arithmetic, "_0x6e", "%P = %P / %S", "Tilskrev værdien %P med %S", 2, "/"),
+            new ProgramMethod(ProgramMethodCategory.Arithmetic, "_0x78", "%P = %P * %S", "Sætter %P til sin egen værdi ganget med %S", 2, "*"));
 
         /// <summary>The 1-op counter increment / decrement commands (<c>%P = %P + 1</c> / <c>%P = %P - 1</c>, tokens
         /// <c>_0x54</c>/<c>_0x57</c>) offered on a counter target instead of a second operand (US-032, e2).</summary>
         public static readonly ImmutableArray<ProgramMethod> CounterSteps = ImmutableArray.Create(
-            new ProgramMethod(ProgramMethodCategory.Command, "_0x54", "%P = %P + 1", "Increments %P by 1", 1, "+"),
-            new ProgramMethod(ProgramMethodCategory.Command, "_0x57", "%P = %P - 1", "Decrements %P by 1", 1, "-"));
+            new ProgramMethod(ProgramMethodCategory.Command, "_0x54", "%P = %P + 1", "Sætter %P til sin egen værdi plus 1", 1, "+"),
+            new ProgramMethod(ProgramMethodCategory.Command, "_0x57", "%P = %P - 1", "Sætter %P til sin egen værdi minus 1", 1, "-"));
 
         private static bool IsFloatTag(string tag) => tag == "resource_floating_point";
         private static bool IsIntTag(string tag) => tag == "resource_integer";
@@ -163,6 +171,23 @@ namespace Ihc.Vis.Programs
             return mixed ? MixedToken(generic) : generic;
         }
 
+        /// <summary>Returns an authorable cell's vendor note, or null for a dead cell. Both mixed multiply directions use
+        /// <c>_0x7d</c>, but integer targets use assignment wording and floating-point targets use multiplication wording.</summary>
+        public static string? ArithmeticNote(string operatorSymbol, string targetTag, string operandTag)
+        {
+            if (ArithmeticToken(operatorSymbol, targetTag, operandTag) is null)
+                return null;
+            return operatorSymbol switch
+            {
+                "+" => "Sætter %P til sin egen værdi plus %S",
+                "-" => "Sætter %P til sin egen værdi minus %S",
+                "/" => "Tilskrev værdien %P med %S",
+                "*" when IsIntTag(targetTag) => "Tilskrev værdien %P til %S",
+                "*" => "Sætter %P til sin egen værdi ganget med %S",
+                _ => null,
+            };
+        }
+
         // The mixed-column opcode is the generic-column opcode + 0x5 (F-108: `_0x5a`→`_0x5f`, `_0x64`→`_0x69`, …).
         private static string MixedToken(string genericToken) =>
             "_0x" + (Convert.ToInt32(genericToken.AsSpan(3).ToString(), 16) + 0x5).ToString("x", System.Globalization.CultureInfo.InvariantCulture);
@@ -173,6 +198,18 @@ namespace Ihc.Vis.Programs
         /// commands or conditions of its own (a numeric analog still reaches the arithmetic submenu separately).</summary>
         public static readonly ImmutableArray<ProgramMethod> AnalogEvents =
             Events.RemoveAll(m => m.Token is not ("_0x96" or "_0x9b"));
+
+        /// <summary>The measured enumerator operator family (S2-13): transition to another value of the same enum type,
+        /// state change, and assignment events; assignment commands; and equality/inequality conditions. These reuse
+        /// the byte-fidelity two-operand definitions while deliberately excluding every Boolean ON/OFF/NOT operator.</summary>
+        public static readonly ImmutableArray<ProgramMethod> EnumEvents =
+            Events.RemoveAll(m => m.Token is not ("_0x1e" or "_0x96" or "_0x9b"));
+
+        public static readonly ImmutableArray<ProgramMethod> EnumCommands =
+            Commands.RemoveAll(m => m.Token != "_0x1e");
+
+        public static readonly ImmutableArray<ProgramMethod> EnumConditions =
+            Conditions.RemoveAll(m => m.Token is not ("_0x1e" or "_0x28"));
 
         /// <summary>The weekday event triggers (US-028/PG-1b): the vendor <c>System weekday -&gt; %P</c>
         /// (<c>_0x5</c>) plus the two shared <c>is changed</c>/<c>is written</c> triggers.</summary>
@@ -229,6 +266,7 @@ namespace Ihc.Vis.Programs
             ProgramPinType.Analog => AnalogEvents,
             ProgramPinType.Weekday => WeekdayEvents,
             ProgramPinType.Timer => TimerEvents,
+            ProgramPinType.Enum => EnumEvents,
             _ => Events,
         };
 
@@ -237,6 +275,7 @@ namespace Ihc.Vis.Programs
         public static ImmutableArray<ProgramMethod> CommandsFor(ProgramPinType type) => type switch
         {
             ProgramPinType.Timer => TimerCommands,
+            ProgramPinType.Enum => EnumCommands,
             // F5: a numeric register offers NO boolean command. It is deliberately empty rather than populated with
             // an assignment set: the reference application's menu shows `Tal = 0` / `Tal =`, but no recorded oracle
             // contains a numeric-target action, so the opcodes are unmeasured — and this catalog's standing rule is
@@ -246,7 +285,7 @@ namespace Ihc.Vis.Programs
         };
 
         /// <summary>The condition operators a pin of <paramref name="type"/> offers on a Conditions group
-        /// (US-028/PG-1b). Only bool (and, by default, enum/numeric) pins have condition operators here; the timer
+        /// (US-028/PG-1b). Bool, enum, and numeric pins have their measured condition operators here; the timer
         /// condition comparisons land in T039.</summary>
         /// <remarks><see cref="ProgramPinType.Numeric"/> keeps the <see cref="Conditions"/> list it had while
         /// integer/counter classified as <see cref="ProgramPinType.Bool"/>: F5 is about COMMANDS, and no measurement
@@ -255,6 +294,7 @@ namespace Ihc.Vis.Programs
         public static ImmutableArray<ProgramMethod> ConditionsFor(ProgramPinType type) => type switch
         {
             ProgramPinType.Bool or ProgramPinType.Numeric => Conditions,
+            ProgramPinType.Enum => EnumConditions,
             ProgramPinType.Timer => TimerConditions,
             _ => ImmutableArray<ProgramMethod>.Empty,
         };
@@ -266,13 +306,13 @@ namespace Ihc.Vis.Programs
             "resource_temperature", "resource_humidity_level", "resource_light_level", "resource_floating_point",
         }.ToFrozenSet(StringComparer.Ordinal);
 
-        /// <summary>Maps a pin's SDK tag to its <see cref="ProgramPinType"/> operator family (US-028/PG-1b). A tag
-        /// outside the timer/weekday/analog sets is <see cref="ProgramPinType.Bool"/> (the default list), so a
-        /// timer/analog/weekday pin no longer inherits the bool operators while enum/numeric/date pins still do.</summary>
+        /// <summary>Maps a pin's SDK tag to its operator family (US-028/PG-1b). Known timer, weekday, enum, and analog
+        /// tags map to their named families; integer/counter tags map to Numeric; every remaining tag defaults to Bool.</summary>
         public static ProgramPinType ClassifyPin(string tag) => tag switch
         {
             "resource_timer" => ProgramPinType.Timer,
             "resource_weekday" => ProgramPinType.Weekday,
+            "resource_enum" => ProgramPinType.Enum,
             _ when AnalogPinTags.Contains(tag) => ProgramPinType.Analog,
             // F5: an integer/counter register is NOT a bool. The numeric family is NumericVariableTags (below), so a
             // type added there classifies here too; resource_floating_point is claimed by the Analog arm above.

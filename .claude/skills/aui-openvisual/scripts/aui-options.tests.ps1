@@ -30,6 +30,7 @@ $ErrorActionPreference = 'Stop'
 $auiPath = Join-Path $PSScriptRoot 'aui.ps1'
 if (-not (Test-Path $auiPath)) { Write-Host 'FAIL: aui.ps1 not found next to this script.'; exit 2 }
 
+$source = Get-Content -LiteralPath $auiPath -Raw
 $parseErrors = $null
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($auiPath, [ref]$null, [ref]$parseErrors)
 if ($parseErrors -and $parseErrors.Count -gt 0) {
@@ -343,6 +344,212 @@ $decoy6 = [System.Management.Automation.Language.Parser]::ParseInput(
     'function Get-MenuLevel { if ($Depth -lt $m -and -not $isSeparator) { $x = 1 } else { $script:MenuTruncated = $true } }',
     [ref]$null, [ref]$decoyErrors)
 Test-Case 'k11 the k10 check is armed' 'reachable from a separator (line 1)' (Test-SeparatorNotTruncation $decoy6)
+
+# k12: Escape is an application command (program.leaveMode), not a popup-only primitive. Menu cleanup
+# must not call any of this driver's keyboard, click, right-click, or drag emitters.
+function Test-MenuCleanupAvoidsKeyboardAndClick {
+    param($Tree)
+    $fn = Get-FunctionAst $Tree 'Close-AllMenus'
+    if (-not $fn) { return 'no Close-AllMenus' }
+    $members = @($fn.FindAll({
+        $args[0] -is [System.Management.Automation.Language.InvokeMemberExpressionAst] -and
+        $args[0].Member.Extent.Text -in @('SendWait', 'keybd_event', 'Click', 'RightClick', 'Drag', 'mouse_event')
+    }, $true))
+    foreach ($member in $members) {
+        if ($member.Member.Extent.Text -in @('SendWait', 'keybd_event')) { return 'keyboard input' }
+        return 'application-content input'
+    }
+    foreach ($command in $fn.FindAll({ $args[0] -is [System.Management.Automation.Language.CommandAst] }, $true)) {
+        $name = $command.GetCommandName()
+        if ($name -and $name -match '(?i)(click|drag)') { return 'application-content input' }
+    }
+    return 'safe'
+}
+Test-Case 'k12 menu cleanup calls no keyboard or application-content input emitter' 'safe' (Test-MenuCleanupAvoidsKeyboardAndClick $ast)
+$decoy7 = [System.Management.Automation.Language.Parser]::ParseInput(
+    "function Close-AllMenus { [System.Windows.Forms.SendKeys]::SendWait(`$computedGesture) }",
+    [ref]$null, [ref]$decoyErrors)
+Test-Case 'k13 the k12 keyboard check is armed' 'keyboard input' (Test-MenuCleanupAvoidsKeyboardAndClick $decoy7)
+$decoy7b = [System.Management.Automation.Language.Parser]::ParseInput(
+    'function Close-AllMenus { Invoke-ElementClick $row }', [ref]$null, [ref]$decoyErrors)
+Test-Case 'k13b the k12 wrapped-click check is armed' 'application-content input' `
+    (Test-MenuCleanupAvoidsKeyboardAndClick $decoy7b)
+
+# k14: popup identity comes from one item: the condition positively re-hit-tests `$live`, and the
+# close coordinates come from that same item's fresh bounding rectangle.
+function Test-MenuCleanupGuardsNativePopupClose {
+    param($Tree)
+    $fn = Get-FunctionAst $Tree 'Close-AllMenus'
+    if (-not $fn) { return 'no Close-AllMenus' }
+    $calls = @($fn.FindAll({
+        $args[0] -is [System.Management.Automation.Language.InvokeMemberExpressionAst] -and
+        $args[0].Member.Extent.Text -eq 'CloseOwnedPopupAtPoint' }, $true))
+    if ($calls.Count -eq 0) { return 'missing native popup close' }
+    if ($calls.Count -gt 1) { return 'multiple native popup closes' }
+    $call = $calls[0]
+    $enclosed = $false
+    foreach ($if in $fn.FindAll({ $args[0] -is [System.Management.Automation.Language.IfStatementAst] }, $true)) {
+        $body = $if.Clauses[0].Item2.Extent
+        if ($body.StartOffset -gt $call.Extent.StartOffset -or $body.EndOffset -lt $call.Extent.EndOffset) { continue }
+        $enclosed = $true
+        $conditionText = $if.Clauses[0].Item1.Extent.Text
+        if ($conditionText -match '-not' -or
+            $conditionText -notmatch '\$live\s+-and\s+\(?\s*Test-LivePopupItem\s+\$live\s*\)?') { continue }
+        $rectAssignment = $fn.FindAll({
+            $args[0] -is [System.Management.Automation.Language.AssignmentStatementAst] -and
+            $args[0].Left.Extent.Text -eq '$r' -and
+            $args[0].Right.Extent.Text -eq '$live.Current.BoundingRectangle' }, $true) |
+            Where-Object { $_.Extent.StartOffset -ge $body.StartOffset -and
+                           $_.Extent.EndOffset -lt $call.Extent.StartOffset } |
+            Select-Object -First 1
+        if (-not $rectAssignment) { continue }
+        if ($call.Extent.Text -notmatch '\$r\.X' -or $call.Extent.Text -notmatch '\$r\.Width' -or
+            $call.Extent.Text -notmatch '\$r\.Y' -or $call.Extent.Text -notmatch '\$r\.Height') {
+            continue
+        }
+        return 'guarded'
+    }
+    return $(if ($enclosed) { 'wrong live-item provenance' } else { 'unguarded native popup close' })
+}
+Test-Case 'k14 menu cleanup guards its native popup close' 'guarded' (Test-MenuCleanupGuardsNativePopupClose $ast)
+$decoy8 = [System.Management.Automation.Language.Parser]::ParseInput(
+    'function Close-AllMenus { if (Test-LivePopupItem $other) { $r = $live.Current.BoundingRectangle; [Aui.Win32]::CloseOwnedPopupAtPoint(1, $main, 12, 100) } }',
+    [ref]$null, [ref]$decoyErrors)
+Test-Case 'k15 the k14 check is armed' 'wrong live-item provenance' (Test-MenuCleanupGuardsNativePopupClose $decoy8)
+
+# k16: after the call-site hit test establishes popup identity, the native helper must still refuse
+# the main window and any foreign, hidden, non-owned, titled, or non-Avalonia top-level HWND.
+function Test-NativePopupCloseGuards {
+    param([string] $Text)
+    $m = [regex]::Match($Text,
+        '(?ms)^\s*public static bool CloseOwnedPopupAtPoint\(.*?^\s{4}\}')
+    if (-not $m.Success) { return 'no native popup close helper' }
+    $body = $m.Value
+    $missing = @()
+    if ($body -notmatch 'main\s*==\s*IntPtr\.Zero') { $missing += 'main' }
+    if ($body -notmatch 'target\s*==\s*IntPtr\.Zero\s*\|\|\s*target\s*==\s*main') { $missing += 'target' }
+    if ($body -notmatch 'GetWindowThreadProcessId\(target,\s*out\s+ownerPid\)' -or
+        $body -notmatch 'ownerPid\s*!=\s*\(uint\)pid') { $missing += 'process' }
+    if ($body -notmatch '!IsWindowVisible\(target\)') { $missing += 'visibility' }
+    if ($body -notmatch 'GetWindow\(target,\s*GW_OWNER\)\s*!=\s*main') { $missing += 'owner' }
+    if ($body -notmatch 'StartsWith\("Avalonia-",\s*StringComparison\.Ordinal\)') { $missing += 'class' }
+    if ($body -notmatch 'TextOf\(target\)\.Length\s*!=\s*0') { $missing += 'title' }
+    if ($body -notmatch 'PostMessageW\(target,\s*WM_CLOSE') { $missing += 'post-target' }
+    return $(if ($missing.Count -eq 0) { 'guarded' } else { 'missing: ' + ($missing -join ',') })
+}
+Test-Case 'k16 native popup close enforces its target guards' 'guarded' (Test-NativePopupCloseGuards $source)
+$decoy9 = "    public static bool CloseOwnedPopupAtPoint(int pid, IntPtr main, int x, int y) {`n" +
+          "      PostMessageW(main, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);`n" +
+          "      return true;`n" +
+          "    }"
+Test-Case 'k17 the k16 check is armed' 'missing: main,target,process,visibility,owner,class,title,post-target' `
+    (Test-NativePopupCloseGuards $decoy9)
+
+# ---------------------------------------------------------------------------
+# (l) --help is a terminal CLI route, not an option passed through to a command mechanism
+#
+#     Run the shipping script in a child process: function-only tests cannot prove that Main exits
+#     before app resolution and dispatch. `catalog commands` is intentionally harmless on the broken
+#     path, while its normal payload is distinct enough to prove whether help intercepted it.
+# ---------------------------------------------------------------------------
+function Get-PropertyValue {
+    param($Object, [string] $Name)
+    if ($null -eq $Object) { return $null }
+    $property = $Object.PSObject.Properties[$Name]
+    if ($property) { return $property.Value }
+    return $null
+}
+
+$helpOutput = @(& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $auiPath catalog commands --help 2>&1)
+$helpExit = $LASTEXITCODE
+$helpEnvelope = $null
+try { $helpEnvelope = (($helpOutput -join "`n") | ConvertFrom-Json) } catch { }
+$helpData = Get-PropertyValue $helpEnvelope 'data'
+$helpCommand = Get-PropertyValue $helpData 'command'
+
+Test-Case 'l1 command --help exits successfully' '0' ([string]$helpExit)
+Test-Case 'l2 command --help returns one JSON envelope' 'True' ([string]($null -ne $helpEnvelope))
+Test-Case 'l3 command --help identifies the help payload' 'commandHelp' (Get-PropertyValue $helpData 'kind')
+Test-Case 'l4 command --help identifies the resolved command' 'catalog.commands' (Get-PropertyValue $helpCommand 'id')
+Test-Case 'l5 command --help never resolves live app context' '<null>' (Get-PropertyValue $helpEnvelope 'context')
+Test-Case 'l5b help advertises only JSON-envelope flags' '--help|-h' `
+    (@(Get-PropertyValue $helpData 'helpFlags') -join '|')
+
+function Test-HelpRouteOrder {
+    param([string] $Text)
+    $marker = [regex]::Match($Text, '(?m)^# Main\r?$')
+    if (-not $marker.Success) { return 'missing Main marker' }
+    $main = $Text.Substring($marker.Index)
+    $help = $main.LastIndexOf('if ($helpRequested)')
+    $bootstrap = $main.IndexOf('Initialize-Uia')
+    $dispatch = $main.IndexOf('Invoke-Command-Spec')
+    if ($help -lt 0) { return 'missing help route' }
+    if ($bootstrap -lt 0 -or $dispatch -lt 0) { return 'missing bootstrap/dispatch' }
+    return $(if ($help -lt $bootstrap -and $help -lt $dispatch) { 'early' } else { 'LATE' })
+}
+Test-Case 'l6 command help exits before UIA bootstrap and dispatch' 'early' (Test-HelpRouteOrder $source)
+$lateHelp = "# Main`r`nInitialize-Uia`r`nif (`$helpRequested) { Write-Result `$help }`r`nInvoke-Command-Spec"
+Test-Case 'l7 the l6 ordering check is armed' 'LATE' (Test-HelpRouteOrder $lateHelp)
+
+# (m) node.drag addresses each endpoint's pane independently
+#
+#     A single --tree can drive a reorder but cannot express TV1 resource -> TV2 program-group.
+#     S2-10 needs distinct endpoint selectors while preserving --tree as the legacy fallback.
+function Test-NodeDragEndpointTrees {
+    param($Tree)
+    $fn = Get-FunctionAst $Tree 'Invoke-Mechanism-NodeDrag'
+    if (-not $fn) { return 'no nodeDrag mechanism' }
+    $text = $fn.Extent.Text
+    if ($text -notmatch "Resolve-TreeId\s+\`$Opts\s+@\('from-tree'\)") { return 'missing from-tree resolution' }
+    if ($text -notmatch "Resolve-TreeId\s+\`$Opts\s+@\('to-tree'\)") { return 'missing to-tree resolution' }
+    $sourceResolutions = @([regex]::Matches($text, 'Resolve-TreePath\s+\$Window\s+\$fromTreeId\s+\$from')).Count
+    $targetResolutions = @([regex]::Matches($text, 'Resolve-TreePath\s+\$Window\s+\$toTreeId\s+\$to')).Count
+    if ($sourceResolutions -lt 2) { return 'source re-resolution uses wrong tree' }
+    if ($targetResolutions -lt 2) { return 'target re-resolution uses wrong tree' }
+    return 'separate endpoint trees'
+}
+Test-Case 'm1 node.drag resolves source and target panes independently' 'separate endpoint trees' `
+    (Test-NodeDragEndpointTrees $ast)
+$decoy10 = [System.Management.Automation.Language.Parser]::ParseInput(
+    'function Invoke-Mechanism-NodeDrag { $treeId = Resolve-TreeId $Opts; Resolve-TreePath $Window $treeId $from; Resolve-TreePath $Window $treeId $to }',
+    [ref]$null, [ref]$decoyErrors)
+Test-Case 'm2 the m1 endpoint-tree check is armed' 'missing from-tree resolution' `
+    (Test-NodeDragEndpointTrees $decoy10)
+
+$o = Parse-Options @('--tree', 'TV2')
+Test-Case 'm3 omitted from-tree inherits legacy --tree' 'FunctionsTree' (Resolve-TreeId $o @('from-tree'))
+Test-Case 'm4 omitted to-tree inherits legacy --tree' 'FunctionsTree' (Resolve-TreeId $o @('to-tree'))
+
+function Test-NodeDragCrossPaneOracle {
+    param($Tree)
+    $fn = Get-FunctionAst $Tree 'Invoke-Mechanism-NodeDrag'
+    if (-not $fn) { return 'no nodeDrag mechanism' }
+    $text = $fn.Extent.Text
+    $assignments = @($fn.FindAll({
+        $args[0] -is [System.Management.Automation.Language.AssignmentStatementAst] -and
+        $args[0].Left.Extent.Text -eq '$statusNamesEndpoints'
+    }, $true))
+    if ($assignments.Count -eq 0) { return 'missing endpoint-named status oracle' }
+    foreach ($assignment in $assignments) {
+        $rhs = $assignment.Right.Extent.Text
+        if ($rhs -notmatch '\$statusChanged' -or $rhs -notmatch 'IndexOf\(\$sourceName' -or
+            $rhs -notmatch 'IndexOf\(\$targetName') { return 'status assignment does not prove both endpoints' }
+    }
+    if ($text -notmatch '\$effectObserved\s*=\s*if\s*\(\$crossPane\)\s*\{\s*\$statusNamesEndpoints\s*\}\s*else\s*\{\s*\$structureChanged\s*\}') {
+        return 'cross-pane effect is not isolated from realized-row churn'
+    }
+    if ($text -notmatch '\$moved\s*=\s*\(-not\s+\$crossPane\)\s+-and\s+\$structureChanged') {
+        return 'cross-pane drag can report moved'
+    }
+    return 'cross-pane status isolated from row churn'
+}
+Test-Case 'm5 cross-pane drag accepts a changed status only when it names both endpoints' `
+    'cross-pane status isolated from row churn' (Test-NodeDragCrossPaneOracle $ast)
+$decoy11 = [System.Management.Automation.Language.Parser]::ParseInput(
+    'function Invoke-Mechanism-NodeDrag { $statusChanged = $before.statusText -ne $after.statusText; $effectObserved = $crossPane -and $statusChanged }',
+    [ref]$null, [ref]$decoyErrors)
+Test-Case 'm6 the m5 status-oracle check is armed' 'missing endpoint-named status oracle' `
+    (Test-NodeDragCrossPaneOracle $decoy11)
 
 Write-Host ''
 if ($script:Failed -gt 0) {

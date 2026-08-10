@@ -95,8 +95,8 @@ public sealed partial class TreeNodeViewModel : ObservableObject
     public bool IsConditionsContainer => Kind is TreeNodeKind.Conditions or TreeNodeKind.LogicGroup;
 
     /// <summary>Whether this conditions group is OR-combined (<c>&gt;=1</c>) rather than the default AND (US-029).
-    /// Intentional test-only seam (D02): the projector SETS it (the AND/OR shows in the icon + label suffix); it is
-    /// currently READ only by the projection tests, kept so a future label/icon binding can consume it without churn.</summary>
+    /// Intentional test-only seam (D02): the projector sets it alongside the operator-specific icon; projection tests
+    /// can assert semantic state without decoding an asset path.</summary>
     public bool IsOrGroup { get; init; }
 
     /// <summary>Whether this node is a <c>program_case</c> switch — the target of <i>New case value…</i> (US-031).</summary>

@@ -20,28 +20,34 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(One(ProgramMethodCatalog.Events, "_0xa"),
-                    Is.EqualTo(new ProgramMethod(ProgramMethodCategory.Event, "_0xa", "%P -> ON", "Start program when %P changes to ON", 1, null)));
-                Assert.That(One(ProgramMethodCatalog.Events, "_0x14").NameTemplate, Is.EqualTo("%P -> OFF"));
-                Assert.That(One(ProgramMethodCatalog.Events, "_0x96").NameTemplate, Is.EqualTo("%P changes state"));
-                Assert.That(One(ProgramMethodCatalog.Events, "_0x9b").NameTemplate, Is.EqualTo("%P is assigned"));
+                    Is.EqualTo(new ProgramMethod(ProgramMethodCategory.Event, "_0xa", "%P -> ON", "Start program når %P skifter til ON", 1, null)));
+                Assert.That(One(ProgramMethodCatalog.Events, "_0x14"),
+                    Is.EqualTo(new ProgramMethod(ProgramMethodCategory.Event, "_0x14", "%P -> OFF", "Start program når %P skifter til OFF", 1, null)));
+                Assert.That(One(ProgramMethodCatalog.Events, "_0x96"),
+                    Is.EqualTo(new ProgramMethod(ProgramMethodCategory.Event, "_0x96", "%P bliver ændret", "Start program når %P skifter værdi", 1, null)));
+                Assert.That(One(ProgramMethodCatalog.Events, "_0x9b"),
+                    Is.EqualTo(new ProgramMethod(ProgramMethodCategory.Event, "_0x9b", "%P bliver tilskrevet", "Start program når %P bliver tilskrevet", 1, null)));
                 // T008: the direct/state triggers are unary; the "-> <pin>" / "NOT -> <pin>" transitions are two-operand.
                 Assert.That(One(ProgramMethodCatalog.Events, "_0xa").OperandCount, Is.EqualTo(1));
                 Assert.That(One(ProgramMethodCatalog.Events, "_0x1e"),
-                    Is.EqualTo(new ProgramMethod(ProgramMethodCategory.Event, "_0x1e", "%P -> %S", "Start program when %P changes to %S", 2, null)));
-                Assert.That(One(ProgramMethodCatalog.Events, "_0x28").NameTemplate, Is.EqualTo("%P NOT -> %S"));
+                    Is.EqualTo(new ProgramMethod(ProgramMethodCategory.Event, "_0x1e", "%P -> %S", "Start program når %P skifter til %S", 2, null)));
+                Assert.That(One(ProgramMethodCatalog.Events, "_0x28"),
+                    Is.EqualTo(new ProgramMethod(ProgramMethodCategory.Event, "_0x28", "%P NOT -> %S", "Start program når %P skifter til NOT %S", 2, null)));
                 Assert.That(One(ProgramMethodCatalog.Events, "_0x28").OperandCount, Is.EqualTo(2));
             });
         }
 
         [Test]
-        public void Commands_CarryVendorTemplates()
+        public void Commands_ToggleCarriesVendorPayload()
         {
             Assert.Multiple(() =>
             {
                 Assert.That(One(ProgramMethodCatalog.Commands, "_0xa"),
                     Is.EqualTo(new ProgramMethod(ProgramMethodCategory.Command, "_0xa", "%P = ON", "Sets %P to ON", 1, null)));
                 Assert.That(One(ProgramMethodCatalog.Commands, "_0x14").NameTemplate, Is.EqualTo("%P = OFF"));
-                Assert.That(One(ProgramMethodCatalog.Commands, "_0x23").NameTemplate, Is.EqualTo("Toggle %P"));
+                Assert.That(One(ProgramMethodCatalog.Commands, "_0x23"),
+                    Is.EqualTo(new ProgramMethod(ProgramMethodCategory.Command, "_0x23", "Kip %P",
+                        "Sætter %P til modsat værdi af aktuel værdi", 1, null)));
             });
         }
 
@@ -56,6 +62,22 @@ namespace Ihc.Vis.Tests
                 // T008: the NOT variant is the pinned two-operand "%P <> %S", not the old unary "%P <> ON".
                 Assert.That(One(ProgramMethodCatalog.Conditions, "_0x28").NameTemplate, Is.EqualTo("%P <> %S"));
                 Assert.That(One(ProgramMethodCatalog.Conditions, "_0x28").OperandCount, Is.EqualTo(2));
+            });
+        }
+
+        [Test]
+        public async Task Conditions_NotesMatchTheAuthenticOracleRows()
+        {
+            Project oracle = await new ProjectAppService(TestSetup.Settings).Load("testdata/projects/project2-CustomBlock.vis");
+            var oracleNotesByName = oracle.Root.Descendants()
+                .Where(e => e.Tag == "condition")
+                .ToDictionary(e => e.GetAttribute("name")!, e => e.GetAttribute("note")!);
+
+            Assert.Multiple(() =>
+            {
+                foreach (ProgramMethod method in ProgramMethodCatalog.Conditions)
+                    Assert.That(method.Note, Is.EqualTo(oracleNotesByName[method.NameTemplate]),
+                        $"condition {method.Token} stores the vendor note verbatim");
             });
         }
 
@@ -174,8 +196,8 @@ namespace Ihc.Vis.Tests
                 Assert.That(ProgramMethodCatalog.ClassifyPin("resource_floating_point"), Is.EqualTo(ProgramPinType.Analog));
                 Assert.That(ProgramMethodCatalog.ClassifyPin("resource_input"), Is.EqualTo(ProgramPinType.Bool));
                 Assert.That(ProgramMethodCatalog.ClassifyPin("resource_output"), Is.EqualTo(ProgramPinType.Bool));
-                Assert.That(ProgramMethodCatalog.ClassifyPin("resource_enum"), Is.EqualTo(ProgramPinType.Bool),
-                    "enum/numeric/date stay on the bool default (their own typing is out of PG-1b scope)");
+                Assert.That(ProgramMethodCatalog.ClassifyPin("resource_enum"), Is.EqualTo(ProgramPinType.Enum),
+                    "an enumerator has its own measured operator family and must not inherit Boolean commands");
             });
         }
 
@@ -192,6 +214,14 @@ namespace Ihc.Vis.Tests
                 Assert.That(ProgramMethodCatalog.EventsFor(ProgramPinType.Bool), Is.EqualTo(ProgramMethodCatalog.Events));
                 Assert.That(ProgramMethodCatalog.CommandsFor(ProgramPinType.Bool), Is.EqualTo(ProgramMethodCatalog.Commands));
                 Assert.That(ProgramMethodCatalog.ConditionsFor(ProgramPinType.Bool), Is.EqualTo(ProgramMethodCatalog.Conditions));
+
+                // Enum: assignment/comparison against another value of the same type plus state-change/write events.
+                Assert.That(Tokens(ProgramMethodCatalog.EventsFor(ProgramPinType.Enum)),
+                    Is.EqualTo(new[] { "_0x1e", "_0x96", "_0x9b" }));
+                Assert.That(Tokens(ProgramMethodCatalog.CommandsFor(ProgramPinType.Enum)),
+                    Is.EqualTo(new[] { "_0x1e" }));
+                Assert.That(Tokens(ProgramMethodCatalog.ConditionsFor(ProgramPinType.Enum)),
+                    Is.EqualTo(new[] { "_0x1e", "_0x28" }));
 
                 // Analog: only the two "is changed"/"is written" triggers; no commands or conditions of its own.
                 Assert.That(Tokens(ProgramMethodCatalog.EventsFor(ProgramPinType.Analog)), Is.EqualTo(new[] { "_0x96", "_0x9b" }));

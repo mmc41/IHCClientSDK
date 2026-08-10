@@ -326,7 +326,7 @@ namespace Ihc.Vis.Tests
                 Assert.That(app.Commands.AddCondition(project, a, b, "_0xa", "n", null), Is.EqualTo(new AddCondition(a, b, "_0xa", "n", null)));
                 Assert.That(app.Commands.SetConditionsLogic(project, a, true), Is.EqualTo(new SetConditionsLogic(a, true)));
                 Assert.That(app.Commands.AddLogicGroup(project, a), Is.EqualTo(new AddLogicGroup(a)));
-                Assert.That(app.Commands.AddArithmeticCommand(project, a, b, "_0x5a", a, "n"), Is.EqualTo(new AddArithmeticCommand(a, b, "_0x5a", a, "n")));
+                Assert.That(app.Commands.AddArithmeticCommand(project, a, b, "_0x5a", a, "n", "note"), Is.EqualTo(new AddArithmeticCommand(a, b, "_0x5a", a, "n", "note")));
                 Assert.That(app.Commands.AddCase(project, a, b), Is.EqualTo(new AddCase(a, b)));
                 Assert.That(app.Commands.SetOutputBackup(project, a, true), Is.EqualTo(new SetOutputBackup(a, true)));
                 Assert.That(app.Commands.ToggleLogMark(project, a), Is.EqualTo(new ToggleLogMark(a)));

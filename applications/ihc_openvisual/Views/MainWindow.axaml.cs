@@ -169,13 +169,34 @@ public partial class MainWindow : Window
         _viewModel?.DragDrop.HighlightDropTarget(null);
         if (_viewModel is null || TreeDragData.TryGetElementId(e.DataTransfer) is not { } draggedId)
             return;
-        if ((e.Source as Control)?.FindAncestorOfType<TreeViewItem>(includeSelf: true)?.DataContext is not TreeNodeViewModel { ElementId: { } targetId })
+        if ((e.Source as Control)?.FindAncestorOfType<TreeViewItem>(includeSelf: true) is not { DataContext: TreeNodeViewModel { ElementId: { } targetId } targetNode } targetRow)
             return;
         e.Handled = true;
+        DropVerdict verdict = _viewModel.DragDrop.CanDropOn(draggedId, targetId);
         // PerformDropAsync routes through the view-model's RunAsync boundary today, so this guard is a backstop
         // rather than the primary net — but an async void handler must never RELY on its callee staying guarded.
-        await HandlerGuard.RunAsync(() => _viewModel.DragDrop.PerformDropAsync(draggedId, targetId),
+        Exception? fault = await HandlerGuard.RunAsync(() => _viewModel.DragDrop.PerformDropAsync(draggedId, targetId, verdict),
             Logger, nameof(OnTreeDrop));
+        if (fault is null && verdict.Route == DropRoute.ProgramBuild)
+            ShowProgramDropMenu(targetNode, targetRow);
+    }
+
+    // The drop has already rebuilt the shared collections; expose the target family directly to match the vendor's
+    // one-gesture chooser instead of requiring a second right-click through the full node context menu.
+    private void ShowProgramDropMenu(TreeNodeViewModel target, Control anchor)
+    {
+        (string Key, System.Collections.IEnumerable Items)? menu = target switch
+        {
+            { IsEventsContainer: true } => ("ProgramEventDropMenu", _viewModel!.ProgramEventMenu),
+            { IsCommandsContainer: true } => ("ProgramCommandDropMenu", _viewModel!.ProgramCommandMenu),
+            { IsConditionsContainer: true } => ("ProgramConditionDropMenu", _viewModel!.ProgramConditionMenu),
+            _ => null,
+        };
+        if (menu is { } choice && this.FindResource(choice.Key) is MenuFlyout flyout)
+        {
+            flyout.ItemsSource = choice.Items;
+            flyout.ShowAt(anchor);
+        }
     }
 
     private void OnTreePointerPressed(object? sender, PointerPressedEventArgs e)

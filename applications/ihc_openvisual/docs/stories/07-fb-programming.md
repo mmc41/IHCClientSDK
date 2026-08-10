@@ -1,6 +1,6 @@
 ---
 version: 0.5.0
-last-updated: 2026-08-03
+last-updated: 2026-08-09
 status: draft
 ---
 
@@ -76,11 +76,12 @@ Scenario: Switch focus between the two panes
 - MUST: Inserting an **empty** function block enters programming mode for the new block automatically
   (US-019) — creation is the one entry route that needs no `F3`.
 - MUST: Leaving programming mode re-roots **both** panes back to *Lokaliteter*.
-- MUST: **Programming mode opens expanded.** On entry the left pane shows the block root **and all four
+- MUST: **The programming data palette opens expanded.** On entry the left pane shows the block root **and all four
   variable sections** already open, so the block's variables are readable without a click. The expansion
   survives later edits — a mutation that re-projects the tree does not collapse the sections again
   (US-070). **Configuration mode is deliberately the opposite**: a function block there stays collapsed,
-  so opening a project does not unfold every block in the installation.
+  so opening a project does not unfold every block in the installation. In the right pane, the block and
+  `Programmer` roots open, while authored `Program` and `Under program` rows start collapsed.
 - MUST: The pane roots are what tell the two modes apart — configuration mode roots at *Lokaliteter*,
   programming mode roots at the block's name. (This is the only reliable signal of which mode the view is
   in; IHC OpenVisual additionally reports the transition in the status bar.)
@@ -314,6 +315,11 @@ Scenario: Event and command semantics
   Dropping a pin on an **Events** group raises the event popup, on a **Commands** group the command popup, on
   a **Conditions** group the condition popup (US-029) — one drag gesture, three families. There is **no
   separate "add event" verb**: an event is authored by dropping a pin on the Events group like any other row.
+- MUST: Popup labels and serialized templates are separate compatibility surfaces. The stored bool-event
+  name/note templates retain the vendor literals; in particular, state change stores `%P bliver ændret` /
+  `Start program når %P skifter værdi`, while assignment stores `%P bliver tilskrevet` /
+  `Start program når %P bliver tilskrevet`. The bool-output toggle command likewise stores the vendor
+  payload `Kip %P` / `Sætter %P til modsat værdi af aktuel værdi`, independently of localized chooser copy.
 - MUST: The operator each popup offers is a function of the pin's type. The per-type lists are the authoring
   vocabulary IHC OpenVisual reproduces:
 
@@ -361,7 +367,12 @@ dead `Timer ->` event and `<` condition are never offered, and the count-state p
 opcodes with condition-family semantics ((code, family)-scoped). **Inserting a program** is offered on both
 surfaces — the `Programs` container's context menu and the *Indsæt* menu's program-elements group — so a block
 can hold several programs; the route is withheld inside a locked block and the added program round-trips
-byte-faithfully.
+byte-faithfully. The six bool-event payload templates are pinned to the vendor values; a live changed-state
+event and its Powerup companion now save and reopen in a raw byte-identical vendor/OpenVisual `.vis` pair.
+The four bool-condition note templates are also pinned to authentic vendor literals; a live `Indgang = ON`
+condition survives save/reopen in a raw byte-identical pair. The bool-output toggle payload is pinned as
+`Kip %P` with its vendor Danish note; a live `Kip Udgang` command and a four-node `Under program` structure
+survive save/reopen in a raw byte-identical pair.
 
 ---
 
@@ -404,10 +415,13 @@ Scenario: Nest a logic group for a compound expression
   renders that name as its tree label — e.g. `Kip udgang`, `Tænd`, `Sluk` — falling back to the default
   sub-program token **only when `name` is absent or default**. A fixed default label for every one would
   discard the name and collapse distinct sub-programs to indistinguishable rows.
-- MUST: The default label the app supplies for an unnamed sub-program, for a conditions group, for a nested
-  logic group and for the two conditional command branches is **in the application's own UI language**
-  (US-001) — and where the project file already stores that same wording, the app renders the stored text
-  rather than restating it in another language (US-018's stored-caption rule).
+- MUST: The default label the app supplies for an unnamed sub-program and for the two conditional command
+  branches is **in the application's own UI language** (US-001) — and where the project file already stores
+  that same wording, the app renders the stored text rather than restating it in another language
+  (US-018's stored-caption rule).
+- MUST: For vendor parity, both the top-level conditions container and every nested logic group render the
+  exact label **`Betingelser`**. Nesting remains visible in the tree structure; AND (`&`) versus OR (`>=1`)
+  is shown by the icon and is not appended to the label.
 - MUST: Inserting a sub-program appends the four-node skeleton the first scenario describes — *Under program →
   { Conditions, Commands when conditions true, Commands when conditions false }*.
 
@@ -423,10 +437,9 @@ Scenario: Nest a logic group for a compound expression
 
 **Implementation status:** ✅ Implemented — sub-program + conditions authoring with AND/OR logic groups, and the
 user-set sub-program **name** renders as the tree label (falling back to the default sub-program token only
-when the name is absent or still the default). The default labels the app supplies for an unnamed sub-program,
-the conditions group, a nested logic group and the two conditional command branches read in the
-application's UI language, and where the file stores that same wording the stored text is rendered rather than
-restated.
+when the name is absent or still the default). The conditions group and every nested logic group render the
+vendor label `Betingelser`, with AND/OR represented only by the icon. Other supplied default labels remain in
+the application's UI language, and stored wording is rendered rather than restated.
 
 ---
 
@@ -630,8 +643,10 @@ counter `± 1`. A numeric register is also no longer offered the **boolean** com
 belong to a flag. 🟡 The numeric **assignment** commands (`= 0`, `= <pin>`) are still **not offered**: no
 reference project records their stored form, and the tool never authors an operation whose stored form it has
 not observed, so closing this needs a captured example rather than a guessed encoding.
-Division onto a decimal register is **not offered** (the ÷ row is final). Opcodes are
-byte-fidelity-pinned and every authorable cell round-trips through a save→reload.
+Division onto a decimal register is **not offered** (the ÷ row is final). Opcodes and vendor action
+name/note payloads are byte-fidelity-pinned; arithmetic note selection is pair-aware because the two
+mixed-multiply directions share `_0x7d` but persist different wording. Every authorable cell round-trips
+through a save→reload.
 
 ---
 
@@ -664,6 +679,7 @@ Scenario: Persist a physical output's state
 
 - MUST: *Powerup* is inserted as a **menu** event — *Insert ▸ Special ▸ Powerup event* — not by a drag onto
   the Events group, and it carries **no operand or link** (it triggers on the block, unconditionally).
+- MUST: The serialized Powerup note is the vendor literal `Start program ved Powerup`.
 
 ### AC illustrations
 
@@ -673,6 +689,7 @@ Scenario: Persist a physical output's state
 **Readiness:** Ready.
 
 **Implementation status:** ✅ Implemented (Powerup event + Save-current-value persistence on FB & physical outputs).
+The menu-authored event stores the vendor name/note payload and is covered by save/reopen parity evidence.
 
 ---
 

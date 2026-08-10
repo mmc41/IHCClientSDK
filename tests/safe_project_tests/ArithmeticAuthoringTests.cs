@@ -48,7 +48,7 @@ namespace Ihc.Vis.Tests
 
             string method = ProgramMethodCatalog.ArithmeticToken("+", "resource_integer", "resource_floating_point")!;
             session.Apply(App.Commands.AddArithmeticCommand(session.Current!, commands, target, method, operand,
-                "%P = %P + %S"));
+                "%P = %P + %S", "Sætter %P til sin egen værdi plus %S"));
 
             using var ms = new MemoryStream();
             await App.Save(session.Current!, ms);
@@ -61,6 +61,8 @@ namespace Ihc.Vis.Tests
                 Assert.That(method, Is.EqualTo("_0x5f"), "the mixed-column opcode for (int += float)");
                 Assert.That(action.GetAttribute("name"), Is.EqualTo("%P = %P + %S"),
                     "the vendor template, placeholders left live so the row re-renders on rename");
+                Assert.That(action.GetAttribute("note"), Is.EqualTo("Sætter %P til sin egen værdi plus %S"),
+                    "the vendor note is part of the persisted action payload");
                 Assert.That(action.GetAttribute("icon"), Is.EqualTo("_0x9"), "the vendor action icon");
                 Assert.That(action.GetAttribute("link1"), Is.EqualTo(reloaded.FindById(target)!.GetAttribute("id")),
                     "link1 is the TARGET register");
@@ -102,6 +104,31 @@ namespace Ihc.Vis.Tests
                 Assert.That(dead, Is.EqualTo(21), "…and the dead ones, which are never offered");
             });
             await Task.CompletedTask;
+        }
+
+        [Test]
+        public void ArithmeticNote_UsesTheVendorPayloadForTheConcreteOperandDirection()
+        {
+            const string flt = "resource_floating_point";
+            const string integer = "resource_integer";
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(ProgramMethodCatalog.ArithmeticNote("+", integer, flt),
+                    Is.EqualTo("Sætter %P til sin egen værdi plus %S"));
+                Assert.That(ProgramMethodCatalog.ArithmeticNote("-", flt, integer),
+                    Is.EqualTo("Sætter %P til sin egen værdi minus %S"));
+                Assert.That(ProgramMethodCatalog.ArithmeticNote("/", integer, flt),
+                    Is.EqualTo("Tilskrev værdien %P med %S"));
+                Assert.That(ProgramMethodCatalog.ArithmeticNote("*", flt, flt),
+                    Is.EqualTo("Sætter %P til sin egen værdi ganget med %S"));
+                Assert.That(ProgramMethodCatalog.ArithmeticNote("*", flt, integer),
+                    Is.EqualTo("Sætter %P til sin egen værdi ganget med %S"));
+                Assert.That(ProgramMethodCatalog.ArithmeticNote("*", integer, flt),
+                    Is.EqualTo("Tilskrev værdien %P til %S"));
+                Assert.That(ProgramMethodCatalog.ArithmeticNote("*", integer, integer), Is.Null,
+                    "a dead grid cell has no payload to persist");
+            });
         }
     }
 }

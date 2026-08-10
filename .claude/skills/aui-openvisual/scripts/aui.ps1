@@ -321,8 +321,12 @@ namespace Aui {
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
     [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr h);
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+    [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(AuiPoint pt);
+    [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr h, uint flags);
+    [DllImport("user32.dll")] public static extern IntPtr GetWindow(IntPtr h, uint cmd);
+    [DllImport("user32.dll")] public static extern bool PostMessageW(IntPtr h, uint m, IntPtr w, IntPtr l);
     [DllImport("user32.dll")] public static extern IntPtr SendMessageW(IntPtr h, uint m, IntPtr w, IntPtr l);
-    const uint BM_CLICK = 0x00F5;
+    const uint BM_CLICK = 0x00F5, WM_CLOSE = 0x0010, GA_ROOT = 2, GW_OWNER = 4;
 
     [DllImport("user32.dll")] static extern IntPtr MonitorFromPoint(AuiPoint pt, int flags);
     [DllImport("user32.dll", EntryPoint="GetMonitorInfoW", CharSet=CharSet.Unicode)] static extern bool GetMonitorInfo(IntPtr mon, ref AuiMonInfo mi);
@@ -399,6 +403,24 @@ namespace Aui {
       var sb = new System.Text.StringBuilder(512);
       GetWindowTextW(h, sb, 512);
       return sb.ToString();
+    }
+
+    // The caller supplies a live menu item's midpoint as positive popup identity. Native guards then
+    // refuse the main HWND and any foreign, hidden, titled, non-Avalonia, or non-owned target.
+    public static bool CloseOwnedPopupAtPoint(int pid, IntPtr main, int x, int y) {
+      if (pid <= 0 || main == IntPtr.Zero || !IsWindow(main)) return false;
+      AuiPoint point; point.X = x; point.Y = y;
+      IntPtr underPoint = WindowFromPoint(point);
+      IntPtr target = underPoint == IntPtr.Zero ? IntPtr.Zero : GetAncestor(underPoint, GA_ROOT);
+      if (target == IntPtr.Zero || target == main || !IsWindow(target) || !IsWindowVisible(target)) return false;
+      uint ownerPid;
+      GetWindowThreadProcessId(target, out ownerPid);
+      if (ownerPid != (uint)pid || GetWindow(target, GW_OWNER) != main) return false;
+      var className = new System.Text.StringBuilder(128);
+      GetClassNameW(target, className, className.Capacity);
+      if (!className.ToString().StartsWith("Avalonia-", StringComparison.Ordinal)) return false;
+      if (TextOf(target).Length != 0) return false;
+      return PostMessageW(target, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
     }
 
     // A dialog OWNED by another dialog (the shell's replace prompt over a Save picker) is not a
@@ -1347,8 +1369,6 @@ function Invoke-Mechanism-DoubleClick {
 # the target is resolved but deliberately NOT selected, so selectedBefore != the target. If
 # selectedAfter is the target, right-click selects; if it is unchanged, it does not. Either way the
 # answer is readable from the envelope alone.
-# Move a node onto another by a REAL mouse drag, the gesture the menu supplements exist to stand in for.
-#
 # Needed because the 3WAY scenarios have to prove that using a supplement (edit.moveUp/moveDown,
 # link start-from-here/to-here) produces the same result as the drag it replaces. Comparing the supplement
 # against the vendor's drag alone would leave the OpenVisual drag path itself unmeasured.
@@ -1356,11 +1376,15 @@ function Invoke-Mechanism-DoubleClick {
 # Synthesized as press → threshold nudge → interpolated moves → release, rather than one jump to the target:
 # a drag only STARTS after the pointer travels past the toolkit's drag threshold while held, and a drop only
 # registers where the pointer last moved, so a single SetCursorPos between down and up produces a click, not
-# a drag. Verified by effect against the pane's row order — NoEffect when nothing moved.
+# a drag. Same-pane drags verify row-order changes; cross-pane program-authoring drops require
+# changed status naming both endpoint rows.
 function Invoke-Mechanism-NodeDrag {
     param($Spec, $Opts, $Window)
     if (-not $Window) { return (New-Result -Ok $false -Code 'AppNotRunning' -Message 'App not running.') }
-    $treeId = Resolve-TreeId $Opts
+    # Endpoint-specific selectors make the gesture itself addressable across panes. Legacy --tree remains the
+    # fallback for both endpoints, so existing same-pane reorder/link calls keep their original grammar.
+    $fromTreeId = Resolve-TreeId $Opts @('from-tree')
+    $toTreeId = Resolve-TreeId $Opts @('to-tree')
     # Two DISTINCT positionals: `node drag A B`. Reading both from index 0 (the old shared fallback)
     # made --to equal --from, i.e. a drag of a row onto ITSELF reported as a real drag.
     $from = Get-OptValue $Opts @('from', 'path') -PositionalIndex 0
@@ -1369,10 +1393,10 @@ function Invoke-Mechanism-NodeDrag {
         return (New-Result -Ok $false -Code 'InvalidInput' -Message "$($Spec.id) requires --from <path> and --to <path>." -Context (Get-Context $Window))
     }
 
-    $src = Resolve-TreePath $Window $treeId $from
+    $src = Resolve-TreePath $Window $fromTreeId $from
     if (-not $src.ok) { return (New-Result -Ok $false -Code $src.code -Message $src.message -Context (Get-Context $Window)) }
     Show-TreeItem $src.element
-    $dst = Resolve-TreePath $Window $treeId $to
+    $dst = Resolve-TreePath $Window $toTreeId $to
     if (-not $dst.ok) { return (New-Result -Ok $false -Code $dst.code -Message $dst.message -Context (Get-Context $Window)) }
     Show-TreeItem $dst.element
 
@@ -1380,24 +1404,65 @@ function Invoke-Mechanism-NodeDrag {
     if ($guard) { return $guard }
 
     # Re-resolve both points AFTER any scrolling Show-TreeItem did, or the coordinates are stale.
-    $a = Get-TreeItemClickPoint (Resolve-TreePath $Window $treeId $from).element
-    $b = Get-TreeItemClickPoint (Resolve-TreePath $Window $treeId $to).element
+    $a = Get-TreeItemClickPoint (Resolve-TreePath $Window $fromTreeId $from).element
+    $b = Get-TreeItemClickPoint (Resolve-TreePath $Window $toTreeId $to).element
     if (-not $a -or -not $b) {
         return (New-Result -Ok $false -Code 'TargetNotFound' `
             -Message 'One of the two rows does not hit-test back to itself (occluded or scrolled out of view); refusing to drag blind.' `
             -Context (Get-Context $Window))
     }
 
-    $orderBefore = (Get-PaneRowOrder $Window $treeId) -join '|'
+    $crossPane = $fromTreeId -ne $toTreeId
+    $sourceOrderBefore = (Get-PaneRowOrder $Window $fromTreeId) -join '|'
+    $targetOrderBefore = if ($crossPane) { (Get-PaneRowOrder $Window $toTreeId) -join '|' } else { $sourceOrderBefore }
+    $before = Get-Context $Window
+    $sourceName = [string]$src.element.Current.Name
+    $targetName = [string]$dst.element.Current.Name
     [Aui.Win32]::Drag([int]$a.X, [int]$a.Y, [int]$b.X, [int]$b.Y)
-    Start-Sleep -Milliseconds 600
-    $orderAfter = (Get-PaneRowOrder $Window $treeId) -join '|'
+    Start-Sleep -Milliseconds 350
 
-    $moved = $orderBefore -ne $orderAfter
-    $data = [ordered]@{ from = [string]$from; to = [string]$to; tree = $treeId; moved = $moved }
-    return (New-Result -Ok $moved -Code $(if ($moved) { 'Ok' } else { 'NoEffect' }) `
-        -Message $(if ($moved) { "Dragged '$from' onto '$to'." } else { "Dragged '$from' onto '$to' but the pane's row order did not change." }) `
-        -Verified $moved -Context (Get-Context $Window) -Data $data)
+    # A same-pane drag must change row order. A cross-pane pin -> program-group drop does not add a row yet: it
+    # arms the method chooser and names both endpoints in the status. Realized-row churn from scrolling is not
+    # a cross-pane effect; accepting it would turn a plain source selection into a false success.
+    $after = Get-Context $Window
+    $sourceOrderAfter = (Get-PaneRowOrder $Window $fromTreeId) -join '|'
+    $targetOrderAfter = if ($crossPane) { (Get-PaneRowOrder $Window $toTreeId) -join '|' } else { $sourceOrderAfter }
+    $structureChanged = $sourceOrderBefore -ne $sourceOrderAfter -or $targetOrderBefore -ne $targetOrderAfter
+    # Target selection can predate the drag, so keep this diagnostic out of the success oracle.
+    $targetSelected = $false
+    $statusChanged = $before.statusText -ne $after.statusText
+    $statusNamesEndpoints = $statusChanged -and $after.statusText -and
+        $after.statusText.IndexOf($sourceName, [System.StringComparison]::OrdinalIgnoreCase) -ge 0 -and
+        $after.statusText.IndexOf($targetName, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
+    $effectObserved = if ($crossPane) { $statusNamesEndpoints } else { $structureChanged }
+    for ($i = 0; $i -lt 6; $i++) {
+        $targetSelected = @($after.selections | Where-Object {
+            $_ -and $_.tree -eq $toTreeId -and $_.name -eq $targetName }).Count -gt 0
+        if ($effectObserved) { break }
+        Start-Sleep -Milliseconds 250
+        $after = Get-Context $Window
+        $sourceOrderAfter = (Get-PaneRowOrder $Window $fromTreeId) -join '|'
+        $targetOrderAfter = if ($crossPane) { (Get-PaneRowOrder $Window $toTreeId) -join '|' } else { $sourceOrderAfter }
+        $structureChanged = $sourceOrderBefore -ne $sourceOrderAfter -or $targetOrderBefore -ne $targetOrderAfter
+        $statusChanged = $before.statusText -ne $after.statusText
+        $statusNamesEndpoints = $statusChanged -and $after.statusText -and
+            $after.statusText.IndexOf($sourceName, [System.StringComparison]::OrdinalIgnoreCase) -ge 0 -and
+            $after.statusText.IndexOf($targetName, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
+        $effectObserved = if ($crossPane) { $statusNamesEndpoints } else { $structureChanged }
+    }
+
+    $moved = (-not $crossPane) -and $structureChanged
+    $data = [ordered]@{
+        from = [string]$from; to = [string]$to
+        fromTree = $fromTreeId; toTree = $toTreeId; crossPane = $crossPane
+        moved = $moved; effectObserved = $effectObserved
+        targetSelected = $targetSelected; statusChanged = $statusChanged
+        statusNamesEndpoints = $statusNamesEndpoints
+    }
+    $route = if ($crossPane) { "$fromTreeId -> $toTreeId" } else { $fromTreeId }
+    return (New-Result -Ok $effectObserved -Code $(if ($effectObserved) { 'Ok' } else { 'NoEffect' }) `
+        -Message $(if ($effectObserved) { "Dragged '$from' onto '$to' ($route)." } else { "Dragged '$from' onto '$to' ($route), but no target-side effect was observed." }) `
+        -Verified $effectObserved -Context $after -Data $data)
 }
 
 # The pane's visible rows in order — the cheapest signal that a drag actually moved something.
@@ -1746,18 +1811,13 @@ function Invoke-Mechanism-ContextMenu {
 }
 
 # ── Menu walking ─────────────────────────────────────────────────────────────
-# Avalonia's MenuItems expose NO UI-Automation patterns at any level: neither the eight menu-bar
-# roots nor the realized popup items offer Invoke or ExpandCollapse (verified live, 2026-07-15).
-# Alt access-key chords do not open the bar from a synthesized SendKeys either. The only route
-# that works is a real mouse click on each item's rect, one segment at a time, waiting for each
-# popup to realize before locating the next. Clicking a submenu header opens it; clicking a leaf
-# invokes it. This single walker therefore serves the plain menu commands, the nested Reports
-# submenu, and the dynamic catalog submenus (products / FB templates).
+# AccessibleMenu exposes pattern-first bar traversal; click and hover remain fallbacks for older
+# controls and popup census walks whose submenu realization is observable only through hover.
 
 function Get-MenuPopupItems {
     param([int] $AppPid)
-    # Realized popup items = every MenuItem in the app's process that is not a menu-bar root.
-    # The roots are exactly the elements carrying an AutomationId (MenuFile, MenuInsert, ...).
+    # Realized popup items are the process's MenuItems/Separators minus live menu-bar RuntimeIds;
+    # AutomationId cannot distinguish roots because named popup items carry one too.
     #
     # This walk RACES THE THING IT IS LOOKING FOR: the flyout is still realizing while UIA walks, and a
     # Descendants walk whose tree mutates mid-walk throws E_FAIL from the COM provider. It surfaced as an
@@ -1838,15 +1898,58 @@ function Invoke-ElementClick {
     return $true
 }
 
+function Test-LivePopupItem {
+    param($Item)
+    try {
+        $r = $Item.Current.BoundingRectangle
+        if ($r.Width -lt 1 -or $r.Height -lt 1 -or [double]::IsInfinity($r.X) -or [double]::IsInfinity($r.Y)) { return $false }
+        $hit = $script:AE::FromPoint((New-Object System.Windows.Point(
+            [double]($r.X + $r.Width / 2), [double]($r.Y + $r.Height / 2))))
+        for ($i = 0; $i -lt 12 -and $hit; $i++) {
+            if ([System.Windows.Automation.Automation]::Compare($hit, $Item)) { return $true }
+            $hit = $script:Walk.GetParent($hit)
+        }
+    } catch { }
+    return $false
+}
+
 function Close-AllMenus {
     param($Window = $null)
-    # Esc until no popup items remain, rather than a fixed number of blind Escs.
-    for ($i = 0; $i -lt 4; $i++) {
-        $proc = Get-AppProcess
-        if (-not $proc) { break }
-        if (@(Get-MenuPopupItems $proc.Id).Count -eq 0) { break }
-        [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
-        Start-Sleep -Milliseconds 150
+    $proc = Get-AppProcess
+    if ($proc -and @(Get-MenuPopupItems $proc.Id).Count -gt 0 -and $Window) {
+        # Escape is program.leaveMode in programming mode; stale popup readings previously sent an
+        # extra Esc and made id lookup report the post-transition item disabled.
+        try {
+            $bar = $Window.FindFirst($script:Desc,
+                (New-PropCondition ([System.Windows.Automation.AutomationElement]::ControlTypeProperty) ([System.Windows.Automation.ControlType]::Menu)))
+            if ($bar) {
+                foreach ($top in @($bar.FindAll($script:ChildScope,
+                    (New-PropCondition ([System.Windows.Automation.AutomationElement]::ControlTypeProperty) ([System.Windows.Automation.ControlType]::MenuItem))))) {
+                    $ec = Get-Pattern $top ([System.Windows.Automation.ExpandCollapsePattern]::Pattern)
+                    if ($ec) {
+                        try { $ec.Collapse() } catch { }
+                    }
+                }
+                Start-Sleep -Milliseconds 120
+            }
+        } catch { }
+
+        # Context flyouts have no bar root. The UIA re-hit-test supplies positive popup identity; the
+        # native helper narrows its top-level HWND by main-owner, process, visibility, class, and title.
+        $remaining = @(Get-MenuPopupItems $proc.Id)
+        $live = $null
+        foreach ($candidate in $remaining) {
+            if (Test-LivePopupItem $candidate) { $live = $candidate; break }
+        }
+        if ($live -and (Test-LivePopupItem $live)) {
+            try {
+                $r = $live.Current.BoundingRectangle
+                $main = [IntPtr]$Window.Current.NativeWindowHandle
+                $closed = [Aui.Win32]::CloseOwnedPopupAtPoint($proc.Id, $main,
+                    [int]($r.X + $r.Width / 2), [int]($r.Y + $r.Height / 2))
+                if ($closed) { Start-Sleep -Milliseconds 150 }
+            } catch { }
+        }
     }
     # Park the pointer off the menu bar. This matters: menus open on hover once the bar is in menu
     # mode, so a cursor left resting on a root (by a previous hover walk) leaves that root already
@@ -3127,6 +3230,19 @@ function Invoke-Mechanism-NotImplemented {
 # ─────────────────────────────────────────────────────────────────────────────
 # Option parsing (CLI grammar: <domain> <verb> [positional...] [--flag value] [--switch])
 # ─────────────────────────────────────────────────────────────────────────────
+function Test-HelpToken {
+    param([string] $Token)
+    return $Token -in @('--help', '-h')
+}
+
+function Test-HelpRequested {
+    param([string[]] $Tokens)
+    foreach ($token in $Tokens) {
+        if (Test-HelpToken $token) { return $true }
+    }
+    return $false
+}
+
 function Parse-Options {
     param([string[]] $Tokens)
     $opts = @{ _positional = @() }
@@ -3207,8 +3323,16 @@ function Get-PathOpt {
 }
 
 function Resolve-TreeId {
-    param($Opts)
-    $t = if ($Opts.ContainsKey('tree')) { $Opts['tree'] } else { 'TV1' }
+    param($Opts, [string[]] $Keys = @('tree'))
+    $t = $null
+    foreach ($key in $Keys) {
+        if ($Opts.ContainsKey($key)) { $t = $Opts[$key]; break }
+    }
+    # Preserve node.drag's legacy grammar: omitted endpoint selectors inherit --tree.
+    if (($null -eq $t -or $t -is [bool] -or $t -eq '') -and -not ($Keys -contains 'tree') -and $Opts.ContainsKey('tree')) {
+        $t = $Opts['tree']
+    }
+    if ($null -eq $t) { $t = 'TV1' }
     # A bare `--tree` (no value) arrives as [bool]; .ToUpper() on it throws. Fall back to the default.
     if ($t -isnot [string] -or $t -eq '') { $t = 'TV1' }
     switch ($t.ToUpper()) {
@@ -3235,6 +3359,32 @@ function Find-Spec {
     param([string] $Id)
     foreach ($c in $script:Registry.commands) { if ($c.id -eq $Id) { return $c } }
     return $null
+}
+
+function New-HelpResult {
+    param($Spec = $null)
+    $command = $null
+    if ($Spec) {
+        $command = [ordered]@{
+            id          = [string]$Spec.id
+            status      = [string]$Spec.status
+            mutating    = [string]$Spec.mutating
+            mechanism   = [string]$Spec.mechanism
+            gates       = @($Spec.gates)
+            description = [string]$Spec.description
+        }
+    }
+    $kind = if ($Spec) { 'commandHelp' } else { 'globalHelp' }
+    $usage = if ($Spec) { "aui $($Spec.id) [options]" } else { 'aui <domain> <verb> [args] [options]' }
+    $message = if ($Spec) { "Help for '$($Spec.id)'. No command was executed." } else { 'AUI OpenVisual command help.' }
+    $data = [ordered]@{
+        kind             = $kind
+        usage            = $usage
+        helpFlags        = @('--help', '-h')
+        commandDiscovery = 'aui catalog commands'
+        command          = $command
+    }
+    return (New-Result -Ok $true -Code 'Ok' -Message $message -Verified $true -Data $data)
 }
 
 function Invoke-Command-Spec {
@@ -3275,6 +3425,11 @@ Assert-Windows
 $tokens = @($CmdArgs)
 if ($tokens.Count -eq 0) {
     Write-Result (New-Result -Ok $false -Code 'InvalidInput' -Message 'Usage: aui <domain> <verb> [args]. Try: aui catalog commands')
+}
+$helpRequested = Test-HelpRequested $tokens
+$commandTokens = @($tokens | Where-Object { -not (Test-HelpToken $_) })
+if ($helpRequested -and $commandTokens.Count -eq 0) {
+    Write-Result (New-HelpResult)
 }
 
 # Resolve the command id from the leading non-flag words. The reference CLI expresses multi-segment
@@ -3322,12 +3477,17 @@ function Resolve-Command {
     return $null
 }
 
-$resolved = Resolve-Command $tokens
+$resolved = Resolve-Command $commandTokens
 if (-not $resolved) {
-    Write-Result (New-Result -Ok $false -Code 'InvalidInput' -Message "Unknown command '$($tokens -join ' ')'. Run 'aui catalog commands' to list the vocabulary.")
+    Write-Result (New-Result -Ok $false -Code 'InvalidInput' -Message "Unknown command '$($commandTokens -join ' ')'. Run 'aui catalog commands' to list the vocabulary.")
 }
 $id = $resolved.id
 $spec = Find-Spec $id
+# Help must terminate before gates, UIA bootstrap, app lookup, and mechanism dispatch. Otherwise a
+# documentation probe can execute the command it is asking about (capture.window did exactly that).
+if ($helpRequested) {
+    Write-Result (New-HelpResult $spec)
+}
 $opts = Parse-Options @($resolved.rest)
 
 # Gate 1: planned commands are stubs — require --allow-unverified to even attempt them.

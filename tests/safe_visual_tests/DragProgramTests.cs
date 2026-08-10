@@ -95,8 +95,44 @@ public class DragProgramTests : AvaloniaTestBase
         });
     }
 
-    // A-27: a locked (library) block's program is view-only — a program-building drop is refused, with a reason, and
-    // builds nothing.
+    // uxparity2 S2-10: the vendor opens the applicable method chooser at the drop point. Populating the backing
+    // collection alone is not observable to the user; the one drag gesture must leave the command flyout open.
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public async Task DropVariableOnCommands_OpensMethodChooserImmediately()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        await harness.Session.AddVariableAsync(vm.InstallationNodes[0].Children[1].ElementId!.Value, "resource_output", "Udgang");
+
+        var variable = TreeNodes.FindPin(vm.InstallationNodes, "Udgang")!;
+        var commands = TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsCommandsContainer)!;
+        var window = new MainWindow { DataContext = vm };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+        for (int i = 0; i < 4; i++)
+        {
+            foreach (var item in window.GetVisualDescendants().OfType<TreeViewItem>())
+                item.IsExpanded = true;
+            Dispatcher.UIThread.RunJobs();
+        }
+        CurrentTestWindow = window;
+
+        window.DragOnto(variable, commands);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.That(window.TryFindResource("ProgramCommandDropMenu", out var resource), Is.True,
+            "the drop-specific command chooser is a window resource");
+        Assert.That(resource, Is.TypeOf<MenuFlyout>());
+        Assert.That(((MenuFlyout)resource!).IsOpen, Is.True,
+            "dropping an output onto Commands opens its method chooser without another click");
+        window.Close();
+    }
+
+    // A-27: a locked library block is view-only, so a program-building drop is refused without changing the model.
     [Test]
     public async Task DropVariable_IntoLockedBlock_Refused()
     {
