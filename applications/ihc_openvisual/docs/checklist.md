@@ -11,6 +11,7 @@ applications, nor which concrete scenarios to run — both are derived per campa
 | --- | --- |
 | [Differences from the Original IHC Visual](product.md#differences-from-the-original-ihc-visual) | The register of **deliberate** divergences. An item on that list is **not a finding**. |
 | [stories/](stories/) | The behavioural spec (acceptance criteria) OpenVisual is measured against. |
+| [alignment-coverage.md](alignment-coverage.md) | What has already been measured, and what has never been looked at. Read it **before choosing work**; update it **after measuring**. |
 | The two drivers' own documentation | How each application is driven, and what a driver can and cannot observe. |
 
 Drivers: **OpenVisual** via the `aui-openvisual` skill, **vendor** via the `ihcvisual` MCP server
@@ -59,6 +60,25 @@ registered difference. A findings list orders discovered work; it never states c
 **A criterion that cannot be exercised because the driver lacks the verb is a driver gap, not a pass.**
 Record it unresolved and fix the driver. Dimension 13 needs a verb for activating a row *inside a
 dialog* — which is not the same as clicking a button, or a row in a tree.
+
+**A measurement carries the state it was taken in, and one state is never completeness.** Behaviour can
+depend on the editor mode, whether a block is locked, whether the project is empty or populated, what is
+selected, whether it is dirty, and on the theme and text scale. A result observed in one state is
+evidence about *that* state; asserting it of the others is a generalization, and generalizing from one
+state is how a correct measurement becomes a wrong requirement — and then wrong code, since the
+requirement is what gets built. State the state beside the result, and treat an uncrossed axis the same
+as an unaddressed member of a set: **unresolved**. Which axes apply to a surface is the plan's to
+determine; the crossed and uncrossed ones are recorded in
+[alignment-coverage.md](alignment-coverage.md).
+
+**Drive the route a user drives; a synthesized result answers a different question.** Dimension 2 asks
+which action triggers which response and in what order — so a driver verb that reaches an outcome by a
+path no user can take measures the *result*, not the *route*. It cannot see a dialog it bypassed, a
+confirmation it never raised, or a refusal it never provoked, and its silence on them is not absence:
+recording "no dialog appears" from a verb that skips the dialog produces a false finding, and building
+to that finding turns a mis-measurement into shipped behaviour. Any conclusion about dimensions 2, 13
+or 14 must come from the user-visible gesture. Where the driver offers both, the synthetic verb is for
+*arranging* state, never for measuring it.
 
 **Set-valued dimensions require member-level completeness.** Where a dimension ranges over a set of
 instances — the dialogs, each node type's menus and actions, the report types),
@@ -123,7 +143,9 @@ project fresh in both applications). Nothing else may be masked without an owner
 Missing evidence is not a pass. A dimension that was not exercised, whose evidence was not
 recorded, or whose driver reported itself blind, is **unresolved**, and an unresolved dimension
 fails the comparison just as a mismatch does — including a set-valued dimension with any member
-unaddressed.
+unaddressed. Which those are is not a judgement to make afresh each campaign: it is recorded in
+[alignment-coverage.md](alignment-coverage.md), and a comparison that leaves a cell there unfilled
+has not passed that cell, whatever its findings list says.
 
 A contradiction between a story and verified user-visible behaviour is also unresolved. Recording
 the contradiction in notes does not close it, and calling a discovered gesture hidden, implicit or
@@ -143,6 +165,8 @@ A divergence is never closed by editing this file.
 ## Maintenance rule
 
 This file lists **dimensions and rules only** — no command syntax, no scenario lists, no per-run
-results, no findings. Command syntax belongs to the drivers, scenarios and results to the campaign
-that runs them, behaviour to the stories, and deliberate differences to `product.md`.
+results, no findings, no coverage state. Command syntax belongs to the drivers, scenarios and
+per-run results to the campaign that runs them, behaviour to the stories, deliberate differences to
+`product.md`, and **which dimensions and members have been measured to
+[`alignment-coverage.md`](alignment-coverage.md)** — the one durable record that outlives a campaign.
 If it grows past one page, the new content belongs in one of those places instead.

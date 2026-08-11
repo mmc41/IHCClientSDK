@@ -917,8 +917,10 @@ public class MainWindowViewModelTests
         });
     }
 
-    // A-14/US-013 (F-027): inserting a modem lands it under the caret and opens NO dialog (the vendor does not
-    // auto-open; neither the modem dialog nor the generic product dialog appears).
+    // A-14/US-013: inserting a modem lands it under the caret and opens the MODEM dialog — not the generic product
+    // one. (This comment used to say the opposite, citing F-027 "the vendor does not auto-open". That finding came
+    // from a driver verb which posts the catalog command directly and skips the dialog; the reference application
+    // does raise it. Measured and corrected under uxparity S-12 — the assertions below have said so since.)
     [Test]
     public async Task InsertModem_OpensTheModemDialog()
     {

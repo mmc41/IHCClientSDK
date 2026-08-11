@@ -119,6 +119,35 @@ unverified — usually opens a dialog you then drive/dismiss), or `planned` (dec
 needs `--allow-unverified` to attempt). This is honest about coverage — prefer `confirmed` commands
 and check `catalog commands` before relying on a `partial`/`planned` one.
 
+### Route — what a verb's transcript is evidence *of*
+
+`catalog commands` reports a **`route`** beside every status. Status says whether the verb *works*;
+route says what its result *means*.
+
+| route | The verb… | Its transcript is evidence about |
+|-------|-----------|----------------------------------|
+| `user` | reaches the outcome the way a person or their assistive technology does — a menu path, a keystroke, real pointer input, a UIA pattern on the control that owns the value | anything, including the route itself |
+| `synthetic` | reaches the outcome by a path no person can take — posting a command straight to the app, setting state without the control that owns it | the resulting **state** only |
+| `observe` | performs no action; it reads | **presentation** only |
+| `unimplemented` | is declared but wired to nothing | nothing |
+
+**A `synthetic` verb can never answer a question about checklist dimension 2, 13 or 14** — which action
+triggers which response and in what order, dialog functionality, or validation and confirmations. It
+skipped whatever the user's route would have raised, so its silence is not absence. Use it to *arrange*
+state; never to measure it. An `observe` verb likewise proves presentation, never interaction: a grid is
+not read-only because `dialog read` showed no editor.
+
+This is not a hypothetical. The vendor MCP's `product.insert` posts the catalog command directly and
+never sees the product dialog. A comparison run read "no dialog on insert" out of it, IHC OpenVisual was
+built to match, and it was rebuilt the other way once the flow was driven through the menu instead. One
+declared field would have stopped it.
+
+Route is derived from the verb's `mechanism` (the `routes` map in `commands.json`), so it cannot drift
+away from how the verb actually dispatches. **This driver has no `synthetic` verb** — all 54 mutating
+rows drive a real menu, key, pointer or control pattern. Keep it that way; if a shortcut verb is ever
+added, map its mechanism to `synthetic` so it is excluded from route evidence by rule and not by memory.
+An unmapped mechanism reports `unknown`, never `user`.
+
 ## Node addressing
 
 Selection-relative commands take a **label path** in `--path` (or as the first positional):

@@ -86,7 +86,15 @@ public sealed class FakeDialogService : IDialogService
         LastConfirmMessage = message;
         return Task.FromResult(ConfirmResult);
     }
-    public Task ShowMessageAsync(string title, string message) { LastMessage = message; return Task.CompletedTask; }
+    /// <summary>The title of the last <see cref="ShowMessageAsync"/> box. A registered difference (the register's
+    /// "a refused edit says what to do about it") is about the title AND the sentence, so both are recorded.</summary>
+    public string? LastMessageTitle { get; private set; }
+    public Task ShowMessageAsync(string title, string message)
+    {
+        LastMessageTitle = title;
+        LastMessage = message;
+        return Task.CompletedTask;
+    }
     public Task<string?> PickOpenProjectAsync(string? initialDirectory) => Task.FromResult(OpenPath);
     public Task<string?> PickSaveProjectAsync(string? initialDirectory, string suggestedFileName) => Task.FromResult(SavePath);
     public string? SaveReportPath { get; set; }

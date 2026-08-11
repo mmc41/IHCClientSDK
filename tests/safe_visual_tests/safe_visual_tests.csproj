@@ -40,6 +40,10 @@
     <!-- Same rule for the icon-mapping doc: the icon-registration tests read it as the SUBJECT under test. -->
     <None Include="..\..\applications\ihc_openvisual\docs\icon_codes.md"
           Link="appdocs\icon_codes.md" CopyToOutputDirectory="PreserveNewest" />
+    <!-- And for the product spec: RegisterPinTests reads the Differences register as the SUBJECT under test —
+         every registered difference must name the test that would fail if it drifted back. -->
+    <None Include="..\..\applications\ihc_openvisual\docs\product.md"
+          Link="appdocs\product.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

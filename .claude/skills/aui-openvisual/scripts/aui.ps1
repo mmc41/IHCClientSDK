@@ -951,6 +951,7 @@ function Invoke-Mechanism-Static {
     # catalog.commands — self-describe the whole vocabulary.
     $rows = foreach ($c in $script:Registry.commands) {
         [ordered]@{ id = $c.id; status = $c.status; mechanism = $c.mechanism
+            route = (Get-Route $c.mechanism)
             mutating = $c.mutating; description = $c.description }
     }
     return (New-Result -Ok $true -Code 'Ok' -Message "$($rows.Count) commands." -Verified $true `
@@ -3868,6 +3869,19 @@ function Find-Spec {
     param([string] $Id)
     foreach ($c in $script:Registry.commands) { if ($c.id -eq $Id) { return $c } }
     return $null
+}
+
+# What a verb's transcript is evidence OF — see commands.json's `routeNote`. Derived from the mechanism
+# rather than stored per row, because every row sharing a mechanism shares its route by construction: the
+# mechanism IS how the verb reaches the app. A per-row copy could disagree with the code that dispatches it,
+# which is the one way this field could mislead. An unmapped mechanism reports 'unknown' rather than
+# defaulting to 'user' — silently promoting a new mechanism to valid route evidence is the failure this
+# whole field exists to prevent.
+function Get-Route {
+    param([string] $Mechanism)
+    $map = $script:Registry.routes
+    if ($map -and $map.PSObject.Properties.Name -contains $Mechanism) { return $map.$Mechanism }
+    return 'unknown'
 }
 
 function New-HelpResult {

@@ -47,21 +47,36 @@ desktop OS.
 
 IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, except for the following:
 
+> **Every entry carries its pin.** A registered difference is a promise about behaviour, so each one ends with
+> either ***Pinned by:*** naming the test that would fail if the behaviour drifted back, or ***No test:*** with
+> the reason none is possible. A difference nobody tests is a difference that can be silently undone by the next
+> alignment pass and re-registered by the one after — which is how a register becomes a record of round trips.
+> `RegisterPinTests` enforces that every entry has one marker or the other; it cannot check that a named test
+> really pins the behaviour, so name the test that would actually fail.
+
 **Enhancements**
 
 - Runs on Windows, macOS, and Linux; the original is Windows-only.
+  *No test:* a build and CI property, not app behaviour — every suite runs on all three operating systems in CI.
 - Refuses to save text the `.vis` character repertoire cannot store — naming the offending element and
   character — where the original writes an unparsable file.
+  *Pinned by:* `Latin1SaveRefusalTests`.
 - Every drag-and-drop operation is also reachable from the menus and the keyboard, so linking, moving, and reordering never require a mouse.
+  *Pinned by:* `DragRouteAlternativesParityTests`.
 - Unavailable commands explain themselves: pressing the keyboard shortcut of a greyed menu command shows the reason in the status bar.
+  *Pinned by:* `DisabledReasonStatusBarTests`.
 - The *Rediger* ▸ *Fortryd* / *Gentag* items name the action they would reverse or re-apply
   (e.g. "Fortryd Indsæt lokalitet"), where the original shows a bare "Fortryd" / "Gentag". A screen
   reader thus announces *what* will be undone, and the reader sees it before choosing — an
   accessibility/usability enhancement (E14/US-052; the status bar names the action too). (Alignment
   F-8b, 2026-08-09.)
+  *Pinned by:* `EditHistoryTests`.
 - Enhanced support for assistive technology and automation.
+  *Pinned by:* `AutomationCoverageTests`, `AccessibilityTests`.
 - Embedded stock catalog.
+  *Pinned by:* `BuiltInCatalogProductDifferentialTests`, `BuiltInCatalogFunctionBlockDifferentialTests`.
 - Documentation reports render as self-contained static HTML that works in any modern browser, with optional enhanced variants and no dependency on a legacy browser component.
+  *Pinned by:* `ReportSelfContainmentTests` (self-containment), `ReportHtmlOracleTests` (the bytes).
 - **The reports are chosen in the app, not in a browser page.** The original carries a single
   *Dokumentation ▸ Rapporter…* entry which **exports the project to a temporary `.vis` and launches an
   external browser** at a bundled `entry_page.html`; the report is picked and rendered out there. IHC
@@ -70,14 +85,19 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
   report is one step from the menu, the chooser is part of the application, and nothing is written to a
   temporary file or handed to an external component just to be selected. (FR-11.3 and story 09/US-040 specify
   the picker; registered here 2026-08-11, alignment F-40, after measuring the original's browser hand-off.)
+  *Pinned by:* `ReportPickerTests`, `DocumentationMenuParityTests`.
 - Menu commands that do nothing in the original are omitted rather than reproduced.
+  *No test:* a rule governing other entries rather than a behaviour of its own; each concrete omission is
+  registered and pinned separately (see the *Scenarie* entry below).
 - Support multiple instances.
+  *Pinned by:* `MultipleInstancesTests`.
 - The *Indsæt ▸ Variable* menu does **not** list **Scenarie**, where the original carries it (greyed
   outside a scene context). A scene is **not a variable** — it is added through its own route
   (US-024, on a scene-capable Output) — so it does not belong on the variable menu. This is the
   "commands that do nothing are omitted" rule applied to a would-be-greyed item. (Alignment
   Scenarie/F-13, 2026-08-09; story 07/US-027 line: "a scene is not a variable and is added through
   its own route.")
+  *Pinned by:* `VariablePaletteCompletenessTests`.
 - The free-text fields the original backs with a **suggestion drop-down** are **plain text boxes** in IHC
   OpenVisual. This covers the product dialog's documentation fields (*Placering*, *Note*, *Kabeltype*,
   *Kabelnummer*, *Identifikationskode*, *Lysgruppe*, and *Navn* when unlocked) **and the terminal address
@@ -90,6 +110,8 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
   format and the original both accept, so do not "align" them into drop-downs of a fixed set.
   (Story 03/US-011 records the decision and its reasoning; registered here 2026-08-11, alignment F-13; scope
   widened to the terminal editor 2026-08-11, alignment F-34.)
+  *Pinned by:* `FreeTextFieldParityTests` (the fields are text boxes, not drop-downs),
+  `ProductDialogLabelParityTests` (their labels).
 - The block-section variable popup sorts its **value types** in **correct Danish collation** (æ/ø/å after
   z, so *Tal* precedes *Tæller*), where the original collates æ as "ae" (putting *Tæller* before *Tal*).
   A clear improvement over a vendor collation quirk. (Alignment F-26, 2026-08-09; re-measured 2026-08-11
@@ -97,11 +119,14 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
   invariant comparer and by neither da-DK nor ordinal, which confirms the quirk. The **section's own
   signal type still leads the list**, outside the sort, as the original has it — that part is matched,
   not a difference; see alignment F-20.)
+  *Pinned by:* `SectionFlyoutOrderParityTests`.
 - The block-section variable popup draws **no separators**, where the original sets its leading signal
   type off with a thin rule, draws another before *Egenskaber*, and a third under *Ny type…* in the
   *Enum* submenu. The members and their order are otherwise the same; the missing rules are cosmetic
   only. (Alignment F-27, 2026-08-09; scope widened 2026-08-11 to the leading rule and the *Enum*
   submenu's, neither of which was visible until those lists' members and order matched.)
+  *Pinned by:* `SectionFlyoutOrderParityTests`. Note this is the *section* flyout specifically — the
+  node context flyouts do draw the original's rules, and `MenuSeparatorAccessibilityTests` pins that.
 - The enum type picker offers a **"Ny selvstændig type…"** route that authors a 0-state, unreferenced
   project-global enumerator type without inserting a variable, which the original has no counterpart for.
   It decouples defining a type from using one, so a type can be prepared and referenced later. Note the
@@ -109,6 +134,7 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
   with no values is absent from the submenu and appears only once a value is added — so a type authored
   this way is a genuinely new state for the picker to handle. (Story 07/US-027 records the decision;
   registered here 2026-08-11, alignment F-21.)
+  *Pinned by:* `EnumPickerParityTests`.
 - A **refused edit says what to do about it**, and its message box carries a descriptive title. The original
   states the rule alone under the application's own name: refusing a second modem, it titles the box
   *LK IHC Visual ®* and says *"Modem er allerede indsat. Der kan kun indsættes et modem i projektet"*, where
@@ -116,6 +142,7 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
   tilføjer et nyt."* The rule enforced, the moment of enforcement and the end state are identical; only the
   sentence is longer. (Alignment F-47, measured 2026-08-11 on the one-modem rule, which story 03/US-013
   already requires to "tell the installer why".)
+  *Pinned by:* `RefusalMessageParityTests`.
 - Placing a product **applies the insert and then asks** for its documentation, rolling back if the installer
   cancels; the original raises the dialog first and adds nothing until OK (measured 2026-08-11: its tree item
   count is unchanged while the dialog is up). So while that modal dialog is open, IHC OpenVisual's tree already
@@ -125,6 +152,7 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
   dialog from the placed element rather than from the catalog definition; reordering it is a real refactor with
   no effect on any committed state. The status line is **not** part of this difference: it announces the insert
   only once the dialog is committed (alignment F-14, 2026-08-11; story 03/US-010 records the decision).
+  *Pinned by:* `InsertProductDialogParityTests`, `InsertStatusHonestyTests`.
 - ~~The data-line modules view edits through a per-module editor, not in the table.~~ **Withdrawn
   2026-08-11 — this was never a difference.** It was registered that same day, on an owner spot check
   reporting the original's *Datalinie moduler* grid as having "editable, clickable columns", and written up
@@ -141,6 +169,7 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
   *Method note: this is what an unexercised comparison costs. The difference was registered from a
   screenshot of the original's grid; one `dialog.clickRow` on each column would have refuted it the same
   day. Both drivers gained that verb on 2026-08-11 for exactly this reason.*
+  *Withdrawn:* kept as an audit trail; nothing to pin.
 - A **decimal variable's tree row shows what the project holds**, immediately. The original keeps the
   value it was given at full precision in memory while the `.vis` stores only two fraction digits, so
   typing `1,555` into a kW leaves its row reading `1,555kW` until the project is reopened — whereupon the
@@ -148,44 +177,61 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
   because its model *is* the file. The saved bytes are identical either way (`inivalue="1.55"`), and a row
   that can disagree with what will be saved is the very defect alignment F-43 was raised for.
   (Alignment F-41/F-44, 2026-08-11; story 07/US-027 records the decision.)
+  *Pinned by:* `DecimalDialogParityTests`.
 - Deleting a locality (or other node) that still **contains** elements asks for explicit
   confirmation before the cascading delete, where the original deletes silently. This is the US-009
   MUST safety guard (the message names the node and what the delete also removes); the delete is
   itself undoable, so the guard warns without trapping. (Alignment F-22, 2026-08-09 — the vendor's
   silent cascade delete is the divergence; OpenVisual follows its Ready story.)
+  *Pinned by:* `DeletionTests`.
 
 **Presentation**
 
 - The user interface is in Danish, as the original is — including the menu and dialog wording, which follows the original's where the two apps offer the same command.
+  *Pinned by:* `DanishChromeTests`.
 - A title-bar dirty marker (`•`) shows at a glance that the project has unsaved changes.
+  *Pinned by:* `TitleDirtyMarkerTests`.
 - Tree-node tooltips always include the node's IHC resource ID, without holding a modifier key.
+  *Pinned by:* `TooltipTests`.
 - Modern flat-line SVG icon set, themeable, and never signalling state by colour alone.
+  *Pinned by:* `NodeIconsTests` (a distinct glyph per node category). The never-by-colour-alone half is a
+  design rule reviewed against `icons_design.md`, not a testable property of the running app.
 - A light/dark theme switcher.
+  *Pinned by:* `MainWindowViewModelTests.SetTheme_UpdatesCurrentTheme`.
 - The undo/redo **status-bar** confirmation names the action in OpenVisual's own phrasing
   ("Fortrød: <handling>" / "Gentog: <handling>"), which satisfies the US-052 requirement to name the
   action reversed or re-applied. It reads differently from the original's present-tense nominal form
   ("Fortryder indsætning af …"); reproducing that exactly would need a hand-written nominal phrase
   per command, which is out of proportion to a status-line detail whose requirement is already met.
   (Alignment F-15, 2026-08-09 — acceptable presentation difference.)
+  *Pinned by:* `EditHistoryTests`.
 - The recent-projects list is a **"Seneste projekter" submenu** rather than the original's inline
   `&1…&4` entries under *Filer*. The mechanism is the same (one-click reopen of the most recent
   projects, at least four); only the machine-local *contents* differ, which the comparison scope
   treats as non-comparable. It sits in the original's own **second group** — after the file commands,
   before closing — so only its shape differs, not its place. (Alignment F-2, 2026-08-09; placement
   matched 2026-08-11, alignment F-12.)
+  *Pinned by:* `RecentProjectsBindingTests` (the submenu), `FileMenuGroupingParityTests` (its place).
 - *Filer* separates **"Luk projekt"** (close the open project, keep the application running) from
   **"Afslut"** (exit the application), where the original carries a single *Luk*. This follows from
   the multiple-instances / one-project-per-window model above: closing a project and closing a
   window are distinct actions here. The pair sits **together, last**, filling the original's own
   third and final group — one command became two, in the same place. (Alignment F-3, 2026-08-09;
   placement matched 2026-08-11, alignment F-12.)
+  *Pinned by:* `FileMenuGroupingParityTests`.
 
 **Exclusions**
 
 - No simulation mode.
+  *Pinned by:* `DanishChromeTests` — it pins the menu-bar title set exactly, and no *Simulering* title is in it.
 - No auto backup.
+  *No test:* an absence with no surface to exercise — there is no auto-backup command, setting or timer to
+  assert against. The `.BAK`-on-overwrite side-file that *does* exist is a match, not this exclusion, and is
+  pinned by `SaveBackupParityTests`.
 - Editing rapport data tables
+  *Pinned by:* `DataTableStoreTests` — the tables survive only as suggestion memory; nothing lists or edits them.
 - Product help.
+  *No test:* an absence with no surface to exercise.
 
 ## What This Product Is Not
 

@@ -90,6 +90,48 @@ public class SectionFlyoutOrderParityTests : AvaloniaTestBase
         });
     }
 
+    /// <summary>
+    /// The registered F-27 difference: this flyout draws <b>no separators</b>, where the reference application sets
+    /// its leading signal type off with a thin rule, draws another before <i>Egenskaber</i>, and a third under
+    /// <i>Ny type…</i> in the <c>Enum</c> submenu. Its members and their order are otherwise the same, so the
+    /// difference is exactly this — every row is an operable member, and no row is a rule.
+    /// <para>Asserted over the whole flyout tree, so the <c>Enum</c> submenu is covered without being named: the
+    /// third of the reference application's rules is in there, and hardcoding the submenu's label would stop
+    /// checking it the day the label changed.</para>
+    /// </summary>
+    [TestCase("section:inputs")]
+    [TestCase("section:outputs")]
+    [TestCase("section:settings")]
+    [TestCase("section:internalsettings")]
+    public async Task SectionFlyout_DrawsNoSeparators(string sectionKind)
+    {
+        var (harness, vm) = await ProgrammingModeAsync();
+        using var _ = harness;
+
+        FlyoutOn(vm, sectionKind);
+
+        Assert.Multiple(() =>
+        {
+            foreach (ProductMenuItemViewModel item in Descend(vm.SectionFlyoutItems))
+            {
+                Assert.That(item.Header, Is.Not.Empty,
+                    "a headerless row is how a separator would appear here — this flyout carries none by decision");
+                Assert.That(item.Command is not null || item.Children.Count > 0, Is.True,
+                    $"'{item.Header}' does nothing and opens nothing, so it is a rule rather than a member");
+            }
+        });
+    }
+
+    private static IEnumerable<ProductMenuItemViewModel> Descend(IEnumerable<ProductMenuItemViewModel> items)
+    {
+        foreach (ProductMenuItemViewModel item in items)
+        {
+            yield return item;
+            foreach (ProductMenuItemViewModel child in Descend(item.Children))
+                yield return child;
+        }
+    }
+
     [TestCase("section:settings")]
     [TestCase("section:internalsettings")]
     public async Task ValueSection_HasNoLeadingEntry(string sectionKind)

@@ -1,6 +1,36 @@
 {
   "version": 1,
   "note": "Command vocabulary for IHC OpenVisual UI automation. status: confirmed = verified live; partial = mechanism wired but a sub-flow is unverified; planned = declared, mechanism not yet wired. mechanism drives dispatch in aui.ps1. Add a command by adding one object here that reuses an existing mechanism. A row's `item`/`menuPath` should pin an AutomationId wherever one exists, NOT a label: the app's UI is Danish, and on 2026-08-08 eight rows were found broken because they pinned the English labels they were written against (node.getProperties looked for 'Properties' in a flyout offering 'Egenskaber…'). Ids are matched before labels on both menu surfaces, and are the app's own CommandRegistry row ids -- 'ctx.'-prefixed on the node flyout.",
+  "routeNote": "What a verb's transcript is EVIDENCE OF. `user` = the verb reaches its outcome through the same surface and the same event a person or their assistive technology would (a menu path, a keystroke, real pointer input, or a UIA pattern on the control that owns the value). `synthetic` = it reaches the outcome by a path no person can take -- posting a command straight to the app, or setting state without touching the control that owns it. `observe` = it performs no action at all; it reads. `unimplemented` = the row is declared but wired to nothing, so it is evidence of nothing.\n\nWHY THIS FIELD EXISTS: a synthetic verb skips whatever the user's route would have raised, so its silence is not absence. The vendor MCP's product.insert posts the catalog command directly and never sees the product dialog; a comparison run concluded 'no dialog on insert' from it, and IHC OpenVisual was BUILT to match that -- then rebuilt the other way once the dialog was measured through the menu. One field on one row would have prevented the whole round trip. So: a `synthetic` verb can NEVER answer a question about checklist dimension 2 (which action triggers which response, and in what order), 13 (dialog functionality) or 14 (validation, errors, confirmations). Use it to ARRANGE state, never to measure it. An `observe` verb proves presentation only -- never interaction.\n\nThis driver currently has NO synthetic verb: every mutating row drives a real menu, key, pointer or control pattern. That is a property to preserve, not a coincidence -- if a shortcut verb is ever added, mark it `synthetic` here and it will be excluded from route evidence by rule instead of by memory.",
+  "routes": {
+    "menu": "user",
+    "key": "user",
+    "keySend": "user",
+    "contextMenu": "user",
+    "invoke": "user",
+    "fileDialog": "user",
+    "treeSelect": "user",
+    "expandCollapse": "user",
+    "rightClick": "user",
+    "doubleClick": "user",
+    "nodeDrag": "user",
+    "dialogCancel": "user",
+    "dialogButton": "user",
+    "dialogSetText": "user",
+    "dialogSelectItem": "user",
+    "dialogSetCheck": "user",
+    "dialogClickRow": "user",
+    "passive": "observe",
+    "static": "observe",
+    "capture": "observe",
+    "menuBarDump": "observe",
+    "contextMenuDump": "observe",
+    "treeDump": "observe",
+    "toolbarDump": "observe",
+    "dialogRead": "observe",
+    "readProperty": "observe",
+    "notImplemented": "unimplemented"
+  },
   "commands": [
     {
       "id": "doctor",
@@ -364,8 +394,8 @@
       "mechanism": "menu",
       "menuPath": "Indsæt/Lokalitet",
       "gates": [],
-      "description": "Insert a new locality (room) at the root via the menu bar. Works with NO selection (the bar item is enabled and inserts last under the root — vendor parity, F-1); a non-root selection greys the item, so select the root first (tree select \"Lokaliteter\") if a room is selected.",
-      "note": "Re-routed 2026-08-09 (alignment F-7): was contextMenu (ctx.insert.locality), which required a selected node and returned TargetNotFound on the vendor's no-selection route. Menu walk + effect re-verified live 2026-08-09."
+      "description": "Insert a new locality (room) at the root via the menu bar. Works with NO selection (the bar item is enabled and inserts last under the root — vendor parity, F-1); a non-root selection greys the item, so select the root first (tree select \"Lokaliteter\") if a room is selected.\n\nUNLIKE product.insert, this raises NO dialog: it commits immediately with the placeholder name and announces it. Do not generalize either one to the other -- the asymmetry is the app's actual behaviour, measured on both.",
+      "note": "Re-routed 2026-08-09 (alignment F-7): was contextMenu (ctx.insert.locality), which required a selected node and returned TargetNotFound on the vendor's no-selection route. Menu walk + effect re-verified live 2026-08-09. Re-verified 2026-08-11 alongside product.insert: with 'Lokaliteter' selected it took the tree 11 -> 12 nodes with openModal empty and the status line 'Lokalitet blev indsat under Lokaliteter' -- no dialog at any point. (Reverted for that run with `menu invoke --id edit.undo`, which is the pattern-driven route to undo; edit.undo itself is a `key` row and needs the foreground.)"
     },
     {
       "id": "node.delete",
@@ -430,13 +460,13 @@
     },
     {
       "id": "product.insert",
-      "status": "partial",
+      "status": "confirmed",
       "mutating": "yes",
       "mechanism": "menu",
       "menuPath": "Indsæt/Produkter",
       "gates": [],
-      "description": "Insert a catalog product into the selected locality. Select the locality with tree.select first, then address the catalog subtree with --menu-path, e.g. --menu-path \"Datalinie produkter/<category>/<product>\". Use `aui catalog products` to discover the available paths.",
-      "note": "The menu walk is verified; the per-product leaf paths depend on the loaded catalog, and the properties dialog the app may raise on insert is not answered here — check session.status.openModal afterwards."
+      "description": "Insert a catalog product into the selected locality. Select the locality with tree.select first, then address the catalog subtree with --menu-path, e.g. --menu-path \"Datalinie produkter/<category>/<product>\". Use `aui catalog products` to discover the available paths.\n\nTHIS VERB STOPS AT A DIALOG, ALWAYS, AND DELIBERATELY. Placing a product raises that product's properties dialog (a modem raises \"SMS Modem Egenskaber\"/ModemPropertiesWindow, other products the generic product dialog), and the insert is not settled until the dialog is answered: `dialog click --button OK` commits it, `dialog click --button Annuller` rolls it back so nothing is added. So this command is the FIRST STEP of a sequence -- follow it with session.status (or dialog.read) and then a dialog.* verb, exactly like node.getProperties. It does not answer or dismiss the dialog for you, and it must not be changed to: a verb that swallows the dialog would report an insert as though no dialog existed, which is the exact mis-measurement that produced a round trip in the app (see the routeNote).\n\nNote what the tree does WHILE that dialog is up: IHC OpenVisual has already added the row, and rolls it back on cancel; the reference application adds nothing until OK. That is a registered deliberate difference (product.md, alignment F-14), not a defect -- do not raise it as a finding.",
+      "note": "Menu walk, dialog and rollback all verified live 2026-08-11 against the running app, on an untitled template project with 'Stue' selected: `product insert --menu-path \"Bus Produkter/SMS Modem\"` returned Ok having invoked 'Indsæt/Produkter/Bus Produkter/SMS Modem'; session.status then reported openModal {title: 'SMS Modem Egenskaber', id: 'ModemPropertiesWindow'} and the tree had ALREADY grown 11 -> 12 nodes (Stue gained one child) while the modal was up; `dialog click --button Annuller` returned Ok and the tree went back to 11 with Stue at 0 children and the status line 'Indsætning af \\'SMS Modem\\' annulleret.'. Promoted partial -> confirmed on that read-back. The per-product leaf paths still depend on the loaded catalog, so an unknown --menu-path is a catalog question, not a wiring one. Runs WITHOUT the foreground: the menu mechanism walks via the ExpandCollapse/Invoke patterns, so no input is synthesized (dialog.cancel by contrast sends Esc and does need it -- use dialog.click --button, which invokes the button's pattern)."
     },
     {
       "id": "product.setProperties",
@@ -484,8 +514,8 @@
       "mechanism": "menu",
       "menuPath": "Indsæt/FunktionsBlokke",
       "gates": [],
-      "description": "Insert a library function-block template. Select the target locality first, then address the template with --menu-path, e.g. --menu-path \"<category>/<template>\". Use `aui catalog function-blocks` to discover the available paths.",
-      "note": "The menu walk is verified; the per-template leaf paths depend on the loaded catalog."
+      "description": "Insert a library function-block template. Select the target locality first, then address the template with --menu-path, e.g. --menu-path \"<category>/<template>\". Use `aui catalog function-blocks` to discover the available paths. Whether this raises a dialog the way product.insert does is NOT known — see the note; check session.status.openModal after every call rather than assuming either answer.",
+      "note": "The menu walk is verified; the per-template leaf paths depend on the loaded catalog. Attempted live 2026-08-11 and NOT settled: the walk refused with PreconditionMissing ('could not bring IHC OpenVisual to the foreground') where product.insert on the same mechanism went through on patterns alone, so somewhere in the FunktionsBlokke subtree the walk falls back to a click. The probe used a deliberately invalid --menu-path, so it is not yet known whether a valid path takes the same fallback; finishing this needs a session where the app can hold the foreground (a scripted process cannot give it one). Stays partial for that reason — the wiring is not in doubt, the effect has not been read back."
     },
     {
       "id": "menu.invokeContext",

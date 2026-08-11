@@ -24,9 +24,12 @@ namespace Ihc.Tests
         /// <c>MenuItemAutomationPeer</c> offers only Toggle and <c>TreeViewItemAutomationPeer</c> only Scroll and
         /// SelectionItem, so neither a driver nor a screen-reader user can invoke a command or open a submenu/node.
         /// The app supplies <c>AccessibleMenu</c>/<c>AccessibleMenuItem</c>/<c>AccessibleTreeView</c>/
-        /// <c>AccessibleTreeViewItem</c> in their place. <see cref="Separator"/> is deliberately NOT here: a separator
-        /// must stay a stock Separator — wrapping one into a menu item is the opposite defect (a nameless, invokable
-        /// row a client counts as a command and a screen reader reads out).</summary>
+        /// <c>AccessibleTreeViewItem</c> in their place. <see cref="Separator"/> is deliberately NOT here, and for a
+        /// different reason from the four above: a separator must stay a Separator — wrapping one into a menu item is
+        /// the opposite defect (a nameless, invokable row a client counts as a command and a screen reader reads out).
+        /// The menus author <c>AccessibleSeparator</c>, which IS one: it subclasses <see cref="Separator"/> purely to
+        /// give it the peer Avalonia's stock separator lacks, so the grouping reaches the automation tree instead of
+        /// vanishing from it (alignment F-11).</summary>
         private static IReadOnlyCollection<string> StockMenuAndTreeControlTypeNames() => new HashSet<string>
         {
             typeof(Menu).FullName!,
@@ -70,27 +73,33 @@ namespace Ihc.Tests
         /// <summary>
         /// The positive control for <see cref="Gui_DoesNotInstantiateStockMenuOrTreeControls"/>, and the evidence for
         /// the premise the whole rule rests on: that a control authored in XAML is visible to a constructor-call scan
-        /// at all. MainWindow's markup contains four <see cref="Separator"/>s, so that edge MUST be observable on the
+        /// at all. MainWindow's markup authors separators, so that edge MUST be observable on the
         /// <c>ihc_openvisual.Views.MainWindow</c> type. If Avalonia's XAML compiler ever moves populate code out of the
         /// window type (into the <c>CompiledAvaloniaXaml</c> namespace, which is outside <see cref="GuiRoot"/> and
         /// therefore unscanned), this fails — instead of the ban silently going blind to all markup while its four
         /// forbidden types quietly reappear in the menus.
+        /// <para>The probe is the type the markup ACTUALLY authors, which is
+        /// <c>AccessibleSeparator</c> since alignment F-11 gave separators a peer. Probing for the base
+        /// <see cref="Separator"/> instead measured the subclass's own base-constructor call, not markup — so it went
+        /// blind to XAML the day the menus adopted the subclass, which is exactly the failure this test exists to
+        /// catch. Keep it pointed at a type the markup names.</para>
         /// </summary>
         [Test]
         public void StockControlBanScan_SeesMarkupAuthoredConstructions()
         {
+            string markupProbe = typeof(global::ihc_openvisual.Controls.AccessibleSeparator).FullName!;
             var markupAuthored = ConstructorCallEdges(Gui, GuiRoot)
-                .Where(edge => edge.Target == typeof(Separator).FullName)
+                .Where(edge => edge.Target == markupProbe)
                 .Select(edge => edge.Origin)
                 .ToList();
 
             Assert.That(markupAuthored, Does.Contain(typeof(global::ihc_openvisual.Views.MainWindow).FullName),
-                "MainWindow's markup authors Separators, so XAML-authored constructions must be attributed to the window type — otherwise this ban cannot see markup at all");
+                "MainWindow's markup authors separators, so XAML-authored constructions must be attributed to the window type — otherwise this ban cannot see markup at all");
 
-            // And the ban reports what it sees: the same scan with Separator forbidden must fail.
+            // And the ban reports what it sees: the same scan with that type forbidden must fail.
             Assert.That(
                 () => AssertDoesNotConstructTypeNames(Gui, GuiRoot,
-                    new HashSet<string> { typeof(Separator).FullName! }, "seeded probe", "seeded probe",
+                    new HashSet<string> { markupProbe }, "seeded probe", "seeded probe",
                     AccessibleBaseConstructorEdges),
                 Throws.InstanceOf<AssertionException>(),
                 "the scan must report a forbidden markup-authored construction, not merely observe it");
