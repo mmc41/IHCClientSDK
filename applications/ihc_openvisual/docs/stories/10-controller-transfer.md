@@ -19,6 +19,12 @@ excludes:** wireless linking (E4), online simulation and runtime control (out of
 **Acceptance criteria (epic level):**
 - MUST: The technician can send the project to the controller and retrieve the project from the
   controller.
+- MUST: Both commands are **unavailable while no controller is connected** — greyed on the menu and on
+  the toolbar, with the reason available — rather than offered and then refused. Every scenario below
+  already opens with *"Given a controller is connected"*; this states what the other case looks like, so
+  the bar never advertises a transfer the app cannot make while the status-bar indicator reads *"Ikke
+  forbundet til controller"*. (Matches the original, measured 2026-08-11: it greys *Hent projekt* and
+  *Send projekt* on a fresh project and on a saved one alike. Alignment F-4.)
 - SHOULD: Sending warns if not all wireless products are linked and confirms before overwriting an
   existing controller project.
 - SHOULD: Retrieve is disabled when the controller holds no project.

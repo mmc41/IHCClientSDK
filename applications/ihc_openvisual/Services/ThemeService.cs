@@ -29,6 +29,10 @@ public sealed class ThemeService : IThemeService
     // The high-contrast palette. Pure black/white ink on the maximum-contrast surface, which is the point: these
     // are not "a bit darker" versions of the ordinary tokens but a deliberately maximal-contrast set.
     private static readonly Color HighContrastIcon = Colors.White;
+    // The one deliberate exception to "maximal": an unavailable command's ink must still read as unavailable next
+    // to that white, and disabled controls are exempt from the contrast minimum. Telling available from
+    // unavailable is precisely what a high-contrast user would otherwise lose on an icon-only toolbar.
+    private static readonly Color HighContrastDisabledIcon = Color.FromRgb(0x8C, 0x8C, 0x8C);
     private static readonly Color HighContrastWarning = Color.FromRgb(0xFF, 0xFF, 0x00);
     private static readonly Color HighContrastSecondaryText = Colors.White;
     private static readonly Color HighContrastLink = Color.FromRgb(0x00, 0xFF, 0xFF);
@@ -92,6 +96,7 @@ public sealed class ThemeService : IThemeService
         if (isHighContrast)
         {
             app.Resources["IconColor"] = HighContrastIcon;
+            app.Resources["DisabledIconColor"] = HighContrastDisabledIcon;
             app.Resources["WarningBrush"] = new SolidColorBrush(HighContrastWarning);
             app.Resources["SecondaryTextBrush"] = new SolidColorBrush(HighContrastSecondaryText);
             app.Resources["LinkBrush"] = new SolidColorBrush(HighContrastLink);
@@ -101,7 +106,7 @@ public sealed class ThemeService : IThemeService
             // Removing the overrides — rather than writing the ordinary values back — hands the tokens back to
             // App.axaml's ThemeDictionaries, so the light/dark pair keeps working. Writing literals here would
             // pin one variant's colours over both.
-            foreach (string token in new[] { "IconColor", "WarningBrush", "SecondaryTextBrush", "LinkBrush" })
+            foreach (string token in new[] { "IconColor", "DisabledIconColor", "WarningBrush", "SecondaryTextBrush", "LinkBrush" })
                 app.Resources.Remove(token);
         }
     }

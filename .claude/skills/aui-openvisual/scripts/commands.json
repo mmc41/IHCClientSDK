@@ -53,6 +53,33 @@
       "note": "Added 2026-08-01 (uxparity S-08) for the DLG scenarios that must SET fields, not just read them: S-08, S-13, S-14, S-19, S-32."
     },
     {
+      "id": "dialog.selectItem",
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "dialogSelectItem",
+      "gates": [],
+      "description": "Choose an item in a DROP-DOWN of the open modal: --field <AutomationId|Name> and --text <item> or --index <n> (also positional: `dialog select-item DataLineList 1`). Text matches EXACTLY first, then a UNIQUE case-insensitive contains; an ambiguous match is refused with TargetAmbiguous rather than resolved to the first hit. Needed because dialog.setText answers 'not a text field' on a ComboBox and dialog.click resolves buttons -- the second dialog control type that was undrivable from this side after check boxes (alignment F-37), while the vendor driver has had dialog.selectItem all along. EXPANDS the drop-down before enumerating, deliberately: Avalonia realizes a ComboBox's items lazily, so one whose list has never been opened reports ZERO items -- which is also why dialog.read shows items:[] for it. The list is collapsed again afterwards. Verified by reading the SELECTION back, so data.selectedAfter records what actually happened; data.items[] carries the realized list, which is the only way to enumerate a drop-down on this side.",
+      "note": "Added 2026-08-11 while verifying alignment F-33's address lists, which could be read but not driven. PROMOTED to confirmed the same day by reading the effect back from the running app: on the terminal address editor it selected data line '1' (17 items realized: 'ikke konfigureret' plus 1-16), which enabled the terminal list, then terminal '3' (8 items), after which OK armed and committing reported 'Udgang blev adresseret til datalinie 1, klemme 3.' NOTE the read-back is by TEXT: a collapsed Avalonia ComboBox virtualizes its items away, so GetSelection() is empty and dialog.read reports items:[] and selectedIndex:-1 for it -- the control's `text` is the field that carries the selection once the list is closed."
+    },
+    {
+      "id": "dialog.clickRow",
+      "status": "partial",
+      "mutating": "yes",
+      "mechanism": "dialogClickRow",
+      "gates": [],
+      "description": "ACTIVATE A ROW (or one CELL of a row) inside the open modal with real mouse input: --field <list AutomationId|Name>, then --row <n> (0-based) or --text <row text>, optionally --column <header|AutomationId|cell text|index> and --double. This is the gesture the parity checklist's interaction dimension asks for -- 'is this row clickable, and what does activating it open?' -- and the one thing this driver could not do: dialog.click drives NAMED BUTTONS, node.doubleClick drives TREE rows, and neither reaches a row inside a dialog's grid, so every such question was answered from a screenshot (presentation only) instead of exercised. GENERAL by construction: any list-like container in any dialog, no knowledge of module maps, terminals or scenes. A CELL is addressed as a refinement of its row rather than by a second verb, because clicking a cell and clicking a row are the same gesture at different coordinates -- which matters wherever the vendor makes individual COLUMNS editable. Effect-verified like the vendor's verb: Ok only if the selection actually lands on the requested row or a dialog is raised, else NoEffect; data.openedDialog names anything the gesture opened, data.hitArea records whether the row or a column was struck. Refuses to click a row with no on-screen rectangle rather than clicking blind, and says so when a virtualized list has realized no rows.",
+      "note": "Added 2026-08-11. Mirrors the vendor MCP's dialog_clickRow (controlId + 0-based row + doubleClick) so both sides' transcripts compare like for like; addressing differs because Avalonia has no numeric control ids. --column has no vendor counterpart yet: the vendor verb clicks the row only, so per-column comparisons still need that side extended. Status partial until exercised live against an editable grid."
+    },
+    {
+      "id": "dialog.setCheck",
+      "status": "confirmed",
+      "mutating": "yes",
+      "mechanism": "dialogSetCheck",
+      "gates": [],
+      "description": "Tick or untick a CHECK BOX in the open modal: --field <AutomationId|Name> [--on|--off] (also positional: `dialog set-check SaveOnPowerLossBox --off`). Ticking is the default. Needed because dialog.click resolves BUTTONS only, so a dialog checkbox was undrivable from this side while the vendor driver has had dialog.setCheck all along -- an asymmetry that left every dialog checkbox unverifiable live (alignment F-31). IDEMPOTENT: TogglePattern.Toggle() flips, so the current state is read first and the toggle sent only when it differs; asking for a state the box is already in is an Ok no-op, not a flip away from it. Verified by reading ToggleState BACK, so data.before/after/toggled record what actually happened rather than what was asked for.",
+      "note": "Added 2026-08-11 for alignment F-27's power-fail checkbox, which until then had to be driven from the context flyout instead. PROMOTED to confirmed the same day by reading the effect back from the running app: on a Flag's properties dialog it took the box Off->On (toggled:true, verified), reported toggled:false when asked for On again, committed with the status line 'Vaerdien gemmes ved stroemsvigt.', read back On after reopening the dialog, and --off reversed it and persisted that too."
+    },
+    {
       "id": "dialog.click",
       "status": "confirmed",
       "mutating": "noState",
@@ -189,6 +216,15 @@
       "gesture": "{F3}",
       "gates": [],
       "description": "Enter programming mode for a function block (F3): pass --path (and --tree TV2) to address it, or select an FB first, else it is a no-op. READ THE EFFECT with `tree dump --depth 1` on EITHER pane: in configuration mode both panes root at 'Lokaliteter'; in programming mode BOTH re-root at the FB's own name (its Input/Output sections beneath). Since enabler3 `--depth 1` really does bound the walk to the root -- it was silently swallowed before, so this probe used to realize the entire pane on every call. context.statusText also says 'Programmeringstilstand -- tryk Esc for at vende tilbage til konfiguration.' Effect-verified 2026-07-16 -- this closes census E-3, which recorded the transition as unmeasurable; the same pane-root probe reads the vendor too (whose tree.read --depth is likewise real). READ THE EFFECT YOURSELF: like every `key` row, this one returns Ok with verified:false and never probes the roots. (The vendor driver returns NoEffect when the roots do not move; an earlier version of this sentence carried that clause where it read as a promise about THIS command -- corrected 2026-08-02.)"
+    },
+    {
+      "id": "toolbar.dump",
+      "status": "partial",
+      "mutating": "no",
+      "mechanism": "toolbarDump",
+      "gates": [],
+      "description": "Enumerate the toolbar in BAR ORDER into data.buttons[] as {index, id, name, enabled, separator, rect} -- the same shape the vendor driver's `toolbar.dump` emits, so the two bars diff mechanically. Separators are rows of their own (separator:true), because GROUPING is part of what a bar says and a run of buttons with a rule between them is not the same bar as one without. Read-only: it opens nothing and invokes nothing. Returns ControlNotFound while the toolbar is hidden (Vis > Vaerktoejslinie) -- that is a real state, not a fault.",
+      "note": "Added 2026-08-11 to close alignment F-7, the OpenVisual half of the toolbar-reader gap the vendor side closed in turn 2. It depends on OpenVisual publishing its separators: they were Rectangles, which no automation client can see, so this dump would have reported a bar with no grouping at all (alignment F-45, fixed in the same turn). Status partial until a second bar state is read -- so far it has only been run against the default bar."
     },
     {
       "id": "view.toolbar.toggle",

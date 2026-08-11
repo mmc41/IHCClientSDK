@@ -1,0 +1,110 @@
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Threading.Tasks;
+using ihc_openvisual.ViewModels;
+using Ihc.Vis.Model;
+using NUnit.Framework;
+
+namespace safe_visual_tests;
+
+/// <summary>
+/// Alignment F-20 (tmp/align-campaign-2026-08-10.md): the ORDER of a block section's programming-mode flyout.
+///
+/// <para>Measured 2026-08-11 on an unlocked block, all four of its sections:</para>
+/// <list type="table">
+/// <item><term><c>Input</c></term><description><c>Indgang</c> FIRST and alone, then the value types</description></item>
+/// <item><term><c>Output</c></term><description><c>Udgang</c> first and alone, then the value types (plus
+/// <c>Scenarie</c>, OpenVisual's registered omission)</description></item>
+/// <item><term><c>Indstillinger</c></term><description>value types only — no leading entry</description></item>
+/// <item><term><c>Interne variable</c></term><description>value types only — no leading entry</description></item>
+/// </list>
+///
+/// <para>So the rule needs no section→type table: whichever SIGNAL type the section accepts leads the list, and a
+/// section that accepts none simply has no leading entry. OpenVisual sorted the signal type inline among the value
+/// types instead (<c>Indgang</c> between <c>Helligdag</c> and <c>Kommatal</c>).</para>
+///
+/// <para><b>The collation is deliberately NOT the vendor's.</b> The vendor lists <c>Tæller</c> before <c>Tal</c> —
+/// impossible under da-DK, which sorts Æ after Z, and exactly what folding æ to "ae" gives; re-measured 2026-08-11
+/// against its full observed sequence, which an invariant comparer reproduces and da-DK and ordinal do not. Sorting
+/// it correctly instead is a REGISTERED deliberate difference (product.md, alignment F-26), so these tests pin the
+/// Danish order and the <c>Tal</c>-before-<c>Tæller</c> cell that expresses it. The separators the vendor draws are
+/// registered too (F-27); this flyout carries none by decision, not by omission.</para>
+/// </summary>
+public class SectionFlyoutOrderParityTests : AvaloniaTestBase
+{
+    /// <summary>An unlocked block in PROGRAMMING mode — the mode whose flyout carries the palette at all (F-16).</summary>
+    private static async Task<(ShellHarness harness, MainWindowViewModel vm)> ProgrammingModeAsync()
+    {
+        var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        ElementId loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
+        await harness.Session.AddEmptyFunctionBlockAsync(loc);
+        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
+        return (harness, vm);
+    }
+
+    private static List<string> FlyoutOn(MainWindowViewModel vm, string sectionKind)
+    {
+        TreeNodeViewModel section = vm.InstallationNodes[0].Children.Single(n => n.NodeKind == sectionKind);
+        vm.SelectNode(section);
+        return vm.SectionFlyoutItems.Select(i => i.Header).ToList();
+    }
+
+    /// <summary>Danish collation, spelled out here rather than imported so that swapping the production comparer
+    /// for one which merely happens to agree on today's labels still fails.</summary>
+    private static readonly System.StringComparer RegisteredOrder =
+        System.StringComparer.Create(CultureInfo.GetCultureInfo("da-DK"), ignoreCase: true);
+
+    private static void AssertValueTypesAreInRegisteredOrder(List<string> types)
+    {
+        Assert.That(types, Is.EqualTo(types.OrderBy(t => t, RegisteredOrder).ToList()),
+            "the value types are in correct Danish collation");
+        // The one pair in this catalog where the registered difference is visible: the vendor puts Tæller first.
+        // Asserted by name so that "fixing" this list towards the vendor — as a later alignment turn nearly did —
+        // fails loudly here instead of silently retiring a documented enhancement.
+        if (types.Contains("Tæller") && types.Contains("Tal"))
+        {
+            Assert.That(types.IndexOf("Tal"), Is.LessThan(types.IndexOf("Tæller")),
+                "æ sorts after z in Danish, so Tal precedes Tæller — the registered F-26 difference from the "
+                + "vendor, which folds æ to 'ae' and lists them the other way round");
+        }
+    }
+
+    [TestCase("section:inputs", "Indgang")]
+    [TestCase("section:outputs", "Udgang")]
+    public async Task SignalSection_LeadsWithItsOwnType_ThenTheValueTypes(string sectionKind, string signalType)
+    {
+        var (harness, vm) = await ProgrammingModeAsync();
+        using var _ = harness;
+
+        List<string> headers = FlyoutOn(vm, sectionKind);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(headers.First(), Is.EqualTo(signalType),
+                $"the vendor leads a {sectionKind} flyout with {signalType}, set off from the value types");
+            Assert.That(headers.Last(), Is.EqualTo("Egenskaber…"), "Egenskaber closes the flyout");
+            AssertValueTypesAreInRegisteredOrder(headers.Skip(1).Take(headers.Count - 2).ToList());
+        });
+    }
+
+    [TestCase("section:settings")]
+    [TestCase("section:internalsettings")]
+    public async Task ValueSection_HasNoLeadingEntry(string sectionKind)
+    {
+        var (harness, vm) = await ProgrammingModeAsync();
+        using var _ = harness;
+
+        List<string> headers = FlyoutOn(vm, sectionKind);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(headers, Does.Not.Contain("Indgang"), "a value section accepts no input signal");
+            Assert.That(headers, Does.Not.Contain("Udgang"), "a value section accepts no output signal");
+            Assert.That(headers.Last(), Is.EqualTo("Egenskaber…"), "Egenskaber closes the flyout");
+            AssertValueTypesAreInRegisteredOrder(headers.Take(headers.Count - 1).ToList());
+        });
+    }
+}

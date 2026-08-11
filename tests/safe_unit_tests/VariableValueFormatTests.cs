@@ -99,7 +99,17 @@ public class VariableValueFormatTests
             Assert.That(VariableValueFormat.For("resource_timer",
                     Attrs(("hour", "0"), ("minute", "0"), ("second", "1"), ("millisecond", "500"))),
                 Is.EqualTo("00:00:01,500"));
-            Assert.That(VariableValueFormat.For("resource_weekday", Attrs(("inivalue", "6"))), Is.EqualTo("Søndag"));
+            // A weekday's inivalue is a TOKEN, not an index. This case used to assert ("inivalue", "6") → Søndag,
+            // an assumption the format contradicts: the DTD declares `inivalue (monday | … | sunday) "monday"`,
+            // and the reference application stores and shows the token (measured 2026-08-11 — committing Torsdag
+            // made its own tree row read "Ugedag = Torsdag"). Parsing a token as an integer failed and fell back
+            // to index 0, so EVERY weekday rendered "Mandag" whatever it held (alignment F-43).
+            Assert.That(VariableValueFormat.For("resource_weekday", Attrs(("inivalue", "sunday"))), Is.EqualTo("Søndag"));
+            Assert.That(VariableValueFormat.For("resource_weekday", Attrs(("inivalue", "thursday"))), Is.EqualTo("Torsdag"));
+            // The format OMITS an attribute at its declared default, so an ABSENT inivalue is Monday — a weekday
+            // saved as Mandag carries no inivalue at all — and an unrecognised token falls to the same default
+            // rather than to a wrong day.
+            Assert.That(VariableValueFormat.For("resource_weekday", Attrs(("inivalue", "bogus"))), Is.EqualTo("Mandag"));
             Assert.That(VariableValueFormat.For("resource_enum", Unset, stateName: "Værdi2"), Is.EqualTo("Værdi2"));
         });
     }

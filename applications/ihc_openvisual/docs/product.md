@@ -62,6 +62,14 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
 - Enhanced support for assistive technology and automation.
 - Embedded stock catalog.
 - Documentation reports render as self-contained static HTML that works in any modern browser, with optional enhanced variants and no dependency on a legacy browser component.
+- **The reports are chosen in the app, not in a browser page.** The original carries a single
+  *Dokumentation ▸ Rapporter…* entry which **exports the project to a temporary `.vis` and launches an
+  external browser** at a bundled `entry_page.html`; the report is picked and rendered out there. IHC
+  OpenVisual gives each of the three report types its own *Dokumentation* entry, opening one shared picker
+  (Rapport / Format / Tilstand, with *Vis*, *Gem som…* and *Luk*) that generates the document itself — so a
+  report is one step from the menu, the chooser is part of the application, and nothing is written to a
+  temporary file or handed to an external component just to be selected. (FR-11.3 and story 09/US-040 specify
+  the picker; registered here 2026-08-11, alignment F-40, after measuring the original's browser hand-off.)
 - Menu commands that do nothing in the original are omitted rather than reproduced.
 - Support multiple instances.
 - The *Indsæt ▸ Variable* menu does **not** list **Scenarie**, where the original carries it (greyed
@@ -70,12 +78,76 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
   "commands that do nothing are omitted" rule applied to a would-be-greyed item. (Alignment
   Scenarie/F-13, 2026-08-09; story 07/US-027 line: "a scene is not a variable and is added through
   its own route.")
-- The block-section variable popup sorts its types in **correct Danish collation** (æ/ø/å after z,
-  so *Tal* precedes *Tæller*), where the original collates æ as "ae" (putting *Tæller* before *Tal*).
-  A clear improvement over a vendor collation quirk. (Alignment F-26, 2026-08-09.)
-- The block-section variable popup lists its types and *Egenskaber* without the thin separator the
-  original draws before *Egenskaber*. The popup is otherwise the same flat, alphabetical type list
-  with the *Enum* submenu; the missing rule is cosmetic only. (Alignment F-27, 2026-08-09.)
+- The free-text fields the original backs with a **suggestion drop-down** are **plain text boxes** in IHC
+  OpenVisual. This covers the product dialog's documentation fields (*Placering*, *Note*, *Kabeltype*,
+  *Kabelnummer*, *Identifikationskode*, *Lysgruppe*, and *Navn* when unlocked) **and the terminal address
+  editor's *Note* and *Ledningsfarve***. Those lists are a machine-local history — they are not part of the
+  `.vis` and do not travel with the project, so the same project offers different suggestions on a different
+  PC. The field values themselves are identical either way; only the typing aid differs.
+  **These fields are free text, not closed vocabularies** — `cable_colour` is `CDATA` in the format and the
+  original's own list mixes colour names with installer-written pair descriptions ("Brun", "1-Hvid. 3-Sort",
+  sourced from `DATA\noteCableColour.txt`). Constraining any of them to a fixed list would REFUSE values the
+  format and the original both accept, so do not "align" them into drop-downs of a fixed set.
+  (Story 03/US-011 records the decision and its reasoning; registered here 2026-08-11, alignment F-13; scope
+  widened to the terminal editor 2026-08-11, alignment F-34.)
+- The block-section variable popup sorts its **value types** in **correct Danish collation** (æ/ø/å after
+  z, so *Tal* precedes *Tæller*), where the original collates æ as "ae" (putting *Tæller* before *Tal*).
+  A clear improvement over a vendor collation quirk. (Alignment F-26, 2026-08-09; re-measured 2026-08-11
+  across all four sections of an unlocked block — the original's order is reproduced exactly by an
+  invariant comparer and by neither da-DK nor ordinal, which confirms the quirk. The **section's own
+  signal type still leads the list**, outside the sort, as the original has it — that part is matched,
+  not a difference; see alignment F-20.)
+- The block-section variable popup draws **no separators**, where the original sets its leading signal
+  type off with a thin rule, draws another before *Egenskaber*, and a third under *Ny type…* in the
+  *Enum* submenu. The members and their order are otherwise the same; the missing rules are cosmetic
+  only. (Alignment F-27, 2026-08-09; scope widened 2026-08-11 to the leading rule and the *Enum*
+  submenu's, neither of which was visible until those lists' members and order matched.)
+- The enum type picker offers a **"Ny selvstændig type…"** route that authors a 0-state, unreferenced
+  project-global enumerator type without inserting a variable, which the original has no counterpart for.
+  It decouples defining a type from using one, so a type can be prepared and referenced later. Note the
+  original will not offer a **valueless** type in this picker at all — measured 2026-08-11: a type created
+  with no values is absent from the submenu and appears only once a value is added — so a type authored
+  this way is a genuinely new state for the picker to handle. (Story 07/US-027 records the decision;
+  registered here 2026-08-11, alignment F-21.)
+- A **refused edit says what to do about it**, and its message box carries a descriptive title. The original
+  states the rule alone under the application's own name: refusing a second modem, it titles the box
+  *LK IHC Visual ®* and says *"Modem er allerede indsat. Der kan kun indsættes et modem i projektet"*, where
+  IHC OpenVisual titles it *Kun ét modem* and adds the remedy — *"…Fjern det eksisterende modem, før du
+  tilføjer et nyt."* The rule enforced, the moment of enforcement and the end state are identical; only the
+  sentence is longer. (Alignment F-47, measured 2026-08-11 on the one-modem rule, which story 03/US-013
+  already requires to "tell the installer why".)
+- Placing a product **applies the insert and then asks** for its documentation, rolling back if the installer
+  cancels; the original raises the dialog first and adds nothing until OK (measured 2026-08-11: its tree item
+  count is unchanged while the dialog is up). So while that modal dialog is open, IHC OpenVisual's tree already
+  shows the row the original has not yet added. **The end states are identical for both answers** — including
+  the id counter, since a cancel rolls back rather than undoing (uxparity S-12) — and the tree is inert behind
+  the modal either way, so the difference is visible only *during* the dialog. It follows from building the
+  dialog from the placed element rather than from the catalog definition; reordering it is a real refactor with
+  no effect on any committed state. The status line is **not** part of this difference: it announces the insert
+  only once the dialog is committed (alignment F-14, 2026-08-11; story 03/US-010 records the decision).
+- ~~The data-line modules view edits through a per-module editor, not in the table.~~ **Withdrawn
+  2026-08-11 — this was never a difference.** It was registered that same day, on an owner spot check
+  reporting the original's *Datalinie moduler* grid as having "editable, clickable columns", and written up
+  as a deliberate choice to edit through a dialog instead. Both halves were then measured and both were
+  wrong. The original does **not** edit in its grid: double-clicking a row opens
+  `Indgangsmodul tilkoblet datalinie N` (`Udgangsmodul…` for outputs) — `Modul type` combo enabled,
+  `Lokalitet` combo and `Note` disabled until a type is chosen, OK/Annuller — and **all four columns open
+  that same dialog**, so no column is individually editable; a single click only selects. That is precisely
+  the model this entry claimed as IHC OpenVisual's own departure. Meanwhile IHC OpenVisual has not built it:
+  its rows realize no cells at all (the whole row is one flat string `Datalinie 1, ikke i brug` under four
+  painted headers) and double-click reports `NoEffect`. So the two apps agree on the design and differ only
+  in that one of them implements it — **an unimplemented story, not a registered difference**. Tracked in
+  story 09/US-050, which was right all along.
+  *Method note: this is what an unexercised comparison costs. The difference was registered from a
+  screenshot of the original's grid; one `dialog.clickRow` on each column would have refuted it the same
+  day. Both drivers gained that verb on 2026-08-11 for exactly this reason.*
+- A **decimal variable's tree row shows what the project holds**, immediately. The original keeps the
+  value it was given at full precision in memory while the `.vis` stores only two fraction digits, so
+  typing `1,555` into a kW leaves its row reading `1,555kW` until the project is reopened — whereupon the
+  same row reads `1,550kW` (both measured 2026-08-11). IHC OpenVisual's row reads `1,550kW` at once,
+  because its model *is* the file. The saved bytes are identical either way (`inivalue="1.55"`), and a row
+  that can disagree with what will be saved is the very defect alignment F-43 was raised for.
+  (Alignment F-41/F-44, 2026-08-11; story 07/US-027 records the decision.)
 - Deleting a locality (or other node) that still **contains** elements asks for explicit
   confirmation before the cascading delete, where the original deletes silently. This is the US-009
   MUST safety guard (the message names the node and what the delete also removes); the delete is
@@ -98,11 +170,15 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
 - The recent-projects list is a **"Seneste projekter" submenu** rather than the original's inline
   `&1…&4` entries under *Filer*. The mechanism is the same (one-click reopen of the most recent
   projects, at least four); only the machine-local *contents* differ, which the comparison scope
-  treats as non-comparable. (Alignment F-2, 2026-08-09.)
+  treats as non-comparable. It sits in the original's own **second group** — after the file commands,
+  before closing — so only its shape differs, not its place. (Alignment F-2, 2026-08-09; placement
+  matched 2026-08-11, alignment F-12.)
 - *Filer* separates **"Luk projekt"** (close the open project, keep the application running) from
   **"Afslut"** (exit the application), where the original carries a single *Luk*. This follows from
   the multiple-instances / one-project-per-window model above: closing a project and closing a
-  window are distinct actions here. (Alignment F-3, 2026-08-09.)
+  window are distinct actions here. The pair sits **together, last**, filling the original's own
+  third and final group — one command became two, in the same place. (Alignment F-3, 2026-08-09;
+  placement matched 2026-08-11, alignment F-12.)
 
 **Exclusions**
 
@@ -223,7 +299,7 @@ optional bridge for downloading and uploading projects from and to a live contro
 
 - FR-2.1: Two tree panes — **Installation** (left: localities → products → pins) and **Functions** (right: localities → function blocks → pins) — over one shared locality structure, with a draggable splitter; a change to a locality reflects in both panes immediately.
 - FR-2.1a: **Pane ownership of the insert vocabulary.** Products are inserted **only** from the Installation pane and function blocks **only** from the Functions pane; each pane offers exactly its own half **on the node's context menu**. A pane never offers a *context-menu* insert whose result it could not show.
-- FR-2.1b: **The menu bar is deliberately NOT pane-gated.** It offers the whole vocabulary regardless of which pane has focus or what is selected. A context menu answers *"what can I do to this?"*, the menu bar *"what can this app do?"*.
+- FR-2.1b: **The menu bar is deliberately NOT pane-SCOPED.** It *lists* the whole vocabulary regardless of which pane has focus or what is selected — nothing is hidden from it or removed. A context menu answers *"what can I do to this?"*, the menu bar *"what can this app do?"*. **Listing is not enablement**: a bar item whose command cannot run right now is shown **greyed**, with its reason available (see the Differences register), exactly as the original greys it — and that holds for the generated catalog leaves (products, function-block templates) on the same terms as the hand-registered commands, so a greyed item and a refused invoke can never disagree. (Owner ruling 2026-08-10, alignment F-8: the original's bar *is* enablement-gated by pane and selection — measured, including its withdrawal of the block inserts once the Installation pane takes focus. The earlier wording read as though OpenVisual's bar items were always *enabled*, which neither the original nor OpenVisual's own registry rows ever did.)
 - FR-2.2: Every node renders a type icon from the flat-line set (per the icon-mapping doc) plus decorations for state (e.g. unconfigured/unlinked warning, locked block badge); variables show inline `name = value`.
 - FR-2.3: Every command is reachable three equivalent ways: menu bar, context menu on the target node, and (where assigned) a keyboard shortcut; a documented keymap covers navigation, editing, properties, link-jumping, and pane switching.
 - FR-2.4: A status bar confirms the result of the last action in a short sentence, and carries a controller-connection indicator whose connected and not-connected states differ in glyph shape (never colour alone) and are also stated in words.
@@ -247,7 +323,7 @@ and address wired terminals.
 **Functional Requirements**:
 
 - FR-4.1: Insert any catalog product into a locality selected **in the Installation (left) pane** from categorized menus; the product appears there with its pins/sub-resources and their default values, and does **not** appear in the Functions pane (FR-2.1a).
-- FR-4.2: Edit product documentation properties (name, placement, note, cable data, identification code, light group where applicable, and inclusion in the end-user report) in a properties dialog titled with the **product type**, opened on demand from the tree — inserting a product opens no dialog. The **name** field is disabled when the placed element's `locked` attribute resolves to `yes` (resolved against the project's own inline DTD, which defaults it to `no`); the **placement** field is a free-text placement descriptor with suggestions, **not** a room selector — a product's room is its position in the tree.
+- FR-4.2: Edit product documentation properties (name, placement, note, cable data, identification code, light group where applicable, and inclusion in the end-user report) in a properties dialog titled with the **product type**, opened on demand from the tree **and as part of placing a product** — inserting one raises the same dialog, and cancelling places nothing. (Corrected 2026-08-11, alignment F-13: this line used to read "inserting a product opens no dialog", which was measured to be false of the original — its Insert **menu** raises the dialog and adds the product only on OK. The earlier reading came from driving the insert as a *posted* command, a route that skips the dialog the menu shows.) The **name** field is disabled when the placed element's `locked` attribute resolves to `yes` (resolved against the project's own inline DTD, which defaults it to `no`); the **placement** field is a free-text placement descriptor, **not** a room selector — a product's room is its position in the tree.
 - FR-4.3: Configure input/output terminal addressing (data line + module terminal) with in-use indication, output initial values (normally-open/normally-closed semantics), per-terminal wire colour, and power-fail save-current-value behaviour. The address editor opens by **double-clicking a terminal row** or from a *Configure* button — two routes onto one sub-dialog. The terminal grids are enabled by the product's **shape** — whether it has inputs and/or outputs — not by its family, so a wireless product uses the same dialog and grids as a wired one.
 - FR-4.4: Wireless products can be inserted and documented **through the same properties dialog and the same field set as wired products** (FR-4.2/FR-4.3); products that are not yet fully configured/commissioned carry a visible warning decoration. (RF linking itself is out of scope — see Constraints.)
 - FR-4.5: Catalog/project constraints are enforced at edit time via the validator (e.g. at most one modem product per project).

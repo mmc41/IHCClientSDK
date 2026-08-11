@@ -664,7 +664,12 @@ namespace Ihc.Vis
         /// insert identifier, display name and category path) — the narrow surface a menu needs, without exposing the
         /// full authoring <see cref="ProductDefinition"/>.</summary>
         public IReadOnlyList<CatalogItem> GetProductCatalogItems() =>
-            GetAvailableProducts().Select(p => new CatalogItem(p.ProductIdentifier, p.DisplayName, p.CategoryPath)).ToList();
+            GetAvailableProducts()
+                // The body's `name` carries the catalog's NN# ordering prefix, which DisplayName has had stripped —
+                // an insert menu needs it to list its leaves in the catalog's own order rather than alphabetically.
+                .Select(p => new CatalogItem(p.ProductIdentifier, p.DisplayName, p.CategoryPath,
+                                             p.Body.GetAttribute("name")))
+                .ToList();
 
         /// <summary>The available function blocks projected to slim insert-menu items (<see cref="CatalogItem"/>,
         /// keyed by <c>master_type</c>) — the narrow surface a menu needs, without the full authoring definition.</summary>

@@ -85,14 +85,21 @@ bar, and shortcut — **so that** I can work whichever way suits the moment.
   **inside** the block (US-020, US-026), not whether the block itself can be cut, copied, deleted or read.
   Any rule that greys these four on the bar because the block is locked is wrong and must not be
   reintroduced.
-- MUST: In the bar, *Kopier* is enabled on **any pin** even where *Klip* is not — Copy reaches strictly
-  further than Cut (a pin can be duplicated with its product, never cut out of it).
+- MUST: On a pin, *Kopier* follows **direction of value flow, not ownership** — it is offered on the rows
+  the system READS and withheld on the rows it WRITES, and the two pin families therefore run opposite
+  ways: a **product's INPUT terminal** and a **function block's OUTPUT pin** offer it; a product's output
+  and a block's input do not. *Klip* remains unoffered on any pin, so Copy still reaches further than Cut.
+  (Measured 2026-08-11 on one project holding both families, each row read on both surfaces — alignment
+  F-17. This replaced two earlier readings, each true of the family it was taken from and silent about the
+  other: "Copy is enabled on any pin", and "product terminals, inputs only".)
+- MUST: *Kopier* answers the **same** on the menu bar as in the flyout. The rule above is a property of the
+  ROW, not of a surface, so it belongs to the gate: the surfaces differ only in how a refusal is shown —
+  the flyout omits the item, the bar greys it (US-044/US-068).
 - MUST: The menu bar and the context menu apply **different, independently specified enablement
   rules** where the surfaces genuinely differ (US-068 lists the context side): *Vis program* needs a
   **block selected directly** in the bar, while the flyout also accepts a **pin** and opens the owning
-  block's program; and *Kopier* is bar-enabled on any pin but context-offered on product terminals only.
-  Each surface reproduces its own rule — they are not to be "reconciled" into one. **Lockedness is not
-  one of these divergences** — see the locked-block rule above.
+  block's program. Each surface reproduces its own rule — they are not to be "reconciled" into one.
+  **Lockedness is not one of these divergences** — see the locked-block rule above.
 - MUST: **Keyboard shortcuts follow the menu bar's enablement.** Where the two surfaces deliberately
   diverge (previous rule), the shortcut refuses exactly when the bar item is greyed — `F3` opens a
   program only where the bar enables *Vis program* (a block selected directly, **locked or not**),
@@ -296,16 +303,17 @@ toolbar for a command the menu omits.
 - MUST: A **product pin**'s menu offers a **log mark** toggle — the command behind the `Log …` state rows
   US-010 renders. (This is a missing feature, not just a missing menu entry; IHC OpenVisual offers no
   equivalent anywhere today.)
-- MUST: A **product terminal**'s menu offers *Kopier* (while *Klip* is never offered on a pin); a
-  **function-block pin**'s menu offers **no** *Kopier*. The context menu's Copy scope (product terminals
-  only) is deliberately **narrower than the menu bar's** (any pin, US-044) — each surface keeps its own
-  rule.
+- MUST: A pin's menu offers *Kopier* exactly when the pin is a **signal source** — a **product INPUT
+  terminal** or a **function-block OUTPUT pin** — and omits it on a product output and a block input
+  (*Klip* is never offered on any pin). The flyout and the menu bar answer the **same**; only the shape of
+  a refusal differs (the flyout omits, the bar greys). The earlier claim that a block pin never offers
+  *Kopier*, and that the context scope was deliberately narrower than the bar's, was measured on a product
+  terminal alone and is superseded — see the pin rule in the menu-bar section above (alignment F-17).
 - MUST: A **locked** function block's flyout offers *Klip* and *Slet* — and they really run. So does the
   menu bar: the two surfaces **agree** on a locked block, for *Klip*, *Kopier*, *Slet* and *Vis program*
   alike (US-044). *Vis program* is additionally offered from a **pin** in the flyout (opening the owning
-  block's program, US-026), where the bar requires a block selected directly — that one, and *Kopier*'s
-  narrower context scope above, are the real bar-vs-context differences and are specified behaviour, not
-  inconsistencies to fix.
+  block's program, US-026), where the bar requires a block selected directly — that is now the real
+  bar-vs-context difference, and it is specified behaviour, not an inconsistency to fix.
 - MUST: A **scene container**'s menu offers *Kopier*.
 - SHOULD: *Flyt op* / *Flyt ned* remain on the node types that can be reordered (locality, product,
   function block) and are **absent** from a link row **and from a pin**. They are IHC OpenVisual's non-drag
@@ -328,8 +336,14 @@ counts. *(Clarified 2026-08-09, alignment F-19 — the app also follows the vend
 | Product pin (input or output) | *Installation* | **Logmærke**, **Kopier**, separator, Egenskaber — **4 items** |
 | Scene container (*Scenarier*) | *Installation* | Kopier, separator, Egenskaber — **exactly 3 items** |
 | Link row | either | Hop til modsat link, Slet — **exactly 2 items** |
-| Function block (unlocked) | *Funktioner* | Gem Funktionsblok…, Klip, Kopier, Slet, **Vis program**, separator, Egenskaber — **7 items** |
-| Function block (locked) | *Funktioner* | Gem Funktionsblok…, Klip, Kopier, **Oplås**, Slet, **Vis program**, separator, Egenskaber — **8 items** — the unlocked row **plus** *Oplås* |
+| Function block (unlocked) | *Funktioner* | Gem…, Klip, Kopier, Slet, **Vis program**, separator, Egenskaber — **7 items** |
+| Function block (locked) | *Funktioner* | Gem…, Klip, Kopier, **Oplås**, Slet, **Vis program**, separator, Egenskaber — **8 items** — the unlocked row **plus** *Oplås* |
+
+> **Gem…**, not *Gem Funktionsblok…*: the reference application captions this one command (id 24765, Ctrl+G)
+> differently on its two surfaces — `&Gem...` on the node flyout, `&Gem Funktionsblok...` on the *Bibliotek*
+> bar (both measured live 2026-08-11, alignment F-18). A flyout acts on the row that was right-clicked and so
+> names no noun; the bar, having no such context, spells it out. The **bar** caption stays as it is — the two
+> are set separately because the original sets them separately.
 
 **Output:**
 - Every node type's right-click menu is a valid, minimal command set for that node, and no command is
@@ -354,11 +368,12 @@ counts. *(Clarified 2026-08-09, alignment F-19 — the app also follows the vend
 **Readiness:** Ready.
 
 **Implementation status:** 🟡 Largely implemented — the per-node-kind inventories (room, product, product
-pin, function block, function-block pin), the flyout ordering, *Kopier* on product terminals, the
+pin, function block, function-block pin), the flyout ordering, *Kopier* on source pins, the
 locked-block flyout offering *Klip*/*Slet*/*Vis program*, and *Vis program* from a pin (resolving the
-owning block) are all in place, including the two surviving bar-vs-context enablement differences (US-044).
-The locked block is no longer one of them — the bar was brought into line with the flyout on all four
-commands.
+owning block) are all in place, including the one surviving bar-vs-context enablement difference
+(*Vis program*, US-044). Neither the locked block nor *Kopier* is one of them any more — the bar was
+brought into line with the flyout on all four locked-block commands, and *Kopier*'s rule moved into the
+gate the two surfaces share (alignment F-17).
 One item still needs **owner confirmation**: the exact **log-mark scope** — whether a per-pin log-mark
 command must exist for loggable **value** resources (e.g. a temperature sensor), where a boolean pin's
 equivalent is inert; today the toggle is offered wherever a `Logning` log row is projected.

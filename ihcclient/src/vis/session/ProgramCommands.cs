@@ -1,8 +1,10 @@
 #nullable enable
+using System.Linq;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
 using Ihc.Vis.Programs;
 using Ihc.Vis.Projects;
+using Ihc.Vis.Schema;
 
 namespace Ihc.Vis.Session
 {
@@ -173,15 +175,27 @@ namespace Ihc.Vis.Session
         }
     }
 
-    /// <summary>Sets an output's "Gem aktuel værdi" power-loss persistence (US-033).</summary>
+    /// <summary>Sets a stored value's "Gem aktuel værdi" power-loss persistence (US-033).
+    /// <para>
+    /// Scoped by the FORMAT, not by direction: the DTD declares <c>backup (yes | no) "no"</c> on every
+    /// <c>resource_*</c> variable type except <c>resource_scene</c> — which is exactly
+    /// <see cref="VariableTypeRegistry.IsVariableType"/> — plus the two product outputs. The reference application
+    /// agrees: its properties dialog for an ordinary internal <c>resource_flag</c> carries the
+    /// <c>Ved strømsvigt</c> group (measured 2026-08-11, alignment F-27). This admitted the three OUTPUT tags
+    /// only, so the same edit the vendor offers on a flag was refused.
+    /// </para></summary>
     public sealed record SetOutputBackup(ElementId OutputId, bool Save) : ProjectCommand
     {
+        // The product outputs are not variable types, so they are named alongside the registry's set.
+        private static readonly string[] BackupCapableTags =
+            [.. VariableTypeRegistry.All.Select(t => t.Tag), "dataline_output", "airlink_relay"];
+
         internal override string Describe(Project project) => "Gem aktuel værdi";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireTag(OutputId, "an output", "resource_output", "dataline_output", "airlink_relay")
+            context.RequireTag(OutputId, "a stored value", BackupCapableTags)
                 .And(context.RequireUnlockedTarget(OutputId, inclusive: true));   // T004
         internal override void Execute(ProjectEditor editor) =>
-            editor.Resolve(OutputId, "output").SetAttribute("backup", Save ? "yes" : "no");
+            editor.Resolve(OutputId, "stored value").SetAttribute("backup", Save ? "yes" : "no");
     }
 
     /// <summary>Toggles a "Log …" row's log mark (US-068).</summary>

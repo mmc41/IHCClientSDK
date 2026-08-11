@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:a="using:Avalonia.Automation"
+        xmlns:controls="using:ihc_openvisual.Controls"
         x:Class="ihc_openvisual.Views.EnumTypeManagerWindow"
         a:AutomationProperties.AutomationId="EnumTypeManagerWindow"
         Width="720" Height="440" MinWidth="560" MinHeight="360"
@@ -9,7 +10,7 @@
     <Window.Styles>
         <!-- The vendor frames each pane in a group box whose caption sits on the frame. HeaderedContentControl
              renders no chrome of its own, so the frame is supplied here — once, for both panes. -->
-        <Style Selector="HeaderedContentControl.group">
+        <Style Selector="controls|AccessibleGroupBox.group">
             <Setter Property="Template">
                 <ControlTemplate>
                     <DockPanel LastChildFill="True">
@@ -40,7 +41,7 @@
         <Grid ColumnDefinitions="*,12,*">
 
             <!-- Types pane -->
-            <HeaderedContentControl Grid.Column="0" Classes="group" Header="Enumerator type">
+            <controls:AccessibleGroupBox Grid.Column="0" Classes="group" Header="Enumerator type">
                 <DockPanel Margin="8" LastChildFill="True">
                     <UniformGrid DockPanel.Dock="Bottom" Columns="3" Margin="0,8,0,0">
                         <Button Name="NewTypeButton" Content="Ny" HorizontalAlignment="Stretch"
@@ -54,11 +55,11 @@
                              a:AutomationProperties.Name="Enumerator type"
                              SelectionChanged="OnTypeSelectionChanged"/>
                 </DockPanel>
-            </HeaderedContentControl>
+            </controls:AccessibleGroupBox>
 
             <!-- Values pane. Its caption carries the selected type's name, as the vendor's does
                  ("Enumerator værdier - Dimmer status"). -->
-            <HeaderedContentControl Grid.Column="2" Classes="group" Name="ValuesGroup" Header="Enumerator værdier">
+            <controls:AccessibleGroupBox Grid.Column="2" Classes="group" Name="ValuesGroup" Header="Enumerator værdier">
                 <DockPanel Margin="8" LastChildFill="True">
                     <UniformGrid DockPanel.Dock="Bottom" Columns="3" Margin="0,8,0,0">
                         <Button Name="NewValueButton" Content="Ny" HorizontalAlignment="Stretch"
@@ -72,7 +73,7 @@
                              a:AutomationProperties.Name="Enumerator værdier"
                              SelectionChanged="OnValueSelectionChanged"/>
                 </DockPanel>
-            </HeaderedContentControl>
+            </controls:AccessibleGroupBox>
         </Grid>
     </DockPanel>
 </Window>

@@ -196,6 +196,40 @@ namespace Ihc.Vis.Session
         }
     }
 
+    /// <summary>
+    /// Sets an enum variable's INITIAL STATE — the <i>Initial værdi</i> combo of the reference application's
+    /// variable dialog (alignment F-50), which lists the variable's own type's states.
+    /// <para>
+    /// A <c>resource_enum</c>'s <c>inivalue</c> is an <b>IDREF to one of its type's <c>enum_value</c> elements</b>,
+    /// not a literal — which is why this is a command of its own rather than another
+    /// <see cref="ResourceInitialValue"/> kind: the generic attribute writer would store the state's NAME and
+    /// break the reference. The state is addressed <b>positionally</b>, the way the enum-manager commands address
+    /// a value, because the dialog lists positions and two values of one type may legally share a name.
+    /// </para>
+    /// </summary>
+    public sealed record SetEnumInitialState(ElementId VariableId, string TypeName, int StateIndex) : ProjectCommand
+    {
+        internal override string Describe(Project project) => "Sæt starttilstand";
+
+        internal override EditVerdict Evaluate(EditContext context) =>
+            context.RequireTag(VariableId, "an enum variable", "resource_enum")
+                .And(context.RequireUnlockedTarget(VariableId, inclusive: true));   // T003
+
+        internal override void Execute(ProjectEditor editor)
+        {
+            EnumDefinitionRef definition = editor.EnumDefinition(TypeName);
+            if (StateIndex < 0 || StateIndex >= definition.Values.Count)
+            {
+                // A state that is not there is a caller error, not a silent no-op: writing nothing would leave the
+                // variable on its old state while the dialog reported success.
+                throw new System.InvalidOperationException(
+                    $"Enum type '{TypeName}' has no state at position {StateIndex}; it has {definition.Values.Count}.");
+            }
+            editor.Resolve(VariableId, "enum variable")
+                .SetAttribute("inivalue", definition.Values[StateIndex].Id.ToToken());
+        }
+    }
+
     /// <summary>Renames a project-global enumerator TYPE (IHC Visual's <i>Bibliotek ▸ Rediger Enumerator typer ▸
     /// Omdøb</i>). References are by id, so every resource keeps pointing at it. The engine refuses a "[read only]"
     /// built-in, matching the vendor's greyed <i>Omdøb</i>.</summary>

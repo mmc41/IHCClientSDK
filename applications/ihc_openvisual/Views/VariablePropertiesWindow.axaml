@@ -15,32 +15,78 @@
         <TextBlock Name="NameLabel" Text="Navn" FontWeight="SemiBold"/>
         <TextBox Name="NameBox" a:AutomationProperties.LabeledBy="{Binding #NameLabel}"/>
 
-        <TextBlock Name="NoteLabel" Text="Note" FontWeight="SemiBold" Margin="0,6,0,0"/>
+        <!-- F-29: the original's own caption for this field IN THIS DIALOG. Its PRODUCT and MODEM dialogs label
+             the equivalent field plain "Note" and keep it — the wording is per dialog, so this is scoped here. -->
+        <TextBlock Name="NoteLabel" Text="Tekst til funktionsdokumentation" FontWeight="SemiBold" Margin="0,6,0,0"/>
         <TextBox Name="NoteBox" AcceptsReturn="True" TextWrapping="Wrap"
                  Height="90" VerticalContentAlignment="Top"
                  a:AutomationProperties.LabeledBy="{Binding #NoteLabel}"/>
 
         <!-- W5: the SECOND documentation field (note-2) — installer help text, distinct from the function
              documentation above. A variable carries both; a locality deliberately keeps only Name + Note (D11). -->
-        <TextBlock Name="HelpNoteLabel" Text="Hjælpetekst" FontWeight="SemiBold" Margin="0,6,0,0"/>
+        <TextBlock Name="HelpNoteLabel" Text="Noter for hjælpetekst" FontWeight="SemiBold" Margin="0,6,0,0"/>
         <TextBox Name="HelpNoteBox" AcceptsReturn="True" TextWrapping="Wrap"
                  Height="90" VerticalContentAlignment="Top"
                  a:AutomationProperties.LabeledBy="{Binding #HelpNoteLabel}"/>
 
-        <!-- Bool initial value -->
-        <!-- ON, not "Til": a bool state is spelled ON/OFF everywhere else the installer meets one (the pin-properties
-             and scene-value combos, and the program verbs "sættes til ON"), so one word for one state. -->
-        <CheckBox Name="BoolBox" Content="Startværdi: ON" Margin="0,6,0,0" IsVisible="False"/>
+        <!-- Bool initial value (F-30): a COMBO of OFF/ON, as the original has it (measured 2026-08-11: its
+             Rediger Flag egenskaber holds ComboBox 215 with exactly those two items under an "Initial værdi"
+             caption). A checkbox carried the same two states but matched neither the original nor this app's own
+             convention — the pin-properties and scene-value dialogs already offer a bool as an ON/OFF combo. -->
+        <StackPanel Name="BoolPanel" Margin="0,6,0,0" Spacing="4" IsVisible="False">
+            <TextBlock Name="BoolLabel" Text="Initial værdi" FontWeight="SemiBold"/>
+            <ComboBox Name="BoolBox" Width="120" HorizontalAlignment="Left"
+                      a:AutomationProperties.LabeledBy="{Binding #BoolLabel}"/>
+        </StackPanel>
+
+        <!-- Enumerated initial value (F-41): a weekday picks one of the original's seven day names, and the
+             TOKEN behind it (monday…sunday) is what reaches the file — the label is this app's to spell. -->
+        <StackPanel Name="ChoicePanel" Margin="0,6,0,0" Spacing="4" IsVisible="False">
+            <TextBlock Name="ChoiceLabel" Text="Initial værdi" FontWeight="SemiBold"/>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <ComboBox Name="ChoiceBox" Width="240"
+                          a:AutomationProperties.LabeledBy="{Binding #ChoiceLabel}"/>
+                <!-- F-50: the original puts the enumerator TYPE editor behind a "Rediger" button here, so editing
+                     the shared type is a deliberate second step rather than what the row's own gesture does.
+                     Hidden for a weekday, whose states are the format's and not editable. -->
+                <Button Name="EditEnumTypeButton" Content="Rediger" MinWidth="84" IsVisible="False"
+                        Click="OnEditEnumType"/>
+            </StackPanel>
+        </StackPanel>
 
         <!-- Numeric initial value -->
         <StackPanel Name="NumberPanel" Margin="0,6,0,0" Spacing="4" IsVisible="False">
-            <TextBlock Name="NumberLabel" Text="Startværdi" FontWeight="SemiBold"/>
+            <TextBlock Name="NumberLabel" Text="Initial værdi" FontWeight="SemiBold"/>
             <TextBox Name="NumberBox" a:AutomationProperties.LabeledBy="{Binding #NumberLabel}"/>
+        </StackPanel>
+
+        <!-- Decimal initial value (F-41/F-44): the kW/kWh/W/Wh/Kommatal/Fugtighed/Temperatur family. One field
+             whose PRECISION varies by type — the original shows 0,000 for a kW, 0,00 for a Kommatal, 0,0 for a
+             Temperatur and a plain 0 for a W — read and written in Danish with a comma, as the original's is.
+             The UNIT is deliberately absent: it belongs to the tree row and never appears in this field. -->
+        <StackPanel Name="DecimalPanel" Margin="0,6,0,0" Spacing="4" IsVisible="False">
+            <TextBlock Name="DecimalLabel" Text="Initial værdi" FontWeight="SemiBold"/>
+            <TextBox Name="DecimalBox" Width="160" HorizontalAlignment="Left"
+                     a:AutomationProperties.LabeledBy="{Binding #DecimalLabel}"/>
+        </StackPanel>
+
+        <!-- Calendar initial value (F-41): DAY and MONTH only. The type also stores a year, which the original's
+             dialog does not offer and the writer leaves untouched. Numeric like the tree's own dd:MM rendering —
+             the original's picker shows a month NAME, but that name follows the machine's Windows locale rather
+             than the app's language, so copying it would reproduce a locale artefact, not a label. -->
+        <StackPanel Name="DatePanel" Margin="0,6,0,0" Spacing="4" IsVisible="False">
+            <TextBlock Name="DateLabel" Text="Initial værdi" FontWeight="SemiBold"/>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="D" VerticalAlignment="Center"/>
+                <TextBox Name="DayBox" Width="52" a:AutomationProperties.Name="Dag"/>
+                <TextBlock Text="M" VerticalAlignment="Center"/>
+                <TextBox Name="MonthBox" Width="52" a:AutomationProperties.Name="Måned"/>
+            </StackPanel>
         </StackPanel>
 
         <!-- Time / duration initial value -->
         <StackPanel Name="TimePanel" Margin="0,6,0,0" Spacing="4" IsVisible="False">
-            <TextBlock Text="Startværdi" FontWeight="SemiBold"/>
+            <TextBlock Name="TimeLabel" Text="Initial værdi" FontWeight="SemiBold"/>
             <!-- The four boxes are labelled by single letters ("T M S ms") that only read as hours/minutes/seconds
                  in a row, side by side. Spelling the unit out in the accessible name is the whole difference
                  between four announced "edit" fields and four that say what they hold. -->
@@ -55,6 +101,14 @@
                 <TextBox Name="MsBox" Width="60" a:AutomationProperties.Name="Millisekunder"/>
             </StackPanel>
         </StackPanel>
+
+        <!-- F-27: the vendor's "Ved strømsvigt" group. Shown for every variable, because the format admits the
+             backup attribute on every variable type except a scene — which is not authored through this dialog. -->
+        <TextBlock Name="PowerFailLabel" Text="Ved strømsvigt" FontWeight="SemiBold" Margin="0,10,0,0"/>
+        <!-- No LabeledBy here, deliberately: a CheckBox's Content IS its accessible name, and pointing LabeledBy at
+             the group heading REPLACED "Gem aktuel værdi" with "Ved strømsvigt" — announcing the group and losing
+             the only text that says what ticking it does. The heading groups; the content names. -->
+        <CheckBox Name="SaveOnPowerLossBox" Content="Gem aktuel værdi"/>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,10,0,0">
             <Button Name="OkButton" Content="OK" MinWidth="84" IsDefault="True" Click="OnOk"/>

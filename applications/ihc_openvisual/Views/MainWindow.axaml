@@ -164,7 +164,12 @@
                           IsVisible="{Binding Registry.ContextMenu[program.setConditionsOr].Visible, FallbackValue=False}"/>
             </controls:AccessibleMenuItem>
             <!-- Vendor node flyouts omit shortcut captions; keyboard bindings and menu-bar captions remain. -->
-            <controls:AccessibleMenuItem Header="_Gem Funktionsblok…" Command="{Binding SaveFunctionBlockCommand}"
+            <!-- "_Gem…", not "_Gem Funktionsblok…": the reference application captions this ONE command (id 24765)
+                 differently on its two surfaces — "&Gem..." here and "&Gem Funktionsblok...\tCtrl+G" on the
+                 Bibliotek bar (both measured 2026-08-11, alignment F-18). A flyout acts on the row that was
+                 right-clicked, so it names no noun. The bar caption is correct as it stands and must NOT be
+                 changed to match this one. -->
+            <controls:AccessibleMenuItem Header="_Gem…" Command="{Binding SaveFunctionBlockCommand}"
                       a:AutomationProperties.AutomationId="ctx.node.saveBlock"
                       IsVisible="{Binding Registry.ContextMenu[node.saveBlock].Visible, FallbackValue=False}"/>
             <controls:AccessibleMenuItem Header="_Klip" Command="{Binding CutCommand}"
@@ -207,7 +212,7 @@
             <!-- The vendor closes every node flyout with a separator before Egenskaber (measured 2026-08-09,
                  alignment F-20; story 11's inventory table shows the same). It follows Egenskaber's own gate so
                  the root flyout — which has no Egenskaber — does not end in a dangling rule. -->
-            <Separator IsVisible="{Binding Registry.ContextMenu[node.properties].Visible, FallbackValue=False}"/>
+            <controls:AccessibleSeparator IsVisible="{Binding Registry.ContextMenu[node.properties].Visible, FallbackValue=False}"/>
             <controls:AccessibleMenuItem Header="_Egenskaber…" Command="{Binding PropertiesCommand}"
                       a:AutomationProperties.AutomationId="ctx.node.properties"
                       IsVisible="{Binding Registry.ContextMenu[node.properties].Visible, FallbackValue=False}"/>
@@ -289,12 +294,12 @@
                           a:AutomationProperties.AutomationId="file.saveAs"
                           IsEnabled="{Binding Registry.Bar[file.saveAs].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[file.saveAs].Reason}"/>
-                <Separator/>
-                <controls:AccessibleMenuItem Header="_Luk projekt" Command="{Binding CloseCommand}"
-                          a:AutomationProperties.AutomationId="file.close"
-                          IsEnabled="{Binding Registry.Bar[file.close].Enabled}"
-                          ToolTip.Tip="{Binding Registry.Bar[file.close].Reason}"/>
-                <Separator/>
+                <controls:AccessibleSeparator/>
+                <!-- The vendor's Filer menu is THREE groups: the file commands, then the recent list, then closing
+                     (measured 2026-08-11: [Nyt, Åbn, Gem, Gem som] ─ [&1…&4] ─ [Luk]). OpenVisual had four and
+                     closed the project ABOVE the recent list, so the two registered differences here — the MRU as a
+                     submenu, and Luk split into Luk projekt + Afslut — kept their form but sat in the wrong places.
+                     Both now sit where the vendor's originals do (alignment F-12). -->
                 <!-- "_projekter", not "Se_neste": N is _Nyt projekt's access key, and two items in one menu sharing a
                      key cycle focus instead of invoking. (The vendor has no such submenu — its MRU is inline &1…&4.) -->
                 <controls:AccessibleMenuItem Name="RecentProjectsMenu" Header="Seneste _projekter" ItemsSource="{Binding RecentProjects}"
@@ -323,7 +328,11 @@
                         </Style>
                     </controls:AccessibleMenuItem.Styles>
                 </controls:AccessibleMenuItem>
-                <Separator/>
+                <controls:AccessibleSeparator/>
+                <controls:AccessibleMenuItem Header="_Luk projekt" Command="{Binding CloseCommand}"
+                          a:AutomationProperties.AutomationId="file.close"
+                          IsEnabled="{Binding Registry.Bar[file.close].Enabled}"
+                          ToolTip.Tip="{Binding Registry.Bar[file.close].Reason}"/>
                 <!-- No InputGesture: the vendor's Luk advertises none, and Alt+F4 is the window manager's gesture
                      rather than the command's (uxparity S-27). It still closes the window. -->
                 <controls:AccessibleMenuItem Header="_Afslut" Command="{Binding ExitCommand}"
@@ -508,7 +517,7 @@
                           a:AutomationProperties.AutomationId="node.unlock"
                           IsEnabled="{Binding Registry.Bar[node.unlock].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[node.unlock].Reason}"/>
-                <Separator/>
+                <controls:AccessibleSeparator/>
                 <controls:AccessibleMenuItem Header="_Importer katalogfil…" Command="{Binding ImportCatalogFileCommand}"
                           a:AutomationProperties.AutomationId="catalog.importFile"/>
                 <controls:AccessibleMenuItem Header="Importer katalog_mappe…" Command="{Binding ImportCatalogFolderCommand}"
@@ -535,7 +544,7 @@
                           a:AutomationProperties.AutomationId="project.info"
                           IsEnabled="{Binding Registry.Bar[project.info].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[project.info].Reason}"/>
-                <Separator/>
+                <controls:AccessibleSeparator/>
                 <controls:AccessibleMenuItem Header="_Funktionsdokumentation…" Command="{Binding FunctionsReportCommand}"
                           a:AutomationProperties.AutomationId="reports.functions"
                           IsEnabled="{Binding Registry.Bar[reports.functions].Enabled}"
@@ -554,12 +563,12 @@
             <controls:AccessibleMenuItem Header="_Hjælp" a:AutomationProperties.AutomationId="MenuHelp">
                 <controls:AccessibleMenuItem Header="_Hjælpe emner" Command="{Binding HelpCommand}" InputGesture="F1"
                           a:AutomationProperties.AutomationId="help.onNode"/>
-                <Separator/>
+                <controls:AccessibleSeparator/>
                 <controls:AccessibleMenuItem Header="Vis indstillinger" Command="{Binding ShowSettingsCommand}"
                           a:AutomationProperties.AutomationId="app.settings"/>
                 <controls:AccessibleMenuItem Header="Telemetridiagnostik" Command="{Binding TelemetryDiagnosticsCommand}"
                           a:AutomationProperties.AutomationId="app.telemetryDiagnostics"/>
-                <Separator/>
+                <controls:AccessibleSeparator/>
                 <controls:AccessibleMenuItem Header="_Om IHC OpenVisual…" Command="{Binding AboutCommand}"
                           a:AutomationProperties.AutomationId="help.about"/>
             </controls:AccessibleMenuItem>
@@ -590,14 +599,38 @@
                     <Style Selector="svg|Svg.toolicon">
                         <Setter Property="Width" Value="18"/>
                         <Setter Property="Height" Value="18"/>
+                        <!-- Ink lives here, not on each button: a LOCAL value on the element would outrank the
+                             :disabled style below and the unavailable glyphs would never grey. -->
+                        <Setter Property="CurrentColor" Value="{DynamicResource IconColor}"/>
                         <!-- Icons are decorative; the accessible name lives on the parent Button. Keep the glyph
                              out of the automation tree so it is not announced separately. -->
                         <Setter Property="a:AutomationProperties.AccessibilityView" Value="Raw"/>
                     </Style>
-                    <Style Selector="Rectangle.toolsep">
+                    <!-- A Separator, not a Rectangle: a shape publishes NOTHING to automation, so this rule was
+                         visible to sighted users and to no one else — the same defect F-11 fixed for the menus,
+                         in the surface nobody re-checked afterwards (alignment F-45). The stock theme draws a
+                         HORIZONTAL rule, so the vertical geometry is set here. -->
+                    <Style Selector="Separator.toolsep">
                         <Setter Property="Width" Value="1"/>
-                        <Setter Property="Margin" Value="5,3"/>
-                        <Setter Property="Fill" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+                        <Setter Property="Height" Value="22"/>
+                        <Setter Property="Margin" Value="5,0"/>
+                        <Setter Property="VerticalAlignment" Value="Center"/>
+                        <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+                    </Style>
+                    <!-- Unavailable command = greyed GLYPH on no fill, which is how the reference application
+                         shows it and the only reading a Windows toolbar user has. Fluent's stock button does the
+                         opposite — full-strength glyph inside a filled grey box — so a disabled Klip ends up the
+                         most emphasised thing on the bar and reads as toggled ON, while the available commands
+                         sit flat on the toolbar. Both halves are corrected here (checklist dim 18); the fill is
+                         cleared on the template part because that is where the theme's :disabled setter lands, and
+                         clearing the Button's own Background would not reach it. Pointer-over/pressed keep their
+                         boxes — a disabled button raises neither. -->
+                    <Style Selector="Button.tool:disabled /template/ ContentPresenter#PART_ContentPresenter">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="BorderBrush" Value="Transparent"/>
+                    </Style>
+                    <Style Selector="Button.tool:disabled svg|Svg.toolicon">
+                        <Setter Property="CurrentColor" Value="{DynamicResource DisabledIconColor}"/>
                     </Style>
                 </StackPanel.Styles>
 
@@ -607,27 +640,29 @@
                 <Button Classes="tool" Command="{Binding NewCommand}" ToolTip.Tip="Nyt projekt (Ctrl+N)"
                         IsEnabled="{Binding Registry.Toolbar[file.new].Enabled}"
                         a:AutomationProperties.Name="Nyt projekt" a:AutomationProperties.AutomationId="ToolbarNew">
-                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_new.svg" CurrentColor="{DynamicResource IconColor}"/>
+                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_new.svg"/>
                 </Button>
                 <Button Classes="tool" Command="{Binding OpenCommand}" ToolTip.Tip="Åbn projekt (Ctrl+O)"
                         IsEnabled="{Binding Registry.Toolbar[file.open].Enabled}"
                         a:AutomationProperties.Name="Åbn projekt" a:AutomationProperties.AutomationId="ToolbarOpen">
-                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_open.svg" CurrentColor="{DynamicResource IconColor}"/>
+                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_open.svg"/>
                 </Button>
                 <Button Classes="tool" Command="{Binding SaveCommand}" ToolTip.Tip="Gem projekt (Ctrl+S)"
                         IsEnabled="{Binding Registry.Toolbar[file.save].Enabled}"
                         a:AutomationProperties.Name="Gem projekt" a:AutomationProperties.AutomationId="ToolbarSave">
-                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_save.svg" CurrentColor="{DynamicResource IconColor}"/>
+                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_save.svg"/>
                 </Button>
 
-                <Rectangle Classes="toolsep"/>
+                <!-- The bar's ONE rule, after Gem projekt, where the reference application's is: its live
+                     toolbar.dump reads 12 entries with a single separator at index 3, and Om/Hent/Send/Klip/
+                     Kopier/Indsæt then run on unbroken (alignment F-5, measured 2026-08-10). -->
+                <controls:AccessibleSeparator Classes="toolsep"/>
                 <Button Classes="tool" Command="{Binding AboutCommand}" ToolTip.Tip="Hjælp / Om"
                         IsEnabled="{Binding Registry.Toolbar[help.about].Enabled}"
                         a:AutomationProperties.Name="Hjælp og Om" a:AutomationProperties.AutomationId="ToolbarHelp">
-                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_help.svg" CurrentColor="{DynamicResource IconColor}"/>
+                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_help.svg"/>
                 </Button>
 
-                <Rectangle Classes="toolsep"/>
                 <!-- T020: real registry-bound buttons (the toolbar is a persistent surface — it greys, never
                      hides). Tooltips stay the static captions: the T016 spike proved a DISABLED control shows
                      no tooltip, so disabled reasons surface via the T021 status-bar handler instead. -->
@@ -635,33 +670,32 @@
                         IsEnabled="{Binding Registry.Toolbar[controller.retrieve].Enabled}"
                         ToolTip.Tip="Hent fra controller"
                         a:AutomationProperties.Name="Hent fra controller" a:AutomationProperties.AutomationId="ToolbarRetrieve">
-                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_retrieve.svg" CurrentColor="{DynamicResource IconColor}"/>
+                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_retrieve.svg"/>
                 </Button>
                 <Button Classes="tool" Command="{Binding SendProjectCommand}"
                         IsEnabled="{Binding Registry.Toolbar[controller.send].Enabled}"
                         ToolTip.Tip="Send til controller (F5)"
                         a:AutomationProperties.Name="Send til controller" a:AutomationProperties.AutomationId="ToolbarSend">
-                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_send.svg" CurrentColor="{DynamicResource IconColor}"/>
+                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_send.svg"/>
                 </Button>
 
-                <Rectangle Classes="toolsep"/>
                 <Button Classes="tool" Command="{Binding CutCommand}"
                         IsEnabled="{Binding Registry.Toolbar[edit.cut].Enabled}"
                         ToolTip.Tip="Klip (Ctrl+X)"
                         a:AutomationProperties.Name="Klip" a:AutomationProperties.AutomationId="ToolbarCut">
-                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_cut.svg" CurrentColor="{DynamicResource IconColor}"/>
+                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_cut.svg"/>
                 </Button>
                 <Button Classes="tool" Command="{Binding CopyCommand}"
                         IsEnabled="{Binding Registry.Toolbar[edit.copy].Enabled}"
                         ToolTip.Tip="Kopier (Ctrl+C)"
                         a:AutomationProperties.Name="Kopier" a:AutomationProperties.AutomationId="ToolbarCopy">
-                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_copy.svg" CurrentColor="{DynamicResource IconColor}"/>
+                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_copy.svg"/>
                 </Button>
                 <Button Classes="tool" Command="{Binding PasteCommand}"
                         IsEnabled="{Binding Registry.Toolbar[edit.paste].Enabled}"
                         ToolTip.Tip="Indsæt (Ctrl+V)"
                         a:AutomationProperties.Name="Indsæt" a:AutomationProperties.AutomationId="ToolbarPaste">
-                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_paste.svg" CurrentColor="{DynamicResource IconColor}"/>
+                    <svg:Svg Classes="toolicon" Path="/Assets/toolbar_paste.svg"/>
                 </Button>
             </StackPanel>
         </Border>

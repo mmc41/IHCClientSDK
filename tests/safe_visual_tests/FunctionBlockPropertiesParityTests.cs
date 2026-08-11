@@ -1,6 +1,7 @@
 using System.IO;
 using System.Threading.Tasks;
 using ihc_openvisual.Services;
+using ihc_openvisual.ViewModels;
 
 namespace safe_visual_tests;
 
@@ -72,6 +73,38 @@ public class FunctionBlockPropertiesParityTests
 
         Assert.That(harness.Dialogs.LastPropertiesOrigin, Is.Null,
             "unlocking takes ownership, so there is no library origin left to report");
+    }
+
+    /// <summary>
+    /// Alignment F-24 (2026-08-11): a function block's dialog names its FIRST group too. The vendor's
+    /// <c>Funktionsblok egenskaber</c> wraps Navn and Note in a group box captioned <c>Bruger egenskaber</c> — on a
+    /// library block, an unlocked one and an empty one alike (measured on all three; the locked one's 19 controls
+    /// carry both captions, the unlocked one's 7 carry this one).
+    ///
+    /// <para>OpenVisual captioned only the SECOND group, so a library block's dialog read "Navn, Note,
+    /// <i>Oprindelige egenskaber</i>, …" — the provenance named, the fields above it belonging to an unnamed group.
+    /// That is a divergence from the vendor and an internal inconsistency with its own sibling group; the caption
+    /// is what tells a reader (and a screen reader) that those two fields are the ones they own.</para>
+    ///
+    /// <para>Gated on the node being a function block: the vendor's OTHER properties dialogs group differently —
+    /// a locality's wraps each field in its own captioned box (<c>Navn</c>, <c>Note</c>), measured the same day —
+    /// so an unconditional caption here would invent grouping the vendor does not have there.</para>
+    /// </summary>
+    [TestCase(true, "Bruger egenskaber")]
+    [TestCase(false, null)]
+    public async Task UserPropertiesGroupIsCaptioned_OnAFunctionBlockOnly(bool functionBlock, string? caption)
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
+
+        TreeNodeViewModel target = functionBlock
+            ? vm.FunctionNodes[0].Children[0].Children[0]      // the block
+            : vm.InstallationNodes[0].Children[0];             // a locality
+        await vm.PropertiesCommand.ExecuteAsync(target);
+
+        Assert.That(harness.Dialogs.LastPropertiesUserGroup, Is.EqualTo(caption));
     }
 
     /// <summary>

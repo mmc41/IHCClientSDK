@@ -113,8 +113,14 @@ public sealed class FakeDialogService : IDialogService
     public LibraryOrigin? LastPropertiesOrigin { get; private set; }
     public string? LastPropertiesAffirmative { get; private set; }
 
+    /// <summary>The caption asked for over the editable Name/Note pair — "Bruger egenskaber" on a function block,
+    /// null elsewhere (F-24).</summary>
+    public string? LastPropertiesUserGroup { get; private set; }
+
+    public bool? LastPropertiesConditionsOr { get; private set; }
+
     public Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note, LibraryOrigin? origin = null,
-        string affirmative = "OK")
+        string affirmative = "OK", string? userGroupCaption = null, bool? conditionsOr = null)
     {
         EditPropertiesCalls++;
         LastPropertiesTitle = title;
@@ -122,6 +128,8 @@ public sealed class FakeDialogService : IDialogService
         LastPropertiesNote = note;
         LastPropertiesOrigin = origin;
         LastPropertiesAffirmative = affirmative;
+        LastPropertiesUserGroup = userGroupCaption;
+        LastPropertiesConditionsOr = conditionsOr;
         return Task.FromResult(PropertiesResult);
     }
 

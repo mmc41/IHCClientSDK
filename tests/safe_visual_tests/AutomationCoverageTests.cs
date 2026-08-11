@@ -274,8 +274,13 @@ public class AutomationCoverageTests : AvaloniaTestBase
         Assert.That(wrapped, Is.Empty,
             $"a menu separator must not be realized as a menu item ({wrapped.Count} nameless, invokable rows would "
             + "reach an automation client and be read out by a screen reader)");
-        Assert.That(file.GetRealizedContainers().OfType<Separator>().Count(), Is.EqualTo(3),
-            "the File menu's three separators are realized as Separator controls");
+        // Against what the menu DECLARES, not a literal: the count changed when the Filer menu was regrouped to
+        // the reference application's three groups (alignment F-12), and a hard-coded 3 turned a correct
+        // realignment into a red test. What this test is about is that every declared rule survives realization
+        // AS a rule — FileMenuGroupingParityTests owns how many there should be and where.
+        int declared = file.Items.OfType<Separator>().Count();
+        Assert.That(file.GetRealizedContainers().OfType<Separator>().Count(), Is.EqualTo(declared),
+            $"all {declared} of the File menu's separators are realized as Separator controls");
     }
 
     /// <summary>The pattern has to actually work, not merely be advertised: invoking a leaf must run its command.

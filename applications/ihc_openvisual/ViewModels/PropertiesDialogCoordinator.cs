@@ -46,14 +46,62 @@ internal sealed class PropertiesDialogCoordinator(
         else if (element.IsSceneMember && !element.IsSceneShutter)
             await OpenSceneValueAsync(id, element);   // edit a scenario link's value (US-058)
         else if (element.Kind == ElementKind.EnumResource)
-            await OpenEnumAsync(id);   // edit the enum type's states (US-030)
+            // F-50: an enum VARIABLE opens the variable dialog, as every other variable does — the original's
+            // "Rediger <navn> egenskaber" with Navn, both documentation fields, an Initial værdi combo of its
+            // TYPE's states and the power-loss flag. The type EDITOR is a separate dialog behind a button there;
+            // opening it from the row (which is what this used to do) both hid the variable's own fields and put
+            // a project-global edit behind the ordinary gesture on one variable.
+            await OpenVariableAsync(id, element);
         else if (element.Kind == ElementKind.Resource)
             // An ordinary FB resource variable edits Name/Note plus its typed initial value (US-026/US-027, T015/T016).
             await OpenVariableAsync(id, element);
+        else if (element.Tag == "conditions")
+            // A Betingelser group edits Name/Note AND the operator its conditions combine with (F-48).
+            await OpenConditionsAsync(id, element);
         else if (element.IsLocalityGroup || element.Kind is ElementKind.FunctionBlock)
             // A function block renames through the same Name/Note dialog as a locality (US-007/US-019).
             await OpenNameNoteAsync(id, session.Current!.View(element).Name ?? string.Empty);
     }
+
+    /// <summary>
+    /// Edits a <c>Betingelser</c> group: its Name, its Note, and the logical operator its conditions combine with
+    /// (alignment F-48). The reference application's <c>Rediger Betingelser egenskaber</c> holds exactly those
+    /// three, the operator as a captioned <i>Logisk betingelse</i> combo of AND/OR (measured 2026-08-11).
+    /// <para>OpenVisual reached the operator from the flyout already; it had no dialog at all here, so
+    /// <i>Egenskaber…</i> on this row did nothing and the group's Name and Note were unreachable.</para>
+    /// </summary>
+    private async Task OpenConditionsAsync(ElementId id, ProjectElement element)
+    {
+        if (session.Current is not { } project)
+            return;
+        ElementView view = project.View(element);
+        // The tree names every conditions container "Betingelser" whatever the element carries, and the original
+        // titles the dialog from the name it shows — so an unnamed group still reads "Rediger Betingelser
+        // egenskaber" rather than "Rediger  egenskaber".
+        string name = view.Name is { Length: > 0 } stored ? stored : ConditionsDisplayName;
+        bool or = view.Effective("type") == "or";
+
+        PropertiesResult? result = await dialogs.EditPropertiesAsync(
+            $"Rediger {name} egenskaber", name, view.Note ?? string.Empty, conditionsOr: or);
+        if (result is null)
+            return;   // cancelled
+
+        await applyAndReport(session.Commands.RenameLocality(project, id, result.Name, result.Note),
+            $"'{result.Name}' blev opdateret.");
+        // A separate command because it is a separate attribute, and applied only when it actually CHANGED, so an
+        // untouched dialog leaves no second entry in the undo history — the same rule the variable dialog's
+        // power-loss flag follows.
+        if (result.ConditionsOr is { } chosen && chosen != or && session.Current is { } updated)
+            await applyAndReport(session.Commands.SetConditionsLogic(updated, id, chosen),
+                chosen ? "Betingelser kombineret med OR (>=1)." : "Betingelser kombineret med AND (&).");
+    }
+
+    // The label the tree gives every conditions container, and the original's own stored name for a fresh one.
+    private const string ConditionsDisplayName = "Betingelser";
+
+    /// <summary>The original's fixed caption for a function block's properties dialog — the node TYPE, not the
+    /// block's name (measured 2026-08-11 on a locked library block and an empty one alike, alignment F-49).</summary>
+    private const string FunctionBlockDialogTitle = "Funktionsblok egenskaber";
 
     /// <summary>
     /// Opens the dialog a JUST-PLACED product raises, and reports whether the installer committed it. Placing a
@@ -80,8 +128,19 @@ internal sealed class PropertiesDialogCoordinator(
         string currentNote = element is not null ? project.View(element).Note ?? string.Empty : string.Empty;
         // Title format follows the vendor's own dialog: "Rediger <navn> egenskaber" (measured on a locality
         // 2026-08-09, alignment F-16) — not "Rediger egenskaber for <navn>".
+        // F-24: a FUNCTION BLOCK's dialog captions the editable pair, as the vendor's does — on a library block, an
+        // unlocked one and an empty one alike. A locality's does not: the vendor groups that dialog differently
+        // (one captioned box per field), so a caption here would invent grouping it does not have.
+        bool isBlock = element is { Kind: ElementKind.FunctionBlock };
+        string? userGroup = isBlock ? "Bruger egenskaber" : null;
+        // F-49: the title pattern is per NODE TYPE, not one rule. A locality is named ("Rediger Stue
+        // egenskaber"); a function block is not — the original captions its dialog "Funktionsblok egenskaber",
+        // by the type, whatever the block is called (measured 2026-08-11). Applying the locality's pattern here
+        // was a generalization from the one node type F-16 happened to measure.
+        string title = isBlock ? FunctionBlockDialogTitle : $"Rediger {currentName} egenskaber";
         PropertiesResult? result = await dialogs.EditPropertiesAsync(
-            $"Rediger {currentName} egenskaber", currentName, currentNote, OriginOf(project, element));
+            title, currentName, currentNote, OriginOf(project, element),
+            userGroupCaption: userGroup);
         if (result is null)
             return;   // cancelled — the locality keeps its original name and note
         await applyAndReport(session.Commands.RenameLocality(project, id, result.Name, result.Note),
@@ -117,14 +176,59 @@ internal sealed class PropertiesDialogCoordinator(
         ElementView view = project.View(variable);
         // W5: a variable carries TWO documentation fields — the function documentation and the installer help text
         // (note-2) — so both are pre-filled from the project and both are applied.
+        // F-27: the power-loss flag is a property of the VARIABLE and belongs in its dialog, where the vendor puts
+        // it — not only on the context flyout, which is where OpenVisual had it alone.
+        bool backupBefore = view.Backup;
+        // An enum's states and current one come from its TYPE; null for every other variable.
+        (string Name, List<string> States)? enumInfo =
+            variable.Kind == ElementKind.EnumResource ? ReadEnumInfo(id) : null;
+        string? currentEnumState = enumInfo is null ? null : CurrentEnumState(project, variable);
+        // An enum's editable value is WHICH STATE it starts in — a Choice over its type's states, carrying the
+        // state's LABEL because the stored value is an IDREF this layer resolves on both sides.
+        ResourceInitialValue current = enumInfo is { } ei
+            ? ResourceInitialValue.OfChoice(currentEnumState ?? ei.States.FirstOrDefault() ?? string.Empty)
+            : ReadInitialValue(variable);
         VariablePropertiesResult? result = await dialogs.EditVariablePropertiesAsync(new VariablePropertiesInput(
             $"Rediger {view.Name} egenskaber", view.Name ?? string.Empty, view.Note ?? string.Empty,
-            ReadInitialValue(variable), view.HelpNote ?? string.Empty));
+            current, view.HelpNote ?? string.Empty, backupBefore,
+            // F-42: only the types that DECLARE a millisecond get the field. resource_time has none, and the
+            // writer refuses to write one for it — so showing the box offered an edit that was then discarded.
+            ShowMilliseconds: variable.Tag is not "resource_time",
+            DecimalPlaces: DecimalPlacesFor(variable.Tag),
+            // F-50: an enum offers its own TYPE's states; every other type leaves this null and the dialog uses
+            // what the format declares.
+            ChoiceOptions: enumInfo?.States));
         if (result is null)
             return;   // cancelled
+        // An enum's initial state is NOT written by the generic value writer: its inivalue is an IDREF to one of
+        // its type's enum_value elements, and the writer would store the state's name and break the reference.
+        // The name/note/help edit goes through as usual with the value suppressed, and the state follows below as
+        // its own command (F-50).
+        ResourceInitialValue applied = enumInfo is null ? result.Value : ResourceInitialValue.None;
         await applyAndReport(
-            session.Commands.SetVariableProperties(project, id, result.Name, result.Note, result.Value, result.HelpNote),
+            session.Commands.SetVariableProperties(project, id, result.Name, result.Note, applied, result.HelpNote),
             $"'{result.Name}' blev opdateret.");
+        // Applied only when the state actually CHANGED, so an untouched dialog leaves one undo entry, not two.
+        if (enumInfo is { } info && result.Value.Kind == ResourceValueKind.Choice
+            && info.States.IndexOf(result.Value.Token) is >= 0 and int chosen
+            && chosen != info.States.IndexOf(currentEnumState ?? string.Empty)
+            && session.Current is { } withEnum)
+        {
+            await applyAndReport(session.Commands.SetEnumInitialState(withEnum, id, info.Name, chosen),
+                $"Starttilstanden blev sat til {result.Value.Token}.");
+        }
+        // "Rediger" beside the state list: the variable's own edits are applied above, and THEN the shared type
+        // editor opens — the original's second dialog, reached by a deliberate button rather than by the row's
+        // ordinary gesture (F-50).
+        if (result.EditEnumType && enumInfo is not null)
+            await OpenEnumAsync(id);
+        // A separate command because it is a separate attribute; applied only when it actually changed, so an
+        // untouched dialog leaves no second entry in the undo history.
+        if (result.SaveOnPowerLoss != backupBefore && session.Current is { } updated)
+            await applyAndReport(session.Commands.SetOutputBackup(updated, id, result.SaveOnPowerLoss),
+                result.SaveOnPowerLoss
+                    ? "Værdien gemmes ved strømsvigt."
+                    : "Værdien gemmes ikke længere ved strømsvigt.");
     }
 
     // Maps a resource variable's tag + current attributes to its typed initial value (US-027, T016) — the inverse of
@@ -136,21 +240,79 @@ internal sealed class PropertiesDialogCoordinator(
             case "resource_flag":
             case "resource_input":
             case "resource_output":
+            // F-41: a Helligdag is on/off like a flag — the reference application's Helligdag dialog offers a
+            // combo holding exactly OFF/ON (read live), and the DTD declares `inivalue (on | off)` on
+            // resource_holiday just as on resource_flag. The engine's bool writer is tag-agnostic, so this type
+            // was simply not listed and fell through to "no editable initial value".
+            case "resource_holiday":
                 return ResourceInitialValue.OfBool(variable.GetAttribute("inivalue") == "on");
+            // F-41: a weekday's initial value is one of seven enumerated tokens. An ABSENT inivalue is the DTD
+            // default (monday), not "no value" — the format omits an attribute sitting at its default, so a
+            // reader that treated missing as empty would show the wrong day.
+            case "resource_weekday":
+                return ResourceInitialValue.OfChoice(
+                    variable.GetAttribute("inivalue") is { Length: > 0 } day ? day : "monday");
+            // F-41: a date's editable value is its DAY and MONTH. The type also stores a year, which the
+            // original's dialog does not offer (its picker reads "01 January") and which the writer therefore
+            // leaves untouched. Both default to 1, matching the catalog template's year="2000" month="1" day="1".
+            case "resource_date":
+                return ResourceInitialValue.OfDate(Int(variable, "day", 1), Int(variable, "month", 1));
             case "resource_counter":
             case "resource_integer":
+            // F-41: the INTEGER-valued types — the ones whose DTD default is a bare "0". Confirmed at byte level:
+            // the reference application saved inivalue="17" for a Tal and "42" for a Lys. The UNIT is never in the
+            // dialog: the field holds the bare number and the unit belongs to the tree row (42 Lux, 42%).
+            case "resource_light":
+            case "resource_light_level":
                 return ResourceInitialValue.OfNumber(
                     long.TryParse(variable.GetAttribute("inivalue"), NumberStyles.Integer, CultureInfo.InvariantCulture, out long n) ? n : 0);
+            // F-41/F-44: the DECIMAL family — exactly the types whose DTD default is "0.00", which is NOT the set
+            // the dialog's appearance suggests. W and Wh show a whole number and round what is typed (42,7 gave a
+            // row reading 43W), yet the bytes the reference application saved were inivalue="43.00" and "7.00",
+            // never "43" — so they serialise through the decimal writer, not the integer one. How many decimals
+            // the FIELD shows is a separate, per-type matter and travels as DecimalPlaces.
+            case "kW":
+            case "kWh":
+            case "W":
+            case "Wh":
+            case "resource_floating_point":
+            case "resource_humidity_level":
+            case "resource_temperature":
+                return ResourceInitialValue.OfDecimal(
+                    double.TryParse(variable.GetAttribute("inivalue"), NumberStyles.Float, CultureInfo.InvariantCulture, out double d) ? d : 0);
             case "resource_timer":
             case "resource_time":
+            // F-41: a Timertid takes the same editor. The reference application shows 00:00:00,000 for both
+            // resource_timer and resource_timertime (and 00.00.00 for resource_time), and the DTD gives the first
+            // two hour/minute/second/millisecond #REQUIRED — the writer drops the millisecond only for the type
+            // that declares none.
+            case "resource_timertime":
                 return ResourceInitialValue.OfTime(Int(variable, "hour"), Int(variable, "minute"), Int(variable, "second"), Int(variable, "millisecond"));
             default:
                 return ResourceInitialValue.None;
         }
     }
 
-    private static int Int(ProjectElement variable, string attribute) =>
-        int.TryParse(variable.GetAttribute(attribute), NumberStyles.Integer, CultureInfo.InvariantCulture, out int value) ? value : 0;
+    // How many decimals the VALUE FIELD shows, per type (F-41) — measured field by field in the reference
+    // application: kW/kWh read 0,000, Kommatal 0,00, Fugtighed/Temperatur 0,0, and W/Wh a plain 0. It also rounds
+    // what the user types, which is how a W turns 42,7 into 43.
+    //
+    // Deliberately its own table rather than a read of VariableValueFormat's row precisions. The two agree today,
+    // but they are separate surfaces measured separately, and this campaign has already found them differing in
+    // kind: the unit appears only in the row, never in the field.
+    private static int DecimalPlacesFor(string tag) => tag switch
+    {
+        "kW" or "kWh" => 3,
+        "resource_floating_point" => 2,
+        "resource_humidity_level" or "resource_temperature" => 1,
+        "W" or "Wh" => 0,
+        _ => 2,
+    };
+
+    private static int Int(ProjectElement variable, string attribute, int fallback = 0) =>
+        int.TryParse(variable.GetAttribute(attribute), NumberStyles.Integer, CultureInfo.InvariantCulture, out int value)
+            ? value
+            : fallback;
 
     // The product's scene container (US-024): its fixed name, its note, and a row per membership naming the
     // scenario, the function block driving it and that block's locality — the same triple the membership's link row
@@ -186,7 +348,12 @@ internal sealed class PropertiesDialogCoordinator(
             return;
         bool isDimmer = sv.Kind == SceneValueKind.Dimmer;
         int ms = (int)sv.RampTime.TotalMilliseconds;
-        var input = new SceneValueInput("Scenarie værdi", isDimmer, sv.On, sv.LevelPercent, ms / 60000, ms / 1000 % 60);
+        // F-49: the original titles this dialog by the MEMBER's type — "Relæ scenarie egenskaber" for a relay
+        // member, "Lysdæmper scenarie egenskaber" for a dimmer one (both measured live 2026-08-11 by wiring a
+        // block's scene pin to a Lampeudtag and to a Lampeudtag dimmer). One fixed caption, as this had, cannot
+        // tell the installer which of the two dialogs is open.
+        var input = new SceneValueInput(SceneValueTitles.For(isDimmer), isDimmer, sv.On, sv.LevelPercent,
+            ms / 60000, ms / 1000 % 60);
 
         SceneValueResult? result = await dialogs.EditSceneValueAsync(input);
         if (result is null)
@@ -206,6 +373,14 @@ internal sealed class PropertiesDialogCoordinator(
         if (session.Commands.UpdateEnumStates(session.Current!, enumVariableId, result.States) is { } command)
             await applyAndReport(command, $"Enumeratoren '{info.Name}' blev opdateret.");
     }
+
+    // The NAME of the state an enum variable currently starts in: its inivalue is an IDREF to one of its type's
+    // enum_value elements, so the label only exists after following it (F-50).
+    private static string? CurrentEnumState(Project project, ProjectElement variable) =>
+        ElementId.TryParse(project.View(variable).Effective("inivalue"), out ElementId valueId)
+        && project.FindById(valueId) is { } state
+            ? project.View(state).Name
+            : null;
 
     // Reads an enum variable's type name and ordered state names for the Edit dialog (US-030); null if not an enum.
     private (string Name, List<string> States)? ReadEnumInfo(ElementId enumVariableId)
@@ -233,8 +408,17 @@ internal sealed class PropertiesDialogCoordinator(
         if (pin == "0")
             pin = string.Empty;   // the DTD default reads as blank in the dialog
 
+        // F-49: "<type> Egenskaber", the original's own form — measured "SMS Modem Egenskaber", not
+        // "Egenskaber for SMS-modem". Derived from the catalog type rather than written out, the same way the
+        // product dialog derives its title, so a second modem family would title itself correctly too.
+        // Through ProductView for the identifier: a modem IS a product, and this layer reads elements through
+        // typed views rather than raw attributes.
+        string? modemIdentifier = new ProductView(project, modem).ProductIdentifier;
+        string modemType = session.GetProductCatalogItems()
+            .FirstOrDefault(p => p.Identifier == modemIdentifier)?.DisplayName
+            ?? view.Name ?? "Modem";
         var input = new ModemPropertiesInput(
-            "Egenskaber for SMS-modem",
+            $"{modemType} Egenskaber",
             view.Name ?? string.Empty,
             view.Note ?? string.Empty,
             view.DocumentationTag ?? string.Empty,

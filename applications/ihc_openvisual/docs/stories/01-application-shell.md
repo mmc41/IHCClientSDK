@@ -90,9 +90,21 @@ per-menu command inventory beyond the top-level menu titles.
   all times; the shell populates *Filer*, *Vis* and *Hjælp* itself, while *Rediger* (E14–E15), *Indsæt*
   (E2–E7), *Bibliotek* (E5, E16), *Controller* (E10) and *Dokumentation* (E9) are
   populated by their owning epics and remain visible even before those epics land.
+- MUST: *Filer* carries the reference application's **three groups**, in its order: the file commands
+  (New / Open / Save / Save as), a separator, the recent-projects list, a separator, then closing.
+  OpenVisual's two registered differences keep their form inside that frame — the recent list is a
+  *submenu* where the original inlines `&1…&4`, and the original's single *Luk* becomes *Luk projekt*
+  + *Afslut* — but not their own placement: the submenu occupies the original's MRU group, and the
+  split pair fills its final group, together and last. (Measured 2026-08-11, alignment F-12; the
+  differences themselves are registered in product.md.)
 - MUST: A toolbar sits below the menu bar with, left to right, New / Open / Save, a separator,
-  Help, and a controller send/retrieve pair, then Cut / Copy / Paste. (The simulation Start/Stop pair
-  is out of scope (E8) and omitted.)
+  Help, then the controller pair **Retrieve before Send**, then Cut / Copy / Paste. (The simulation
+  Start/Stop pair is out of scope (E8) and omitted.) **Exactly one separator**, after Save — the rest
+  of the bar runs on unbroken. Confirmed against the reference application's live toolbar, read as
+  command *ids* rather than glyphs: 12 entries, one separator at index 3, and `24579 Hent` ahead of
+  `24580 Send` (alignment F-3/F-5, measured 2026-08-10; the glyphs read the opposite way round, which
+  is why only the ids settle the order). The rule must be a real **separator**, not a drawn shape:
+  grouping is meaning, and a shape publishes it to sighted users only (F-45).
 - MUST: The client area is split into two vertical panes of equal prominence; the left pane has a
   blue header reading **Installation** and the right a blue header reading **Funktioner**.
 - MUST: In configuration mode both panes show a tree rooted at the project's locality-container node

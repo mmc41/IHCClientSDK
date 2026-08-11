@@ -70,7 +70,7 @@ to print every id with its `status` and one-line description. Highlights:
 | Area | Commands |
 |------|----------|
 | Session/inspect | `doctor`, `session status`, `session probe`, `catalog commands` |
-| Dialogs | `dialog read`, `dialog set-text --field --text`, `dialog click --button`, `dialog cancel` |
+| Dialogs | `dialog read`, `dialog set-text --field --text`, `dialog select-item`, `dialog set-check`, `dialog click-row --row/--column`, `dialog click --button`, `dialog cancel` |
 | Capture | `capture window`, `capture modal`, `capture control --id <AutomationId>`, `capture client` |
 | Project | `project new`, `project open --path`, `project save`, `project save-as --path [--overwrite]`, `project recent list` |
 | View/mode | `view configuration`, `programming enter`, `view toolbar-toggle`, `view statusbar-toggle` |
@@ -88,6 +88,18 @@ window; while one is up it owns the input. `session status` reports it as `conte
 `dialog read` inventories its controls, `dialog set-text` fills a field, and `dialog click --button` /
 `dialog cancel` dismisses it. Anything that opens one (`node get-properties`, `node double-click`,
 `projectInfo get`, `report generate`, `help about`) is only the first step of that sequence.
+
+**A row or a cell inside a dialog is driven by `dialog click-row`, not by `dialog click`.**
+`dialog click` resolves a *named button*; `node double-click` drives a row of the *installation tree*;
+neither reaches a row inside a dialog's own grid. Use
+`dialog click-row <list> --row <n>|--text <row text> [--column <header|index>] [--double]` — where
+`--column` strikes one cell instead of the whole row, because a row click lands on whichever column
+sits at the row's midpoint and so answers about that column while looking like it answered about the
+row. It is effect-verified: `Ok` only if the selection lands on the row or a dialog opens, else
+`NoEffect`, and `data.openedDialog` names whatever the gesture raised. **A grid is not proven
+read-only until this has been run on it** — a screenshot and a control inventory show presentation
+only, so "the rows look inert" is an unexercised guess. Mirrors the vendor driver's `dialog.clickRow`,
+so both transcripts compare directly.
 
 **Safety note.** Input-synthesizing commands refuse to run unless the app verifiably holds the
 foreground (`Code=PreconditionMissing`), because a synthesized key goes to whatever window *is* in
@@ -192,7 +204,9 @@ row to `commands.json`.** Mechanisms available:
   `nodeDrag` — tree operations.
 - `readProperty` (with `property`) — read a UIA property (e.g. tooltip via `helpText`).
 - `fileDialog` (with `dialogKind`) — raise the OS picker, type `--path`, commit, verify by effect.
-- `dialogRead` / `dialogSetText` / `dialogButton` / `dialogCancel` — drive the open modal.
+- `dialogRead` / `dialogSetText` / `dialogSelectItem` / `dialogSetCheck` / `dialogClickRow` /
+  `dialogButton` / `dialogCancel` — drive the open modal. `dialogClickRow` is the only one that
+  synthesizes real mouse input, so it alone needs the foreground.
 - `capture` (with `scope`) — screenshot a window/modal, or the exact control addressed by `--id`.
   `passive`/`static`/`notImplemented` — inspection / stub.
 

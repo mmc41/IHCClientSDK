@@ -22,7 +22,11 @@ public sealed record ShellContext(
     bool InstallationPaneActive,
     NodeContext? Node,
     ClipboardContext? Clipboard,
-    bool CanUndo, bool CanRedo)
+    bool CanUndo, bool CanRedo,
+    // Whether a controller is reachable. An availability trigger like any other (alignment F-4): the two
+    // transfer commands gate on it, so it is snapshot here rather than read live off the view-model, and it
+    // changes only through the one RebuildContext.
+    bool ControllerConnected = false)
 {
     /// <summary>The closed-shell context (no project, nothing selected) — the pre-initialization value.</summary>
     public static ShellContext Empty { get; } = new(
@@ -30,7 +34,8 @@ public sealed record ShellContext(
         IsProgrammingMode: false, ProgrammingBlockLocked: false,
         InstallationPaneActive: false,
         Node: null, Clipboard: null,
-        CanUndo: false, CanRedo: false);
+        CanUndo: false, CanRedo: false,
+        ControllerConnected: false);
 }
 
 /// <summary>A VALUE snapshot of the active tree row, projected from <see cref="TreeNodeViewModel"/> at rebuild

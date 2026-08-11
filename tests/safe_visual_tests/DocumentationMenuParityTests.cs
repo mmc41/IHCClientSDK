@@ -117,7 +117,7 @@ public class DocumentationMenuParityTests
     }
 
     private static IReadOnlyList<string> ReadMenuItems(string automationId, string nextAutomationId) =>
-        Regex.Matches(Region(automationId, nextAutomationId), @"<Separator\s*/>|Header=""(?<h>[^""]*)""")
-            .Select(m => m.Value.StartsWith("<Separator", StringComparison.Ordinal) ? "---" : m.Groups["h"].Value)
+        Regex.Matches(Region(automationId, nextAutomationId), @"<(?:controls:)?(?:Accessible)?Separator\s*/>|Header=""(?<h>[^""]*)""")
+            .Select(m => m.Value.EndsWith("Separator/>", StringComparison.Ordinal) || m.Value.EndsWith("Separator />", StringComparison.Ordinal) ? "---" : m.Groups["h"].Value)
             .ToList();
 }

@@ -26,6 +26,17 @@ public partial class ProductPropertiesWindow : ResultDialog<ProductPropertiesRes
     public static Task<ProductPropertiesResult?> ShowAsync(Window owner, ProductPropertiesInput input)
     {
         var window = new ProductPropertiesWindow { Title = input.Title };
+        window.Populate(input);
+        window.FocusOnOpen(window.NameBox);
+        return window.ShowDialogForResult(owner);
+    }
+
+    /// <summary>Fills the dialog from <paramref name="input"/>. Separate from <see cref="ShowAsync"/> so the
+    /// parity tests can exercise the dialog's shape — the terminal rows' accessible names among them — without a
+    /// parent window to show it over.</summary>
+    internal void Populate(ProductPropertiesInput input)
+    {
+        ProductPropertiesWindow window = this;
         window._currentLocalityId = input.CurrentLocalityId;
         window.NameBox.Text = input.Name;
         window.NameBox.IsEnabled = !input.NameLocked;   // a locked library product's name is fixed (A-15)
@@ -52,8 +63,6 @@ public partial class ProductPropertiesWindow : ResultDialog<ProductPropertiesRes
         window.ConfigInputButton.IsEnabled = inputs.Count > 0;    // disabled when the product has no input terminals
         window.ConfigOutputButton.IsEnabled = outputs.Count > 0;
         window.TerminalsPanel.IsVisible = terminals.Count > 0;
-        window.FocusOnOpen(window.NameBox);
-        return window.ShowDialogForResult(owner);
     }
 
     private void OnOk(object? sender, RoutedEventArgs e) => CloseWith();

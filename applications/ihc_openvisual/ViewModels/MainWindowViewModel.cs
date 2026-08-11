@@ -145,6 +145,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [NotifyPropertyChangedFor(nameof(ControllerConnectionText))]
     private bool _isControllerConnected;
 
+    // The connection is an availability trigger: the two transfer commands are withheld without one (F-4), so a
+    // change has to reach the registry through the same single funnel every other trigger uses.
+    partial void OnIsControllerConnectedChanged(bool value) => RebuildContext();
+
     /// <summary>The indicator's glyph. The two states are two GLYPHS, not one glyph in two colours — a colour-only
     /// signal fails `docs/icons_design.md` and is invisible to a colour-blind installer.</summary>
     public string ControllerConnectionIcon => NodeIcons.ControllerConnection(IsControllerConnected);
@@ -227,8 +231,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [NotifyPropertyChangedFor(nameof(CanInsertFunctionBlock))]
     private bool _isInstallationPaneActive;
 
-    /// <summary>Context-menu gate: <i>Insert product</i> is offered only on a <b>locality</b> in the Installation pane
-    /// — the Functions pane hosts function blocks, and the Localities root hosts localities (US-010/US-068).</summary>
+    /// <summary>Gate for <i>Insert product</i>: offered only on a <b>locality</b> in the Installation pane — the
+    /// Functions pane hosts function blocks, and the Localities root hosts localities (US-010/US-068). Governs the
+    /// context menu's visibility AND every generated product leaf's availability on the bar (alignment F-8), so a
+    /// greyed leaf and a refused invoke can never disagree.</summary>
     public bool CanInsertProduct => IsInstallationPaneActive && SelectedNode?.IsLocality == true;
 
     /// <summary>Context-menu gate: <i>Insert function block</i> / <i>Empty function block</i> are offered only on a
@@ -315,6 +321,17 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // the signal type PLUS all 19 value types (uxparity2 V3). PlacementRules already modelled that correctly, so
         // the fix is to delete the GUI's second copy, not widen it. The door also filters resource_scene out: a scene
         // is not a variable and reaches the project through US-024's own route.
+        // F-16: a section's flyout follows the MODE. Reached in the Funktioner pane with no program open, the only
+        // thing the vendor offers on it is the way IN — no type list, no Egenskaber. The palette below is what a
+        // section answers once the program is open, and inserting a variable is a programming-mode act anyway, so
+        // offering it here was also offering an authoring command outside the mode that owns it.
+        if (!IsProgrammingMode)
+        {
+            SectionFlyoutItems.Clear();
+            SectionFlyoutItems.Add(
+                new ProductMenuItemViewModel("Vis program", "ctx.view.showProgram", EnterProgrammingModeCommand));
+            return;
+        }
         string sectionLabel = value.DisplayName;
         // A locked block remains navigable, but its section flyout must not mint executable authoring items. The
         // engine still guards direct calls; this projection matches the vendor's view-only flyout (Properties only).
@@ -328,30 +345,51 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // a submenu among them and Egenskaber last — the shape the vendor shows and US-027 mandates ("pick the type
         // from the popup"), NOT nested under an "Insert variable" parent. Fresh item instances (a menu item cannot
         // sit in two flyouts) built off the same engine-accepted set.
+        // F-20: the section's own SIGNAL type leads the list; the value types follow it. Measured across all four
+        // sections of an unlocked block: Input leads with Indgang, Output with Udgang, and the two value sections
+        // lead with nothing — which is why this needs no section→type table. Whichever signal type the section
+        // ACCEPTS leads, and a section that accepts none simply has no leader, so the engine's accepted set stays
+        // the single source of the rule (W1/D03).
+        //
+        // The value types stay in DANISH collation, which is a REGISTERED deliberate difference from the vendor's
+        // æ-as-"ae" ordering (product.md, F-26) — the leading entry is a divergence, the collation is not.
         SectionFlyoutItems.Clear();
-        foreach ((string label, string tag) in accepted.OrderBy(t => t.Label, DisplayOrder.Danish))
+        IEnumerable<(string Label, string Tag)> ordered =
+            accepted.Where(t => IsSignalVariable(t.Tag)).OrderBy(t => t.Label, DisplayOrder.Danish)
+                .Concat(accepted.Where(t => !IsSignalVariable(t.Tag))
+                    .OrderBy(t => t.Label, DisplayOrder.Danish));
+        foreach ((string label, string tag) in ordered)
             SectionFlyoutItems.Add(CreateVariableMenuItem(sectionId, label, tag, sectionLabel));
         SectionFlyoutItems.Add(new ProductMenuItemViewModel("Egenskaber…", "ctx.node.properties", PropertiesCommand));
     }
 
+    /// <summary>Whether a variable type is a block's SIGNAL (its wiring in or out) rather than a value it holds —
+    /// the two types the vendor sets off at the head of a section's flyout (F-20).</summary>
+    private static bool IsSignalVariable(string tag) => tag is "resource_input" or "resource_output";
+
     // Builds one variable-insert menu item — a plain leaf, or (for resource_enum) the PG-4 type-picker submenu:
-    // the existing enumerator types (pick one → reference its def-id), "Ny…" (author a new type via the enumerator
-    // dialog), and "Ny selvstændig type…" (PG-7/D02, a standalone 0-state type — no variable). A fresh instance
-    // each call, so the same type can appear in both VariablePaletteMenu and the section flyout without a menu item
-    // being parented twice.
+    // "Ny type…" (author a new type via the enumerator dialog), "Ny selvstændig type…" (PG-7/D02, a standalone
+    // 0-state type — no variable; a registered difference, product.md/F-21), then the existing enumerator types
+    // (pick one → reference its def-id). A fresh instance each call, so the same type can appear in both
+    // VariablePaletteMenu and the section flyout without a menu item being parented twice.
+    //
+    // F-21: the CREATE route leads and the existing types are SORTED, both measured on the vendor 2026-08-11 by
+    // creating a probe type after the two built-ins — it appeared first, so the list is sorted rather than
+    // appended in creation order, which the two built-ins alone (already in order) could not have shown.
     private ProductMenuItemViewModel CreateVariableMenuItem(ElementId sectionId, string label, string tag, string sectionLabel)
     {
         if (tag != "resource_enum")
             return new ProductMenuItemViewModel(label, tag,
                 new AsyncRelayCommand(() => InsertVariableAsync(sectionId, tag, label, sectionLabel)));
         var enumNode = new ProductMenuItemViewModel(label);
-        foreach (string typeName in _session.Current?.GetEnumeratorTypes() ?? System.Array.Empty<string>())
-            enumNode.Children.Add(new ProductMenuItemViewModel(typeName, "enum-type",
-                new AsyncRelayCommand(() => InsertEnumOfExistingTypeAsync(sectionId, typeName, sectionLabel))));
-        enumNode.Children.Add(new ProductMenuItemViewModel("Ny…", "enum-new",
+        enumNode.Children.Add(new ProductMenuItemViewModel("Ny type…", "enum-new",
             new AsyncRelayCommand(() => InsertEnumAsync(sectionId, sectionLabel))));
         enumNode.Children.Add(new ProductMenuItemViewModel("Ny selvstændig type…", "enum-standalone",
             new AsyncRelayCommand(AddStandaloneEnumTypeAsync)));
+        foreach (string typeName in (_session.Current?.GetEnumeratorTypes() ?? System.Array.Empty<string>())
+                     .OrderBy(t => t, DisplayOrder.Danish))
+            enumNode.Children.Add(new ProductMenuItemViewModel(typeName, "enum-type",
+                new AsyncRelayCommand(() => InsertEnumOfExistingTypeAsync(sectionId, typeName, sectionLabel))));
         return enumNode;
     }
 
@@ -705,15 +743,42 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     private void BuildProductMenu()
     {
+        // Each leaf carries the SAME predicate its body checks, so the bar greys a product exactly when
+        // inserting it would be refused (alignment F-8: the reference application greys its catalog leaves
+        // and keeps the category containers above them live — which is what binding the gate to the LEAF,
+        // rather than to the hosting submenu, reproduces).
         AsyncRelayCommand Insert(CatalogItem product) =>
-            new(() => InsertProductAsync(product.Identifier, product.DisplayName));
+            new(() => InsertProductAsync(product.Identifier, product.DisplayName), () => CanInsertProduct);
 
         // The top categories are derived from the catalog data (H2/D08) — so an imported .def (empty CategoryPath)
         // lands in the "Imported/Uncategorized" bucket instead of being dropped by a hardcoded four-category filter.
         ProductsMenu.ReplaceAll(CatalogMenu.BuildProductForest(_session.GetProductCatalogItems(), Insert));
         FunctionBlocksMenu.ReplaceAll(CatalogMenu.BuildFunctionBlocks(
             _session.GetFunctionBlockCatalogItems(),
-            fb => new AsyncRelayCommand(() => InsertFunctionBlockAsync(fb.Identifier, fb.DisplayName))));
+            fb => new AsyncRelayCommand(() => InsertFunctionBlockAsync(fb.Identifier, fb.DisplayName),
+                                        () => CanInsertFunctionBlock)));
+    }
+
+    /// <summary>
+    /// Re-asks every generated catalog leaf whether it can run. Necessary because those commands are built once
+    /// per catalog and then OUTLIVE every selection change: a CanExecute predicate that is never re-queried
+    /// leaves the whole menu frozen at whatever it evaluated to when the menu was built — greyed forever, or
+    /// live forever — which looks exactly like no gate at all. Called from the one place the availability
+    /// inputs change, so no caller has to remember it.
+    /// </summary>
+    private void RefreshCatalogLeafAvailability()
+    {
+        foreach (var leaf in Leaves(ProductsMenu).Concat(Leaves(FunctionBlocksMenu)))
+            (leaf.Command as IRelayCommand)?.NotifyCanExecuteChanged();
+
+        static IEnumerable<ProductMenuItemViewModel> Leaves(IEnumerable<ProductMenuItemViewModel> forest)
+        {
+            foreach (var item in forest)
+            {
+                if (item.Command is not null) yield return item;
+                foreach (var nested in Leaves(item.Children)) yield return nested;
+            }
+        }
     }
 
     /// <summary>Library ▸ Import catalog file (US-059): imports a single <c>.def</c>/<c>.ifb</c> so its component
@@ -777,7 +842,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 await _dialogs.ShowMessageAsync("Indsætning mislykkedes", $"Ingen biblioteks-funktionsblok med master type '{masterType}'.");
                 return;
             }
-            await ApplyAsync(command, $"Funktionsblokken '{blockName}' er indsat under {localityName}");
+            // The placed block opens, showing the sections and pins it brought — the reference application reveals
+            // it all the way down (measured 2026-08-11: the block AND both sections expanded, every other locality
+            // left collapsed), and the installer's next action is almost always to wire one of those pins. The same
+            // reveal the product path already performed; it was simply never wired here (alignment F-19).
+            if (await ApplyAsync(command, $"Funktionsblokken '{blockName}' er indsat under {localityName}") is { } newId)
+                RevealSubtree(newId);
         });
 
     // No parameterless "design-time" constructor: the one that used to be here created two never-deleted temp files
@@ -1146,7 +1216,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // Annuller leaves both the tree and the id counter untouched. (An earlier note here claimed the vendor
             // does not auto-open on insert; that came from a driver verb which posts the catalog command directly
             // and skips the dialog — see tmp/uxparity/MCPFIXES.md.)
-            if (await ApplyAsync(command, $"Produktet '{productName}' indsat under {localityName}") is not { } newId)
+            // Applied WITHOUT announcing it. The insert is committed here so the dialog can be built from the
+            // placed element, but the installer can still press Annuller — and until they do not, the project has
+            // not gained a product. Announcing at this point put "Produktet 'X' indsat under Y", in the completed
+            // past tense, on the status line of an application that was still asking whether to do it (measured
+            // live 2026-08-11, alignment F-14). A refusal is still reported: ApplyAsync only withholds the SUCCESS
+            // line. The announcement moves below, after the dialog commits.
+            if (await ApplyAsync(command) is not { } newId)
                 return;
             if (!await _properties.OpenForInsertAsync(newId))
             {
@@ -1157,6 +1233,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 StatusText = $"Indsætning af '{productName}' annulleret.";
                 return;
             }
+            // Committed: now it is true, so now it is said.
+            StatusText = $"Produktet '{productName}' indsat under {localityName}";
             // The placed product opens, showing the terminals it brought — the same reveal a drop does (S-11), and
             // what IHC Visual shows after an insert.
             RevealSubtree(newId);
@@ -1240,17 +1318,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         Registry.Register(new CommandSpec("edit.copy", "Ctrl+C",
             Surfaces.MenuBar | Surfaces.ContextMenu | Surfaces.Toolbar,
             Execute: Sync(ctx => Copy(ResolveNode(ctx))),
-            // Product terminals retain configuration-mode Copy. Function-block variables copy only from programming
-            // views, including a locked block's read-only view.
-            Gate: ctx => ctx.Node is { Id: not null } node && (node.CanCopy || node.IsPin)
-                && CopyAllowed(ctx, node)
+            // The whole rule lives in the GATE, deliberately: a failed gate hides on the transient flyout and greys
+            // on the persistent bar, so encoding a restriction in a SurfacePolicy instead would leave the bar
+            // offering what the flyout omits — which is what the earlier product-terminal exception did (F-15/F-17).
+            Gate: ctx => ctx.Node is { Id: not null } node && CopyOffered(ctx, node)
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Vælg en node, der skal kopieres."),
-            // Product terminals are the copy-only exception when the node's general CanCopy classification is false.
-            SurfacePolicy: (ctx, surface) =>
-                surface == Surface.ContextMenu && ctx.Node is { } node && !(node.CanCopy || node.IsProductTerminal)
-                    ? Availability.Hidden
-                    : null));
+                : EditVerdict.Refuse("Vælg en node, der skal kopieres.")));
 
         Registry.Register(new CommandSpec("edit.paste", "Ctrl+V",
             Surfaces.MenuBar | Surfaces.ContextMenu | Surfaces.Toolbar,
@@ -1291,10 +1364,15 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // thing being withheld; authoring is, and IsProgrammingBlockLocked withdraws that separately.
             SurfacePolicy: (ctx, surface) =>
                 surface == Surface.ContextMenu
-                    // F-13c: a block SECTION's flyout omits Vis program — reaching a section means you are already
-                    // in the program, and the vendor's section flyout carries only the type list + Enum + Egenskaber
-                    // (measured 2026-08-09). The block and pin routes (S-28) are unaffected.
-                    ? (ctx.Node is { Kind: TreeNodeKind.Section } ? Availability.Hidden : null)
+                    // Inside PROGRAMMING MODE no flyout offers Vis program — the program is already open. Measured
+                    // 2026-08-11 on an unlocked block across every row type the mode exposes (alignment F-22): the
+                    // block root, a section and a section pin in the installation pane, and all ten program-row
+                    // types in the functions pane. It is the MODE that withdraws it, not the node kind — F-13c said
+                    // as much ("reaching a section means you are already in the program") but keyed it to sections,
+                    // which both under-applied it here and over-applied it in configuration mode, where the vendor
+                    // DOES offer it on a section (F-16). The block and pin routes (S-28) are unaffected: they are
+                    // configuration-mode routes.
+                    ? (ctx.IsProgrammingMode ? Availability.Hidden : null)
                     : ctx.Node is { Kind: TreeNodeKind.FunctionBlock }
                         ? null
                         : Availability.Disabled("Vælg en funktionsblok i træet.")));
@@ -1311,10 +1389,28 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             : !(node.IsPin && node.CanCut && !node.IsProductTerminal)
                 || context.IsProgrammingMode && !context.ProgrammingBlockLocked;
 
-    private static bool CopyAllowed(ShellContext context, NodeContext node) =>
-        node.Kind == TreeNodeKind.FunctionBlock
-            ? !context.IsProgrammingMode
-            : !(node.IsPin && node.CanCut && !node.IsProductTerminal) || context.IsProgrammingMode;
+    /// <summary>Whether a PIN is a signal SOURCE — a row whose value the system reads rather than writes.
+    /// A product's INPUT terminal (the button feeding the controller) and a function block's OUTPUT pin (the value
+    /// the block produces) are sources; a product's output and a block's input are sinks. The two families
+    /// therefore run OPPOSITE ways, which is why the rule cannot be stated as a direction alone.</summary>
+    private static bool IsSourcePin(NodeContext node) =>
+        node.IsPin && node.IsProductTerminal != node.IsOutputPin;
+
+    /// <summary>Whether <i>Kopier</i> is offered on this node, on every surface.
+    ///
+    /// <para>Measured 2026-08-11 against the reference application on one project holding both pin families in the
+    /// same state, each row read on both its flyout and <c>Rediger ▸ Kopier</c> (alignment F-17): a pin carries
+    /// Kopier exactly when it is a <see cref="IsSourcePin">source</see>. This replaced "a product terminal is the
+    /// copy-only exception, inputs only" (F-15), which was true of products and silent about block pins — where the
+    /// direction runs the other way — and which lived in a SurfacePolicy, so it corrected the flyout while leaving
+    /// the menu bar offering Copy on a product output.</para>
+    ///
+    /// <para>A block's own variables stay copyable from a programming view, including a locked block's read-only
+    /// one; that is unmeasured against the vendor and so deliberately left as it was.</para></summary>
+    private static bool CopyOffered(ShellContext context, NodeContext node) =>
+        node.IsPin
+            ? IsSourcePin(node) || context.IsProgrammingMode && node.CanCopy
+            : node.CanCopy && (node.Kind != TreeNodeKind.FunctionBlock || !context.IsProgrammingMode);
 
     private void RegisterNodeRows()
     {
@@ -1523,9 +1619,21 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         RegisterAppRow("view.toggleStatusBar", null, Sync(_ => ToggleStatusBar()), AllowGate);
         RegisterAppRow("project.info", null, _ => ProjectInfo(), ProjectOpenGate);
         RegisterAppRow("project.moduleMap", null, _ => ModuleMap(), ProjectOpenGate);
-        RegisterAppRow("controller.send", "F5", _ => SendProject(), ProjectOpenGate,
+        // Alignment F-4: both transfer commands need a controller, and are withheld — with a reason — without
+        // one, exactly as the reference application greys Hent/Send projekt (measured on a fresh AND on a saved
+        // project, so its gate is the connection, not the document). This is the app's own spec too: FR-9.1
+        // sends "to a connected controller" and every E10 scenario opens "Given a controller is connected".
+        // Offering them while the status bar reads "Ikke forbundet til controller" advertised a transfer the
+        // app knew it could not make, and answered with a message box what the indicator already said.
+        RegisterAppRow("controller.send", "F5", _ => SendProject(),
+            ctx => !ctx.ControllerConnected
+                ? EditVerdict.Refuse("Ingen controller er forbundet.")
+                : ProjectOpenGate(ctx),
             Surfaces.MenuBar | Surfaces.Toolbar);   // T020: a real toolbar button (persistent surface)
-        RegisterAppRow("controller.retrieve", null, _ => RetrieveProject(), AllowGate,
+        RegisterAppRow("controller.retrieve", null, _ => RetrieveProject(),
+            ctx => ctx.ControllerConnected
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse("Ingen controller er forbundet."),
             Surfaces.MenuBar | Surfaces.Toolbar);
         // T015 (R12/D01): the three report entries, each opening the shared picker pre-selected.
         RegisterAppRow("reports.functions", null, _ => OpenReportPicker(ReportKind.Functions), ProjectOpenGate);
@@ -1909,7 +2017,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                     node.IsLockedFunctionBlock,
                     node.CanCut, node.CanCopy, node.CanReorder),
             Clipboard: _clipboardId is { } clipboardSource ? new ClipboardContext(clipboardSource, _clipboardIsCut) : null,
-            CanUndo: _session.CanUndo, CanRedo: _session.CanRedo);
+            CanUndo: _session.CanUndo, CanRedo: _session.CanRedo,
+            ControllerConnected: IsControllerConnected);
+        // The generated catalog leaves are gated on the same selection/pane inputs the registry rows are, but
+        // they are ICommands rather than registry rows, so the sweep above does not reach them (alignment F-8).
+        // Here, in the ONE funnel every availability trigger already passes through, rather than at each of the
+        // five trigger sites — where the next new trigger would silently not include it.
+        RefreshCatalogLeafAvailability();
         ContextChanged?.Invoke(this, EventArgs.Empty);
     }
 

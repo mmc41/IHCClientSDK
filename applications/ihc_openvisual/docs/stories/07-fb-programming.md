@@ -180,6 +180,21 @@ their name/note/initial value/persistence, **so that** the program has the data 
   indistinguishable, in the saved project, from one whose help text was entered and then cleared.
 - SHOULD: A checkbox **Save value on power loss** — leave unchecked unless needed, as enabling it weakens
   performance.
+- MUST: The initial-value editor matches the **type's own storage**, which is not always what the field
+  looks like. There are two groups: the types declaring `inivalue "0"` (Integer, Counter, Light, Light
+  level) hold a bare integer, and the types declaring `inivalue "0.00"` (kW, kWh, W, Wh, Decimal, Humidity,
+  Temperature) hold **two fraction digits with a period**, whatever precision they display. W and Wh show a
+  whole number and round what is typed, yet still store `43.00` — the field's appearance is not evidence of
+  the storage. The field shows the type's own precision (kW/kWh `0,000`, Decimal `0,00`,
+  Humidity/Temperature `0,0`, W/Wh `0`) with a Danish comma, and the **unit never appears in the field** —
+  it belongs to the tree row alone. (Alignment F-41/F-44, measured 2026-08-11 from the original's own
+  saved bytes.)
+- MUST: A decimal variable's tree row shows **what the project holds**, immediately after the edit. The
+  original keeps unsaved precision in memory — typing `1,555` into a kW leaves its row reading `1,555kW`
+  until the project is reopened, when the same row reads `1,550kW` — whereas OpenVisual's row reads
+  `1,550kW` at once, because its model is the file. A registered, deliberate difference (see product.md):
+  the saved bytes are identical either way, and a row that can disagree with what will be saved is the
+  defect F-43 was raised for.
 
 > A **locality** deliberately keeps *exactly two* fields (Name + Note) — see US-007. The second
 > documentation field belongs to variables, not to localities, and US-007 is not widened by this rule.

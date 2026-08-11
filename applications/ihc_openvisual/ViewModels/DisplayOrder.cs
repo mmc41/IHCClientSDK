@@ -20,7 +20,16 @@ namespace ihc_openvisual.ViewModels;
 /// </summary>
 public static class DisplayOrder
 {
-    /// <summary>The Danish, case-insensitive comparer for user-visible ordering.</summary>
+    /// <summary>The Danish, case-insensitive comparer for user-visible ordering.
+    /// <para>
+    /// This is also what the block-section variable popup uses, and there it is a <b>registered deliberate
+    /// difference</b> (product.md, alignment F-26): the reference application collates æ as "ae" in that popup, so
+    /// it lists <i>Tæller</i> before <i>Tal</i>, and OpenVisual deliberately sorts it correctly instead. Measured
+    /// again 2026-08-11 across all four sections of an unlocked block — the vendor's order is reproduced exactly by
+    /// an invariant comparer and by neither da-DK nor ordinal, which confirms the quirk rather than overturning the
+    /// decision. Do not "fix" this list towards the vendor without retiring the register entry first.
+    /// </para>
+    /// </summary>
     public static readonly StringComparer Danish =
         StringComparer.Create(CultureInfo.GetCultureInfo("da-DK"), ignoreCase: true);
 }

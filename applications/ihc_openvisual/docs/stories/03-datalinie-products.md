@@ -44,7 +44,9 @@ Scenario: Insert a product via the locality context menu
   When I right-click "Living room" and follow "Products" > "Wired products" > <group> > <group-detail> > <product>
   Then the product's properties dialog opens (US-011) — documenting the product is part of placing it
   And committing the dialog inserts the product as a child of "Living room"
-  And the status bar reads: Product '<product>' inserted under Living room
+  And the status bar reads: Product '<product>' inserted under Living room — but ONLY once the dialog is
+    committed: while it is still open nothing may claim the product is inserted, because the installer can
+    still cancel and the project has not gained it yet
   And the placed product node is expanded, revealing its input, output and scenario pins
 
 Scenario: Cancelling the insert-time dialog inserts nothing
@@ -52,12 +54,21 @@ Scenario: Cancelling the insert-time dialog inserts nothing
   When I cancel it
   Then no product is added and the project is unchanged in every respect — including its
     id allocation, so a cancelled insert leaves no trace in the saved file
+  And the status bar says the insert was cancelled
 
 Scenario: Insert the same product via the menu bar
   Given the locality "Living room" is selected (highlighted)
   When I use "Insert" > "Products" > "Wired products" > <group> > <group-detail> > <product>
   Then the product is inserted under "Living room" identically to the context-menu route
+```
 
+> **The insert is applied before the dialog opens, and rolled back on Cancel** — a registered difference from
+> the original, which raises the dialog first and adds nothing until OK (product.md; measured 2026-08-11). The
+> end states agree for both answers, so it shows only while the modal dialog is up. The status line is
+> deliberately NOT part of that difference: announcing the insert while the dialog was still open stated
+> something the project did not yet hold, and the announcement now waits for the commit (alignment F-14).
+
+```gherkin
 Scenario: Product categories come from the catalog
   Given the "Wired products" submenu is open
   Then it offers the product categories the catalog defines
@@ -79,6 +90,18 @@ The insert menu's categories come from the catalog; that catalog structure is th
   own language is the catalog's, so restating a stored name would only risk drift. This matches the
   **function-block library** categories, which US-018 keeps verbatim for the same reason. The structural
   category rules above define which categories exist; the labels are whatever the catalog says.
+- MUST: The menu renders the catalog's **own ORDER**, not an alphabetical one — the ordering is data, exactly as
+  the labels are. The catalog encodes it as an `NN#` prefix on each component's `name`, which the display label
+  has had stripped (`01#Lampeudtag`, `02#Stikkontakt`, `05#Diode`). Two consequences:
+  - **Subfolders and products share one numbering sequence** and interleave: the original's
+    `Datalinie ▸ Input` runs `01#LK FUGA`, `02#LK OPUS`, the three PIR products (`03#`–`05#`),
+    `06#IR fjernbetjeninger`, `07#Mini Modul`, `08#Ringetryk`. Listing all folders and then all products is the
+    natural shape and the wrong one.
+  - An entry carrying **no** number sorts after the numbered ones, which is where the original puts it.
+
+  The order is not cosmetic: `Lampeudtag, Stikkontakt, Output 1-10V…` groups the products by function, and an
+  installer navigates by position. Alphabetising scatters that grouping. (Measured 2026-08-11 against the
+  original's own flyout — all 100 products, every family; alignment F-9.)
 
 ### Business rules — how the tree renders a product
 
@@ -335,10 +358,20 @@ rule.
 - MUST: A modem is inserted via right-click a locality > *Products* > *Bus Produkter* > `<product>`
   (US-010's category structure; the category label renders verbatim — *Bus Produkter*). Per US-010's dialog-gated insert, the modem's **own** properties dialog opens as
   part of the insert — not the generic product dialog — and cancelling it inserts nothing.
-- MUST: A project may contain **at most one** modem, regardless of `<product>`.
+- MUST: A project may contain **at most one** modem, regardless of `<product>`. The limit is enforced **on
+  insert, not in the menu**: the modem entry stays enabled once a modem exists, and the second attempt is
+  refused with a message and no change to the tree. That matches the original exactly — measured live
+  2026-08-11, where `SMS Modem` (id 24773) reads `enabled:true` both before and after a modem is placed, and
+  the second insert answers *"Modem er allerede indsat. Der kan kun indsættes et modem i projektet"* with the
+  item count unchanged (alignment F-10).
 - SHOULD: A refused second-modem insertion **tells the installer why** rather than appearing to do nothing.
   (The explanatory feedback is a deliberate design decision, per the ruling in the product
-  constraints.)
+  constraints.) OpenVisual's message additionally names the remedy and its box carries a descriptive title;
+  the original states the rule alone under the application name — a registered difference (product.md,
+  alignment F-47).
+- A project file that nonetheless carries **two** modems — reachable only by import or by hand, since neither
+  editor will author it — is a catalogue Error: `capacity-modem-multiple` in
+  [`error-list.md`](../error-list.md).
 
 **Property groups (dialog "Modem properties"):**
 - SHOULD: **Modem properties** — Name (type name), Note (appended in parentheses after Name), Location,
@@ -354,8 +387,19 @@ rule.
 - SHOULD: **SMS modem properties** — Name, Note, Location, Identification code.
 - SHOULD: **Cabling** — 0 V / 24 V / RS485 minus / RS485 plus wire colours.
 - SHOULD: **Settings** — PIN code (SIM PIN; irrelevant if the SIM has none).
-- SHOULD: **Telephone numbers** — Number 1–30; each **3–20 characters**, no spaces, must start with a
-  country code (e.g. `+45` for Denmark).
+- MUST: **Telephone numbers** — Number 1–**30**; each **3–20 characters**, no spaces, must start with a
+  country code (e.g. `+45` for Denmark). The count is the capability, not a layout preference: with fewer
+  fields the remaining recipients cannot be entered at all.
+
+> **Measured against the original 2026-08-11** (`SMS Modem Egenskaber`, 91 controls): four captioned groups —
+> *Modem egenskaber* (Navn, Note, Placering, Identifikationskode), *Kabling* (four `Ledningsfarve` fields),
+> *Indstillinger* (Pin Kode), *Telefon numre* (**Nummer 1 … Nummer 30**). Its `Navn` is **disabled**, and
+> Note / Placering / Identifikationskode / the four cable colours are **suggestion drop-downs**.
+> OpenVisual currently renders 39 controls with **Nummer 1–4** — a violation of this story, not merely of the
+> original — and its cable-colour fields are plain text boxes, which may or may not fall under the registered
+> suggestion-drop-down difference (product.md names the product dialog and terminal editor, not this one).
+> Open as **F-53/F-52** in the campaign record; the count above is raised from SHOULD to MUST because a
+> missing field is a missing capability.
 
 **Output:**
 - A `<product>` node exposes its catalog-defined pins (`<pin>`), enabling telephone control to be wired into function blocks.

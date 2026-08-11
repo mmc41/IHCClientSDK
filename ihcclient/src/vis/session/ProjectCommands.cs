@@ -121,6 +121,12 @@ namespace Ihc.Vis
         public Session.AddStandaloneEnumType AddStandaloneEnumType(Project project, string typeName, IReadOnlyList<string> states) =>
             new Session.AddStandaloneEnumType(typeName, states);
 
+        /// <summary>Command to set an enum variable's initial STATE, addressed positionally in its type's value
+        /// list (alignment F-50). Separate from <see cref="SetResourceInitialValue"/> because a
+        /// <c>resource_enum</c>'s <c>inivalue</c> is an IDREF to an <c>enum_value</c>, not a literal.</summary>
+        public Session.SetEnumInitialState SetEnumInitialState(Project project, ElementId variableId, string typeName, int stateIndex) =>
+            new Session.SetEnumInitialState(variableId, typeName, stateIndex);
+
         /// <summary>Commands behind the six buttons of IHC Visual's <i>Bibliotek ▸ Rediger Enumerator typer</i>
         /// two-pane editor. Each takes the type by NAME and a value by its 0-based POSITION — what the dialog has —
         /// and each refuses (rather than faults) on a "[read only]" built-in, matching the vendor's greyed buttons.</summary>

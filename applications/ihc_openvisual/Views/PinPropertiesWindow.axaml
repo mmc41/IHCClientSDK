@@ -30,7 +30,7 @@
         <TextBox Name="CableColourBox" a:AutomationProperties.LabeledBy="{Binding #CableColourLabel}"/>
 
         <StackPanel Name="InitialValuePanel">
-            <TextBlock Name="InitialValueLabel" Classes="label" Text="Startværdi"/>
+            <TextBlock Name="InitialValueLabel" Classes="label" Text="Initial værdi"/>
             <ComboBox Name="InitialValueCombo" HorizontalAlignment="Stretch"
                       a:AutomationProperties.LabeledBy="{Binding #InitialValueLabel}">
                 <ComboBoxItem a:AutomationProperties.AutomationId="InitialValue.Off">OFF — normalt åben (NO)</ComboBoxItem>
@@ -46,18 +46,20 @@
                       a:AutomationProperties.LabeledBy="{Binding #OnPowerFailureLabel}"/>
         </StackPanel>
 
+        <!-- F-33: the address is PICKED FROM TWO LISTS, as the original does — a data line (led by an explicit
+             "ikke konfigureret", so an addressed terminal can be returned to unaddressed, story 03 line 272) and
+             then a terminal on it. The terminal list stays empty and disabled until a line is chosen, and marks
+             ports already taken inline as "3 (i brug)" rather than in a separate sentence (story line 281).
+             Spinners could not express any of that: they have no not-configured value, no per-line contents and
+             nowhere to show which ports are gone. -->
         <TextBlock Name="DataLineLabel" Classes="label" Text="Datalinie"/>
-        <NumericUpDown Name="DataLineBox" Minimum="1" Increment="1" FormatString="0"
-                       a:AutomationProperties.LabeledBy="{Binding #DataLineLabel}"/>
+        <ComboBox Name="DataLineList" HorizontalAlignment="Stretch"
+                  a:AutomationProperties.LabeledBy="{Binding #DataLineLabel}"/>
 
-        <TextBlock Name="TerminalLabel" Classes="label" Text="Klemme"/>
-        <NumericUpDown Name="TerminalBox" Minimum="1" Increment="1" FormatString="0"
-                       a:AutomationProperties.LabeledBy="{Binding #TerminalLabel}"/>
-
-        <TextBlock Text="Klemmer allerede i brug:" Margin="0,6,0,0"
-                   Foreground="{DynamicResource SecondaryTextBrush}"/>
-        <TextBlock Name="InUseText" TextWrapping="Wrap"
-                   Foreground="{DynamicResource SecondaryTextBrush}"/>
+        <!-- Captioned by the terminal's own DIRECTION, as the original captions it (Udgang for an output). -->
+        <TextBlock Name="TerminalLabel" Classes="label" Text="Udgang"/>
+        <ComboBox Name="TerminalList" HorizontalAlignment="Stretch"
+                  a:AutomationProperties.LabeledBy="{Binding #TerminalLabel}"/>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,14,0,0">
             <!-- OK, Cancel, Apply — the vendor's button order (uxparity S-14). -->

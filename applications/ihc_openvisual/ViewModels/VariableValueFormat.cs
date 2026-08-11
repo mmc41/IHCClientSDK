@@ -22,9 +22,16 @@ public static class VariableValueFormat
     // The value's own culture: comma decimal separator, matching every measured row.
     private static readonly CultureInfo Danish = CultureInfo.GetCultureInfo("da-DK");
 
-    /// <summary>Danish weekday names in the stored order (0 = Monday), as the rows render them.</summary>
-    private static readonly string[] Weekdays =
-        ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"];
+    /// <summary>The weekday TOKENS the format stores, paired with the Danish names the rows render. The `.vis`
+    /// DTD declares <c>inivalue (monday | … | sunday) "monday"</c> — a token, never an index — so the lookup is by
+    /// name and an absent or unrecognised value falls to the declared default, Monday. Reading it as an integer
+    /// parsed nothing and fell back to element 0, so every weekday row read "Mandag" whatever the variable held
+    /// (alignment F-43; the original's own row follows the value, measured).</summary>
+    private static readonly (string Token, string Label)[] Weekdays =
+    [
+        ("monday", "Mandag"), ("tuesday", "Tirsdag"), ("wednesday", "Onsdag"), ("thursday", "Torsdag"),
+        ("friday", "Fredag"), ("saturday", "Lørdag"), ("sunday", "Søndag"),
+    ];
 
     // The fixed-point format strings the table below asks for, indexed by decimal places, so a row does not build
     // its own format string on every projection pass.
@@ -60,7 +67,7 @@ public static class VariableValueFormat
             "resource_date" => $"{Int("day", 1):00}:{Int("month", 1):00}",
             "resource_time" => Time(milliseconds: false),
             "resource_timer" or "resource_timertime" => Time(milliseconds: true),
-            "resource_weekday" => Weekdays[Math.Clamp(Int("inivalue"), 0, Weekdays.Length - 1)],
+            "resource_weekday" => Array.Find(Weekdays, d => d.Token == attribute("inivalue")).Label ?? Weekdays[0].Label,
 
             // An enum renders its STATE's name; the caller resolves the state from the type definition.
             "resource_enum" => stateName,

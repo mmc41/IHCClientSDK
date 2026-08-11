@@ -107,7 +107,12 @@ internal sealed class LinkingCoordinator(
             return false;
         // The scene value variant (sliver #11) is the SDK's decision — used to shape the dialog and stamp the command.
         bool isDimmer = session.Commands.IsSceneWirelessDimming(project, scenesId);
-        var input = new SceneValueInput("Scenarie værdi", isDimmer, On: true, LevelPercent: isDimmer ? 100 : 0, RampMinutes: 0, RampSeconds: 0);
+        // F-49: titled by the MEMBER's type, exactly as the edit-time dialog is — the original raises
+        // "Relæ scenarie egenskaber" / "Lysdæmper scenarie egenskaber" at LINK time too (measured live
+        // 2026-08-11: linking a block's scene pin to a Lampeudtag opened the relay caption). Two call sites
+        // raise this dialog and only one had been corrected; a shared helper now keeps them from drifting.
+        var input = new SceneValueInput(SceneValueTitles.For(isDimmer), isDimmer, On: true,
+            LevelPercent: isDimmer ? 100 : 0, RampMinutes: 0, RampSeconds: 0);
 
         SceneValueResult? result = await dialogs.EditSceneValueAsync(input);
         return result is not null

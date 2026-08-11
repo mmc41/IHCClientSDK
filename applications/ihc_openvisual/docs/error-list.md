@@ -42,8 +42,8 @@ label (*Mangler Id-kode*, *Ikke forbundet*), never a sentence assembled at rende
 | **ADR** | Addressing and commissioning | Data-line addresses, wireless binding, dimmer channels, meters, modem | — | 4 | 8 | 12 |
 | **DEV** | Device settings | Dimmer, shutter, backup, initial-value and accessibility settings | — | 1 | 8 | 9 |
 | **DOC** | Naming, identity and documentation | Names, identification codes, cable data, placement, report completeness | — | — | 18 | 18 |
-| **PRJ** | Project structure and capacity | Localities, orphan blocks, housekeeping, controller fit | — | 2 | 7 | 9 |
-| | **Total** | | **22** | **28** | **83** | **133** |
+| **PRJ** | Project structure and capacity | Localities, orphan blocks, housekeeping, controller fit | — | 3 | 7 | 10 |
+| | **Total** | | **22** | **29** | **83** | **134** |
 
 ## 2. Severity
 
@@ -232,6 +232,7 @@ acts or ignores it.
 | `doc-no-enduser-products` | DOC | Warning | No product is flagged for end-user documentation | The Funktionsdokumentation report comes out empty | Only installer documentation is wanted |
 | `capacity-modules-exceeded` | PRJ | **Error** | Addressed data-line modules exceed what the target controller supports | The project cannot be uploaded as it stands | Project covers a future expansion |
 | `capacity-wireless-exceeded` | PRJ | **Error** | Wireless devices exceed what the target controller supports | Some devices can never be bound | Planning document, not an upload |
+| `capacity-modem-multiple` ⊘ | PRJ | **Error** | The project contains more than one modem | The controller binds one modem, so the extra entries can never be commissioned. **Neither editor will author this state** (measured live 2026-08-11): IHC Visual refuses the second insert with *"Modem er allerede indsat. Der kan kun indsættes et modem i projektet"* and OpenVisual with *"Et projekt må højst indeholde ét modem…"*, each leaving the tree unchanged — so a file carrying two can only have arrived by import or by hand, which is exactly why the file-level check still earns its place | — (the limit is the controller's; no intent makes a second modem work) |
 | `capacity-resources-high` | PRJ | Warning | The project's resource count approaches the controller's limit | Further growth will fail late, at upload time | Deliberately near-full installation |
 | `struct-locality-empty` ✔ | PRJ | Warning | A locality contains no products and no blocks | Empty room in the tree and in the reports | Room planned but not yet fitted |
 | `struct-locality-no-devices` ✔ | PRJ | Warning | A locality contains only function blocks | The room has logic but no hardware — often a mis-drop | Deliberate "logic room" holding central blocks |

@@ -63,7 +63,9 @@ public static class CatalogMenu
             p => Segments(p.CategoryPath).Skip(1).ToArray(),   // drop the top category itself
             p => p.DisplayName, leafCommand, p => p.Identifier,
             // The catalog's own category names are already the UI language, so a folder shows its name verbatim.
-            raw => Strip(raw));
+            raw => Strip(raw),
+            // Leaves order by the catalog's own name, which carries the same NN# prefix the folders order by.
+            p => p.OrderName);
 
     /// <summary>The label of the bucket that holds imported / empty-category products (H2/D08), so an imported
     /// <c>.def</c> with no <c>CategoryPath</c> stays reachable in the insert menu.</summary>
@@ -122,7 +124,8 @@ public static class CatalogMenu
             blocks,
             b => Segments(b.CategoryPath),   // the whole path is the folder tree
             b => b.DisplayName, leafCommand, b => b.Identifier,
-            Strip);   // FB library category names stay Danish verbatim (US-018)
+            Strip,   // FB library category names stay Danish verbatim (US-018)
+            b => b.OrderName);
     }
 
     private static string[] Segments(string? categoryPath) =>
@@ -130,7 +133,8 @@ public static class CatalogMenu
 
     private static IReadOnlyList<ProductMenuItemViewModel> BuildForest<T>(
         IEnumerable<T> items, Func<T, string[]> segments, Func<T, string> displayName,
-        Func<T, ICommand> leafCommand, Func<T, string> key, Func<string, string> folderLabel)
+        Func<T, ICommand> leafCommand, Func<T, string> key, Func<string, string> folderLabel,
+        Func<T, string?> orderName)
     {
         var root = new Node(string.Empty);
         foreach (T item in items)
@@ -140,7 +144,7 @@ public static class CatalogMenu
                 node = node.Child(segment);
             node.Leaves.Add(item!);
         }
-        return root.ToMenu(displayName, leafCommand, key, folderLabel);
+        return root.ToMenu(displayName, leafCommand, key, folderLabel, orderName);
     }
 
     // A mutable folder node keyed by the raw path segment (prefix kept for ordering; stripped for display).
@@ -167,19 +171,43 @@ public static class CatalogMenu
 
         public IReadOnlyList<ProductMenuItemViewModel> ToMenu<T>(
             Func<T, string> displayName, Func<T, ICommand> leafCommand, Func<T, string> key,
-            Func<string, string> folderLabel)
+            Func<string, string> folderLabel, Func<T, string?> orderName)
         {
-            var items = new List<ProductMenuItemViewModel>();
-            foreach (Node child in Ordered.OrderBy(c => SortKey(c.RawSegment), DisplayOrder.Danish))
+            // Folders and leaves share ONE ordering sequence, keyed by the catalog's own NN# prefix — the reference
+            // application's Datalinie ▸ Input runs 01#LK FUGA, 02#LK OPUS, 03#PIR, 04#…, 05#…, 06#IR
+            // fjernbetjeninger, 07#Mini Modul, 08#Ringetryk: subfolders and products interleaved, numbered together
+            // (measured 2026-08-11, alignment F-9). Emitting all folders and then all leaves — which is the natural
+            // shape and what this did — moves three PIR products four places, and no per-list sort can put them back
+            // because the information lives in the numbering the two kinds SHARE.
+            //
+            // A leaf orders by the catalog's own name, not by its display label: the label has had that prefix
+            // stripped. A component declaring no catalog name falls back to its label, which keeps it deterministic.
+            // Unnumbered entries sort after numbered ones (letters after digits), which is where the original puts
+            // them too.
+            var entries = new List<(string Key, Func<ProductMenuItemViewModel> Make)>();
+            foreach (Node child in Ordered)
             {
-                var folder = new ProductMenuItemViewModel(folderLabel(child.RawSegment));
-                foreach (ProductMenuItemViewModel sub in child.ToMenu(displayName, leafCommand, key, folderLabel))
-                    folder.Children.Add(sub);
-                items.Add(folder);
+                Node captured = child;
+                entries.Add((SortKey(captured.RawSegment), () =>
+                {
+                    var folder = new ProductMenuItemViewModel(folderLabel(captured.RawSegment));
+                    foreach (ProductMenuItemViewModel sub in
+                             captured.ToMenu(displayName, leafCommand, key, folderLabel, orderName))
+                        folder.Children.Add(sub);
+                    return folder;
+                }
+                ));
             }
-            foreach (T leaf in Leaves.Cast<T>().OrderBy(displayName, DisplayOrder.Danish))
-                items.Add(new ProductMenuItemViewModel(displayName(leaf), key(leaf), leafCommand(leaf)));
-            return items;
+            foreach (T leaf in Leaves.Cast<T>())
+            {
+                T captured = leaf;
+                entries.Add((SortKey(orderName(captured) ?? displayName(captured)),
+                    () => new ProductMenuItemViewModel(displayName(captured), key(captured), leafCommand(captured))));
+            }
+
+            // OrderBy is stable, so entries sharing a key keep the order they were added in — folders before leaves,
+            // which is what this method did before and what the catalog's own numbering never actually ties on.
+            return [.. entries.OrderBy(e => e.Key, DisplayOrder.Danish).Select(e => e.Make())];
         }
     }
 

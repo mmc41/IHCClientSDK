@@ -561,8 +561,12 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
     {
         var (harness, vm, _, _) = await BuildAsync();
         using var _1 = harness;
-        ShellContext open = vm.Context;
-        ShellContext closed = vm.Context with { ProjectOpen = false };
+        // Alignment F-4: the two transfer rows are no longer project-or-always rows — they gate on the CONTROLLER
+        // (measured: the reference application greys Hent/Send on a fresh project and on a saved one alike), so
+        // they are held connected here and their connection gate is asserted separately below. Everything else
+        // this test covers is untouched.
+        ShellContext open = vm.Context with { ControllerConnected = true };
+        ShellContext closed = open with { ProjectOpen = false };
         string[] projectGated = { "file.saveAs", "file.close", "project.info",
                                   "project.moduleMap", "controller.send",
                                   "reports.functions", "reports.installation", "reports.functionBlocks" };
@@ -584,6 +588,13 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
                 Assert.That(bar.Visible && !bar.Enabled, Is.True, $"{id}: greys without a project");
                 Assert.That(bar.Reason, Is.Not.Null, $"{id}: the grey explains itself");
                 Assert.That(At(vm, id, open, Surface.MenuBar), Is.EqualTo(Availability.Allow), $"{id}: enabled with a project");
+            }
+            // …and the transfer pair's own gate, which the two arrays above deliberately hold constant.
+            foreach (string id in new[] { "controller.send", "controller.retrieve" })
+            {
+                Availability off = At(vm, id, open with { ControllerConnected = false }, Surface.MenuBar);
+                Assert.That(off.Visible && !off.Enabled, Is.True, $"{id}: greys without a controller");
+                Assert.That(off.Reason, Is.Not.Null, $"{id}: the grey explains itself");
             }
         });
     }
@@ -637,12 +648,23 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
                 Assert.That(tb.Enabled, Is.False, $"{id}: greyed with nothing to act on");
                 Assert.That(tb.Reason, Is.Not.Null, $"{id}: the grey explains itself");
             }
-            Assert.That(At(vm, "controller.send", vm.Context, Surface.Toolbar), Is.EqualTo(Availability.Allow),
-                "Send is toolbar-placed and enabled with a project open");
-            Assert.That(At(vm, "controller.send", vm.Context with { ProjectOpen = false }, Surface.Toolbar).Visible,
+            // Alignment F-4: both transfer commands also need a CONNECTION, so the enabled case is measured on a
+            // connected context. What this test asserts about the toolbar is unchanged — a toolbar button greys,
+            // it never hides — and it now says so about the connection as well as the document.
+            ShellContext connected = vm.Context with { ControllerConnected = true };
+            Assert.That(At(vm, "controller.send", connected, Surface.Toolbar), Is.EqualTo(Availability.Allow),
+                "Send is toolbar-placed and enabled with a project open and a controller connected");
+            Assert.That(At(vm, "controller.send", connected with { ProjectOpen = false }, Surface.Toolbar).Visible,
                 Is.True, "…and greys rather than hides without one");
-            Assert.That(At(vm, "controller.retrieve", vm.Context, Surface.Toolbar), Is.EqualTo(Availability.Allow),
+            Assert.That(At(vm, "controller.retrieve", connected, Surface.Toolbar), Is.EqualTo(Availability.Allow),
                 "Retrieve is toolbar-placed");
+            foreach (string id in new[] { "controller.send", "controller.retrieve" })
+            {
+                Availability off = At(vm, id, vm.Context with { ControllerConnected = false }, Surface.Toolbar);
+                Assert.That(off.Visible, Is.True, $"{id}: still on the bar with no controller");
+                Assert.That(off.Enabled, Is.False, $"{id}: greyed with no controller, as the vendor greys it");
+                Assert.That(off.Reason, Is.Not.Null, $"{id}: the grey explains itself");
+            }
             Assert.That(vm.Registry.Rows, Has.None.Matches<CommandSpec>(r =>
                     r.Id is "edit.undo" or "edit.redo" && r.Placement.Contains(Surface.Toolbar)),
                 "NO Undo/Redo toolbar buttons (D07)");

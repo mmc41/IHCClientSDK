@@ -43,7 +43,11 @@ Scenario: Insert a library block from the library folders
   When I right-click the locality and choose a block from the library folder list
   Then the block is inserted as a child of that locality
   And the status bar reads: Function block '<block>' has been inserted under <locality>
-  And the block node carries the library function-block icon and can be expanded to show its structure
+  And the block node carries the library function-block icon
+  And the placed block is REVEALED: the hosting locality, the block itself and each of its sections are
+    expanded, so its pins are on screen without a further click — the installer's next action is almost
+    always to wire one of them
+  And no other locality is expanded by the insert
 
 Scenario: Library folders are the standard set
   Given the function-block folder list is shown
@@ -56,6 +60,12 @@ Scenario: A block bundles its variables and program
   And its program can be opened for reading in programming mode while it is still locked (US-026)
   And unlocking (US-020) is required only to edit it, not to view it
 ```
+
+> The reveal rule was measured against the reference application on 2026-08-11 (alignment F-19): inserting
+> `4.1.01. AND ("Og"- blok)` into an untouched locality left the locality, the block and **both** its sections
+> expanded, with every other locality still collapsed. This story previously said only that the block "can be
+> expanded", which is true of any node — so the reveal was never implemented on the block path, though the
+> product path (US-010) had it from the start.
 
 ### Business rules (the function-block catalog)
 

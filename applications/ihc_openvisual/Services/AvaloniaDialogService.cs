@@ -136,11 +136,12 @@ public sealed class AvaloniaDialogService : IDialogService
         ShowButtonsAsync("Effektive indstillinger", settingsText, selectable: true, ("Luk", true));
 
     public async Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note, LibraryOrigin? origin = null,
-        string affirmative = "OK")
+        string affirmative = "OK", string? userGroupCaption = null, bool? conditionsOr = null)
     {
         if (Owner is null)
             return null;
-        return await PropertiesWindow.ShowAsync(Owner, title, name, note, origin, affirmative);
+        return await PropertiesWindow.ShowAsync(Owner, title, name, note, origin, affirmative, userGroupCaption,
+            conditionsOr);
     }
 
     public async Task<VariablePropertiesResult?> EditVariablePropertiesAsync(VariablePropertiesInput input)

@@ -20,7 +20,11 @@ public enum SaveChangesResult
 }
 
 /// <summary>The edited values returned from the element Properties dialog (US-007): the new name and note.</summary>
-public sealed record PropertiesResult(string Name, string Note);
+/// <param name="ConditionsOr">The logical operator a <c>Betingelser</c> group combines its conditions with —
+/// <c>true</c> for OR, <c>false</c> for AND — or <c>null</c> for every other node type, which has no such field.
+/// The reference application shows it as a captioned <i>Logisk betingelse</i> combo in that group's own dialog
+/// (alignment F-48).</param>
+public sealed record PropertiesResult(string Name, string Note, bool? ConditionsOr = null);
 
 /// <summary>
 /// The read-only provenance of a function block that came from the LIBRARY (uxparity S-19): which library block it
@@ -35,13 +39,31 @@ public sealed record LibraryOrigin(string Name, string Number, string Version, s
 /// <summary><paramref name="HelpNote"/> is the SECOND documentation field (US-027/W5, the <c>note-2</c> attribute):
 /// the installer-facing help text shown alongside the function documentation. It defaults to blank so a caller that
 /// has none is unaffected.</summary>
+/// <summary><paramref name="SaveOnPowerLoss"/> is the <c>backup</c> flag the vendor shows as
+/// <i>Ved strømsvigt → Gem aktuel værdi</i> (FR-7.2, alignment F-27).
+/// <para><paramref name="ShowMilliseconds"/> selects the time editor's shape: the original shows
+/// <c>00:00:00,000</c> for a <c>resource_timer</c>/<c>resource_timertime</c> and <c>00.00.00</c> for a
+/// <c>resource_time</c>, which declares no millisecond at all (alignment F-42).</para>
+/// <para><paramref name="DecimalPlaces"/> is the precision of the decimal editor, which is per type and was measured
+/// field by field: kW/kWh show <c>0,000</c>, Kommatal <c>0,00</c>, Fugtighed/Temperatur <c>0,0</c>, and W/Wh a plain
+/// <c>0</c>. It governs the SCREEN only — every one of these types stores two fraction digits (F-41/F-44) — and it
+/// also rounds what the user types, which is how the original turns <c>42,7</c> in a W field into 43.</para></summary>
+/// <para><paramref name="ChoiceOptions"/> are the labels a <see cref="ResourceValueKind.Choice"/> editor offers,
+/// in order. Null means the weekday's own seven, which the dialog knows; an ENUM variable supplies its type's
+/// states instead, which is what the reference application's <i>Initial værdi</i> combo lists (alignment
+/// F-50).</para>
 public sealed record VariablePropertiesInput(string Title, string Name, string Note, ResourceInitialValue Current,
-    string HelpNote = "");
+    string HelpNote = "", bool SaveOnPowerLoss = false, bool ShowMilliseconds = true, int DecimalPlaces = 2,
+    IReadOnlyList<string>? ChoiceOptions = null);
 
 /// <summary>The edited values returned from the ordinary-variable Properties dialog (US-027, T016): the new name,
-/// both documentation fields, and typed initial value. <paramref name="HelpNote"/> is the second field (W5).</summary>
+/// both documentation fields, the typed initial value, and whether the value survives a power loss.
+/// <paramref name="HelpNote"/> is the second field (W5); <paramref name="SaveOnPowerLoss"/> is F-27's.</summary>
+/// <param name="EditEnumType">The installer pressed <i>Rediger</i> beside an enum's state list: commit this
+/// dialog and then open the enumerator TYPE editor, which the reference application reaches the same way — a
+/// second dialog behind a button, never the gesture on the variable row itself (alignment F-50).</param>
 public sealed record VariablePropertiesResult(string Name, string Note, ResourceInitialValue Value,
-    string HelpNote = "");
+    string HelpNote = "", bool SaveOnPowerLoss = false, bool EditEnumType = false);
 
 /// <summary>A locality option for the modem dialog's <i>Location</i> drop-down (US-013). The product dialog has no
 /// such field: re-parenting a PRODUCT is a tree operation, not a dialog field (A-13).</summary>
@@ -64,7 +86,19 @@ public sealed record ProductPropertiesInput(
 /// <c>Address</c> is the vendor-formatted <c>Datalinie N.PP</c> (blank when unassigned); <c>PinId</c> is the
 /// terminal element's id token, used to open the terminal-addressing sub-dialog for that row.</summary>
 public sealed record ProductTerminal(
-    string Name, string Address, string CableColour, string Note, bool IsOutput, string PinId);
+    string Name, string Address, string CableColour, string Note, bool IsOutput, string PinId)
+{
+    /// <summary>The row read as ONE sentence, for the accessible name of its list item — the same answer
+    /// <see cref="SceneContainerRow.Summary"/> gives, and for the same reason: the four columns are loose
+    /// <c>TextBlock</c>s under a header grid, and Avalonia's Windows bridge exposes no table pattern, so a client
+    /// otherwise meets four unassociated runs with no way to tell which header any belongs to. The captions are
+    /// spelled into the value for that reason.
+    /// <para>Without it the item falls back to the record's <c>ToString()</c>, which a screen reader reads out in
+    /// full — brace syntax, the <c>IsOutput</c> flag and the internal <c>PinId</c> included (alignment F-35).
+    /// An empty column is named and left blank rather than skipped, so the sentence keeps its shape.</para></summary>
+    public string Summary =>
+        $"Navn {Name}, Adresse {Address}, Ledningsfarve {CableColour}, Note {Note}";
+}
 
 // ProductPropertiesResult and PinPropertiesResult moved to the SDK (Ihc.Vis.Session, fablerefac W2-6) — they are
 // edit payloads for the product/pin commands, not presentation. Referenced here via `using Ihc.Vis.Session;`.
@@ -220,8 +254,14 @@ public interface IDialogService
     /// group a library function block shows below its editable fields (S-19); null for everything else.</summary>
     /// <paramref name="affirmative"/> labels the commit button: a dialog that goes on to WRITE A FILE names the
     /// verb (<c>Save</c>) rather than saying OK (S-22).
+    /// <paramref name="userGroupCaption"/> names the editable Name/Note group — the vendor's function-block dialog
+    /// captions it <c>Bruger egenskaber</c> (F-24). Null leaves the fields uncaptioned, which is what its other
+    /// properties dialogs do.
+    /// <param name="conditionsOr">Supplied only for a <c>Betingelser</c> group: its current logic operator, which
+    /// the dialog then offers as the reference application's captioned <i>Logisk betingelse</i> AND/OR field.
+    /// Null everywhere else, and the field is absent (alignment F-48).</param>
     Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note, LibraryOrigin? origin = null,
-        string affirmative = "OK");
+        string affirmative = "OK", string? userGroupCaption = null, bool? conditionsOr = null);
 
     /// <summary>Shows the ordinary-variable Properties dialog (US-027, T016): edits Name, Note, and the typed initial
     /// value (the control shown depends on the value's <see cref="ResourceValueKind"/>). Returns null on Cancel.</summary>

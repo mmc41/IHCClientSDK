@@ -1303,7 +1303,11 @@ public class MainWindowViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Rediger Tom blok egenskaber"));
+            // A block's dialog is captioned by its TYPE, not its name — the original's "Funktionsblok
+            // egenskaber" (alignment F-49). This line used to expect the LOCALITY's name-based pattern, which is
+            // part of why the wrong title shipped: the test encoded the same generalization the code did.
+            // DialogTitleParityTests owns that rule across every node type; this test's subject is the RENAME.
+            Assert.That(harness.Dialogs.LastPropertiesTitle, Is.EqualTo("Funktionsblok egenskaber"));
             Assert.That(vm.FunctionNodes[0].Children[0].Children[0].DisplayName, Is.EqualTo("Stair light logic"));
         });
     }
@@ -1460,8 +1464,10 @@ public class MainWindowViewModelTests
         });
     }
 
-    // T011 / US-030 / PG-4: the enum insert offers a TYPE PICKER submenu — the existing enumerator types plus "Ny…";
-    // picking an existing type inserts a variable of it and authors NO new type.
+    // T011 / US-030 / PG-4: the enum insert offers a TYPE PICKER submenu — the create route plus the existing
+    // enumerator types; picking an existing type inserts a variable of it and authors NO new type. (The create
+    // route was renamed "Ny…" → "Ny type…" and moved to the head of the submenu to match the vendor's own picker,
+    // alignment F-21; its ORDER is pinned by EnumPickerParityTests, not here.)
     [Test]
     public async Task EnumPicker_Headless_OffersExistingTypesAndNew_PickExistingAddsNoNewType()
     {
@@ -1479,8 +1485,9 @@ public class MainWindowViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(enumEntry.Children.Select(c => c.Header), Does.Contain("Persienne tilstand").And.Contain("Ny…"),
-                "the picker lists the existing types plus New…");
+            Assert.That(enumEntry.Children.Select(c => c.Header),
+                Does.Contain("Persienne tilstand").And.Contain("Ny type…"),
+                "the picker lists the existing types plus the create route");
             Assert.That(harness.Session.Current!.Root.Descendants().Count(e => e.Tag == "enum_definition"),
                 Is.EqualTo(defsBefore), "picking an existing type authors no new enum type");
             Assert.That(harness.Session.Current!.FindById(settingsNode.ElementId!.Value)!.ChildrenOrEmpty().Any(c => c.Tag == "resource_enum"),
@@ -2201,9 +2208,14 @@ public class MainWindowViewModelTests
     }
 
     /// <summary>
-    /// Alignment F-13b (tmp/align-campaign-2026-08-09.md): a block section's context flyout (SectionFlyoutItems)
-    /// lists the accepted types FLAT and alphabetically (da-DK), with Enum as a submenu among them and Egenskaber
-    /// last — the vendor/US-027 shape ("pick the type from the popup"), not nested under an "Indsæt variabel" parent.
+    /// Alignment F-13b: a block section's context flyout (SectionFlyoutItems) lists the accepted types FLAT, with
+    /// Enum as a submenu among them and Egenskaber last — the vendor/US-027 shape ("pick the type from the popup"),
+    /// not nested under an "Indsæt variabel" parent.
+    /// <para>The collation is da-DK on purpose: the vendor collates æ as "ae" here (listing <c>Tæller</c> before
+    /// <c>Tal</c>, re-measured 2026-08-11), and sorting it correctly instead is a REGISTERED deliberate difference
+    /// (product.md, alignment F-26). Order is covered in its own right by
+    /// <see cref="SectionFlyoutOrderParityTests"/>, including the leading signal type — which this section (a VALUE
+    /// section) correctly has none of.</para>
     /// </summary>
     [Test]
     public async Task SectionFlyout_ListsTypesFlatAlphabetically_EnumSubmenu_EgenskaberLast()
@@ -2928,7 +2940,7 @@ public class MainWindowViewModelTests
         harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Mode", new[] { "Direct", "With delay", "Switched off" });
 
         vm.SelectNode(vm.InstallationNodes[0].Children[2]);
-        var enumLeaf = vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "Ny…");
+        var enumLeaf = vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "Ny type…");
         await ((IAsyncRelayCommand)enumLeaf.Command!).ExecuteAsync(null);
 
         var enumVar = harness.Session.Current!.FindById(settingsSectionId)!.ChildrenOrEmpty().First(c => c.Tag == "resource_enum");
@@ -2960,7 +2972,7 @@ public class MainWindowViewModelTests
         harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("TestEnum", System.Array.Empty<string>());
 
         vm.SelectNode(vm.InstallationNodes[0].Children[2]);
-        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "Ny…").Command!).ExecuteAsync(null);
+        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "Ny type…").Command!).ExecuteAsync(null);
 
         var enumVar = harness.Session.Current!.FindById(settingsSectionId)!.ChildrenOrEmpty()
             .FirstOrDefault(c => c.Tag == "resource_enum" && c.GetAttribute("name") == "TestEnum");
@@ -2989,11 +3001,15 @@ public class MainWindowViewModelTests
         var settingsSectionId = vm.InstallationNodes[0].Children[2].ElementId!.Value;
         harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Mode", new[] { "Direct", "With delay" });
         vm.SelectNode(vm.InstallationNodes[0].Children[2]);
-        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "Ny…").Command!).ExecuteAsync(null);
+        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "Ny type…").Command!).ExecuteAsync(null);
         var enumVarId = harness.Session.Current!.FindById(settingsSectionId)!.ChildrenOrEmpty().First(c => c.Tag == "resource_enum").Id!.Value;
 
         // Re-run Properties: keep the two existing states and add one new one; a duplicate must not double.
+        // Properties on an enum row opens the VARIABLE dialog (alignment F-50); the type editor sits behind its
+        // "Rediger" button, which is what EditEnumType asks for — the original's own route to the shared type.
         harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Mode", new[] { "Direct", "With delay", "Switched off" });
+        harness.Dialogs.VariablePropertiesResult = new VariablePropertiesResult(
+            "Mode", string.Empty, ResourceInitialValue.OfChoice("Direct"), string.Empty, EditEnumType: true);
         await vm.PropertiesCommand.ExecuteAsync(FindNodeById(vm.InstallationNodes, enumVarId));
 
         ElementId.TryParse(harness.Session.Current!.FindById(enumVarId)!.GetAttribute("typedef"), out var defId);
@@ -3019,13 +3035,16 @@ public class MainWindowViewModelTests
         var settingsSectionId = vm.InstallationNodes[0].Children[2].ElementId!.Value;
         harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Mode", new[] { "Direct", "With delay" });
         vm.SelectNode(vm.InstallationNodes[0].Children[2]);
-        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "Ny…").Command!).ExecuteAsync(null);
+        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "Ny type…").Command!).ExecuteAsync(null);
         var enumVarId = harness.Session.Current!.FindById(settingsSectionId)!.ChildrenOrEmpty().First(c => c.Tag == "resource_enum").Id!.Value;
         ElementId.TryParse(harness.Session.Current!.FindById(enumVarId)!.GetAttribute("typedef"), out var defId);
         ElementId firstValueId = harness.Session.Current!.FindById(defId)!.ChildrenOrEmpty().First(c => c.Tag == "enum_value").Id!.Value;
 
         // Re-run Properties: relabel the first state in place, keep the second; the count must not grow.
+        // Through the variable dialog's "Rediger" button, which is where the type editor lives (F-50).
         harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Mode", new[] { "Direkte", "With delay" });
+        harness.Dialogs.VariablePropertiesResult = new VariablePropertiesResult(
+            "Mode", string.Empty, ResourceInitialValue.OfChoice("Direct"), string.Empty, EditEnumType: true);
         await vm.PropertiesCommand.ExecuteAsync(FindNodeById(vm.InstallationNodes, enumVarId));
 
         var values = harness.Session.Current!.FindById(defId)!.ChildrenOrEmpty().Where(c => c.Tag == "enum_value").ToList();
@@ -3096,7 +3115,7 @@ public class MainWindowViewModelTests
         var settingsSectionId = vm.InstallationNodes[0].Children[2].ElementId!.Value;
         harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Mode", new[] { "Direct", "With delay" });
         vm.SelectNode(vm.InstallationNodes[0].Children[2]);
-        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "Ny…").Command!).ExecuteAsync(null);
+        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "Ny type…").Command!).ExecuteAsync(null);
         var enumVarId = harness.Session.Current!.FindById(settingsSectionId)!.ChildrenOrEmpty().First(c => c.Tag == "resource_enum").Id!.Value;
 
         // Arm it and insert a Case (Mode) on the Commands container.

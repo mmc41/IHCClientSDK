@@ -132,3 +132,75 @@ public class OperableMenuItemAutomationPeer : MenuItemAutomationPeer, IInvokePro
         return base.GetProviderCore(providerType);
     }
 }
+
+/// <summary>
+/// A <see cref="Separator"/> that reports itself to UI Automation as a separator.
+/// </summary>
+/// <remarks>
+/// Avalonia's stock <c>Separator</c> creates a peer whose control type is <c>None</c>, which removes it from the
+/// automation tree entirely — so the rules that GROUP a menu are drawn on screen and perceivable by no one else.
+/// Two consequences, both measured (alignment F-11, 2026-08-11): a screen-reader user hears one undifferentiated
+/// run of items where a sighted user sees three blocks, and a menu inventory taken through automation reports no
+/// separators at all — which made this app's correctly-grouped menus compare against the reference application's
+/// (whose separators ARE published) as though the grouping were missing.
+/// <para>Nameless by design: a rule carries structure, not content. It is a control element so it appears in the
+/// Control view where grouping is read, and not a content element so it is never announced as an item.</para>
+/// </remarks>
+public class AccessibleSeparator : Separator
+{
+    protected override Type StyleKeyOverride => typeof(Separator);
+
+    protected override AutomationPeer OnCreateAutomationPeer() => new SeparatorAutomationPeer(this);
+}
+
+/// <summary>
+/// A captioned group box that PUBLISHES its caption. Avalonia has no GroupBox, so the dialogs draw one with a
+/// <see cref="HeaderedContentControl"/> whose template holds a caption TextBlock — and that control's default peer
+/// reports <see cref="AutomationControlType.None"/>, so the whole group is absent from the automation tree and the
+/// templated caption reaches nothing. Measured 2026-08-11 on Projektinfo: three captions on screen, none of them in
+/// a 61-control inventory (alignment F-38).
+/// <para>It matters most exactly where it is easiest to miss: that dialog's installer and customer groups carry the
+/// SAME eight field labels, so the caption is the only thing saying which party a field belongs to. Same defect
+/// family as <see cref="AccessibleSeparator"/> (F-11) — rendered structure that carries meaning and publishes none
+/// of it.</para>
+/// </summary>
+public class AccessibleGroupBox : HeaderedContentControl
+{
+    protected override Type StyleKeyOverride => typeof(HeaderedContentControl);
+
+    protected override AutomationPeer OnCreateAutomationPeer() => new GroupBoxAutomationPeer(this);
+}
+
+public class GroupBoxAutomationPeer : ControlAutomationPeer
+{
+    public GroupBoxAutomationPeer(Control owner) : base(owner) { }
+
+    protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Group;
+
+    protected override string GetClassNameCore() => nameof(AccessibleGroupBox);
+
+    // STRUCTURE that names itself: in the control view (where a client reads grouping), named by its own caption,
+    // so entering the group announces which section or party the fields inside belong to.
+    protected override bool IsControlElementCore() => true;
+
+    protected override string? GetNameCore() =>
+        (Owner as HeaderedContentControl)?.Header as string ?? base.GetNameCore();
+}
+
+/// <summary>Publishes a <see cref="Separator"/> under the <see cref="AutomationControlType.Separator"/> role.</summary>
+public class SeparatorAutomationPeer : ControlAutomationPeer
+{
+    public SeparatorAutomationPeer(Control owner) : base(owner) { }
+
+    protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Separator;
+
+    protected override string GetClassNameCore() => nameof(Separator);
+
+    // Structure, not content: it must be in the CONTROL view (that is where a client reads grouping) but never in
+    // the content view, or it is announced as an empty item — the opposite of the fix.
+    protected override bool IsControlElementCore() => true;
+
+    protected override bool IsContentElementCore() => false;
+
+    protected override string? GetNameCore() => string.Empty;
+}

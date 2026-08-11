@@ -1923,6 +1923,27 @@ function Get-MenuBarRootKeySet {
         $k = Get-ElementKey $t
         if ($k) { $set[$k] = $true }
     }
+
+    # ...and the TOOLBAR's own separators.
+    #
+    # Get-MenuPopupItems searches the whole PROCESS, so any Separator anywhere in the app matches it. That
+    # was harmless while the toolbar drew its rules as Rectangles -- and stopped being harmless the moment
+    # they became real Separators (alignment F-45). Live-caught the same day (F-46): every menu dump grew a
+    # phantom trailing separator, including the Vis menu, which draws no rules at all. A false GROUPING row
+    # is the worst artefact this walker could produce, because menu grouping is exactly what these dumps are
+    # compared on -- it would have read as an OpenVisual defect in the very comparison it corrupted.
+    #
+    # Scoped to the toolbar rather than to "everything the main window hosts": Avalonia's popups ARE
+    # reachable from the main window element (they are overlay-hosted, not detached), so the broader rule
+    # excluded the flyout content too and every menu dumped empty -- measured, not assumed.
+    $bar2 = Find-ByAutomationId $win 'Toolbar'
+    if ($bar2) {
+        foreach ($e in @($bar2.FindAll($script:Desc,
+            (New-PropCondition ([System.Windows.Automation.AutomationElement]::ControlTypeProperty) ([System.Windows.Automation.ControlType]::Separator))))) {
+            $k = Get-ElementKey $e
+            if ($k) { $set[$k] = $true }
+        }
+    }
     return $set
 }
 
@@ -2422,6 +2443,197 @@ function Invoke-Mechanism-DialogSetText {
         -Data ([ordered]@{ field = $field; value = [string]$value; readBack = $back }))
 }
 
+# Choose an item in a COMBO BOX (or list) of the open modal.
+#
+# Alignment F-37: dialog.setText answers "not a text field" on a ComboBox and dialog.click resolves buttons, so a
+# drop-down was undrivable from this side -- the second dialog control type in that state after check boxes
+# (F-31), while the vendor driver has had dialog.selectItem all along.
+#
+# EXPANDS before enumerating, deliberately: Avalonia realizes a ComboBox's items lazily, so a dropdown that has
+# never been opened reports ZERO ListItem children -- which is why dialog.read shows `items: []` for one and why
+# reading the list is not enough to drive it. The dropdown is collapsed again afterwards, so the dialog is left as
+# it was found apart from the selection.
+function Invoke-Mechanism-DialogSelectItem {
+    param($Spec, $Opts, $Window)
+    $field = Get-OptValue $Opts @('field', 'control', 'id', 'name') -PositionalIndex 0
+    if (-not $field -or $field -is [bool]) {
+        return (New-Result -Ok $false -Code 'InvalidInput' -Message 'dialog.selectItem requires --field <name>.')
+    }
+    $text = Get-OptValue $Opts @('text', 'value', 'item') -PositionalIndex 1
+    # --index is NAMED ONLY and parsed, not cast: without that it swallows the positional FIELD name and the cast
+    # surfaces as an unhandled MutationFailed instead of a clean InvalidInput (it did exactly that once).
+    $idx = Get-OptInt $Opts @('index') -1
+    if (-not $idx.ok) { return (New-Result -Ok $false -Code 'InvalidInput' -Message $idx.message) }
+    $index = $idx.value
+    if (($null -eq $text -or $text -is [bool]) -and $index -lt 0) {
+        return (New-Result -Ok $false -Code 'InvalidInput' -Message 'dialog.selectItem requires --text <item> or --index <n>.')
+    }
+
+    $modal = Get-OpenModalWindow
+    if (-not $modal) { return (New-Result -Ok $false -Code 'DialogNotFound' -Message 'No modal open.' -Context (Get-Context $Window)) }
+
+    $target = Find-ByAutomationId $modal ([string]$field)
+    if (-not $target) { $target = Find-ByName $modal ([string]$field) }
+    if (-not $target) {
+        $seen = @()
+        foreach ($e in $modal.FindAll($script:Desc,
+            (New-PropCondition ([System.Windows.Automation.AutomationElement]::ControlTypeProperty) ([System.Windows.Automation.ControlType]::ComboBox)))) {
+            $seen += ($e.Current.AutomationId + '/' + $e.Current.Name)
+        }
+        return (New-Result -Ok $false -Code 'TargetNotFound' `
+            -Message ("Modal '" + $modal.Current.Name + "' has no field '$field'. Drop-downs: " + ($seen -join ', ') + '.') `
+            -Context (Get-Context $Window))
+    }
+
+    $ecp = Get-Pattern $target ([System.Windows.Automation.ExpandCollapsePattern]::Pattern)
+    if ($ecp) {
+        $ecp.Expand()
+        Start-Sleep -Milliseconds 200
+    }
+    $items = @()
+    $elements = @()
+    foreach ($i in $target.FindAll($script:Desc,
+        (New-PropCondition ([System.Windows.Automation.AutomationElement]::ControlTypeProperty) ([System.Windows.Automation.ControlType]::ListItem)))) {
+        $items += $i.Current.Name
+        $elements += $i
+    }
+    if ($items.Count -eq 0) {
+        if ($ecp) { $ecp.Collapse() }
+        return (New-Result -Ok $false -Code 'TargetNotFound' `
+            -Message "Field '$field' realized no items even after expanding (is it a drop-down?)." -Context (Get-Context $Window))
+    }
+
+    $pick = -1
+    if ($index -ge 0) {
+        $pick = $index
+        if ($pick -ge $items.Count) {
+            if ($ecp) { $ecp.Collapse() }
+            return (New-Result -Ok $false -Code 'TargetNotFound' `
+                -Message ("Index $pick is outside '$field' (0.." + ($items.Count - 1) + "). Items: " + ($items -join ', ') + '.') `
+                -Context (Get-Context $Window))
+        }
+    }
+    else {
+        # Exact first, then a UNIQUE case-insensitive contains -- an ambiguous prefix is refused rather than
+        # resolved to whichever came first, the same rule the menu walkers use.
+        for ($n = 0; $n -lt $items.Count; $n++) { if ($items[$n] -ceq [string]$text) { $pick = $n; break } }
+        if ($pick -lt 0) {
+            $hits = @()
+            for ($n = 0; $n -lt $items.Count; $n++) { if ($items[$n] -like "*$text*") { $hits += $n } }
+            if ($hits.Count -eq 1) { $pick = $hits[0] }
+            elseif ($hits.Count -gt 1) {
+                if ($ecp) { $ecp.Collapse() }
+                return (New-Result -Ok $false -Code 'TargetAmbiguous' `
+                    -Message ("'$text' matches " + $hits.Count + " items of '$field'. Items: " + ($items -join ', ') + '.') `
+                    -Context (Get-Context $Window))
+            }
+        }
+        if ($pick -lt 0) {
+            if ($ecp) { $ecp.Collapse() }
+            return (New-Result -Ok $false -Code 'TargetNotFound' `
+                -Message ("'$field' has no item '$text'. Items: " + ($items -join ', ') + '.') -Context (Get-Context $Window))
+        }
+    }
+
+    $sip = Get-Pattern $elements[$pick] ([System.Windows.Automation.SelectionItemPattern]::Pattern)
+    if (-not $sip) {
+        if ($ecp) { $ecp.Collapse() }
+        return (New-Result -Ok $false -Code 'NotAllowed' -Message "Item '$($items[$pick])' has no SelectionItem pattern." -Context (Get-Context $Window))
+    }
+    $sip.Select()
+    Start-Sleep -Milliseconds 150
+    if ($ecp) { $ecp.Collapse() }
+    Start-Sleep -Milliseconds 100
+
+    # Verified by reading the selection back as TEXT, never by assuming Select() landed -- and text rather than an
+    # index because a collapsed Avalonia ComboBox virtualizes its items away: GetSelection() comes back empty and
+    # an index lookup would report -1 for a selection that in fact landed. The control's own ValuePattern keeps
+    # the chosen item's text, which is what dialog.read surfaces as `text` for the same reason.
+    $wanted = $items[$pick]
+    $after = ''
+    $vp = Get-Pattern $target ([System.Windows.Automation.ValuePattern]::Pattern)
+    if ($vp) { $after = [string]$vp.Current.Value }
+    if (-not $after) {
+        $sel = Get-Pattern $target ([System.Windows.Automation.SelectionPattern]::Pattern)
+        if ($sel) {
+            $chosen = @($sel.Current.GetSelection())
+            if ($chosen.Count -gt 0) { $after = [string]$chosen[0].Current.Name }
+        }
+    }
+    if (-not $after) {
+        # A LIST (as opposed to a drop-down) keeps its items alive and answers neither ValuePattern nor, in this
+        # toolkit, SelectionPattern.GetSelection() -- so ask the ITEMS which one is selected. Without this the
+        # command reported NoEffect on a selection that had visibly landed (the enum manager's type list), which is
+        # the worst kind of wrong answer: a working command reported broken.
+        foreach ($e in $elements) {
+            $sip2 = Get-Pattern $e ([System.Windows.Automation.SelectionItemPattern]::Pattern)
+            if ($sip2 -and $sip2.Current.IsSelected) { $after = [string]$e.Current.Name; break }
+        }
+    }
+    $landed = ($after -eq $wanted)
+    return (New-Result -Ok $landed -Code $(if ($landed) { 'Ok' } else { 'NoEffect' }) `
+        -Message $(if ($landed) { "Selected '$wanted' in '$field'." } else { "Asked for '$wanted' but '$field' reads '$after'." }) `
+        -Verified $landed -Context (Get-Context $Window) `
+        -Data ([ordered]@{ field = $field; requestedIndex = $pick; requestedText = $wanted; selectedAfter = $after; itemCount = $items.Count; items = @($items) }))
+}
+
+# Tick or untick a CHECKBOX in the open modal.
+#
+# Alignment F-31: dialog.click resolves BUTTONS only, so a checkbox in a dialog was undrivable from this side --
+# `dialog click --button 'Gem aktuel værdi'` answers "has no button named ...". That left every dialog checkbox
+# unverifiable LIVE (the F-27 power-fail control had to be driven from the context flyout instead), while the
+# vendor driver has had dialog.setCheck all along. The two sides were asymmetric on a whole control type.
+#
+# Idempotent by construction: TogglePattern.Toggle() FLIPS, so toggling a box already in the wanted state would
+# move it away from it. The state is read first and the toggle sent only when it differs -- and the result is
+# verified by reading the state back, never by assuming the click landed.
+function Invoke-Mechanism-DialogSetCheck {
+    param($Spec, $Opts, $Window)
+    $field = Get-OptValue $Opts @('field', 'control', 'id', 'name') -PositionalIndex 0
+    if (-not $field -or $field -is [bool]) {
+        return (New-Result -Ok $false -Code 'InvalidInput' -Message 'dialog.setCheck requires --field <name>.')
+    }
+    $on  = Get-OptValue $Opts @('on')
+    $off = Get-OptValue $Opts @('off')
+    if ($on -eq $true -and $off -eq $true) {
+        return (New-Result -Ok $false -Code 'InvalidInput' -Message 'dialog.setCheck takes --on or --off, not both.')
+    }
+    $want = -not ($off -eq $true)   # ticking is the default; --off unticks
+
+    $modal = Get-OpenModalWindow
+    if (-not $modal) { return (New-Result -Ok $false -Code 'DialogNotFound' -Message 'No modal open.' -Context (Get-Context $Window)) }
+
+    $target = Find-ByAutomationId $modal ([string]$field)
+    if (-not $target) { $target = Find-ByName $modal ([string]$field) }
+    if (-not $target) {
+        $seen = @()
+        foreach ($e in $modal.FindAll($script:Desc,
+            (New-PropCondition ([System.Windows.Automation.AutomationElement]::ControlTypeProperty) ([System.Windows.Automation.ControlType]::CheckBox)))) {
+            $seen += ($e.Current.AutomationId + '/' + $e.Current.Name)
+        }
+        return (New-Result -Ok $false -Code 'TargetNotFound' `
+            -Message ("Modal '" + $modal.Current.Name + "' has no field '$field'. Check boxes: " + ($seen -join ', ') + '.') `
+            -Context (Get-Context $Window))
+    }
+
+    $tp = Get-Pattern $target ([System.Windows.Automation.TogglePattern]::Pattern)
+    if (-not $tp) {
+        return (New-Result -Ok $false -Code 'NotAllowed' -Message "Field '$field' has no Toggle pattern (not a check box)." -Context (Get-Context $Window))
+    }
+    $before = [string]$tp.Current.ToggleState
+    $wanted = $(if ($want) { 'On' } else { 'Off' })
+    if ($before -ne $wanted) {
+        $tp.Toggle()
+        Start-Sleep -Milliseconds 150
+    }
+    $after = [string](Get-Pattern $target ([System.Windows.Automation.TogglePattern]::Pattern)).Current.ToggleState
+    $landed = ($after -eq $wanted)
+    return (New-Result -Ok $landed -Code $(if ($landed) { 'Ok' } else { 'NoEffect' }) `
+        -Message $(if ($landed) { "Set '$field' to $wanted." } else { "Asked for $wanted but '$field' reads $after." }) `
+        -Verified $landed -Context (Get-Context $Window) `
+        -Data ([ordered]@{ field = $field; wanted = $wanted; before = $before; after = $after; toggled = ($before -ne $wanted) }))
+}
+
 function Invoke-Mechanism-DialogButton {
     param($Spec, $Opts, $Window)
     $name = Get-OptValue $Opts @('button', 'name')
@@ -2498,8 +2710,12 @@ function Get-DialogControlDump {
         $c = $null
         try { $c = $el.Current } catch { continue }   # an element torn down mid-walk is not a finding
         $ct = $c.ControlType.ProgrammaticName -replace '^ControlType\.', ''
-        # Structural containers carry no information a caller can act on and would triple the dump.
-        if ($ct -in @('Pane', 'Group', 'Custom') -and -not $c.AutomationId) { continue }
+        # Structural containers carry no information a caller can act on and would triple the dump -- but a NAMED
+        # one does: a captioned group box is the caption. Keeping only id-bearing containers hid OpenVisual's
+        # three Projektinfo group captions ("Projekt oplysninger", "Installatør information", "Kunde oplysninger")
+        # from every inventory, while the vendor's same three group boxes DO appear in its dialog.read (as
+        # captioned Buttons) -- so the two sides' dialogs could not be diffed on grouping at all (alignment F-38).
+        if ($ct -in @('Pane', 'Group', 'Custom') -and -not $c.AutomationId -and -not $c.Name) { continue }
 
         $row = [ordered]@{
             id      = $c.AutomationId
@@ -3267,6 +3483,251 @@ function Invoke-Mechanism-MenuBarDump {
         -Verified $true -Warnings $warn -Context (Get-Context $Window) -Data $data)
 }
 
+# Enumerate the toolbar in BAR ORDER: every button with its id, name and enabled state, and every separator as
+# its own row. Shape mirrors the vendor driver's toolbar.dump ({buttonCount, buttons:[{index, id, name, enabled,
+# separator}]}) so the two bars diff mechanically -- which is the point, since alignment F-5 (the vendor draws
+# ONE rule where OpenVisual drew three) sat open for a campaign on a vendor-side measurement with nothing to
+# compare against on this side (F-7).
+#
+# Separators are read as real rows because OpenVisual now publishes them: they were Rectangles, which are
+# invisible to automation, so a dump could not have seen them at all (alignment F-45). A run of buttons with no
+# rule between them and a run with one look identical to any client that cannot see a shape.
+#
+# ORDER is what makes this a layout reader rather than an inventory, so the walk is over the toolbar's own
+# descendants in tree (document) order rather than over a set of ids.
+function Invoke-Mechanism-ToolbarDump {
+    param($Spec, $Opts, $Window)
+    if (-not $Window) { return (New-Result -Ok $false -Code 'AppNotRunning' -Message 'App not running.') }
+
+    $toolbar = Find-ByAutomationId $Window 'Toolbar'
+    if (-not $toolbar) {
+        return (New-Result -Ok $false -Code 'ControlNotFound' `
+            -Message 'Toolbar not found. It is hidden while Vis > Vaerktoejslinie is off -- turn it back on with view.toolbar.toggle.' `
+            -Context (Get-Context $Window))
+    }
+
+    $geometry = $null
+    $barRect = $toolbar.Current.BoundingRectangle
+    if (-not ([double]::IsInfinity($barRect.X) -or [double]::IsNaN($barRect.X))) {
+        $geometry = Get-MonitorGeometry -X ([int]$barRect.X) -Y ([int]$barRect.Y)
+    }
+
+    $rows = @()
+    $index = 0
+    foreach ($el in $toolbar.FindAll($script:Desc, [System.Windows.Automation.Condition]::TrueCondition)) {
+        $c = $null
+        try { $c = $el.Current } catch { continue }   # an element torn down mid-walk is not a finding
+        $ct = $c.ControlType.ProgrammaticName -replace '^ControlType\.', ''
+        if ($ct -notin @('Button', 'Separator')) { continue }
+        $rows += [ordered]@{
+            index     = $index
+            id        = [string]$c.AutomationId
+            name      = [string]$c.Name
+            enabled   = [bool]$c.IsEnabled
+            separator = ($ct -eq 'Separator')
+            rect      = ConvertTo-RectDump $c.BoundingRectangle $geometry
+        }
+        $index++
+    }
+
+    $buttons = @($rows | Where-Object { -not $_.separator })
+    $seps = @($rows | Where-Object { $_.separator })
+    $data = [ordered]@{
+        entryCount     = @($rows).Count
+        buttonCount    = $buttons.Count
+        separatorCount = $seps.Count
+        buttons        = @($rows)
+    }
+    return (New-Result -Ok $true -Code 'Ok' `
+        -Message "Toolbar: $($buttons.Count) buttons, $($seps.Count) separators." `
+        -Verified $true -Context (Get-Context $Window) -Data $data)
+}
+
+# Activate a ROW INSIDE AN OPEN DIALOG with real mouse input -- the gesture checklist dimension 13 is about
+# ("clickable/activatable rows and resulting subdialogs"), and the one verb this driver could not perform.
+# dialog.click drives NAMED BUTTONS; node.doubleClick drives TREE rows; neither reaches a row in a dialog's
+# grid, so every "does activating this row open an editor?" question was driver-blind and therefore
+# UNRESOLVED (checklist: a driver that reports itself blind fails a comparison exactly as a mismatch does).
+#
+# Deliberately GENERAL: any list-like container in any dialog, addressed by the container's AutomationId or
+# Name, and the row by INDEX or by its text. It knows nothing about module maps, terminals or scenes -- one
+# verb answers the question for all of them.
+#
+# Mirrors the vendor driver's dialog.clickRow contract (control + 0-based row + doubleClick) so the two
+# sides' transcripts compare like for like; only the addressing differs, because Avalonia has no numeric
+# control ids.
+#
+# Single vs double click is the POINT, not a convenience: they are different questions, and a selection
+# message would set the selection without ever delivering a click, so it could answer neither.
+function Invoke-Mechanism-DialogClickRow {
+    param($Spec, $Opts, $Window)
+    $field = Get-OptValue $Opts @('field', 'control', 'list', 'id', 'name') -PositionalIndex 0
+    if (-not $field -or $field -is [bool]) {
+        return (New-Result -Ok $false -Code 'InvalidInput' -Message 'dialog.clickRow requires --field <list>.')
+    }
+    # --row is NAMED ONLY and parsed rather than cast: a positional would swallow the field name, and the cast
+    # would surface as an unhandled fault instead of a clean InvalidInput -- the lesson dialog.selectItem
+    # already paid for.
+    $rowOpt = Get-OptInt $Opts @('row', 'index') -1
+    if (-not $rowOpt.ok) { return (New-Result -Ok $false -Code 'InvalidInput' -Message $rowOpt.message) }
+    $row = $rowOpt.value
+    $text = Get-OptValue $Opts @('text', 'value', 'item') -NamedOnly
+    if ($row -lt 0 -and ($null -eq $text -or $text -is [bool])) {
+        return (New-Result -Ok $false -Code 'InvalidInput' -Message 'dialog.clickRow requires --row <n> or --text <row text>.')
+    }
+    # A CELL is a refinement of a row, not a separate gesture -- omit --column and this clicks the row (what
+    # the vendor's own verb does); supply it and the click lands on that column of that row. Two verbs would
+    # duplicate every resolution and verification step here and make the caller choose between them.
+    $column = Get-OptValue $Opts @('column', 'cell') -NamedOnly
+    $double = [bool](Get-OptValue $Opts @('double', 'double-click') -NamedOnly)
+
+    $modal = Get-OpenModalWindow
+    if (-not $modal) {
+        return (New-Result -Ok $false -Code 'DialogNotFound' -Message 'No modal open.' -Context (Get-Context $Window))
+    }
+
+    $target = Find-ByAutomationId $modal ([string]$field)
+    if (-not $target) { $target = Find-ByName $modal ([string]$field) }
+    if (-not $target) {
+        $seen = @()
+        foreach ($kind in @([System.Windows.Automation.ControlType]::List,
+                            [System.Windows.Automation.ControlType]::Table,
+                            [System.Windows.Automation.ControlType]::DataGrid)) {
+            foreach ($e in $modal.FindAll($script:Desc,
+                (New-PropCondition ([System.Windows.Automation.AutomationElement]::ControlTypeProperty) $kind))) {
+                $seen += ($e.Current.AutomationId + '/' + $e.Current.Name)
+            }
+        }
+        return (New-Result -Ok $false -Code 'TargetNotFound' `
+            -Message ("Modal '" + $modal.Current.Name + "' has no list '$field'. Lists: " + ($seen -join ', ') + '.') `
+            -Context (Get-Context $Window))
+    }
+
+    # Rows are whatever the container realizes as items -- ListItem for a list, DataItem for a grid.
+    $rows = @()
+    foreach ($kind in @([System.Windows.Automation.ControlType]::ListItem,
+                        [System.Windows.Automation.ControlType]::DataItem)) {
+        foreach ($i in $target.FindAll($script:Desc,
+            (New-PropCondition ([System.Windows.Automation.AutomationElement]::ControlTypeProperty) $kind))) {
+            $rows += $i
+        }
+    }
+    if ($rows.Count -eq 0) {
+        return (New-Result -Ok $false -Code 'TargetNotFound' `
+            -Message "List '$field' realizes no rows. A virtualized list realizes none until scrolled into view." `
+            -Context (Get-Context $Window))
+    }
+
+    if ($row -lt 0) {
+        for ($n = 0; $n -lt $rows.Count; $n++) {
+            if ($rows[$n].Current.Name -eq [string]$text) { $row = $n; break }
+        }
+        if ($row -lt 0) {
+            for ($n = 0; $n -lt $rows.Count; $n++) {
+                if ($rows[$n].Current.Name -like "*$text*") { $row = $n; break }
+            }
+        }
+        if ($row -lt 0) {
+            return (New-Result -Ok $false -Code 'TargetNotFound' `
+                -Message ("List '$field' has no row matching '$text'. Rows: " +
+                          (($rows | ForEach-Object { $_.Current.Name }) -join ' | ') + '.') `
+                -Context (Get-Context $Window))
+        }
+    }
+    if ($row -ge $rows.Count) {
+        return (New-Result -Ok $false -Code 'InvalidInput' `
+            -Message "List '$field' has $($rows.Count) rows; row $row does not exist." -Context (Get-Context $Window))
+    }
+
+    $guard = Assert-Foreground $Window
+    if ($guard) { return $guard }
+
+    $element = $rows[$row]
+    $hit = 'row'
+    if ($column -and $column -isnot [bool]) {
+        # Cells are whatever the row renders: a real grid exposes them, an Avalonia template row exposes its
+        # leaf children. Addressed by header/AutomationId/text first, then by 0-based position -- so the same
+        # option works whether or not the framework models columns at all.
+        $cells = @($element.FindAll($script:Desc, [System.Windows.Automation.Condition]::TrueCondition))
+        $pick = $null
+        foreach ($c in $cells) {
+            $cc = $null
+            try { $cc = $c.Current } catch { continue }
+            if ($cc.AutomationId -eq [string]$column -or $cc.Name -eq [string]$column) { $pick = $c; break }
+        }
+        if (-not $pick) {
+            $ci = 0
+            if ([int]::TryParse([string]$column, [ref]$ci) -and $ci -ge 0 -and $ci -lt $cells.Count) {
+                $pick = $cells[$ci]
+            }
+        }
+        if (-not $pick) {
+            # No cells at all is a DIFFERENT answer from 'that column is missing', and the difference is
+            # usually the finding: a row that realizes nothing beneath it is one flat string, so the list
+            # only LOOKS like a grid -- headers painted above rows that have no columns to click.
+            $detail = if ($cells.Count -eq 0) {
+                "the row realizes NO cells, so it is a single flat item rather than a grid row (its whole text is '" +
+                $element.Current.Name + "')"
+            } else {
+                'cells are ' + (($cells | ForEach-Object { $_.Current.AutomationId + '/' + $_.Current.Name }) -join ' | ')
+            }
+            return (New-Result -Ok $false -Code 'TargetNotFound' `
+                -Message "Row $row of '$field' has no column '$column' -- $detail." `
+                -Context (Get-Context $Window))
+        }
+        $element = $pick
+        $hit = "column:$column"
+    }
+    $rect = $element.Current.BoundingRectangle
+    if ($rect.Width -lt 1 -or $rect.Height -lt 1 -or [double]::IsInfinity($rect.X)) {
+        return (New-Result -Ok $false -Code 'TargetNotFound' `
+            -Message "Row $row of '$field' has no on-screen rectangle (scrolled out of view or collapsed); refusing to click blind." `
+            -Context (Get-Context $Window))
+    }
+    $x = [int]($rect.X + $rect.Width / 2)
+    $y = [int]($rect.Y + $rect.Height / 2)
+    $modalBefore = $modal.Current.Name
+
+    [Aui.Win32]::Click($x, $y)
+    if ($double) {
+        Start-Sleep -Milliseconds 60
+        [Aui.Win32]::Click($x, $y)
+    }
+    Start-Sleep -Milliseconds 300
+
+    # Effect-verified the way the vendor's verb is: the selection must actually LAND on the requested row, or
+    # a dialog must have been raised -- otherwise this reports NoEffect rather than a click that went nowhere.
+    # Any dialog raised is named, because that is usually the whole question being asked.
+    $selected = $false
+    $sp = Get-Pattern $rows[$row] ([System.Windows.Automation.SelectionItemPattern]::Pattern)
+    if ($sp) { $selected = [bool]$sp.Current.IsSelected }
+    $after = Get-OpenModalWindow
+    $openedDialog = $null
+    if ($after -and $after.Current.Name -ne $modalBefore) { $openedDialog = $after.Current.Name }
+
+    $data = [ordered]@{
+        field            = [string]$field
+        row              = $row
+        doubleClick      = $double
+        rowText          = $rows[$row].Current.Name
+        hitArea          = $hit
+        rowSelectedAfter = $selected
+        openedDialog     = $openedDialog
+        modalBefore      = $modalBefore
+        modalAfter       = $(if ($after) { $after.Current.Name } else { $null })
+        point            = (New-DeclaredPoint -X $x -Y $y -Geometry (Get-MonitorGeometry -X $x -Y $y))
+    }
+    if (-not $selected -and -not $openedDialog) {
+        return (New-Result -Ok $false -Code 'NoEffect' `
+            -Message "Clicked $hit of row $row in '$field' but the selection did not land on it and no dialog opened." `
+            -Verified $true -Context (Get-Context $Window) -Data $data)
+    }
+    $what = if ($double) { 'Double-clicked' } else { 'Clicked' }
+    $raised = if ($openedDialog) { " It opened '$openedDialog'." } else { '' }
+    return (New-Result -Ok $true -Code 'Ok' -Message "$what $hit of row $row in '$field'.$raised" `
+        -Verified $true -Context (Get-Context $Window) -Data $data)
+}
+
 function Invoke-Mechanism-NotImplemented {
     param($Spec, $Opts, $Window)
     $note = if ($Spec.PSObject.Properties.Name -contains 'note' -and $Spec.note) { " $($Spec.note)" } else { '' }
@@ -3454,11 +3915,15 @@ function Invoke-Command-Spec {
         'contextMenu'    { Invoke-Mechanism-ContextMenu    $Spec $Opts $Window }
         'contextMenuDump' { Invoke-Mechanism-ContextMenuDump $Spec $Opts $Window }
         'menuBarDump'    { Invoke-Mechanism-MenuBarDump    $Spec $Opts $Window }
+        'toolbarDump'    { Invoke-Mechanism-ToolbarDump    $Spec $Opts $Window }
         'menu'           { Invoke-Mechanism-Menu           $Spec $Opts $Window }
         'capture'        { Invoke-Mechanism-Capture        $Spec $Opts $Window }
         'dialogCancel'   { Invoke-Mechanism-DialogCancel   $Spec $Opts $Window }
         'dialogButton'   { Invoke-Mechanism-DialogButton   $Spec $Opts $Window }
         'dialogSetText'  { Invoke-Mechanism-DialogSetText  $Spec $Opts $Window }
+        'dialogSetCheck' { Invoke-Mechanism-DialogSetCheck $Spec $Opts $Window }
+        'dialogSelectItem' { Invoke-Mechanism-DialogSelectItem $Spec $Opts $Window }
+        'dialogClickRow' { Invoke-Mechanism-DialogClickRow $Spec $Opts $Window }
         'dialogRead'     { Invoke-Mechanism-DialogRead     $Spec $Opts $Window }
         'notImplemented' { Invoke-Mechanism-NotImplemented $Spec $Opts $Window }
         default          { Invoke-Mechanism-NotImplemented $Spec $Opts $Window }

@@ -50,6 +50,16 @@ or activatable rows, context actions, and implicit gestures such as single-click
 right-click and keyboard activation, even when the surface has no visible edit button or affordance.
 A screenshot or control inventory proves presentation only; it does not prove interaction behaviour.
 
+**The plan is enumerated from the Ready stories' acceptance criteria before comparing — not from what
+exploring the two applications happens to surface.** Exploration finds what is visible; it cannot find
+what is absent, so a criterion nobody thought to look at is never exercised and silently reads as passed.
+Every MUST in a Ready story is a plan item until it is demonstrated, covered by a test, or mapped to a
+registered difference. A findings list orders discovered work; it never states coverage.
+
+**A criterion that cannot be exercised because the driver lacks the verb is a driver gap, not a pass.**
+Record it unresolved and fix the driver. Dimension 13 needs a verb for activating a row *inside a
+dialog* — which is not the same as clicking a button, or a row in a tree.
+
 **Set-valued dimensions require member-level completeness.** Where a dimension ranges over a set of
 instances — the dialogs, each node type's menus and actions, the report types),
 the product families / variable types / themes / text scales — the plan is complete for that

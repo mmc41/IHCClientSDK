@@ -342,7 +342,7 @@ public class SmokeTests : AvaloniaTestBase
         vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
         harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Mode", new[] { "Direct", "With delay", "Switched off" });
         vm.SelectNode(vm.InstallationNodes[0].Children[2]);   // Settings
-        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "Ny…").Command!).ExecuteAsync(null);
+        await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "Ny type…").Command!).ExecuteAsync(null);
 
         var window = new MainWindow { DataContext = vm };
         CurrentTestWindow = window;
@@ -724,15 +724,20 @@ public class SmokeTests : AvaloniaTestBase
     }
 
     // US-012: the terminal-addressing dialog exposes data line, terminal and initial-value controls.
+    // The two address controls became LISTS in alignment F-33 (the vendor picks the address from a data-line list
+    // led by "ikke konfigureret" and a per-line terminal list); this smoke test asserts their PRESENCE and that a
+    // chosen line shows, which is what it was always about. The list semantics live in
+    // TerminalAddressListParityTests.
     [AvaloniaTest]
     [CaptureScreenshotOnFailure]
     public void PinPropertiesWindow_ShowsAddressingFields()
     {
         var window = new PinPropertiesWindow { Title = "Input 'Tryk (venstre)'" };
-        var dataLine = window.FindControl<NumericUpDown>("DataLineBox");
-        var terminal = window.FindControl<NumericUpDown>("TerminalBox");
+        window.Populate(new PinPropertiesInput("Input 'Tryk (venstre)'", IsOutput: false, DataLine: 2, Terminal: 1,
+            CableColour: "", Note: "", InitialValueOn: false, InUseTerminals: []));
+        var dataLine = window.FindControl<ComboBox>("DataLineList");
+        var terminal = window.FindControl<ComboBox>("TerminalList");
         var initialValue = window.FindControl<ComboBox>("InitialValueCombo");
-        if (dataLine is not null) dataLine.Value = 2;
         CurrentTestWindow = window;
         window.Show();
         window.CaptureRenderedFrame();
@@ -740,7 +745,7 @@ public class SmokeTests : AvaloniaTestBase
         Assert.Multiple(() =>
         {
             Assert.That(window.Title, Is.EqualTo("Input 'Tryk (venstre)'"));
-            Assert.That(dataLine?.Value, Is.EqualTo(2));
+            Assert.That(dataLine?.SelectedIndex, Is.EqualTo(2), "data line 2 sits at index 2, after not-configured");
             Assert.That(terminal, Is.Not.Null, "the terminal control is present");
             Assert.That(initialValue, Is.Not.Null, "the initial-value control is present (shown for outputs)");
         });

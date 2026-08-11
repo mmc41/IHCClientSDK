@@ -41,7 +41,7 @@
             <TextBlock Name="NoteLabel" Classes="label" Text="Note"/>
             <TextBox Name="NoteBox" a:AutomationProperties.LabeledBy="{Binding #NoteLabel}"/>
 
-            <TextBlock Name="IdentificationLabel" Classes="label" Text="Id-kode"/>
+            <TextBlock Name="IdentificationLabel" Classes="label" Text="Identifikationskode"/>
             <TextBox Name="IdentificationBox" a:AutomationProperties.LabeledBy="{Binding #IdentificationLabel}"/>
 
             <TextBlock Classes="group" Text="Kabling"/>

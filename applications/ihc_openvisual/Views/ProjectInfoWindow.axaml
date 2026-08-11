@@ -3,6 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:a="using:Avalonia.Automation"
+        xmlns:controls="using:ihc_openvisual.Controls"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="520"
         x:Class="ihc_openvisual.Views.ProjectInfoWindow"
         a:AutomationProperties.AutomationId="ProjectInfoWindow"
@@ -14,7 +15,13 @@
     <Window.Styles>
         <!-- A captioned group box: the three sections IHC Visual draws (uxparity S-32). Avalonia has no GroupBox,
              so a HeaderedContentControl carries the caption and a bordered panel the fields. -->
-        <Style Selector="HeaderedContentControl.group">
+        <Style Selector="controls|AccessibleGroupBox.group">
+            <!-- F-38: the caption below lives in the TEMPLATE, and a templated TextBlock never reaches the
+                 automation tree — so all three captions rendered on screen and NONE appeared in the control
+                 inventory. AccessibleGroupBox's peer publishes the Header as the group's name, which is why the
+                 type is used here rather than a plain HeaderedContentControl: the caption cannot be forgotten
+                 per instance, and the installer and customer blocks carry the SAME eight field labels, so it is
+                 the only thing saying which party a field belongs to. -->
             <Setter Property="Template">
                 <ControlTemplate>
                     <StackPanel>
@@ -45,7 +52,7 @@
         <!-- Project across the top; the two contact groups side by side beneath it, installer first — the vendor's
              arrangement. Everything fits without scrolling at the dialog's default size. -->
         <Grid RowDefinitions="Auto,*" ColumnDefinitions="*,*" ColumnSpacing="12" RowSpacing="12">
-            <HeaderedContentControl Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Classes="group" Header="Projekt oplysninger">
+            <controls:AccessibleGroupBox Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Classes="group" Header="Projekt oplysninger">
                 <Grid ColumnDefinitions="*,*,*,*" RowDefinitions="Auto,Auto,Auto,Auto">
                     <!-- Field order follows the vendor's reading order (Number, Type, Programmer, Drawing,
                          Description) so the two dialogs present the same sequence — uxparity S-32. -->
@@ -67,11 +74,11 @@
                     <TextBox Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="4" Name="ProjDescriptionBox"
                              a:AutomationProperties.LabeledBy="{Binding #ProjDescriptionLabel}"/>
                 </Grid>
-            </HeaderedContentControl>
+            </controls:AccessibleGroupBox>
 
             <!-- Both contact groups are a two-column grid: Name|Street, Phone|Postal code, Mobile|City,
                  Email|Country — the vendor's cell order, so the fields read in the same sequence in both apps. -->
-            <HeaderedContentControl Grid.Row="1" Grid.Column="0" Classes="group" Header="Installatør information"
+            <controls:AccessibleGroupBox Grid.Row="1" Grid.Column="0" Classes="group" Header="Installatør information"
                                     VerticalAlignment="Top">
                 <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto">
                     <StackPanel Grid.Row="0" Grid.Column="0" Classes="field">
@@ -115,9 +122,9 @@
                                          a:AutomationProperties.LabeledBy="{Binding #InstCountryLabel}"/>
                     </StackPanel>
                 </Grid>
-            </HeaderedContentControl>
+            </controls:AccessibleGroupBox>
 
-            <HeaderedContentControl Grid.Row="1" Grid.Column="1" Classes="group" Header="Kunde oplysninger"
+            <controls:AccessibleGroupBox Grid.Row="1" Grid.Column="1" Classes="group" Header="Kunde oplysninger"
                                     VerticalAlignment="Top">
                 <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto">
                     <StackPanel Grid.Row="0" Grid.Column="0" Classes="field">
@@ -161,7 +168,7 @@
                                          a:AutomationProperties.LabeledBy="{Binding #CustCountryLabel}"/>
                     </StackPanel>
                 </Grid>
-            </HeaderedContentControl>
+            </controls:AccessibleGroupBox>
         </Grid>
     </DockPanel>
 </Window>
