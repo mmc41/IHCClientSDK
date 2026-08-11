@@ -15,8 +15,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Tilføj hændelse";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireTag(ProgramId, "a program", "program_simple")
-                .And(context.RequireUnlockedTarget(ProgramId, inclusive: true));   // T003
+            context.RequireUnlockedTag(ProgramId, "a program", "program_simple");   // T003
         internal override void Execute(ProjectEditor editor) =>   // OperandId is the second operand %S (T008), else unary
             editor.Program(ProgramId).AddEvent(Name, editor.Resource(VariableId), Method,
                 OperandId is { } op ? editor.Resource(op) : null, note: Note);
@@ -27,8 +26,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Tilføj Powerup hændelse";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireTag(ProgramId, "a program", "program_simple")
-                .And(context.RequireUnlockedTarget(ProgramId, inclusive: true));   // T003
+            context.RequireUnlockedTag(ProgramId, "a program", "program_simple");   // T003
         // The note is serialized into .vis; keep the vendor literal rather than a user-facing explanation.
         internal override void Execute(ProjectEditor editor) =>
             editor.Program(ProgramId).AddPowerEvent("Powerup", "Start program ved Powerup");
@@ -57,8 +55,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => $"Tilføj program '{Name}'";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireTag(ProgramsId, "a programs container", "programs")
-                .And(context.RequireUnlockedTarget(ProgramsId, inclusive: true));
+            context.RequireUnlockedTag(ProgramsId, "a programs container", "programs");
         internal override void Execute(ProjectEditor editor) => ProgramGrammar.CreateProgram(editor, ProgramsId, Name);
     }
 
@@ -67,8 +64,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Tilføj under program";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireTag(CommandsId, "a command container", "actions")
-                .And(context.RequireUnlockedTarget(CommandsId, inclusive: true));   // T003
+            context.RequireUnlockedTag(CommandsId, "a command container", "actions");   // T003
         internal override void Execute(ProjectEditor editor) => editor.Branch(CommandsId).AddSubProgram();
     }
 
@@ -78,8 +74,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Tilføj betingelse";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireTag(ConditionsId, "a conditions group", "conditions")
-                .And(context.RequireUnlockedTarget(ConditionsId, inclusive: true));   // T003
+            context.RequireUnlockedTag(ConditionsId, "a conditions group", "conditions");   // T003
         internal override void Execute(ProjectEditor editor) =>   // OperandId is the second operand %S (T008), else unary
             editor.ConditionsGroup(ConditionsId).AddCondition(Name, editor.Resource(VariableId), Method,
                 OperandId is { } op ? editor.Resource(op) : null, note: Note);
@@ -90,8 +85,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Rediger betingelseslogik";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireTag(ConditionsId, "a conditions group", "conditions")
-                .And(context.RequireUnlockedTarget(ConditionsId, inclusive: true));   // T004
+            context.RequireUnlockedTag(ConditionsId, "a conditions group", "conditions");   // T004
         internal override void Execute(ProjectEditor editor)
         {
             ConditionsGroupRef group = editor.ConditionsGroup(ConditionsId);
@@ -111,8 +105,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Tilføj logik gruppe";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireTag(ConditionsId, "a conditions group", "conditions")
-                .And(context.RequireUnlockedTarget(ConditionsId, inclusive: true));   // T003
+            context.RequireUnlockedTag(ConditionsId, "a conditions group", "conditions");   // T003
         internal override void Execute(ProjectEditor editor) => editor.ConditionsGroup(ConditionsId).AddConditionGroup();
     }
 
@@ -160,8 +153,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Tilføj case værdi";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireTag(CaseId, "a case", "program_case")
-                .And(context.RequireUnlockedTarget(CaseId, inclusive: true));   // T003
+            context.RequireUnlockedTag(CaseId, "a case", "program_case");   // T003
         internal override void Execute(ProjectEditor editor)
         {
             if (EnumTypeName is { } typeName)
@@ -192,8 +184,7 @@ namespace Ihc.Vis.Session
 
         internal override string Describe(Project project) => "Gem aktuel værdi";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireTag(OutputId, "a stored value", BackupCapableTags)
-                .And(context.RequireUnlockedTarget(OutputId, inclusive: true));   // T004
+            context.RequireUnlockedTag(OutputId, "a stored value", BackupCapableTags);   // T004
         internal override void Execute(ProjectEditor editor) =>
             editor.Resolve(OutputId, "stored value").SetAttribute("backup", Save ? "yes" : "no");
     }

@@ -78,22 +78,25 @@ public partial class PinPropertiesWindow : ResultDialog<PinPropertiesResult>
     // and clears any port picked for the previous one, because port 3 of line 1 is not port 3 of line 2.
     private void OnDataLineChanged(object? sender, EventArgs e)
     {
-        FillTerminals(keepSelection: false);
+        FillTerminals();
         MarkDirty(sender, e);
     }
 
-    private void FillTerminals(bool keepSelection)
+    private void FillTerminals()
     {
         int line = DataLineList.SelectedIndex;
-        int previous = TerminalList.SelectedIndex;
         var items = new List<string>();
         for (int terminal = 1; terminal <= DatalineAddress.TerminalsPerLine(_isOutput); terminal++)
         {
-            items.Add(_inUse.Contains($"{line}.{terminal}") ? $"{terminal} (i brug)" : terminal.ToString(CultureInfo.InvariantCulture));
+            items.Add(_inUse.Contains(new DatalineAddress(line, terminal))
+                ? $"{terminal} (i brug)"
+                : terminal.ToString(CultureInfo.InvariantCulture));
         }
         TerminalList.ItemsSource = line > 0 ? items : new List<string>();
         TerminalList.IsEnabled = line > 0;
-        TerminalList.SelectedIndex = keepSelection && line > 0 ? previous : -1;
+        // Every caller re-selects explicitly on the next line, and choosing a line must clear the port picked for
+        // the previous one — port 3 of line 1 is not port 3 of line 2.
+        TerminalList.SelectedIndex = -1;
     }
 
     private Func<PinPropertiesResult, Task>? _onApply;
@@ -121,7 +124,7 @@ public partial class PinPropertiesWindow : ResultDialog<PinPropertiesResult>
         DataLineList.ItemsSource = lines;
         // Terminal 0 is the existing "unaddressed" convention, and it selects the not-configured entry.
         DataLineList.SelectedIndex = input.Terminal > 0 ? input.DataLine : 0;
-        FillTerminals(keepSelection: false);
+        FillTerminals();
         TerminalList.SelectedIndex = input.Terminal > 0 ? input.Terminal - 1 : -1;
         TerminalLabel.Text = input.IsOutput ? "Udgang" : "Indgang";
         CableColourBox.Text = input.CableColour;
@@ -138,13 +141,11 @@ public partial class PinPropertiesWindow : ResultDialog<PinPropertiesResult>
 
     private const string NotConfigured = "ikke konfigureret";
     private bool _isOutput = true;
-    private HashSet<string> _inUse = [];
+    private HashSet<DatalineAddress> _inUse = [];
 
     /// <summary>The values the dialog would commit right now — the parity tests' read of the address mapping,
     /// which is otherwise only observable by driving a modal to OK.</summary>
-    internal PinPropertiesResult ResultForTest() => BuildResult();
-
-    private PinPropertiesResult BuildResult() =>
+    internal PinPropertiesResult BuildResult() =>
         new(DataLineList.SelectedIndex > 0 ? DataLineList.SelectedIndex : 1,
             DataLineList.SelectedIndex > 0 ? TerminalList.SelectedIndex + 1 : 0,
             CableColourBox.Text ?? string.Empty,

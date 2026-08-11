@@ -313,13 +313,12 @@ namespace Ihc.Vis
             ArgumentNullException.ThrowIfNull(details);
             return RunTraced(nameof(CreateNew), activity =>
             {
-                Project project = NewProjectBuilder.Build(catalog.Value, details, timeProvider.GetLocalNow(), seedLayout);
                 // Vendor (default) leaves the authentic Danish rooms untouched → byte-identical output. English
-                // replays the ten default-room renames for an English-language authoring frontend (US-002).
-                if (language == LocalityLanguage.English)
-                {
-                    project = ApplyEnglishLocalities(project);
-                }
+                // seeds the ten default rooms in English for an English-language authoring frontend (US-002) — the
+                // builder names them as it assembles the template, so there is no second pass to repair them after.
+                Project project = NewProjectBuilder.Build(
+                    catalog.Value, details, timeProvider.GetLocalNow(), seedLayout,
+                    language == LocalityLanguage.English ? EnglishLocalities : null);
                 activity?.SetReturnValue(project);
                 return project;
             });
@@ -332,29 +331,6 @@ namespace Ihc.Vis
             "Living room", "Hall", "Kitchen", "Bedroom", "Room",
             "Bathroom", "Utility room", "Garage", "Basement", "Outdoors",
         };
-
-        // Renames the ten default localities to English by position — an attribute edit (no ids allocated, tree
-        // structure unchanged) applied only when the project holds exactly the ten-locality default skeleton, so a
-        // customised template is never rewritten (mirrors the app's former DefaultLocalities.ApplyEnglish guard).
-        private static Project ApplyEnglishLocalities(Project project)
-        {
-            IReadOnlyList<ProjectElement> groups = project.Groups;
-            if (groups.Count != EnglishLocalities.Length)
-            {
-                return project;
-            }
-            ProjectEditor editor = project.Edit();
-            for (int i = 0; i < EnglishLocalities.Length; i++)
-            {
-                string current = project.View(groups[i]).Name ?? string.Empty;
-                if (current.Length == 0)
-                {
-                    continue;   // an unnamed group is not a default room; Group("") would seed a new one
-                }
-                editor.Group(current).Name(EnglishLocalities[i]);
-            }
-            return editor.ToProject();
-        }
 
         /// <summary>Loads a project from a file path.</summary>
         public async Task<Project> Load(string path)
@@ -583,19 +559,18 @@ namespace Ihc.Vis
             return await RunTracedAsync(nameof(UploadTo), async activity =>
             {
                 await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                if (validate)
-                {
-                    ProjectValidationResult validation = ProjectValidator.Validate(project);
-                    if (!validation.IsValid)
-                    {
-                        throw new ProjectValidationException(validation);
-                    }
-                }
                 // Always verify the write on this path (controller EPROM has no .BAK to roll back to) — a
                 // deliberate, documented postcondition, not a silent discard of the caller's option. The check is
                 // tolerant of the benign omit-if-default asymmetry, so a foreign file with an explicit
                 // default-equal attribute still uploads; only a genuinely non-reproducible model is refused.
-                ProjectSaveOptions effective = (options ?? ProjectSaveOptions.Default) with { VerifyRoundTrip = true };
+                // `validate` rides the same option rather than a second guard here, so the validate-then-serialize
+                // order has ONE implementation; ORing keeps an options-supplied opt-in from being overridden off.
+                ProjectSaveOptions supplied = options ?? ProjectSaveOptions.Default;
+                ProjectSaveOptions effective = supplied with
+                {
+                    VerifyRoundTrip = true,
+                    ValidateBeforeSave = supplied.ValidateBeforeSave || validate,
+                };
                 // Serialize straight to the on-wire string — the controller takes a ProjectFile, not a stream — so
                 // no MemoryStream/ToArray copy is needed (the byte[] → string is the only conversion required).
                 ProjectFile file = new ProjectFile(filename ?? DefaultProjectFilename,
@@ -664,12 +639,25 @@ namespace Ihc.Vis
         /// insert identifier, display name and category path) — the narrow surface a menu needs, without exposing the
         /// full authoring <see cref="ProductDefinition"/>.</summary>
         public IReadOnlyList<CatalogItem> GetProductCatalogItems() =>
-            GetAvailableProducts()
-                // The body's `name` carries the catalog's NN# ordering prefix, which DisplayName has had stripped —
-                // an insert menu needs it to list its leaves in the catalog's own order rather than alphabetically.
-                .Select(p => new CatalogItem(p.ProductIdentifier, p.DisplayName, p.CategoryPath,
-                                             p.Body.GetAttribute("name")))
-                .ToList();
+            GetAvailableProducts().Select(ToCatalogItem).ToList();
+
+        /// <summary>
+        /// The insert-menu projection of ONE product, by its <c>product_identifier</c> — the single-item form of
+        /// <see cref="GetProductCatalogItems"/>, for the callers that need one component's display name (a product
+        /// dialog titles itself with its catalog type) rather than the whole catalog. Null when no product declares
+        /// that identifier, which is the answer a caller wants: a project may name a component this catalog does not
+        /// carry, and that is a fall back to the element's own name, not a failure.
+        /// </summary>
+        public CatalogItem? GetProductCatalogItem(string productIdentifier) =>
+            GetAvailableProducts().FirstOrDefault(p => p.ProductIdentifier == productIdentifier) is { } product
+                ? ToCatalogItem(product)
+                : null;
+
+        // The body's `name` carries the catalog's NN# ordering prefix, which DisplayName has had stripped — an
+        // insert menu needs it to list its leaves in the catalog's own order rather than alphabetically.
+        private static CatalogItem ToCatalogItem(ProductDefinition product) =>
+            new(product.ProductIdentifier, product.DisplayName, product.CategoryPath,
+                product.Body.GetAttribute("name"));
 
         /// <summary>The available function blocks projected to slim insert-menu items (<see cref="CatalogItem"/>,
         /// keyed by <c>master_type</c>) — the narrow surface a menu needs, without the full authoring definition.</summary>

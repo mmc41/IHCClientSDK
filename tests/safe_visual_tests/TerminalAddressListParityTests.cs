@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using ihc_openvisual.Services;
 using ihc_openvisual.Views;
+using Ihc.Vis.Addressing;
 using NUnit.Framework;
 
 namespace safe_visual_tests;
@@ -31,7 +32,7 @@ public class TerminalAddressListParityTests : AvaloniaTestBase
 {
     private const string NotConfigured = "ikke konfigureret";
 
-    private static PinPropertiesInput Input(int dataLine, int terminal, params string[] inUse) =>
+    private static PinPropertiesInput Input(int dataLine, int terminal, params DatalineAddress[] inUse) =>
         new("Udgang 'Udgang'", IsOutput: true, DataLine: dataLine, Terminal: terminal,
             CableColour: "", Note: "", InitialValueOn: false, InUseTerminals: inUse, Name: "Udgang");
 
@@ -82,7 +83,8 @@ public class TerminalAddressListParityTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public void PortsAlreadyTaken_AreMarkedInTheList_ForTheChosenLineOnly()
     {
-        PinPropertiesWindow w = Opened(Input(dataLine: 1, terminal: 0, inUse: ["1.3", "2.5"]));
+        PinPropertiesWindow w = Opened(Input(dataLine: 1, terminal: 0,
+            inUse: [new DatalineAddress(1, 3), new DatalineAddress(2, 5)]));
 
         Lines(w).SelectedIndex = 1;
 
@@ -122,7 +124,7 @@ public class TerminalAddressListParityTests : AvaloniaTestBase
         Assert.Multiple(() =>
         {
             Assert.That(w.FindControl<Button>("OkButton")!.IsEnabled, Is.True);
-            Assert.That(w.ResultForTest().Terminal, Is.Zero, "unaddressed is terminal 0, the existing convention");
+            Assert.That(w.BuildResult().Terminal, Is.Zero, "unaddressed is terminal 0, the existing convention");
         });
     }
 
@@ -136,8 +138,8 @@ public class TerminalAddressListParityTests : AvaloniaTestBase
         {
             Assert.That(Lines(w).SelectedIndex, Is.EqualTo(2), "line 2 sits at index 2, after not-configured");
             Assert.That(Terminals(w).SelectedIndex, Is.EqualTo(2), "terminal 3 is the third entry");
-            Assert.That(w.ResultForTest().DataLine, Is.EqualTo(2));
-            Assert.That(w.ResultForTest().Terminal, Is.EqualTo(3));
+            Assert.That(w.BuildResult().DataLine, Is.EqualTo(2));
+            Assert.That(w.BuildResult().Terminal, Is.EqualTo(3));
         });
     }
 }

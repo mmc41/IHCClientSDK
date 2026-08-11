@@ -6,6 +6,7 @@ using System.Linq;
 using Ihc.Vis.Addressing;
 using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
+using Ihc.Vis.Schema;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
@@ -56,7 +57,7 @@ namespace Ihc.Vis.Validation
 
                     foreach (ProjectElement terminal in product.ChildrenOrEmpty().Where(c => c.Tag is "dataline_input" or "dataline_output"))
                     {
-                        bool linked = terminal.ChildrenOrEmpty().Any(c => c.Tag is "link_from_resource" or "link_to_resource");
+                        bool linked = terminal.ChildrenOrEmpty().Any(c => c.Tag is ReciprocalTags.FollowLinkFromTag or ReciprocalTags.FollowLinkToTag);
                         if (!linked) { Add("doc-not-linked", terminal, "Ikke forbundet"); }
                         if (Blank(terminal, "cable_colour")) { Add("doc-cable-colour", terminal, "Mangler Ledningsfarve"); }
                         if (!DatalineAddress.TryParse(terminal.GetAttribute("address_dataline"), terminal.Tag == "dataline_output", out _))

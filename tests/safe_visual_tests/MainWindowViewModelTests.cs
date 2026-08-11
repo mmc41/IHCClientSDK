@@ -8,6 +8,7 @@ using ihc_openvisual.Services;
 using ihc_openvisual.ViewModels;
 using Ihc;
 using Ihc.Vis;
+using Ihc.Vis.Addressing;
 using Ihc.Vis.Session;
 using Ihc.Vis.Catalog;
 using Ihc.Vis.Schema;
@@ -858,7 +859,8 @@ public class MainWindowViewModelTests
             Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(0), "not the product dialog");
             Assert.That(harness.Dialogs.EditPropertiesCalls, Is.EqualTo(0), "not the locality dialog");
             Assert.That(harness.Dialogs.LastPinPropertiesInput!.IsOutput, Is.False);
-            Assert.That(harness.Dialogs.LastPinPropertiesInput!.InUseTerminals, Does.Contain("1.1"));
+            Assert.That(harness.Dialogs.LastPinPropertiesInput!.InUseTerminals,
+                Does.Contain(new DatalineAddress(1, 1)));
         });
     }
 

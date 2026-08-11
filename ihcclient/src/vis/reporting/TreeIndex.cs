@@ -5,6 +5,7 @@ using System.Linq;
 
 using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
+using Ihc.Vis.Schema;
 
 namespace Ihc.Vis.Reporting
 {
@@ -76,7 +77,7 @@ namespace Ihc.Vis.Reporting
         /// </summary>
         public IEnumerable<ProjectElement> LinkTargets(ProjectElement terminal)
         {
-            string linkTag = terminal.Tag == "dataline_output" ? "link_to_resource" : "link_from_resource";
+            string linkTag = terminal.Tag == "dataline_output" ? ReciprocalTags.FollowLinkToTag : ReciprocalTags.FollowLinkFromTag;
             foreach (ProjectElement linkRow in terminal.ChildrenOrEmpty())
             {
                 if (linkRow.Tag == linkTag && ById(linkRow.GetAttribute("link")) is { } target)

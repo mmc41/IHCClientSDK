@@ -201,23 +201,12 @@ namespace Ihc.Vis.Validation
         private static void ValidateFunctionBlockShape(ProjectElement functionBlock, FindingCollector findings)
         {
             string id = functionBlock.GetAttribute("id") ?? "?";
-            ImmutableArray<ProjectElement> children = functionBlock.Children.IsDefaultOrEmpty
-                ? ImmutableArray<ProjectElement>.Empty
-                : functionBlock.Children;
+            ImmutableArray<ProjectElement> children = functionBlock.ChildrenOrEmpty();
 
             // (1) exactly the five containers, in the fixed order (no missing / extra / foreign / reordered child).
-            bool shapeOk = children.Length == FunctionBlockContainers.Length;
-            for (int i = 0; shapeOk && i < children.Length; i++)
+            List<string> actual = children.Select(c => c.Tag).ToList();
+            if (!actual.SequenceEqual(FunctionBlockContainers))
             {
-                shapeOk = children[i].Tag == FunctionBlockContainers[i];
-            }
-            if (!shapeOk)
-            {
-                var actual = new List<string>();
-                foreach (ProjectElement c in children)
-                {
-                    actual.Add(c.Tag);
-                }
                 findings.Error("fb-shape", functionBlock,
                     $"functionblock '{id}' must contain exactly the five containers " +
                     $"[{string.Join(", ", FunctionBlockContainers)}] in that order, but has [{string.Join(", ", actual)}]");
@@ -342,19 +331,12 @@ namespace Ihc.Vis.Validation
             string[] expected = program.Tag == "program_simple"
                 ? new[] { "events", "actions" }
                 : new[] { "conditions", "actions", "actions" };
-            ImmutableArray<ProjectElement> children = program.Children.IsDefaultOrEmpty
-                ? ImmutableArray<ProjectElement>.Empty
-                : program.Children;
-            bool ok = children.Length == expected.Length;
-            for (int i = 0; ok && i < children.Length; i++)
-            {
-                ok = children[i].Tag == expected[i];
-            }
-            if (!ok)
+            List<string> actual = program.ChildrenOrEmpty().Select(c => c.Tag).ToList();
+            if (!actual.SequenceEqual(expected))
             {
                 findings.Warning("program-shape", program,
                     $"'{program.Tag}' '{program.GetAttribute("id") ?? "?"}' does not have the vendor skeleton " +
-                    $"[{string.Join(", ", expected)}] (found [{string.Join(", ", children.Select(c => c.Tag))}])");
+                    $"[{string.Join(", ", expected)}] (found [{string.Join(", ", actual)}])");
             }
         }
 
@@ -562,9 +544,7 @@ namespace Ihc.Vis.Validation
                     $"last_unique_id (0x{lastUniqueId:x}) is below the highest counter present (0x{maxCounter:x})");
             }
 
-            var actual = root.Children.IsDefaultOrEmpty
-                ? new List<string>()
-                : root.Children.Select(c => c.Tag).ToList();
+            List<string> actual = root.ChildrenOrEmpty().Select(c => c.Tag).ToList();
             if (!actual.SequenceEqual(RootChildOrder))
             {
                 findings.Warning("root-children", root,

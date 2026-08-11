@@ -110,8 +110,8 @@ public class DateDialogParityTests : AvaloniaTestBase
             Assert.That(window.FindControl<StackPanel>("DatePanel")!.IsVisible, Is.True);
             Assert.That(window.FindControl<TextBox>("DayBox")!.Text, Is.EqualTo("24"));
             Assert.That(window.FindControl<TextBox>("MonthBox")!.Text, Is.EqualTo("12"));
-            Assert.That(window.ResultForTest().Day, Is.EqualTo(24));
-            Assert.That(window.ResultForTest().Month, Is.EqualTo(12));
+            Assert.That(window.ReadValue().Day, Is.EqualTo(24));
+            Assert.That(window.ReadValue().Month, Is.EqualTo(12));
         });
     }
 }

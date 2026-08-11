@@ -412,25 +412,16 @@ namespace Ihc.Vis.Editing
         public const string DefaultCaseType = FbGrammar.DefaultCaseType;
 
         /// <summary>Attribute set for a trigger with no resource operands (<c>event_power</c>): name, icon, optional note.</summary>
-        public static (string, string)[] LeafAttrs(string name, string icon, string? note)
-        {
-            var attrs = new List<(string, string)> { ("name", name), ("icon", icon) };
-            if (note is not null)
-            {
-                attrs.Add(("note", note));
-            }
-            return attrs.ToArray();
-        }
+        // The seed is FbGrammar's — the same {name, icon, +optional note} in the same vendor order, which the .ifb
+        // builders already share. Only the trailing wiring differs between the two layers.
+        public static (string, string)[] LeafAttrs(string name, string icon, string? note) =>
+            FbGrammar.LeafAttrs(name, icon, note).ToArray();
 
         /// <summary>Attribute set for a resource-wired leaf (<c>event</c>/<c>condition</c>/<c>action</c>).</summary>
         public static (string, string)[] WiredAttrs(string name, string icon, string? note,
             ResourceRef link1, ResourceRef? link2, string method)
         {
-            var attrs = new List<(string, string)> { ("name", name), ("icon", icon) };
-            if (note is not null)
-            {
-                attrs.Add(("note", note));
-            }
+            List<(string, string)> attrs = FbGrammar.LeafAttrs(name, icon, note);
             attrs.Add(("link1", RequireId(link1, nameof(link1))));
             if (link2 is not null)
             {

@@ -80,7 +80,7 @@ public class VariableDialogFieldParityTests
         VariablePropertiesWindow window = Populated(ResourceInitialValue.OfBool(true));
         window.FindControl<ComboBox>("BoolBox")!.SelectedIndex = 0;
 
-        Assert.That(window.ResultForTest().Bool, Is.False);
+        Assert.That(window.ReadValue().Bool, Is.False);
     }
 
     private static VariablePropertiesWindow Populated(ResourceInitialValue value)

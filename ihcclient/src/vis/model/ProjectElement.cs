@@ -89,18 +89,8 @@ namespace Ihc.Vis.Model
         /// Returns a copy with the named attribute set: the existing entry is replaced in place (registry order
         /// preserved) or, when absent, appended at the end.
         /// </summary>
-        public ProjectElement WithAttribute(string name, string value)
-        {
-            ImmutableArray<(string Name, string Value)> attrs = AttrsOrEmpty();
-            for (int i = 0; i < attrs.Length; i++)
-            {
-                if (attrs[i].Name == name)
-                {
-                    return this with { Attrs = attrs.SetItem(i, (name, value)) };
-                }
-            }
-            return this with { Attrs = attrs.Add((name, value)) };
-        }
+        public ProjectElement WithAttribute(string name, string value) =>
+            this with { Attrs = SetAttribute(AttrsOrEmpty(), name, value) };
 
         /// <summary>Returns the first direct child with the given tag, or <c>null</c> when none.</summary>
         public ProjectElement? FindChild(string tag)

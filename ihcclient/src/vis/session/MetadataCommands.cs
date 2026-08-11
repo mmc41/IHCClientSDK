@@ -1,6 +1,5 @@
 #nullable enable
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
@@ -79,8 +78,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Indsæt variabel";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireTag(BlockId, "a function block", "functionblock")
-                .And(context.RequireUnlockedTarget(BlockId, inclusive: true));   // T003
+            context.RequireUnlockedTag(BlockId, "a function block", "functionblock");   // T003
         internal override ElementId ExecuteCore(ProjectEditor editor)
         {
             FunctionBlockRef fb = editor.FunctionBlock(BlockId);
@@ -104,27 +102,12 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Tilføj enumerator";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireTag(BlockId, "a function block", "functionblock")
-                .And(context.RequireUnlockedTarget(BlockId, inclusive: true));   // T003
+            context.RequireUnlockedTag(BlockId, "a function block", "functionblock");   // T003
         internal override ElementId ExecuteCore(ProjectEditor editor)
         {
             EnumDefinitionRef def = editor.AddEnumDefinition(TypeName, States.ToArray());
-            FunctionBlockRef fb = editor.FunctionBlock(BlockId);
-            void Configure(ElementRef r)
-            {
-                r.SetAttribute("typedef", def.Typedef);
-                if (States.Count > 0)
-                {
-                    r.SetAttribute("inivalue", def.InitialValue(States[0]));
-                }
-            }
-            ResourceRef added = SectionTag switch
-            {
-                "settings" => fb.AddSetting("resource_enum", VariableName, Configure),
-                "internalsettings" => fb.AddInternalVariable("resource_enum", VariableName, Configure),
-                _ => throw new EditRefusedException($"<{SectionTag}> does not accept an enum variable."),
-            };
-            return added.Id ?? throw new EditRefusedException("The variable was not added.");
+            return EnumVariables.AddTo(editor, BlockId, SectionTag, VariableName, def,
+                States.Count > 0 ? def.InitialValue(States[0]) : null);
         }
     }
 
@@ -136,25 +119,37 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Tilføj enumerator";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireTag(BlockId, "a function block", "functionblock")
-                .And(context.RequireUnlockedTarget(BlockId, inclusive: true));   // T003
+            context.RequireUnlockedTag(BlockId, "a function block", "functionblock");   // T003
         internal override ElementId ExecuteCore(ProjectEditor editor)
         {
             EnumDefinitionRef def = editor.EnumDefinition(TypeName);   // resolve the EXISTING type — no new def authored
-            FunctionBlockRef fb = editor.FunctionBlock(BlockId);
+            return EnumVariables.AddTo(editor, BlockId, SectionTag, VariableName, def, def.FirstValue);
+        }
+    }
+
+    /// <summary>The body the two enum-variable inserts share (US-030): they differ only in how the definition is
+    /// resolved — authored fresh vs picked from the project — and which state seeds <c>inivalue</c>. The section
+    /// matrix, its refusal and the id tail are one rule, so a new variable section is one edit, not two.</summary>
+    internal static class EnumVariables
+    {
+        internal static ElementId AddTo(
+            ProjectEditor editor, ElementId blockId, string sectionTag, string variableName,
+            EnumDefinitionRef def, string? inivalue)
+        {
+            FunctionBlockRef fb = editor.FunctionBlock(blockId);
             void Configure(ElementRef r)
             {
                 r.SetAttribute("typedef", def.Typedef);
-                if (def.FirstValue is { } inivalue)
+                if (inivalue is not null)
                 {
                     r.SetAttribute("inivalue", inivalue);
                 }
             }
-            ResourceRef added = SectionTag switch
+            ResourceRef added = sectionTag switch
             {
-                "settings" => fb.AddSetting("resource_enum", VariableName, Configure),
-                "internalsettings" => fb.AddInternalVariable("resource_enum", VariableName, Configure),
-                _ => throw new EditRefusedException($"<{SectionTag}> does not accept an enum variable."),
+                "settings" => fb.AddSetting("resource_enum", variableName, Configure),
+                "internalsettings" => fb.AddInternalVariable("resource_enum", variableName, Configure),
+                _ => throw new EditRefusedException($"<{sectionTag}> does not accept an enum variable."),
             };
             return added.Id ?? throw new EditRefusedException("The variable was not added.");
         }
@@ -212,8 +207,7 @@ namespace Ihc.Vis.Session
         internal override string Describe(Project project) => "Sæt starttilstand";
 
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireTag(VariableId, "an enum variable", "resource_enum")
-                .And(context.RequireUnlockedTarget(VariableId, inclusive: true));   // T003
+            context.RequireUnlockedTag(VariableId, "an enum variable", "resource_enum");   // T003
 
         internal override void Execute(ProjectEditor editor)
         {
@@ -332,10 +326,9 @@ namespace Ihc.Vis.Session
             {
                 return EditVerdict.Allow;   // RequireEditable already refused it; do not double-report
             }
-            int users = context.Project.Root.DescendantsAndSelf().Count(e =>
-                e.GetAttribute("typedef") is { } token
-                && ElementId.TryParse(token, out ElementId referenced)
-                && referenced == defId);
+            // The engine's own by-PARSED-id rule (a foreign file's '_0x0536' references the same type as '_0x536'),
+            // so the gate can never disagree with the delete it guards.
+            int users = ProjectEditor.ReferenceCount(context.Project.Root, "typedef", defId);
             return users == 0
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse($"Enumerator type '{defName}' is still used by {users} resource(s) and cannot be deleted.");
@@ -370,12 +363,11 @@ namespace Ihc.Vis.Session
             ProjectElement product = editor.Require(ProductId);
             void SetSetting(string tag, string value) =>
                 editor.SetDescendantAttribute(product, e => e.Tag == tag, "value", value);
-            static string Dec(int v) => v.ToString(CultureInfo.InvariantCulture);
-            SetSetting("dimmer_setting_fade_rate_up", Dec(Result.SoftOnMs));
-            SetSetting("dimmer_setting_fade_rate_down", Dec(Result.SoftOffMs));
-            SetSetting("dimmer_setting_dimming_rate", Dec(Result.ManualRampS));
-            SetSetting("dimmer_setting_minimum_value", Dec(Result.MinimumPercent));
-            SetSetting("dimmer_setting_maximum_value", Dec(Result.MaximumPercent));
+            SetSetting("dimmer_setting_fade_rate_up", DecToken.Format(Result.SoftOnMs));
+            SetSetting("dimmer_setting_fade_rate_down", DecToken.Format(Result.SoftOffMs));
+            SetSetting("dimmer_setting_dimming_rate", DecToken.Format(Result.ManualRampS));
+            SetSetting("dimmer_setting_minimum_value", DecToken.Format(Result.MinimumPercent));
+            SetSetting("dimmer_setting_maximum_value", DecToken.Format(Result.MaximumPercent));
             SetSetting("dimmer_setting_load_mode", Result.LoadMode);
         }
     }
@@ -407,7 +399,7 @@ namespace Ihc.Vis.Session
                 string.IsNullOrEmpty(Result.PinCode) ? "0" : Result.PinCode);
             for (int i = 0; i < Result.PhoneNumbers.Count; i++)
             {
-                string slot = (i + 1).ToString(CultureInfo.InvariantCulture);
+                string slot = DecToken.Format(i + 1);
                 editor.SetDescendantAttribute(modem,
                     e => e.Tag == "sms_modem_phonenumber" && e.GetAttribute("address") == slot,
                     "phonenumber", Result.PhoneNumbers[i]);

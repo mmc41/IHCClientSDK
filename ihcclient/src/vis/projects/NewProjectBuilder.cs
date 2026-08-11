@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 
 using Ihc.Vis.Catalog;
 using Ihc.Vis.Io;
@@ -23,8 +24,12 @@ namespace Ihc.Vis.Projects
     /// </summary>
     internal static class NewProjectBuilder
     {
+        // localityNames: the names to give the template's default rooms, in document order — for an authoring
+        // frontend that seeds rooms in its own language. Null (the default) keeps the template's own names, so the
+        // vendor path stays byte-identical. Applied only when the count matches the template's room count exactly,
+        // so a customised template is never rewritten; a room the template left unnamed keeps its blank name.
         public static Project Build(ICatalog catalog, ProjectDetails details, DateTimeOffset creationTime,
-            SeedIdLayout seedLayout = SeedIdLayout.EnumsFirst)
+            SeedIdLayout seedLayout = SeedIdLayout.EnumsFirst, IReadOnlyList<string>? localityNames = null)
         {
             ArgumentNullException.ThrowIfNull(catalog);
             ArgumentNullException.ThrowIfNull(details);
@@ -47,7 +52,7 @@ namespace Ihc.Vis.Projects
                 enumDefinitions = BuildEnumDefinitions(skeleton, catalog.BuiltInEnumerators, allocator);
                 documentationModules = BuildDocumentationModules(allocator);
             }
-            ProjectElement groups = RequireChild(skeleton, "groups");
+            ProjectElement groups = RenameLocalities(RequireChild(skeleton, "groups"), localityNames);
 
             string stamp = PackedStamp.FromDateTime(creationTime).ToToken();   // id1 == id2 at creation; Save re-stamps id2
             ProjectElement root = Node("utcs_project", id: null, new[]
@@ -71,6 +76,36 @@ namespace Ihc.Vis.Projects
 
             return new Project(Canonicalizer.Canonicalize(root, ProjectSchemaView.RegistryOnly,
                                                           UndeclaredAttributePolicy.Drop));   // sheds the skeleton's legacy helpid
+        }
+
+        // Names the template's rooms as the caller asked, while the skeleton is being assembled — a name is an
+        // attribute, so no id is allocated and the tree shape is untouched. Doing it here rather than re-opening the
+        // finished project to repair it keeps the room names a property of the template the builder produces, and
+        // addresses each room by POSITION rather than by its current name (two default rooms sharing a name would
+        // make a name-keyed lookup ambiguous).
+        private static ProjectElement RenameLocalities(ProjectElement groups, IReadOnlyList<string>? names)
+        {
+            ImmutableArray<ProjectElement> rooms = groups.ChildrenOrEmpty();
+            if (names is null || names.Count != rooms.Count(c => c.Tag == "group"))
+            {
+                return groups;   // no request, or a customised template — leave it exactly as the catalog wrote it
+            }
+            var renamed = ImmutableArray.CreateBuilder<ProjectElement>(rooms.Length);
+            int position = 0;
+            foreach (ProjectElement room in rooms)
+            {
+                if (room.Tag != "group")
+                {
+                    renamed.Add(room);
+                    continue;
+                }
+                // An unnamed element is not a default room — renaming it would invent a name the template withheld.
+                renamed.Add(string.IsNullOrEmpty(room.GetAttribute("name"))
+                    ? room
+                    : room.WithAttribute("name", names[position]));
+                position++;
+            }
+            return groups with { Children = renamed.MoveToImmutable() };
         }
 
         private static long SeedFromSkeleton(ProjectElement skeleton) =>

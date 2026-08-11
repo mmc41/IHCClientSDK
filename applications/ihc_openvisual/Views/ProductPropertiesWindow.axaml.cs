@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
@@ -36,33 +37,32 @@ public partial class ProductPropertiesWindow : ResultDialog<ProductPropertiesRes
     /// parent window to show it over.</summary>
     internal void Populate(ProductPropertiesInput input)
     {
-        ProductPropertiesWindow window = this;
-        window._currentLocalityId = input.CurrentLocalityId;
-        window.NameBox.Text = input.Name;
-        window.NameBox.IsEnabled = !input.NameLocked;   // a locked library product's name is fixed (A-15)
-        window.PlaceringBox.Text = input.Position;
-        window.NoteBox.Text = input.Note;
-        window.CableTypeBox.Text = input.CableType;
-        window.CableNumberBox.Text = input.CableNumber;
-        window.CablingPanel.IsVisible = !input.IsWireless;   // wireless products have no cabling (US-014)
-        window.AdvancedButton.IsVisible = input.IsWirelessDimmer;   // advanced dimmer settings (US-015)
-        window.IdentificationBox.Text = input.IdentificationCode;
-        window.LightGroupBox.Text = input.LightGroup;
-        window.EndUserReportCheck.IsChecked = input.EndUserReport;
+        _currentLocalityId = input.CurrentLocalityId;
+        NameBox.Text = input.Name;
+        NameBox.IsEnabled = !input.NameLocked;   // a locked library product's name is fixed (A-15)
+        PlaceringBox.Text = input.Position;
+        NoteBox.Text = input.Note;
+        CableTypeBox.Text = input.CableType;
+        CableNumberBox.Text = input.CableNumber;
+        CablingPanel.IsVisible = !input.IsWireless;   // wireless products have no cabling (US-014)
+        AdvancedButton.IsVisible = input.IsWirelessDimmer;   // advanced dimmer settings (US-015)
+        IdentificationBox.Text = input.IdentificationCode;
+        LightGroupBox.Text = input.LightGroup;
+        EndUserReportCheck.IsChecked = input.EndUserReport;
 
-        var terminals = input.Terminals ?? System.Array.Empty<ProductTerminal>();
+        IReadOnlyList<ProductTerminal> terminals = input.Terminals ?? [];
         var inputs = terminals.Where(t => !t.IsOutput).ToList();
         var outputs = terminals.Where(t => t.IsOutput).ToList();
-        window.InputsList.ItemsSource = inputs;
-        window.OutputsList.ItemsSource = outputs;
+        InputsList.ItemsSource = inputs;
+        OutputsList.ItemsSource = outputs;
         // Pre-select the first row of each grid so "Configure input/output" always acts on a terminal the installer
         // can SEE selected. The button used to silently fall back to the first row when nothing was selected, which
         // addressed terminal #1 with no indication that it was the one being configured.
-        window.InputsList.SelectedIndex = inputs.Count > 0 ? 0 : -1;
-        window.OutputsList.SelectedIndex = outputs.Count > 0 ? 0 : -1;
-        window.ConfigInputButton.IsEnabled = inputs.Count > 0;    // disabled when the product has no input terminals
-        window.ConfigOutputButton.IsEnabled = outputs.Count > 0;
-        window.TerminalsPanel.IsVisible = terminals.Count > 0;
+        InputsList.SelectedIndex = inputs.Count > 0 ? 0 : -1;
+        OutputsList.SelectedIndex = outputs.Count > 0 ? 0 : -1;
+        ConfigInputButton.IsEnabled = inputs.Count > 0;    // disabled when the product has no input terminals
+        ConfigOutputButton.IsEnabled = outputs.Count > 0;
+        TerminalsPanel.IsVisible = terminals.Count > 0;
     }
 
     private void OnOk(object? sender, RoutedEventArgs e) => CloseWith();

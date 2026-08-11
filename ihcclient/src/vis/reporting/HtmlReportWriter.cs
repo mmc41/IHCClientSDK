@@ -144,10 +144,13 @@ namespace Ihc.Vis.Reporting
         private static IReadOnlyCollection<string> UsedIconKeys(ReportShapeDocument document)
         {
             var keys = new List<string> { LogoKey };
+            // The List stays the ordered result (the sprite's emission order IS first-use order); the set only
+            // answers "seen already", so the membership test does not rescan every key per tree row.
+            var seen = new HashSet<string>(StringComparer.Ordinal) { LogoKey };
             foreach (IconTreeRow row in document.Shapes.OfType<FbBlockShape>()
                 .SelectMany(b => b.Rows).OfType<IconTreeRow>())
             {
-                if (!keys.Contains(row.IconKey))
+                if (seen.Add(row.IconKey))
                 {
                     keys.Add(row.IconKey);
                 }

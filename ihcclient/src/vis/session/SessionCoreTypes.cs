@@ -127,6 +127,15 @@ namespace Ihc.Vis.Session
             Ihc.Vis.Editing.ProjectEditor.IsWithinLockedBlock(Project.Root, id, inclusive)
                 ? EditVerdict.Refuse(Ihc.Vis.Editing.ProjectEditor.LockedBlockEditRefusal)
                 : EditVerdict.Allow;
+
+        /// <summary>The composition the authoring commands actually want: <see cref="RequireTag"/> on
+        /// <paramref name="id"/> followed by <see cref="RequireUnlockedTarget"/> on the SAME id, inclusive — "this
+        /// target exists, carries the right tag, and is not inside a locked block". Spelled out once here rather than
+        /// re-paired in every <c>Evaluate</c>, so a change to what an authoring command must check is one edit and the
+        /// two halves can never be wired to different ids. Commands whose first half is not a tag test (a container
+        /// predicate, an eligibility rule) keep composing the two guards themselves.</summary>
+        public EditVerdict RequireUnlockedTag(ElementId id, string noun, params string[] tags) =>
+            RequireTag(id, noun, tags).And(RequireUnlockedTarget(id, inclusive: true));
     }
 
     /// <summary>Thrown by a deep engine guard that can only refuse a command once inside its Execute (proposal

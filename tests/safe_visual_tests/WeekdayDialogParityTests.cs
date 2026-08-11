@@ -107,7 +107,7 @@ public class WeekdayDialogParityTests : AvaloniaTestBase
             Assert.That(combo.Items.Cast<object?>().Select(i => i?.ToString()), Is.EqualTo(VendorLabels),
                 "the reference application's own day names, in its own order");
             Assert.That(combo.SelectedIndex, Is.EqualTo(2), "wednesday is the third day");
-            Assert.That(window.ResultForTest().Token, Is.EqualTo("wednesday"),
+            Assert.That(window.ReadValue().Token, Is.EqualTo("wednesday"),
                 "the token travels to the file, not the label");
         });
     }

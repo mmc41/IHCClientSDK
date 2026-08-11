@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Frozen;
+using System.Collections.Immutable;
 using System.Globalization;
 
 namespace ihc_openvisual.ViewModels;
@@ -22,16 +24,23 @@ public static class VariableValueFormat
     // The value's own culture: comma decimal separator, matching every measured row.
     private static readonly CultureInfo Danish = CultureInfo.GetCultureInfo("da-DK");
 
-    /// <summary>The weekday TOKENS the format stores, paired with the Danish names the rows render. The `.vis`
-    /// DTD declares <c>inivalue (monday | … | sunday) "monday"</c> — a token, never an index — so the lookup is by
-    /// name and an absent or unrecognised value falls to the declared default, Monday. Reading it as an integer
-    /// parsed nothing and fell back to element 0, so every weekday row read "Mandag" whatever the variable held
-    /// (alignment F-43; the original's own row follows the value, measured).</summary>
-    private static readonly (string Token, string Label)[] Weekdays =
+    /// <summary>The weekday TOKENS the format stores, paired with the Danish names the rows render, in the order
+    /// the reference application lists them. The `.vis` DTD declares <c>inivalue (monday | … | sunday) "monday"</c>
+    /// — a token, never an index — so the lookup is by name and an absent or unrecognised value falls to the
+    /// declared default, Monday. Reading it as an integer parsed nothing and fell back to element 0, so every
+    /// weekday row read "Mandag" whatever the variable held (alignment F-43; the original's own row follows the
+    /// value, measured).
+    /// <para>Public because the weekday EDITOR offers the same seven, in the same order, mapped the same way: the
+    /// token travels to the file and the label is ours to spell, so one table serves the row and the combo and a
+    /// renamed label can never change a project.</para></summary>
+    public static ImmutableArray<(string Token, string Label)> Weekdays { get; } =
     [
         ("monday", "Mandag"), ("tuesday", "Tirsdag"), ("wednesday", "Onsdag"), ("thursday", "Torsdag"),
         ("friday", "Fredag"), ("saturday", "Lørdag"), ("sunday", "Søndag"),
     ];
+
+    private static readonly FrozenDictionary<string, string> WeekdayLabels =
+        Weekdays.ToFrozenDictionary(d => d.Token, d => d.Label, StringComparer.Ordinal);
 
     // The fixed-point format strings the table below asks for, indexed by decimal places, so a row does not build
     // its own format string on every projection pass.
@@ -67,7 +76,7 @@ public static class VariableValueFormat
             "resource_date" => $"{Int("day", 1):00}:{Int("month", 1):00}",
             "resource_time" => Time(milliseconds: false),
             "resource_timer" or "resource_timertime" => Time(milliseconds: true),
-            "resource_weekday" => Array.Find(Weekdays, d => d.Token == attribute("inivalue")).Label ?? Weekdays[0].Label,
+            "resource_weekday" => WeekdayLabel(attribute("inivalue")),
 
             // An enum renders its STATE's name; the caller resolves the state from the type definition.
             "resource_enum" => stateName,
@@ -85,4 +94,9 @@ public static class VariableValueFormat
             _ => null,
         };
     }
+
+    /// <summary>The Danish name for a stored weekday token. An absent or unrecognised value falls to the DTD's
+    /// declared default, Monday — the format omits an attribute sitting at its default, so "missing" is a day.</summary>
+    private static string WeekdayLabel(string? token) =>
+        token is not null && WeekdayLabels.TryGetValue(token, out string? label) ? label : Weekdays[0].Label;
 }

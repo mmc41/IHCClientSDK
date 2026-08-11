@@ -458,21 +458,43 @@ namespace Ihc.Vis.FunctionBlocks
             return new ProjectElement(element.Tag, element.Id, keptAttrs.ToImmutable(), children.ToImmutable());
         }
 
+        /// <summary>
+        /// The block's five fixed containers, in the fixed order both materialization paths emit them — which is also
+        /// the order their ids burn, so the shape stays here rather than being spelled out per path. Names and notes
+        /// route through the same <c>ContainerName</c>/<c>ContainerNote</c> override lookup either way, so a per-block
+        /// override is honoured uniformly (the empty template once ignored the name overrides entirely). The paths
+        /// differ only in what each container holds.
+        /// <para>
+        /// <paramref name="programRows"/> is forced HERE, in the programs container's own argument list, and must
+        /// therefore be passed un-materialized: a program's nodes burn their ids at materialization, and the oracles
+        /// pin them to fall between the internalsettings container and the programs container. Materializing at the
+        /// call site instead moves every container id.
+        /// </para>
+        /// </summary>
+        private ProjectElement[] BuildContainers(
+            IEnumerable<ProjectElement> inputRows, IEnumerable<ProjectElement> outputRows,
+            IEnumerable<ProjectElement> settingRows, IEnumerable<ProjectElement> internalRows,
+            IEnumerable<ProjectElement> programRows) =>
+        [
+            FbGrammar.Container(ids, "inputs", ContainerName("inputs", FbGrammar.InputsName), FbGrammar.InputsIcon,
+                ContainerNote("inputs", FbGrammar.InputsNoteDefault), inputRows),
+            FbGrammar.Container(ids, "outputs", ContainerName("outputs", FbGrammar.OutputsName), FbGrammar.OutputsIcon,
+                ContainerNote("outputs", FbGrammar.OutputsNoteDefault), outputRows),
+            FbGrammar.Container(ids, "settings", ContainerName("settings", FbGrammar.SettingsName), FbGrammar.SettingsIcon,
+                ContainerNote("settings", FbGrammar.SettingsNote), settingRows),
+            FbGrammar.Container(ids, "internalsettings", ContainerName("internalsettings", FbGrammar.InternalName), FbGrammar.InternalIcon,
+                ContainerNote("internalsettings", FbGrammar.InternalNote), internalRows),
+            FbGrammar.Container(ids, "programs", ContainerName("programs", FbGrammar.ProgramsName), FbGrammar.ProgramsIcon,
+                ContainerNote("programs", FbGrammar.ProgramsNote), programRows.ToArray()),
+        ];
+
         private ProjectElement MaterializeBody()
         {
             var bodyChildren = new List<ProjectElement>();
             bodyChildren.AddRange(enumDefs.Select(e => e.Materialize()));
             bodyChildren.AddRange(rawBodyChildren);
-            bodyChildren.Add(FbGrammar.Container(ids, "inputs", ContainerName("inputs", FbGrammar.InputsName), FbGrammar.InputsIcon,
-                ContainerNote("inputs", FbGrammar.InputsNoteDefault), inputs));
-            bodyChildren.Add(FbGrammar.Container(ids, "outputs", ContainerName("outputs", FbGrammar.OutputsName), FbGrammar.OutputsIcon,
-                ContainerNote("outputs", FbGrammar.OutputsNoteDefault), outputs));
-            bodyChildren.Add(FbGrammar.Container(ids, "settings", ContainerName("settings", FbGrammar.SettingsName), FbGrammar.SettingsIcon,
-                ContainerNote("settings", FbGrammar.SettingsNote), settings));
-            bodyChildren.Add(FbGrammar.Container(ids, "internalsettings", ContainerName("internalsettings", FbGrammar.InternalName), FbGrammar.InternalIcon,
-                ContainerNote("internalsettings", FbGrammar.InternalNote), internalVars));
-            bodyChildren.Add(FbGrammar.Container(ids, "programs", ContainerName("programs", FbGrammar.ProgramsName), FbGrammar.ProgramsIcon,
-                ContainerNote("programs", FbGrammar.ProgramsNote), programs.Select(p => p.Materialize()).ToArray()));
+            bodyChildren.AddRange(BuildContainers(inputs, outputs, settings, internalVars,
+                programs.Select(p => p.Materialize())));   // deferred on purpose — see BuildContainers
 
             ProjectElement root = FbGrammar.Node("functionblock",
                 ids.Allocate(TypeCode.RequireForTag("functionblock")), NoAttrs, bodyChildren);
@@ -494,22 +516,8 @@ namespace Ihc.Vis.FunctionBlocks
                 new[] { ("name", "Program"), ("icon", FbGrammar.ProgramSimpleIcon) },
                 new[] { events, actions });
 
-            // Container names + notes route through the same ContainerName/ContainerNote override lookup the normal
-            // MaterializeBody path uses, so a per-block name/note override is honored uniformly on the empty template
-            // too (previously the name overrides were ignored entirely and only the inputs/outputs notes were read).
-            var bodyChildren = new[]
-            {
-                FbGrammar.Container(ids, "inputs", ContainerName("inputs", FbGrammar.InputsName), FbGrammar.InputsIcon,
-                    ContainerNote("inputs", FbGrammar.InputsNoteDefault), NoChildren),
-                FbGrammar.Container(ids, "outputs", ContainerName("outputs", FbGrammar.OutputsName), FbGrammar.OutputsIcon,
-                    ContainerNote("outputs", FbGrammar.OutputsNoteDefault), NoChildren),
-                FbGrammar.Container(ids, "settings", ContainerName("settings", FbGrammar.SettingsName), FbGrammar.SettingsIcon,
-                    ContainerNote("settings", FbGrammar.SettingsNote), NoChildren),
-                FbGrammar.Container(ids, "internalsettings", ContainerName("internalsettings", FbGrammar.InternalName), FbGrammar.InternalIcon,
-                    ContainerNote("internalsettings", FbGrammar.InternalNote), NoChildren),
-                FbGrammar.Container(ids, "programs", ContainerName("programs", FbGrammar.ProgramsName), FbGrammar.ProgramsIcon,
-                    ContainerNote("programs", FbGrammar.ProgramsNote), new[] { programSimple }),
-            };
+            ProjectElement[] bodyChildren =
+                BuildContainers(NoChildren, NoChildren, NoChildren, NoChildren, new[] { programSimple });
             ProjectElement root = FbGrammar.Node("functionblock",
                 ids.Allocate(TypeCode.RequireForTag("functionblock")),
                 new[] { ("name", ComposedDisplayName), ("icon", emptyIcon) }, bodyChildren);

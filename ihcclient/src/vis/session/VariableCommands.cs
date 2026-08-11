@@ -47,31 +47,36 @@ namespace Ihc.Vis.Session
         /// <summary>An enumerated initial value (resource_weekday's <c>monday…sunday</c>): serialises as the
         /// <c>inivalue</c> token verbatim, so the file never depends on how a label is spelled (F-41).</summary>
         public static ResourceInitialValue OfChoice(string token) =>
-            new(ResourceValueKind.Choice, false, 0, 0, 0, 0, 0, token);
+            None with { Kind = ResourceValueKind.Choice, Token = token };
 
         /// <summary>A calendar day/month initial value (resource_date): serialises as <c>day</c> and
         /// <c>month</c>. The type's <c>year</c> is deliberately NOT written — the original's dialog offers day
         /// and month only, so an edit must leave the stored year exactly as it found it (F-41).</summary>
         public static ResourceInitialValue OfDate(int day, int month) =>
-            new(ResourceValueKind.Date, false, 0, 0, 0, 0, 0, string.Empty, day, month);
+            None with { Kind = ResourceValueKind.Date, Day = day, Month = month };
 
         /// <summary>A boolean initial value (resource_flag/input/output): serialises as <c>inivalue</c> on/off.</summary>
-        public static ResourceInitialValue OfBool(bool on) => new(ResourceValueKind.Bool, on, 0, 0, 0, 0, 0);
+        public static ResourceInitialValue OfBool(bool on) => None with { Kind = ResourceValueKind.Bool, Bool = on };
 
         /// <summary>An integer initial value (resource_counter/integer/light/light_level — the types whose
         /// declared default is <c>"0"</c>): serialises as a bare integer <c>inivalue</c>.</summary>
-        public static ResourceInitialValue OfNumber(long number) => new(ResourceValueKind.Number, false, number, 0, 0, 0, 0);
+        public static ResourceInitialValue OfNumber(long number) =>
+            None with { Kind = ResourceValueKind.Number, Number = number };
 
         /// <summary>A real initial value for the two-decimal family (kW/kWh/W/Wh/floating-point/temperature/
         /// humidity): serialises as <c>inivalue</c> with exactly two fraction digits and a period, whatever
         /// precision the type shows on screen and whatever culture the machine runs in (F-41/F-44).</summary>
         public static ResourceInitialValue OfDecimal(double value) =>
-            new(ResourceValueKind.Decimal, false, 0, 0, 0, 0, 0, string.Empty, 0, 0, value);
+            None with { Kind = ResourceValueKind.Decimal, Decimal = value };
 
         /// <summary>A time/duration initial value (resource_timer/time): serialises as hour/minute/second, plus
         /// millisecond for a resource_timer.</summary>
         public static ResourceInitialValue OfTime(int hour, int minute, int second, int millisecond) =>
-            new(ResourceValueKind.Time, false, 0, hour, minute, second, millisecond);
+            None with
+            {
+                Kind = ResourceValueKind.Time,
+                Hour = hour, Minute = minute, Second = second, Millisecond = millisecond,
+            };
 
         /// <summary>Writes this value onto a resource variable handle per representation (US-027, T016): a bool writes
         /// <c>inivalue</c> on/off, a number a decimal <c>inivalue</c>, and a time writes <c>hour</c>/<c>minute</c>/
@@ -85,7 +90,7 @@ namespace Ihc.Vis.Session
                     handle.SetAttribute("inivalue", Bool ? "on" : "off");
                     break;
                 case ResourceValueKind.Number:
-                    handle.SetAttribute("inivalue", Number.ToString(CultureInfo.InvariantCulture));
+                    handle.SetAttribute("inivalue", DecToken.Format(Number));
                     break;
                 case ResourceValueKind.Decimal:
                     handle.SetAttribute("inivalue", TwoDecimals(Decimal));
@@ -96,10 +101,12 @@ namespace Ihc.Vis.Session
                 case ResourceValueKind.Date:
                     // day and month only: `year` is #REQUIRED and already present, and the original's dialog does
                     // not offer it — rewriting it would change a byte the installer never touched.
-                    handle.SetAttribute("day", Dec(Day)).SetAttribute("month", Dec(Month));
+                    handle.SetAttribute("day", DecToken.Format(Day)).SetAttribute("month", DecToken.Format(Month));
                     break;
                 case ResourceValueKind.Time:
-                    handle.SetAttribute("hour", Dec(Hour)).SetAttribute("minute", Dec(Minute)).SetAttribute("second", Dec(Second));
+                    handle.SetAttribute("hour", DecToken.Format(Hour))
+                          .SetAttribute("minute", DecToken.Format(Minute))
+                          .SetAttribute("second", DecToken.Format(Second));
                     // Milliseconds belong to the types that DECLARE them: the DTD gives both resource_timer and
                     // resource_timertime hour/minute/second/millisecond #REQUIRED, while resource_time has no
                     // millisecond at all — and the reference application's dialogs agree, showing 00:00:00,000 for
@@ -108,13 +115,11 @@ namespace Ihc.Vis.Session
                     // required fields.
                     if (handle.Tag is "resource_timer" or "resource_timertime")
                     {
-                        handle.SetAttribute("millisecond", Dec(Millisecond));
+                        handle.SetAttribute("millisecond", DecToken.Format(Millisecond));
                     }
                     break;
             }
         }
-
-        private static string Dec(int value) => value.ToString(CultureInfo.InvariantCulture);
 
         /// <summary>
         /// The two-fraction-digit, period-separated text the decimal family stores (F-41/F-44). Two fraction digits

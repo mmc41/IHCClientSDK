@@ -472,7 +472,7 @@ namespace Ihc.Vis.Session
         }
 
         private static ProjectElement NormalizeAllocator(ProjectElement root) =>
-            root.GetAttribute("last_unique_id") is null ? root : root.WithAttribute("last_unique_id", "_0x0");
+            root.GetAttribute("last_unique_id") is null ? root : root.WithAttribute("last_unique_id", ElementId.NullToken);
 
         private void TrimUndo()
         {

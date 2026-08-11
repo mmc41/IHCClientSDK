@@ -74,28 +74,24 @@ namespace Ihc.Vis.Editing
         {
             var seenIds = new HashSet<ElementId>();
             var seenTokens = new HashSet<string>(StringComparer.Ordinal);   // fallback for an id attr that is not a parseable token
-            void Walk(ProjectElement element)
+            foreach (ProjectElement element in root.DescendantsAndSelf())
             {
-                if (element.GetAttribute("id") is { } token)
+                if (element.GetAttribute("id") is not { } token)
                 {
-                    // Dedup by the PARSED id, not the raw token: '_0x536' and '_0x0536' are distinct token strings but
-                    // the SAME ElementId, and every id-addressed lookup (e.Id == id) matches by parsed id — so a
-                    // token-only guard let exactly the first-match collision it exists to block slip through (review B3).
-                    bool duplicate = ElementId.TryParse(token, out ElementId id) ? !seenIds.Add(id) : !seenTokens.Add(token);
-                    if (duplicate)
-                    {
-                        throw new InvalidOperationException(
-                            $"Cannot edit: several elements share the id token '{token}', so id-addressed editing " +
-                            "would silently target the wrong element. Repair the duplicate ids first " +
-                            $"({nameof(ProjectAppService)}.{nameof(ProjectAppService.Validate)} lists them).");
-                    }
+                    continue;
                 }
-                foreach (ProjectElement child in element.ChildrenOrEmpty())
+                // Dedup by the PARSED id, not the raw token: '_0x536' and '_0x0536' are distinct token strings but
+                // the SAME ElementId, and every id-addressed lookup (e.Id == id) matches by parsed id — so a
+                // token-only guard let exactly the first-match collision it exists to block slip through (review B3).
+                bool duplicate = ElementId.TryParse(token, out ElementId id) ? !seenIds.Add(id) : !seenTokens.Add(token);
+                if (duplicate)
                 {
-                    Walk(child);
+                    throw new InvalidOperationException(
+                        $"Cannot edit: several elements share the id token '{token}', so id-addressed editing " +
+                        "would silently target the wrong element. Repair the duplicate ids first " +
+                        $"({nameof(ProjectAppService)}.{nameof(ProjectAppService.Validate)} lists them).");
                 }
             }
-            Walk(root);
         }
 
         internal IdAllocator Allocator => allocator;
@@ -173,8 +169,7 @@ namespace Ihc.Vis.Editing
             ProjectElement def = SimpleElement("enum_definition", defId, ("name", name))
                 with { Children = valueElements.ToImmutable() };
 
-            ProjectElement container = root.FindChild(EnumDefinitionsTag)
-                ?? throw new InvalidOperationException("The project has no enum_definitions container.");
+            ProjectElement container = EnumDefinitionsContainer;
             root = ReplaceChildByTag(root, EnumDefinitionsTag,
                 container with { Children = AppendTo(container.Children, def) });
 
@@ -192,8 +187,7 @@ namespace Ihc.Vis.Editing
         public EnumDefinitionRef EnumDefinition(string name)
         {
             ArgumentNullException.ThrowIfNull(name);
-            ProjectElement container = root.FindChild(EnumDefinitionsTag)
-                ?? throw new InvalidOperationException("The project has no enum_definitions container.");
+            ProjectElement container = EnumDefinitionsContainer;
             ProjectElement def = container.ChildrenOrEmpty()
                 .FirstOrDefault(c => c.Tag == "enum_definition" && c.GetAttribute("name") == name)
                 ?? throw new InvalidOperationException(
@@ -216,20 +210,14 @@ namespace Ihc.Vis.Editing
             ArgumentNullException.ThrowIfNull(definition);
             ArgumentNullException.ThrowIfNull(values);
 
-            ProjectElement container = root.FindChild(EnumDefinitionsTag)
-                ?? throw new InvalidOperationException("The project has no enum_definitions container.");
+            ProjectElement container = EnumDefinitionsContainer;
             // By parsed ElementId (not raw token text), the codebase's id-matching convention: a foreign file's
             // non-canonical spelling of the definition id must still resolve.
             ProjectElement def = container.ChildrenOrEmpty()
                 .FirstOrDefault(c => c.Id == definition.Id)
                 ?? throw new InvalidOperationException(
                     $"Enum definition '{definition.Typedef}' is no longer part of the project.");
-            if (def.GetAttribute("typeid") is { } typeid && typeid != ElementId.NullToken)
-            {
-                throw new InvalidOperationException(
-                    $"Enum definition '{def.GetAttribute("name")}' is a built-in catalog type — \"[read only]\" " +
-                    "in IHC Visual — so its values cannot be edited.");
-            }
+            GuardEditableEnum(def, "edited");
 
             int existing = def.ChildrenOrEmpty().Count(c => c.Tag == "enum_value");
             var appended = ImmutableArray.CreateBuilder<ProjectElement>(values.Length);
@@ -257,19 +245,8 @@ namespace Ihc.Vis.Editing
         {
             ArgumentNullException.ThrowIfNull(definition);
             ArgumentNullException.ThrowIfNull(newName);
-            ProjectElement def = FindById(root, definition.Id)
-                ?? throw new InvalidOperationException($"Enum definition '{definition.Typedef}' is no longer part of the project.");
-            if (def.GetAttribute("typeid") is { } typeid && typeid != ElementId.NullToken)
-            {
-                throw new InvalidOperationException(
-                    $"Enum definition '{def.GetAttribute("name")}' is a built-in catalog type — \"[read only]\" " +
-                    "in IHC Visual — so its values cannot be edited.");
-            }
-            if (!def.ChildrenOrEmpty().Any(v => v.Tag == "enum_value" && v.Id == valueId))
-            {
-                throw new InvalidOperationException(
-                    $"Enum definition '{def.GetAttribute("name")}' has no value with id {valueId.ToToken()}.");
-            }
+            ProjectElement def = RequireEditableEnum(definition, "edited");
+            RequireEnumValue(def, valueId);
             SetAttributeById(valueId, "name", newName);   // in-place relabel — id and index preserved (byte-faithful)
             return ToEnumRef(FindById(root, definition.Id)!);
         }
@@ -301,11 +278,7 @@ namespace Ihc.Vis.Editing
         {
             ArgumentNullException.ThrowIfNull(definition);
             ProjectElement def = RequireEditableEnum(definition, "edited");
-            if (!def.ChildrenOrEmpty().Any(v => v.Tag == "enum_value" && v.Id == valueId))
-            {
-                throw new InvalidOperationException(
-                    $"Enum definition '{def.GetAttribute("name")}' has no value with id {valueId.ToToken()}.");
-            }
+            RequireEnumValue(def, valueId);
             if (ReferenceCount("inivalue", valueId) > 0)
             {
                 throw new InvalidOperationException(
@@ -356,13 +329,25 @@ namespace Ihc.Vis.Editing
             root = RemoveById(root, definition.Id);
         }
 
+        /// <summary>The project's <c>enum_definitions</c> container; throws when the project has none — the one home
+        /// for a guard every enum-definition read and mutation opens with.</summary>
+        private ProjectElement EnumDefinitionsContainer =>
+            root.FindChild(EnumDefinitionsTag)
+                ?? throw new InvalidOperationException("The project has no enum_definitions container.");
+
         /// <summary>Resolves the definition and refuses the built-in catalog ("[read only]") types the way every enum
         /// mutation must — one home for the guard the four of them share.</summary>
-        private ProjectElement RequireEditableEnum(EnumDefinitionRef definition, string verb)
+        private ProjectElement RequireEditableEnum(EnumDefinitionRef definition, string verb) =>
+            GuardEditableEnum(
+                FindById(root, definition.Id)
+                    ?? throw new InvalidOperationException(
+                        $"Enum definition '{definition.Typedef}' is no longer part of the project."),
+                verb);
+
+        /// <summary>The "[read only]" refusal alone, for the callers that resolved the definition themselves (the
+        /// append path scopes its lookup to the container's own children). Returns the definition so it composes.</summary>
+        private static ProjectElement GuardEditableEnum(ProjectElement def, string verb)
         {
-            ProjectElement def = FindById(root, definition.Id)
-                ?? throw new InvalidOperationException(
-                    $"Enum definition '{definition.Typedef}' is no longer part of the project.");
             if (def.GetAttribute("typeid") is { } typeid && typeid != ElementId.NullToken)
             {
                 throw new InvalidOperationException(
@@ -372,10 +357,25 @@ namespace Ihc.Vis.Editing
             return def;
         }
 
-        /// <summary>Counts the elements whose <paramref name="attribute"/> resolves to <paramref name="id"/>. Compared
-        /// by PARSED id, not raw token text, so a foreign file's non-canonical spelling still counts as a reference.</summary>
-        private int ReferenceCount(string attribute, ElementId id) =>
-            root.DescendantsAndSelf().Count(e =>
+        /// <summary>Refuses when the definition carries no <c>enum_value</c> with the given id — the shared half of
+        /// the relabel and remove guards, which both address a value inside an already-resolved definition.</summary>
+        private static void RequireEnumValue(ProjectElement def, ElementId valueId)
+        {
+            if (!def.ChildrenOrEmpty().Any(v => v.Tag == "enum_value" && v.Id == valueId))
+            {
+                throw new InvalidOperationException(
+                    $"Enum definition '{def.GetAttribute("name")}' has no value with id {valueId.ToToken()}.");
+            }
+        }
+
+        private int ReferenceCount(string attribute, ElementId id) => ReferenceCount(root, attribute, id);
+
+        /// <summary>Counts the elements under <paramref name="searchRoot"/> whose <paramref name="attribute"/> resolves
+        /// to <paramref name="id"/>. Compared by PARSED id, not raw token text, so a foreign file's non-canonical
+        /// spelling still counts as a reference — the rule the session's pre-delete gates must apply too, which is why
+        /// this takes the root rather than reading the editor's own (a gate answers over a project it has not opened).</summary>
+        internal static int ReferenceCount(ProjectElement searchRoot, string attribute, ElementId id) =>
+            searchRoot.DescendantsAndSelf().Count(e =>
                 e.GetAttribute(attribute) is { } token
                 && ElementId.TryParse(token, out ElementId referenced)
                 && referenced == id);
@@ -423,8 +423,7 @@ namespace Ihc.Vis.Editing
                 // hence this explicit guard rather than relying on the state to self-terminate.
                 return this;
             }
-            ProjectElement container = root.FindChild(EnumDefinitionsTag)
-                ?? throw new InvalidOperationException("The project has no enum_definitions container.");
+            ProjectElement container = EnumDefinitionsContainer;
             catalogEnumsNormalized = true;   // set once the container resolves, so any later call is a no-op (incl. the count==0 path)
 
             var catalogEnums = container.ChildrenOrEmpty()
@@ -1257,7 +1256,7 @@ namespace Ihc.Vis.Editing
             var links = new List<LinkInfo>();
             foreach (ProjectElement child in resource.ChildrenOrEmpty())
             {
-                if (child.Tag is "link_from_resource" or "link_to_resource"
+                if (child.Tag is ReciprocalTags.FollowLinkFromTag or ReciprocalTags.FollowLinkToTag
                     && child.Id is { } rowId
                     && ElementId.TryParse(child.GetAttribute("link"), out ElementId partner))
                 {
@@ -1275,7 +1274,7 @@ namespace Ihc.Vis.Editing
         public ElementRef? ResolveLinkOpposite(ElementId linkRowId)
         {
             ProjectElement? row = FindById(root, linkRowId);
-            if (row?.Tag is not ("link_from_resource" or "link_to_resource")
+            if (row?.Tag is not (ReciprocalTags.FollowLinkFromTag or ReciprocalTags.FollowLinkToTag)
                 || !ElementId.TryParse(row.GetAttribute("link"), out ElementId partnerLinkId))
             {
                 return null;
@@ -1345,8 +1344,7 @@ namespace Ihc.Vis.Editing
             // dead group id leaves the session half-mutated — hoisted enums with no owning component and burnt ids.
             Require(groupId);
             MergeNonRegistryBlocks(catalogBody, grammar);
-            ProjectElement enumDefinitions = root.FindChild(EnumDefinitionsTag)
-                ?? throw new InvalidOperationException("The project has no enum_definitions container.");
+            ProjectElement enumDefinitions = EnumDefinitionsContainer;
             // The reader hands back the RAW catalog body (no DTD-defaulted attributes) so it re-emits
             // byte-faithfully; re-materialize the component's effective values from its own grammar here, since the
             // cross-DTD reconciliation below (InsertTransform → Canonicalizer) reads them (spec ch. 09 §9.3.7).

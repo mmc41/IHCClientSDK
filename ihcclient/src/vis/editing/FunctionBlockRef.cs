@@ -60,13 +60,8 @@ namespace Ihc.Vis.Editing
         public FunctionBlockRef Unlock(string programmer, DateOnly unlocked)
         {
             ArgumentNullException.ThrowIfNull(programmer);
-            editor.SetAttributeById(Id, "master_schneider_electric", "no");
-            editor.SetAttributeById(Id, "master_type", string.Empty);
-            editor.SetAttributeById(Id, "master_version", string.Empty);
-            editor.SetAttributeById(Id, "master_programmer", programmer);
-            editor.SetAttributeById(Id, "master_date_year", DecToken.Format(unlocked.Year));
-            editor.SetAttributeById(Id, "master_date_month", DecToken.Format(unlocked.Month));
-            editor.SetAttributeById(Id, "master_date_day", DecToken.Format(unlocked.Day));
+            ClearLibraryIdentity();
+            StampOwner(programmer, unlocked);
             editor.SetAttributeById(Id, "icon", "_0xf");
             editor.SetAttributeById(Id, "locked", "no");
             return this;
@@ -84,14 +79,9 @@ namespace Ihc.Vis.Editing
             editor.SetAttributeById(Id, "name", name);
             // It is the installer's library block now, not the one it came from, so the source's library identity goes
             // — the same three keys the exported .ifb drops and Unlock clears (S-22/S-20).
-            editor.SetAttributeById(Id, "master_schneider_electric", "no");
-            editor.SetAttributeById(Id, "master_type", string.Empty);
-            editor.SetAttributeById(Id, "master_version", string.Empty);
+            ClearLibraryIdentity();
             editor.SetAttributeById(Id, "master_name", name);
-            editor.SetAttributeById(Id, "master_programmer", programmer);
-            editor.SetAttributeById(Id, "master_date_year", DecToken.Format(date.Year));
-            editor.SetAttributeById(Id, "master_date_month", DecToken.Format(date.Month));
-            editor.SetAttributeById(Id, "master_date_day", DecToken.Format(date.Day));
+            StampOwner(programmer, date);
             editor.SetAttributeById(Id, "icon", "_0x10");
             if (note is not null)
             {
@@ -99,6 +89,24 @@ namespace Ihc.Vis.Editing
             }
             editor.SetAttributeById(Id, "locked", "yes");   // lock last, so the block is fully stamped before it is sealed
             return this;
+        }
+
+        // The two halves of an ownership transfer, shared by Unlock and SaveAsLibraryInstance: drop the source's
+        // library identity, then stamp who owns it now. One rule, written once — the vendor keys involved are the
+        // same three / same four either way (S-22/S-20), and the emitted attribute order is the canonicalizer's.
+        private void ClearLibraryIdentity()
+        {
+            editor.SetAttributeById(Id, "master_schneider_electric", "no");
+            editor.SetAttributeById(Id, "master_type", string.Empty);
+            editor.SetAttributeById(Id, "master_version", string.Empty);
+        }
+
+        private void StampOwner(string programmer, DateOnly date)
+        {
+            editor.SetAttributeById(Id, "master_programmer", programmer);
+            editor.SetAttributeById(Id, "master_date_year", DecToken.Format(date.Year));
+            editor.SetAttributeById(Id, "master_date_month", DecToken.Format(date.Month));
+            editor.SetAttributeById(Id, "master_date_day", DecToken.Format(date.Day));
         }
 
         /// <summary>

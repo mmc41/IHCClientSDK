@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 
@@ -19,11 +20,13 @@ namespace Ihc.Vis.Schema
     internal sealed class ProjectSchemaView
     {
         /// <summary>A view with no captured blocks — resolves purely against the static registry (create path).</summary>
-        public static readonly ProjectSchemaView RegistryOnly = new(ImmutableDictionary<string, ElementSchema>.Empty);
+        public static readonly ProjectSchemaView RegistryOnly = new(FrozenDictionary<string, ElementSchema>.Empty);
 
-        private readonly ImmutableDictionary<string, ElementSchema> captured;
+        // Frozen, not Immutable: built once, never mutated, and never enumerated — TryGet is the only reader, and it
+        // runs per element on every whole-tree pass (canonicalize on each commit, plus load/save/validate/insert).
+        private readonly FrozenDictionary<string, ElementSchema> captured;
 
-        private ProjectSchemaView(ImmutableDictionary<string, ElementSchema> captured) => this.captured = captured;
+        private ProjectSchemaView(FrozenDictionary<string, ElementSchema> captured) => this.captured = captured;
 
         /// <summary>The project's schema view (memoized on the project; built eagerly at load).</summary>
         public static ProjectSchemaView For(Project project)
@@ -39,12 +42,12 @@ namespace Ihc.Vis.Schema
             {
                 return RegistryOnly;
             }
-            var builder = ImmutableDictionary.CreateBuilder<string, ElementSchema>(StringComparer.Ordinal);
+            var builder = new Dictionary<string, ElementSchema>(blocks.Count, StringComparer.Ordinal);
             foreach (KeyValuePair<string, string> entry in blocks)
             {
                 builder[entry.Key] = ProjectSchemaRegistry.ParseBlock(entry.Value);
             }
-            return new ProjectSchemaView(builder.ToImmutable());
+            return new ProjectSchemaView(builder.ToFrozenDictionary(StringComparer.Ordinal));
         }
 
         // Grammar → view memo. A CatalogGrammar is immutable (and the built-in catalog interns ~99 distinct grammars
@@ -64,12 +67,12 @@ namespace Ihc.Vis.Schema
             }
             return byGrammar.GetValue(grammar, static g =>
             {
-                var builder = ImmutableDictionary.CreateBuilder<string, ElementSchema>(StringComparer.Ordinal);
+                var builder = new Dictionary<string, ElementSchema>(g.Declarations.Length, StringComparer.Ordinal);
                 foreach (Ihc.Vis.Model.GrammarDeclaration declaration in g.Declarations)
                 {
                     builder[declaration.Tag] = ElementSchema.FromDeclaration(declaration);
                 }
-                return new ProjectSchemaView(builder.ToImmutable());
+                return new ProjectSchemaView(builder.ToFrozenDictionary(StringComparer.Ordinal));
             });
         }
 

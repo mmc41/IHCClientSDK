@@ -184,30 +184,24 @@ public static class CatalogMenu
             // stripped. A component declaring no catalog name falls back to its label, which keeps it deterministic.
             // Unnumbered entries sort after numbered ones (letters after digits), which is where the original puts
             // them too.
-            var entries = new List<(string Key, Func<ProductMenuItemViewModel> Make)>();
+            var entries = new List<(string Key, ProductMenuItemViewModel Item)>();
             foreach (Node child in Ordered)
             {
-                Node captured = child;
-                entries.Add((SortKey(captured.RawSegment), () =>
-                {
-                    var folder = new ProductMenuItemViewModel(folderLabel(captured.RawSegment));
-                    foreach (ProductMenuItemViewModel sub in
-                             captured.ToMenu(displayName, leafCommand, key, folderLabel, orderName))
-                        folder.Children.Add(sub);
-                    return folder;
-                }
-                ));
+                var folder = new ProductMenuItemViewModel(folderLabel(child.RawSegment));
+                foreach (ProductMenuItemViewModel sub in
+                         child.ToMenu(displayName, leafCommand, key, folderLabel, orderName))
+                    folder.Children.Add(sub);
+                entries.Add((SortKey(child.RawSegment), folder));
             }
             foreach (T leaf in Leaves.Cast<T>())
             {
-                T captured = leaf;
-                entries.Add((SortKey(orderName(captured) ?? displayName(captured)),
-                    () => new ProductMenuItemViewModel(displayName(captured), key(captured), leafCommand(captured))));
+                entries.Add((SortKey(orderName(leaf) ?? displayName(leaf)),
+                    new ProductMenuItemViewModel(displayName(leaf), key(leaf), leafCommand(leaf))));
             }
 
             // OrderBy is stable, so entries sharing a key keep the order they were added in — folders before leaves,
             // which is what this method did before and what the catalog's own numbering never actually ties on.
-            return [.. entries.OrderBy(e => e.Key, DisplayOrder.Danish).Select(e => e.Make())];
+            return [.. entries.OrderBy(e => e.Key, DisplayOrder.Danish).Select(e => e.Item)];
         }
     }
 

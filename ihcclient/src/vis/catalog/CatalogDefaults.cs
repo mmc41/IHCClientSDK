@@ -24,16 +24,26 @@ namespace Ihc.Vis.Catalog
         public static ProjectElement Materialize(ProjectElement element, ProjectSchemaView view)
         {
             ElementSchema? schema = view.TryGet(element.Tag);
-            ImmutableArray<(string Name, string Value)> attrs = element.AttrsOrEmpty();
+            ImmutableArray<(string Name, string Value)> present = element.AttrsOrEmpty();
+            ImmutableArray<(string Name, string Value)> attrs = present;
             if (schema is not null)
             {
+                // Build once instead of re-allocating the whole bag per defaulted attribute. Probing `present`
+                // rather than the growing bag is the same answer — schema attribute names are distinct, so an
+                // appended default can never be what a later probe is looking for — and it keeps the probe O(present)
+                // instead of growing with each append. Present attrs in source order then defaults in declaration
+                // order is exactly what the old Add chain produced, so the materialized bag is unchanged.
+                var builder = ImmutableArray.CreateBuilder<(string Name, string Value)>(
+                    present.Length + schema.Attrs.Length);
+                builder.AddRange(present);
                 foreach (AttrSchema attr in schema.Attrs)
                 {
-                    if (attr.Kind == AttrKind.Defaulted && ProjectElement.GetAttribute(attrs, attr.Name) is null)
+                    if (attr.Kind == AttrKind.Defaulted && ProjectElement.GetAttribute(present, attr.Name) is null)
                     {
-                        attrs = attrs.Add((attr.Name, attr.Default));
+                        builder.Add((attr.Name, attr.Default));
                     }
                 }
+                attrs = builder.Count == present.Length ? present : builder.ToImmutable();
             }
 
             ImmutableArray<ProjectElement> children = element.Children.IsDefaultOrEmpty

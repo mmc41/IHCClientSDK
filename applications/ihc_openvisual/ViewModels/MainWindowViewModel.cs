@@ -354,18 +354,20 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // The value types stay in DANISH collation, which is a REGISTERED deliberate difference from the vendor's
         // æ-as-"ae" ordering (product.md, F-26) — the leading entry is a divergence, the collation is not.
         SectionFlyoutItems.Clear();
-        IEnumerable<(string Label, string Tag)> ordered =
-            accepted.Where(t => IsSignalVariable(t.Tag)).OrderBy(t => t.Label, DisplayOrder.Danish)
-                .Concat(accepted.Where(t => !IsSignalVariable(t.Tag))
-                    .OrderBy(t => t.Label, DisplayOrder.Danish));
+        IEnumerable<(string Label, string Tag)> ordered = accepted
+            .OrderBy(t => IsSignalVariable(t.Tag) ? 0 : 1)
+            .ThenBy(t => t.Label, DisplayOrder.Danish);
         foreach ((string label, string tag) in ordered)
             SectionFlyoutItems.Add(CreateVariableMenuItem(sectionId, label, tag, sectionLabel));
         SectionFlyoutItems.Add(new ProductMenuItemViewModel("Egenskaber…", "ctx.node.properties", PropertiesCommand));
     }
 
     /// <summary>Whether a variable type is a block's SIGNAL (its wiring in or out) rather than a value it holds —
-    /// the two types the vendor sets off at the head of a section's flyout (F-20).</summary>
-    private static bool IsSignalVariable(string tag) => tag is "resource_input" or "resource_output";
+    /// the types the vendor sets off at the head of a section's flyout (F-20). Asked of the SDK registry rather
+    /// than re-derived from tag spellings here: which family a tag belongs to is the engine's answer, and a role
+    /// added or a tag renamed there must not leave this flyout silently mis-led.</summary>
+    private static bool IsSignalVariable(string tag) =>
+        !VariableTypeRegistry.ValueTypeTags.Contains(tag);
 
     // Builds one variable-insert menu item — a plain leaf, or (for resource_enum) the PG-4 type-picker submenu:
     // "Ny type…" (author a new type via the enumerator dialog), "Ny selvstændig type…" (PG-7/D02, a standalone
@@ -759,24 +761,43 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                                         () => CanInsertFunctionBlock)));
     }
 
+    // The gate value each catalog forest was last notified for. Both start false, which is what the gates read on
+    // a fresh view-model (nothing selected ⇒ no locality ⇒ neither insert is offered), so the first rebuild raises
+    // nothing — and needs to raise nothing: a newly built forest's commands are queried live by the menu items
+    // that realize over them, so they have no stale verdict to correct. The same holds after a catalog import.
+    private bool _notifiedCanInsertProduct;
+    private bool _notifiedCanInsertFunctionBlock;
+
     /// <summary>
-    /// Re-asks every generated catalog leaf whether it can run. Necessary because those commands are built once
+    /// Re-asks the generated catalog leaves whether they can run. Necessary because those commands are built once
     /// per catalog and then OUTLIVE every selection change: a CanExecute predicate that is never re-queried
     /// leaves the whole menu frozen at whatever it evaluated to when the menu was built — greyed forever, or
     /// live forever — which looks exactly like no gate at all. Called from the one place the availability
     /// inputs change, so no caller has to remember it.
+    /// <para>Every leaf of a forest checks the SAME shared gate, so a forest whose gate has not moved has nothing
+    /// to say — and re-raising it anyway walked ~173 leaves and re-queried every realized menu item on each of the
+    /// many things that rebuild the context (selection, pane, mode, clipboard, undo, connect). Driving the sweep
+    /// off the gate VALUE keeps the invariant that a greyed leaf and a refused invoke can never disagree.</para>
     /// </summary>
     private void RefreshCatalogLeafAvailability()
     {
-        foreach (var leaf in Leaves(ProductsMenu).Concat(Leaves(FunctionBlocksMenu)))
-            (leaf.Command as IRelayCommand)?.NotifyCanExecuteChanged();
-
-        static IEnumerable<ProductMenuItemViewModel> Leaves(IEnumerable<ProductMenuItemViewModel> forest)
+        if (CanInsertProduct != _notifiedCanInsertProduct)
         {
-            foreach (var item in forest)
+            _notifiedCanInsertProduct = CanInsertProduct;
+            NotifyLeaves(ProductsMenu);
+        }
+        if (CanInsertFunctionBlock != _notifiedCanInsertFunctionBlock)
+        {
+            _notifiedCanInsertFunctionBlock = CanInsertFunctionBlock;
+            NotifyLeaves(FunctionBlocksMenu);
+        }
+
+        static void NotifyLeaves(IEnumerable<ProductMenuItemViewModel> forest)
+        {
+            foreach (ProductMenuItemViewModel item in forest)
             {
-                if (item.Command is not null) yield return item;
-                foreach (var nested in Leaves(item.Children)) yield return nested;
+                (item.Command as IRelayCommand)?.NotifyCanExecuteChanged();
+                NotifyLeaves(item.Children);
             }
         }
     }
@@ -1381,13 +1402,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     // crudarch T013: the remaining node-scoped tree commands as rows — gates are the former IsVisible/CanExecute
     // conditions verbatim; the one divergence (Properties: Edit-menu enabled on a link row the flyout omits) is
     // SurfacePolicy data. Bodies stay the existing private methods, resolved via ResolveNode.
-    private static bool CutOrDeleteAllowed(ShellContext context, NodeContext node) =>
-        node.Kind == TreeNodeKind.ProgramBlockRoot
-            ? false
-            : node.Kind == TreeNodeKind.FunctionBlock
-            ? !context.IsProgrammingMode
-            : !(node.IsPin && node.CanCut && !node.IsProductTerminal)
-                || context.IsProgrammingMode && !context.ProgrammingBlockLocked;
+    private static bool CutOrDeleteAllowed(ShellContext context, NodeContext node) => node.Kind switch
+    {
+        // The active programming root is not a structural item; a configuration-tree block is.
+        TreeNodeKind.ProgramBlockRoot => false,
+        TreeNodeKind.FunctionBlock => !context.IsProgrammingMode,
+        // A function-block variable allows Cut only in an unlocked programming view. `CanCut` already excludes the
+        // protected pin families for a pin (a catalog-declared pin and a product terminal both fail it), so this
+        // needs no second exclusion of its own.
+        _ => !(node.IsPin && node.CanCut) || (context.IsProgrammingMode && !context.ProgrammingBlockLocked),
+    };
 
     /// <summary>Whether a PIN is a signal SOURCE — a row whose value the system reads rather than writes.
     /// A product's INPUT terminal (the button feeding the controller) and a function block's OUTPUT pin (the value

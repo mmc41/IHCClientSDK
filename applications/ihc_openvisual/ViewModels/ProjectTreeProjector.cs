@@ -377,16 +377,6 @@ public sealed class ProjectTreeProjector(Project project)
         return parts.Count > 0 ? string.Join("\n\n", parts) : null;
     }
 
-    // A state row renders its INITIAL value into the label (F-004) — only resource_enum's inivalue IDREF to an
-    // enum_value name; scoped deliberately (inivalue is a literal elsewhere).
-    private string? StateValue(ProjectElement resource) =>
-        resource.Kind == ElementKind.EnumResource
-        && ElementId.TryParse(project.View(resource).Effective("inivalue"), out ElementId valueId)
-        && project.FindById(valueId) is { } operand
-        && project.View(operand).Name is { Length: > 0 } state
-            ? state
-            : null;
-
     // (uxparity2 T027/T031) The settings-only time literal that used to live here is GONE. It rendered a time value
     // for the `settings` section alone, so the same variable read differently depending on which section it sat in.
     // VariableValueFormat now renders every type identically in all four sections, which is what was measured.
@@ -415,9 +405,12 @@ public sealed class ProjectTreeProjector(Project project)
         // differently depending on where it sat, while the reference application renders it identically everywhere
         // (uxparity2 V6/T011, all 21 types measured). The measurement covered a BLOCK's sections only, so a product's
         // own terminal/setting rows keep the rendering they had.
+        // A state row renders its INITIAL value into the label (F-004) — only resource_enum's inivalue IDREF to an
+        // enum_value name; scoped deliberately (inivalue is a literal elsewhere).
+        string? state = project.EnumStateName(resource);
         string? value = (inFunctionBlockVariableSection
-                            ? VariableValueFormat.For(resource.Tag, view.Effective, StateValue(resource))
-                            : StateValue(resource))
+                            ? VariableValueFormat.For(resource.Tag, view.Effective, state)
+                            : state)
                      ?? view.Value;
         bool isOutput = resource.IsOutputPin;
         bool saved = isOutput && view.Backup;

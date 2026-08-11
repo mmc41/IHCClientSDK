@@ -1,7 +1,6 @@
 #nullable enable
 using System.Collections.Frozen;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
@@ -51,6 +50,14 @@ namespace Ihc.Vis.Session
                 {
                     continue;
                 }
+                if (ReferenceEquals(oldEl, newEl))
+                {
+                    // The commit path shares untouched subtrees verbatim (Canonicalizer's P3 sharing rule), so the
+                    // same instance on both sides settles both questions below at once: same attrs, same id-less
+                    // subtree, same child-id sequence. Skipping here is what makes an edit cost its own path rather
+                    // than a full-tree comparison — without it every element is deep-compared on every commit.
+                    continue;
+                }
                 if (!SelfAndIdlessEqual(oldEl, newEl))
                 {
                     changed.Add(id);   // own attrs or an id-less descendant differs (roll-up)
@@ -95,7 +102,7 @@ namespace Ihc.Vis.Session
         // id-less descendant's change surfaces as its nearest id-bearing ancestor being Changed.
         private static bool SelfAndIdlessEqual(ProjectElement a, ProjectElement b)
         {
-            if (a.Tag != b.Tag || !AttrsEqual(a.Attrs, b.Attrs))
+            if (a.Tag != b.Tag || !ImmutableArrayValue.Equal(a.Attrs, b.Attrs))
             {
                 return false;
             }
@@ -103,16 +110,6 @@ namespace Ihc.Vis.Session
             List<ProjectElement> bIdless = b.ChildrenOrEmpty().Where(c => c.Id is null).ToList();
             return aIdless.Count == bIdless.Count
                 && aIdless.Zip(bIdless, SelfAndIdlessEqual).All(equal => equal);
-        }
-
-        private static bool AttrsEqual(
-            ImmutableArray<(string Name, string Value)> a, ImmutableArray<(string Name, string Value)> b)
-        {
-            if (a.IsDefaultOrEmpty && b.IsDefaultOrEmpty)
-            {
-                return true;
-            }
-            return !a.IsDefaultOrEmpty && !b.IsDefaultOrEmpty && a.SequenceEqual(b);
         }
 
         private static List<ElementId> ChildIdSequence(ProjectElement element) =>

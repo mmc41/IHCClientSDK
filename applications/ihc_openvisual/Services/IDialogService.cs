@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Ihc.Vis;
+using Ihc.Vis.Addressing;
 using Ihc.Vis.Session;
 
 namespace ihc_openvisual.Services;
@@ -36,22 +37,22 @@ public sealed record LibraryOrigin(string Name, string Number, string Version, s
 /// <summary>The current values shown by the ordinary-variable Properties dialog (US-027, T016): name, note, and the
 /// typed initial value whose <see cref="ResourceInitialValue.Kind"/> selects the value control (a Bool checkbox, a
 /// Number box, a Time h/m/s(/ms) group, or nothing for <see cref="ResourceValueKind.None"/>).</summary>
-/// <summary><paramref name="HelpNote"/> is the SECOND documentation field (US-027/W5, the <c>note-2</c> attribute):
-/// the installer-facing help text shown alongside the function documentation. It defaults to blank so a caller that
-/// has none is unaffected.</summary>
-/// <summary><paramref name="SaveOnPowerLoss"/> is the <c>backup</c> flag the vendor shows as
-/// <i>Ved strømsvigt → Gem aktuel værdi</i> (FR-7.2, alignment F-27).
-/// <para><paramref name="ShowMilliseconds"/> selects the time editor's shape: the original shows
-/// <c>00:00:00,000</c> for a <c>resource_timer</c>/<c>resource_timertime</c> and <c>00.00.00</c> for a
-/// <c>resource_time</c>, which declares no millisecond at all (alignment F-42).</para>
-/// <para><paramref name="DecimalPlaces"/> is the precision of the decimal editor, which is per type and was measured
-/// field by field: kW/kWh show <c>0,000</c>, Kommatal <c>0,00</c>, Fugtighed/Temperatur <c>0,0</c>, and W/Wh a plain
+/// <param name="HelpNote">The SECOND documentation field (US-027/W5, the <c>note-2</c> attribute): the
+/// installer-facing help text shown alongside the function documentation. Defaults to blank so a caller that has
+/// none is unaffected.</param>
+/// <param name="SaveOnPowerLoss">The <c>backup</c> flag the vendor shows as <i>Ved strømsvigt → Gem aktuel
+/// værdi</i> (FR-7.2, alignment F-27).</param>
+/// <param name="ShowMilliseconds">Selects the time editor's shape: the original shows <c>00:00:00,000</c> for a
+/// <c>resource_timer</c>/<c>resource_timertime</c> and <c>00.00.00</c> for a <c>resource_time</c>, which declares
+/// no millisecond at all (alignment F-42).</param>
+/// <param name="DecimalPlaces">The precision of the decimal editor, which is per type and was measured field by
+/// field: kW/kWh show <c>0,000</c>, Kommatal <c>0,00</c>, Fugtighed/Temperatur <c>0,0</c>, and W/Wh a plain
 /// <c>0</c>. It governs the SCREEN only — every one of these types stores two fraction digits (F-41/F-44) — and it
-/// also rounds what the user types, which is how the original turns <c>42,7</c> in a W field into 43.</para></summary>
-/// <para><paramref name="ChoiceOptions"/> are the labels a <see cref="ResourceValueKind.Choice"/> editor offers,
-/// in order. Null means the weekday's own seven, which the dialog knows; an ENUM variable supplies its type's
-/// states instead, which is what the reference application's <i>Initial værdi</i> combo lists (alignment
-/// F-50).</para>
+/// also rounds what the user types, which is how the original turns <c>42,7</c> in a W field into 43.</param>
+/// <param name="ChoiceOptions">The state names a <see cref="ResourceValueKind.Choice"/> editor offers, in order.
+/// Null means the weekday's own seven, which the dialog takes from the format; an ENUM variable supplies its
+/// type's states instead, which is what the reference application's <i>Initial værdi</i> combo lists (alignment
+/// F-50).</param>
 public sealed record VariablePropertiesInput(string Title, string Name, string Note, ResourceInitialValue Current,
     string HelpNote = "", bool SaveOnPowerLoss = false, bool ShowMilliseconds = true, int DecimalPlaces = 2,
     IReadOnlyList<string>? ChoiceOptions = null);
@@ -197,10 +198,12 @@ public sealed record SceneValueInput(
 // SceneValueResult moved to the SDK (Ihc.Vis.Session, W2-7) — an edit payload for the scene commands.
 
 /// <summary>The current values shown by the terminal-addressing dialog (US-012). <c>InUseTerminals</c> are the
-/// already-used <c>line.terminal</c> addresses in the same direction.</summary>
+/// addresses already taken by other pins in the same direction — carried as <see cref="DatalineAddress"/> rather
+/// than as a formatted key, so the producer and the dialog's "(i brug)" marking cannot disagree about the
+/// spelling of one.</summary>
 public sealed record PinPropertiesInput(
     string Title, bool IsOutput, int DataLine, int Terminal, string CableColour, string Note,
-    bool InitialValueOn, IReadOnlyList<string> InUseTerminals, string Name = "",
+    bool InitialValueOn, IReadOnlyList<DatalineAddress> InUseTerminals, string Name = "",
     bool SaveOnPowerFailure = false);
 
 
@@ -252,11 +255,11 @@ public interface IDialogService
     /// <summary>Opens the modal element Properties dialog (title, pre-filled name + note); returns the edited
     /// values, or null when the installer cancels. <paramref name="origin"/> adds the read-only library-provenance
     /// group a library function block shows below its editable fields (S-19); null for everything else.</summary>
-    /// <paramref name="affirmative"/> labels the commit button: a dialog that goes on to WRITE A FILE names the
-    /// verb (<c>Save</c>) rather than saying OK (S-22).
-    /// <paramref name="userGroupCaption"/> names the editable Name/Note group — the vendor's function-block dialog
+    /// <param name="affirmative">Labels the commit button: a dialog that goes on to WRITE A FILE names the
+    /// verb (<c>Save</c>) rather than saying OK (S-22).</param>
+    /// <param name="userGroupCaption">Names the editable Name/Note group — the vendor's function-block dialog
     /// captions it <c>Bruger egenskaber</c> (F-24). Null leaves the fields uncaptioned, which is what its other
-    /// properties dialogs do.
+    /// properties dialogs do.</param>
     /// <param name="conditionsOr">Supplied only for a <c>Betingelser</c> group: its current logic operator, which
     /// the dialog then offers as the reference application's captioned <i>Logisk betingelse</i> AND/OR field.
     /// Null everywhere else, and the field is absent (alignment F-48).</param>

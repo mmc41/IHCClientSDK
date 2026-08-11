@@ -182,7 +182,7 @@ internal sealed class PropertiesDialogCoordinator(
         // An enum's states and current one come from its TYPE; null for every other variable.
         (string Name, List<string> States)? enumInfo =
             variable.Kind == ElementKind.EnumResource ? ReadEnumInfo(id) : null;
-        string? currentEnumState = enumInfo is null ? null : CurrentEnumState(project, variable);
+        string? currentEnumState = enumInfo is null ? null : project.EnumStateName(variable);
         // An enum's editable value is WHICH STATE it starts in — a Choice over its type's states, carrying the
         // state's LABEL because the stored value is an IDREF this layer resolves on both sides.
         ResourceInitialValue current = enumInfo is { } ei
@@ -374,14 +374,6 @@ internal sealed class PropertiesDialogCoordinator(
             await applyAndReport(command, $"Enumeratoren '{info.Name}' blev opdateret.");
     }
 
-    // The NAME of the state an enum variable currently starts in: its inivalue is an IDREF to one of its type's
-    // enum_value elements, so the label only exists after following it (F-50).
-    private static string? CurrentEnumState(Project project, ProjectElement variable) =>
-        ElementId.TryParse(project.View(variable).Effective("inivalue"), out ElementId valueId)
-        && project.FindById(valueId) is { } state
-            ? project.View(state).Name
-            : null;
-
     // Reads an enum variable's type name and ordered state names for the Edit dialog (US-030); null if not an enum.
     private (string Name, List<string> States)? ReadEnumInfo(ElementId enumVariableId)
     {
@@ -414,8 +406,7 @@ internal sealed class PropertiesDialogCoordinator(
         // Through ProductView for the identifier: a modem IS a product, and this layer reads elements through
         // typed views rather than raw attributes.
         string? modemIdentifier = new ProductView(project, modem).ProductIdentifier;
-        string modemType = session.GetProductCatalogItems()
-            .FirstOrDefault(p => p.Identifier == modemIdentifier)?.DisplayName
+        string modemType = (modemIdentifier is null ? null : session.GetProductCatalogItem(modemIdentifier))?.DisplayName
             ?? view.Name ?? "Modem";
         var input = new ModemPropertiesInput(
             $"{modemType} Egenskaber",
@@ -480,10 +471,12 @@ internal sealed class PropertiesDialogCoordinator(
         return localities;
     }
 
-    // The line.terminal addresses already used by other pins of the same direction (US-012 in-use indication).
-    private IReadOnlyList<string> InUseTerminals(bool isOutput, ElementId except)
+    // The addresses already used by other pins of the same direction (US-012 in-use indication). Handed over as
+    // DatalineAddress values, not as formatted keys: the dialog matches them by the record's own equality, so
+    // neither side has to agree with the other about how a line and a terminal are spelled into one string.
+    private IReadOnlyList<DatalineAddress> InUseTerminals(bool isOutput, ElementId except)
     {
-        var used = new List<string>();
+        var used = new List<DatalineAddress>();
         if (session.Current is not { } project)
             return used;
         string tag = isOutput ? "dataline_output" : "dataline_input";
@@ -492,7 +485,7 @@ internal sealed class PropertiesDialogCoordinator(
             if (element.Tag == tag && element.Id is { } eid && eid != except
                 && new PinView(project, element).Address is { } a)
             {
-                used.Add($"{a.DataLine}.{a.Terminal}");
+                used.Add(a);
             }
         }
         return used;
@@ -518,8 +511,8 @@ internal sealed class PropertiesDialogCoordinator(
             string currentLocalityId = project.FindParent(productId)?.Id?.ToToken() ?? string.Empty;
             // The dialog is titled with the product TYPE (the catalog name), not a generic "Produktegenskaber" —
             // it is how the vendor tells two open product dialogs apart (A-8/F-015).
-            string productType = session.GetProductCatalogItems()
-                .FirstOrDefault(p => p.Identifier == view.ProductIdentifier)?.DisplayName
+            string productType =
+                (view.ProductIdentifier is null ? null : session.GetProductCatalogItem(view.ProductIdentifier))?.DisplayName
                 ?? view.Name ?? "Produktegenskaber";
             var input = new ProductPropertiesInput(
                 productType,

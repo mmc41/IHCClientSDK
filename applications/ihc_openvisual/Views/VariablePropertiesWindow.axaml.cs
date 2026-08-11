@@ -1,8 +1,11 @@
+using System;
 using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using ihc_openvisual.Services;
+using ihc_openvisual.ViewModels;
 using Ihc.Vis.Session;
 
 namespace ihc_openvisual.Views;
@@ -56,7 +59,13 @@ public partial class VariablePropertiesWindow : ResultDialog<VariablePropertiesR
         // F-50: an enum variable's choices are its own type's states; a weekday's are the seven the format
         // declares. The dialog knows the weekday's because the TOKEN it stores is the format's, not the app's —
         // an enum's states are project data and can only come from the caller.
-        _choiceLabels = input.ChoiceOptions is { Count: > 0 } supplied ? [.. supplied] : WeekdayLabels;
+        //
+        // Both arrive as (token, label) pairs so the editor is type-agnostic: it SHOWS the label and COMMITS the
+        // token. For an enum the two coincide — its stored value is an IDREF this dialog never sees, so the caller
+        // resolves it to a state name on both sides.
+        _choices = input.ChoiceOptions is { Count: > 0 } supplied
+            ? [.. supplied.Select(state => (state, state))]
+            : [.. VariableValueFormat.Weekdays];
         // Only an enum's states are project data the installer may edit; a weekday's seven are the format's.
         EditEnumTypeButton.IsVisible = input.ChoiceOptions is { Count: > 0 };
         ApplyKind(input.Current);
@@ -85,13 +94,9 @@ public partial class VariablePropertiesWindow : ResultDialog<VariablePropertiesR
                 BoolBox.SelectedIndex = value.Bool ? 1 : 0;
                 break;
             case ResourceValueKind.Choice:
-                ChoiceBox.ItemsSource = _choiceLabels;
-                // A weekday's token is a format token resolved through WeekdayTokens; an enum's is the state's own
-                // LABEL, because its stored value is an IDREF the dialog never sees. Both land on an index.
-                ChoiceBox.SelectedIndex = System.Math.Max(0,
-                    ReferenceEquals(_choiceLabels, WeekdayLabels)
-                        ? System.Array.IndexOf(WeekdayTokens, value.Token)
-                        : System.Array.IndexOf(_choiceLabels, value.Token));
+                ChoiceBox.ItemsSource = Array.ConvertAll(_choices, c => c.Label);
+                // An unrecognised token lands on the first entry, which is the declared default for both families.
+                ChoiceBox.SelectedIndex = Math.Max(0, Array.FindIndex(_choices, c => c.Token == value.Token));
                 break;
             case ResourceValueKind.Number:
                 NumberBox.Text = value.Number.ToString(CultureInfo.InvariantCulture);
@@ -115,36 +120,25 @@ public partial class VariablePropertiesWindow : ResultDialog<VariablePropertiesR
         new(NameBox.Text ?? string.Empty, NoteBox.Text ?? string.Empty, ReadValue(),
             HelpNoteBox.Text ?? string.Empty, SaveOnPowerLossBox.IsChecked == true, editEnumType);
 
-    /// <summary>The seven day TOKENS the format stores, in the order the reference application lists them, and
-    /// the Danish labels this app shows for them. The token travels to the file; the label is ours to spell, so
-    /// renaming one can never change a project (F-41).</summary>
     /// <summary>The two bool states, in the original's order — OFF first, so index 1 is ON (F-30).</summary>
     private static readonly string[] BoolOptions = ["OFF", "ON"];
 
-    private static readonly string[] WeekdayTokens =
-        ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    /// <summary>The (token, label) pairs the choice combo currently offers — <see cref="VariableValueFormat.Weekdays"/>
+    /// for a weekday, or an enum type's states. The combo shows the labels; the result carries the tokens.</summary>
+    private (string Token, string Label)[] _choices = [.. VariableValueFormat.Weekdays];
 
-    private static readonly string[] WeekdayLabels =
-        ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"];
-
-    /// <summary>The labels the choice combo currently offers — the weekday's seven, or an enum type's states.</summary>
-    private string[] _choiceLabels = WeekdayLabels;
-
-    /// <summary>The value the dialog would commit right now — the parity tests' read of the choice mapping.</summary>
-    internal ResourceInitialValue ResultForTest() => ReadValue();
-
-    private ResourceInitialValue ReadValue() => _kind switch
+    /// <summary>The value the dialog would commit right now — the parity tests' read of the choice mapping, which
+    /// is otherwise only observable by driving a modal to OK.</summary>
+    internal ResourceInitialValue ReadValue() => _kind switch
     {
         ResourceValueKind.Bool => ResourceInitialValue.OfBool(BoolBox.SelectedIndex == 1),
         ResourceValueKind.Choice => ResourceInitialValue.OfChoice(
-            ReferenceEquals(_choiceLabels, WeekdayLabels)
-                ? WeekdayTokens[System.Math.Clamp(ChoiceBox.SelectedIndex, 0, WeekdayTokens.Length - 1)]
-                : _choiceLabels[System.Math.Clamp(ChoiceBox.SelectedIndex, 0, _choiceLabels.Length - 1)]),
+            _choices[Math.Clamp(ChoiceBox.SelectedIndex, 0, _choices.Length - 1)].Token),
         ResourceValueKind.Date => ResourceInitialValue.OfDate(ParseInt(DayBox.Text), ParseInt(MonthBox.Text)),
         // Rounded to the FIELD's own precision, which is what turns 42,7 typed into a W into 43 — the original
         // does the same, and without it a W would carry a fraction the type never shows.
         ResourceValueKind.Decimal => ResourceInitialValue.OfDecimal(
-            System.Math.Round(ParseDouble(DecimalBox.Text), _decimalPlaces, System.MidpointRounding.AwayFromZero)),
+            Math.Round(ParseDouble(DecimalBox.Text), _decimalPlaces, MidpointRounding.AwayFromZero)),
         ResourceValueKind.Number => ResourceInitialValue.OfNumber(ParseLong(NumberBox.Text)),
         ResourceValueKind.Time => ResourceInitialValue.OfTime(
             ParseInt(HourBox.Text), ParseInt(MinuteBox.Text), ParseInt(SecondBox.Text), ParseInt(MsBox.Text)),

@@ -2,6 +2,7 @@
 using System;
 using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
+using Ihc.Vis.Schema;
 
 namespace Ihc.Vis
 {
@@ -72,19 +73,20 @@ namespace Ihc.Vis
             public bool IsScenesContainer => element.Tag == "scenes";
 
             /// <summary>A scene membership row inside a <c>scenes</c> container (US-024).</summary>
-            public bool IsSceneMember => element.Tag is "scene_relay" or "scene_dimmer" or "scene_shutter";
+            public bool IsSceneMember => ReciprocalTags.SceneMemberTags.Contains(element.Tag);
 
             /// <summary>A shutter scene membership (renders its direction, F-051/A-19).</summary>
             public bool IsSceneShutter => element.Tag == "scene_shutter";
 
             /// <summary>A link half under a pin — a follow-link end or a scene link (US-022/US-025).</summary>
-            public bool IsLinkHalf => element.Tag is "link_from_resource" or "link_to_resource" or "scene_link";
+            public bool IsLinkHalf =>
+                ReciprocalTags.FollowLinkHalfTags.Contains(element.Tag) || element.Tag == ReciprocalTags.SceneLinkTag;
 
             /// <summary>The source ("from") end of a follow-link (F-020 direction).</summary>
-            public bool IsLinkFromEnd => element.Tag == "link_from_resource";
+            public bool IsLinkFromEnd => element.Tag == ReciprocalTags.FollowLinkFromTag;
 
             /// <summary>A scene link row (US-025).</summary>
-            public bool IsSceneLink => element.Tag == "scene_link";
+            public bool IsSceneLink => element.Tag == ReciprocalTags.SceneLinkTag;
 
             /// <summary>An output pin — a function-block or physical output, or a wireless relay (US-033).</summary>
             public bool IsOutputPin => element.Tag is "resource_output" or "dataline_output" or "airlink_relay";

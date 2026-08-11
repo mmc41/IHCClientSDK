@@ -2,6 +2,8 @@
 using System;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
+using System.Linq;
+using Ihc.Vis.Model;
 
 namespace Ihc.Vis.Programs
 {
@@ -177,20 +179,17 @@ namespace Ihc.Vis.Programs
         {
             if (ArithmeticToken(operatorSymbol, targetTag, operandTag) is null)
                 return null;
-            return operatorSymbol switch
-            {
-                "+" => "Sætter %P til sin egen værdi plus %S",
-                "-" => "Sætter %P til sin egen værdi minus %S",
-                "/" => "Tilskrev værdien %P med %S",
-                "*" when IsIntTag(targetTag) => "Tilskrev værdien %P til %S",
-                "*" => "Sætter %P til sin egen værdi ganget med %S",
-                _ => null,
-            };
+            // The pair-independent wording is already the operator's row in `Arithmetic` — read it there rather than
+            // re-listing four persisted `.vis` payload strings that nothing would keep in step. Only the int-target
+            // multiply genuinely departs from its row (assignment wording, not multiplication wording).
+            return operatorSymbol == "*" && IsIntTag(targetTag)
+                ? "Tilskrev værdien %P til %S"
+                : Arithmetic.FirstOrDefault(m => m.OperatorSymbol == operatorSymbol)?.Note;
         }
 
         // The mixed-column opcode is the generic-column opcode + 0x5 (F-108: `_0x5a`→`_0x5f`, `_0x64`→`_0x69`, …).
         private static string MixedToken(string genericToken) =>
-            "_0x" + (Convert.ToInt32(genericToken.AsSpan(3).ToString(), 16) + 0x5).ToString("x", System.Globalization.CultureInfo.InvariantCulture);
+            HexToken.Format(HexToken.ParseValueOrDefault(genericToken) + 0x5);
 
         /// <summary>The analog (continuous-value sensor/register) event triggers (US-028/PG-1b): the two %P-only
         /// triggers <c>is changed</c> (<c>_0x96</c>) / <c>is written</c> (<c>_0x9b</c>). Reuses the bool

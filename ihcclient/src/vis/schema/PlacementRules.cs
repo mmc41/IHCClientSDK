@@ -1,6 +1,8 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
 
 using Ihc.Vis.Editing;
 namespace Ihc.Vis.Schema
@@ -77,47 +79,48 @@ namespace Ihc.Vis.Schema
             _ => true,   // unmodeled parent → permissive: never block an insert the model does not know about
         };
 
+        // The six option lists are compile-time constants of the containment model — the same objects every call,
+        // authored order preserved. Built once as statics rather than re-allocated per call: OptionsFor sits on the
+        // drag-over path (CanContain asks it per pointer move), where the per-call form allocated a List plus up to
+        // 21 InsertOption records only to be read and dropped.
+        private static readonly ImmutableArray<InsertOption> NoOptions = ImmutableArray<InsertOption>.Empty;
+
+        private static readonly ImmutableArray<InsertOption> ValueOptions =
+            VariableTypeRegistry.ValueTypeTags.Select(tag => new InsertOption(tag, CatVariable)).ToImmutableArray();
+
+        private static readonly ImmutableArray<InsertOption> GroupsOptions =
+            [new InsertOption("group", CatLocality)];
+
+        private static readonly ImmutableArray<InsertOption> GroupOptions =
+        [
+            new InsertOption("product_dataline", CatProduct),
+            new InsertOption("product_airlink", CatProduct),
+            new InsertOption("functionblock", CatFunctionBlock),
+        ];
+
+        private static readonly ImmutableArray<InsertOption> InputsOptions =
+            [new InsertOption("resource_input", CatPin), .. ValueOptions];
+
+        private static readonly ImmutableArray<InsertOption> OutputsOptions =
+            [new InsertOption("resource_output", CatPin), new InsertOption("resource_scene", CatScene), .. ValueOptions];
+
+        private static readonly ImmutableArray<InsertOption> ProgramsOptions =
+            [new InsertOption("program_simple", CatProgram)];
+
         /// <summary>The insert options offered under the parent in its context; empty for an unmodeled parent.</summary>
         public static IReadOnlyList<InsertOption> OptionsFor(string parentTag, string? grandParentTag)
         {
-            var options = new List<InsertOption>();
             bool inFb = InFunctionBlock(grandParentTag);
-            switch (parentTag)
+            return parentTag switch
             {
-                case "groups":
-                    options.Add(new InsertOption("group", CatLocality));
-                    break;
-                case "group":
-                    options.Add(new InsertOption("product_dataline", CatProduct));
-                    options.Add(new InsertOption("product_airlink", CatProduct));
-                    options.Add(new InsertOption("functionblock", CatFunctionBlock));
-                    break;
-                case "inputs" when inFb:
-                    options.Add(new InsertOption("resource_input", CatPin));
-                    AddValueOptions(options);
-                    break;
-                case "outputs" when inFb:
-                    options.Add(new InsertOption("resource_output", CatPin));
-                    options.Add(new InsertOption("resource_scene", CatScene));
-                    AddValueOptions(options);
-                    break;
-                case "settings" when inFb:
-                case "internalsettings" when inFb:
-                    AddValueOptions(options);
-                    break;
-                case "programs":
-                    options.Add(new InsertOption("program_simple", CatProgram));
-                    break;
-            }
-            return options;
-        }
-
-        private static void AddValueOptions(List<InsertOption> options)
-        {
-            foreach (string tag in VariableTypeRegistry.ValueTypeTags)
-            {
-                options.Add(new InsertOption(tag, CatVariable));
-            }
+                "groups" => GroupsOptions,
+                "group" => GroupOptions,
+                "inputs" when inFb => InputsOptions,
+                "outputs" when inFb => OutputsOptions,
+                "settings" or "internalsettings" when inFb => ValueOptions,
+                "programs" => ProgramsOptions,
+                _ => NoOptions,
+            };
         }
     }
 }

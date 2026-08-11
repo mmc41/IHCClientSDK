@@ -72,23 +72,21 @@ namespace Ihc.Vis.Model
         // Latin-1 file whose bytes happen to be ASCII-only from being mislabeled — either encoding reproduces it.
         private static bool IsNonAsciiUtf8(byte[] bytes)
         {
-            var strict = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
-            try
-            {
-                strict.GetString(bytes);
-            }
-            catch (DecoderFallbackException)
-            {
-                return false;
-            }
+            // Ask the cheap question first: with no high byte the answer is Latin-1 whatever the UTF-8 validity, so
+            // the pure-ASCII majority never pays a decode at all. Then validate in place — Utf8.IsValid inspects the
+            // bytes without materializing a full-file string, and without the thrown-and-caught
+            // DecoderFallbackException a genuine Latin-1 .ifb used to cost on every one of this method's three
+            // callers per file.
+            bool anyHighByte = false;
             foreach (byte b in bytes)
             {
                 if (b >= 0x80)
                 {
-                    return true;
+                    anyHighByte = true;
+                    break;
                 }
             }
-            return false;
+            return anyHighByte && System.Text.Unicode.Utf8.IsValid(bytes);
         }
     }
 }

@@ -173,7 +173,7 @@ public class DecimalDialogParityTests : AvaloniaTestBase
 
         window.FindControl<TextBox>("DecimalBox")!.Text = "42,7";
 
-        Assert.That(window.ResultForTest().Decimal, Is.EqualTo(43));
+        Assert.That(window.ReadValue().Decimal, Is.EqualTo(43));
     }
 
     /// <summary>The field is read in DANISH, matching what it displays: a comma is the decimal separator, and a
@@ -189,6 +189,6 @@ public class DecimalDialogParityTests : AvaloniaTestBase
 
         window.FindControl<TextBox>("DecimalBox")!.Text = "-12,5";
 
-        Assert.That(window.ResultForTest().Decimal, Is.EqualTo(-12.5).Within(0.0001));
+        Assert.That(window.ReadValue().Decimal, Is.EqualTo(-12.5).Within(0.0001));
     }
 }
