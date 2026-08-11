@@ -1064,7 +1064,8 @@ public class MainWindowViewModelTests
             Assert.That(ok, Is.True);
             Assert.That(Val("dimmer_setting_fade_rate_up"), Is.EqualTo("700"));
             Assert.That(Val("dimmer_setting_fade_rate_down"), Is.EqualTo("800"));
-            Assert.That(Val("dimmer_setting_dimming_rate"), Is.EqualTo("5"));
+            // 5 s in the dialog is stored as 5000 ms (dimmer_setting_dimming_rate is milliseconds).
+            Assert.That(Val("dimmer_setting_dimming_rate"), Is.EqualTo("5000"));
             Assert.That(Val("dimmer_setting_minimum_value"), Is.EqualTo("30"));
             Assert.That(Val("dimmer_setting_maximum_value"), Is.EqualTo("90"));
             Assert.That(Val("dimmer_setting_load_mode"), Is.EqualTo("rl"), "Inductive maps to the rl load mode");
@@ -1097,6 +1098,38 @@ public class MainWindowViewModelTests
             Assert.That(Val("dimmer_setting_maximum_value"), Is.EqualTo("90"));
             Assert.That(Val("dimmer_setting_load_mode"), Is.EqualTo("rc"), "Capacitive maps to the rc load mode");
         });
+    }
+
+    // US-015 / alignment F (2026-08-11): the "Manuel ramptid" field is in SECONDS in the dialog (box 2–10, label
+    // "(s)"), but dimmer_setting_dimming_rate is stored in MILLISECONDS (range 2000–10000; the original IHC Visual
+    // shows it as seconds, e.g. 5000 ms → "5"). The dialog and the stored value must therefore differ by ×1000:
+    // opening Advanced on a 6000 ms device shows 6 s, and committing 7 s stores 7000 ms. Before the fix the raw ms
+    // value was shown under a seconds label (5000 under "(s)") and a committed "7" wrote an out-of-range 7.
+    [Test]
+    public async Task WirelessDimmer_ManualRamp_ConvertsSecondsToMilliseconds()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var dimmer = harness.ProjectService.GetAvailableProducts()
+            .First(p => p.CategoryPath.StartsWith("LK IHC Wireless") && p.CategoryPath.Contains("Dimmer"));
+        var pid = (await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[3].ElementId!.Value, dimmer.ProductIdentifier))!.Value;
+        var node = vm.InstallationNodes[0].Children[3].Children[0];
+
+        // Commit 7 seconds through the dialog; the stored dimming_rate must be 7000 ms.
+        harness.Dialogs.ProductPropertiesResponder = i =>
+            new ProductPropertiesResult(i.Name, i.CurrentLocalityId, i.Note, "", "", i.IdentificationCode, i.LightGroup, OpenAdvanced: true);
+        harness.Dialogs.AdvancedDimmerResult = new AdvancedDimmerResult(700, 700, 7, 20, 90, "rc");
+        await vm.PropertiesCommand.ExecuteAsync(node);
+
+        var el = harness.Session.Current!.FindById(pid)!;
+        string Val(string tag) => el.DescendantsAndSelf().First(e => e.Tag == tag).GetAttribute("value")!;
+        Assert.That(Val("dimmer_setting_dimming_rate"), Is.EqualTo("7000"), "7 s committed → 7000 ms stored");
+
+        // Re-open: the 7000 ms just stored must be shown back as 7 seconds, not 7000.
+        harness.Dialogs.AdvancedDimmerResult = null;   // cancel the re-open, we only need the input it was given
+        await vm.PropertiesCommand.ExecuteAsync(node);
+        Assert.That(harness.Dialogs.LastAdvancedDimmerInput!.ManualRampS, Is.EqualTo(7), "7000 ms stored → 7 s shown");
     }
 
     // US-015: a non-dimmer wireless product does not offer the Advanced dimmer dialog.

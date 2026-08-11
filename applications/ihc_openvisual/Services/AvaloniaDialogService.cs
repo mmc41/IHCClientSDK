@@ -30,14 +30,23 @@ public sealed class AvaloniaDialogService : IDialogService
     private static readonly FilePickerFileType CatalogFileType =
         new("IHC katalogdefinition (*.def, *.ifb)") { Patterns = new[] { "*.def", "*.ifb" } };
 
+    // Danish save-changes guard. Registered difference: the original leaves this MessageBox in ENGLISH
+    // ("Save changes to …?" — Yes/No/Cancel), where IHC OpenVisual follows its Danish-everywhere rule. The strings
+    // are pinned (SaveChangesGuardIsDanish) so they cannot drift back to the vendor's un-localized wording.
+    internal const string SaveChangesTitle = "Gem ændringer?";
+    internal const string SaveChangesSaveLabel = "Gem";
+    internal const string SaveChangesDiscardLabel = "Gem ikke";
+    internal const string SaveChangesCancelLabel = "Annuller";
+    internal static string SaveChangesMessage(string documentName) => $"Gem ændringer i {documentName} før du fortsætter?";
+
     public async Task<SaveChangesResult> ConfirmSaveChangesAsync(string documentName)
     {
         var result = await ShowButtonsAsync(
-            "Gem ændringer?",
-            $"Gem ændringer i {documentName} før du fortsætter?",
-            ("Gem", SaveChangesResult.Save),
-            ("Gem ikke", SaveChangesResult.Discard),
-            ("Annuller", SaveChangesResult.Cancel));
+            SaveChangesTitle,
+            SaveChangesMessage(documentName),
+            (SaveChangesSaveLabel, SaveChangesResult.Save),
+            (SaveChangesDiscardLabel, SaveChangesResult.Discard),
+            (SaveChangesCancelLabel, SaveChangesResult.Cancel));
         return result;
     }
 

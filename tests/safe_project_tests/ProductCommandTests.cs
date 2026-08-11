@@ -53,6 +53,24 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // Alignment (2026-08-11): the original IHC Visual stores a product's name = its catalog type name at insert —
+        // a real vendor .vis carries e.g. <product_dataline ... name="Lampeudtag">. OpenVisual left the name empty, so
+        // an un-renamed product fell back to its raw element tag ("product_airlink") in the tree. A newly inserted
+        // product must carry its DisplayName as the stored name, both for the tree label and for vendor byte parity.
+        [Test]
+        public async Task AddProduct_StoresCatalogNameAsProductName()
+        {
+            Project project = await Load("project3-KompleksWired.vis");
+            ElementId loc = project.Groups.First().Id!.Value;
+            ProductDefinition def = App.GetAvailableProducts().First(p => p.Body.Tag == "product_dataline");
+            ProjectDocumentSession session = Session(project);
+
+            EditOutcome<ElementId> outcome = session.Apply(new AddProduct(loc, def));
+
+            string? name = session.Current!.FindById(outcome.Value)!.GetAttribute("name");
+            Assert.That(name, Is.EqualTo(def.DisplayName));
+        }
+
         [Test]
         public async Task UpdateProduct_AppliesTheDto()
         {

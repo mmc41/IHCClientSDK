@@ -34,6 +34,23 @@ public class DanishChromeTests : AvaloniaTestBase
             "a new, unsaved project is named in the application's own language");
     }
 
+    // Registered difference (alignment F, 2026-08-11): the original leaves its save-changes MessageBox in ENGLISH
+    // ("Save changes to …?" — Yes/No/Cancel), a vendor localization gap; IHC OpenVisual follows its Danish-everywhere
+    // rule. Pins the exact Danish strings so they cannot drift back to the vendor's un-localized wording.
+    [Test]
+    public void SaveChangesGuardIsDanish()
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That(ihc_openvisual.Services.AvaloniaDialogService.SaveChangesTitle, Is.EqualTo("Gem ændringer?"));
+            Assert.That(ihc_openvisual.Services.AvaloniaDialogService.SaveChangesMessage("unavngivet"),
+                Is.EqualTo("Gem ændringer i unavngivet før du fortsætter?"));
+            Assert.That(ihc_openvisual.Services.AvaloniaDialogService.SaveChangesSaveLabel, Is.EqualTo("Gem"));
+            Assert.That(ihc_openvisual.Services.AvaloniaDialogService.SaveChangesDiscardLabel, Is.EqualTo("Gem ikke"));
+            Assert.That(ihc_openvisual.Services.AvaloniaDialogService.SaveChangesCancelLabel, Is.EqualTo("Annuller"));
+        });
+    }
+
     [AvaloniaTest]
     public async Task MenuBarTitles_AreDanish()
     {

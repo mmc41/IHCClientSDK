@@ -39,14 +39,15 @@
         <NumericUpDown Name="MaximumBox" Minimum="0" Maximum="100" Increment="1" FormatString="0"
                        a:AutomationProperties.LabeledBy="{Binding #MaximumLabel}"/>
 
-        <TextBlock Name="LoadModeLabel" Classes="label" Text="Belastningstype"/>
+        <TextBlock Name="LoadModeLabel" Classes="label" Text="Belastnings karakteristik"/>
         <ComboBox Name="LoadModeCombo" HorizontalAlignment="Stretch"
                   a:AutomationProperties.LabeledBy="{Binding #LoadModeLabel}">
-            <!-- The three load modes are a fixed enumeration, so each item carries the enum member as its id — a
-                 driver selects "Inductive" without knowing how the option is spelled in the running language. -->
-            <ComboBoxItem a:AutomationProperties.AutomationId="LoadMode.Inductive">Induktiv</ComboBoxItem>
-            <ComboBoxItem a:AutomationProperties.AutomationId="LoadMode.Capacitive">Kapacitiv</ComboBoxItem>
-            <ComboBoxItem a:AutomationProperties.AutomationId="LoadMode.Auto">Auto</ComboBoxItem>
+            <!-- Matches the original IHC Visual: Auto detektion / RC / RL, Auto first. The three load modes are a
+                 fixed enumeration, so each item carries the enum member as its id — a driver selects "Inductive"
+                 without knowing how the option is spelled in the running language. -->
+            <ComboBoxItem a:AutomationProperties.AutomationId="LoadMode.Auto">Auto detektion</ComboBoxItem>
+            <ComboBoxItem a:AutomationProperties.AutomationId="LoadMode.Capacitive">RC</ComboBoxItem>
+            <ComboBoxItem a:AutomationProperties.AutomationId="LoadMode.Inductive">RL</ComboBoxItem>
         </ComboBox>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,14,0,0">

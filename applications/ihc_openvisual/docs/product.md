@@ -143,6 +143,21 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
   sentence is longer. (Alignment F-47, measured 2026-08-11 on the one-modem rule, which story 03/US-013
   already requires to "tell the installer why".)
   *Pinned by:* `RefusalMessageParityTests`.
+- The **name prompt refuses a blank name out loud**, where the original refuses it silently. Creating an enumerator
+  type or value (and renaming a node) with an empty or all-whitespace name: IHC OpenVisual keeps the dialog open and
+  states the reason in a live region (*"Indtast et navn."*), retracting it as soon as a name is typed; the original
+  simply closes the *Opret ny enumerator type* / *…værdi* dialog and creates nothing, with no message. Both refuse the
+  empty name — only the feedback differs, and this is IHC OpenVisual's "keeps its error feedback" principle applied to
+  a case the original handled by doing nothing. (Alignment F, measured 2026-08-11 on the enum create dialogs; story
+  07/US-027 records the enumerator-authoring behaviour.)
+  *Pinned by:* `NamePromptValidationTests`.
+- The **save-changes guard is in Danish**, where the original leaves it in **English**. Discarding unsaved work (new
+  project, open, close) raises a three-button Save / Don't-save / Cancel prompt on both apps with the same semantics,
+  but the original shows a stock Windows message box titled *LK IHC Visual ®* reading *"Save changes to    unavngivet?"*
+  with **Yes / No / Cancel** — an un-localized vendor gap — while IHC OpenVisual titles it *Gem ændringer?*, asks *"Gem
+  ændringer i unavngivet før du fortsætter?"* and labels the buttons **Gem / Gem ikke / Annuller**. This is the
+  Danish-everywhere rule (above) applied to the save guard. (Alignment F, measured 2026-08-11.)
+  *Pinned by:* `DanishChromeTests` (`SaveChangesGuardIsDanish`).
 - Placing a product **applies the insert and then asks** for its documentation, rolling back if the installer
   cancels; the original raises the dialog first and adds nothing until OK (measured 2026-08-11: its tree item
   count is unchanged while the dialog is up). So while that modal dialog is open, IHC OpenVisual's tree already

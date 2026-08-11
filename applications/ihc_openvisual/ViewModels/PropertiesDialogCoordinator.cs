@@ -579,7 +579,9 @@ internal sealed class PropertiesDialogCoordinator(
         var input = new AdvancedDimmerInput(
             view.PositiveSetting("dimmer_setting_fade_rate_up") ?? 700,
             view.PositiveSetting("dimmer_setting_fade_rate_down") ?? 700,
-            view.PositiveSetting("dimmer_setting_dimming_rate") ?? 2,
+            // Stored in ms (default 5000, range 2000–10000); the dialog edits it in seconds, so ÷1000. The
+            // command multiplies back by 1000 on commit, so the stored value round-trips exactly.
+            (view.PositiveSetting("dimmer_setting_dimming_rate") ?? 5000) / 1000,
             view.PositiveSetting("dimmer_setting_minimum_value") ?? 0,
             view.PositiveSetting("dimmer_setting_maximum_value") ?? 100,
             view.LoadMode);

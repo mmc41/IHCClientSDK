@@ -365,7 +365,9 @@ namespace Ihc.Vis.Session
                 editor.SetDescendantAttribute(product, e => e.Tag == tag, "value", value);
             SetSetting("dimmer_setting_fade_rate_up", DecToken.Format(Result.SoftOnMs));
             SetSetting("dimmer_setting_fade_rate_down", DecToken.Format(Result.SoftOffMs));
-            SetSetting("dimmer_setting_dimming_rate", DecToken.Format(Result.ManualRampS));
+            // The manual ramp is edited in SECONDS (the dialog's 2–10 box) but stored in MILLISECONDS
+            // (dimmer_setting_dimming_rate range 2000–10000), exactly as the original IHC Visual holds it.
+            SetSetting("dimmer_setting_dimming_rate", DecToken.Format(Result.ManualRampS * 1000));
             SetSetting("dimmer_setting_minimum_value", DecToken.Format(Result.MinimumPercent));
             SetSetting("dimmer_setting_maximum_value", DecToken.Format(Result.MaximumPercent));
             SetSetting("dimmer_setting_load_mode", Result.LoadMode);

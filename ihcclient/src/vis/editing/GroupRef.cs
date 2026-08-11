@@ -49,7 +49,12 @@ namespace Ihc.Vis.Editing
         {
             ArgumentNullException.ThrowIfNull(definition);
             ElementId productId = editor.InsertComponent(Id, definition.Body, definition.Grammar);
-            return new ProductRef(editor, productId);
+            var product = new ProductRef(editor, productId);
+            // The original IHC Visual stores a product's name = its catalog type name at insert (a real .vis carries
+            // e.g. name="Lampeudtag"); without it an un-renamed product falls back to its raw element tag in the tree.
+            if (definition.DisplayName is { Length: > 0 } displayName)
+                product.Name(displayName);
+            return product;
         }
 
         /// <summary>

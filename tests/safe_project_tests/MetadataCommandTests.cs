@@ -187,7 +187,8 @@ namespace Ihc.Vis.Tests
                 Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed));
                 Assert.That(Val("dimmer_setting_fade_rate_up"), Is.EqualTo("111"));
                 Assert.That(Val("dimmer_setting_fade_rate_down"), Is.EqualTo("222"));
-                Assert.That(Val("dimmer_setting_dimming_rate"), Is.EqualTo("33"));
+                // ManualRampS is in SECONDS in the dialog but stored in MILLISECONDS (×1000), as the original does.
+                Assert.That(Val("dimmer_setting_dimming_rate"), Is.EqualTo("33000"));
                 Assert.That(Val("dimmer_setting_minimum_value"), Is.EqualTo("5"));
                 Assert.That(Val("dimmer_setting_maximum_value"), Is.EqualTo("95"));
                 Assert.That(Val("dimmer_setting_load_mode"), Is.EqualTo("rl"));
